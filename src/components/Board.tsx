@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { addPost, boardKey, react, removePost, usePosts, type Post } from '../lib/boards';
 import { Icon } from '../editor/Icons';
+import { Avatar } from './avatars';
+import { useClassAvatars } from '../lib/avatars';
 import { findMentions, notify, type Person } from '../lib/notices';
 
 const TEACHER: Person = { id: 'teacher', name: 'Teacher' };
@@ -81,7 +83,6 @@ const REACTIONS = [
   { key: 'idea', icon: 'idea', label: 'Good idea' },
 ];
 
-const initials = (n: string) => n.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 function ago(p: Post) {
   const t = p.at?.toMillis?.();
   if (!t) return 'just now';
@@ -101,6 +102,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
   const seen = useRef<Set<string>>(new Set());
+  const avatars = useClassAvatars();
   const tagging = attrs.tagging !== false;
   const people: Person[] = useMemo(() => [TEACHER, ...(me?.people ?? []).filter((p) => p.id !== me?.selfId)], [me?.people, me?.selfId]);
   const allPeople: Person[] = useMemo(() => [TEACHER, ...(me?.people ?? [])], [me?.people]);
@@ -130,6 +132,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         text: t,
         byUid: me.uid,
         byName: attrs.anonymous && !me.teacher ? '' : me.name,
+        avatar: attrs.anonymous && !me.teacher ? '' : (me.teacher ? avatars.teacher : avatars.byLearner[me.selfId ?? '']) ?? '',
         ...(me.teacher ? { teacher: true } : {}),
         ...(isNotes && !parentId ? { color } : {}),
         ...(parentId ? { parentId } : {}),
@@ -252,7 +255,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
             send();
           }}
         >
-          {!isNotes && <span className="bd-av me">{attrs.anonymous && !me.teacher ? <Icon name="question" size="14" /> : initials(me.name)}</span>}
+          {!isNotes && (attrs.anonymous && !me.teacher ? <span className="bd-av me"><Icon name="question" size="14" /></span> : <Avatar k={me.teacher ? avatars.teacher : avatars.byLearner[me.selfId ?? '']} name={me.name} size={34} />)}
           <textarea
             ref={composeRef}
             onKeyUp={tagMain.track}
@@ -310,7 +313,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         <div className="bd-feed">
           {shown.map((p) => (
             <article key={p.id} className={'bd-msg' + (fresh(p.id) ? ' fresh' : '') + (p.teacher ? ' from-teacher' : '') + (mine(p) ? ' mine' : '')}>
-              <span className="bd-av">{p.byName ? initials(p.byName) : <Icon name="question" size="14" />}</span>
+              {p.byName ? <Avatar k={p.avatar} name={p.byName} size={34} /> : <span className="bd-av"><Icon name="question" size="14" /></span>}
               <div className="bd-body">
                 <span className="bd-msg-head">
                   <strong>{who(p)}</strong>

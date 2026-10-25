@@ -10,14 +10,19 @@ import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { initials } from '../components/TopBar';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { Avatar } from '../components/avatars';
+import { AvatarPicker } from '../components/AvatarPicker';
 
 export function LearnerHome({ classId, name }: { classId: string; name: string }) {
   const { signOutNow, user, profile } = useAuth();
-  usePresenceBeat(classId, user?.uid, { name, learnerId: profile?.role === 'learner' ? profile.learnerId : '', itemId: '', taskId: '' });
+  usePresenceBeat(classId, user?.uid, { name, learnerId: profile?.role === 'learner' ? profile.learnerId : '', itemId: '', taskId: '', avatar: profile?.avatar });
   const [c, setC] = useState<ClassDoc | null | undefined>(undefined);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [menu, setMenu] = useState(false);
+  const [picking, setPicking] = useState(false);
+  // First visit: invite the learner to choose a picture.
+  const [askPicture, setAskPicture] = useState(true);
   const [live, setLiveState] = useState<LiveState | null>(null);
 
   useEffect(() => {
@@ -48,7 +53,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
         <span className="sub">{c?.name ?? ''}</span>
         <div className="right">
           <button className="avatar" style={{ background: '#eef4ef', color: '#4e6b55' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
-            {initials(name)}
+            {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : initials(name)}
           </button>
           {menu && (
             <div className="menu" role="menu">
@@ -56,6 +61,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                 <strong>{name}</strong>
                 <span className="hint">{c?.name}</span>
               </div>
+              <button role="menuitem" onClick={() => (setPicking(true), setMenu(false))}>
+                Choose a profile picture
+              </button>
               <button role="menuitem" onClick={signOutNow}>
                 Sign out
               </button>
@@ -63,6 +71,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
           )}
         </div>
       </header>
+      {(picking || (profile && !profile.avatar && askPicture)) && <AvatarPicker classIds={[classId]} onClose={() => (setPicking(false), setAskPicture(false))} />}
 
       {c === null ? (
         <p className="placeholder">You’re no longer in this class. Ask your teacher if this is a mistake.</p>

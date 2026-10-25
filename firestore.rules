@@ -94,6 +94,14 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Profile pictures in use in this class (one person per picture)
+      match /avatars/{key} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow create: if (teachesClass(classId) || memberOf(classId)) && request.resource.data.uid == request.auth.uid;
+        allow update: if resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+        allow delete: if resource.data.uid == request.auth.uid || teachesClass(classId);
+      }
+
       // Tag notifications
       match /notices/{nid} {
         allow read: if teachesClass(classId)

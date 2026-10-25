@@ -3,6 +3,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { learnersCol, type Learner } from '../lib/learners';
+import { useClassAvatars } from '../lib/avatars';
+import { Avatar } from './avatars';
 import { isOnline, type Presence } from '../lib/presence';
 import { isAnswered, isCorrect, questionIds, scoreQuestion, textOf, type AnswerDoc, type AnswerKey, type Response } from '../lib/tasks';
 
@@ -59,6 +61,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
   const [roster, setRoster] = useState<Learner[]>([]);
   const [answers, setAnswers] = useState<AnswerDoc[]>([]);
   const [focus, setFocus] = useState<string | null>(null);
+  const avatars = useClassAvatars();
 
   useEffect(() => onSnapshot(learnersCol(classId), (s) => setRoster(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Learner, 'id'>) })).sort((a, b) => a.displayName.localeCompare(b.displayName))), () => {}), [classId]);
   useEffect(() => {
@@ -123,6 +126,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
               <div key={l.id} className="lg-row" role="row">
                 <span className={'lg-name' + (onlineIds.has(l.id) ? ' online' : '')} title={onlineIds.has(l.id) ? (here.has(l.id) ? 'On this task' : 'Online') : 'Offline'}>
                   <span className="lg-dot" aria-hidden="true" />
+                  <Avatar k={avatars.byLearner[l.id]} name={l.displayName} size={20} />
                   {l.displayName.split(' ')[0]}
                   {a?.checked && <span className="lg-checked">checked</span>}
                 </span>

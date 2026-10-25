@@ -22,6 +22,7 @@ import { theme } from '../lib/themes';
 import { isLive, isSynced, liveRef, revealedCount, revealedSingles, revealedSubset, type LiveState } from '../lib/live';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { TEXT_SCALE } from '../lib/auth';
 import { drawShared, useSharedPicks } from '../lib/picks';
@@ -65,7 +66,7 @@ export function LearnerLesson() {
     if (!classId) return;
     return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
   }, [classId]);
-  usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current });
+  usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current, avatar: profile?.avatar });
   const synced = isSynced(live, itemId);
   const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? live!.taskId : '';
   // When the teacher syncs the class, everyone follows the teacher's task.
@@ -115,6 +116,7 @@ export function LearnerLesson() {
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
   const classmates = useClassmates(c?.classCode);
+  const classAvatars = useLearnerAvatars(classId);
   const received = useReceivedFeedback(classId, current, learnerId);
   const withShared = useMemo(() => ({ ...responses, ...Object.fromEntries(Object.values(shared).map((p) => [p.pickId, { h: p.h, b: p.b }])) }), [responses, shared]);
   const qs = useMemo(() => questionIds(task?.content ?? null, withShared), [task, withShared]);
@@ -209,6 +211,7 @@ export function LearnerLesson() {
   const showScore = true;
 
   return (
+    <ClassAvatarsContext.Provider value={classAvatars}>
     <div className="shell wide lesson-shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <header className="topbar">
         <Link to="/" style={{ textDecoration: 'none' }}>
@@ -367,5 +370,6 @@ export function LearnerLesson() {
         </div>
       </div>
     </div>
+    </ClassAvatarsContext.Provider>
   );
 }

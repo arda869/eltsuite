@@ -1,4 +1,6 @@
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
+import { useClassAvatars } from '../lib/avatars';
+import { Avatar } from './avatars';
 
 // Learner view of a self-reflection or peer feedback block.
 
@@ -45,6 +47,7 @@ type Props = {
 export function ReflectBlock({ about, title, items, value, onChange, disabled, classmates = [], selfId, pairing = 'learners', pairedWith, readOnlyFrom }: Props) {
   const fixed = about === 'peer' && pairing === 'teacher' && !readOnlyFrom ? classmates.find((c) => c.id === pairedWith) : undefined;
   const raw: ReflectAnswer = value ?? { ratings: {} };
+  const avatars = useClassAvatars();
   const v: ReflectAnswer = fixed ? { ...raw, peer: fixed.id, peerName: fixed.name } : raw;
   const peerName = v.peerName ?? '';
   const first = peerName.split(' ')[0];
@@ -79,7 +82,7 @@ export function ReflectBlock({ about, title, items, value, onChange, disabled, c
             {others.length === 0 && <span className="hint">The class list will appear here.</span>}
             {others.map((c) => (
               <button key={c.id} type="button" role="radio" aria-checked={v.peer === c.id} className={'rf-person' + (v.peer === c.id ? ' on' : '')} disabled={off} onClick={() => onChange?.({ ...v, peer: c.id, peerName: c.name })}>
-                <span className="rf-av">{c.name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+                <Avatar k={avatars.byLearner[c.id]} name={c.name} size={24} />
                 {c.name.split(' ')[0]}
               </button>
             ))}

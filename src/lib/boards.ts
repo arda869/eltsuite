@@ -8,6 +8,7 @@ export type Post = {
   text: string;
   byUid: string;
   byName: string; // empty when the board is anonymous
+  avatar?: string;
   teacher?: boolean;
   color?: string;
   parentId?: string;

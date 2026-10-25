@@ -8,11 +8,11 @@ export type TextSize = 'S' | 'M' | 'L' | 'XL';
 export type Profile = (
   | { role: 'teacher'; displayName?: string }
   | { role: 'learner'; classId: string; learnerId: string; displayName: string }
-) & { textSize?: TextSize };
+) & { textSize?: TextSize; avatar?: string };
 
-type AuthState = { user: User | null; profile: Profile | null; ready: boolean; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void };
+type AuthState = { user: User | null; profile: Profile | null; ready: boolean; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setAvatarLocal: (k: string) => void };
 
-const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, signOutNow: async () => {}, setTextSize: () => {} });
+const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, signOutNow: async () => {}, setTextSize: () => {}, setAvatarLocal: () => {} });
 export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
 async function loadProfile(user: User): Promise<Profile | null> {
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile((p) => (p ? { ...p, textSize: t } : p));
     if (user) updateDoc(doc(db, 'users', user.uid), { textSize: t }).catch(() => {});
   };
-  return <Ctx.Provider value={{ user, profile, ready, signOutNow: () => signOut(auth), setTextSize }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, profile, ready, signOutNow: () => signOut(auth), setTextSize, setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

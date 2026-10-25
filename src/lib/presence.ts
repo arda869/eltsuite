@@ -2,17 +2,17 @@ import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
-export type Presence = { id: string; name: string; learnerId: string; itemId: string; taskId: string; at?: Timestamp };
+export type Presence = { id: string; name: string; learnerId: string; itemId: string; taskId: string; avatar?: string; at?: Timestamp };
 
 // Learners send a heartbeat every 30 seconds while the app is open.
-export function usePresenceBeat(classId: string, uid: string | undefined, info: { name: string; learnerId: string; itemId: string; taskId: string }) {
-  const { name, learnerId, itemId, taskId } = info;
+export function usePresenceBeat(classId: string, uid: string | undefined, info: { name: string; learnerId: string; itemId: string; taskId: string; avatar?: string }) {
+  const { name, learnerId, itemId, taskId, avatar = '' } = info;
   useEffect(() => {
     if (!classId || !uid) return;
     const ref = doc(db, 'classes', classId, 'presence', uid);
     const beat = () => {
       if (document.visibilityState === 'hidden') return;
-      setDoc(ref, { name, learnerId, itemId, taskId, at: serverTimestamp() }).catch(() => {});
+      setDoc(ref, { name, learnerId, itemId, taskId, avatar, at: serverTimestamp() }).catch(() => {});
     };
     beat();
     const t = window.setInterval(beat, 30000);
@@ -21,7 +21,7 @@ export function usePresenceBeat(classId: string, uid: string | undefined, info: 
       window.clearInterval(t);
       document.removeEventListener('visibilitychange', beat);
     };
-  }, [classId, uid, name, learnerId, itemId, taskId]);
+  }, [classId, uid, name, learnerId, itemId, taskId, avatar]);
 }
 
 export const isOnline = (p: Presence) => Date.now() - (p.at?.toMillis?.() ?? Date.now()) < 75000;

@@ -25,10 +25,11 @@ import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLiv
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { Avatar } from '../components/avatars';
+import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { useAuth } from '../lib/auth';
 import { isOnline, usePresence } from '../lib/presence';
-import { initials } from '../components/TopBar';
 import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
@@ -91,6 +92,7 @@ export function LessonEditor() {
   const task = tasks.find((t) => t.id === selected);
   const sharedPicks = useSharedPicks(classId, selected);
   const classmates = useClassmates(c?.classCode);
+  const classAvatars = useLearnerAvatars(classId);
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
@@ -312,6 +314,7 @@ export function LessonEditor() {
   const th = theme(c?.themeColor);
 
   return (
+    <ClassAvatarsContext.Provider value={classAvatars}>
     <div className="shell wide" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
@@ -445,7 +448,7 @@ export function LessonEditor() {
                 {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
                 {online.map((p) => (
                   <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere')} title={p.itemId === itemId ? !seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}` : `${p.name} · online, not in this lesson`}>
-                    <span className="avatar small">{initials(p.name)}</span>
+                    <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
                     <span className="pname">{p.name.split(' ')[0]}</span>
                     {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
                   </span>
@@ -723,5 +726,6 @@ export function LessonEditor() {
         </div>
       )}
     </div>
+    </ClassAvatarsContext.Provider>
   );
 }
