@@ -794,3 +794,22 @@ a.btn.primary { color: #ffffff; }
 .task-table.lines-none th, .task-table.lines-rows th { background: transparent; }
 .doc .ProseMirror table.lines-none th, .doc .ProseMirror table.lines-none td { border: 1px dashed #e6e6e6; }
 .doc .ProseMirror table.lines-none th, .doc .ProseMirror table.lines-rows th { background: transparent; }
+
+/* Learner answers look handwritten in blue pen */
+:root { --pen: #2b4c9e; --hand: 'Kalam', 'Segoe Print', 'Bradley Hand', cursive; }
+.gap-input, .drop-slot.filled, .match-slot, .writing-q textarea, .rich-answer-doc, .ans, .order-line .bank-word.placed {
+  font-family: var(--hand); color: var(--pen); font-size: 1.08em;
+}
+.gap-input { line-height: 1.3; }
+.gap-input::placeholder, .writing-q textarea::placeholder { font-family: var(--serif); color: #b8b8b8; font-size: 16px; }
+.rich-answer-doc p.is-editor-empty:first-child::before { font-family: var(--serif); }
+.match-slot { font-size: 18px; font-weight: 700; }
+.writing-q textarea, .rich-answer-doc { font-size: 18px; line-height: 1.6; }
+.ans.wrong { color: var(--wrong); }
+.ans.right { color: var(--pen); }
+.order-line .bank-word.placed { border-color: transparent; background: transparent; padding: 0 3px; }
+/* Chosen options are marked in pen */
+.slash-opt.on { border-color: var(--pen); color: var(--pen); }
+.opt.on .letter { background: var(--pen); border-color: var(--pen); }
+.opt.on .radio, .opt.on .radio.square { border-color: var(--pen); box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 8px var(--pen); }
+.opt.on { color: var(--pen); }
