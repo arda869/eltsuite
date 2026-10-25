@@ -5,7 +5,9 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { SignIn } from './pages/SignIn';
 import { EmailLinkFinish } from './pages/EmailLinkFinish';
 import { TeacherHome } from './pages/TeacherHome';
-import { ClassPage, LessonComingSoon } from './pages/ClassPage';
+import { ClassPage } from './pages/ClassPage';
+import { LessonEditor } from './pages/LessonEditor';
+import { LearnerLesson } from './pages/LearnerLesson';
 import { LearnerJoin } from './pages/LearnerJoin';
 import { LearnerHome } from './pages/LearnerHome';
 import { isLearnerEmail } from './lib/learners';
@@ -48,6 +50,12 @@ function TeacherOnly({ children }: { children: JSX.Element }) {
   return user && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
 }
 
+function LearnerOnly({ children }: { children: JSX.Element }) {
+  const { user, profile, ready } = useAuth();
+  if (!ready) return null;
+  return user && profile?.role === 'learner' ? children : <Navigate to="/" replace />;
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
@@ -57,7 +65,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
-          <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonComingSoon /></TeacherOnly>} />
+          <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
+          <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

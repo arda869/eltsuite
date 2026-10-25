@@ -161,19 +161,3 @@ export function ClassPage() {
     </div>
   );
 }
-
-export function LessonComingSoon() {
-  const { classId = '' } = useParams();
-  return (
-    <div className="shell">
-      <TopBar>
-        <nav aria-label="Breadcrumb" className="crumbs">
-          <Link to="/">Classes</Link>
-          <span aria-hidden="true">/</span>
-          <Link to={`/class/${classId}`}>Class</Link>
-        </nav>
-      </TopBar>
-      <p className="placeholder">The lesson editor and live lesson are the next parts to be built.</p>
-    </div>
-  );
-}

@@ -51,6 +51,29 @@ service cloud.firestore {
       match /items/{itemId} {
         allow read: if teachesClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
+
+        match /tasks/{taskId} {
+          allow read: if teachesClass(classId) || memberOf(classId);
+          allow write: if teachesClass(classId);
+
+          // Answer key: learners can read it only after they have checked their answers
+          match /private/{docId} {
+            allow read: if teachesClass(classId)
+              || (memberOf(classId)
+                  && get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true);
+            allow write: if teachesClass(classId);
+          }
+        }
+      }
+
+      // Learner answers: one document per task per learner
+      match /answers/{answerId} {
+        allow read: if teachesClass(classId)
+          || (signedIn() && answerId.split('_')[1] == request.auth.uid);
+        allow create, update: if memberOf(classId)
+          && request.resource.data.learnerUid == request.auth.uid
+          && answerId == request.resource.data.taskId + '_' + request.auth.uid;
+        allow delete: if teachesClass(classId);
       }
 
       // Roster: teacher only

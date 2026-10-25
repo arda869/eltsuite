@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
@@ -93,7 +94,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                     {list.map((i) => (
                       <li key={i.id} className="item">
                         <span className="type">{i.type}</span>
-                        <span className="title">{i.title}</span>
+                        <Link to={`/learn/${i.id}`} className="title">
+                          {i.title}
+                        </Link>
                       </li>
                     ))}
                   </ul>
