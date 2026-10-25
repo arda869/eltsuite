@@ -45,6 +45,7 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { Whiteboard } from '../components/Whiteboard';
 import { LivePanel } from '../components/LivePanel';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
@@ -73,6 +74,7 @@ export function LessonEditor() {
   const [editorKey, setEditorKey] = useState('');
   const [status, setStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [preview, setPreview] = useState(false);
+  const [boardView, setBoardView] = useState(false);
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const [previewChecked, setPreviewChecked] = useState(false);
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
@@ -271,8 +273,9 @@ export function LessonEditor() {
     // Always come back to the read-only teaching view, not an editing or preview state left over.
     setEditWhileTeaching(false);
     setPreview(false);
+    setBoardView(false);
     await flush();
-    if (teachingHere) await setLive(classId, { teaching: false, sync: false });
+    if (teachingHere) await setLive(classId, { teaching: false, sync: false, boardTask: null });
     else
       await setLive(classId, {
         sync: false,
@@ -356,6 +359,10 @@ export function LessonEditor() {
   async function select(id: string) {
     await flush();
     setSelected(id);
+    if (boardView) {
+      setBoardView(false);
+      if (teachingHere) setLive(classId, { boardTask: null });
+    }
   }
 
   async function newTask() {
@@ -639,13 +646,25 @@ export function LessonEditor() {
                 <div className="frame-head">
                   <h1 className="task-title">{draft.title}</h1>
                   {draft.instructions && <p className="task-instr">{draft.instructions}</p>}
+                  {!preview && (
+                    <span className="seg small-seg board-tabs" role="tablist" aria-label="Task or board">
+                      <button type="button" role="tab" aria-selected={!boardView} className={!boardView ? 'on' : ''} onClick={() => (setBoardView(false), setLive(classId, { boardTask: null }))}>
+                        Task
+                      </button>
+                      <button type="button" role="tab" aria-selected={boardView} className={boardView ? 'on' : ''} onClick={() => (setBoardView(true), setLive(classId, { boardTask: task.id }))}>
+                        Board
+                      </button>
+                    </span>
+                  )}
                 </div>
+                {!preview && boardView && user && <Whiteboard classId={classId} taskId={task.id} uid={user.uid} teacher people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} />}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
                 {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} />}
                 {!preview && <PickedBanner picked={live?.picked} />}
                 {!preview && <ReactionBurst signals={signals} />}
                 <div
                   ref={teachBodyRef}
+                  hidden={!preview && boardView}
                   className={'frame-body' + (!preview ? ' teach-view' : '') + (pointerOn && !preview ? ' pointing' : '')}
                   onMouseMove={(e) => {
                     if (!pointerOn || preview || !task) return;

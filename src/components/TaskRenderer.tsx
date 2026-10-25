@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
 import { highlightBg } from '../editor/Highlight';
@@ -137,12 +137,30 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
   const narrow = useNarrow();
   const [tab, setTab] = useState(0);
+
+  // Teaching screen: revealed answers are written into the questions, the way a learner's
+  // answer looks (blue pen), instead of a chip next to an empty question.
+  const penKey = teacher && revealed && !results ? revealed : null;
+  const responses: Responses = useMemo(() => {
+    if (!penKey) return responsesIn;
+    const out: Responses = { ...responsesIn };
+    for (const [id, e] of Object.entries(penKey)) {
+      if (e.kind === 'gap') out[id] = e.answers[0] ?? '';
+      else if (e.kind === 'mcq') out[id] = e.correct;
+      else if (e.kind === 'multi') out[id] = e.correct;
+      else if (e.kind === 'match') out[id] = e.map;
+      else if (e.kind === 'drop' || e.kind === 'order') out[id] = e.answer;
+    }
+    return out;
+  }, [penKey, responsesIn]);
+  const inPen = (id: string) => !!penKey?.[id] && penKey[id].kind !== 'writing';
+  const pf = (id: string) => (inPen(id) ? ' pen-fill' : '');
 
   // Numbering: (1), (2)… in reading order; matching uses one number per row.
   let n = 0;
@@ -211,7 +229,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   const revealOf = (node: JSONContent): string | null => {
     const id = node.attrs?.id as string;
     const e = revealed?.[id];
-    if (!e || results) return null;
+    if (!e || results || inPen(id)) return null;
     const options: string[] = node.attrs?.options ?? [];
     switch (e.kind) {
       case 'gap':
@@ -256,7 +274,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       <span key={key} className="gap-wrap" data-qid={id}>
         {num(id)}
         <input
-          className="gap-input"
+          key={id + pf(id)}
+          className={'gap-input' + pf(id)}
           placeholder=" "
           aria-label={`Question ${numbers[id]}`}
           value={value}
@@ -290,7 +309,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     };
     return options.map((o, i) =>
       o.trim() ? (
-        <label key={i} className={'opt ' + optionState(i, chosen, correct)}>
+        <label key={i + pf(id)} className={'opt ' + optionState(i, chosen, correct) + pf(id)}>
           <input type={multi ? 'checkbox' : 'radio'} name={id} checked={chosen.includes(i)} disabled={locked} onChange={() => {}} onClick={() => toggle(i)} />
           {display === 'radio' ? (
             <span className={multi ? 'radio square' : 'radio'} aria-hidden="true" />
@@ -335,7 +354,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
                   type="button"
                   role={multi ? 'checkbox' : 'radio'}
                   aria-checked={chosen.includes(i)}
-                  className={'slash-opt ' + state}
+                  key={i + pf(id)}
+                  className={'slash-opt ' + state + pf(id)}
                   disabled={locked}
                   onClick={() => pick(i)}
                 >
@@ -433,7 +453,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
                       {ok ? TICK : !hideAnswers && map[i] >= 0 && <span className="fix">{LETTERS[map[i]]}</span>}
                     </span>
                   ) : (
-                    <span className={'match-slot' + (c >= 0 ? ' filled' : '')} aria-label={c >= 0 ? `Matched with ${LETTERS[c]}` : 'Not matched yet'}>
+                    <span key={pf(id)} className={'match-slot' + (c >= 0 ? ' filled' : '') + pf(id)} aria-label={c >= 0 ? `Matched with ${LETTERS[c]}` : 'Not matched yet'}>
                       {c >= 0 ? LETTERS[c] : ''}
                     </span>
                   )}
@@ -471,7 +491,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         {num(id)}
         <button
           type="button"
-          className={'drop-slot' + (value ? ' filled' : '') + (picked ? ' ready' : '')}
+          key={id + pf(id)}
+          className={'drop-slot' + (value ? ' filled' : '') + (picked ? ' ready' : '') + pf(id)}
           disabled={disabled}
           aria-label={value ? `Question ${numbers[id]}: ${value}. Tap to remove` : `Question ${numbers[id]}: empty. Pick a word, then tap here`}
           onClick={() => {
@@ -562,7 +583,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           {num(id)}
           {placed.length === 0 && <span className="order-empty">Tap the words in order</span>}
           {placed.map((w, i) => (
-            <button key={i} type="button" className="bank-word placed" disabled={disabled} onClick={() => onChange?.(id, placed.filter((_, k) => k !== i).join(' '))}>
+            <button key={i + pf(id)} type="button" className={'bank-word placed' + pf(id)} disabled={disabled} onClick={() => onChange?.(id, placed.filter((_, k) => k !== i).join(' '))}>
               {w}
             </button>
           ))}

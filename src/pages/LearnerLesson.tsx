@@ -37,6 +37,7 @@ import { useClassmates } from '../lib/learners';
 import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
+import { Whiteboard } from '../components/Whiteboard';
 import { TaskRenderer } from '../components/TaskRenderer';
 
 export function LearnerLesson() {
@@ -76,6 +77,9 @@ export function LearnerLesson() {
   usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current, avatar: profile?.avatar });
   const synced = isSynced(live, itemId);
   const liveHere = isLive(live) && live?.itemId === itemId;
+  const boardOpen = liveHere && !!live?.boardTask && live.boardTask === current;
+  const [onBoard, setOnBoard] = useState(false);
+  useEffect(() => setOnBoard(boardOpen), [boardOpen]); // jump to the board when the teacher opens it
   const pointer = usePointer(liveHere ? classId : '');
   const bodyRef = useRef<HTMLDivElement>(null);
   const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? live!.taskId : '';
@@ -313,9 +317,20 @@ export function LearnerLesson() {
               <div className="frame-head">
                 <h1 className="task-title">{task.title}</h1>
                 {task.instructions && <p className="task-instr">{task.instructions}</p>}
+                {boardOpen && (
+                  <span className="seg small-seg board-tabs" role="tablist" aria-label="Task or board">
+                    <button type="button" role="tab" aria-selected={!onBoard} className={!onBoard ? 'on' : ''} onClick={() => setOnBoard(false)}>
+                      Task
+                    </button>
+                    <button type="button" role="tab" aria-selected={onBoard} className={onBoard ? 'on' : ''} onClick={() => setOnBoard(true)}>
+                      Board
+                    </button>
+                  </span>
+                )}
 
               </div>
-              <div className="frame-body" ref={bodyRef}>
+              {boardOpen && onBoard && user && <Whiteboard classId={classId} taskId={task.id} uid={user.uid} teacher={false} />}
+              <div className="frame-body" ref={bodyRef} hidden={boardOpen && onBoard}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
                 <AnnotationLayer container={bodyRef} annotations={anns} classId={classId} taskId={task.id} canAnnotate={false} me={{ uid: user?.uid ?? '', name: profile?.role === 'learner' ? profile.displayName : '', teacher: false }} />
                 {synced && (
