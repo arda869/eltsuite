@@ -23,7 +23,7 @@ export type Task = {
   hidden: boolean;
   locked: boolean;
   afterCheck?: 'reveal' | 'retry'; // show the correct answers, or only right/wrong so learners try again
-  layout?: 'single' | 'two' | 'two-wide'; // column widths when the task has a column break
+  layout?: 'single' | 'two' | 'two-wide' | 'media'; // column widths when the task has a column break
   colScroll?: 'separate' | 'together';
 };
 

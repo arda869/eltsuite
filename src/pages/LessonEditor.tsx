@@ -25,6 +25,7 @@ import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLiv
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { CopyDialog } from '../components/CopyDialog';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
@@ -47,6 +48,7 @@ const EYE = svg(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><
 const EYE_OFF = svg(<><path d="M9.9 5.2A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.7 3.6M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 5.4-1.6" /><path d="M3 3l18 18" /></>);
 const LOCK = svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>);
 const UNLOCK = svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></>);
+const COPY = svg(<><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>);
 const TRASH = svg(<><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>);
 
 type Draft = { title: string; instructions: string; content: JSONContent };
@@ -158,6 +160,8 @@ export function LessonEditor() {
 
   // Teaching shortcuts (not while typing).
   const [help, setHelp] = useState(false);
+  const [copyTask, setCopyTask] = useState<Task | null>(null);
+  const [copyMsg, setCopyMsg] = useState('');
   const panels = usePanels('ll.teacherPanels');
   const [present, setPresent] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -415,6 +419,11 @@ export function LessonEditor() {
                       {t.locked ? LOCK : UNLOCK}
                     </button>
                     {!teachingHere && (
+                      <button type="button" className="row-act" title="Duplicate or copy to another lesson" aria-label="Copy task" onClick={() => setCopyTask(t)}>
+                        {COPY}
+                      </button>
+                    )}
+                    {!teachingHere && (
                       <button type="button" className="row-act" title="Delete task" aria-label="Delete task" onClick={() => remove(t)}>
                         {TRASH}
                       </button>
@@ -644,8 +653,9 @@ export function LessonEditor() {
                           {([
                             ['two', 'Equal'],
                             ['two-wide', 'Wide left'],
+                            ['media', 'Media + questions'],
                           ] as const).map(([k, label]) => (
-                            <button key={k} type="button" role="radio" aria-checked={(task.layout === 'two-wide' ? 'two-wide' : 'two') === k} className={(task.layout === 'two-wide' ? 'two-wide' : 'two') === k ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { layout: k })}>
+                            <button key={k} type="button" role="radio" aria-checked={(task.layout === 'two-wide' || task.layout === 'media' ? task.layout : 'two') === k} className={(task.layout === 'two-wide' || task.layout === 'media' ? task.layout : 'two') === k ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { layout: k })}>
                               {label}
                             </button>
                           ))}
@@ -691,6 +701,21 @@ export function LessonEditor() {
               </p>
             </aside>
           )}
+        </div>
+      )}
+      {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
+      {copyMsg && (
+        <div className="toasts">
+          <div className="toast">
+            <span className="toast-body">
+              {copyMsg}
+              <span className="toast-actions">
+                <button type="button" className="btn small-btn" onClick={() => setCopyMsg('')}>
+                  OK
+                </button>
+              </span>
+            </span>
+          </div>
         </div>
       )}
       {help && (

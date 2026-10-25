@@ -112,7 +112,7 @@ export function LearnerLesson() {
     });
   }, [classId, itemId, current, user]);
 
-  const task = tasks.find((t) => t.id === current);
+  const task = item?.locked ? undefined : tasks.find((t) => t.id === current);
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
   const classmates = useClassmates(c?.classCode);
@@ -270,6 +270,11 @@ export function LearnerLesson() {
         <div className="panel-toggles">
           <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
         </div>
+        {item?.locked && (
+          <div className="locked-lesson">
+            <strong>This lesson is locked.</strong> Your teacher will open it soon.
+          </div>
+        )}
         <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
           {task ? (
             <div className="frame-inner">

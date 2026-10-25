@@ -36,8 +36,10 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   }, [classId]);
 
   const t = theme(c?.themeColor);
-  const visible = items.filter((i) => !i.hidden);
+  const visible = items.filter((i) => !i.hidden && !topics.find((tp) => tp.id === i.topicId)?.hidden);
+  const lockedItem = (i: Item) => i.locked || !!topics.find((tp) => tp.id === i.topicId)?.locked;
   const groups = [...topics]
+    .filter((tp) => !tp.hidden)
     .sort((a, b) => a.order - b.order)
     .map((tp) => ({ tp, list: visible.filter((i) => i.topicId === tp.id).sort((a, b) => a.order - b.order) }))
     .filter((g) => g.list.length > 0);
@@ -128,11 +130,21 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                   </div>
                   <ul className="items">
                     {list.map((i) => (
-                      <li key={i.id} className="item">
+                      <li key={i.id} className={'item' + (lockedItem(i) ? ' is-locked' : '')}>
                         <span className="type">{i.type}</span>
-                        <Link to={`/learn/${i.id}`} className="title">
-                          {i.title}
-                        </Link>
+                        {lockedItem(i) ? (
+                          <span className="title locked-title" title="Your teacher will open this soon">
+                            {i.title}
+                            <svg className="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-label="locked">
+                              <rect x="5" y="11" width="14" height="10" rx="2" />
+                              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                            </svg>
+                          </span>
+                        ) : (
+                          <Link to={`/learn/${i.id}`} className="title">
+                            {i.title}
+                          </Link>
+                        )}
                       </li>
                     ))}
                   </ul>

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, type ClassDoc, type Item, type Topic } from '../lib/classes';
+import { CopyDialog } from './CopyDialog';
+import { copyLesson } from '../lib/copy';
+import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, updateTopic, type ClassDoc, type Item, type Topic } from '../lib/classes';
 
 const EYE = (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -13,6 +15,16 @@ const EYE_OFF = (
     <path d="M17.9 17.9A10.5 10.5 0 0 1 12 19C5 19 1 12 1 12a19 19 0 0 1 5.1-5.9M9.9 5.2A9.7 9.7 0 0 1 12 5c7 0 11 7 11 7a19 19 0 0 1-2.2 3.2M1 1l22 22" />
   </svg>
 );
+
+const ic = (d: React.ReactNode) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {d}
+  </svg>
+);
+const LOCK = ic(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>);
+const UNLOCK = ic(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></>);
+const DUP = ic(<><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>);
+const COPY_TO = ic(<><path d="M4 12h12M12 6l6 6-6 6" /><path d="M20 4v16" /></>);
 
 function InlineAdd({ placeholder, label, onAdd }: { placeholder: string; label: string; onAdd: (v: string) => Promise<void> }) {
   const [open, setOpen] = useState(false);
@@ -90,13 +102,47 @@ function TopicTitle({ c, t }: { c: ClassDoc; t: Topic }) {
 }
 
 function ItemRow({ c, item }: { c: ClassDoc; item: Item }) {
+  const [copying, setCopying] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
   return (
     <li className={'item' + (item.hidden ? ' is-hidden' : '')}>
+      {copying && <CopyDialog kind="lesson" fromClass={c.id} itemId={item.id} title={item.title} onClose={() => setCopying(false)} onDone={setMsg} />}
       <span className="type">{item.type}</span>
       <Link to={`/class/${c.id}/lesson/${item.id}`} className="title">
         {item.title}
       </Link>
-      <span className="status">{item.hidden ? 'Hidden from learners' : ''}</span>
+      <span className="status">{msg || [item.hidden ? 'Hidden from learners' : '', item.locked ? 'Locked' : ''].filter(Boolean).join(' · ')}</span>
+      <button
+        type="button"
+        className={'icon-btn' + (item.locked ? ' on' : '')}
+        aria-label={item.locked ? 'Unlock' : 'Lock'}
+        title={item.locked ? 'Unlock' : 'Lock · learners see it but can’t open it'}
+        onClick={() => updateItem(c.id, item.id, { locked: !item.locked })}
+      >
+        {item.locked ? LOCK : UNLOCK}
+      </button>
+      <button
+        type="button"
+        className="icon-btn"
+        aria-label="Duplicate"
+        title="Duplicate"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await copyLesson(c.id, item.id, c.id, { title: `${item.title} (copy)` });
+            setMsg('Duplicated. The copy is hidden until you show it.');
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {DUP}
+      </button>
+      <button type="button" className="icon-btn" aria-label="Copy to another class" title="Copy to another class" onClick={() => setCopying(true)}>
+        {COPY_TO}
+      </button>
       <button
         type="button"
         className={'icon-btn' + (item.hidden ? ' on' : '')}
@@ -142,6 +188,16 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
               <TopicTitle c={c} t={t} />
               <span className="hint">
                 {list.length} {list.length === 1 ? 'item' : 'items'}
+                {t.hidden ? ' · hidden from learners' : ''}
+                {t.locked ? ' · locked' : ''}
+              </span>
+              <span className="topic-acts">
+                <button type="button" className={'icon-btn' + (t.hidden ? ' on' : '')} title={t.hidden ? 'Show this topic to learners' : 'Hide this whole topic from learners'} aria-label={t.hidden ? 'Show topic' : 'Hide topic'} onClick={() => updateTopic(c.id, t.id, { hidden: !t.hidden })}>
+                  {t.hidden ? EYE_OFF : EYE}
+                </button>
+                <button type="button" className={'icon-btn' + (t.locked ? ' on' : '')} title={t.locked ? 'Unlock this topic' : 'Lock everything in this topic'} aria-label={t.locked ? 'Unlock topic' : 'Lock topic'} onClick={() => updateTopic(c.id, t.id, { locked: !t.locked })}>
+                  {t.locked ? LOCK : UNLOCK}
+                </button>
               </span>
               {list.length === 0 && (
                 <button

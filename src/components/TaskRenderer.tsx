@@ -31,7 +31,7 @@ type Props = {
   results?: AnswerKey | null; // when present, show right and wrong
   hideAnswers?: boolean; // show only right or wrong, not the correct answer
   disabled?: boolean;
-  layout?: 'single' | 'two' | 'two-wide';
+  layout?: 'single' | 'two' | 'two-wide' | 'media';
   colScroll?: 'separate' | 'together';
   revealed?: AnswerKey | null; // answers the teacher has revealed to the class
   flags?: string[]; // questions the learner flagged to come back to
@@ -115,6 +115,20 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
   return out;
 }
 
+// True on phone-sized screens.
+function useNarrow() {
+  const q = '(max-width: 700px)';
+  const [n, setN] = useState(() => typeof window !== 'undefined' && window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const f = () => setN(m.matches);
+    m.addEventListener('change', f);
+    return () => m.removeEventListener('change', f);
+  }, []);
+  return n;
+}
+const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.includes(n.type ?? '') ? [n.attrs.id as string] : []), ...(n.content ?? []).flatMap(questionsIn)];
+
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
@@ -122,6 +136,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
+  const narrow = useNarrow();
+  const [tab, setTab] = useState(0);
 
   // Numbering: (1), (2)… in reading order; matching uses one number per row.
   let n = 0;
@@ -821,10 +837,34 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   const top = content.content ?? [];
   const at = top.findIndex((c) => c.type === 'columnBreak');
   if (at >= 0) {
+    const left = top.slice(0, at);
+    const right = top.slice(at + 1);
+    if (narrow) {
+      // Phones: the two columns become tabs, with a count of unanswered questions on the other tab.
+      const ids = (list: JSONContent[]) => list.flatMap((n) => questionsIn(n));
+      const open = (list: JSONContent[]) => ids(list).filter((id) => !isAnswered(responses[id])).length;
+      const qL = ids(left).length;
+      const qR = ids(right).length;
+      const names = qR >= qL ? [layout === 'media' ? 'Media' : 'Text', 'Questions'] : ['Questions', layout === 'media' ? 'Media' : 'Text'];
+      const counts = [open(left), open(right)];
+      return (
+        <div className="task-tabs">
+          <div className="tt-bar" role="tablist">
+            {names.map((n, i) => (
+              <button key={n} type="button" role="tab" aria-selected={tab === i} className={tab === i ? 'on' : ''} onClick={() => setTab(i)}>
+                {n}
+                {tab !== i && counts[i] > 0 && !results && <span className="tt-count" aria-label={`${counts[i]} unanswered`}>{counts[i]}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="task-body">{(tab === 0 ? left : right).map((c, i) => render(c, (tab === 0 ? 'a' : 'b') + i))}</div>
+        </div>
+      );
+    }
     return (
-      <div className={'task-columns ' + (layout === 'two-wide' ? 'two-wide' : 'two') + (colScroll === 'together' ? ' together' : ' separate')}>
-        <div className="task-body col">{top.slice(0, at).map((c, i) => render(c, 'a' + i))}</div>
-        <div className="task-body col">{top.slice(at + 1).map((c, i) => render(c, 'b' + i))}</div>
+      <div className={'task-columns ' + (layout === 'two-wide' ? 'two-wide' : layout === 'media' ? 'media' : 'two') + (colScroll === 'together' ? ' together' : ' separate')}>
+        <div className="task-body col">{left.map((c, i) => render(c, 'a' + i))}</div>
+        <div className="task-body col">{right.map((c, i) => render(c, 'b' + i))}</div>
       </div>
     );
   }

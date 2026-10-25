@@ -28,7 +28,7 @@ export type ClassDoc = {
   createdAt?: Timestamp;
 };
 
-export type Topic = { id: string; name: string; order: number };
+export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };
 export type Item = { id: string; topicId: string | null; type: 'lesson' | 'homework' | 'exam' | 'practice'; title: string; order: number; hidden: boolean; locked: boolean };
 
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Mixed'];
@@ -111,3 +111,5 @@ export async function getClass(classId: string) {
   return s.exists() ? ({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) } as ClassDoc) : null;
 }
 
+
+export const updateTopic = (classId: string, topicId: string, patch: Partial<Omit<Topic, 'id'>>) => updateDoc(doc(db, 'classes', classId, 'topics', topicId), patch);

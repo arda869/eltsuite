@@ -1575,3 +1575,17 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .tbox .tbox-body li > .para, .tbox .tbox-body li > p { margin: 0; }
 .tbox .tbox-body ul, .tbox .tbox-body ol { margin: 4px 0 8px; }
 .tbox.s-info .reveal-body { background: rgba(255,255,255,0.7); }
+.topic-acts { display: inline-flex; gap: 2px; margin-left: 6px; opacity: 0.5; }
+.topic-head:hover .topic-acts, .topic-acts .on { opacity: 1; }
+.locked-title { color: var(--soft); display: inline-flex; align-items: center; gap: 6px; }
+.locked-lesson { padding: 10px 14px; border-radius: 10px; background: #f7f7f6; font: 13px var(--sans); color: var(--muted); margin-bottom: 10px; }
+/* Media + questions */
+.task-columns.media .col:first-child { flex: 1.1; }
+.task-columns.media .col:first-child img, .task-columns.media .col:first-child .task-img { width: 100%; height: auto; border-radius: 12px; }
+.task-columns.media .col:first-child .lc { max-width: none; }
+/* Phone tabs */
+.task-tabs { display: flex; flex-direction: column; gap: 12px; }
+.tt-bar { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: #f1f1ef; align-self: flex-start; position: sticky; top: 0; z-index: 2; }
+.tt-bar button { border: 0; background: transparent; border-radius: 999px; padding: 6px 16px; font: 600 13px var(--sans); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.tt-bar button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.tt-count { min-width: 18px; height: 18px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; }
