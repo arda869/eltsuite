@@ -172,9 +172,9 @@ export const newMcq = () => ({ type: 'mcq', attrs: { id: newId(), prompt: '', op
 
 export type ChoiceDisplay = 'letters' | 'radio' | 'dropdown';
 const DISPLAYS: { key: ChoiceDisplay; label: string }[] = [
-  { key: 'letters', label: 'a, b, c' },
-  { key: 'radio', label: 'Radio buttons' },
-  { key: 'dropdown', label: 'Dropdown' },
+  { key: 'letters', label: 'Letters' },
+  { key: 'radio', label: 'Circles' },
+  { key: 'dropdown', label: 'List' },
 ];
 
 function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {

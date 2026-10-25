@@ -10,9 +10,9 @@ type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Tex
 
 const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
-  { key: 'choice', label: 'Multiple choice · a, b, c', hint: 'Lettered options inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('letters')).run() },
-  { key: 'radio', label: 'Multiple choice · radio buttons', hint: 'Round buttons inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
-  { key: 'dropdown', label: 'Dropdown', hint: 'Choose a word inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
+  { key: 'choice', label: 'Choice with letters', hint: 'a, b or c inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('letters')).run() },
+  { key: 'radio', label: 'Choice with circles', hint: 'Tick one circle inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
+  { key: 'dropdown', label: 'Choice from a list', hint: 'Pick a word from a drop-down list', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
   { key: 'list', label: 'Bulleted list', hint: 'A simple list', group: 'Text', run: (e) => e.chain().focus().toggleBulletList().run() },
   { key: 'numbered', label: 'Numbered list', hint: 'A list with numbers', group: 'Text', run: (e) => e.chain().focus().toggleOrderedList().run() },
@@ -130,8 +130,8 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '•')}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
-        {BTN('Insert multiple choice', false, () => editor.chain().focus().insertContent(newChoice('letters')).run(), '+ Multiple choice')}
-        {BTN('Insert dropdown', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Dropdown')}
+        {BTN('Insert multiple choice', false, () => editor.chain().focus().insertContent(newChoice('letters')).run(), '+ Choice')}
+        {BTN('Insert dropdown', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ List')}
       </div>
       <div className="editor-host">
         <EditorContent editor={editor} className="doc" />

@@ -369,3 +369,30 @@ a.btn.primary { color: #ffffff; }
 .task-pick { align-items: center; }
 .teacher-banner { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; background: transparent; font-family: var(--sans); font-size: 13px; color: var(--accent-text); cursor: pointer; text-align: left; }
 .teacher-banner:hover { text-decoration: underline; }
+
+/* Question numbers: small raised (1), (2) in the class colour */
+.q-num { font-family: var(--sans); font-size: 0.62em; font-weight: 600; color: var(--accent-text); margin: 0 2px 0 1px; vertical-align: 0.55em; line-height: 0; }
+.doc .ProseMirror { counter-reset: q; }
+.doc .ProseMirror .gap-node, .doc .ProseMirror .choice-node, .doc .ProseMirror .mcq-node { counter-increment: q; }
+.doc .ProseMirror .gap-node::before, .doc .ProseMirror .choice-node::before {
+  content: '(' counter(q) ')'; font-family: var(--sans); font-size: 0.62em; font-weight: 600; color: var(--accent-text);
+  margin: 0 2px 0 1px; vertical-align: 0.55em; line-height: 0;
+}
+.doc .ProseMirror .mcq-node::before { content: '(' counter(q) ')'; font-family: var(--sans); font-size: 11px; font-weight: 600; color: var(--accent-text); }
+.doc .ProseMirror ol .gap-node::before, .doc .ProseMirror ol .choice-node::before { content: none; }
+.seg button { white-space: nowrap; padding: 0 8px; }
+.choice-pop { width: 320px; }
+
+/* Breadcrumbs: no nav-pill padding */
+.topbar nav.crumbs { align-items: baseline; gap: 8px; }
+.topbar nav.crumbs a { padding: 0; border-radius: 0; background: none; }
+
+/* Page width: like the artboards, centred on wide screens */
+.shell { width: 100%; max-width: 1320px; margin: 0 auto; }
+.shell.wide { max-width: 1600px; }
+.attention { flex: 1 1 260px; max-width: 320px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 2px 0 0 20px; border-left: 1px solid var(--hair); }
+.attention h2 { font-size: 16px; }
+.attention-item { display: flex; flex-direction: column; gap: 1px; text-decoration: none; }
+.attention-item strong { font-weight: 600; font-size: 13px; }
+.class-card-level { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: var(--soft); }
+.live-card { flex-wrap: wrap; }

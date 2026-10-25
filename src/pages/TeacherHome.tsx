@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import type { ClassDoc } from '../lib/classes';
+import { updateClass, type ClassDoc, type Item } from '../lib/classes';
+import { isLive, liveRef, type LiveState } from '../lib/live';
 import { theme } from '../lib/themes';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
@@ -13,12 +14,35 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
+type ItemWithTime = Item & { createdAt?: { toMillis: () => number } };
+
+// Lessons and live state for each class on the home screen.
+function useClassDetails(ids: string[]) {
+  const [items, setItems] = useState<Record<string, ItemWithTime[]>>({});
+  const [live, setLive] = useState<Record<string, LiveState | null>>({});
+  const key = ids.join(',');
+  useEffect(() => {
+    const unsubs = ids.flatMap((id) => [
+      onSnapshot(
+        collection(db, 'classes', id, 'items'),
+        (s) => setItems((m) => ({ ...m, [id]: s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ItemWithTime, 'id'>) })) })),
+        () => {},
+      ),
+      onSnapshot(liveRef(id), (s) => setLive((m) => ({ ...m, [id]: s.exists() ? (s.data() as LiveState) : null })), () => {}),
+    ]);
+    return () => unsubs.forEach((u) => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return { items, live };
+}
+
 export function TeacherHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [classes, setClasses] = useState<ClassDoc[] | null>(null);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -34,19 +58,39 @@ export function TeacherHome() {
     );
   }, [user]);
 
-  const active = useMemo(
-    () =>
-      (classes ?? [])
-        .filter((c) => c.status === 'active')
-        .sort((a, b) => (b.createdAt?.toMillis?.() ?? Date.now()) - (a.createdAt?.toMillis?.() ?? Date.now())),
-    [classes],
-  );
-  const archivedCount = (classes ?? []).filter((c) => c.status === 'archived').length;
+  const byNewest = (a: ClassDoc, b: ClassDoc) => (b.createdAt?.toMillis?.() ?? Date.now()) - (a.createdAt?.toMillis?.() ?? Date.now());
+  const active = useMemo(() => (classes ?? []).filter((c) => c.status === 'active').sort(byNewest), [classes]);
+  const archived = useMemo(() => (classes ?? []).filter((c) => c.status === 'archived').sort(byNewest), [classes]);
+  const { items, live } = useClassDetails(active.map((c) => c.id));
+
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
   const firstName = (user?.displayName || user?.email?.split('@')[0] || '').split(' ')[0];
 
+  // The lesson to show at the top: one being taught now, otherwise the newest lesson.
+  const liveClass = active.find((c) => isLive(live[c.id]));
+  const featured = useMemo(() => {
+    if (liveClass) {
+      const it = items[liveClass.id]?.find((i) => i.id === live[liveClass.id]?.itemId);
+      if (it) return { c: liveClass, item: it, isLive: true };
+    }
+    let best: { c: ClassDoc; item: ItemWithTime; t: number } | null = null;
+    for (const c of active)
+      for (const it of items[c.id] ?? []) {
+        const t = it.createdAt?.toMillis?.() ?? 0;
+        if (!best || t > best.t) best = { c, item: it, t };
+      }
+    return best ? { c: best.c, item: best.item, isLive: false } : null;
+  }, [active, items, live, liveClass]);
+
+  const attention = active.flatMap((c) => {
+    const out: { title: string; sub: string; to: string }[] = [];
+    if (!c.learnerCount) out.push({ title: 'Add learners', sub: `${c.name} · no learners yet`, to: `/class/${c.id}` });
+    if (items[c.id] && items[c.id].length === 0) out.push({ title: 'Add a first lesson', sub: `${c.name} · no lessons yet`, to: `/class/${c.id}` });
+    return out;
+  });
+
   return (
-    <div className="shell">
+    <div className="shell narrow">
       <TopBar>
         <nav aria-label="Main">
           <Link to="/" className="on">
@@ -70,7 +114,11 @@ export function TeacherHome() {
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {archivedCount > 0 && <span className="small sub">Archived classes ({archivedCount})</span>}
+              {archived.length > 0 && (
+                <button className="btn link small" onClick={() => setShowArchived((s) => !s)}>
+                  {showArchived ? 'Hide archived classes' : `Archived classes (${archived.length})`}
+                </button>
+              )}
               {active.length > 0 && (
                 <button className="btn" onClick={() => setCreating(true)}>
                   + New class
@@ -80,6 +128,35 @@ export function TeacherHome() {
           </div>
 
           {error && <span className="error">{error}</span>}
+
+          {featured && (
+            <section
+              className="live-card"
+              style={{ ['--accent' as string]: theme(featured.c.themeColor).accent, ['--accent-text' as string]: theme(featured.c.themeColor).text }}
+              aria-label={featured.isLive ? 'Teaching now' : 'Latest lesson'}
+            >
+              <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <span className="eyebrow accent" style={{ letterSpacing: '0.2em' }}>
+                  {featured.isLive ? 'Teaching now' : 'Latest lesson'}
+                </span>
+                <span style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 500 }}>{featured.item.title}</span>
+                <span className="hint">
+                  {featured.c.name} · {featured.c.learnerCount ?? 0} {(featured.c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'}
+                </span>
+              </span>
+              {featured.c.meeting?.url && (
+                <a className="btn" href={featured.c.meeting.url} target="_blank" rel="noopener noreferrer">
+                  Open call
+                </a>
+              )}
+              <Link className="btn" to={`/class/${featured.c.id}/lesson/${featured.item.id}`}>
+                Edit lesson
+              </Link>
+              <Link className="btn primary" to={`/class/${featured.c.id}/lesson/${featured.item.id}?teach=1`}>
+                {featured.isLive ? 'Back to lesson' : 'Start teaching'}
+              </Link>
+            </section>
+          )}
 
           {classes === null ? (
             <span className="sub">Loading your classes…</span>
@@ -95,6 +172,9 @@ export function TeacherHome() {
             <div className="classes">
               {active.map((c) => {
                 const t = theme(c.themeColor);
+                const list = items[c.id] ?? [];
+                const lessons = list.filter((i) => i.type === 'lesson').length;
+                const teaching = isLive(live[c.id]);
                 return (
                   <Link key={c.id} to={`/class/${c.id}`} className="class-card">
                     <span className="name">
@@ -103,7 +183,10 @@ export function TeacherHome() {
                       <span className="level">{c.level}</span>
                     </span>
                     <span className="meta">
-                      {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · no lessons yet
+                      {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'}
+                    </span>
+                    <span className="meta">
+                      {teaching ? <span style={{ color: t.text, fontWeight: 600 }}>Teaching now</span> : lessons ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : 'No lessons yet'}
                     </span>
                     <span className="code">Class code {c.classCode}</span>
                   </Link>
@@ -111,7 +194,44 @@ export function TeacherHome() {
               })}
             </div>
           )}
+
+          {showArchived && archived.length > 0 && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="eyebrow" style={{ fontSize: 11 }}>
+                Archived
+              </span>
+              {archived.map((c) => (
+                <div key={c.id} className="row-between" style={{ maxWidth: 640 }}>
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <Link to={`/class/${c.id}`} style={{ fontFamily: 'var(--serif)', fontSize: 14, textDecoration: 'none' }}>
+                      {c.name}
+                    </Link>
+                    <span className="class-card-level">{c.level}</span>
+                  </span>
+                  <button className="btn small-btn" onClick={() => updateClass(c, { status: 'active' })}>
+                    Restore
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
         </main>
+
+        {active.length > 0 && (
+          <aside className="attention" aria-label="Needs your attention">
+            <h2>Needs your attention</h2>
+            {attention.length === 0 ? (
+              <span className="hint">Nothing right now.</span>
+            ) : (
+              attention.slice(0, 6).map((a, i) => (
+                <Link key={i} to={a.to} className="attention-item">
+                  <strong>{a.title}</strong>
+                  <span className="hint">{a.sub}</span>
+                </Link>
+              ))
+            )}
+          </aside>
+        )}
       </div>
 
       {creating && user && (

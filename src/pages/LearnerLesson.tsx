@@ -124,7 +124,7 @@ export function LearnerLesson() {
   const showScore = true;
 
   return (
-    <div className="shell lesson-shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide lesson-shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <header className="topbar">
         <Link to="/" style={{ textDecoration: 'none' }}>
           <Wordmark />

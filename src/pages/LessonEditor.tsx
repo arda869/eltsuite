@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
@@ -73,6 +73,15 @@ export function LessonEditor() {
     if (teachingHere && selected && live?.taskId !== selected) setLive(classId, { taskId: selected }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teachingHere, selected]);
+
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    if (params.get('teach') === '1' && selected && live !== undefined) {
+      setParams({}, { replace: true });
+      if (!teachingHere) toggleTeaching();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   async function toggleTeaching() {
     if (teachingHere) await setLive(classId, { teaching: false });
@@ -171,7 +180,7 @@ export function LessonEditor() {
   const th = theme(c?.themeColor);
 
   return (
-    <div className="shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link to="/">Classes</Link>

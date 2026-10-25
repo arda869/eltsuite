@@ -43,9 +43,9 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
 
   const num = (id: string) =>
     listed.has(id) ? null : (
-      <span className="q-num" aria-hidden="true">
-        {numbers[id]}
-      </span>
+      <sup className="q-num" aria-hidden="true">
+        ({numbers[id]})
+      </sup>
     );
 
   const gap = (node: JSONContent, key: string) => {
