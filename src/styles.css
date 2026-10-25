@@ -1189,3 +1189,48 @@ a.btn.primary { color: #ffffff; }
 .rf-text::placeholder { font: 15px var(--serif); color: #b8b8b8; }
 .rf-text:focus { border-color: var(--accent); }
 .rf-wait { margin-top: -4px; }
+
+/* Right-click menu */
+.ctx-menu { position: absolute; z-index: 60; min-width: 230px; max-width: 280px; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 16px 36px -12px rgba(0,0,0,0.28), 0 2px 6px rgba(0,0,0,0.06); padding: 5px; display: flex; flex-direction: column; font-family: var(--sans); animation: def-in 0.12s ease-out; }
+.ctx-item { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border: 0; background: transparent; text-align: left; padding: 7px 10px; border-radius: 7px; font: 13px var(--sans); color: var(--ink); cursor: pointer; }
+.ctx-item:hover, .ctx-item:focus-visible { background: #f2f2f1; outline: none; }
+.ctx-item.danger { color: var(--wrong); }
+.ctx-hint { font-size: 11px; color: var(--soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+.ctx-sep { height: 1px; background: var(--hair); margin: 4px 6px; }
+.ctx-empty { padding: 8px 10px; font-size: 12px; color: var(--muted); }
+/* Answer boxes grow with the text */
+.rf-text, .writing-q textarea { field-sizing: content; min-height: 4.5em; overflow: hidden; }
+.writing-q textarea { min-height: 180px; }
+.def-two { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+.dc-trans { display: flex; gap: 10px; font-size: 14px; padding: 4px 0 0; }
+
+/* Highlighting */
+mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radius: 0.25em 0.4em 0.3em 0.45em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.hl-tool { position: relative; display: inline-flex; align-items: center; }
+.hl-bar { width: 12px; height: 4px; border-radius: 2px; margin-left: -4px; align-self: flex-end; }
+.hl-more { padding: 0 4px; font-size: 10px; color: var(--soft); }
+.hl-pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; box-shadow: 0 12px 28px -10px rgba(0,0,0,0.25); padding: 8px; }
+.hl-swatches { display: inline-flex; align-items: center; gap: 6px; }
+.hl-sw { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.08); cursor: pointer; padding: 0; }
+.hl-sw:hover { transform: scale(1.1); }
+.hl-sw.on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ink); }
+.hl-none { width: 22px; height: 22px; border-radius: 50%; border: 1px dashed var(--hair-strong); background: #fff; color: var(--soft); cursor: pointer; padding: 0; font-size: 13px; line-height: 1; }
+.ctx-hl { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px 9px; border-bottom: 1px solid var(--hair); margin-bottom: 4px; }
+.ctx-hl-label { font-size: 13px; color: var(--ink); }
+.ctx-hl .hl-sw, .ctx-hl .hl-none { width: 18px; height: 18px; }
+.ctx-hl .hl-swatches { gap: 5px; }
+/* Feedback pairing (editor) */
+.r-peer-settings { display: flex; flex-direction: column; gap: 8px; }
+.r-share { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 13px; color: var(--ink); }
+.r-share .hint { flex-basis: 100%; padding-left: 22px; }
+.r-pairs { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--hair-strong); border-radius: 10px; background: #fff; }
+.r-pairs-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.r-pair { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.r-giver { flex: 0 0 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r-arrow { color: var(--soft); }
+.r-pair select { flex: 1; height: 28px; border: 1px solid var(--hair-strong); border-radius: 6px; font: 13px var(--sans); background: #fff; }
+.rf-to { color: var(--pen); font-weight: 600; }
+.rf-wrap { display: flex; flex-direction: column; }
+.rf-received { background: #fff; border-style: dashed; }
+.rf-received .rf-eyebrow { color: var(--pen); }
+.saved-auto { align-self: center; }

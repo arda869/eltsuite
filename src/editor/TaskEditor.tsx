@@ -15,6 +15,9 @@ import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
 import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
+import { EditorContextMenu } from './ContextMenu';
+import { EditorClassContext } from './context';
+import { Highlight, HighlightTool } from './Highlight';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
@@ -161,7 +164,7 @@ const BTN = (label: string, active: boolean, onClick: () => void, text: React.Re
   </button>
 );
 
-export function TaskEditor({ content, onChange, places = [] }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[] }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [] }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[] }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -194,6 +197,7 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
       RandomPick,
       PickCard,
       Definition,
+      Highlight,
       Stress,
       Ipa,
       LessonLink,
@@ -209,6 +213,7 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const classCtx = useMemo(() => ({ classmates }), [classmates]);
 
   useEffect(() => {
     if (!editor || !slash.state) return;
@@ -241,11 +246,13 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
   if (!editor) return null;
 
   return (
+    <EditorClassContext.Provider value={classCtx}>
     <div className="task-editor">
       <div className="toolbar" role="toolbar" aria-label="Formatting">
         {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)}
         {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)}
         {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u className="ti ti-u">U</u>)}
+        <HighlightTool editor={editor} />
         {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <span className="ti ti-h">Heading</span>)}
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)}
         {BTN('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), ICON_OL)}
@@ -315,6 +322,36 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
         <TableInsert editor={editor} host={host} />
         <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
         <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />
+        <EditorContextMenu
+          editor={editor}
+          host={host}
+          onDefinition={() => setDefOpen(true)}
+          onLink={() => setLinkOpen(true)}
+          actions={{
+            gap: (t) => editor.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, answers: [t] } }).run(),
+            drop: (t) => {
+              const d = newDropGap();
+              let hasBank = false;
+              editor.state.doc.descendants((n) => {
+                if (n.type.name === 'wordbank') hasBank = true;
+              });
+              editor.chain().focus().insertContent({ ...d, attrs: { ...d.attrs, answer: t } }).run();
+              if (!hasBank) editor.chain().insertContentAt(editor.state.selection.$from.before(1), newWordBank()).run();
+            },
+            choice: (t) => {
+              const c = newChoice('dropdown', [t, '', '']);
+              editor.chain().focus().insertContent({ ...c, attrs: { ...c.attrs, correct: 0 } }).run();
+            },
+            stress: (t) => editor.chain().focus().insertContent({ ...newStress('box'), attrs: { ...newStress('box').attrs, syllables: [t] } }).run(),
+            ipa: () => {
+              let last: Accent | undefined;
+              editor.state.doc.descendants((n) => {
+                if (n.type.name === 'ipa') last = n.attrs.accent;
+              });
+              editor.chain().focus().insertContent([{ type: 'text', text: ' ' }, newIpa(last ?? 'RP')]).run();
+            },
+          }}
+        />
         {slash.state && (
           <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
             {(['Questions', 'Text'] as const).map((g) => {
@@ -349,5 +386,6 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
         )}
       </div>
     </div>
+    </EditorClassContext.Provider>
   );
 }

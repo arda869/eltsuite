@@ -24,6 +24,8 @@ export type DefData = {
   image?: string;
   cefr?: string;
   tags?: string;
+  translation?: string;
+  lang?: string;
 };
 
 export const POS = ['noun', 'verb', 'adjective', 'adverb', 'phrasal verb', 'idiom', 'phrase', 'preposition', 'conjunction', 'pronoun', 'determiner', 'exclamation'];
@@ -57,6 +59,10 @@ const CORE: FieldDef[] = [
   { k: 'pos', label: 'Part of speech', options: POS },
   { k: 'meaning', label: 'Meaning', ph: 'A simple explanation in English', long: true },
   { k: 'example', label: 'Example sentence', ph: 'She was reluctant to leave.', long: true },
+];
+const TRANSLATION: FieldDef[] = [
+  { k: 'translation', label: 'Translation', ph: 'isteksiz' },
+  { k: 'lang', label: 'Language', ph: 'Turkish' },
 ];
 const GROUPS: { title: string; fields: FieldDef[] }[] = [
   {
@@ -110,7 +116,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
     if (existing) editor.chain().extendMarkRange('definition').run();
     const d = (editor.getAttributes('definition').data ?? {}) as DefData;
     setData(d);
-    setMore(Object.keys(d).some((k) => !['pos', 'meaning', 'example'].includes(k) && d[k as keyof DefData]));
+    setMore(Object.keys(d).some((k) => !['pos', 'meaning', 'example', 'translation', 'lang'].includes(k) && d[k as keyof DefData]));
     const { from, to } = editor.state.selection;
     setWord(editor.state.doc.textBetween(from, to, ' '));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,6 +183,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
         <strong className="def-pop-word">{word}</strong>
       </div>
       {CORE.map(field)}
+      <div className="def-two">{TRANSLATION.map(field)}</div>
       <button type="button" className="btn link small def-more" onClick={() => setMore((m) => !m)}>
         {more ? 'Fewer details' : 'More details: form, pronunciation, use, learner help'}
       </button>
@@ -247,6 +254,12 @@ export function DefCard({ word, d }: { word: string; d: DefData }) {
       {d.image && <img className="dc-img" src={d.image} alt="" />}
       {d.meaning && <span className="dc-meaning">{d.meaning}</span>}
       {d.example && <span className="dc-example">{d.example}</span>}
+      {d.translation && (
+        <span className="dc-trans">
+          <span className="dc-k">{d.lang || 'Translation'}</span>
+          <span className="dc-v">{d.translation}</span>
+        </span>
+      )}
       {form && (
         <span className="dc-sec">
           {row('Word family', d.family)}

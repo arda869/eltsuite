@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
+import { highlightBg } from '../editor/Highlight';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
@@ -11,6 +12,7 @@ import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { drawnCards, isAnswered, normalise, pickState, scoreQuestion, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
 import { PickStage, type PickLook } from './PickStage';
 import type { SharedPick } from '../lib/picks';
+import type { SentFeedback } from '../lib/feedback';
 
 const LETTERS = 'abcdefghijklmnop';
 
@@ -35,6 +37,7 @@ type Props = {
   taskState?: (taskId: string) => 'open' | 'locked' | 'missing';
   classmates?: { id: string; name: string }[];
   selfId?: string;
+  received?: SentFeedback[]; // peer feedback other learners sent to this learner
 };
 
 const TICK = (
@@ -93,6 +96,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
     if (mark.type === 'bold') out = <strong>{out}</strong>;
     else if (mark.type === 'italic') out = <em>{out}</em>;
     else if (mark.type === 'underline') out = <u>{out}</u>;
+    else if (mark.type === 'highlight') out = <mark className="hl" style={{ backgroundColor: highlightBg(mark.attrs?.color) }}>{out}</mark>;
   }
   if (def) out = <DefWord word={String(text)} data={(def.attrs?.data ?? {}) as DefData}>{out}</DefWord>;
   return out;
@@ -101,7 +105,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -741,9 +745,13 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       }
       case 'reflect': {
         const id = node.attrs?.id as string;
+        const items = (node.attrs?.items as RItem[]) ?? [];
+        const got = node.attrs?.share ? (received ?? []).filter((f) => f.blockId === id) : [];
         return (
+          <div key={key} className="rf-wrap">
           <ReflectBlock
-            key={key}
+            pairing={node.attrs?.pairing === 'teacher' ? 'teacher' : 'learners'}
+            pairedWith={selfId ? (node.attrs?.pairs ?? {})[selfId] : undefined}
             about={node.attrs?.about === 'peer' ? 'peer' : 'self'}
             title={(node.attrs?.title as string) ?? ''}
             items={(node.attrs?.items as RItem[]) ?? []}
@@ -753,6 +761,10 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
             classmates={classmates}
             selfId={selfId}
           />
+          {got.map((f) => (
+            <ReflectBlock key={f.from} about="peer" title="" items={items} value={{ ratings: f.ratings }} disabled readOnlyFrom={f.fromName.split(' ')[0]} />
+          ))}
+          </div>
         );
       }
       case 'ipa':

@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { newId } from '../lib/tasks';
 import { Grip } from './nodes';
+import { useEditorClass } from './context';
 
 // Self-reflection or feedback for a classmate: a short set of rating questions.
 // Not marked; the teacher reads the answers.
@@ -46,6 +47,23 @@ const STARTERS: Record<'self' | 'peer', RItem[]> = {
 function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selected }: NodeViewProps) {
   const about = (node.attrs.about ?? 'self') as 'self' | 'peer';
   const items: RItem[] = node.attrs.items ?? [];
+  const pairing = node.attrs.pairing === 'teacher' ? 'teacher' : 'learners';
+  const pairs: Record<string, string> = node.attrs.pairs ?? {};
+  const share = !!node.attrs.share;
+  const { classmates } = useEditorClass();
+  const setPair = (giver: string, receiver: string) => {
+    const next = { ...pairs };
+    if (receiver) next[giver] = receiver;
+    else delete next[giver];
+    updateAttributes({ pairs: next });
+  };
+  // Everyone gives feedback to the next person in a shuffled circle, so nobody is left out.
+  const shufflePairs = () => {
+    const ids = classmates.map((c) => c.id).sort(() => Math.random() - 0.5);
+    const next: Record<string, string> = {};
+    ids.forEach((id, i) => ids.length > 1 && (next[id] = ids[(i + 1) % ids.length]));
+    updateAttributes({ pairs: next });
+  };
   const set = (next: RItem[]) => updateAttributes({ items: next });
   const patch = (i: number, p: Partial<RItem>) => set(items.map((it, k) => (k === i ? { ...it, ...p } : it)));
   const move = (i: number, d: number) => {
@@ -74,7 +92,51 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
         </button>
       </div>
       <input className="r-title" value={node.attrs.title ?? ''} placeholder={about === 'self' ? 'Title, for example: Look back at the role play' : 'Title, for example: Feedback on your partner’s presentation'} onChange={(e) => updateAttributes({ title: e.target.value })} />
-      {about === 'peer' && <span className="hint">Learners choose a classmate from the class list. Write {'{name}'} in a question to show the classmate’s name.</span>}
+      {about === 'peer' && (
+        <div className="r-peer-settings">
+          <span className="seg small-seg" role="radiogroup" aria-label="Who chooses the classmate">
+            <button type="button" role="radio" aria-checked={pairing === 'learners'} className={pairing === 'learners' ? 'on' : ''} onClick={() => updateAttributes({ pairing: 'learners' })}>
+              Learners choose
+            </button>
+            <button type="button" role="radio" aria-checked={pairing === 'teacher'} className={pairing === 'teacher' ? 'on' : ''} onClick={() => updateAttributes({ pairing: 'teacher' })}>
+              I pair them
+            </button>
+          </span>
+          <label className="r-share">
+            <input type="checkbox" checked={share} onChange={() => updateAttributes({ share: !share })} />
+            Send the feedback to the classmate
+            <span className="hint">{share ? 'They see it in this task as soon as it is written.' : 'Only you see the feedback.'}</span>
+          </label>
+          {pairing === 'teacher' && (
+            <div className="r-pairs">
+              <div className="r-pairs-head">
+                <span className="hint">Who gives feedback to whom</span>
+                <button type="button" className="btn small-btn" onClick={shufflePairs} disabled={classmates.length < 2}>
+                  Pair everyone at random
+                </button>
+              </div>
+              {classmates.length === 0 && <span className="hint">Add learners to the class to pair them.</span>}
+              {classmates.map((g) => (
+                <span key={g.id} className="r-pair">
+                  <span className="r-giver">{g.name}</span>
+                  <span className="r-arrow" aria-hidden="true">→</span>
+                  <select value={pairs[g.id] ?? ''} onChange={(e) => setPair(g.id, e.target.value)} aria-label={`${g.name} gives feedback to`}>
+                    <option value="">Not paired</option>
+                    {classmates
+                      .filter((r) => r.id !== g.id)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name}
+                        </option>
+                      ))}
+                  </select>
+                </span>
+              ))}
+            </div>
+          )}
+          <span className="hint">Write {'{name}'} in a question to show the classmate’s name.</span>
+        </div>
+      )}
 
       <div className="r-items">
         {items.map((it, i) => (
@@ -168,6 +230,9 @@ export const Reflect = Node.create({
     about: { default: 'self' },
     title: { default: '' },
     items: { default: [] },
+    pairing: { default: 'learners' }, // 'learners': each learner chooses · 'teacher': the teacher pairs them
+    pairs: { default: {} }, // giver learnerId -> receiver learnerId
+    share: { default: false }, // send the feedback to the classmate
   }),
   parseHTML: () => [{ tag: 'div[data-reflect]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-reflect': '' })],

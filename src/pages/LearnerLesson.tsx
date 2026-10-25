@@ -22,6 +22,7 @@ import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
+import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -84,6 +85,7 @@ export function LearnerLesson() {
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
   const classmates = useClassmates(c?.classCode);
+  const received = useReceivedFeedback(classId, current, learnerId);
   const withShared = useMemo(() => ({ ...responses, ...Object.fromEntries(Object.values(shared).map((p) => [p.pickId, { h: p.h, b: p.b }])) }), [responses, shared]);
   const qs = useMemo(() => questionIds(task?.content ?? null, withShared), [task, withShared]);
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
@@ -107,6 +109,36 @@ export function LearnerLesson() {
       await saveResponses(classId, base, next).catch((e) => console.error(e));
       dirty.current = false;
     }, 600);
+    sendPeerFeedback(id, v);
+  }
+
+  // Peer feedback the teacher shares with the classmate goes to them as it is written.
+  const fbTimer = useRef<number>();
+  function sendPeerFeedback(id: string, v: Responses[string]) {
+    if (!base || !user) return;
+    let block: { attrs?: Record<string, unknown> } | undefined;
+    const walk = (n: { attrs?: Record<string, unknown>; type?: string; content?: unknown[] }) => {
+      if (n.type === 'reflect' && n.attrs?.id === id) block = n;
+      (n.content as typeof n[] | undefined)?.forEach(walk);
+    };
+    if (task?.content) walk(task.content as never);
+    if (!block?.attrs?.share || block.attrs.about !== 'peer') return;
+    const a = v as unknown as { peer?: string; ratings?: Record<string, number | number[] | string> };
+    const pairs = (block.attrs.pairs ?? {}) as Record<string, string>;
+    const to = block.attrs.pairing === 'teacher' ? pairs[learnerId] : a.peer;
+    if (!to) return;
+    window.clearTimeout(fbTimer.current);
+    fbTimer.current = window.setTimeout(() => {
+      sendFeedback(classId, {
+        taskId: base.taskId,
+        blockId: id,
+        from: learnerId,
+        fromName: profile?.role === 'learner' ? profile.displayName : '',
+        fromUid: user.uid,
+        to,
+        ratings: a.ratings ?? {},
+      }).catch((e) => console.error(e));
+    }, 900);
   }
 
   async function check() {
@@ -225,6 +257,7 @@ export function LearnerLesson() {
                   shared={shared}
                   classmates={classmates}
                   selfId={learnerId}
+                  received={received}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   onOpenTask={(id) => {
                     const t = tasks.find((x) => x.id === id);
@@ -258,7 +291,9 @@ export function LearnerLesson() {
                   <button className="btn" disabled={!prevOpen} onClick={() => prevOpen && setCurrent(prevOpen.id)}>
                     Previous
                   </button>
-                  {qs.length > 0 &&
+                  {qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
+                    <span className="hint saved-auto">{Object.keys(responses).length ? 'Saved. Your teacher can see your answers.' : ''}</span>
+                  ) : qs.length > 0 &&
                     (checked ? (
                       retryMode && score < result.total && (
                         <button className="btn primary" onClick={tryWrongAgain}>

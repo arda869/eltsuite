@@ -22,6 +22,12 @@ function Face({ mouth }: { mouth: string }) {
 
 const STAR = 'M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z';
 
+const grow = (e: { currentTarget: HTMLTextAreaElement }) => {
+  const t = e.currentTarget;
+  t.style.height = 'auto';
+  t.style.height = t.scrollHeight + 2 + 'px';
+};
+
 type Props = {
   about: 'self' | 'peer';
   title: string;
@@ -31,26 +37,42 @@ type Props = {
   disabled?: boolean;
   classmates?: { id: string; name: string }[];
   selfId?: string;
+  pairing?: 'learners' | 'teacher';
+  pairedWith?: string; // learnerId the teacher paired this learner with
+  readOnlyFrom?: string; // showing feedback someone else gave (name)
 };
 
-export function ReflectBlock({ about, title, items, value, onChange, disabled, classmates = [], selfId }: Props) {
-  const v: ReflectAnswer = value ?? { ratings: {} };
+export function ReflectBlock({ about, title, items, value, onChange, disabled, classmates = [], selfId, pairing = 'learners', pairedWith, readOnlyFrom }: Props) {
+  const fixed = about === 'peer' && pairing === 'teacher' && !readOnlyFrom ? classmates.find((c) => c.id === pairedWith) : undefined;
+  const raw: ReflectAnswer = value ?? { ratings: {} };
+  const v: ReflectAnswer = fixed ? { ...raw, peer: fixed.id, peerName: fixed.name } : raw;
   const peerName = v.peerName ?? '';
   const first = peerName.split(' ')[0];
   const others = classmates.filter((c) => c.id !== selfId);
-  const needPeer = about === 'peer' && !v.peer;
+  const needPeer = about === 'peer' && !v.peer && !readOnlyFrom;
   const set = (id: string, r: number | number[] | string) => onChange?.({ ...v, ratings: { ...v.ratings, [id]: r } });
-  const text = (s: string) => s.replace(/\{name\}/g, first || 'your classmate');
+  const needPeerFixed = about === 'peer' && pairing === 'teacher' && !fixed && !readOnlyFrom;
+  const text = (s: string) => s.replace(/\{name\}/g, readOnlyFrom ? 'you' : first || 'your classmate');
   const off = disabled || !onChange;
 
   return (
-    <section className={'rf rf-' + about}>
+    <section className={'rf rf-' + about + (readOnlyFrom ? ' rf-received' : '')}>
       <div className="rf-head">
-        <span className="rf-eyebrow">{about === 'self' ? 'Self-reflection' : 'Feedback for a classmate'}</span>
+        <span className="rf-eyebrow">{readOnlyFrom ? `Feedback from ${readOnlyFrom}` : about === 'self' ? 'Self-reflection' : 'Feedback for a classmate'}</span>
         {title && <h3 className="rf-title">{title}</h3>}
       </div>
 
-      {about === 'peer' && (
+      {about === 'peer' && readOnlyFrom ? null : about === 'peer' && pairing === 'teacher' ? (
+        <div className="rf-peer">
+          {fixed ? (
+            <span className="rf-q">
+              You are giving feedback to <strong className="rf-to">{fixed.name}</strong>.
+            </span>
+          ) : (
+            <span className="hint">Your teacher hasn’t paired you with a classmate yet.</span>
+          )}
+        </div>
+      ) : about === 'peer' && (
         <div className="rf-peer">
           <span className="rf-q">Who are you giving feedback to?</span>
           <span className="rf-people" role="radiogroup" aria-label="Classmate">
@@ -134,12 +156,12 @@ export function ReflectBlock({ about, title, items, value, onChange, disabled, c
                   })}
                 </span>
               )}
-              {it.type === 'text' && <textarea className="rf-text" rows={2} value={typeof r === 'string' ? r : ''} disabled={off || needPeer} placeholder="Write here" onChange={(e) => set(it.id, e.target.value)} />}
+              {it.type === 'text' && <textarea className="rf-text" rows={2} value={typeof r === 'string' ? r : ''} disabled={off || needPeer} placeholder="Write here" onChange={(e) => set(it.id, e.target.value)} onInput={grow} ref={(el) => el && grow({ currentTarget: el })} />}
             </li>
           );
         })}
       </ol>
-      {needPeer && !off && <span className="hint rf-wait">Choose a classmate first.</span>}
+      {needPeer && !off && !needPeerFixed && <span className="hint rf-wait">Choose a classmate first.</span>}
     </section>
   );
 }

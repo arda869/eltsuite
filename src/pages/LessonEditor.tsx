@@ -400,7 +400,7 @@ export function LessonEditor() {
                       <button className="btn" onClick={() => setEditWhileTeaching(true)}>
                         Edit task
                       </button>
-                    ) : questionIds(previewKey?.content ?? null).length === 0 ? null : previewChecked ? (
+                    ) : questionIds(previewKey?.content ?? null).every((q) => q.type === 'reflect') ? null : previewChecked ? (
                       <button className="btn" onClick={() => setPreviewChecked(false)}>
                         Try again
                       </button>
@@ -434,6 +434,7 @@ export function LessonEditor() {
                     key={editorKey}
                     content={draft.content}
                     onChange={(content) => change({ content })}
+                    classmates={classmates}
                     places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
                   />
                 </div>
