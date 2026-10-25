@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getDatabase } from 'firebase/database';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache } from 'firebase/firestore';
 import { firebaseConfig } from './firebaseConfig';
 
@@ -17,3 +18,4 @@ function makeDb() {
 export const db = makeDb();
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+export const rtdb = getDatabase(app);

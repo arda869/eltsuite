@@ -8,6 +8,8 @@ import { theme } from '../lib/themes';
 import { TopBar } from '../components/TopBar';
 import { LessonsTab } from '../components/LessonsTab';
 import { DeleteClassDialog } from '../components/DeleteClassDialog';
+import { AnnounceDialog } from '../components/AnnounceDialog';
+import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
 
@@ -31,10 +33,12 @@ export function ClassPage() {
   const { classId = '' } = useParams();
   const navigate = useNavigate();
   const [c, setC] = useState<ClassDoc | null | undefined>(undefined);
+  const roster = useClassmates(c?.classCode ?? undefined);
   const [tab, setTab] = useState<Tab>('lessons');
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [announcing, setAnnouncing] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -129,6 +133,9 @@ export function ClassPage() {
                   <button role="menuitem" onClick={() => (setMenu(false), setSettings(true))}>
                     Class settings
                   </button>
+                  <button role="menuitem" onClick={() => (setMenu(false), setAnnouncing(true))}>
+                    Send an announcement
+                  </button>
                   {c.status === 'active' ? (
                     <button role="menuitem" onClick={archive}>
                       Archive class
@@ -149,6 +156,7 @@ export function ClassPage() {
             </div>
           </div>
 
+          {announcing && <AnnounceDialog classId={c.id} roster={roster} onClose={() => setAnnouncing(false)} />}
           {deleting && <DeleteClassDialog c={c} onClose={() => setDeleting(false)} onDeleted={() => navigate('/')} />}
           <nav className="tabs" aria-label="Class sections">
             <button className={tab === 'lessons' ? 'on' : ''} onClick={() => setTab('lessons')}>

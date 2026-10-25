@@ -677,13 +677,17 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         return <>{kids()}</>;
       case 'paragraph':
         return (
-          <div key={key} className="para">
+          <div key={key} className="para" data-bk={key}>
             <p>{kids()}</p>
             {notesFor(node)}
           </div>
         );
       case 'heading':
-        return <h3 key={key}>{kids()}</h3>;
+        return (
+          <h3 key={key} data-bk={key}>
+            {kids()}
+          </h3>
+        );
       case 'bulletList':
         return <ul key={key}>{kids()}</ul>;
       case 'orderedList':
@@ -693,10 +697,14 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           </ol>
         );
       case 'listItem':
-        return <li key={key}>{kids()}</li>;
+        return (
+          <li key={key} data-bk={key}>
+            {kids()}
+          </li>
+        );
       case 'table':
         return (
-          <div key={key} className="table-wrap-task">
+          <div key={key} className="table-wrap-task" data-bk={key}>
             <table className={'task-table lines-' + (node.attrs?.lines ?? 'all') + (node.attrs?.striped ? ' striped' : '')}>
               <tbody>{kids()}</tbody>
             </table>
@@ -729,7 +737,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       case 'horizontalRule':
         return <hr key={key} />;
       case 'image':
-        return node.attrs?.src ? <img key={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;
+        return node.attrs?.src ? <img key={key} data-bk={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;
       case 'text':
       {
         const link = node.marks?.find((m) => m.type === 'lessonLink');

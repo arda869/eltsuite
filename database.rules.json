@@ -1,0 +1,36 @@
+{
+  "rules": {
+    "classOwners": {
+      "$classId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid"
+      }
+    },
+    "sessions": {
+      "$classId": {
+        ".read": "auth != null",
+        "pointer": {
+          ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
+        },
+        "signals": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('classOwners').child($classId).val() === auth.uid)"
+          }
+        },
+        "board": {
+          "$taskId": {
+            ".write": "auth != null"
+          }
+        },
+        "quiz": {
+          ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid",
+          "answers": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid"
+            }
+          }
+        }
+      }
+    }
+  }
+}

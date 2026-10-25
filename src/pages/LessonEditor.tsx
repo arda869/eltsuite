@@ -26,6 +26,11 @@ import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLiv
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { PickedBanner, SpotlightCard, TimerChip } from '../components/LiveExtras';
+import { ReactionBurst } from '../components/ReactionBurst';
+import { AnnounceDialog } from '../components/AnnounceDialog';
+import { claimClass, clearAllHands, sendPointer, useSignals, useThrottle } from '../lib/session';
+import { Icon } from '../editor/Icons';
 import { CopyDialog } from '../components/CopyDialog';
 import { VersionsDialog } from '../components/VersionsDialog';
 import { download, lessonText } from '../lib/transfer';
@@ -150,6 +155,43 @@ export function LessonEditor() {
   const revealAll = () => setReveal(-1);
   const hideAnswers = () => task && setLive(classId, { revealed: { ...(live?.revealed ?? {}), [task.id]: 0 }, revealedQs: { ...(live?.revealedQs ?? {}), [task.id]: [] } });
   const singles = task ? revealedSingles(live, itemId, task.id) : [];
+  // Classroom tools
+  const [pointerOn, setPointerOn] = useState(false);
+  const [timerMenu, setTimerMenu] = useState(false);
+  const [picking, setPicking] = useState('');
+  const [announcing, setAnnouncing] = useState(false);
+  const signals = useSignals(teachingHere ? classId : '');
+  const signalUids = Object.keys(signals);
+  const hands = Object.values(signals).filter((x) => x.hand).sort((a, b) => (a.handAt ?? 0) - (b.handAt ?? 0));
+  const stuckN = Object.values(signals).filter((x) => x.stuck).length;
+  const movePointer = useThrottle((p: Parameters<typeof sendPointer>[1]) => sendPointer(classId, p), 66);
+  useEffect(() => {
+    if (user && teachingHere) claimClass(classId, user.uid);
+  }, [user, teachingHere, classId]);
+  const togglePointer = () => {
+    const next = !pointerOn;
+    setPointerOn(next);
+    if (!next && task) sendPointer(classId, { taskId: task.id, bk: '', x: 0, y: 0, on: false });
+  };
+  const startTimer = (secs: number) => {
+    setTimerMenu(false);
+    setLive(classId, { timer: { endsAt: Date.now() + secs * 1000, total: secs } });
+  };
+  const stopTimer = () => (setTimerMenu(false), setLive(classId, { timer: null }));
+  const pickLearner = () => {
+    const pool = (inLesson.length ? inLesson.map((p) => ({ id: p.learnerId, name: p.name })) : classmates).filter((p) => p.name);
+    if (!pool.length) return;
+    const winner = pool[Math.floor(Math.random() * pool.length)];
+    let n = 0;
+    const spin = window.setInterval(() => {
+      setPicking(pool[n++ % pool.length].name.split(' ')[0]);
+      if (n > 14) {
+        window.clearInterval(spin);
+        setPicking('');
+        setLive(classId, { picked: { name: winner.name, learnerId: winner.id, at: Date.now() } });
+      }
+    }, 90);
+  };
   const toggleSingle = (qid: string) => {
     if (!task || !teachingHere) return;
     const cur = live?.revealedQs?.[task.id] ?? [];
@@ -206,7 +248,9 @@ export function LessonEditor() {
       else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
       else if (e.key === 'c' || e.key === 'C') panels.toggleRight();
       else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
-      else if ((e.key === 'p' || e.key === 'P')) setPresent((v) => !v);
+      else if (e.key === 'p' || e.key === 'P') setPresent((v) => !v);
+      else if (e.key === 't' || e.key === 'T') (live?.timer && live.timer.endsAt > Date.now() ? stopTimer() : startTimer(120));
+      else if (e.key === 'a' || e.key === 'A') setAnnouncing(true);
       else if (e.key === 'n' || e.key === 'N') {
         if (!panels.right) panels.toggleRight();
         if (present) setShowGrid(true);
@@ -502,6 +546,52 @@ export function LessonEditor() {
                 ))}
               </span>
               <span className="live-ctl">
+                <span className="tool-group" aria-label="Classroom tools">
+                  <button type="button" className={'btn small-btn' + (pointerOn ? ' on-accent' : '')} onClick={togglePointer} title="A red dot everyone sees where you point">
+                    Pointer
+                  </button>
+                  <span className="timer-ctl">
+                    <button type="button" className={'btn small-btn' + (live?.timer && live.timer.endsAt > Date.now() ? ' on-accent' : '')} onClick={() => setTimerMenu((v) => !v)} title="Shortcut: T">
+                      Timer
+                    </button>
+                    {timerMenu && (
+                      <span className="timer-menu">
+                        {[1, 2, 3, 5, 10].map((m) => (
+                          <button key={m} type="button" onClick={() => startTimer(m * 60)}>
+                            {m} min
+                          </button>
+                        ))}
+                        <button type="button" onClick={() => startTimer(30)}>
+                          30 s
+                        </button>
+                        {live?.timer && (
+                          <button type="button" onClick={() => stopTimer()}>
+                            Stop
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </span>
+                  <button type="button" className="btn small-btn" onClick={pickLearner} disabled={!!picking} title="Choose a learner at random">
+                    {picking || 'Pick a learner'}
+                  </button>
+                  <button type="button" className="btn small-btn" onClick={() => setAnnouncing(true)} title="Shortcut: A">
+                    Announce
+                  </button>
+                </span>
+                {hands.length > 0 && (
+                  <span className="hands" title={hands.map((h) => h.name).join(', ')}>
+                    <Icon name="wave" size="15" /> {hands.length} {hands.length === 1 ? 'hand' : 'hands'} up
+                    <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
+                      Lower all
+                    </button>
+                  </span>
+                )}
+                {stuckN > 0 && (
+                  <span className="hands stuck" title={Object.values(signals).filter((x) => x.stuck).map((x) => x.name).join(', ')}>
+                    <Icon name="question" size="15" /> {stuckN} stuck
+                  </span>
+                )}
                 {present && (
                   <button type="button" className={'btn small-btn' + (showGrid ? ' on-accent' : '')} onClick={() => setShowGrid((v) => !v)}>
                     Live answers
@@ -546,8 +636,19 @@ export function LessonEditor() {
                   <h1 className="task-title">{draft.title}</h1>
                   {draft.instructions && <p className="task-instr">{draft.instructions}</p>}
                 </div>
+                {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
+                {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} />}
+                {!preview && <PickedBanner picked={live?.picked} />}
+                {!preview && <ReactionBurst signals={signals} />}
                 <div
-                  className={'frame-body' + (!preview ? ' teach-view' : '')}
+                  className={'frame-body' + (!preview ? ' teach-view' : '') + (pointerOn && !preview ? ' pointing' : '')}
+                  onMouseMove={(e) => {
+                    if (!pointerOn || preview || !task) return;
+                    const el = (e.target as HTMLElement).closest('[data-bk]') as HTMLElement | null;
+                    if (!el) return;
+                    const r = el.getBoundingClientRect();
+                    movePointer({ taskId: task.id, bk: el.dataset.bk!, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, on: true });
+                  }}
                   onClick={(e) => {
                     if (preview || !task) return;
                     const q = (e.target as HTMLElement).closest('[data-qid]') as HTMLElement | null;
@@ -648,6 +749,8 @@ export function LessonEditor() {
               onSeeLearners={setSeeLearners}
               revealedIds={singles}
               onRevealQuestion={toggleSingle}
+              signals={signals}
+              onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
               tab={panelTab}
               onTab={setPanelTab}
               notes={notes}
@@ -779,6 +882,7 @@ export function LessonEditor() {
           </div>
         </div>
       )}
+      {announcing && <AnnounceDialog classId={classId} roster={classmates} onClose={() => setAnnouncing(false)} />}
       {help && (
         <div className="scrim" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelp(false)}>
           <div className="dialog shortcuts" onClick={(e) => e.stopPropagation()}>
@@ -795,6 +899,8 @@ export function LessonEditor() {
                 ['C', 'Show or hide the class panel'],
                 ['N', 'Teacher notes'],
                 ['P', 'Present mode'],
+                ['T', 'Start a 2-minute timer, or stop it'],
+                ['A', 'New announcement'],
                 ['Esc', 'Leave present mode, close this'],
                 ['⌘ + K', 'Editor: link the selected words'],
                 ['Alt + ↑ ↓', 'Editor: move the block up or down'],

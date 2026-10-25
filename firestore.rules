@@ -114,6 +114,15 @@ service cloud.firestore {
         allow delete: if resource.data.uid == request.auth.uid || teachesClass(classId);
       }
 
+      // Announcements: the teacher writes; learners can only add their own "Got it"
+      match /announcements/{aid} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow create, delete: if teachesClass(classId);
+        allow update: if teachesClass(classId)
+          || (memberOf(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acks'])
+              && request.resource.data.acks.diff(resource.data.get('acks', {})).affectedKeys().hasOnly([get(/databases/$(database)/documents/users/$(request.auth.uid)).data.learnerId]));
+      }
+
       // Tag notifications
       match /notices/{nid} {
         allow read: if teachesClass(classId)

@@ -3,6 +3,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { learnersCol, type Learner } from '../lib/learners';
+import type { Signal } from '../lib/session';
+import { Icon } from '../editor/Icons';
 import { TaskRenderer } from './TaskRenderer';
 import { saveMark, type Mark } from '../lib/tasks';
 import { useClassAvatars } from '../lib/avatars';
@@ -26,6 +28,8 @@ type Props = {
   onTab?: (t: 'answers' | 'notes') => void;
   notes?: string;
   onNotes?: (v: string) => void;
+  signals?: Record<string, Signal>;
+  onSpotlight?: (qid: string, text: string) => void;
 };
 
 // Find every question node by id, so answers can be shown as words rather than option numbers.
@@ -65,7 +69,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes, signals = {}, onSpotlight }: Props) {
   const [detail, setDetail] = useState<Learner | null>(null);
   const [roster, setRoster] = useState<Learner[]>([]);
   const [answers, setAnswers] = useState<AnswerDoc[]>([]);
@@ -108,7 +112,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 
   return (
     <aside className="task-side live-panel" aria-label="Live answers">
-      {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} />}
+      {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} onSpotlight={onSpotlight} />}
       <div className="lp-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'answers'} className={tab === 'answers' ? 'on' : ''} onClick={() => onTab?.('answers')}>
           Live answers
@@ -149,6 +153,8 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
                   <span className="lg-dot" aria-hidden="true" />
                   <Avatar k={avatars.byLearner[l.id]} name={l.displayName} size={20} />
                   {l.displayName.split(' ')[0]}
+                  {signals[l.authUid]?.hand && <span className="lg-sig" title="Hand up"><Icon name="wave" size="13" /></span>}
+                  {signals[l.authUid]?.stuck && <span className="lg-sig stuck" title="Stuck"><Icon name="question" size="13" /></span>}
                   {a?.checked && <span className="lg-checked">checked</span>}
                   {qs.some((q) => q.type === 'writing' && isAnswered(a?.responses?.[q.id]) && a?.marks?.[q.id]?.score == null) && <span className="lg-tomark" title="Long answer to mark">to mark</span>}
                 </span>
@@ -215,7 +221,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 }
 
 // One learner's answers for the task, with marking for long answers.
-function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, onClose }: { classId: string; taskId: string; learner: Learner; answer?: AnswerDoc; content: JSONContent | null; answerKey: AnswerKey; onClose: () => void }) {
+function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, onClose, onSpotlight }: { classId: string; taskId: string; learner: Learner; answer?: AnswerDoc; content: JSONContent | null; answerKey: AnswerKey; onClose: () => void; onSpotlight?: (qid: string, text: string) => void }) {
   const writing = questionIds(content).filter((q) => q.type === 'writing');
   const nodes = nodesById(content);
   const [draft, setDraft] = useState<Record<string, Mark>>(() => answer?.marks ?? {});
@@ -240,6 +246,22 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
         <div className="detail-body">
           <TaskRenderer content={content} responses={answer?.responses ?? {}} results={answerKey} disabled teacherMarks={answer?.marks} />
         </div>
+        {onSpotlight && answer && (
+          <div className="spot-pick">
+            <span className="eyebrow">Show one answer to the class (the name stays hidden)</span>
+            <span className="spot-btns">
+              {questionIds(content).map((q, i) => {
+                const text = label(nodes[q.id], answer.responses?.[q.id]);
+                const full = q.type === 'writing' ? textOf(answer.responses?.[q.id]) : text;
+                return full ? (
+                  <button key={q.id} type="button" className="btn small-btn" onClick={() => (onSpotlight(q.id, `${i + 1}. ${full}`), onClose())}>
+                    Question {i + 1}
+                  </button>
+                ) : null;
+              })}
+            </span>
+          </div>
+        )}
         {writing.length > 0 && answer && (
           <div className="mark-box">
             <span className="eyebrow">Mark the long answers</span>

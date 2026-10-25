@@ -11,6 +11,9 @@ export type LiveState = {
   sync?: boolean; showMarker?: boolean; // learners follow the teacher's task
   revealed?: Record<string, number>; // taskId -> how many answers are revealed (-1 = all)
   revealedQs?: Record<string, string[]>; // taskId -> single questions the teacher revealed
+  timer?: { endsAt: number; total: number } | null; // countdown everyone sees
+  picked?: { name: string; learnerId: string; at: number } | null; // random learner picker
+  spotlight?: { taskId: string; qid: string; text: string; at: number } | null; // one answer shown to the class, name hidden
   startedAt?: Timestamp;
   updatedAt?: Timestamp;
 };

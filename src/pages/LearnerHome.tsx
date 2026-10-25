@@ -10,6 +10,7 @@ import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { initials } from '../components/TopBar';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { AnnouncementCards } from '../components/LiveExtras';
 import { Avatar } from '../components/avatars';
 import { AvatarPicker } from '../components/AvatarPicker';
 
@@ -49,6 +50,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
 
   return (
     <div className="shell" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
+      <AnnouncementCards classId={classId} learnerId={profile?.role === 'learner' ? profile.learnerId : ''} />
       <NoticeToasts classId={classId} to={profile?.role === 'learner' ? profile.learnerId : ''} link={(i, tk) => `/learn/${i}?task=${tk}`} />
       <header className="topbar">
         <Wordmark />

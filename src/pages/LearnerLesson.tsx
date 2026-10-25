@@ -23,6 +23,9 @@ import { theme } from '../lib/themes';
 import { isLive, isSynced, liveRef, revealedCount, revealedSingles, revealedSubset, type LiveState } from '../lib/live';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
+import { AnnouncementCards, PickedBanner, SignalBar, SpotlightCard, TimerChip } from '../components/LiveExtras';
+import { PointerDot } from '../components/PointerDot';
+import { usePointer } from '../lib/session';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { TEXT_SCALE } from '../lib/auth';
@@ -69,6 +72,9 @@ export function LearnerLesson() {
   }, [classId]);
   usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current, avatar: profile?.avatar });
   const synced = isSynced(live, itemId);
+  const liveHere = isLive(live) && live?.itemId === itemId;
+  const pointer = usePointer(liveHere ? classId : '');
+  const bodyRef = useRef<HTMLDivElement>(null);
   const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? live!.taskId : '';
   // When the teacher syncs the class, everyone follows the teacher's task.
   useEffect(() => {
@@ -237,6 +243,15 @@ export function LearnerLesson() {
         </span>
       </header>
 
+      <AnnouncementCards classId={classId} learnerId={learnerId} />
+      {liveHere && (
+        <div className="live-float">
+          <TimerChip timer={live?.timer} />
+          <PickedBanner picked={live?.picked} me={learnerId} />
+          <SignalBar classId={classId} uid={user?.uid} name={profile?.role === 'learner' ? profile.displayName : ''} learnerId={learnerId} />
+        </div>
+      )}
+      {liveHere && <PointerDot pointer={pointer} taskId={current} container={bodyRef} />}
       <NoticeToasts classId={classId} to={learnerId} link={(i, t) => `/learn/${i}?task=${t}`} />
       <div className={'lesson-layout learner' + panels.cls}>
         <nav className="task-list" aria-label="Tasks">
@@ -288,7 +303,8 @@ export function LearnerLesson() {
                 {task.instructions && <p className="task-instr">{task.instructions}</p>}
 
               </div>
-              <div className="frame-body">
+              <div className="frame-body" ref={bodyRef}>
+                {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
                 {synced && (
                   <div className="sync-banner" role="status">
                     <span className="live-dot" aria-hidden="true" />
