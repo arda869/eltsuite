@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson Lit · Coming soon</title>
+<meta name="description" content="Lesson Lit is a calm, live online classroom for English teachers. Coming soon.">
+<meta property="og:title" content="Lesson Lit · Coming soon">
+<meta property="og:description" content="A calm, live online classroom for English teachers.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400,50;0,9..144,500,50;0,9..144,600,50;1,9..144,400,50&family=Karla:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ink: #33302c;
+    --muted: #696969;
+    --soft: #868686;
+    --flame: #d98f63;
+    --flame-text: #b8744e;
+    --hair: rgba(51, 48, 44, 0.12);
+    --bg: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: 'Karla', 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  main {
+    flex: 1;
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 18vh 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--flame-text);
+  }
+  .eyebrow::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--flame);
+    box-shadow: 0 0 0 4px rgba(217, 143, 99, 0.2);
+  }
+  .wordmark {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(56px, 12vw, 104px);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .i { position: relative; display: inline-block; }
+  .i svg { position: absolute; left: 50%; top: 0.06em; transform: translateX(-50%); width: 0.2em; height: auto; }
+  .lede {
+    margin: 0;
+    max-width: 560px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(20px, 3vw, 24px);
+    line-height: 1.45;
+    color: #4a4a4a;
+  }
+  .rule { width: 64px; height: 1px; background: var(--hair); border: 0; margin: 4px 0; }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 18px 36px;
+  }
+  li { display: flex; flex-direction: column; gap: 2px; }
+  li strong { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 16px; }
+  li span { font-size: 14px; color: var(--muted); }
+  footer {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px;
+    font-size: 12px;
+    color: var(--soft);
+    letter-spacing: 0.04em;
+  }
+  @media (max-width: 520px) { main { padding-top: 12vh; } }
+</style>
+</head>
+<body>
+<main>
+  <span class="eyebrow">Coming soon</span>
+  <h1 class="wordmark">Lesson L<span class="i">ı<svg viewBox="0 0 34 48" aria-hidden="true"><path d="M17 2 C25 14 30 22 30 30 C30 39 24 46 17 46 C10 46 4 39 4 30 C4 22 9 14 17 2 Z" fill="#d98f63"/></svg></span>t</h1>
+  <p class="lede">A calm, live online classroom for English teachers. Teach the lesson, see every answer as it arrives, and keep the whole class on the same page.</p>
+  <hr class="rule">
+  <ul>
+    <li><strong>Live lessons</strong><span>Move the class task by task and watch answers come in.</span></li>
+    <li><strong>Coursebook-style tasks</strong><span>Rich text, pictures and questions that read like a page.</span></li>
+    <li><strong>A shared notebook</strong><span>Words, meanings and examples the class builds together.</span></li>
+  </ul>
+</main>
+<footer>© 2026 Lesson Lit</footer>
+</body>
+</html>
