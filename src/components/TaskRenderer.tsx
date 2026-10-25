@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
+import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { isAnswered, normalise, scoreQuestion, splitWords, textOf, type AnswerKey, type Response, type Responses } from '../lib/questions';
 
 const LETTERS = 'abcdefghijklmnop';
@@ -13,6 +14,7 @@ type Props = {
   hideAnswers?: boolean; // show only right or wrong, not the correct answer
   disabled?: boolean;
   layout?: 'single' | 'two' | 'two-wide';
+  colScroll?: 'separate' | 'together';
 };
 
 const TICK = (
@@ -33,7 +35,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single' }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate' }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const locked = disabled || !!results;
 
@@ -499,6 +501,12 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
             {kids()}
           </td>
         );
+      case 'textBox':
+        return (
+          <BoxFrame key={key} attrs={node.attrs as BoxAttrs}>
+            {kids()}
+          </BoxFrame>
+        );
       case 'blockquote':
         return <blockquote key={key}>{kids()}</blockquote>;
       case 'hardBreak':
@@ -537,9 +545,9 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   // Two-column layout: split the top level at the first column break; each column scrolls on its own.
   const top = content.content ?? [];
   const at = top.findIndex((c) => c.type === 'columnBreak');
-  if (layout !== 'single' && at >= 0) {
+  if (at >= 0) {
     return (
-      <div className={'task-columns ' + layout}>
+      <div className={'task-columns ' + (layout === 'two-wide' ? 'two-wide' : 'two') + (colScroll === 'together' ? ' together' : ' separate')}>
         <div className="task-body col">{top.slice(0, at).map((c, i) => render(c, 'a' + i))}</div>
         <div className="task-body col">{top.slice(at + 1).map((c, i) => render(c, 'b' + i))}</div>
       </div>

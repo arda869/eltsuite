@@ -191,6 +191,7 @@ export function LearnerLesson() {
                   disabled={task.locked}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
+                    colScroll={task.colScroll ?? 'separate'}
                 />
               </div>
               <div className="frame-foot">
@@ -221,7 +222,7 @@ export function LearnerLesson() {
                       )
                     ) : (
                       <button className="btn primary" disabled={busy || task.locked || answered === 0} onClick={check}>
-                        {busy ? 'Checking…' : 'Check answers'}
+                        {busy ? 'One moment…' : qs.every((q) => q.type === 'writing') ? 'Hand in' : 'Check answers'}
                       </button>
                     ))}
                   <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={index >= tasks.length - 1} onClick={() => setCurrent(tasks[index + 1].id)}>

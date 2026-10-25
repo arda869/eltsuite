@@ -18,6 +18,9 @@ function useOutside(open: boolean, ref: React.RefObject<HTMLElement>, onClose: (
 function BlockHead({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <div className="mcq-tools">
+      <span className="drag-handle" data-drag-handle title="Drag to move" aria-hidden="true">
+        ⋮⋮
+      </span>
       <span>{label}</span>
       <button type="button" onClick={onRemove}>
         Remove
@@ -75,6 +78,7 @@ export const DropGap = Node.create({
   inline: true,
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes: () => ({ id: { default: null }, answer: { default: '' }, hint: { default: '' }, feedback: { default: '' } }),
   parseHTML: () => [{ tag: 'span[data-dropgap]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-dropgap': '' })],
@@ -133,6 +137,7 @@ export const WordBank = Node.create({
   group: 'block',
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes: () => ({ extras: { default: [] } }),
   parseHTML: () => [{ tag: 'div[data-wordbank]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-wordbank': '' })],
@@ -199,6 +204,7 @@ export const Match = Node.create({
   group: 'block',
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes: () => ({
     id: { default: null },
     pairs: { default: [{ left: '', right: '' }, { left: '', right: '' }, { left: '', right: '' }] },
@@ -230,6 +236,7 @@ export const Order = Node.create({
   group: 'block',
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes: () => ({ id: { default: null }, sentence: { default: '' }, hint: { default: '' }, feedback: { default: '' } }),
   parseHTML: () => [{ tag: 'div[data-order]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-order': '' })],
@@ -277,6 +284,7 @@ export const Writing = Node.create({
   group: 'block',
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-writing]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-writing': '' })],
@@ -301,6 +309,7 @@ export const ColumnBreak = Node.create({
   group: 'block',
   atom: true,
   selectable: true,
+  draggable: true,
   parseHTML: () => [{ tag: 'div[data-column-break]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-column-break': '' })],
   addNodeView: () => ReactNodeViewRenderer(ColumnBreakView),

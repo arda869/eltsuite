@@ -22,7 +22,8 @@ export type Task = {
   hidden: boolean;
   locked: boolean;
   afterCheck?: 'reveal' | 'retry'; // show the correct answers, or only right/wrong so learners try again
-  layout?: 'single' | 'two' | 'two-wide'; // two columns split at column breaks
+  layout?: 'single' | 'two' | 'two-wide'; // column widths when the task has a column break
+  colScroll?: 'separate' | 'together';
 };
 
 export const tasksCol = (classId: string, itemId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks');
@@ -65,7 +66,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   await batch.commit();
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {

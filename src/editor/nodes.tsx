@@ -69,6 +69,7 @@ export const Gap = Node.create({
   inline: true,
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes() {
     return {
       id: { default: null },
@@ -308,6 +309,7 @@ export const Choice = Node.create({
   inline: true,
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes() {
     return {
       id: { default: null },

@@ -12,6 +12,7 @@ import {
   saveTask,
   setTaskFlags,
   splitKey,
+  questionIds,
   tasksCol,
   type AnswerKey,
   type Responses,
@@ -287,6 +288,7 @@ export function LessonEditor() {
                     hideAnswers={task.afterCheck === 'retry'}
                     disabled={!preview}
                     layout={task.layout ?? 'single'}
+                    colScroll={task.colScroll ?? 'separate'}
                   />
                 </div>
                 <div className="frame-foot">
@@ -296,7 +298,7 @@ export function LessonEditor() {
                       <button className="btn" onClick={() => setEditWhileTeaching(true)}>
                         Edit task
                       </button>
-                    ) : previewChecked ? (
+                    ) : questionIds(previewKey?.content ?? null).length === 0 ? null : previewChecked ? (
                       <button className="btn" onClick={() => setPreviewChecked(false)}>
                         Try again
                       </button>
@@ -353,21 +355,57 @@ export function LessonEditor() {
                 </span>
                 <input type="checkbox" checked={task.locked} onChange={() => setTaskFlags(classId, itemId, task.id, { locked: !task.locked })} />
               </label>
-              <div className="field" style={{ gap: 6 }}>
-                <span>Layout</span>
-                <span className="seg" role="radiogroup" aria-label="Layout">
-                  {([
-                    ['single', 'One column'],
-                    ['two', 'Two columns'],
-                    ['two-wide', 'Wide left'],
-                  ] as const).map(([k, label]) => (
-                    <button key={k} type="button" role="radio" aria-checked={(task.layout ?? 'single') === k} className={(task.layout ?? 'single') === k ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { layout: k })}>
-                      {label}
-                    </button>
-                  ))}
-                </span>
-                {(task.layout ?? 'single') !== 'single' && <span className="hint">Type / and choose “Next column” where the second column starts. Each column scrolls on its own.</span>}
-              </div>
+              {(() => {
+                const hasCols = JSON.stringify(draft.content).includes('"columnBreak"');
+                return (
+                  <div className="field" style={{ gap: 6 }}>
+                    <span>Columns</span>
+                    {!hasCols ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn small-btn"
+                          style={{ alignSelf: 'flex-start' }}
+                          onClick={() => {
+                            const c = draft.content;
+                            const n = Math.max(1, Math.floor((c.content?.length ?? 1) / 2));
+                            const next = { ...c, content: [...(c.content ?? []).slice(0, n), { type: 'columnBreak' }, ...(c.content ?? []).slice(n)] };
+                            change({ content: next });
+                            setEditorKey(task.id + ':' + Date.now());
+                          }}
+                        >
+                          Split into two columns
+                        </button>
+                        <span className="hint">Or type / and choose “Next column” where the second column should start.</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="seg" role="radiogroup" aria-label="Column widths">
+                          {([
+                            ['two', 'Equal'],
+                            ['two-wide', 'Wide left'],
+                          ] as const).map(([k, label]) => (
+                            <button key={k} type="button" role="radio" aria-checked={(task.layout === 'two-wide' ? 'two-wide' : 'two') === k} className={(task.layout === 'two-wide' ? 'two-wide' : 'two') === k ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { layout: k })}>
+                              {label}
+                            </button>
+                          ))}
+                        </span>
+                        <span className="seg" role="radiogroup" aria-label="Scrolling">
+                          {([
+                            ['separate', 'Scroll separately'],
+                            ['together', 'Scroll together'],
+                          ] as const).map(([k, label]) => (
+                            <button key={k} type="button" role="radio" aria-checked={(task.colScroll ?? 'separate') === k} className={(task.colScroll ?? 'separate') === k ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { colScroll: k })}>
+                              {label}
+                            </button>
+                          ))}
+                        </span>
+                        <span className="hint">Remove the “Next column” line in the text to go back to one column.</span>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="field" style={{ gap: 6 }}>
                 <span>After checking</span>
                 <span className="seg" role="radiogroup" aria-label="After checking">

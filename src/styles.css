@@ -580,3 +580,77 @@ a.btn.primary { color: #ffffff; }
 .person.elsewhere .avatar.small { background: var(--track); color: var(--soft); box-shadow: none; }
 .ptask { font-size: 10px; color: var(--soft); border: 1px solid var(--hair-strong); border-radius: 999px; padding: 0 5px; }
 .on-task { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #eef4ef; color: var(--right); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Reading texts, model answers and information boxes */
+.tbox-node { margin: 12px 0 16px; position: relative; }
+.tbox-tools { display: none; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-bottom: 6px; font-family: var(--sans); font-size: 12px; }
+.tbox-node.is-selected .tbox-tools, .tbox-node:focus-within .tbox-tools, .tbox-node:hover .tbox-tools { display: flex; }
+.tbox-tools select { height: 26px; border-radius: 7px; border: 1px solid var(--hair-strong); background: #fff; font-size: 12px; padding: 0 6px; }
+.tbox-tools .tones { display: inline-flex; gap: 4px; }
+.tbox-tools .tones button { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--hair-strong); cursor: pointer; padding: 0; }
+.tbox-tools .tones button.on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ink); }
+.tbox-tools .symbols { display: inline-flex; gap: 2px; }
+.tbox-tools .symbols button { min-width: 24px; height: 24px; border-radius: 6px; border: 1px solid transparent; background: transparent; cursor: pointer; font-weight: 600; }
+.tbox-tools .symbols button.on { border-color: var(--ink); background: #fff; }
+.tbox-tools .remove { border: 0; background: transparent; color: var(--soft); cursor: pointer; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-left: auto; }
+.tbox-tools .remove:hover { color: var(--wrong); }
+.box-input { border: 0; background: transparent; font: inherit; color: inherit; outline: none; padding: 0; width: 100%; }
+.box-input::placeholder { color: #b0b0b0; }
+.tbox-content > :last-child, .tbox-body > :last-child { margin-bottom: 0; }
+
+.tbox { --tone: #f4f4f3; --tone-line: rgba(51,48,44,0.12); --tone-ink: #5a5a5a; margin: 12px 0 16px; font-family: var(--serif); font-size: 16px; line-height: 1.65; }
+.tbox.t-sand { --tone: #f6f1e8; --tone-line: #e6dccb; --tone-ink: #8a6a3a; }
+.tbox.t-sage { --tone: #eef3ef; --tone-line: #d5e2d8; --tone-ink: #4e6b55; }
+.tbox.t-sky { --tone: #eef2f6; --tone-line: #d6e0ea; --tone-ink: #4f6279; }
+.tbox.t-rose { --tone: #f7eeec; --tone-line: #ead6d2; --tone-ink: #8a4f47; }
+.tbox-title { display: block; font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tone-ink); margin-bottom: 6px; }
+.tbox .tbox-body p { margin: 0 0 10px; }
+
+.tbox.s-box { background: var(--tone); border-radius: 12px; padding: 14px 18px; }
+.tbox.s-info { display: flex; gap: 14px; align-items: flex-start; background: var(--tone); border-radius: 12px; padding: 14px 18px; border-left: 3px solid var(--tone-ink); }
+.tbox.s-info .tbox-main { flex: 1; min-width: 0; }
+.tbox-symbol { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--tone-ink); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: var(--sans); font-weight: 700; font-size: 15px; margin-top: 1px; }
+.tbox.s-paper { background: #fffdf8; padding: 22px 26px 20px; border: 1px solid #ece6dc; box-shadow: 0 1px 0 #ece6dc, 0 10px 24px rgba(51,48,44,0.08); transform: rotate(-0.4deg); clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), 96% 100%, 92% calc(100% - 4px), 88% 100%, 84% calc(100% - 5px), 80% 100%, 76% calc(100% - 3px), 72% 100%, 68% calc(100% - 5px), 64% 100%, 60% calc(100% - 4px), 56% 100%, 52% calc(100% - 6px), 48% 100%, 44% calc(100% - 4px), 40% 100%, 36% calc(100% - 5px), 32% 100%, 28% calc(100% - 3px), 24% 100%, 20% calc(100% - 5px), 16% 100%, 12% calc(100% - 4px), 8% 100%, 4% calc(100% - 6px), 0 100%); }
+.tbox.s-paper .tbox-title { font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); }
+.tbox.s-browser { border: 1px solid var(--hair-strong); border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 8px 20px rgba(51,48,44,0.06); }
+.tbox-chrome { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #f4f4f3; border-bottom: 1px solid var(--hair); font-family: var(--sans); font-size: 12px; }
+.tbox-chrome .dots { display: inline-flex; gap: 5px; }
+.tbox-chrome .dots i { width: 9px; height: 9px; border-radius: 50%; background: #d9d9d7; display: block; }
+.tbox-chrome .url { flex: 1; height: 24px; line-height: 24px; padding: 0 10px; border-radius: 999px; background: #fff; color: var(--muted); border: 1px solid var(--hair); }
+.tbox.s-browser .tbox-title { padding: 14px 20px 0; font-family: var(--serif); font-size: 18px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); margin: 0; }
+.tbox.s-browser .tbox-body { padding: 10px 20px 16px; }
+.tbox.s-email { border: 1px solid var(--hair-strong); border-radius: 12px; background: #fff; overflow: hidden; }
+.tbox-mailhead { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; padding: 10px 18px; border-bottom: 1px solid var(--hair); font-family: var(--sans); font-size: 13px; }
+.tbox-mailhead .k { color: var(--soft); }
+.tbox-mailhead .v { font-weight: 600; }
+.tbox.s-email .tbox-body { padding: 12px 18px 14px; }
+.tbox.s-notebook { background: #fff repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.65em - 1px), #dfe6ee calc(1.65em - 1px), #dfe6ee 1.65em); background-position: 0 14px; padding: 14px 18px 14px 46px; border: 1px solid #e4e4e2; border-radius: 6px; position: relative; }
+.tbox.s-notebook::before { content: ''; position: absolute; left: 32px; top: 0; bottom: 0; width: 1px; background: #e8b9b1; }
+.tbox.s-notebook .tbox-body p { margin: 0; }
+.tbox.s-notebook .tbox-title { font-family: var(--serif); text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--ink); margin: 0; }
+.tbox.s-sticky { background: var(--tone); padding: 18px 20px; width: fit-content; max-width: min(100%, 420px); box-shadow: 0 10px 18px rgba(51,48,44,0.10); transform: rotate(0.8deg); border-radius: 2px 2px 14px 2px; }
+.tbox.s-sticky.t-grey { --tone: #f8f1c9; --tone-ink: #7a6a2a; }
+.tbox.s-speech, .tbox.s-message { display: flex; flex-direction: column; align-items: flex-start; }
+.tbox.side-right { align-items: flex-end; }
+.tbox .speaker { font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--tone-ink); margin: 0 0 4px 12px; }
+.tbox.side-right .speaker { margin: 0 12px 4px 0; text-align: right; }
+.tbox .bubble { position: relative; background: var(--tone); padding: 12px 16px; border-radius: 18px; max-width: min(100%, 560px); }
+.tbox.s-speech .bubble::after { content: ''; position: absolute; bottom: -8px; left: 22px; border: 9px solid transparent; border-top-color: var(--tone); border-bottom: 0; }
+.tbox.s-speech.side-right .bubble::after { left: auto; right: 22px; }
+.tbox.s-message .bubble { border-radius: 18px 18px 18px 4px; font-family: var(--sans); font-size: 15px; }
+.tbox.s-message.side-right .bubble { border-radius: 18px 18px 4px 18px; }
+.tbox .time { font-family: var(--sans); font-size: 11px; color: var(--soft); margin: 4px 8px 0; }
+.tbox .box-input.url { color: var(--muted); }
+
+/* Dragging questions in the editor */
+.drag-handle { cursor: grab; color: #b0b0b0; letter-spacing: -2px; font-size: 13px; padding: 0 4px 0 0; user-select: none; }
+.drag-handle:active { cursor: grabbing; }
+.doc .ProseMirror .gap-node, .doc .ProseMirror .choice-node { cursor: grab; }
+.doc .ProseMirror .ProseMirror-selectednode .gap-chip, .doc .ProseMirror .ProseMirror-selectednode .choice-chip, .doc .ProseMirror .ProseMirror-selectednode .drop-chip { outline: 1.5px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.doc .ProseMirror-dropcursor, .doc .prosemirror-dropcursor-block { background: var(--accent) !important; }
+.task-columns.together .col { max-height: none; overflow: visible; }
+.task-columns.separate .col { max-height: calc(100vh - 290px); overflow: auto; }
+.small-seg { display: inline-flex; }
+.small-seg button { height: 24px; font-size: 11px; }
+.tbox-node .tbox.s-speech .speaker, .tbox-node .tbox.s-message .speaker { min-width: 180px; }
+.tbox-node .tbox.side-right .speaker input { text-align: right; }
