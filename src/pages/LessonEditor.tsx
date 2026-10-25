@@ -38,6 +38,7 @@ export function LessonEditor() {
   const [preview, setPreview] = useState(false);
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const [previewChecked, setPreviewChecked] = useState(false);
+  const [editWhileTeaching, setEditWhileTeaching] = useState(false);
   const { user } = useAuth();
   const [live, setLiveState] = useState<LiveState | null>(null);
   const timer = useRef<number>();
@@ -241,7 +242,7 @@ export function LessonEditor() {
                   </button>
                 )}
               </div>
-            ) : preview ? (
+            ) : preview || (teachingHere && !editWhileTeaching) ? (
               <div className="frame-inner">
                 <div className="frame-head">
                   <h1 className="task-title">{draft.title}</h1>
@@ -252,14 +253,20 @@ export function LessonEditor() {
                     content={previewKey?.content ?? null}
                     responses={previewResponses}
                     onChange={(id, v) => setPreviewResponses((r) => ({ ...r, [id]: v }))}
-                    results={previewChecked ? previewKey?.key : null}
+                    results={preview && previewChecked ? previewKey?.key : null}
                     hideAnswers={task.afterCheck === 'retry'}
+                    disabled={!preview}
+                    layout={task.layout ?? 'single'}
                   />
                 </div>
                 <div className="frame-foot">
-                  <span className="hint">Preview · answers here are not saved</span>
+                  <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · the task is read-only so you don’t change it by accident'}</span>
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                    {previewChecked ? (
+                    {!preview ? (
+                      <button className="btn" onClick={() => setEditWhileTeaching(true)}>
+                        Edit task
+                      </button>
+                    ) : previewChecked ? (
                       <button className="btn" onClick={() => setPreviewChecked(false)}>
                         Try again
                       </button>
@@ -274,6 +281,11 @@ export function LessonEditor() {
             ) : (
               <div className="frame-inner">
                 <div className="frame-head">
+                  {teachingHere && (
+                    <button type="button" className="btn small-btn done-edit" onClick={() => (flush(), setEditWhileTeaching(false))}>
+                      Done editing
+                    </button>
+                  )}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   <input
                     className="task-instr input"
@@ -310,6 +322,21 @@ export function LessonEditor() {
                 </span>
                 <input type="checkbox" checked={task.locked} onChange={() => setTaskFlags(classId, itemId, task.id, { locked: !task.locked })} />
               </label>
+              <div className="field" style={{ gap: 6 }}>
+                <span>Layout</span>
+                <span className="seg" role="radiogroup" aria-label="Layout">
+                  {([
+                    ['single', 'One column'],
+                    ['two', 'Two columns'],
+                    ['two-wide', 'Wide left'],
+                  ] as const).map(([k, label]) => (
+                    <button key={k} type="button" role="radio" aria-checked={(task.layout ?? 'single') === k} className={(task.layout ?? 'single') === k ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { layout: k })}>
+                      {label}
+                    </button>
+                  ))}
+                </span>
+                {(task.layout ?? 'single') !== 'single' && <span className="hint">Type / and choose “Next column” where the second column starts. Each column scrolls on its own.</span>}
+              </div>
               <div className="field" style={{ gap: 6 }}>
                 <span>After checking</span>
                 <span className="seg" role="radiogroup" aria-label="After checking">

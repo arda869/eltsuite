@@ -7,6 +7,8 @@ import type { ClassDoc, Item } from '../lib/classes';
 import {
   answerRef,
   isCorrect,
+  isAnswered,
+  scoreTask,
   loadKey,
   questionIds,
   saveResponses,
@@ -75,10 +77,10 @@ export function LearnerLesson() {
   const task = tasks.find((t) => t.id === current);
   const index = tasks.findIndex((t) => t.id === current);
   const qs = useMemo(() => questionIds(task?.content ?? null), [task]);
-  const answered = qs.filter((q) => responses[q.id] !== undefined && String(responses[q.id]).trim() !== '').length;
+  const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
   const base = user && task ? { learnerUid: user.uid, learnerId, itemId, taskId: task.id } : null;
 
-  function change(id: string, v: string | number) {
+  function change(id: string, v: Responses[string]) {
     if (!base || checked || task?.locked) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
@@ -97,8 +99,8 @@ export function LearnerLesson() {
     try {
       await saveResponses(classId, base, responses, true);
       const k = await loadKey(classId, itemId, base.taskId);
-      const score = qs.filter((q) => isCorrect(k[q.id], responses[q.id])).length;
-      await saveResponses(classId, base, responses, true, { score, total: qs.length });
+      const r = scoreTask(qs, k, responses);
+      await saveResponses(classId, base, responses, true, { score: r.score, total: r.total });
       setKey(k);
       setChecked(true);
     } catch (e) {
@@ -112,14 +114,16 @@ export function LearnerLesson() {
   async function tryWrongAgain() {
     if (!base || !key) return;
     const kept: Responses = {};
-    for (const q of qs) if (isCorrect(key[q.id], responses[q.id])) kept[q.id] = responses[q.id];
+    for (const q of qs) if (isCorrect(key[q.id], responses[q.id]) || q.type === 'writing') kept[q.id] = responses[q.id];
     setResponses(kept);
     setChecked(false);
     setKey(null);
     await saveResponses(classId, base, kept, false);
   }
 
-  const score = key ? qs.filter((q) => isCorrect(key[q.id], responses[q.id])).length : 0;
+  const result = key ? scoreTask(qs, key, responses) : { score: 0, total: 0, hasWriting: false };
+  const score = result.score;
+  const retryMode = task?.afterCheck === 'retry';
   const th = theme(c?.themeColor);
   const showScore = true;
 
@@ -184,12 +188,18 @@ export function LearnerLesson() {
                   results={checked ? key : null}
                   disabled={task.locked}
                   hideAnswers={task.afterCheck === 'retry'}
+                  layout={task.layout ?? 'single'}
                 />
               </div>
               <div className="frame-foot">
                 {checked && key && showScore ? (
                   <span className="score">
-                    <span className="big">{score}</span> of {qs.length} correct
+                    {result.total > 0 ? (
+                      <>
+                        <span className="big">{score}</span> of {result.total} correct
+                      </>
+                    ) : null}
+                    {result.hasWriting && <span className="hint">{result.total > 0 ? ' · ' : ''}Your writing has gone to your teacher</span>}
                   </span>
                 ) : (
                   <span className="hint">
@@ -202,8 +212,8 @@ export function LearnerLesson() {
                   </button>
                   {qs.length > 0 &&
                     (checked ? (
-                      score < qs.length && (
-                        <button className={'btn' + (task.afterCheck === 'retry' ? ' primary' : '')} onClick={tryWrongAgain}>
+                      retryMode && score < result.total && (
+                        <button className="btn primary" onClick={tryWrongAgain}>
                           Try the wrong ones again
                         </button>
                       )

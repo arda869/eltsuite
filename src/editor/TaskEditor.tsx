@@ -4,7 +4,12 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 import { Choice, Gap, Mcq, newChoice, newGap } from './nodes';
+import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 
 type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text'; run: (e: Editor) => void };
 
@@ -13,6 +18,15 @@ const COMMANDS: Cmd[] = [
   { key: 'choice', label: 'Choice with letters', hint: 'a, b or c inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('letters')).run() },
   { key: 'radio', label: 'Choice with circles', hint: 'Tick one circle inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
   { key: 'dropdown', label: 'Choice from a list', hint: 'Pick a word from a drop-down list', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
+  { key: 'multi', label: 'Choice with more than one answer', hint: 'Learners pick all the right options', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newChoice('letters'), attrs: { ...newChoice('letters').attrs, multi: true, correct: [] } }).run() },
+  { key: 'truefalse', label: 'True or false', hint: 'True / False inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False'])).run() },
+  { key: 'notgiven', label: 'True, false or not given', hint: 'For reading tasks', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False', 'Not given'])).run() },
+  { key: 'match', label: 'Matching', hint: 'Match items on the left to the right', group: 'Questions', run: (e) => e.chain().focus().insertContent([newMatch(), { type: 'paragraph' }]).run() },
+  { key: 'drop', label: 'Drag-and-drop gap', hint: 'A gap filled from the word bank', group: 'Questions', run: (e) => e.chain().focus().insertContent(newDropGap()).run() },
+  { key: 'bank', label: 'Word bank', hint: 'The words for drag-and-drop gaps', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWordBank(), { type: 'paragraph' }]).run() },
+  { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
+  { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
+  { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
   { key: 'list', label: 'Bulleted list', hint: 'A simple list', group: 'Text', run: (e) => e.chain().focus().toggleBulletList().run() },
   { key: 'numbered', label: 'Numbered list', hint: 'A list with numbers', group: 'Text', run: (e) => e.chain().focus().toggleOrderedList().run() },
@@ -26,6 +40,7 @@ const COMMANDS: Cmd[] = [
       if (src && /^https:\/\//.test(src)) e.chain().focus().setImage({ src }).run();
     },
   },
+  { key: 'table', label: 'Table', hint: '3 × 3, with a header row', group: 'Text', run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { key: 'quote', label: 'Quote', hint: 'Set a passage apart', group: 'Text', run: (e) => e.chain().focus().toggleBlockquote().run() },
 ];
 
@@ -83,10 +98,20 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
     extensions: [
       StarterKit.configure({ heading: { levels: [3] } }),
       Underline,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Image,
       Gap,
       Mcq,
       Choice,
+      DropGap,
+      WordBank,
+      Match,
+      Order,
+      Writing,
+      ColumnBreak,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],
     content,
@@ -118,6 +143,11 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
     return () => dom.removeEventListener('keydown', onKey, true);
   }, [editor, slash]);
 
+  const slashRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    slashRef.current?.querySelector('.slash-item.on')?.scrollIntoView({ block: 'nearest' });
+  }, [slash.index, slash.state]);
+
   if (!editor) return null;
 
   return (
@@ -128,15 +158,26 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
         {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'U')}
         {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), 'H')}
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '•')}
+        {BTN('Table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), '▦')}
+        {editor.isActive('table') && (
+          <>
+            {BTN('Add row', false, () => editor.chain().focus().addRowAfter().run(), '+ Row')}
+            {BTN('Add column', false, () => editor.chain().focus().addColumnAfter().run(), '+ Column')}
+            {BTN('Delete row', false, () => editor.chain().focus().deleteRow().run(), '− Row')}
+            {BTN('Delete column', false, () => editor.chain().focus().deleteColumn().run(), '− Column')}
+            {BTN('Delete table', false, () => editor.chain().focus().deleteTable().run(), 'Delete table')}
+          </>
+        )}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
         {BTN('Insert multiple choice', false, () => editor.chain().focus().insertContent(newChoice('letters')).run(), '+ Choice')}
         {BTN('Insert dropdown', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ List')}
+        {BTN('More question types', false, () => editor.chain().focus().insertContent(' /').run(), '/ More')}
       </div>
       <div className="editor-host">
         <EditorContent editor={editor} className="doc" />
         {slash.state && (
-          <div className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
+          <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
             {(['Questions', 'Text'] as const).map((g) => {
               const list = slash.items.filter((c) => c.group === g);
               if (!list.length) return null;

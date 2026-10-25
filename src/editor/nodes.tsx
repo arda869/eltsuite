@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { newId } from '../lib/tasks';
+import { NoteFields } from './NoteFields';
 
 const LETTERS = 'abcdefghij';
 
@@ -55,6 +56,7 @@ function GapView({ node, updateAttributes, selected }: NodeViewProps) {
             }}
           />
           <span className="hint">Separate other accepted answers with |</span>
+          <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>
       )}
     </NodeViewWrapper>
@@ -71,6 +73,8 @@ export const Gap = Node.create({
     return {
       id: { default: null },
       answers: { default: [] },
+      hint: { default: '' },
+      feedback: { default: '' },
     };
   },
   parseHTML() {
@@ -179,7 +183,12 @@ const DISPLAYS: { key: ChoiceDisplay; label: string }[] = [
 
 function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
   const options: string[] = node.attrs.options ?? [];
-  const correct: number = node.attrs.correct ?? -1;
+  const multi: boolean = !!node.attrs.multi;
+  const correctList: number[] = multi ? (Array.isArray(node.attrs.correct) ? node.attrs.correct : []) : typeof node.attrs.correct === 'number' && node.attrs.correct >= 0 ? [node.attrs.correct] : [];
+  const correct: number = correctList[0] ?? -1;
+  const isRight = (i: number) => correctList.includes(i);
+  const mark = (i: number) =>
+    multi ? updateAttributes({ correct: isRight(i) ? correctList.filter((x) => x !== i) : [...correctList, i] }) : updateAttributes({ correct: i });
   const display: ChoiceDisplay = node.attrs.display ?? 'letters';
   const filled = options.filter((o) => o.trim());
   const [open, setOpen] = useState(filled.length === 0);
@@ -209,7 +218,7 @@ function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
 
   const summary = filled.length ? (
     filled.map((o, i) => (
-      <span key={i} className={i === correct ? 'c-opt right' : 'c-opt'}>
+      <span key={i} className={isRight(i) ? 'c-opt right' : 'c-opt'}>
         {display === 'letters' && <span className="c-letter">{LETTERS[i]}</span>}
         {display === 'radio' && <span className="c-radio" />}
         {o}
@@ -238,10 +247,10 @@ function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
             <span key={i} className="mcq-option">
               <button
                 type="button"
-                className={'letter' + (i === correct ? ' right' : '')}
-                title={i === correct ? 'Correct answer' : 'Mark as correct'}
-                aria-label={i === correct ? 'Correct answer' : 'Mark as correct'}
-                onClick={() => updateAttributes({ correct: i })}
+                className={'letter' + (isRight(i) ? ' right' : '')}
+                title={isRight(i) ? 'Correct answer' : 'Mark as correct'}
+                aria-label={isRight(i) ? 'Correct answer' : 'Mark as correct'}
+                onClick={() => mark(i)}
               >
                 {LETTERS[i]}
               </button>
@@ -262,17 +271,29 @@ function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
                   }
                   if (e.key === 'Backspace' && !o && options.length > 2) {
                     e.preventDefault();
-                    updateAttributes({ options: options.filter((_, k) => k !== i), correct: correct === i ? -1 : correct > i ? correct - 1 : correct });
+                    updateAttributes({
+                      options: options.filter((_, k) => k !== i),
+                      correct: multi ? correctList.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x)) : correct === i ? -1 : correct > i ? correct - 1 : correct,
+                    });
                     setFocusIndex(Math.max(0, i - 1));
                   }
                   if (e.key === 'Escape') setOpen(false);
                 }}
               />
-              {i === correct && <span className="right-note">correct</span>}
+              {isRight(i) && <span className="right-note">correct</span>}
             </span>
           ))}
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={multi}
+              onChange={() => updateAttributes(multi ? { multi: false, correct: correctList[0] ?? -1 } : { multi: true, correct: correctList })}
+            />
+            More than one correct answer
+          </label>
           <span className="hint">Enter for the next option · click a letter to mark it correct</span>
-          {correct < 0 && filled.length > 0 && <span className="error small">Mark the correct option.</span>}
+          <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
+          {correctList.length === 0 && filled.length > 0 && <span className="error small">Mark the correct option.</span>}
           <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-end' }} onClick={() => setOpen(false)}>
             Done
           </button>
@@ -293,7 +314,10 @@ export const Choice = Node.create({
       id: { default: null },
       options: { default: ['', '', ''] },
       correct: { default: -1 },
+      multi: { default: false },
       display: { default: 'letters' },
+      hint: { default: '' },
+      feedback: { default: '' },
     };
   },
   parseHTML() {
@@ -307,4 +331,7 @@ export const Choice = Node.create({
   },
 });
 
-export const newChoice = (display: ChoiceDisplay = 'letters') => ({ type: 'choice', attrs: { id: newId(), options: ['', '', ''], correct: -1, display } });
+export const newChoice = (display: ChoiceDisplay = 'letters', options: string[] = ['', '', '']) => ({
+  type: 'choice',
+  attrs: { id: newId(), options, correct: -1, multi: false, display },
+});
