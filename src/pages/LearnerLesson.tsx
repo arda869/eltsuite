@@ -17,6 +17,7 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
+import { isLive, liveRef, type LiveState } from '../lib/live';
 import { Wordmark } from '../components/Wordmark';
 import { TaskRenderer } from '../components/TaskRenderer';
 
@@ -33,6 +34,7 @@ export function LearnerLesson() {
   const [checked, setChecked] = useState(false);
   const [key, setKey] = useState<AnswerKey | null>(null);
   const [busy, setBusy] = useState(false);
+  const [live, setLiveState] = useState<LiveState | null>(null);
   const timer = useRef<number>();
   const dirty = useRef(false);
 
@@ -47,6 +49,12 @@ export function LearnerLesson() {
     });
     return () => (u1(), u2(), u3());
   }, [classId, itemId]);
+
+  useEffect(() => {
+    if (!classId) return;
+    return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
+  }, [classId]);
+  const teacherAt = isLive(live) && live?.itemId === itemId ? live.taskId : '';
 
   // Load this learner's saved answers for the current task.
   useEffect(() => {
@@ -142,6 +150,12 @@ export function LearnerLesson() {
             <div key={t.id} className={'task-row' + (t.id === current ? ' on' : '')}>
               <button type="button" className="task-pick" onClick={() => setCurrent(t.id)}>
                 <span>{t.title}</span>
+                {teacherAt === t.id && (
+                  <span className="teacher-here" title={`${live?.teacherName ?? 'Your teacher'} is on this task`}>
+                    <span className="live-dot" aria-hidden="true" />
+                    {live?.teacherName ?? 'Teacher'}
+                  </span>
+                )}
               </button>
             </div>
           ))}
@@ -157,7 +171,20 @@ export function LearnerLesson() {
                 {task.locked && <span className="hint">Your teacher has locked this task for now.</span>}
               </div>
               <div className="frame-body">
-                <TaskRenderer content={task.content} responses={responses} onChange={change} results={checked ? key : null} disabled={task.locked} />
+                {teacherAt && teacherAt !== task.id && (
+                  <button type="button" className="teacher-banner" onClick={() => setCurrent(teacherAt)}>
+                    <span className="live-dot" aria-hidden="true" />
+                    {live?.teacherName ?? 'Your teacher'} is on “{tasks.find((t) => t.id === teacherAt)?.title ?? 'another task'}”. Go there
+                  </button>
+                )}
+                <TaskRenderer
+                  content={task.content}
+                  responses={responses}
+                  onChange={change}
+                  results={checked ? key : null}
+                  disabled={task.locked}
+                  hideAnswers={task.afterCheck === 'retry'}
+                />
               </div>
               <div className="frame-foot">
                 {checked && key && showScore ? (
@@ -176,7 +203,7 @@ export function LearnerLesson() {
                   {qs.length > 0 &&
                     (checked ? (
                       score < qs.length && (
-                        <button className="btn" onClick={tryWrongAgain}>
+                        <button className={'btn' + (task.afterCheck === 'retry' ? ' primary' : '')} onClick={tryWrongAgain}>
                           Try the wrong ones again
                         </button>
                       )

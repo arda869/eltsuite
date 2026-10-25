@@ -18,6 +18,8 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
+import { isLive, liveRef, setLive, type LiveState } from '../lib/live';
+import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -36,6 +38,8 @@ export function LessonEditor() {
   const [preview, setPreview] = useState(false);
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const [previewChecked, setPreviewChecked] = useState(false);
+  const { user } = useAuth();
+  const [live, setLiveState] = useState<LiveState | null>(null);
   const timer = useRef<number>();
   const pending = useRef<{ taskId: string; patch: Partial<Draft> } | null>(null);
 
@@ -60,6 +64,26 @@ export function LessonEditor() {
   );
 
   const task = tasks.find((t) => t.id === selected);
+
+  useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
+  const teachingHere = isLive(live) && live?.itemId === itemId;
+
+  // While teaching, tell learners which task the teacher is on.
+  useEffect(() => {
+    if (teachingHere && selected && live?.taskId !== selected) setLive(classId, { taskId: selected }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [teachingHere, selected]);
+
+  async function toggleTeaching() {
+    if (teachingHere) await setLive(classId, { teaching: false });
+    else
+      await setLive(classId, {
+        teaching: true,
+        itemId,
+        taskId: selected,
+        teacherName: (user?.displayName || user?.email?.split('@')[0] || 'Your teacher').split(' ')[0],
+      });
+  }
 
   // Load the selected task (with its answer key) into the editor once per selection.
   useEffect(() => {
@@ -156,6 +180,10 @@ export function LessonEditor() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
+        <button type="button" className={'btn small-btn teach-btn' + (teachingHere ? ' on' : '')} onClick={toggleTeaching} title="Shows learners which task you are on">
+          {teachingHere && <span className="live-dot" aria-hidden="true" />}
+          {teachingHere ? 'Teaching · stop' : 'Start teaching'}
+        </button>
         <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
       </TopBar>
 
@@ -216,6 +244,7 @@ export function LessonEditor() {
                     responses={previewResponses}
                     onChange={(id, v) => setPreviewResponses((r) => ({ ...r, [id]: v }))}
                     results={previewChecked ? previewKey?.key : null}
+                    hideAnswers={task.afterCheck === 'retry'}
                   />
                 </div>
                 <div className="frame-foot">
@@ -272,6 +301,20 @@ export function LessonEditor() {
                 </span>
                 <input type="checkbox" checked={task.locked} onChange={() => setTaskFlags(classId, itemId, task.id, { locked: !task.locked })} />
               </label>
+              <div className="field" style={{ gap: 6 }}>
+                <span>After checking</span>
+                <span className="seg" role="radiogroup" aria-label="After checking">
+                  <button type="button" role="radio" aria-checked={task.afterCheck !== 'retry'} className={task.afterCheck !== 'retry' ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { afterCheck: 'reveal' })}>
+                    Show answers
+                  </button>
+                  <button type="button" role="radio" aria-checked={task.afterCheck === 'retry'} className={task.afterCheck === 'retry' ? 'on' : ''} onClick={() => setTaskFlags(classId, itemId, task.id, { afterCheck: 'retry' })}>
+                    Try again
+                  </button>
+                </span>
+                <span className="hint">
+                  {task.afterCheck === 'retry' ? 'Learners only see which answers are right or wrong, then try the wrong ones again.' : 'Learners see the correct answers after they check.'}
+                </span>
+              </div>
               <h2>Tips</h2>
               <p className="hint" style={{ margin: 0 }}>
                 Type <strong>/</strong> in the text for a gap or a multiple-choice question. In a gap, separate other accepted answers with |, for example

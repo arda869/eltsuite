@@ -19,6 +19,7 @@ export type Task = {
   order: number;
   hidden: boolean;
   locked: boolean;
+  afterCheck?: 'reveal' | 'retry'; // show the correct answers, or only right/wrong so learners try again
 };
 
 export type KeyEntry = { kind: 'gap'; answers: string[] } | { kind: 'mcq'; correct: number };
@@ -127,7 +128,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   await batch.commit();
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {

@@ -9,6 +9,7 @@ type Props = {
   responses: Responses;
   onChange?: (id: string, value: string | number) => void;
   results?: AnswerKey | null; // when present, show right and wrong
+  hideAnswers?: boolean; // show only right or wrong, not the correct answer
   disabled?: boolean;
 };
 
@@ -22,7 +23,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
   return out;
 }
 
-export function TaskRenderer({ content, responses, onChange, results, disabled }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers }: Props) {
   let n = 0;
   const numbers: Record<string, number> = {};
   const walkNumbers = (node: JSONContent) => {
@@ -62,7 +63,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled }
               <path d="M5 12l5 5 9-10" />
             </svg>
           ) : (
-            entry?.kind === 'gap' && entry.answers[0] && <span className="fix">{entry.answers[0]}</span>
+            !hideAnswers && entry?.kind === 'gap' && entry.answers[0] && <span className="fix">{entry.answers[0]}</span>
           )}
         </span>
       );
@@ -103,7 +104,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled }
             const isChosen = Number(chosen) === i && chosen !== undefined && chosen !== '';
             let state = isChosen ? 'on' : '';
             if (results && entry?.kind === 'mcq') {
-              if (i === entry.correct) state = 'right';
+              if (i === entry.correct && (!hideAnswers || isChosen)) state = 'right';
               else if (isChosen) state = 'wrong';
               else state = '';
             }
@@ -143,7 +144,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled }
                 <path d="M5 12l5 5 9-10" />
               </svg>
             ) : (
-              correct >= 0 && <span className="fix">{options[correct]}</span>
+              !hideAnswers && correct >= 0 && <span className="fix">{options[correct]}</span>
             )}
           </span>
         );
@@ -165,7 +166,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled }
         {options.map((o, i) => {
           if (!o.trim()) return null;
           let state = chosen === i ? 'on' : '';
-          if (results) state = i === correct ? 'right' : chosen === i ? 'wrong' : '';
+          if (results) state = i === correct && (!hideAnswers || chosen === i) ? 'right' : chosen === i ? 'wrong' : '';
           return (
             <label key={i} className={'opt ' + state}>
               <input type="radio" name={id} checked={chosen === i} disabled={disabled || !!results} onChange={() => onChange?.(id, i)} />

@@ -359,3 +359,13 @@ a.btn.primary { color: #ffffff; }
 .gap-input:focus { outline: none; background: #f7f7f6; border-bottom: 1.5px solid var(--accent); padding-bottom: 0.5px; }
 .gap-input:not(:placeholder-shown) { border-bottom-color: #868686; }
 .drop-input { border-bottom: 1px solid #868686; }
+
+/* Teacher position */
+.teach-btn { margin-left: auto; gap: 6px; }
+.teach-btn.on { border-color: var(--accent); color: var(--accent-text); }
+.topbar .teach-btn + .save-state { margin-left: 4px; }
+.teacher-here { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--accent-text); white-space: nowrap; flex-shrink: 0; }
+.teacher-here .live-dot { width: 6px; height: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.task-pick { align-items: center; }
+.teacher-banner { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 0; border: 0; background: transparent; font-family: var(--sans); font-size: 13px; color: var(--accent-text); cursor: pointer; text-align: left; }
+.teacher-banner:hover { text-decoration: underline; }

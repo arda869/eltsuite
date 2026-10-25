@@ -76,6 +76,12 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Where the teacher is in a lesson
+      match /live/{docId} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId);
+      }
+
       // Roster: teacher only
       match /learners/{learnerId} {
         allow read, write: if teachesClass(classId);

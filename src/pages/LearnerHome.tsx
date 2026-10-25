@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
+import { isLive, liveRef, type LiveState } from '../lib/live';
 import { Wordmark } from '../components/Wordmark';
 import { initials } from '../components/TopBar';
 
@@ -14,6 +15,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [topics, setTopics] = useState<Topic[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [menu, setMenu] = useState(false);
+  const [live, setLiveState] = useState<LiveState | null>(null);
 
   useEffect(() => {
     const unsubs = [
@@ -21,6 +23,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic)), () => {}),
       onSnapshot(collection(db, 'classes', classId, 'items'), (s) => setItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item)), () => {}),
     ];
+    unsubs.push(onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}));
     return () => unsubs.forEach((u) => u());
   }, [classId]);
 
@@ -31,7 +34,8 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
     .map((tp) => ({ tp, list: visible.filter((i) => i.topicId === tp.id).sort((a, b) => a.order - b.order) }))
     .filter((g) => g.list.length > 0);
   const firstName = name.split(' ')[0];
-  const showCall = c?.meeting?.url && c.meeting.visibility === 'always';
+  const liveNow = isLive(live) ? items.find((i) => i.id === live!.itemId) : undefined;
+  const showCall = !!c?.meeting?.url && (c.meeting.visibility === 'always' || !!liveNow);
 
   return (
     <div className="shell" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
@@ -65,7 +69,26 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
             <span className="sub">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
           </div>
 
-          {showCall && (
+          {liveNow && (
+            <section className="live-card">
+              <span className="live-dot" aria-hidden="true" />
+              <span style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <span className="eyebrow accent">Live now</span>
+                <span style={{ fontFamily: 'var(--serif)', fontSize: 16 }}>{liveNow.title}</span>
+                <span className="hint">{live?.teacherName ?? 'Your teacher'} is teaching</span>
+              </span>
+              {showCall && (
+                <a className="btn" href={c!.meeting!.url} target="_blank" rel="noopener noreferrer">
+                  Join call
+                </a>
+              )}
+              <Link className="btn primary" to={`/learn/${liveNow.id}`}>
+                Join lesson
+              </Link>
+            </section>
+          )}
+
+          {showCall && !liveNow && (
             <section className="live-card">
               <span className="live-dot" aria-hidden="true" />
               <span style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
