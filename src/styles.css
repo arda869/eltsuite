@@ -692,3 +692,17 @@ a.btn.primary { color: #ffffff; }
 .section-label:first-of-type { padding-top: 4px; }
 .list-adds { display: flex; gap: 6px; }
 .list-adds .btn { flex: 1; }
+
+/* Page style: torn bottom edge with a visible outline and shadow */
+.paper-wrap { margin: 12px 0 16px; filter: drop-shadow(0 0 0.7px rgba(51,48,44,0.35)) drop-shadow(0 8px 14px rgba(51,48,44,0.08)); }
+.paper-wrap .tbox.s-paper { margin: 0; border: 0; box-shadow: none; }
+.tone-label { font-size: 11px; color: var(--soft); }
+
+/* Colour for every text box style (grey keeps the default look) */
+.tbox.s-paper:not(.t-grey) { background: var(--tone); }
+.tbox.s-browser:not(.t-grey) .tbox-body, .tbox.s-browser:not(.t-grey) .tbox-title { background: var(--tone); }
+.tbox.s-browser:not(.t-grey) .tbox-chrome { background: color-mix(in srgb, var(--tone) 70%, #e8e8e6); }
+.tbox.s-email:not(.t-grey) .tbox-body { background: var(--tone); }
+.tbox.s-email:not(.t-grey) .tbox-mailhead { background: color-mix(in srgb, var(--tone) 60%, #ffffff); }
+.tbox.s-notebook:not(.t-grey) { background-color: var(--tone); }
+.tbox.s-browser:not(.t-grey), .tbox.s-email:not(.t-grey) { border-color: var(--tone-line); }

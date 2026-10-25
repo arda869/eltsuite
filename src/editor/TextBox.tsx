@@ -92,10 +92,19 @@ export function BoxFrame({ attrs, children, editable, onMeta }: { attrs: BoxAttr
           {attrs.style === 'message' && field('meta', '19:42', 'time')}
         </div>
       );
+    case 'paper':
+      return (
+        <div className="paper-wrap">
+          <div className={cls}>
+            {field('label', 'Title (optional)', 'tbox-title')}
+            <div className="tbox-body">{children}</div>
+          </div>
+        </div>
+      );
     default:
       return (
         <div className={cls}>
-          {field('label', attrs.style === 'paper' ? 'Title (optional)' : 'Label (optional)', 'tbox-title')}
+          {field('label', 'Label (optional)', 'tbox-title')}
           <div className="tbox-body">{children}</div>
         </div>
       );
@@ -127,7 +136,10 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected }: NodeViewP
             ))}
           </span>
         )}
-        {(attrs.style === 'info' || attrs.style === 'box' || attrs.style === 'sticky' || attrs.style === 'speech' || attrs.style === 'message') && (
+        {(
+          <span className="tone-label">Colour</span>
+        )}
+        {(
           <span className="tones" role="radiogroup" aria-label="Colour">
             {BOX_TONES.map((t) => (
               <button key={t.key} type="button" role="radio" aria-checked={attrs.tone === t.key} title={t.label} className={attrs.tone === t.key ? 'on' : ''} style={{ background: t.bg }} onClick={() => updateAttributes({ tone: t.key })} />
