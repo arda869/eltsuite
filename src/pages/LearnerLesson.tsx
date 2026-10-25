@@ -15,6 +15,7 @@ import {
   tasksCol,
   type AnswerDoc,
   type Mark,
+  type Correction,
   type AnswerKey,
   type Responses,
   type Task,
@@ -26,6 +27,8 @@ import { NoticeToasts } from '../components/NoticeToasts';
 import { AnnouncementCards, PickedBanner, SignalBar, SpotlightCard, TimerChip } from '../components/LiveExtras';
 import { PointerDot } from '../components/PointerDot';
 import { usePointer } from '../lib/session';
+import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
+import { AnnotationLayer } from '../components/AnnotationLayer';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { TEXT_SCALE } from '../lib/auth';
@@ -114,6 +117,7 @@ export function LearnerLesson() {
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
       setFlags(d?.flags ?? []);
       setMarks(d?.marks ?? {});
+      setCorrections(d?.corrections ?? {});
       if (dirty.current) return;
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
@@ -135,6 +139,14 @@ export function LearnerLesson() {
   const [flags, setFlags] = useState<string[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [pendingSave, setPendingSave] = useState(false);
+  const [corrections, setCorrections] = useState<Record<string, Correction>>({});
+  const anns = useAnnotations(classId, current, { teacher: false, uid: user?.uid });
+  const resubmit = async (qid: string) => {
+    if (!base || !user) return;
+    window.clearTimeout(timer.current);
+    await saveResponses(classId, base, responses, checked).catch(() => {});
+    await setDoc(answerRef(classId, base.taskId, user.uid), { ...base, corrections: { [qid]: { ...corrections[qid], status: 'resubmitted', at: Date.now() } } }, { merge: true });
+  };
   function toggleFlag(id: string) {
     if (!base) return;
     const next = flags.includes(id) ? flags.filter((f) => f !== id) : [...flags, id];
@@ -143,7 +155,7 @@ export function LearnerLesson() {
   }
 
   function change(id: string, v: Responses[string]) {
-    if (!base || checked || task?.locked) return;
+    if (!base || task?.locked || (checked && corrections[id]?.status !== 'open')) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
     dirty.current = true;
@@ -305,6 +317,7 @@ export function LearnerLesson() {
               </div>
               <div className="frame-body" ref={bodyRef}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
+                <AnnotationLayer container={bodyRef} annotations={anns} classId={classId} taskId={task.id} canAnnotate={false} me={{ uid: user?.uid ?? '', name: profile?.role === 'learner' ? profile.displayName : '', teacher: false }} />
                 {synced && (
                   <div className="sync-banner" role="status">
                     <span className="live-dot" aria-hidden="true" />
@@ -329,6 +342,7 @@ export function LearnerLesson() {
                   colScroll={task.colScroll ?? 'separate'}
                   flags={flags}
                   teacherMarks={marks}
+                  writingReview={{ anns, corrections, codes: c?.codes ?? DEFAULT_CODES, onResubmit: resubmit }}
                   shared={shared}
                   classmates={classmates}
                   classId={classId}

@@ -86,7 +86,7 @@ service cloud.firestore {
           && answerId == request.resource.data.taskId + '_' + request.auth.uid
           && request.resource.data.get('marks', {}) == resource.data.get('marks', {});
         // The teacher only adds marks and comments.
-        allow update: if teachesClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks']);
+        allow update: if teachesClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'corrections']);
         allow delete: if teachesClass(classId);
       }
 
@@ -121,6 +121,17 @@ service cloud.firestore {
         allow update: if teachesClass(classId)
           || (memberOf(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acks'])
               && request.resource.data.acks.diff(resource.data.get('acks', {})).affectedKeys().hasOnly([get(/databases/$(database)/documents/users/$(request.auth.uid)).data.learnerId]));
+      }
+
+      // Annotations on task text and on long answers
+      match /annotations/{aid} {
+        allow read: if teachesClass(classId)
+          || (memberOf(classId) && (resource.data.visibility == 'class' || resource.data.get('learnerUid', '') == request.auth.uid));
+        allow create, delete: if teachesClass(classId);
+        // Learners can only add replies to threads they can see.
+        allow update: if teachesClass(classId)
+          || (memberOf(classId) && (resource.data.visibility == 'class' || resource.data.get('learnerUid', '') == request.auth.uid)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replies']));
       }
 
       // Tag notifications

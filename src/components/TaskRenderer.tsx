@@ -8,6 +8,9 @@ import { Icon } from '../editor/Icons';
 import { Sym } from '../editor/Symbols';
 import { Board, type BoardAttrs, type BoardMe } from './Board';
 import { MentionTag } from '../editor/Mention';
+import { AnswerMarkup, CodeKey } from './AnswerMarkup';
+import type { Annotation, Code } from '../lib/annotations';
+import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
 import { LinkCardView } from '../editor/LinkCard';
 import { IpaText } from '../editor/Ipa';
@@ -49,6 +52,7 @@ type Props = {
   classId?: string; // for audio clips
   boardMe?: BoardMe; // who is posting on message boards
   teacherMarks?: Record<string, { score: number | null; comment: string }>; // teacher's marks on long answers
+  writingReview?: { anns: Annotation[]; corrections: Record<string, Correction>; codes: Code[]; onResubmit: (qid: string) => void };
 };
 
 const TICK = (
@@ -133,7 +137,7 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -587,14 +591,28 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     const aim = min && max ? `${min}–${max} words` : min ? `at least ${min} words` : max ? `up to ${max} words` : '';
     const under = !!min && count < min;
     const over = !!max && count > max;
+    const corr = writingReview?.corrections?.[id];
+    const myAnns = (writingReview?.anns ?? []).filter((a) => a.target === 'answer' && a.qid === id);
+    const fixing = corr?.status === 'open';
+    const wLocked = locked && !fixing;
     return (
       <div key={key} className="writing-q">
         {num(id)}
+        {(myAnns.length > 0 || corr) && (
+          <div className="wr-review">
+            <span className="eyebrow">
+              {corr?.status === 'open' ? 'Your teacher marked some things to correct' : corr?.status === 'resubmitted' ? 'Corrections sent. Your teacher will check them.' : corr?.status === 'approved' ? 'Your teacher approved your corrections' : 'Your teacher’s notes'}
+            </span>
+            <AnswerMarkup text={corr?.before ?? text} anns={myAnns} codes={writingReview?.codes ?? []} />
+            <CodeKey codes={writingReview?.codes ?? []} />
+            {fixing && <span className="hint">Correct your writing in the box below, then send it again.</span>}
+          </div>
+        )}
         {rich ? (
           <RichAnswer
             value={raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as JSONContent) : null}
             onChange={(v) => onChange?.(id, v)}
-            disabled={locked}
+            disabled={wLocked}
             spellcheck={spell}
             label={`Question ${numbers[id]}`}
           />
@@ -602,7 +620,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           <textarea
             aria-label={`Question ${numbers[id]}`}
             value={typeof raw === 'string' ? raw : text}
-            disabled={locked}
+            disabled={wLocked}
             rows={8}
             spellCheck={spell}
             autoCorrect={spell ? 'on' : 'off'}
@@ -615,8 +633,13 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           {count} {count === 1 ? 'word' : 'words'}
           {aim ? ` · ${aim}` : ''}
           {under ? ' · keep going' : over ? ' · too long' : ''}
-          {results ? ' · sent to your teacher' : ''}
+          {results && !fixing ? ' · sent to your teacher' : ''}
         </span>
+        {fixing && (
+          <button type="button" className="btn small-btn primary" style={{ alignSelf: 'flex-start' }} onClick={() => writingReview?.onResubmit(id)}>
+            Send my corrections
+          </button>
+        )}
         {teacherMarks?.[id] && (teacherMarks[id].score !== null || teacherMarks[id].comment) && (
           <div className="t-mark">
             <span className="t-mark-head">

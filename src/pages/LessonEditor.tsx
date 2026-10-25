@@ -31,6 +31,8 @@ import { ReactionBurst } from '../components/ReactionBurst';
 import { AnnounceDialog } from '../components/AnnounceDialog';
 import { claimClass, clearAllHands, sendPointer, useSignals, useThrottle } from '../lib/session';
 import { Icon } from '../editor/Icons';
+import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
+import { AnnotationLayer } from '../components/AnnotationLayer';
 import { CopyDialog } from '../components/CopyDialog';
 import { VersionsDialog } from '../components/VersionsDialog';
 import { download, lessonText } from '../lib/transfer';
@@ -155,6 +157,8 @@ export function LessonEditor() {
   const revealAll = () => setReveal(-1);
   const hideAnswers = () => task && setLive(classId, { revealed: { ...(live?.revealed ?? {}), [task.id]: 0 }, revealedQs: { ...(live?.revealedQs ?? {}), [task.id]: [] } });
   const singles = task ? revealedSingles(live, itemId, task.id) : [];
+  const teachBodyRef = useRef<HTMLDivElement>(null);
+  const teacherAnns = useAnnotations(classId, task?.id ?? '', { teacher: true });
   // Classroom tools
   const [pointerOn, setPointerOn] = useState(false);
   const [timerMenu, setTimerMenu] = useState(false);
@@ -641,6 +645,7 @@ export function LessonEditor() {
                 {!preview && <PickedBanner picked={live?.picked} />}
                 {!preview && <ReactionBurst signals={signals} />}
                 <div
+                  ref={teachBodyRef}
                   className={'frame-body' + (!preview ? ' teach-view' : '') + (pointerOn && !preview ? ' pointing' : '')}
                   onMouseMove={(e) => {
                     if (!pointerOn || preview || !task) return;
@@ -655,6 +660,7 @@ export function LessonEditor() {
                     if (q?.dataset.qid) toggleSingle(q.dataset.qid);
                   }}
                 >
+                  {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
                   <TaskRenderer
                     content={previewKey?.content ?? null}
                     responses={previewResponses}
@@ -750,6 +756,8 @@ export function LessonEditor() {
               revealedIds={singles}
               onRevealQuestion={toggleSingle}
               signals={signals}
+              codes={c?.codes ?? DEFAULT_CODES}
+              annotations={teacherAnns}
               onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
               tab={panelTab}
               onTab={setPanelTab}

@@ -6,7 +6,9 @@ import { learnersCol, type Learner } from '../lib/learners';
 import type { Signal } from '../lib/session';
 import { Icon } from '../editor/Icons';
 import { TaskRenderer } from './TaskRenderer';
-import { saveMark, type Mark } from '../lib/tasks';
+import { saveMark, setCorrection, type Correction, type Mark } from '../lib/tasks';
+import { addAnnotation, removeAnnotation, DEFAULT_CODES, type Annotation, type Code } from '../lib/annotations';
+import { AnswerMarkup } from './AnswerMarkup';
 import { useClassAvatars } from '../lib/avatars';
 import { Avatar } from './avatars';
 import { isOnline, type Presence } from '../lib/presence';
@@ -30,6 +32,8 @@ type Props = {
   onNotes?: (v: string) => void;
   signals?: Record<string, Signal>;
   onSpotlight?: (qid: string, text: string) => void;
+  codes?: Code[];
+  annotations?: Annotation[];
 };
 
 // Find every question node by id, so answers can be shown as words rather than option numbers.
@@ -69,7 +73,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes, signals = {}, onSpotlight }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [] }: Props) {
   const [detail, setDetail] = useState<Learner | null>(null);
   const [roster, setRoster] = useState<Learner[]>([]);
   const [answers, setAnswers] = useState<AnswerDoc[]>([]);
@@ -112,7 +116,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 
   return (
     <aside className="task-side live-panel" aria-label="Live answers">
-      {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} onSpotlight={onSpotlight} />}
+      {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} onSpotlight={onSpotlight} codes={codes} annotations={annotations} />}
       <div className="lp-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'answers'} className={tab === 'answers' ? 'on' : ''} onClick={() => onTab?.('answers')}>
           Live answers
@@ -221,7 +225,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 }
 
 // One learner's answers for the task, with marking for long answers.
-function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, onClose, onSpotlight }: { classId: string; taskId: string; learner: Learner; answer?: AnswerDoc; content: JSONContent | null; answerKey: AnswerKey; onClose: () => void; onSpotlight?: (qid: string, text: string) => void }) {
+function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, onClose, onSpotlight, codes, annotations }: { classId: string; taskId: string; learner: Learner; answer?: AnswerDoc; content: JSONContent | null; answerKey: AnswerKey; onClose: () => void; onSpotlight?: (qid: string, text: string) => void; codes: Code[]; annotations: Annotation[] }) {
   const writing = questionIds(content).filter((q) => q.type === 'writing');
   const nodes = nodesById(content);
   const [draft, setDraft] = useState<Record<string, Mark>>(() => answer?.marks ?? {});
@@ -269,7 +273,9 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
               const m = draft[q.id] ?? { score: null, comment: '' };
               const out = (nodes[q.id]?.attrs?.points as number) ?? 5;
               return (
-                <div key={q.id} className="mark-row">
+                <div key={q.id} className="mark-block">
+                  <WritingReview classId={classId} taskId={taskId} learnerUid={answer.learnerUid} qid={q.id} text={textOf(answer.responses?.[q.id])} corr={answer.corrections?.[q.id]} codes={codes} anns={annotations.filter((a) => a.target === 'answer' && a.qid === q.id && a.learnerUid === answer.learnerUid)} />
+                <div className="mark-row">
                   <span className="mark-q">Question {questionIds(content).findIndex((x) => x.id === q.id) + 1}</span>
                   <span className="mark-score">
                     <input inputMode="numeric" value={m.score ?? ''} placeholder="–" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, score: e.target.value === '' ? null : Math.min(out, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, '')))) } }))} />
@@ -280,6 +286,7 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
                     {saved === q.id ? 'Saved' : 'Save mark'}
                   </button>
                 </div>
+                </div>
               );
             })}
           </div>
@@ -288,6 +295,57 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
           Close
         </button>
       </div>
+    </div>
+  );
+}
+
+// Teacher: codes and comments on a long answer, asking for corrections and approving them.
+function WritingReview({ classId, taskId, learnerUid, qid, text, corr, codes, anns }: { classId: string; taskId: string; learnerUid: string; qid: string; text: string; corr?: Correction; codes: Code[]; anns: Annotation[] }) {
+  const base = corr?.before ?? text;
+  const add = (a: { start: number; end: number; quote: string; kind: Annotation['kind']; code?: string; comment?: string }) =>
+    addAnnotation(classId, {
+      taskId,
+      target: 'answer',
+      qid,
+      learnerUid,
+      start: a.start,
+      end: a.end,
+      quote: a.quote,
+      kind: a.kind,
+      ...(a.code ? { code: a.code } : {}),
+      ...(a.kind === 'highlight' ? { color: 'yellow' as const } : {}),
+      visibility: 'private',
+      replies: a.comment ? [{ by: 'teacher', name: 'Teacher', text: a.comment, at: Date.now(), teacher: true }] : [],
+    });
+  return (
+    <div className="wr-teacher">
+      <span className="eyebrow">{corr?.status === 'resubmitted' ? 'Before' : 'Select words to add a code or a comment'}</span>
+      <AnswerMarkup text={base} anns={anns} codes={codes} editable={!corr || corr.status === 'open'} onAdd={add} onRemove={(id) => removeAnnotation(classId, id)} />
+      {corr?.status === 'resubmitted' && (
+        <>
+          <span className="eyebrow">After</span>
+          <div className="am-text after">{text}</div>
+        </>
+      )}
+      <span className="wr-actions">
+        {!corr && anns.length > 0 && (
+          <button type="button" className="btn small-btn" onClick={() => setCorrection(classId, taskId, learnerUid, qid, { status: 'open', before: text, at: Date.now() })}>
+            Ask the learner to correct it
+          </button>
+        )}
+        {corr?.status === 'open' && <span className="hint">Waiting for the learner’s corrections.</span>}
+        {corr?.status === 'resubmitted' && (
+          <>
+            <button type="button" className="btn small-btn primary" onClick={() => setCorrection(classId, taskId, learnerUid, qid, { ...corr, status: 'approved', at: Date.now() })}>
+              Approve
+            </button>
+            <button type="button" className="btn small-btn" onClick={() => setCorrection(classId, taskId, learnerUid, qid, { ...corr, status: 'open', at: Date.now() })}>
+              Ask again
+            </button>
+          </>
+        )}
+        {corr?.status === 'approved' && <span className="hint">Approved.</span>}
+      </span>
     </div>
   );
 }

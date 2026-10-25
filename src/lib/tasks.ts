@@ -88,7 +88,12 @@ export async function loadKey(classId: string, itemId: string, taskId: string): 
 // Learner answers --------------------------------------------------------------
 
 export type Mark = { score: number | null; comment: string };
-export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number; marks?: Record<string, Mark> };
+export type Correction = { status: 'open' | 'resubmitted' | 'approved'; before?: string; at: number };
+export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number; marks?: Record<string, Mark>; corrections?: Record<string, Correction> };
+
+export async function setCorrection(classId: string, taskId: string, learnerUid: string, qid: string, c: Correction) {
+  await updateDoc(answerRef(classId, taskId, learnerUid), { [`corrections.${qid}`]: c });
+}
 
 // The teacher's mark and comment for a long answer.
 export async function saveMark(classId: string, taskId: string, learnerUid: string, qid: string, mark: Mark) {

@@ -27,6 +27,7 @@ export type ClassDoc = {
   meeting?: Meeting | null;
   createdAt?: Timestamp;
   deletedAt?: Timestamp | null;
+  codes?: { code: string; meaning: string }[];
 };
 
 export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };
@@ -78,7 +79,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('Could not find a free class code. Please try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

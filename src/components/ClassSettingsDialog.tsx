@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { LevelPicker } from './LevelPicker';
+import { DEFAULT_CODES } from '../lib/annotations';
 import { updateClass, type ClassDoc, type Meeting } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
@@ -19,6 +20,8 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [meetingId, setMeetingId] = useState(c.meeting?.meetingId ?? '');
   const [passcode, setPasscode] = useState(c.meeting?.passcode ?? '');
   const [visibility, setVisibility] = useState<Meeting['visibility']>(c.meeting?.visibility ?? 'live');
+  const [codes, setCodes] = useState(c.codes ?? DEFAULT_CODES);
+  const [showCodes, setShowCodes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,6 +43,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         level,
         themeColor,
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
+        codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
       onClose();
     } catch (err) {
@@ -109,6 +113,37 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         )}
 
         {error && <span className="error" role="alert">{error}</span>}
+        <div className="field">
+          <span className="row-between">
+            Correction codes for writing
+            <button type="button" className="btn link small" onClick={() => setShowCodes((v) => !v)}>
+              {showCodes ? 'Hide' : 'Edit'}
+            </button>
+          </span>
+          {!showCodes ? (
+            <span className="hint">{codes.map((x) => x.code).join(' · ')}</span>
+          ) : (
+            <span className="codes-edit">
+              {codes.map((x, i) => (
+                <span key={i} className="code-row">
+                  <input value={x.code} maxLength={6} aria-label="Code" onChange={(e) => setCodes(codes.map((y, k) => (k === i ? { ...y, code: e.target.value } : y)))} />
+                  <input value={x.meaning} maxLength={60} aria-label="Meaning" onChange={(e) => setCodes(codes.map((y, k) => (k === i ? { ...y, meaning: e.target.value } : y)))} />
+                  <button type="button" className="icon-btn" aria-label="Remove code" onClick={() => setCodes(codes.filter((_, k) => k !== i))}>
+                    ×
+                  </button>
+                </span>
+              ))}
+              <span style={{ display: 'flex', gap: 10 }}>
+                <button type="button" className="btn link small" onClick={() => setCodes([...codes, { code: '', meaning: '' }])}>
+                  + Add a code
+                </button>
+                <button type="button" className="btn link small" onClick={() => setCodes(DEFAULT_CODES)}>
+                  Use the standard codes
+                </button>
+              </span>
+            </span>
+          )}
+        </div>
         <div className="row-between" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn" onClick={onClose} disabled={busy}>
             Cancel
