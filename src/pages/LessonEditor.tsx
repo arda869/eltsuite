@@ -388,6 +388,7 @@ export function LessonEditor() {
                     teacher
                     classmates={classmates}
                     classId={classId}
+                    boardMe={!preview && user ? { classId, taskId: task.id, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true } : undefined}
                     onOpenTask={(id) => select(id)}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}

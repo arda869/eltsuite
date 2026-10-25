@@ -93,6 +93,17 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Message boards and post-it walls
+      match /boards/{boardId}/posts/{postId} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow create: if (teachesClass(classId) || memberOf(classId))
+          && request.resource.data.byUid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
+        allow update: if (teachesClass(classId) || memberOf(classId))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
+        allow delete: if teachesClass(classId) || resource.data.byUid == request.auth.uid;
+      }
+
       // Shared "draw a card" piles (played together as a class)
       match /picks/{pickId} {
         allow read: if teachesClass(classId) || memberOf(classId);

@@ -259,6 +259,7 @@ export function LearnerLesson() {
                   classId={classId}
                   selfId={learnerId}
                   received={received}
+                  boardMe={user && profile?.role === 'learner' ? { classId, taskId: current, uid: user.uid, name: profile.displayName } : undefined}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   onOpenTask={(id) => {
                     const t = tasks.find((x) => x.id === id);

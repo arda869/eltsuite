@@ -6,6 +6,7 @@ import { textColor } from '../editor/TextColor';
 import { cellBg } from '../editor/tableStyle';
 import { Icon } from '../editor/Icons';
 import { Sym } from '../editor/Symbols';
+import { Board, type BoardAttrs, type BoardMe } from './Board';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
@@ -43,6 +44,7 @@ type Props = {
   selfId?: string;
   received?: SentFeedback[]; // peer feedback other learners sent to this learner
   classId?: string; // for audio clips
+  boardMe?: BoardMe; // who is posting on message boards
 };
 
 const TICK = (
@@ -112,7 +114,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -774,6 +776,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           </div>
         );
       }
+      case 'board':
+        return <Board key={key} attrs={node.attrs as BoardAttrs} me={boardMe} preview={!boardMe} />;
       case 'icon':
         return <Icon key={key} name={node.attrs?.name} tone={node.attrs?.tone} />;
       case 'sym':

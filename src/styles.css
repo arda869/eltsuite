@@ -1351,3 +1351,82 @@ mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radi
 .tbox.side-right .speaker { margin: 0 0 4px 12px; text-align: left; }
 .tbox-node .tbox.side-right .speaker input { text-align: left; }
 .tbox.s-message.side-right .time { align-self: flex-start; }
+
+/* ===== Message board and post-it wall ===== */
+.board-node { margin: 14px 0; padding: 10px 0 12px 14px; border-left: 2px solid var(--hair-strong); display: flex; flex-direction: column; gap: 10px; font-family: var(--sans); }
+.board-settings { display: flex; flex-direction: column; gap: 6px; }
+.board-preview { pointer-events: none; opacity: 0.9; }
+.bd { margin: 18px 0 24px; display: flex; flex-direction: column; gap: 14px; font-family: var(--serif); }
+.bd-head { display: flex; flex-direction: column; gap: 4px; }
+.bd-eyebrow { display: inline-flex; align-items: center; gap: 6px; font: 600 11px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-text); }
+.bd-eyebrow .emo { color: var(--accent-text); }
+.bd-anon { margin-left: 6px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--hair-strong); color: var(--muted); letter-spacing: 0.06em; font-size: 10px; }
+.bd-prompt { margin: 0; font: 600 19px/1.35 var(--serif); }
+.bd-placeholder { font: 13px var(--sans); color: var(--soft); padding: 14px 16px; border: 1.5px dashed var(--hair-strong); border-radius: 14px; }
+.bd-empty { font: 13px var(--sans); color: var(--soft); text-align: center; padding: 18px; }
+
+/* Composer */
+.bd-compose { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: start; padding: 14px; border-radius: 16px; background: #fff; border: 1px solid rgba(0,0,0,0.07); box-shadow: 0 10px 30px -18px rgba(0,0,0,0.25); }
+.bd-compose textarea { border: 0; outline: none; resize: none; font: 16px/1.5 var(--serif); padding: 6px 0; min-height: 2.6em; field-sizing: content; background: transparent; color: var(--ink); }
+.bd-compose-foot { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.bd-av { width: 34px; height: 34px; border-radius: 50%; background: #ececeb; color: var(--muted); display: inline-flex; align-items: center; justify-content: center; font: 700 11px var(--sans); letter-spacing: 0.04em; flex: none; }
+.bd-av.me { background: var(--ink); color: #fff; }
+.from-teacher .bd-av { background: var(--accent); color: #fff; }
+.bd-send { border-radius: 999px; padding: 0 16px; }
+.note-compose { grid-template-columns: 1fr; background: var(--note); border: 0; border-radius: 4px 4px 14px 4px; box-shadow: 0 14px 24px -14px rgba(0,0,0,0.35); transform: rotate(-0.6deg); max-width: 420px; }
+.note-compose textarea { font: 19px/1.45 var(--hand); color: #2c2b29; }
+.note-compose textarea::placeholder { color: rgba(0,0,0,0.35); }
+.bd-colors { display: inline-flex; gap: 6px; margin-right: auto; }
+.bd-color { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid rgba(0,0,0,0.12); cursor: pointer; padding: 0; transition: transform 0.12s; }
+.bd-color:hover { transform: scale(1.12); }
+.bd-color.on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ink); }
+
+/* Feed */
+.bd-feed { display: flex; flex-direction: column; gap: 10px; }
+.bd-msg { display: flex; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #fafaf9; border: 1px solid rgba(0,0,0,0.04); }
+.bd-msg.from-teacher { background: #fff; box-shadow: inset 3px 0 0 var(--accent), 0 1px 0 rgba(0,0,0,0.03); }
+.bd-msg.fresh, .bd-reply.fresh { animation: bd-in 0.45s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes bd-in { from { opacity: 0; transform: translateY(-8px) scale(0.98); } to { opacity: 1; transform: none; } }
+.bd-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.bd-msg-head, .bd-reply-head { display: flex; align-items: baseline; gap: 8px; font: 13px var(--sans); }
+.bd-msg-head strong, .bd-reply-head strong { font-weight: 600; color: var(--ink); }
+.bd-teacher { font: 600 10px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-text); }
+.bd-time { font-size: 11.5px; color: var(--soft); }
+.bd-text { margin: 0; font: 16px/1.55 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bd-msg-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 2px; }
+.bd-reacts { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.bd-react { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 8px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: #a3a3a0; font: 600 12px var(--sans); cursor: pointer; transition: transform 0.12s, background 0.12s; }
+.bd-react .emo { color: currentColor; vertical-align: middle; }
+.bd-react:not(:disabled):hover { background: rgba(0,0,0,0.04); color: var(--ink); }
+.bd-react.has { border-color: var(--hair-strong); background: #fff; color: var(--muted); }
+.bd-react.on { border-color: var(--accent); color: var(--accent-text); background: #fff; }
+.bd-react.on .emo path { fill: color-mix(in srgb, var(--accent) 25%, transparent); }
+.bd-react:not(:disabled):active { transform: scale(0.9); }
+.bd-tools { display: inline-flex; gap: 10px; }
+.bd-link { border: 0; background: transparent; padding: 0; font: 600 12px var(--sans); color: var(--muted); cursor: pointer; }
+.bd-link:hover { color: var(--ink); }
+.bd-link.quiet { font-weight: 500; color: var(--soft); }
+.bd-replies { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding-left: 12px; border-left: 2px solid var(--hair); }
+.bd-reply { display: flex; flex-direction: column; gap: 2px; }
+.bd-reply-text { font: 15px/1.5 var(--serif); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bd-reply-form { display: flex; gap: 8px; margin-top: 6px; }
+.bd-reply-form input { flex: 1; height: 34px; border: 1px solid var(--hair-strong); border-radius: 999px; padding: 0 14px; font: 14px var(--serif); outline: none; background: #fff; }
+.bd-reply-form input:focus { border-color: var(--accent); }
+
+/* Wall */
+.bd-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 26px 22px; padding: 14px 6px 8px; }
+.bd-note { position: relative; background: var(--note); min-height: 170px; padding: 26px 16px 12px; border-radius: 3px 3px 16px 3px; box-shadow: 0 1px 1px rgba(0,0,0,0.06), 0 16px 22px -14px rgba(0,0,0,0.4); transform: rotate(var(--tilt)); transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; gap: 8px; }
+.bd-note::after { content: ''; position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; background: linear-gradient(135deg, var(--edge) 50%, rgba(255,255,255,0.0) 50%); border-radius: 0 0 16px 0; opacity: 0.9; }
+.bd-note:hover { transform: rotate(0deg) translateY(-3px) scale(1.02); box-shadow: 0 2px 2px rgba(0,0,0,0.06), 0 24px 30px -16px rgba(0,0,0,0.45); z-index: 2; }
+.bd-note.fresh { animation: note-in 0.6s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes note-in { 0% { opacity: 0; transform: translateY(-30px) rotate(calc(var(--tilt) * -4)) scale(1.1); } 100% { opacity: 1; transform: rotate(var(--tilt)); } }
+.bd-tape { position: absolute; top: -10px; left: 50%; width: 70px; height: 20px; margin-left: -35px; background: rgba(255,255,255,0.55); box-shadow: 0 1px 2px rgba(0,0,0,0.08); transform: rotate(-3deg); backdrop-filter: blur(1px); }
+.bd-note-text { flex: 1; font: 19px/1.4 var(--hand); color: #2c2b29; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bd-note-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: 12px var(--sans); color: rgba(0,0,0,0.5); }
+.bd-note-by { font-weight: 600; }
+.bd-note .bd-react.has, .bd-note .bd-react.on { background: rgba(255,255,255,0.6); }
+.bd-note .bd-replies { border-left-color: rgba(0,0,0,0.12); }
+.bd-note .bd-reply-text { font: 16px/1.35 var(--hand); }
+.bd-note .bd-reply-form input { background: rgba(255,255,255,0.7); }
+@media (prefers-reduced-motion: reduce) { .bd-note, .bd-msg, .bd-reply { animation: none !important; } }
+.bd-note .bd-react { padding: 0 5px; height: 24px; } .bd-note .bd-reacts { gap: 2px; }

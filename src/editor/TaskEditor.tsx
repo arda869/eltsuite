@@ -21,6 +21,7 @@ import { Highlight, HighlightTool } from './Highlight';
 import { TextColor, TextColorTool } from './TextColor';
 import { IconNode, IconTool } from './Icons';
 import { SymNode, SymbolTool } from './Symbols';
+import { BoardNode, newBoard } from './BoardNode';
 import { CELL_COLORS, cellBg } from './tableStyle';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
@@ -55,6 +56,8 @@ const COMMANDS: Cmd[] = [
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
   { key: 'reflect', label: 'Self-reflection', hint: 'Learners rate how they did: stars, faces, scales, can-do lists', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('self'), { type: 'paragraph' }]).run() },
   { key: 'peer', label: 'Peer feedback', hint: 'Learners choose a classmate and rate how they did', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('peer'), { type: 'paragraph' }]).run() },
+  { key: 'board', label: 'Message board', hint: 'Learners post messages the whole class sees', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('board'), { type: 'paragraph' }]).run() },
+  { key: 'postits', label: 'Post-it wall', hint: 'Learners stick notes on a shared wall', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('postits'), { type: 'paragraph' }]).run() },
   { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
   { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
@@ -137,7 +140,7 @@ function useSlash(editor: Editor | null) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes'].includes(c.key) && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits'].includes(c.key) && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
     },
     [state, editor],
   );
@@ -211,6 +214,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       TextColor,
       IconNode,
       SymNode,
+      BoardNode,
       Stress,
       Ipa,
       LessonLink,
