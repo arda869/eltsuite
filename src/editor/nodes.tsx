@@ -167,3 +167,144 @@ export const Mcq = Node.create({
 
 export const newGap = () => ({ type: 'gap', attrs: { id: newId(), answers: [] } });
 export const newMcq = () => ({ type: 'mcq', attrs: { id: newId(), prompt: '', options: ['', '', ''], correct: -1 } });
+
+// Inline choice (multiple choice inside the sentence) -------------------------------
+
+export type ChoiceDisplay = 'letters' | 'radio' | 'dropdown';
+const DISPLAYS: { key: ChoiceDisplay; label: string }[] = [
+  { key: 'letters', label: 'a, b, c' },
+  { key: 'radio', label: 'Radio buttons' },
+  { key: 'dropdown', label: 'Dropdown' },
+];
+
+function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
+  const options: string[] = node.attrs.options ?? [];
+  const correct: number = node.attrs.correct ?? -1;
+  const display: ChoiceDisplay = node.attrs.display ?? 'letters';
+  const filled = options.filter((o) => o.trim());
+  const [open, setOpen] = useState(filled.length === 0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+  const [focusIndex, setFocusIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (open) window.setTimeout(() => inputs.current[0]?.focus(), 30);
+  }, [open]);
+
+  useEffect(() => {
+    if (focusIndex !== null) {
+      inputs.current[focusIndex]?.focus();
+      setFocusIndex(null);
+    }
+  }, [focusIndex, options.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const setOption = (i: number, v: string) => updateAttributes({ options: options.map((o, k) => (k === i ? v : o)) });
+
+  const summary = filled.length ? (
+    filled.map((o, i) => (
+      <span key={i} className={i === correct ? 'c-opt right' : 'c-opt'}>
+        {display === 'letters' && <span className="c-letter">{LETTERS[i]}</span>}
+        {display === 'radio' && <span className="c-radio" />}
+        {o}
+        {display === 'dropdown' && i < filled.length - 1 && <span className="c-sep">/</span>}
+      </span>
+    ))
+  ) : (
+    <span className="c-empty">choices</span>
+  );
+
+  return (
+    <NodeViewWrapper as="span" className={'choice-node' + (selected ? ' is-selected' : '') + ' d-' + display} ref={ref}>
+      <span className="choice-chip" contentEditable={false} onClick={() => setOpen(true)} title="Edit choices">
+        {display === 'dropdown' ? <span className="c-drop">{summary}<span className="c-caret">▾</span></span> : summary}
+      </span>
+      {open && (
+        <span className="choice-pop" contentEditable={false} onKeyDown={(e) => e.stopPropagation()}>
+          <span className="seg" role="radiogroup" aria-label="Show as">
+            {DISPLAYS.map((d) => (
+              <button key={d.key} type="button" role="radio" aria-checked={display === d.key} className={display === d.key ? 'on' : ''} onClick={() => updateAttributes({ display: d.key })}>
+                {d.label}
+              </button>
+            ))}
+          </span>
+          {options.map((o, i) => (
+            <span key={i} className="mcq-option">
+              <button
+                type="button"
+                className={'letter' + (i === correct ? ' right' : '')}
+                title={i === correct ? 'Correct answer' : 'Mark as correct'}
+                aria-label={i === correct ? 'Correct answer' : 'Mark as correct'}
+                onClick={() => updateAttributes({ correct: i })}
+              >
+                {LETTERS[i]}
+              </button>
+              <input
+                ref={(el) => {
+                  inputs.current[i] = el;
+                }}
+                value={o}
+                placeholder={`Option ${LETTERS[i]}`}
+                onChange={(e) => setOption(i, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (i === options.length - 1 && options.length < 8) {
+                      updateAttributes({ options: [...options, ''] });
+                      setFocusIndex(i + 1);
+                    } else if (i < options.length - 1) setFocusIndex(i + 1);
+                  }
+                  if (e.key === 'Backspace' && !o && options.length > 2) {
+                    e.preventDefault();
+                    updateAttributes({ options: options.filter((_, k) => k !== i), correct: correct === i ? -1 : correct > i ? correct - 1 : correct });
+                    setFocusIndex(Math.max(0, i - 1));
+                  }
+                  if (e.key === 'Escape') setOpen(false);
+                }}
+              />
+              {i === correct && <span className="right-note">correct</span>}
+            </span>
+          ))}
+          <span className="hint">Enter for the next option · click a letter to mark it correct</span>
+          {correct < 0 && filled.length > 0 && <span className="error small">Mark the correct option.</span>}
+          <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-end' }} onClick={() => setOpen(false)}>
+            Done
+          </button>
+        </span>
+      )}
+    </NodeViewWrapper>
+  );
+}
+
+export const Choice = Node.create({
+  name: 'choice',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes() {
+    return {
+      id: { default: null },
+      options: { default: ['', '', ''] },
+      correct: { default: -1 },
+      display: { default: 'letters' },
+    };
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-choice]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes, { 'data-choice': '' })];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ChoiceView);
+  },
+});
+
+export const newChoice = (display: ChoiceDisplay = 'letters') => ({ type: 'choice', attrs: { id: newId(), options: ['', '', ''], correct: -1, display } });

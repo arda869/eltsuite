@@ -4,19 +4,15 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Gap, Mcq, newGap, newMcq } from './nodes';
+import { Choice, Gap, Mcq, newChoice, newGap } from './nodes';
 
 type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text'; run: (e: Editor) => void };
 
 const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
-  {
-    key: 'mcq',
-    label: 'Multiple choice',
-    hint: 'A question with options',
-    group: 'Questions',
-    run: (e) => e.chain().focus().insertContent([newMcq(), { type: 'paragraph' }]).run(),
-  },
+  { key: 'choice', label: 'Multiple choice · a, b, c', hint: 'Lettered options inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('letters')).run() },
+  { key: 'radio', label: 'Multiple choice · radio buttons', hint: 'Round buttons inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
+  { key: 'dropdown', label: 'Dropdown', hint: 'Choose a word inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
   { key: 'list', label: 'Bulleted list', hint: 'A simple list', group: 'Text', run: (e) => e.chain().focus().toggleBulletList().run() },
   { key: 'numbered', label: 'Numbered list', hint: 'A list with numbers', group: 'Text', run: (e) => e.chain().focus().toggleOrderedList().run() },
@@ -90,6 +86,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
       Image,
       Gap,
       Mcq,
+      Choice,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],
     content,
@@ -133,7 +130,8 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '•')}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
-        {BTN('Insert multiple choice', false, () => editor.chain().focus().insertContent([newMcq(), { type: 'paragraph' }]).run(), '+ Multiple choice')}
+        {BTN('Insert multiple choice', false, () => editor.chain().focus().insertContent(newChoice('letters')).run(), '+ Multiple choice')}
+        {BTN('Insert dropdown', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Dropdown')}
       </div>
       <div className="editor-host">
         <EditorContent editor={editor} className="doc" />

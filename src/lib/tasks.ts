@@ -40,7 +40,7 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
       key[n.attrs.id] = { kind: 'gap', answers: (n.attrs.answers ?? []).filter((a: string) => a.trim()) };
       out.attrs = { ...n.attrs, answers: [] };
     }
-    if (n.type === 'mcq' && n.attrs?.id) {
+    if ((n.type === 'mcq' || n.type === 'choice') && n.attrs?.id) {
       key[n.attrs.id] = { kind: 'mcq', correct: n.attrs.correct ?? -1 };
       out.attrs = { ...n.attrs, correct: -1 };
     }
@@ -55,7 +55,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
     const out: JSONContent = { ...n };
     const k = n.attrs?.id ? key[n.attrs.id] : undefined;
     if (n.type === 'gap' && k?.kind === 'gap') out.attrs = { ...n.attrs, answers: k.answers };
-    if (n.type === 'mcq' && k?.kind === 'mcq') out.attrs = { ...n.attrs, correct: k.correct };
+    if ((n.type === 'mcq' || n.type === 'choice') && k?.kind === 'mcq') out.attrs = { ...n.attrs, correct: k.correct };
     if (n.content) out.content = n.content.map(walk);
     return out;
   };
@@ -66,7 +66,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
 export function questionIds(content: JSONContent | null): { id: string; kind: 'gap' | 'mcq' }[] {
   const ids: { id: string; kind: 'gap' | 'mcq' }[] = [];
   const walk = (n: JSONContent) => {
-    if ((n.type === 'gap' || n.type === 'mcq') && n.attrs?.id) ids.push({ id: n.attrs.id, kind: n.type });
+    if ((n.type === 'gap' || n.type === 'mcq' || n.type === 'choice') && n.attrs?.id) ids.push({ id: n.attrs.id, kind: n.type === 'gap' ? 'gap' : 'mcq' });
     n.content?.forEach(walk);
   };
   if (content) walk(content);
