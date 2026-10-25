@@ -82,6 +82,12 @@ service cloud.firestore {
         allow write: if teachesClass(classId);
       }
 
+      // Who is online and which task they are on
+      match /presence/{uid} {
+        allow read: if teachesClass(classId);
+        allow write: if isSelf(uid) && memberOf(classId);
+      }
+
       // Roster: teacher only
       match /learners/{learnerId} {
         allow read, write: if teachesClass(classId);

@@ -20,6 +20,8 @@ import {
 import { theme } from '../lib/themes';
 import { isLive, liveRef, setLive, type LiveState } from '../lib/live';
 import { useAuth } from '../lib/auth';
+import { isOnline, usePresence } from '../lib/presence';
+import { initials } from '../components/TopBar';
 import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -68,6 +70,10 @@ export function LessonEditor() {
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
+  const presence = usePresence(classId, teachingHere);
+  const online = presence.filter(isOnline).sort((a, b) => a.name.localeCompare(b.name));
+  const inLesson = online.filter((p) => p.itemId === itemId);
+  const onTask = (taskId: string) => inLesson.filter((p) => p.taskId === taskId).length;
 
   // While teaching, tell learners which task the teacher is on.
   useEffect(() => {
@@ -213,6 +219,11 @@ export function LessonEditor() {
                 <button type="button" className="task-pick" onClick={() => select(t.id)}>
                   <span className="n">{i + 1}</span>
                   <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
+                  {teachingHere && onTask(t.id) > 0 && (
+                    <span className="on-task" title={`${onTask(t.id)} on this task`}>
+                      {onTask(t.id)}
+                    </span>
+                  )}
                 </button>
                 {t.id === selected && (
                   <span className="task-move">
@@ -231,6 +242,25 @@ export function LessonEditor() {
             </button>
           </nav>
 
+          <div className="center-col">
+          {teachingHere && (
+            <div className="session-strip" aria-label="Learners in this session">
+              <span className="session-count">
+                <span className="live-dot" aria-hidden="true" />
+                {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
+              </span>
+              <span className="session-people">
+                {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
+                {online.map((p) => (
+                  <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere')} title={p.itemId === itemId ? `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}` : `${p.name} · online, not in this lesson`}>
+                    <span className="avatar small">{initials(p.name)}</span>
+                    <span className="pname">{p.name.split(' ')[0]}</span>
+                    {p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
           <main className="task-frame">
             {!task || !draft ? (
               <div className="empty" style={{ padding: 28 }}>
@@ -301,6 +331,7 @@ export function LessonEditor() {
               </div>
             )}
           </main>
+          </div>
 
           {task && draft && (
             <aside className="task-side" aria-label="Task settings">

@@ -567,3 +567,16 @@ a.btn.primary { color: #ffffff; }
 .doc .ProseMirror td, .doc .ProseMirror th { position: relative; min-width: 80px; }
 .doc .ProseMirror td:focus-within, .doc .ProseMirror th:focus-within { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
 .doc .ProseMirror .tableWrapper { overflow-x: auto; margin: 10px 0 14px; }
+
+/* Who is in the session (teacher, while teaching) */
+.center-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.center-col .task-frame { width: 100%; }
+.session-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.session-count { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--accent-text); white-space: nowrap; }
+.session-people { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.person { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.person .avatar.small { width: 22px; height: 22px; font-size: 10px; background: #eef4ef; color: var(--right); box-shadow: 0 0 0 1.5px #ffffff, 0 0 0 3px #9fb8a4; }
+.person.elsewhere { color: var(--soft); }
+.person.elsewhere .avatar.small { background: var(--track); color: var(--soft); box-shadow: none; }
+.ptask { font-size: 10px; color: var(--soft); border: 1px solid var(--hair-strong); border-radius: 999px; padding: 0 5px; }
+.on-task { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #eef4ef; color: var(--right); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }

@@ -20,6 +20,7 @@ import {
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
+import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { TaskRenderer } from '../components/TaskRenderer';
 
@@ -56,6 +57,7 @@ export function LearnerLesson() {
     if (!classId) return;
     return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
   }, [classId]);
+  usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current });
   const teacherAt = isLive(live) && live?.itemId === itemId ? live.taskId : '';
 
   // Load this learner's saved answers for the current task.

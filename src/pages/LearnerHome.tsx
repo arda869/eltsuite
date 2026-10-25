@@ -6,11 +6,13 @@ import { useAuth } from '../lib/auth';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
+import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { initials } from '../components/TopBar';
 
 export function LearnerHome({ classId, name }: { classId: string; name: string }) {
-  const { signOutNow } = useAuth();
+  const { signOutNow, user, profile } = useAuth();
+  usePresenceBeat(classId, user?.uid, { name, learnerId: profile?.role === 'learner' ? profile.learnerId : '', itemId: '', taskId: '' });
   const [c, setC] = useState<ClassDoc | null | undefined>(undefined);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [items, setItems] = useState<Item[]>([]);
