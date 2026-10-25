@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
+import { LINK_ICON } from '../editor/LessonLink';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
@@ -27,6 +28,8 @@ type Props = {
   onSharedDraw?: (pickId: string, next: PickState, seq: number) => void;
   onSharedReset?: (pickId: string) => void;
   teacher?: boolean;
+  onOpenTask?: (taskId: string) => void; // links to another task in the lesson
+  taskState?: (taskId: string) => 'open' | 'locked' | 'missing';
 };
 
 const TICK = (
@@ -92,7 +95,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -668,7 +671,26 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       case 'image':
         return node.attrs?.src ? <img key={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;
       case 'text':
-        return <span key={key}>{marks(node.text ?? '', node.marks)}</span>;
+      {
+        const link = node.marks?.find((m) => m.type === 'lessonLink');
+        const inner = marks(node.text ?? '', node.marks);
+        if (!link) return <span key={key}>{inner}</span>;
+        const tid = link.attrs?.taskId as string;
+        const st = taskState?.(tid) ?? 'open';
+        return (
+          <button
+            key={key}
+            type="button"
+            className={'lesson-link' + (st !== 'open' ? ' is-off' : '')}
+            disabled={!onOpenTask || st === 'missing'}
+            title={st === 'locked' ? 'Your teacher hasn’t opened this task yet' : st === 'missing' ? 'This task is no longer in the lesson' : 'Go to this task'}
+            onClick={() => st === 'open' && onOpenTask?.(tid)}
+          >
+            {inner}
+            {LINK_ICON}
+          </button>
+        );
+      }
       case 'gap':
         return gap(node, key);
       case 'choice':

@@ -384,6 +384,7 @@ export function LessonEditor() {
                     layout={task.layout ?? 'single'}
                     colScroll={task.colScroll ?? 'separate'}
                     teacher
+                    onOpenTask={(id) => select(id)}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
                     onSharedReset={(pickId) => drawShared(classId, task.id, pickId, [], [], (sharedPicks[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
@@ -426,7 +427,12 @@ export function LessonEditor() {
                   />
                 </div>
                 <div className="frame-body">
-                  <TaskEditor key={editorKey} content={draft.content} onChange={(content) => change({ content })} />
+                  <TaskEditor
+                    key={editorKey}
+                    content={draft.content}
+                    onChange={(content) => change({ content })}
+                    places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
+                  />
                 </div>
               </div>
             )}

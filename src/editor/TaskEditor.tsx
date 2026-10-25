@@ -13,6 +13,7 @@ import { FreshIds, jsonClip } from './clipboard';
 import { TableInsert } from './TableInsert';
 import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
+import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
@@ -134,6 +135,7 @@ const ICON = (d: React.ReactNode) => (
 );
 const ICON_LIST = ICON(<><circle cx="2.5" cy="4" r="1" fill="currentColor" stroke="none" /><circle cx="2.5" cy="8" r="1" fill="currentColor" stroke="none" /><circle cx="2.5" cy="12" r="1" fill="currentColor" stroke="none" /><path d="M6 4h8M6 8h8M6 12h8" /></>);
 const ICON_OL = ICON(<><text x="0.5" y="5.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="sans-serif">1</text><text x="0.5" y="9.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="sans-serif">2</text><text x="0.5" y="13.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="sans-serif">3</text><path d="M6 4h8M6 8h8M6 12h8" /></>);
+const ICON_LINK = ICON(<><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2" /><path d="M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8" /></>);
 const ICON_TABLE = ICON(<><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" /><path d="M1.5 6.5h13M6 6.5v7M10.5 6.5v7" /></>);
 
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
@@ -142,7 +144,7 @@ const BTN = (label: string, active: boolean, onClick: () => void, text: React.Re
   </button>
 );
 
-export function TaskEditor({ content, onChange }: { content: JSONContent; onChange: (c: JSONContent) => void }) {
+export function TaskEditor({ content, onChange, places = [] }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[] }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -176,6 +178,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
       PickCard,
       Definition,
       Stress,
+      LessonLink,
       FreshIds,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],
@@ -186,6 +189,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
   const slash = useSlash(editor);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
 
   useEffect(() => {
     if (!editor || !slash.state) return;
@@ -239,6 +243,18 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
           },
           <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
         )}
+        {BTN(
+          editor.isActive('lessonLink') ? 'Change the link' : 'Link the selected words to another task',
+          editor.isActive('lessonLink'),
+          () => {
+            if (editor.state.selection.empty && !editor.isActive('lessonLink')) {
+              window.alert('Select the words to link first.');
+              return;
+            }
+            setLinkOpen(true);
+          },
+          <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
+        )}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
         {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
@@ -279,6 +295,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
         <EditorContent editor={editor} className="doc" />
         <TableInsert editor={editor} host={host} />
         <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+        <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />
         {slash.state && (
           <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
             {(['Questions', 'Text'] as const).map((g) => {

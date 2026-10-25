@@ -1065,3 +1065,25 @@ a.btn.primary { color: #ffffff; }
 .def-card { position: fixed; }
 .def-card.below { top: auto; }
 .def-card.above { bottom: auto; transform: translateY(-100%); animation: none; }
+/* Toolbar controls use the interface font */
+.tool .ti-b, .tool .ti-i, .tool .ti-u, .tool .ti-h, .tool .ti-def { font-family: var(--sans); font-size: 14px; }
+.tool .ti-b { font-weight: 700; }
+.tool .ti-i { font-style: italic; font-weight: 500; }
+.tool .ti-u { font-weight: 500; }
+.tool .ti-h { font-weight: 700; }
+.tool .ti-def { font-size: 13px; font-weight: 600; }
+/* Links to another place in the lesson */
+.lesson-link { border: 0; background: transparent; padding: 0; font: inherit; color: var(--accent-text); cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent); display: inline; line-height: inherit; }
+.lesson-link:hover:not(:disabled) { text-decoration-color: var(--accent); }
+.lesson-link .ll-icon { display: inline-block; margin-left: 2px; vertical-align: -0.05em; }
+.lesson-link.is-off { color: var(--muted); cursor: default; }
+.lesson-link:disabled { cursor: default; }
+.doc .ProseMirror .lesson-link { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.doc .ProseMirror .lesson-link::after { content: '→'; font-size: 0.8em; margin-left: 2px; }
+.link-pop { width: 320px; gap: 8px; }
+.link-search { border: 0; border-bottom: 1px solid var(--hair-strong); padding: 4px 0; font: 14px var(--sans); outline: none; }
+.link-list { display: flex; flex-direction: column; max-height: 260px; overflow: auto; }
+.link-item { display: flex; gap: 10px; align-items: baseline; border: 0; background: transparent; text-align: left; padding: 6px 8px; border-radius: 8px; font: 14px var(--sans); color: var(--ink); cursor: pointer; }
+.link-item:hover { background: #f4f4f3; }
+.link-item.on { background: #ececeb; font-weight: 600; }
+.link-item .n { color: var(--accent-text); font-weight: 600; width: 16px; }

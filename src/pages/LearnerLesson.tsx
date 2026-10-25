@@ -221,6 +221,14 @@ export function LearnerLesson() {
                   colScroll={task.colScroll ?? 'separate'}
                   flags={flags}
                   shared={shared}
+                  onOpenTask={(id) => {
+                    const t = tasks.find((x) => x.id === id);
+                    if (t && !t.locked) setCurrent(id);
+                  }}
+                  taskState={(id) => {
+                    const t = tasks.find((x) => x.id === id);
+                    return !t ? 'missing' : t.locked ? 'locked' : 'open';
+                  }}
                   onSharedDraw={(pickId, next, seq) => drawShared(classId, current, pickId, next.h, next.b, seq, (profile?.role === 'learner' ? profile.displayName : '').split(' ')[0] || 'A learner').catch((e) => console.error(e))}
                   onToggleFlag={task.locked ? undefined : toggleFlag}
                 />
