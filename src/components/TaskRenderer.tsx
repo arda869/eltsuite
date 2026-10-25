@@ -687,7 +687,11 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       case 'bulletList':
         return <ul key={key}>{kids()}</ul>;
       case 'orderedList':
-        return <ol key={key}>{kids()}</ol>;
+        return (
+          <ol key={key} type={(node.attrs?.listType ?? '1') as '1' | 'a' | 'A' | 'i' | 'I'} start={node.attrs?.start ?? 1}>
+            {kids()}
+          </ol>
+        );
       case 'listItem':
         return <li key={key}>{kids()}</li>;
       case 'table':

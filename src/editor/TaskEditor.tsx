@@ -19,6 +19,7 @@ import { RevealBox, newReveal } from './Reveal';
 import { LinkCard } from './LinkCard';
 import { BLOCKS } from './coursebook';
 import Link from '@tiptap/extension-link';
+import OrderedList from '@tiptap/extension-ordered-list';
 import { EditorContextMenu } from './ContextMenu';
 import { EditorClassContext } from './context';
 import { Selection } from '@tiptap/pm/state';
@@ -193,7 +194,15 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [3] } }),
+      StarterKit.configure({ heading: { levels: [3] }, orderedList: false }),
+      OrderedList.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            listType: { default: '1', parseHTML: (el: HTMLElement) => el.getAttribute('type') || '1', renderHTML: (a: { listType: string }) => ({ type: a.listType }) },
+          };
+        },
+      }),
       Underline,
       Table.extend({
         addAttributes() {
@@ -359,6 +368,22 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         <SymbolTool editor={editor} />
         {BTN('More question types', false, () => editor.chain().focus().insertContent(' /').run(), '/ More')}
       </div>
+      {editor.isActive('orderedList') && (
+        <div className="table-bar" role="toolbar" aria-label="Numbered list">
+          <span className="tb-group">
+            <span className="tb-label">Numbering</span>
+            {(
+              [
+                ['1', '1, 2, 3'],
+                ['a', 'a, b, c'],
+                ['A', 'A, B, C'],
+                ['i', 'i, ii, iii'],
+                ['I', 'I, II, III'],
+              ] as const
+            ).map(([k, l]) => BTN('Numbering ' + l, (editor.getAttributes('orderedList').listType ?? '1') === k, () => editor.chain().focus().updateAttributes('orderedList', { listType: k }).run(), l))}
+          </span>
+        </div>
+      )}
       {editor.isActive('table') && (
         <div className="table-bar" role="toolbar" aria-label="Table">
           <span className="tb-group">
