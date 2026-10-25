@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth';
 import { updateClass, type ClassDoc, type Item } from '../lib/classes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
 import { theme } from '../lib/themes';
+import { DELETE_AFTER_DAYS, purgeClass, restoreClass } from '../lib/deletion';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
 
@@ -61,6 +62,22 @@ export function TeacherHome() {
   const byNewest = (a: ClassDoc, b: ClassDoc) => (b.createdAt?.toMillis?.() ?? Date.now()) - (a.createdAt?.toMillis?.() ?? Date.now());
   const active = useMemo(() => (classes ?? []).filter((c) => c.status === 'active').sort(byNewest), [classes]);
   const archived = useMemo(() => (classes ?? []).filter((c) => c.status === 'archived').sort(byNewest), [classes]);
+  const deleted = useMemo(() => (classes ?? []).filter((c) => c.status === 'deleted'), [classes]);
+  const daysLeft = (c: ClassDoc) => Math.max(0, DELETE_AFTER_DAYS - Math.floor((Date.now() - (c.deletedAt?.toMillis?.() ?? Date.now())) / 86400000));
+  const [purging, setPurging] = useState('');
+  // Classes deleted more than 30 days ago are removed for good.
+  useEffect(() => {
+    const due = deleted.filter((c) => daysLeft(c) === 0 && c.deletedAt);
+    if (!due.length || purging) return;
+    (async () => {
+      for (const c of due) {
+        setPurging(c.name);
+        await purgeClass(c).catch((e) => console.error(e));
+      }
+      setPurging('');
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deleted.length]);
   const { items, live } = useClassDetails(active.map((c) => c.id));
 
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
@@ -193,6 +210,40 @@ export function TeacherHome() {
                 );
               })}
             </div>
+          )}
+
+          {deleted.length > 0 && (
+            <section style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span className="eyebrow" style={{ fontSize: 11 }}>
+                Recently deleted
+              </span>
+              {purging && <span className="hint">Removing {purging} for good…</span>}
+              {deleted.map((c) => (
+                <div key={c.id} className="row-between" style={{ maxWidth: 640 }}>
+                  <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--serif)', fontSize: 14, color: 'var(--muted)' }}>{c.name}</span>
+                    <span className="hint">removed for good in {daysLeft(c)} {daysLeft(c) === 1 ? 'day' : 'days'}</span>
+                  </span>
+                  <span style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn small-btn" onClick={() => restoreClass(c)}>
+                      Restore
+                    </button>
+                    <button
+                      className="btn small-btn danger"
+                      disabled={!!purging}
+                      onClick={async () => {
+                        if (!window.confirm(`Remove ${c.name} for good now? This can't be undone.`)) return;
+                        setPurging(c.name);
+                        await purgeClass(c).catch((e) => console.error(e));
+                        setPurging('');
+                      }}
+                    >
+                      Delete now
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </section>
           )}
 
           {showArchived && archived.length > 0 && (

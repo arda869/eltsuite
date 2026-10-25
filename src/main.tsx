@@ -2,6 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
+import { ConnectionBanner } from './components/ConnectionBanner';
+import { Legal } from './pages/Legal';
 import { AuthProvider, useAuth } from './lib/auth';
 import { SignIn } from './pages/SignIn';
 import { EmailLinkFinish } from './pages/EmailLinkFinish';
@@ -62,6 +64,7 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <BrowserRouter>
         <UpdateBanner />
+        <ConnectionBanner />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
@@ -69,6 +72,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
+          <Route path="/privacy" element={<Legal kind="privacy" />} />
+          <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

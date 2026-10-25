@@ -183,6 +183,9 @@ export function SignIn() {
             I am a learner
           </Link>
         </div>
+        <span className="hint legal-links">
+          <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
+        </span>
       </form>
     </div>
   );

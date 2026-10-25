@@ -75,7 +75,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       </header>
       {(picking || (profile && !profile.avatar && askPicture)) && <AvatarPicker classIds={[classId]} onClose={() => (setPicking(false), setAskPicture(false))} />}
 
-      {c === null ? (
+      {c === null || c?.status === 'deleted' ? (
         <p className="placeholder">You’re no longer in this class. Ask your teacher if this is a mistake.</p>
       ) : (
         <main style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 820 }}>

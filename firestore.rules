@@ -41,7 +41,7 @@ service cloud.firestore {
         && resource.data.teacherId == request.auth.uid
         && request.resource.data.teacherId == resource.data.teacherId
         && request.resource.data.classCode == resource.data.classCode;
-      allow delete: if false;
+      allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
 
       // Content learners can see
       match /topics/{topicId} {
@@ -55,6 +55,11 @@ service cloud.firestore {
         match /tasks/{taskId} {
           allow read: if teachesClass(classId) || memberOf(classId);
           allow write: if teachesClass(classId);
+
+          // Earlier versions of the task (with answers): teacher only
+          match /versions/{versionId} {
+            allow read, write: if teachesClass(classId);
+          }
 
           // Answer key: learners can read it only after they have checked their answers
           match /private/{docId} {
@@ -145,6 +150,7 @@ service cloud.firestore {
       match /presence/{uid} {
         allow read: if teachesClass(classId);
         allow write: if isSelf(uid) && memberOf(classId);
+        allow delete: if teachesClass(classId);
       }
 
       // Roster: teacher only

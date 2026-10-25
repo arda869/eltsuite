@@ -3,6 +3,9 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -109,4 +112,17 @@ export async function loadNotes(classId: string, itemId: string, taskId: string)
 }
 export async function saveNotes(classId: string, itemId: string, taskId: string, text: string) {
   await setDoc(notesRef(classId, itemId, taskId), { text, updatedAt: serverTimestamp() });
+}
+
+// Version history: a snapshot of the task (with answers) at most every few minutes, last 30 kept.
+export type Version = { id: string; title: string; instructions: string; content: JSONContent; at?: { toMillis: () => number }; by?: string };
+const versionsCol = (classId: string, itemId: string, taskId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'versions');
+export async function addVersion(classId: string, itemId: string, taskId: string, v: { title: string; instructions: string; content: JSONContent; by: string }) {
+  await setDoc(doc(versionsCol(classId, itemId, taskId)), { ...v, at: serverTimestamp() });
+  const all = await getDocs(query(versionsCol(classId, itemId, taskId), orderBy('at', 'desc')));
+  await Promise.all(all.docs.slice(30).map((d) => deleteDoc(d.ref)));
+}
+export async function listVersions(classId: string, itemId: string, taskId: string): Promise<Version[]> {
+  const all = await getDocs(query(versionsCol(classId, itemId, taskId), orderBy('at', 'desc')));
+  return all.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Version, 'id'>) }));
 }

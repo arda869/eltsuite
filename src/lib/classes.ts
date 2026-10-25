@@ -26,6 +26,7 @@ export type ClassDoc = {
   learnerCount?: number;
   meeting?: Meeting | null;
   createdAt?: Timestamp;
+  deletedAt?: Timestamp | null;
 };
 
 export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };

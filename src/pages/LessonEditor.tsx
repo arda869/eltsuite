@@ -16,6 +16,7 @@ import {
   tasksCol,
   loadNotes,
   saveNotes,
+  addVersion,
   type AnswerKey,
   type Responses,
   type Task,
@@ -26,6 +27,7 @@ import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
 import { CopyDialog } from '../components/CopyDialog';
+import { VersionsDialog } from '../components/VersionsDialog';
 import { download, lessonText } from '../lib/transfer';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
@@ -245,6 +247,11 @@ export function LessonEditor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, !!task]);
 
+  const lastVersion = useRef<Record<string, number>>({});
+  const draftRef = useRef<Draft | null>(null);
+  draftRef.current = draft;
+  const [versionsOpen, setVersionsOpen] = useState(false);
+
   async function flush() {
     window.clearTimeout(timer.current);
     const p = pending.current;
@@ -254,6 +261,13 @@ export function LessonEditor() {
     try {
       await saveTask(classId, itemId, p.taskId, p.patch);
       setStatus(pending.current ? 'saving' : 'saved');
+      // Keep a version at most every 3 minutes of editing.
+      const last = lastVersion.current[p.taskId] ?? 0;
+      if (Date.now() - last > 3 * 60 * 1000 && draftRef.current) {
+        lastVersion.current[p.taskId] = Date.now();
+        const d = draftRef.current;
+        addVersion(classId, itemId, p.taskId, { title: d.title, instructions: d.instructions, content: d.content, by: user?.displayName || user?.email || '' }).catch(() => {});
+      }
     } catch (e) {
       console.error(e);
       setStatus('error');
@@ -705,6 +719,9 @@ export function LessonEditor() {
                   {task.afterCheck === 'retry' ? 'Learners only see which answers are right or wrong, then try the wrong ones again.' : 'Learners see the correct answers after they check.'}
                 </span>
               </div>
+              <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
+                Version history
+              </button>
               <div className="field" style={{ gap: 6 }}>
                 <span>Teacher notes</span>
                 <textarea className="notes-input" value={notes} placeholder="Timing, instructions, answers to check… Only you can see these." onChange={(e) => changeNotes(e.target.value)} />
@@ -717,6 +734,22 @@ export function LessonEditor() {
             </aside>
           )}
         </div>
+      )}
+      {versionsOpen && task && draft && (
+        <VersionsDialog
+          classId={classId}
+          itemId={itemId}
+          taskId={task.id}
+          onClose={() => setVersionsOpen(false)}
+          onRestore={async (v) => {
+            await addVersion(classId, itemId, task.id, { title: draft.title, instructions: draft.instructions, content: draft.content, by: (user?.displayName || '') + ' (before restoring)' }).catch(() => {});
+            setDraft({ title: v.title, instructions: v.instructions, content: v.content });
+            setEditorKey(task.id + ':' + Date.now());
+            pending.current = { taskId: task.id, patch: { title: v.title, instructions: v.instructions, content: v.content } };
+            await flush();
+            setVersionsOpen(false);
+          }}
+        />
       )}
       {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
       {copyMsg && (

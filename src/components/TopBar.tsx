@@ -6,6 +6,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Avatar } from './avatars';
 import { AvatarPicker } from './AvatarPicker';
+import { DeleteAccountDialog } from './DeleteAccountDialog';
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -17,6 +18,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const { user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [classIds, setClassIds] = useState<string[]>([]);
   useEffect(() => {
     if (!user || profile?.role !== 'teacher') return;
@@ -61,9 +63,18 @@ export function TopBar({ children }: { children?: ReactNode }) {
             <button role="menuitem" onClick={signOutNow}>
               Sign out
             </button>
+            {profile?.role === 'teacher' && (
+              <button role="menuitem" className="danger-item" onClick={() => (setDeletingAccount(true), setOpen(false))}>
+                Delete my account…
+              </button>
+            )}
+            <span className="menu-legal">
+              <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
+            </span>
           </div>
         )}
       </div>
+      {deletingAccount && <DeleteAccountDialog onClose={() => setDeletingAccount(false)} />}
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
     </header>
   );

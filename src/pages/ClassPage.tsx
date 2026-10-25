@@ -7,6 +7,7 @@ import type { Learner } from '../lib/learners';
 import { theme } from '../lib/themes';
 import { TopBar } from '../components/TopBar';
 import { LessonsTab } from '../components/LessonsTab';
+import { DeleteClassDialog } from '../components/DeleteClassDialog';
 import { LearnersTab } from '../components/LearnersTab';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
 
@@ -33,6 +34,7 @@ export function ClassPage() {
   const [tab, setTab] = useState<Tab>('lessons');
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -139,11 +141,15 @@ export function ClassPage() {
                       Restore class
                     </button>
                   )}
+                  <button role="menuitem" className="danger-item" onClick={() => (setMenu(false), setDeleting(true))}>
+                    Delete class…
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
+          {deleting && <DeleteClassDialog c={c} onClose={() => setDeleting(false)} onDeleted={() => navigate('/')} />}
           <nav className="tabs" aria-label="Class sections">
             <button className={tab === 'lessons' ? 'on' : ''} onClick={() => setTab('lessons')}>
               Lessons and work

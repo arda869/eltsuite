@@ -103,7 +103,8 @@ export function LearnerLesson() {
     setResponses({});
     setFlags([]);
     dirty.current = false;
-    return onSnapshot(answerRef(classId, current, user.uid), async (s) => {
+    return onSnapshot(answerRef(classId, current, user.uid), { includeMetadataChanges: true }, async (s) => {
+      setPendingSave(s.metadata.hasPendingWrites);
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
       setFlags(d?.flags ?? []);
       setMarks(d?.marks ?? {});
@@ -127,6 +128,7 @@ export function LearnerLesson() {
 
   const [flags, setFlags] = useState<string[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
+  const [pendingSave, setPendingSave] = useState(false);
   function toggleFlag(id: string) {
     if (!base) return;
     const next = flags.includes(id) ? flags.filter((f) => f !== id) : [...flags, id];
@@ -343,6 +345,7 @@ export function LearnerLesson() {
                 ) : (
                   <span className="hint">
                     {qs.length > 0 ? `${answered} of ${qs.length} answered` : ''}
+                    {qs.length > 0 && <span className={'save-dot' + (pendingSave ? ' pending' : '')}>{pendingSave ? ' · saving…' : ' · saved'}</span>}
                     {flags.filter((f) => qs.some((q) => q.id === f)).length > 0 && ` · ${flags.filter((f) => qs.some((q) => q.id === f)).length} flagged`}
                   </span>
                 )}
