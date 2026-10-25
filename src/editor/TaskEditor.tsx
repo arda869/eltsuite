@@ -13,6 +13,7 @@ import { FreshIds, jsonClip } from './clipboard';
 import { TableInsert } from './TableInsert';
 import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
+import { Ipa, newIpa, type Accent } from './Ipa';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
@@ -61,6 +62,19 @@ const COMMANDS: Cmd[] = [
         if (n.type.name === 'stress') last = n.attrs.style;
       });
       e.chain().focus().insertContent(newStress((last as 'box' | 'bold' | 'big') ?? 'box')).run();
+    },
+  },
+  {
+    key: 'ipa',
+    label: 'IPA transcription',
+    hint: 'Phonemic symbols, British or American',
+    group: 'Text',
+    run: (e) => {
+      let last: Accent | undefined;
+      e.state.doc.descendants((n) => {
+        if (n.type.name === 'ipa') last = n.attrs.accent;
+      });
+      e.chain().focus().insertContent(newIpa(last ?? 'RP')).run();
     },
   },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
@@ -178,6 +192,7 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
       PickCard,
       Definition,
       Stress,
+      Ipa,
       LessonLink,
       FreshIds,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),

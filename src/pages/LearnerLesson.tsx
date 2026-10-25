@@ -221,6 +221,7 @@ export function LearnerLesson() {
                   colScroll={task.colScroll ?? 'separate'}
                   flags={flags}
                   shared={shared}
+                  onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   onOpenTask={(id) => {
                     const t = tasks.find((x) => x.id === id);
                     if (t && !t.locked) setCurrent(id);

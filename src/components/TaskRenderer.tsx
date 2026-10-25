@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
+import { IpaText } from '../editor/Ipa';
 import { LINK_ICON } from '../editor/LessonLink';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
@@ -727,11 +728,14 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
             canDraw={canDraw}
             waitingText={together && !canDraw && !results ? 'Your teacher will draw for the class.' : undefined}
             onDraw={(next) => (together ? onSharedDraw?.(id, next, (sp?.seq ?? 0) + 1) : onChange?.(id, next as unknown as Response))}
-            onReset={together && teacher && onSharedReset ? () => onSharedReset(id) : undefined}
+            onReset={results ? undefined : together ? (onSharedReset && (teacher || node.attrs?.whoDraws === 'anyone') ? () => onSharedReset(id) : undefined) : onChange ? () => onChange(id, { h: [], b: [] } as unknown as Response) : undefined}
+            resetAnytime={together && !!teacher}
             renderCard={(i) => (cards[i]?.content ?? []).map((c, k) => render(c, key + '.' + i + '.' + k))}
           />
         );
       }
+      case 'ipa':
+        return <IpaText key={key} text={(node.attrs?.text as string) ?? ''} accent={(node.attrs?.accent ?? 'RP') as 'RP' | 'GA'} showAccent={!!node.attrs?.showAccent} />;
       case 'stress':
         return <StressedWord key={key} syllables={(node.attrs?.syllables as string[]) ?? []} stressed={Number(node.attrs?.stressed ?? 0)} style={(node.attrs?.style ?? 'box') as 'box' | 'bold' | 'big'} />;
       case 'columnBreak':

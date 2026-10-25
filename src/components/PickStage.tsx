@@ -26,6 +26,7 @@ type Props = {
   waitingText?: string; // shown when this person can't draw
   onDraw: (next: PickState) => void;
   onReset?: () => void;
+  resetAnytime?: boolean; // teacher of a shared pile
   renderCard: (i: number) => ReactNode;
 };
 
@@ -33,7 +34,7 @@ const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.(
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const cardName = (titles: string[], i: number) => titles[i]?.trim() || `Card ${i + 1}`;
 
-export function PickStage({ look = 'graphite', symbol = '✦', mode, repeat, titles, state, seq, drawnBy, canDraw, waitingText, onDraw, onReset, renderCard }: Props) {
+export function PickStage({ look = 'graphite', symbol = '✦', mode, repeat, titles, state, seq, drawnBy, canDraw, waitingText, onDraw, onReset, resetAnytime, renderCard }: Props) {
   const n = titles.length;
   const drawn: number[] = [];
   for (const x of state.h) if (!drawn.includes(x) && x < n) drawn.push(x);
@@ -99,10 +100,22 @@ export function PickStage({ look = 'graphite', symbol = '✦', mode, repeat, tit
             ))}
           </span>
         )}
-        {onReset && state.h.length > 0 && (
-          <button type="button" className="btn link small pk-reset" onClick={onReset}>
-            Put all the cards back
+        {onReset && !repeat && n > 0 && remaining === 0 ? (
+          <button type="button" className="btn small-btn pk-again" onClick={onReset}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+              <path d="M3 3v5h5" />
+            </svg>
+            {mode === 'boxes' ? 'Close the boxes and start again' : mode === 'wheel' ? 'Reset the wheel' : 'Shuffle and start again'}
           </button>
+        ) : (
+          onReset &&
+          resetAnytime &&
+          state.h.length > 0 && (
+            <button type="button" className="btn link small pk-reset" onClick={onReset}>
+              Put all the cards back
+            </button>
+          )
         )}
       </div>
     </div>

@@ -1087,3 +1087,38 @@ a.btn.primary { color: #ffffff; }
 .link-item:hover { background: #f4f4f3; }
 .link-item.on { background: #ececeb; font-weight: 600; }
 .link-item .n { color: var(--accent-text); font-weight: 600; width: 16px; }
+.pk-again { display: inline-flex; align-items: center; gap: 6px; animation: pk-pop 0.4s ease both; }
+.pk-cards .pk-foot .pk-again { order: -1; }
+
+/* IPA */
+:root { --ipa-font: 'Noto Sans', 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Lucida Sans Unicode', 'Segoe UI', 'Arial Unicode MS', sans-serif; }
+.ipa { font-family: var(--ipa-font); color: #8a8a87; font-size: 0.92em; font-weight: 400; white-space: nowrap; letter-spacing: 0.01em; }
+.ipa-acc { font-family: var(--sans); font-size: 0.68em; font-weight: 600; letter-spacing: 0.08em; color: #a3a3a0; margin-right: 4px; vertical-align: 0.12em; }
+.dc-ipa { font-family: var(--ipa-font); }
+.ipa-node { position: relative; }
+.ipa-node > .grip { position: absolute; left: -15px; top: 50%; margin-top: -10px; z-index: 2; }
+.ipa-node:hover .grip, .ipa-node.is-selected .grip { opacity: 1; }
+.ipa-chip { cursor: pointer; border-radius: 4px; padding: 0 2px; }
+.ipa-chip:hover, .ipa-node.is-selected .ipa-chip { background: #f4f4f3; }
+.ipa-pop { width: 430px; gap: 10px; padding: 12px; }
+.ipa-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ipa-input { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid var(--hair-strong); padding-bottom: 2px; }
+.ipa-input .ipa-slash { font: 18px var(--ipa-font); color: var(--soft); }
+.ipa-pop .ipa-input input { flex: 1; border: 0; height: 32px; font: 18px var(--ipa-font); color: var(--ink); outline: none; padding: 0 2px; }
+.ipa-chart { display: flex; flex-direction: column; gap: 10px; }
+.ipa-top { display: flex; gap: 10px; }
+.ipa-block { display: flex; flex-direction: column; gap: 3px; }
+.ipa-block.vowels { flex: 4; }
+.ipa-block.diph { flex: 3; }
+.ipa-cap { font: 600 10px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin-bottom: 1px; }
+.ipa-row { display: flex; gap: 3px; }
+.ipa-key { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0; border: 0; border-radius: 6px; padding: 4px 2px 3px; cursor: pointer; background: #f6f6f5; color: var(--ink); }
+.ipa-key:hover { background: #ebebea; }
+.ipa-key:active { transform: scale(0.95); }
+.ipa-key.v { background: #f3f3f6; }
+.ipa-key.d { background: #f4f2ee; }
+.ipa-key.c { background: #f5f5f4; }
+.ipa-sym { font: 16px/1.2 var(--ipa-font); }
+.ipa-ex { font: 9.5px/1.2 var(--sans); color: var(--soft); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ipa-marks .ipa-key { flex: 0 0 auto; min-width: 54px; }
+.ipa-show { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
