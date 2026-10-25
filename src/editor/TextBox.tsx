@@ -110,6 +110,7 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected }: NodeViewP
         <span className="drag-handle" data-drag-handle title="Drag to move" aria-hidden="true">
           ⋮⋮
         </span>
+        <span className="pop-type">{attrs.style === 'info' ? 'Information box' : 'Text box'}</span>
         <select value={attrs.style} onChange={(e) => updateAttributes({ style: e.target.value })} aria-label="Style">
           {BOX_STYLES.map((s) => (
             <option key={s.key} value={s.key}>
