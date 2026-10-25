@@ -4,23 +4,34 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
     function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+    function learnerAccount() {
+      return signedIn() && request.auth.token.email != null
+        && request.auth.token.email.matches('.*@learners[.]lesson-lit[.]firebaseapp[.]com$');
+    }
     function isTeacher() {
-      return signedIn()
+      return signedIn() && !learnerAccount()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
-
-    // Teacher profiles
-    match /users/{uid} {
-      allow read: if isSelf(uid);
-      allow create: if isSelf(uid) && request.resource.data.role == 'teacher';
-      allow update: if isSelf(uid) && request.resource.data.role == resource.data.role;
-      allow delete: if false;
+    function classData(classId) { return get(/databases/$(database)/documents/classes/$(classId)).data; }
+    function teachesClass(classId) { return signedIn() && classData(classId).teacherId == request.auth.uid; }
+    function memberOf(classId) {
+      return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
 
-    // Classes: only the owning teacher can see or change them (learner access comes later)
+    // Profiles: teachers create their own; teachers create learner profiles for their class
+    match /users/{uid} {
+      allow read: if isSelf(uid)
+        || (signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId));
+      allow create: if (isSelf(uid) && !learnerAccount() && request.resource.data.role == 'teacher')
+        || (request.resource.data.role == 'learner' && isTeacher() && teachesClass(request.resource.data.classId));
+      allow update: if isSelf(uid) && request.resource.data.role == resource.data.role
+        && request.resource.data.get('classId', null) == resource.data.get('classId', null);
+      allow delete: if signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId);
+    }
+
     match /classes/{classId} {
-      allow read: if signedIn() && resource.data.teacherId == request.auth.uid;
+      allow read: if signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId));
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.name is string
@@ -28,11 +39,34 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 80;
       allow update: if signedIn()
         && resource.data.teacherId == request.auth.uid
-        && request.resource.data.teacherId == resource.data.teacherId;
+        && request.resource.data.teacherId == resource.data.teacherId
+        && request.resource.data.classCode == resource.data.classCode;
       allow delete: if false;
+
+      // Content learners can see
+      match /topics/{topicId} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId);
+      }
+      match /items/{itemId} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId);
+      }
+
+      // Roster: teacher only
+      match /learners/{learnerId} {
+        allow read, write: if teachesClass(classId);
+      }
+      match /secrets/{learnerId} {
+        allow read, write: if teachesClass(classId);
+      }
+      match /members/{memberUid} {
+        allow read: if teachesClass(classId) || isSelf(memberUid);
+        allow write: if teachesClass(classId);
+      }
     }
 
-    // Class codes map a short code to a class; looked up one at a time when learners join
+    // Class codes: looked up one at a time when learners join
     match /classCodes/{code} {
       allow get: if true;
       allow list: if false;
