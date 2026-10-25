@@ -9,10 +9,37 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
-          projectId: lesson-lit
+          node-version: 22
+
+      - name: Check deploy key
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::The FIREBASE_SERVICE_ACCOUNT secret is missing or empty."
+            exit 1
+          fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          if ! node -e "const k=require(process.argv[1]); if(!k.client_email||!k.private_key) process.exit(2); console.log('Key for project: '+k.project_id)" "$RUNNER_TEMP/sa.json"; then
+            echo "::error::FIREBASE_SERVICE_ACCOUNT is not a valid service account JSON file. Paste the whole file, including the outer { }."
+            exit 1
+          fi
+
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -o pipefail
+          if ! npx --yes firebase-tools@14 deploy --only hosting --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/deploy.log"; then
+            msg=$(grep -iE "error|denied|permission|not found|enable" "$RUNNER_TEMP/deploy.log" | tail -5 | tr '\n' ' ')
+            echo "::error::Deploy failed: ${msg:-see log}"
+            exit 1
+          fi
+
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
