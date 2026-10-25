@@ -77,6 +77,13 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Shared "draw a card" piles (played together as a class)
+      match /picks/{pickId} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId)
+          || (memberOf(classId) && request.resource.data.keys().hasOnly(['taskId', 'pickId', 'h', 'b', 'seq', 'by', 'at']));
+      }
+
       // Where the teacher is in a lesson
       match /live/{docId} {
         allow read: if teachesClass(classId) || memberOf(classId);

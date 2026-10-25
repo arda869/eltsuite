@@ -20,6 +20,7 @@ import {
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
+import { drawShared, useSharedPicks } from '../lib/picks';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -80,7 +81,9 @@ export function LearnerLesson() {
 
   const task = tasks.find((t) => t.id === current);
   const index = tasks.findIndex((t) => t.id === current);
-  const qs = useMemo(() => questionIds(task?.content ?? null), [task]);
+  const shared = useSharedPicks(classId, current);
+  const withShared = useMemo(() => ({ ...responses, ...Object.fromEntries(Object.values(shared).map((p) => [p.pickId, { h: p.h, b: p.b }])) }), [responses, shared]);
+  const qs = useMemo(() => questionIds(task?.content ?? null, withShared), [task, withShared]);
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
   const base = user && task ? { learnerUid: user.uid, learnerId, itemId, taskId: task.id } : null;
 
@@ -217,6 +220,8 @@ export function LearnerLesson() {
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
                   flags={flags}
+                  shared={shared}
+                  onSharedDraw={(pickId, next, seq) => drawShared(classId, current, pickId, next.h, next.b, seq, (profile?.role === 'learner' ? profile.displayName : '').split(' ')[0] || 'A learner').catch((e) => console.error(e))}
                   onToggleFlag={task.locked ? undefined : toggleFlag}
                 />
               </div>

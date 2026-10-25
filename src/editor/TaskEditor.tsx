@@ -11,6 +11,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import { Choice, Gap, Mcq, newChoice, newGap } from './nodes';
 import { FreshIds, jsonClip } from './clipboard';
 import { TableInsert } from './TableInsert';
+import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 
@@ -40,6 +41,9 @@ const COMMANDS: Cmd[] = [
   { key: 'bank', label: 'Word bank', hint: 'The words for drag-and-drop gaps', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWordBank(), { type: 'paragraph' }]).run() },
   { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
+  { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
+  { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
+  { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
   { key: 'info', label: 'Information box', hint: 'Grammar rules, tips, useful language', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('info', 'sand', 'Grammar', '!'), { type: 'paragraph' }]).run() },
@@ -93,7 +97,7 @@ function useSlash(editor: Editor | null) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested))).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes'].includes(c.key) && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
     },
     [state, editor],
   );
@@ -108,7 +112,16 @@ function useSlash(editor: Editor | null) {
   return { state: items.length ? state : null, items, index, setIndex, choose, close: () => setState(null) };
 }
 
-const BTN = (label: string, active: boolean, onClick: () => void, text: string) => (
+const ICON = (d: React.ReactNode) => (
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+    {d}
+  </svg>
+);
+const ICON_LIST = ICON(<><circle cx="2.5" cy="4" r="1" fill="currentColor" stroke="none" /><circle cx="2.5" cy="8" r="1" fill="currentColor" stroke="none" /><circle cx="2.5" cy="12" r="1" fill="currentColor" stroke="none" /><path d="M6 4h8M6 8h8M6 12h8" /></>);
+const ICON_OL = ICON(<><text x="0.5" y="5.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="sans-serif">1</text><text x="0.5" y="9.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="sans-serif">2</text><text x="0.5" y="13.5" fontSize="5" fill="currentColor" stroke="none" fontFamily="sans-serif">3</text><path d="M6 4h8M6 8h8M6 12h8" /></>);
+const ICON_TABLE = ICON(<><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" /><path d="M1.5 6.5h13M6 6.5v7M10.5 6.5v7" /></>);
+
+const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
     {text}
   </button>
@@ -144,6 +157,8 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
       jsonClip(Writing, 'div', 'data-writing'),
       ColumnBreak,
       TextBox,
+      RandomPick,
+      PickCard,
       FreshIds,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],
@@ -187,12 +202,13 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
   return (
     <div className="task-editor">
       <div className="toolbar" role="toolbar" aria-label="Formatting">
-        {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'B')}
-        {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'I')}
-        {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'U')}
-        {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), 'H')}
-        {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '•')}
-        {BTN('Table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), '▦')}
+        {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)}
+        {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)}
+        {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u className="ti ti-u">U</u>)}
+        {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <span className="ti ti-h">Heading</span>)}
+        {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)}
+        {BTN('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), ICON_OL)}
+        {BTN('Insert a table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), <span className="ti-row">{ICON_TABLE}<span>Table</span></span>)}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
         {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}

@@ -25,8 +25,10 @@ import { isOnline, usePresence } from '../lib/presence';
 import { initials } from '../components/TopBar';
 import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
+import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { LivePanel } from '../components/LivePanel';
+import { drawShared, useSharedPicks } from '../lib/picks';
 
 const svg = (d: React.ReactNode) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -80,6 +82,7 @@ export function LessonEditor() {
   );
 
   const task = tasks.find((t) => t.id === selected);
+  const sharedPicks = useSharedPicks(classId, selected);
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
@@ -281,7 +284,7 @@ export function LessonEditor() {
                 }}
               >
                 <span className="drag-handle" aria-hidden="true" title="Drag to reorder">
-                  ⋮⋮
+                  {DOTS}
                 </span>
                 {t.kind === 'section' ? (
                   <span className="section-row">
@@ -380,6 +383,10 @@ export function LessonEditor() {
                     disabled={!preview}
                     layout={task.layout ?? 'single'}
                     colScroll={task.colScroll ?? 'separate'}
+                    teacher
+                    shared={preview ? undefined : sharedPicks}
+                    onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
+                    onSharedReset={(pickId) => drawShared(classId, task.id, pickId, [], [], (sharedPicks[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   />
                 </div>
                 <div className="frame-foot">

@@ -6,6 +6,13 @@ import { NoteFields } from './NoteFields';
 
 const LETTERS = 'abcdefghij';
 
+// Six-dot handle used for everything that can be dragged (tasks, sections, questions).
+export const DOTS = (
+  <svg className="dots6" width="8" height="13" viewBox="0 0 8 13" aria-hidden="true">
+    {[0, 1].map((c) => [0, 1, 2].map((r) => <circle key={c + '' + r} cx={1.5 + c * 5} cy={1.5 + r * 5} r="1.5" fill="currentColor" />))}
+  </svg>
+);
+
 // Grip on the left of a question: drag to move it, click to select it (then Backspace deletes it).
 export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getPos: NodeViewProps['getPos'] }) {
   return (
@@ -23,7 +30,7 @@ export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getP
         }
       }}
     >
-      ⋮⋮
+      {DOTS}
     </span>
   );
 }

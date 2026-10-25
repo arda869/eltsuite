@@ -148,10 +148,30 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
 
 export type QRef = { id: string; type: string; rows: number };
 
-export function questionIds(content: JSONContent | null): QRef[] {
+// Cards a learner has drawn in a "draw a card" activity, in the order first drawn.
+// The response is the full draw history (a card can come up more than once).
+export type PickState = { h: number[]; b: number[] }; // h: cards in draw order, b: boxes opened
+export function pickState(r: Response): PickState {
+  if (Array.isArray(r)) return { h: r.filter((x): x is number => typeof x === 'number'), b: [] };
+  if (r && typeof r === 'object' && Array.isArray((r as PickState).h)) return { h: (r as PickState).h, b: (r as PickState).b ?? [] };
+  return { h: [], b: [] };
+}
+export function drawnCards(r: Response): number[] {
+  const out: number[] = [];
+  for (const x of pickState(r).h) if (!out.includes(x)) out.push(x);
+  return out;
+}
+
+// Questions in reading order. With responses, a "draw a card" activity only counts the
+// questions on cards the learner has drawn; without them (teacher views) it counts all.
+export function questionIds(content: JSONContent | null, responses?: Responses): QRef[] {
   const out: QRef[] = [];
   const walk = (n: JSONContent) => {
     if (isQuestion(n)) out.push({ id: n.attrs!.id, type: n.type!, rows: n.type === 'match' ? (n.attrs?.left ?? []).length || 1 : 1 });
+    if (n.type === 'randomPick' && responses) {
+      for (const i of drawnCards(responses[n.attrs?.id])) if (n.content?.[i]) walk(n.content[i]);
+      return;
+    }
     n.content?.forEach(walk);
   };
   if (content) walk(content);

@@ -2,7 +2,9 @@ import { useState, type ReactNode } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
-import { isAnswered, normalise, scoreQuestion, splitWords, textOf, type AnswerKey, type Response, type Responses } from '../lib/questions';
+import { drawnCards, isAnswered, normalise, pickState, scoreQuestion, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
+import { PickStage } from './PickStage';
+import type { SharedPick } from '../lib/picks';
 
 const LETTERS = 'abcdefghijklmnop';
 
@@ -18,6 +20,11 @@ type Props = {
   revealed?: AnswerKey | null; // answers the teacher has revealed to the class
   flags?: string[]; // questions the learner flagged to come back to
   onToggleFlag?: (id: string) => void;
+  // "Draw a card" played together: the class pile, and who is looking at it.
+  shared?: Record<string, SharedPick>;
+  onSharedDraw?: (pickId: string, next: PickState, seq: number) => void;
+  onSharedReset?: (pickId: string) => void;
+  teacher?: boolean;
 };
 
 const TICK = (
@@ -38,7 +45,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -47,8 +54,20 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   let n = 0;
   const numbers: Record<string, number> = {};
   const listed = new Set<string>();
+  // A pick played together uses the class pile; otherwise this person's own draws.
+  const sharedOn = (node: JSONContent) => node.attrs?.play === 'class' && !!shared;
+  const pickOf = (node: JSONContent): PickState => {
+    const id = node.attrs?.id as string;
+    if (sharedOn(node)) return { h: shared?.[id]?.h ?? [], b: shared?.[id]?.b ?? [] };
+    return pickState(responses[id]);
+  };
   const walk = (node: JSONContent, inOl: boolean) => {
     const ol = inOl || node.type === 'orderedList';
+    if (node.type === 'randomPick') {
+      // Only drawn cards are numbered, in the order they were drawn.
+      for (const i of drawnCards(pickOf(node) as unknown as Response)) if (node.content?.[i]) walk(node.content[i], ol);
+      return;
+    }
     if (node.attrs?.id && QTYPES.includes(node.type ?? '')) {
       numbers[node.attrs.id] = n + 1;
       n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : 1;
@@ -619,6 +638,29 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         return order(node, key);
       case 'writing':
         return writing(node, key);
+      case 'randomPick': {
+        const id = node.attrs?.id as string;
+        const cards = node.content ?? [];
+        const together = sharedOn(node);
+        const sp = shared?.[id];
+        const canDraw = !results && (together ? !!onSharedDraw && (teacher || node.attrs?.whoDraws === 'anyone') : !!onChange);
+        return (
+          <PickStage
+            key={key}
+            mode={(node.attrs?.mode ?? 'cards') as 'cards' | 'wheel' | 'boxes'}
+            repeat={!!node.attrs?.repeat}
+            titles={cards.map((c) => (c.attrs?.title as string) ?? '')}
+            state={pickOf(node)}
+            seq={together ? sp?.seq ?? 0 : undefined}
+            drawnBy={together ? sp?.by : undefined}
+            canDraw={canDraw}
+            waitingText={together && !canDraw && !results ? 'Your teacher will draw for the class.' : undefined}
+            onDraw={(next) => (together ? onSharedDraw?.(id, next, (sp?.seq ?? 0) + 1) : onChange?.(id, next as unknown as Response))}
+            onReset={together && teacher && onSharedReset ? () => onSharedReset(id) : undefined}
+            renderCard={(i) => (cards[i]?.content ?? []).map((c, k) => render(c, key + '.' + i + '.' + k))}
+          />
+        );
+      }
       case 'columnBreak':
         return null;
       default:
