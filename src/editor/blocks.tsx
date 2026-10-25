@@ -3,6 +3,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tip
 import { useEffect, useRef, useState } from 'react';
 import { newId } from '../lib/tasks';
 import { NoteFields } from './NoteFields';
+import { Grip } from './nodes';
 
 const LETTERS = 'abcdefghijklmnop';
 
@@ -15,13 +16,22 @@ function useOutside(open: boolean, ref: React.RefObject<HTMLElement>, onClose: (
   });
 }
 
-function BlockHead({ label, onRemove }: { label: string; onRemove: () => void }) {
+function BlockHead({ label, onRemove, p }: { label: string; onRemove: () => void; p: NodeViewProps }) {
   return (
     <div className="mcq-tools">
-      <span className="drag-handle" data-drag-handle title="Drag to move" aria-hidden="true">
-        ⋮⋮
+      <Grip editor={p.editor} getPos={p.getPos} />
+      <span
+        className="block-label"
+        onMouseDown={() => {
+          const pos = typeof p.getPos === 'function' ? p.getPos() : undefined;
+          if (typeof pos === 'number') {
+            p.editor.chain().setNodeSelection(pos).run();
+            p.editor.view.focus();
+          }
+        }}
+      >
+        {label}
       </span>
-      <span>{label}</span>
       <button type="button" onClick={onRemove}>
         Remove
       </button>
@@ -31,7 +41,7 @@ function BlockHead({ label, onRemove }: { label: string; onRemove: () => void })
 
 // Drag-and-drop gap (word from the word bank) -----------------------------------------
 
-function DropGapView({ node, updateAttributes, selected }: NodeViewProps) {
+function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {
   const [open, setOpen] = useState(!node.attrs.answer);
   const [value, setValue] = useState<string>(node.attrs.answer ?? '');
   const ref = useRef<HTMLSpanElement>(null);
@@ -46,6 +56,7 @@ function DropGapView({ node, updateAttributes, selected }: NodeViewProps) {
   useOutside(open, ref, save);
   return (
     <NodeViewWrapper as="span" className={'gap-node drop-node' + (selected ? ' is-selected' : '')} ref={ref}>
+      <Grip editor={editor} getPos={getPos} />
       <span className={'drop-chip' + (node.attrs.answer ? '' : ' empty')} contentEditable={false} onClick={() => setOpen(true)} title="Word from the word bank">
         {node.attrs.answer || 'word'}
       </span>
@@ -88,7 +99,8 @@ export const DropGap = Node.create({
 
 // Word bank -------------------------------------------------------------------------
 
-function WordBankView({ node, updateAttributes, editor, deleteNode }: NodeViewProps) {
+function WordBankView(props: NodeViewProps) {
+  const { node, updateAttributes, editor, deleteNode } = props;
   const [, force] = useState(0);
   useEffect(() => {
     const f = () => force((x) => x + 1);
@@ -105,7 +117,7 @@ function WordBankView({ node, updateAttributes, editor, deleteNode }: NodeViewPr
   const [extraText, setExtraText] = useState(extras.join(', '));
   return (
     <NodeViewWrapper className="block-node" contentEditable={false}>
-      <BlockHead label="Word bank" onRemove={deleteNode} />
+      <BlockHead label="Word bank" onRemove={deleteNode} p={props} />
       <div className="bank-preview">
         {answers.map((w, i) => (
           <span key={'a' + i} className="bank-chip">
@@ -149,14 +161,15 @@ export const WordBank = Node.create({
 
 type Pair = { left: string; right: string };
 
-function MatchView({ node, updateAttributes, deleteNode }: NodeViewProps) {
+function MatchView(props: NodeViewProps) {
+  const { node, updateAttributes, deleteNode } = props;
   const pairs: Pair[] = node.attrs.pairs ?? [];
   const extras: string[] = node.attrs.extras ?? [];
   const [extraText, setExtraText] = useState(extras.join(', '));
   const setPair = (i: number, patch: Partial<Pair>) => updateAttributes({ pairs: pairs.map((p, k) => (k === i ? { ...p, ...patch } : p)) });
   return (
     <NodeViewWrapper className="block-node q-block" style={{ ['--rows' as string]: Math.max(1, pairs.length) }} contentEditable={false}>
-      <BlockHead label="Matching" onRemove={deleteNode} />
+      <BlockHead label="Matching" onRemove={deleteNode} p={props} />
       <div className="match-edit">
         {pairs.map((p, i) => (
           <div key={i} className="match-row">
@@ -220,11 +233,12 @@ export const Match = Node.create({
 
 // Word order -----------------------------------------------------------------------------
 
-function OrderView({ node, updateAttributes, deleteNode }: NodeViewProps) {
+function OrderView(props: NodeViewProps) {
+  const { node, updateAttributes, deleteNode } = props;
   const sentence: string = node.attrs.sentence ?? '';
   return (
     <NodeViewWrapper className="block-node q-block" contentEditable={false}>
-      <BlockHead label="Word order" onRemove={deleteNode} />
+      <BlockHead label="Word order" onRemove={deleteNode} p={props} />
       <input className="mcq-prompt" value={sentence} placeholder="Type the correct sentence, for example: I have never been to Japan." onChange={(e) => updateAttributes({ sentence: e.target.value })} />
       <span className="hint">Learners see the words shuffled and put them back in order.</span>
       <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
@@ -246,11 +260,12 @@ export const Order = Node.create({
 
 // Long answer ------------------------------------------------------------------------------
 
-function WritingView({ node, updateAttributes, deleteNode }: NodeViewProps) {
+function WritingView(props: NodeViewProps) {
+  const { node, updateAttributes, deleteNode } = props;
   const num = (v: string) => (v.trim() === '' ? null : Math.max(0, Math.min(2000, parseInt(v, 10) || 0)));
   return (
     <NodeViewWrapper className="block-node q-block" contentEditable={false}>
-      <BlockHead label="Long answer" onRemove={deleteNode} />
+      <BlockHead label="Long answer" onRemove={deleteNode} p={props} />
       <div className="writing-edit">
         <label className="inline-field small-field">
           Minimum words

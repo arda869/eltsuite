@@ -1,6 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import type { ReactNode } from 'react';
+import { Grip } from './nodes';
 
 // A container for reading texts and model answers, shown in one of several styles.
 
@@ -111,14 +112,12 @@ export function BoxFrame({ attrs, children, editable, onMeta }: { attrs: BoxAttr
   }
 }
 
-function TextBoxView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
+function TextBoxView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const attrs = node.attrs as BoxAttrs;
   return (
     <NodeViewWrapper className={'tbox-node' + (selected ? ' is-selected' : '')}>
       <div className="tbox-tools" contentEditable={false}>
-        <span className="drag-handle" data-drag-handle title="Drag to move" aria-hidden="true">
-          ⋮⋮
-        </span>
+        <Grip editor={editor} getPos={getPos} />
         <span className="pop-type">{attrs.style === 'info' ? 'Information box' : 'Text box'}</span>
         <select value={attrs.style} onChange={(e) => updateAttributes({ style: e.target.value })} aria-label="Style">
           {BOX_STYLES.map((s) => (

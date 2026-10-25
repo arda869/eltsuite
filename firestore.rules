@@ -60,7 +60,8 @@ service cloud.firestore {
           match /private/{docId} {
             allow read: if teachesClass(classId)
               || (memberOf(classId)
-                  && get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true);
+                  && (get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true
+                      || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealed', {}).get(taskId, 0) != 0));
             allow write: if teachesClass(classId);
           }
         }

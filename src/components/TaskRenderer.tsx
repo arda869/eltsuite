@@ -15,6 +15,9 @@ type Props = {
   disabled?: boolean;
   layout?: 'single' | 'two' | 'two-wide';
   colScroll?: 'separate' | 'together';
+  revealed?: AnswerKey | null; // answers the teacher has revealed to the class
+  flags?: string[]; // questions the learner flagged to come back to
+  onToggleFlag?: (id: string) => void;
 };
 
 const TICK = (
@@ -35,8 +38,9 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate' }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
+  const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
 
   // Numbering: (1), (2)… in reading order; matching uses one number per row.
@@ -62,12 +66,60 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   };
   if (content) collectDrops(content);
 
-  const num = (id: string, offset = 0) =>
-    listed.has(id) && offset === 0 ? null : (
+  const FLAG = (
+    <svg width="9" height="10" viewBox="0 0 20 22" aria-hidden="true">
+      <path d="M3 21V2M3 3h12l-2.5 4L15 11H3" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    </svg>
+  );
+  const num = (id: string, offset = 0) => {
+    const flagged = flags?.includes(id);
+    if (onToggleFlag && offset === 0 && !results)
+      return (
+        <button
+          type="button"
+          className={'q-num flag-btn' + (flagged ? ' flagged' : '') + (listed.has(id) ? ' listed' : '')}
+          title={flagged ? 'Remove flag' : 'Flag to come back later'}
+          aria-label={`Question ${numbers[id]}: ${flagged ? 'flagged, tap to remove the flag' : 'tap to flag it for later'}`}
+          aria-pressed={flagged}
+          onClick={() => onToggleFlag(id)}
+        >
+          {!listed.has(id) && numbers[id]}
+          <span className="flag-icon">{FLAG}</span>
+        </button>
+      );
+    return listed.has(id) && offset === 0 ? null : (
       <sup className="q-num" aria-hidden="true">
         {numbers[id] + offset}
       </sup>
     );
+  };
+
+  // Answer the teacher has revealed, shown next to the question.
+  const revealOf = (node: JSONContent): string | null => {
+    const id = node.attrs?.id as string;
+    const e = revealed?.[id];
+    if (!e || results) return null;
+    const options: string[] = node.attrs?.options ?? [];
+    switch (e.kind) {
+      case 'gap':
+        return e.answers.join(' / ');
+      case 'mcq':
+        return options[e.correct] ?? null;
+      case 'multi':
+        return e.correct.map((i) => options[i]).join(', ');
+      case 'drop':
+      case 'order':
+        return e.answer;
+      case 'match':
+        return e.map.map((m, i) => `${numbers[id] + i}–${LETTERS[m]}`).join('  ');
+      default:
+        return null;
+    }
+  };
+  const revealChip = (node: JSONContent) => {
+    const t = revealOf(node);
+    return t ? <span className="reveal-ans">{t}</span> : null;
+  };
 
   const resultText = (key: string, id: string, shown: string, right: boolean, fix?: string) => (
     <span key={key} className="gap-result">
@@ -103,6 +155,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           size={Math.max(6, value.length + 1)}
           onChange={(e) => onChange?.(id, e.target.value)}
         />
+        {revealChip(node)}
       </span>
     );
   };
@@ -120,12 +173,12 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     const correct = entry?.kind === 'multi' ? entry.correct : entry?.kind === 'mcq' ? [entry.correct] : [];
     const toggle = (i: number) => {
       if (multi) onChange?.(id, chosen.includes(i) ? chosen.filter((x) => x !== i) : [...chosen, i].sort());
-      else onChange?.(id, i);
+      else onChange?.(id, chosen.includes(i) ? '' : i); // clicking the chosen option again clears it
     };
     return options.map((o, i) =>
       o.trim() ? (
         <label key={i} className={'opt ' + optionState(i, chosen, correct)}>
-          <input type={multi ? 'checkbox' : 'radio'} name={id} checked={chosen.includes(i)} disabled={locked} onChange={() => toggle(i)} />
+          <input type={multi ? 'checkbox' : 'radio'} name={id} checked={chosen.includes(i)} disabled={locked} onChange={() => {}} onClick={() => toggle(i)} />
           {display === 'radio' ? (
             <span className={multi ? 'radio square' : 'radio'} aria-hidden="true" />
           ) : (
@@ -179,6 +232,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
               </span>
             );
           })}
+          {revealChip(node)}
         </span>
       );
     }
@@ -186,13 +240,17 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       return (
         <span key={key} className="stacked-choice" role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
           <span className="stack-num">{num(id)}</span>
-          <span className="stack">{choiceOptions(id, options, multi, display)}</span>
+          <span className="stack">
+            {choiceOptions(id, options, multi, display)}
+            {revealChip(node)}
+          </span>
         </span>
       );
     return (
       <span key={key} className={'inline-choice d-' + display} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
         {num(id)}
         {choiceOptions(id, options, multi, display)}
+        {revealChip(node)}
       </span>
     );
   };
@@ -219,59 +277,73 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     const chosen: number[] = Array.isArray(raw) ? raw : [];
     const entry = results?.[id];
     const map = entry?.kind === 'match' ? entry.map : [];
+    const live = !results && !disabled;
+    const setMatch = (li: number, rk: number) => {
+      const next = [...chosen];
+      while (next.length < left.length) next.push(-1);
+      next[li] = next[li] === rk ? -1 : rk;
+      onChange?.(id, next);
+      setPair(null);
+    };
+    const pickLeft = (i: number) => {
+      if (!live) return;
+      if (pair?.id === id && pair.side === 'r') return setMatch(i, pair.i);
+      if ((chosen[i] ?? -1) >= 0 && !(pair?.id === id && pair.side === 'l' && pair.i === i)) {
+        // Tapping a matched item clears it and lets the learner choose again.
+        const next = [...chosen];
+        next[i] = -1;
+        onChange?.(id, next);
+      }
+      setPair(pair?.id === id && pair.side === 'l' && pair.i === i ? null : { id, side: 'l', i });
+    };
+    const pickRight = (k: number) => {
+      if (!live) return;
+      if (pair?.id === id && pair.side === 'l') return setMatch(pair.i, k);
+      setPair(pair?.id === id && pair.side === 'r' && pair.i === k ? null : { id, side: 'r', i: k });
+    };
+    const active = (side: 'l' | 'r', i: number) => pair?.id === id && pair.side === side && pair.i === i;
+    const waiting = pair?.id === id;
     return (
-      <div key={key} className="match-q">
+      <div key={key} className={'match-q' + (waiting ? ' waiting-' + pair!.side : '')}>
         <ol className="match-left">
           {left.map((l, i) => {
             const c = chosen[i] ?? -1;
             const ok = results ? c === map[i] : false;
             return (
               <li key={i}>
-                <sup className="q-num" aria-hidden="true">
-                  {numbers[id] + i}
-                </sup>
-                <span className="match-l">{l}</span>
-                {results ? (
-                  <span className="gap-result">
-                    <span className={ok ? 'ans right' : 'ans wrong'}>{c >= 0 ? LETTERS[c] : '—'}</span>
-                    {ok ? TICK : !hideAnswers && map[i] >= 0 && <span className="fix">{LETTERS[map[i]]}</span>}
-                  </span>
-                ) : (
-                  <select
-                    className="drop-input letter-select"
-                    aria-label={`Match for ${l}`}
-                    value={c >= 0 ? String(c) : ''}
-                    disabled={disabled}
-                    onChange={(e) => {
-                      const next = [...chosen];
-                      while (next.length < left.length) next.push(-1);
-                      next[i] = e.target.value === '' ? -1 : Number(e.target.value);
-                      onChange?.(id, next);
-                    }}
-                  >
-                    <option value="">–</option>
-                    {right.map((_, k) => (
-                      <option key={k} value={k}>
-                        {LETTERS[k]}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                {num(id, i)}
+                <button type="button" className={'match-item' + (active('l', i) ? ' active' : '')} disabled={!live} onClick={() => pickLeft(i)}>
+                  <span className="match-l">{l}</span>
+                  {results ? (
+                    <span className="gap-result">
+                      <span className={ok ? 'ans right' : 'ans wrong'}>{c >= 0 ? LETTERS[c] : '—'}</span>
+                      {ok ? TICK : !hideAnswers && map[i] >= 0 && <span className="fix">{LETTERS[map[i]]}</span>}
+                    </span>
+                  ) : (
+                    <span className={'match-slot' + (c >= 0 ? ' filled' : '')} aria-label={c >= 0 ? `Matched with ${LETTERS[c]}` : 'Not matched yet'}>
+                      {c >= 0 ? LETTERS[c] : ''}
+                    </span>
+                  )}
+                </button>
               </li>
             );
           })}
         </ol>
-        {notesFor(node)}
         <ul className="match-right">
           {right.map((r, k) => (
-            <li key={k} className={chosen.includes(k) && !results ? 'used' : ''}>
-              <span className="letter" aria-hidden="true">
-                {LETTERS[k]}
-              </span>
-              {r}
+            <li key={k}>
+              <button type="button" className={'match-item' + (active('r', k) ? ' active' : '') + (chosen.includes(k) && !results ? ' used' : '')} disabled={!live} onClick={() => pickRight(k)}>
+                <span className="letter" aria-hidden="true">
+                  {LETTERS[k]}
+                </span>
+                <span>{r}</span>
+              </button>
             </li>
           ))}
         </ul>
+        {live && <span className="match-help">{waiting ? (pair!.side === 'l' ? 'Now choose its match on the right.' : 'Now choose the item on the left.') : 'Tap an item, then tap its match.'}</span>}
+        {notesFor(node)}
+        {revealChip(node) && <div className="match-reveal">{revealChip(node)}</div>}
       </div>
     );
   };
@@ -305,6 +377,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         >
           {value || ' '}
         </button>
+        {revealChip(node)}
       </span>
     );
   };
@@ -381,6 +454,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
             </button>
           ))}
         </div>
+        {revealChip(node)}
         <div className="order-pool">
           {pool.map((w, i) => (
             <button key={i} type="button" className="bank-word" disabled={disabled} onClick={() => onChange?.(id, [...placed, w].join(' '))}>
@@ -494,7 +568,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       case 'table':
         return (
           <div key={key} className="table-wrap-task">
-            <table className="task-table">
+            <table className={'task-table lines-' + (node.attrs?.lines ?? 'all')}>
               <tbody>{kids()}</tbody>
             </table>
           </div>

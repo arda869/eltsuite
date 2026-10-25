@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import type { ClassDoc, Item } from '../lib/classes';
@@ -58,7 +58,7 @@ export function LearnerLesson() {
     return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
   }, [classId]);
   usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current });
-  const teacherAt = isLive(live) && live?.itemId === itemId ? live.taskId : '';
+  const teacherAt = isLive(live) && live?.itemId === itemId && live?.showMarker !== false ? live.taskId : '';
 
   // Load this learner's saved answers for the current task.
   useEffect(() => {
@@ -66,10 +66,12 @@ export function LearnerLesson() {
     setKey(null);
     setChecked(false);
     setResponses({});
+    setFlags([]);
     dirty.current = false;
     return onSnapshot(answerRef(classId, current, user.uid), async (s) => {
+      const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
+      setFlags(d?.flags ?? []);
       if (dirty.current) return;
-      const d = s.data() as AnswerDoc | undefined;
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
       if (d?.checked) setKey(await loadKey(classId, itemId, current).catch(() => null));
@@ -81,6 +83,14 @@ export function LearnerLesson() {
   const qs = useMemo(() => questionIds(task?.content ?? null), [task]);
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
   const base = user && task ? { learnerUid: user.uid, learnerId, itemId, taskId: task.id } : null;
+
+  const [flags, setFlags] = useState<string[]>([]);
+  function toggleFlag(id: string) {
+    if (!base) return;
+    const next = flags.includes(id) ? flags.filter((f) => f !== id) : [...flags, id];
+    setFlags(next);
+    setDoc(answerRef(classId, base.taskId, base.learnerUid), { ...base, flags: next }, { merge: true }).catch((e) => console.error(e));
+  }
 
   function change(id: string, v: Responses[string]) {
     if (!base || checked || task?.locked) return;
@@ -205,7 +215,9 @@ export function LearnerLesson() {
                   disabled={task.locked}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
-                    colScroll={task.colScroll ?? 'separate'}
+                  colScroll={task.colScroll ?? 'separate'}
+                  flags={flags}
+                  onToggleFlag={task.locked ? undefined : toggleFlag}
                 />
               </div>
               <div className="frame-foot">
@@ -221,6 +233,7 @@ export function LearnerLesson() {
                 ) : (
                   <span className="hint">
                     {qs.length > 0 ? `${answered} of ${qs.length} answered` : ''}
+                    {flags.filter((f) => qs.some((q) => q.id === f)).length > 0 && ` · ${flags.filter((f) => qs.some((q) => q.id === f)).length} flagged`}
                   </span>
                 )}
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>

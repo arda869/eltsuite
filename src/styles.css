@@ -439,14 +439,22 @@ a.btn.primary { color: #ffffff; }
 /* Learner: new question types */
 .letter.square, .radio.square { border-radius: 5px; }
 .opt.on .radio.square { box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 8px var(--ink); }
-.match-q { display: flex; flex-wrap: wrap; gap: 10px 40px; margin: 8px 0 16px; }
-.match-left { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; flex: 1 1 260px; }
-.match-left li { display: flex; align-items: baseline; gap: 6px; }
-.match-l { flex: 1; }
-.letter-select { min-width: 3em; text-align: center; }
-.match-right { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; flex: 1 1 240px; }
-.match-right li { display: flex; align-items: center; gap: 10px; }
-.match-right li.used { color: var(--soft); }
+.match-q { display: grid; grid-template-columns: minmax(0, max-content) minmax(0, max-content); column-gap: 64px; row-gap: 4px; margin: 8px 0 16px; align-items: start; }
+.match-left, .match-right { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.match-left li { display: flex; align-items: baseline; gap: 4px; }
+.match-item { display: inline-flex; align-items: center; gap: 10px; border: 0; background: transparent; font: inherit; color: inherit; text-align: left; padding: 4px 8px; margin-left: -8px; border-radius: 8px; cursor: pointer; line-height: 1.5; }
+.match-item:disabled { cursor: default; }
+.match-item:not(:disabled):hover { background: #f5f5f4; }
+.match-item.active { background: #f0f0ef; box-shadow: inset 0 0 0 1px var(--hair-strong); }
+.match-left .match-item { gap: 14px; }
+.match-slot { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; border-bottom: 1.5px solid #8a8a8a; font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--ink); }
+.match-item.active .match-slot { border-bottom-color: var(--accent); }
+.match-right .match-item.used { color: var(--soft); }
+.match-right .match-item.used .letter { opacity: 0.5; }
+.waiting-l .match-right .match-item:not(:disabled), .waiting-r .match-left .match-item:not(:disabled) { box-shadow: inset 0 0 0 1px var(--hair); }
+.match-help { grid-column: 1 / -1; font-family: var(--sans); font-size: 12px; color: var(--muted); margin-top: 4px; }
+.match-q > .q-notes, .match-q > .match-reveal { grid-column: 1 / -1; }
+@media (max-width: 640px) { .match-q { grid-template-columns: 1fr; row-gap: 14px; } }
 .word-bank { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 16px; padding: 10px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
 .bank-word { padding: 3px 12px; border-radius: 999px; border: 1px solid var(--hair-strong); background: #ffffff; font-family: var(--serif); font-size: 16px; cursor: pointer; line-height: 1.4; }
 .bank-word:hover:not(:disabled) { border-color: #868686; }
@@ -507,7 +515,6 @@ a.btn.primary { color: #ffffff; }
 .para > p { margin: 0; }
 .q-notes { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; padding-left: 2px; font-family: var(--sans); font-size: 13px; color: #5a5a5a; }
 .q-notes.hint { color: var(--accent-text); }
-.match-q .q-notes { flex-basis: 100%; order: 3; }
 
 /* Inline choices flow with the text */
 .inline-choice { display: inline; }
@@ -706,3 +713,84 @@ a.btn.primary { color: #ffffff; }
 .tbox.s-email:not(.t-grey) .tbox-mailhead { background: color-mix(in srgb, var(--tone) 60%, #ffffff); }
 .tbox.s-notebook:not(.t-grey) { background-color: var(--tone); }
 .tbox.s-browser:not(.t-grey), .tbox.s-email:not(.t-grey) { border-color: var(--tone-line); }
+
+/* Grip: drag to move, click to select a question */
+.grip { display: inline-block; width: 12px; margin-right: 1px; color: #b0b0b0; font-size: 11px; letter-spacing: -2px; cursor: grab; user-select: none; vertical-align: 0.1em; opacity: 0; transition: opacity 0.12s; }
+.gap-node:hover .grip, .choice-node:hover .grip, .gap-node.is-selected .grip, .choice-node.is-selected .grip, .ProseMirror-selectednode .grip { opacity: 1; }
+.mcq-tools .grip, .tbox-tools .grip { opacity: 1; font-size: 13px; width: 14px; }
+.grip:active { cursor: grabbing; }
+.block-label { cursor: pointer; }
+.block-node.ProseMirror-selectednode, .tbox-node.ProseMirror-selectednode { box-shadow: inset 2px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); border-radius: 0 8px 8px 0; }
+.choice-node.d-radio .grip { position: absolute; left: -16px; top: 4px; }
+.choice-node.d-radio { position: relative; }
+/* Flags (learner) */
+.flag-btn { border: 0; background: transparent; padding: 0 1px; cursor: pointer; font: inherit; display: inline-flex; align-items: flex-start; gap: 1px; }
+.flag-btn .flag-icon { display: inline-flex; width: 0; overflow: hidden; color: var(--accent-text); transition: width 0.12s; }
+.flag-btn:hover .flag-icon, .flag-btn.flagged .flag-icon { width: 9px; }
+.flag-btn:not(.flagged):hover .flag-icon { opacity: 0.45; }
+.flag-btn.listed { top: 0; }
+/* Revealed answers */
+.reveal-ans { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; background: #eef4ef; color: var(--right); font-family: var(--sans); font-size: 13px; font-weight: 600; line-height: 1.5; vertical-align: 0.1em; }
+.stack .reveal-ans { margin: 4px 0 0; align-self: flex-start; }
+
+/* Live answers panel (teacher, while teaching) */
+.live-panel { flex-basis: 340px; }
+.lgrid { display: grid; grid-template-columns: minmax(84px, auto) repeat(var(--cols), minmax(44px, 1fr)); column-gap: 6px; font-size: 12px; overflow-x: auto; }
+.lg-row { display: contents; }
+.lg-head { position: sticky; top: 0; background: var(--bg, #fff); padding-bottom: 4px; border-bottom: 1px solid var(--hair); }
+.lg-q { border: 0; border-bottom: 1px solid var(--hair); background: var(--bg, #fff); font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 0 0 4px; color: var(--muted); }
+.lg-q .lg-n { font-family: var(--serif); font-size: 13px; color: var(--accent-text); font-weight: 600; }
+.lg-q .lg-pct { font-size: 11px; }
+.lg-q.on .lg-n { text-decoration: underline; text-underline-offset: 3px; }
+.lg-name { display: flex; align-items: center; gap: 6px; padding: 6px 0; color: var(--muted); white-space: nowrap; border-bottom: 1px solid var(--hair); }
+.lg-name.online { color: var(--ink); }
+.lg-dot { width: 6px; height: 6px; border-radius: 50%; background: #d4d4d4; flex: none; }
+.lg-name.online .lg-dot { background: #6a9a74; }
+.lg-checked { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.lg-cell { padding: 6px 0; border-bottom: 1px solid var(--hair); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; color: var(--ink); }
+.lg-cell.empty { color: #c8c8c8; }
+.lg-cell.right { text-decoration: underline; text-decoration-color: var(--right); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.lg-cell.wrong { text-decoration: underline; text-decoration-color: var(--wrong); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.lg-cell.focus { font-weight: 600; }
+.lg-wrongs { display: flex; flex-direction: column; gap: 4px; }
+.lg-wrong { display: flex; justify-content: space-between; font-size: 13px; }
+
+/* Level choice and quieter dropdowns */
+.level-pick { display: flex; flex-wrap: wrap; gap: 4px; }
+.level-pick button { min-width: 40px; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; }
+.level-pick button:hover { background: #f4f4f3; color: var(--ink); }
+.level-pick button.on { background: #ececeb; color: var(--ink); font-weight: 600; }
+.field select {
+  appearance: none; -webkit-appearance: none; height: 36px; border-radius: 8px; padding: 0 32px 0 10px; border-color: rgba(51, 48, 44, 0.14);
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23888' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+  cursor: pointer;
+}
+.field select:hover { border-color: rgba(51, 48, 44, 0.3); }
+.grip { white-space: nowrap; width: auto; }
+.match-left .match-item { width: 100%; justify-content: space-between; }
+
+/* Task list hover actions */
+.task-row { position: relative; }
+.row-actions { display: none; align-items: center; gap: 0; padding-right: 4px; }
+.task-row:hover .row-actions, .task-row:focus-within .row-actions { display: inline-flex; }
+.task-row:hover .state-mark, .task-row:hover .on-task { display: none; }
+.row-act { width: 24px; height: 24px; border: 0; background: transparent; border-radius: 6px; color: var(--soft); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.row-act:hover { color: var(--ink); background: rgba(0, 0, 0, 0.05); }
+.row-act.on { color: var(--accent-text); }
+.state-mark { display: inline-flex; color: var(--soft); margin-left: 4px; }
+.task-pick { min-width: 0; }
+.mcq-tools { align-items: center; }
+.mcq-tools .grip, .tbox-tools .grip { width: auto; white-space: nowrap; line-height: 1; vertical-align: middle; }
+
+/* Hover between table cells to insert a row or column */
+.editor-host { position: relative; }
+.tbl-insert { position: absolute; z-index: 5; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 1px solid var(--hair-strong); background: #fff; color: var(--muted); font: 600 13px/1 var(--sans); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.tbl-insert:hover { color: #fff; background: var(--accent); border-color: var(--accent); }
+.tbl-line { position: absolute; z-index: 4; background: var(--accent); pointer-events: none; opacity: 0.6; }
+.tb-hint { font-size: 11px; color: var(--soft); }
+/* Table lines */
+.task-table.lines-rows th, .task-table.lines-rows td, .doc .ProseMirror table.lines-rows th, .doc .ProseMirror table.lines-rows td { border-left-color: transparent; border-right-color: transparent; }
+.task-table.lines-none th, .task-table.lines-none td { border-color: transparent; }
+.task-table.lines-none th, .task-table.lines-rows th { background: transparent; }
+.doc .ProseMirror table.lines-none th, .doc .ProseMirror table.lines-none td { border: 1px dashed #e6e6e6; }
+.doc .ProseMirror table.lines-none th, .doc .ProseMirror table.lines-rows th { background: transparent; }

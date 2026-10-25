@@ -9,6 +9,8 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { Choice, Gap, Mcq, newChoice, newGap } from './nodes';
+import { FreshIds, jsonClip } from './clipboard';
+import { TableInsert } from './TableInsert';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 
@@ -120,21 +122,29 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
     extensions: [
       StarterKit.configure({ heading: { levels: [3] } }),
       Underline,
-      Table.configure({ resizable: false }),
+      Table.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            lines: { default: 'all', parseHTML: (el: HTMLElement) => el.getAttribute('data-lines') || 'all', renderHTML: (a: { lines: string }) => ({ 'data-lines': a.lines, class: 'lines-' + a.lines }) },
+          };
+        },
+      }).configure({ resizable: false }),
       TableRow,
       TableHeader,
       TableCell,
       Image,
-      Gap,
-      Mcq,
-      Choice,
-      DropGap,
-      WordBank,
-      Match,
-      Order,
-      Writing,
+      jsonClip(Gap, 'span', 'data-gap'),
+      jsonClip(Mcq, 'div', 'data-mcq'),
+      jsonClip(Choice, 'span', 'data-choice'),
+      jsonClip(DropGap, 'span', 'data-dropgap'),
+      jsonClip(WordBank, 'div', 'data-wordbank'),
+      jsonClip(Match, 'div', 'data-match'),
+      jsonClip(Order, 'div', 'data-order'),
+      jsonClip(Writing, 'div', 'data-writing'),
       ColumnBreak,
       TextBox,
+      FreshIds,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],
     content,
@@ -142,6 +152,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
   });
 
   const slash = useSlash(editor);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!editor || !slash.state) return;
@@ -203,15 +214,24 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
           </span>
           <span className="tb-group">
             {BTN('Header row', false, () => editor.chain().focus().toggleHeaderRow().run(), 'Header row')}
-            {BTN('Merge or split cells', false, () => editor.chain().focus().mergeOrSplit().run(), 'Merge cells')}
+            {editor.can().mergeCells() && BTN('Merge the selected cells', false, () => editor.chain().focus().mergeCells().run(), 'Merge cells')}
+            {editor.can().splitCell() && BTN('Split this cell back into separate cells', false, () => editor.chain().focus().splitCell().run(), 'Split cell')}
+            {!editor.can().mergeCells() && !editor.can().splitCell() && <span className="tb-hint">Drag across cells to merge them</span>}
+          </span>
+          <span className="tb-group">
+            <span className="tb-label">Lines</span>
+            {(['all', 'rows', 'none'] as const).map((l) =>
+              BTN(l === 'all' ? 'Show all lines' : l === 'rows' ? 'Lines between rows only' : 'Hide the lines', (editor.getAttributes('table').lines ?? 'all') === l, () => editor.chain().focus().updateAttributes('table', { lines: l }).run(), l === 'all' ? 'All' : l === 'rows' ? 'Rows' : 'None'),
+            )}
           </span>
           <span className="tb-group" style={{ marginLeft: 'auto' }}>
             {BTN('Delete table', false, () => editor.chain().focus().deleteTable().run(), 'Delete table')}
           </span>
         </div>
       )}
-      <div className="editor-host">
+      <div className="editor-host" ref={setHost}>
         <EditorContent editor={editor} className="doc" />
+        <TableInsert editor={editor} host={host} />
         {slash.state && (
           <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
             {(['Questions', 'Text'] as const).map((g) => {

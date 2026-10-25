@@ -1,5 +1,6 @@
+import { LevelPicker } from './LevelPicker';
 import { useEffect, useState, type FormEvent } from 'react';
-import { createClass, LEVELS } from '../lib/classes';
+import { createClass } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
 export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: string; onClose: () => void; onCreated: (id: string) => void }) {
@@ -38,17 +39,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           Class name
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="For example: B1 Evening Group" />
         </label>
-        <div className="two">
-          <label className="field">
-            Level
-            <select value={level} onChange={(e) => setLevel(e.target.value)}>
-              {LEVELS.map((l) => (
-                <option key={l}>{l}</option>
-              ))}
-            </select>
-          </label>
-          <span />
-        </div>
+        <LevelPicker value={level} onChange={setLevel} />
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">

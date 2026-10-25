@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { LEVELS, updateClass, type ClassDoc, type Meeting } from '../lib/classes';
+import { LevelPicker } from './LevelPicker';
+import { updateClass, type ClassDoc, type Meeting } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
 export function meetingProvider(url: string) {
@@ -57,14 +58,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           Class name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         </label>
-        <label className="field" style={{ maxWidth: 200 }}>
-          Level
-          <select value={level} onChange={(e) => setLevel(e.target.value)}>
-            {LEVELS.map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
-        </label>
+        <LevelPicker value={level} onChange={setLevel} />
 
         <div className="field">
           Theme colour

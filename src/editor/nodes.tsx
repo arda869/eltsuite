@@ -6,9 +6,31 @@ import { NoteFields } from './NoteFields';
 
 const LETTERS = 'abcdefghij';
 
+// Grip on the left of a question: drag to move it, click to select it (then Backspace deletes it).
+export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getPos: NodeViewProps['getPos'] }) {
+  return (
+    <span
+      className="grip"
+      data-drag-handle
+      contentEditable={false}
+      title="Drag to move · click to select"
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        const pos = typeof getPos === 'function' ? getPos() : undefined;
+        if (typeof pos === 'number') {
+          editor.chain().setNodeSelection(pos).run();
+          editor.view.focus();
+        }
+      }}
+    >
+      ⋮⋮
+    </span>
+  );
+}
+
 // Gap fill ---------------------------------------------------------------------
 
-function GapView({ node, updateAttributes, selected }: NodeViewProps) {
+function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {
   const answers: string[] = node.attrs.answers ?? [];
   const [open, setOpen] = useState(answers.length === 0);
   const [value, setValue] = useState(answers.join(' | '));
@@ -36,6 +58,7 @@ function GapView({ node, updateAttributes, selected }: NodeViewProps) {
 
   return (
     <NodeViewWrapper as="span" className={'gap-node' + (selected ? ' is-selected' : '')} ref={ref}>
+      <Grip editor={editor} getPos={getPos} />
       <span className={'gap-chip' + (answers.length ? '' : ' empty')} contentEditable={false} onClick={() => setOpen(true)} title="Edit accepted answers">
         {answers.length ? answers.join(' / ') : 'answer'}
       </span>
@@ -182,7 +205,7 @@ const DISPLAYS: { key: ChoiceDisplay; label: string }[] = [
   { key: 'radio', label: 'Radio buttons' },
 ];
 
-function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
+function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {
   const options: string[] = node.attrs.options ?? [];
   const multi: boolean = !!node.attrs.multi;
   const correctList: number[] = multi ? (Array.isArray(node.attrs.correct) ? node.attrs.correct : []) : typeof node.attrs.correct === 'number' && node.attrs.correct >= 0 ? [node.attrs.correct] : [];
@@ -232,6 +255,7 @@ function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
 
   return (
     <NodeViewWrapper as="span" className={'choice-node' + (selected ? ' is-selected' : '') + ' d-' + display} ref={ref}>
+      <Grip editor={editor} getPos={getPos} />
       <span className="choice-chip" contentEditable={false} onClick={() => setOpen(true)} title="Edit choices">
         {summary}
       </span>
