@@ -26,6 +26,7 @@ import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
 import { CopyDialog } from '../components/CopyDialog';
+import { download, lessonText } from '../lib/transfer';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
@@ -328,6 +329,18 @@ export function LessonEditor() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
+        <button
+          type="button"
+          className="btn small-btn"
+          title="Download this lesson as a text file you can edit and import again"
+          onClick={async () => {
+            await flush();
+            const { title, text } = await lessonText(classId, itemId, window.confirm('Include your teacher notes in the file? Choose Cancel to leave them out, for example when sharing.'));
+            download(title, text);
+          }}
+        >
+          Export
+        </button>
         <button type="button" className="btn small-btn" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
           {present ? 'Exit present mode' : 'Present'}
         </button>

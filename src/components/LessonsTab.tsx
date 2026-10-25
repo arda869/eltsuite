@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyDialog } from './CopyDialog';
+import { ImportDialog } from './ImportDialog';
+import { classText, download } from '../lib/transfer';
 import { copyLesson } from '../lib/copy';
 import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, updateTopic, type ClassDoc, type Item, type Topic } from '../lib/classes';
 
@@ -167,12 +169,35 @@ function ItemRow({ c, item }: { c: ClassDoc; item: Item }) {
 
 export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[]; items: Item[] }) {
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const byTopic = (id: string | null) => items.filter((i) => (i.topicId ?? null) === id).sort((a, b) => a.order - b.order);
   const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId));
   const nextOrder = (list: { order: number }[]) => (list.length ? Math.max(...list.map((x) => x.order)) + 1 : 0);
 
   return (
     <div className="lessons">
+      <div className="lessons-tools">
+        <button type="button" className="btn small-btn" onClick={() => setImporting(true)}>
+          Import a lesson from text
+        </button>
+        <button
+          type="button"
+          className="btn small-btn"
+          disabled={exporting}
+          onClick={async () => {
+            setExporting(true);
+            try {
+              download(c.name, await classText(c.id, c.name, window.confirm('Include your teacher notes in the file? Choose Cancel to leave them out, for example when sharing.')));
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          {exporting ? 'Exporting…' : 'Export the class as text'}
+        </button>
+      </div>
+      {importing && <ImportDialog classId={c.id} topics={sortedTopics} onClose={() => setImporting(false)} />}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">
           <h2>Start with a topic</h2>
