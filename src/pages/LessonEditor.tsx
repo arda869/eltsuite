@@ -29,6 +29,7 @@ import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { LivePanel } from '../components/LivePanel';
 import { drawShared, useSharedPicks } from '../lib/picks';
+import { useClassmates } from '../lib/learners';
 
 const svg = (d: React.ReactNode) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -83,6 +84,7 @@ export function LessonEditor() {
 
   const task = tasks.find((t) => t.id === selected);
   const sharedPicks = useSharedPicks(classId, selected);
+  const classmates = useClassmates(c?.classCode);
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
@@ -384,6 +386,7 @@ export function LessonEditor() {
                     layout={task.layout ?? 'single'}
                     colScroll={task.colScroll ?? 'separate'}
                     teacher
+                    classmates={classmates}
                     onOpenTask={(id) => select(id)}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}

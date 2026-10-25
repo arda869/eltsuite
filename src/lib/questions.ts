@@ -14,7 +14,7 @@ export type AnswerKey = Record<string, KeyEntry>;
 export type Response = string | number | number[] | JSONContent | null | undefined;
 export type Responses = Record<string, Response>;
 
-export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'] as const;
+export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect'] as const;
 export const isQuestion = (n: JSONContent) => !!n.attrs?.id && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '');
 
 // Seeded shuffle so a question always appears in the same shuffled order.
@@ -210,9 +210,14 @@ export function textOf(r: Response): string {
   return r === undefined || r === null ? '' : String(r);
 }
 
-export const isAnswered = (r: Response) =>
+const reflectAnswered = (r: Response) => {
+  const v = r as { ratings?: Record<string, unknown> };
+  return !!v.ratings && Object.values(v.ratings).some((x) => (typeof x === 'number' ? x > 0 || x === 0 : Array.isArray(x) ? x.length > 0 : typeof x === 'string' && !!x.trim()));
+};
+export const isAnswered = (r: Response): boolean =>
+  !!r && typeof r === 'object' && !Array.isArray(r) && 'ratings' in (r as object) ? reflectAnswered(r) : !!(
   r !== undefined && !(r && typeof r === 'object' && !Array.isArray(r) && !textOf(r)) &&
-  r !== undefined && r !== null && r !== '' && !(Array.isArray(r) && (r.length === 0 || r.every((x) => x === -1 || x === null)));
+  r !== undefined && r !== null && r !== '' && !(Array.isArray(r) && (r.length === 0 || r.every((x) => x === -1 || x === null))));
 
 export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: number; max: number } {
   if (!entry) return { got: 0, max: 0 };
@@ -251,5 +256,5 @@ export function scoreTask(qs: QRef[], key: AnswerKey, responses: Responses) {
     got += s.got;
     max += s.max;
   }
-  return { score: got, total: max, hasWriting: qs.some((q) => q.type === 'writing') };
+  return { score: got, total: max, hasWriting: qs.some((q) => q.type === 'writing' || q.type === 'reflect') };
 }

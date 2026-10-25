@@ -14,7 +14,8 @@ import {
   signOut,
   updatePassword,
 } from 'firebase/auth';
-import { arrayRemove, arrayUnion, collection, doc, increment, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { arrayRemove, arrayUnion, collection, doc, getDoc, increment, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { firebaseConfig } from './firebaseConfig';
 import type { ClassDoc } from './classes';
@@ -104,3 +105,15 @@ export async function removeLearner(c: ClassDoc, learner: Learner, pin: string) 
 
 export const learnersCol = (classId: string) => collection(db, 'classes', classId, 'learners');
 export const secretsCol = (classId: string) => collection(db, 'classes', classId, 'secrets');
+
+// Class list (names only) from the class code record, readable by everyone in the class.
+export function useClassmates(classCode?: string) {
+  const [list, setList] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (!classCode) return;
+    getDoc(doc(db, 'classCodes', classCode))
+      .then((s) => setList([...((s.data()?.roster ?? []) as { id: string; name: string }[])].sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => setList([]));
+  }, [classCode]);
+  return list;
+}

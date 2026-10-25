@@ -42,6 +42,10 @@ function label(node: JSONContent | undefined, r: Response): string {
       const arr = Array.isArray(r) ? r : [];
       return `${arr.filter((x) => x !== null && x !== -1).length}/${(a.left ?? []).length} matched`;
     }
+    case 'reflect': {
+      const v = r as unknown as { peerName?: string };
+      return v.peerName ? `for ${v.peerName.split(' ')[0]}` : 'done';
+    }
     case 'writing': {
       const words = textOf(r).split(/\s+/).filter(Boolean).length;
       return `${words} ${words === 1 ? 'word' : 'words'}`;
@@ -70,7 +74,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 
   const pct = (qid: string) => {
     const got = answers.filter((a) => isAnswered(a.responses?.[qid]));
-    if (!got.length || answerKey[qid]?.kind === 'writing') return null;
+    if (!got.length || !answerKey[qid] || answerKey[qid]?.kind === 'writing') return null;
     return Math.round((got.filter((a) => isCorrect(answerKey[qid], a.responses[qid])).length / got.length) * 100);
   };
 

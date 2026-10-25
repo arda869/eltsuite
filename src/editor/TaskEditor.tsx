@@ -14,6 +14,7 @@ import { TableInsert } from './TableInsert';
 import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
 import { Ipa, newIpa, type Accent } from './Ipa';
+import { Reflect, newReflect } from './Reflect';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
@@ -45,6 +46,8 @@ const COMMANDS: Cmd[] = [
   { key: 'bank', label: 'Word bank', hint: 'The words for drag-and-drop gaps', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWordBank(), { type: 'paragraph' }]).run() },
   { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
+  { key: 'reflect', label: 'Self-reflection', hint: 'Learners rate how they did: stars, faces, scales, can-do lists', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('self'), { type: 'paragraph' }]).run() },
+  { key: 'peer', label: 'Peer feedback', hint: 'Learners choose a classmate and rate how they did', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('peer'), { type: 'paragraph' }]).run() },
   { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
   { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
@@ -194,6 +197,7 @@ export function TaskEditor({ content, onChange, places = [] }: { content: JSONCo
       Stress,
       Ipa,
       LessonLink,
+      jsonClip(Reflect, 'div', 'data-reflect'),
       FreshIds,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],

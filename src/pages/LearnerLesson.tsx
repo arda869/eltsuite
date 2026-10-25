@@ -21,6 +21,7 @@ import {
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
 import { drawShared, useSharedPicks } from '../lib/picks';
+import { useClassmates } from '../lib/learners';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -82,6 +83,7 @@ export function LearnerLesson() {
   const task = tasks.find((t) => t.id === current);
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
+  const classmates = useClassmates(c?.classCode);
   const withShared = useMemo(() => ({ ...responses, ...Object.fromEntries(Object.values(shared).map((p) => [p.pickId, { h: p.h, b: p.b }])) }), [responses, shared]);
   const qs = useMemo(() => questionIds(task?.content ?? null, withShared), [task, withShared]);
   const answered = qs.filter((q) => isAnswered(responses[q.id])).length;
@@ -221,6 +223,8 @@ export function LearnerLesson() {
                   colScroll={task.colScroll ?? 'separate'}
                   flags={flags}
                   shared={shared}
+                  classmates={classmates}
+                  selfId={learnerId}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   onOpenTask={(id) => {
                     const t = tasks.find((x) => x.id === id);
@@ -263,7 +267,7 @@ export function LearnerLesson() {
                       )
                     ) : (
                       <button className="btn primary" disabled={busy || task.locked || answered === 0} onClick={check}>
-                        {busy ? 'One moment…' : qs.every((q) => q.type === 'writing') ? 'Hand in' : 'Check answers'}
+                        {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : 'Check answers'}
                       </button>
                     ))}
                   <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={!nextOpen} onClick={() => nextOpen && setCurrent(nextOpen.id)}>

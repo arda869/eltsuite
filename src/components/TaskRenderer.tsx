@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
 import { IpaText } from '../editor/Ipa';
+import { ReflectBlock } from './ReflectBlock';
+import type { ReflectAnswer, RItem } from '../editor/Reflect';
 import { LINK_ICON } from '../editor/LessonLink';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
@@ -31,6 +33,8 @@ type Props = {
   teacher?: boolean;
   onOpenTask?: (taskId: string) => void; // links to another task in the lesson
   taskState?: (taskId: string) => 'open' | 'locked' | 'missing';
+  classmates?: { id: string; name: string }[];
+  selfId?: string;
 };
 
 const TICK = (
@@ -95,8 +99,9 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 }
 
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
+// Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -731,6 +736,22 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
             onReset={results ? undefined : together ? (onSharedReset && (teacher || node.attrs?.whoDraws === 'anyone') ? () => onSharedReset(id) : undefined) : onChange ? () => onChange(id, { h: [], b: [] } as unknown as Response) : undefined}
             resetAnytime={together && !!teacher}
             renderCard={(i) => (cards[i]?.content ?? []).map((c, k) => render(c, key + '.' + i + '.' + k))}
+          />
+        );
+      }
+      case 'reflect': {
+        const id = node.attrs?.id as string;
+        return (
+          <ReflectBlock
+            key={key}
+            about={node.attrs?.about === 'peer' ? 'peer' : 'self'}
+            title={(node.attrs?.title as string) ?? ''}
+            items={(node.attrs?.items as RItem[]) ?? []}
+            value={responses[id] as unknown as ReflectAnswer | undefined}
+            onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined}
+            disabled={locked}
+            classmates={classmates}
+            selfId={selfId}
           />
         );
       }
