@@ -41,6 +41,7 @@ function GapView({ node, updateAttributes, selected }: NodeViewProps) {
       </span>
       {open && (
         <span className="gap-pop" contentEditable={false}>
+          <span className="pop-type">Gap fill</span>
           <input
             ref={inputRef}
             value={value}
@@ -236,6 +237,7 @@ function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
       </span>
       {open && (
         <span className="choice-pop" contentEditable={false} onKeyDown={(e) => e.stopPropagation()}>
+          <span className="pop-type">{multi ? 'Multiple choice · more than one answer' : 'Multiple choice'}</span>
           <span className="seg" role="radiogroup" aria-label="Show as">
             {DISPLAYS.map((d) => (
               <button key={d.key} type="button" role="radio" aria-checked={display === d.key} className={display === d.key ? 'on' : ''} onClick={() => updateAttributes({ display: d.key })}>

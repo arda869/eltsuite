@@ -12,6 +12,19 @@ import { Choice, Gap, Mcq, newChoice, newGap } from './nodes';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 
+// Adds a drag-and-drop gap, and a word bank above the paragraph if the task has none yet.
+function insertDropGap(e: Editor) {
+  let hasBank = false;
+  e.state.doc.descendants((n) => {
+    if (n.type.name === 'wordbank') hasBank = true;
+  });
+  e.chain().focus().insertContent(newDropGap()).run();
+  if (!hasBank) {
+    const pos = e.state.selection.$from.before(1);
+    e.chain().insertContentAt(pos, newWordBank()).run();
+  }
+}
+
 type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text'; run: (e: Editor) => void };
 
 const COMMANDS: Cmd[] = [
@@ -21,7 +34,7 @@ const COMMANDS: Cmd[] = [
   { key: 'truefalse', label: 'True or false', hint: 'True / False inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False'])).run() },
   { key: 'notgiven', label: 'True, false or not given', hint: 'For reading tasks', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False', 'Not given'])).run() },
   { key: 'match', label: 'Matching', hint: 'Match items on the left to the right', group: 'Questions', run: (e) => e.chain().focus().insertContent([newMatch(), { type: 'paragraph' }]).run() },
-  { key: 'drop', label: 'Drag-and-drop gap', hint: 'A gap filled from the word bank', group: 'Questions', run: (e) => e.chain().focus().insertContent(newDropGap()).run() },
+  { key: 'drop', label: 'Drag-and-drop gap', hint: 'A gap filled from the word bank', group: 'Questions', run: (e) => insertDropGap(e) },
   { key: 'bank', label: 'Word bank', hint: 'The words for drag-and-drop gaps', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWordBank(), { type: 'paragraph' }]).run() },
   { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },

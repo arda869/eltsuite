@@ -51,6 +51,7 @@ function DropGapView({ node, updateAttributes, selected }: NodeViewProps) {
       </span>
       {open && (
         <span className="gap-pop" contentEditable={false} onKeyDown={(e) => e.stopPropagation()}>
+          <span className="pop-type">Drag-and-drop gap</span>
           <input
             ref={input}
             value={value}
@@ -64,7 +65,7 @@ function DropGapView({ node, updateAttributes, selected }: NodeViewProps) {
               if (e.key === 'Escape') setOpen(false);
             }}
           />
-          <span className="hint">This word is added to the word bank automatically.</span>
+          <span className="hint">This word goes into the word bank automatically. Add wrong words to the word bank’s “Extra words”.</span>
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>
       )}
