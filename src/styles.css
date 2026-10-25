@@ -1344,3 +1344,10 @@ mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radi
 .tbox.s-info .tbox-body ul { margin: 4px 0; padding-left: 1.1em; }
 .tbox.s-info .tbox-body li::marker { color: var(--tone-ink); }
 .tbox.s-info input.tbox-title { field-sizing: content; flex: none; min-width: 8ch; max-width: 60%; }
+/* Conversations: left bubbles start at the edge, right bubbles all start at the same indent */
+.tbox.s-speech .bubble, .tbox.s-message .bubble { max-width: 80%; }
+.tbox.s-speech.side-right, .tbox.s-message.side-right { align-items: flex-start; padding-left: 20%; }
+.tbox.s-speech.side-right .bubble, .tbox.s-message.side-right .bubble { max-width: 100%; }
+.tbox.side-right .speaker { margin: 0 0 4px 12px; text-align: left; }
+.tbox-node .tbox.side-right .speaker input { text-align: left; }
+.tbox.s-message.side-right .time { align-self: flex-start; }
