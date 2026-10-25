@@ -15,6 +15,7 @@ export * from './questions';
 
 export type Task = {
   id: string;
+  kind?: 'task' | 'section'; // sections are headings in the task list
   title: string;
   instructions: string;
   content: JSONContent | null;
@@ -35,11 +36,12 @@ export const newId = () => Math.random().toString(36).slice(2, 10);
 
 // Saving ---------------------------------------------------------------------
 
-export async function addTask(classId: string, itemId: string, order: number) {
+export async function addTask(classId: string, itemId: string, order: number, kind: 'task' | 'section' = 'task') {
   const ref = doc(tasksCol(classId, itemId));
   const batch = writeBatch(db);
   batch.set(ref, {
-    title: 'New task',
+    kind,
+    title: kind === 'section' ? 'New section' : 'New task',
     instructions: '',
     content: { type: 'doc', content: [{ type: 'paragraph' }] },
     order,
@@ -66,7 +68,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   await batch.commit();
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {

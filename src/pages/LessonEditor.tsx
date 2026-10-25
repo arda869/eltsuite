@@ -62,7 +62,7 @@ export function LessonEditor() {
       onSnapshot(query(tasksCol(classId, itemId), orderBy('order')), (s) => {
         const list = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) }));
         setTasks(list);
-        setSelected((cur) => (cur && list.some((t) => t.id === cur) ? cur : list[0]?.id ?? ''));
+        setSelected((cur) => (cur && list.some((t) => t.id === cur && t.kind !== 'section') ? cur : list.find((t) => t.kind !== 'section')?.id ?? ''));
       }),
     [classId, itemId],
   );
@@ -171,11 +171,22 @@ export function LessonEditor() {
     setSelected(id);
   }
 
-  async function move(t: Task, dir: -1 | 1) {
-    const i = tasks.findIndex((x) => x.id === t.id);
-    const other = tasks[i + dir];
-    if (!other) return;
-    await Promise.all([setTaskFlags(classId, itemId, t.id, { order: other.order }), setTaskFlags(classId, itemId, other.id, { order: t.order })]);
+  async function newSection() {
+    await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'section');
+  }
+
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+
+  // Drop a task at a new position and renumber the order of every task.
+  async function reorder(fromId: string, to: number) {
+    const list = [...tasks];
+    const from = list.findIndex((t) => t.id === fromId);
+    if (from < 0) return;
+    const [moved] = list.splice(from, 1);
+    list.splice(to > from ? to - 1 : to, 0, moved);
+    setTasks(list);
+    await Promise.all(list.map((t, i) => (t.order !== i ? setTaskFlags(classId, itemId, t.id, { order: i }) : null)));
   }
 
   async function remove(t: Task) {
@@ -216,31 +227,70 @@ export function LessonEditor() {
               onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== item.title && updateItem(classId, itemId, { title: e.target.value.trim() })}
             />
             {tasks.map((t, i) => (
-              <div key={t.id} className={'task-row' + (t.id === selected ? ' on' : '')}>
+              <div
+                key={t.id}
+                className={'task-row' + (t.id === selected ? ' on' : '') + (dragId === t.id ? ' dragging' : '') + (dropAt === i ? ' drop-before' : '') + (dropAt === tasks.length && i === tasks.length - 1 ? ' drop-after' : '')}
+                draggable
+                onDragStart={(e) => {
+                  setDragId(t.id);
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', t.id);
+                }}
+                onDragOver={(e) => {
+                  if (!dragId) return;
+                  e.preventDefault();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setDropAt(e.clientY < r.top + r.height / 2 ? i : i + 1);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragId && dropAt !== null) reorder(dragId, dropAt);
+                  setDragId(null);
+                  setDropAt(null);
+                }}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setDropAt(null);
+                }}
+              >
+                <span className="drag-handle" aria-hidden="true" title="Drag to reorder">
+                  ⋮⋮
+                </span>
+                {t.kind === 'section' ? (
+                  <span className="section-row">
+                    <input
+                      className="section-input"
+                      defaultValue={t.title}
+                      aria-label="Section name"
+                      onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== t.title && setTaskFlags(classId, itemId, t.id, { title: e.target.value.trim() })}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                    />
+                    <button type="button" className="icon-btn" aria-label="Delete section" onClick={() => deleteTask(classId, itemId, t.id)}>
+                      ×
+                    </button>
+                  </span>
+                ) : (
                 <button type="button" className="task-pick" onClick={() => select(t.id)}>
-                  <span className="n">{i + 1}</span>
+                  <span className="n">{tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1}</span>
                   <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
+                  {t.locked && <span className="lock-mark" title="Locked">locked</span>}
                   {teachingHere && onTask(t.id) > 0 && (
                     <span className="on-task" title={`${onTask(t.id)} on this task`}>
                       {onTask(t.id)}
                     </span>
                   )}
                 </button>
-                {t.id === selected && (
-                  <span className="task-move">
-                    <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(t, -1)}>
-                      ↑
-                    </button>
-                    <button type="button" aria-label="Move down" disabled={i === tasks.length - 1} onClick={() => move(t, 1)}>
-                      ↓
-                    </button>
-                  </span>
                 )}
               </div>
             ))}
-            <button type="button" className="btn dashed" onClick={newTask}>
-              + New task
-            </button>
+            <div className="list-adds">
+              <button type="button" className="btn dashed" onClick={newTask}>
+                + New task
+              </button>
+              <button type="button" className="btn dashed" onClick={newSection}>
+                + Section
+              </button>
+            </div>
           </nav>
 
           <div className="center-col">
@@ -351,7 +401,7 @@ export function LessonEditor() {
               <label className="switch-row">
                 <span>
                   Locked
-                  <span className="hint">Learners see it but can’t answer</span>
+                  <span className="hint">Learners see it in the list but can’t open it</span>
                 </span>
                 <input type="checkbox" checked={task.locked} onChange={() => setTaskFlags(classId, itemId, task.id, { locked: !task.locked })} />
               </label>

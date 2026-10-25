@@ -48,7 +48,7 @@ export function LearnerLesson() {
     const u3 = onSnapshot(query(tasksCol(classId, itemId), orderBy('order')), (s) => {
       const list = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) })).filter((t) => !t.hidden);
       setTasks(list);
-      setCurrent((cur) => (cur && list.some((t) => t.id === cur) ? cur : list[0]?.id ?? ''));
+      setCurrent((cur) => (cur && list.some((t) => t.id === cur && !t.locked && t.kind !== 'section') ? cur : list.find((t) => !t.locked && t.kind !== 'section')?.id ?? ''));
     });
     return () => (u1(), u2(), u3());
   }, [classId, itemId]);
@@ -126,6 +126,8 @@ export function LearnerLesson() {
   const result = key ? scoreTask(qs, key, responses) : { score: 0, total: 0, hasWriting: false };
   const score = result.score;
   const retryMode = task?.afterCheck === 'retry';
+  const prevOpen = [...tasks.slice(0, Math.max(0, index))].reverse().find((t) => !t.locked && t.kind !== 'section');
+  const nextOpen = tasks.slice(index + 1).find((t) => !t.locked && t.kind !== 'section');
   const th = theme(c?.themeColor);
   const showScore = true;
 
@@ -152,10 +154,21 @@ export function LearnerLesson() {
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
             {item?.title}
           </span>
-          {tasks.map((t) => (
+          {tasks.map((t) =>
+            t.kind === 'section' ? (
+              <span key={t.id} className="section-label">
+                {t.title}
+              </span>
+            ) : (
             <div key={t.id} className={'task-row' + (t.id === current ? ' on' : '')}>
-              <button type="button" className="task-pick" onClick={() => setCurrent(t.id)}>
+              <button type="button" className={'task-pick' + (t.locked ? ' is-locked' : '')} disabled={t.locked} title={t.locked ? 'Your teacher will open this task soon' : undefined} onClick={() => setCurrent(t.id)}>
                 <span>{t.title}</span>
+                {t.locked && (
+                  <svg className="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-label="locked">
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                )}
                 {teacherAt === t.id && (
                   <span className="teacher-here" title={`${live?.teacherName ?? 'Your teacher'} is on this task`}>
                     <span className="live-dot" aria-hidden="true" />
@@ -164,7 +177,8 @@ export function LearnerLesson() {
                 )}
               </button>
             </div>
-          ))}
+            ),
+          )}
           {tasks.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks yet.</span>}
         </nav>
 
@@ -174,7 +188,7 @@ export function LearnerLesson() {
               <div className="frame-head">
                 <h1 className="task-title">{task.title}</h1>
                 {task.instructions && <p className="task-instr">{task.instructions}</p>}
-                {task.locked && <span className="hint">Your teacher has locked this task for now.</span>}
+
               </div>
               <div className="frame-body">
                 {teacherAt && teacherAt !== task.id && (
@@ -210,7 +224,7 @@ export function LearnerLesson() {
                   </span>
                 )}
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                  <button className="btn" disabled={index <= 0} onClick={() => setCurrent(tasks[index - 1].id)}>
+                  <button className="btn" disabled={!prevOpen} onClick={() => prevOpen && setCurrent(prevOpen.id)}>
                     Previous
                   </button>
                   {qs.length > 0 &&
@@ -225,7 +239,7 @@ export function LearnerLesson() {
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing') ? 'Hand in' : 'Check answers'}
                       </button>
                     ))}
-                  <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={index >= tasks.length - 1} onClick={() => setCurrent(tasks[index + 1].id)}>
+                  <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={!nextOpen} onClick={() => nextOpen && setCurrent(nextOpen.id)}>
                     Next
                   </button>
                 </span>
