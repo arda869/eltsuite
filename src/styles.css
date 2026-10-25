@@ -655,3 +655,5 @@ a.btn.primary { color: #ffffff; }
 .tbox-node .tbox.s-speech .speaker, .tbox-node .tbox.s-message .speaker { min-width: 180px; }
 .tbox-node .tbox.side-right .speaker input { text-align: right; }
 .pop-type { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+.drag-ghost { position: fixed; top: -100px; left: -100px; padding: 3px 12px; border-radius: 999px; border: 1.5px solid var(--accent, #d98f63); background: #ffffff; font-family: 'Fraunces', Georgia, serif; font-size: 16px; line-height: 1.4; color: #33302c; box-shadow: 0 6px 16px rgba(51,48,44,0.15); white-space: nowrap; }
+.drop-slot.ready { border-style: dashed; border-color: var(--accent); }

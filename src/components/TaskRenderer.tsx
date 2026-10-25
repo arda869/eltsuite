@@ -325,7 +325,19 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
               className={'bank-word' + (used ? ' used' : '') + (picked === w ? ' picked' : '')}
               disabled={locked || used}
               draggable={!locked && !used}
-              onDragStart={(e) => e.dataTransfer.setData('text/plain', w)}
+              onDragStart={(e) => {
+                e.dataTransfer.setData('text/plain', w);
+                e.dataTransfer.effectAllowed = 'move';
+                // A clean pill as the drag image, without a white box around it.
+                const ghost = document.createElement('span');
+                ghost.className = 'drag-ghost';
+                ghost.textContent = w;
+                document.body.appendChild(ghost);
+                e.dataTransfer.setDragImage(ghost, ghost.offsetWidth / 2, ghost.offsetHeight / 2);
+                setPicked(w);
+                window.setTimeout(() => ghost.remove(), 0);
+              }}
+              onDragEnd={() => setPicked(null)}
               onClick={() => setPicked(picked === w ? null : w)}
             >
               {w}
