@@ -86,6 +86,13 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Short audio clips (recorded or uploaded by the teacher)
+      match /media/{mediaId} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow create: if teachesClass(classId) && request.resource.data.size < 700000;
+        allow delete: if teachesClass(classId);
+      }
+
       // Shared "draw a card" piles (played together as a class)
       match /picks/{pickId} {
         allow read: if teachesClass(classId) || memberOf(classId);

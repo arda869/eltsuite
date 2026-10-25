@@ -1234,3 +1234,96 @@ mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radi
 .rf-received { background: #fff; border-style: dashed; }
 .rf-received .rf-eyebrow { color: var(--pen); }
 .saved-auto { align-self: center; }
+
+/* Strike, text colour */
+.tool .ti-s { font-family: var(--sans); font-size: 14px; font-weight: 500; }
+.tc-icon { display: inline-flex; flex-direction: column; align-items: center; font: 600 14px/1 var(--sans); gap: 2px; }
+.tc-icon span { width: 12px; height: 3px; border-radius: 2px; }
+.tc-sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--hair-strong); background: #fff; font: 700 13px var(--sans); cursor: pointer; padding: 0; }
+.tc-sw.on { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--ink); }
+.ctx-hl .tc-sw { width: 18px; height: 18px; font-size: 11px; }
+
+/* Table styling */
+.task-table.striped tr:nth-child(even) td:not([style*="background"]) { background: #f7f7f6; }
+.doc .ProseMirror table[data-striped] tr:nth-child(even) td:not([data-bg]) { background: #f7f7f6; }
+
+/* Our emoji */
+.emo { display: inline-block; vertical-align: -0.2em; color: var(--ink); }
+.emo.tone-accent { color: var(--accent-text); }
+.emo.tone-soft { color: #8f8f8c; }
+.emo-node { position: relative; }
+.emo-chip { cursor: pointer; border-radius: 4px; }
+.emo-node.is-selected .emo-chip, .emo-chip:hover { background: #f1f1ef; }
+.emo-pop { width: 330px; padding: 10px; gap: 8px; }
+.emo-grid { display: flex; flex-direction: column; gap: 10px; }
+.emo-group { display: flex; flex-direction: column; gap: 4px; }
+.emo-row { display: flex; flex-wrap: wrap; gap: 2px; }
+.emo-btn { width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.emo-btn:hover { background: #f2f2f1; transform: scale(1.08); }
+.emo-btn.on { background: #ececeb; }
+.emo-btn .emo { vertical-align: middle; }
+
+/* Symbols */
+.sym { display: inline-flex; align-items: center; justify-content: center; vertical-align: 0.08em; font: 700 0.68em/1 var(--sans); letter-spacing: 0.02em; color: var(--ink); min-width: 1.6em; height: 1.6em; padding: 0 0.3em; box-sizing: border-box; margin: 0 0.08em; }
+.sym-box { border: 1.5px solid currentColor; border-radius: 0.22em; }
+.sym-circle { border: 1.5px solid currentColor; border-radius: 999px; }
+.sym-circle:not(.wide) { width: 1.6em; padding: 0; }
+.sym-pill { border: 1px solid currentColor; border-radius: 999px; font-weight: 600; font-style: italic; font-family: var(--serif); font-size: 0.78em; padding: 0 0.5em; height: 1.45em; }
+.sym-plain { font-size: 0.8em; min-width: 0; padding: 0; }
+.sym.tone-accent { color: var(--accent-text); }
+.sym.tone-soft { color: #8f8f8c; }
+.sym-mont { display: inline-block; vertical-align: -0.15em; margin: 0 0.06em; }
+.sym-pop { width: 360px; padding: 10px; }
+.sym-picker { display: flex; flex-direction: column; gap: 10px; font-family: var(--sans); }
+.sym-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.sym-btn { min-width: 38px; height: 38px; border: 0; border-radius: 8px; background: #f6f6f5; cursor: pointer; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 18px; padding: 0 6px; }
+.sym-btn:hover { background: #ececeb; }
+.sym-btn.labelled { height: 48px; min-width: 60px; }
+.sym-lab { font: 9.5px var(--sans); color: var(--soft); }
+.sym-systems { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sym-system { border: 1px solid var(--hair-strong); background: #fff; border-radius: 10px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; font-size: 17px; }
+.sym-system.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.sym-sys-demo { display: flex; gap: 2px; align-items: center; }
+.sym-sys-label { font: 600 10.5px var(--sans); color: var(--muted); text-align: center; }
+.sym-own { display: flex; flex-direction: column; gap: 8px; }
+.sym-own input { height: 32px; border: 1px solid var(--hair-strong); border-radius: 7px; padding: 0 8px; font: 14px var(--sans); }
+.sym-own-prev { font-size: 22px; min-height: 30px; }
+.tool .sym { font-size: 16px; }
+
+/* IPA listening */
+.ipa-play { border: 0; background: transparent; padding: 0 2px; cursor: pointer; border-radius: 4px; display: inline-flex; align-items: baseline; gap: 3px; font: inherit; font-family: var(--ipa-font); color: #8a8a87; font-size: 0.92em; }
+.ipa-play:hover { background: #f2f2f1; color: var(--ink); }
+.ipa-spk { align-self: center; opacity: 0.75; }
+.ipa-has-audio { color: var(--soft); margin-left: 2px; vertical-align: -0.1em; }
+.ipa-listen { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--hair); }
+.ipa-say { display: flex; gap: 6px; }
+.ipa-say input { flex: 1; }
+.ipa-rec { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.rec-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c0392b; margin-right: 4px; }
+.rec-dot.idle { background: #c9c9c7; }
+.rec-on { border-color: #c0392b; color: #a4473b; }
+.rec-on .rec-dot { animation: rec 1s ease-in-out infinite; }
+@keyframes rec { 50% { opacity: 0.3; } }
+.sym-btn .sym-mont { width: 22px; height: 22px; }
+.sym-system .sym-mont { width: 18px; height: 18px; }
+.tool .sym { font-size: 12px; }
+
+/* Tables in our style: hairlines, quiet header, coursebook type */
+.doc .ProseMirror table, .task-table { border-collapse: separate; border-spacing: 0; margin: 14px 0 18px; font-size: 15px; width: auto; min-width: 55%; border-top: 1.5px solid var(--ink); border-bottom: 1px solid var(--hair-strong); }
+.doc .ProseMirror th, .doc .ProseMirror td, .task-table th, .task-table td { border: 0; border-bottom: 1px solid #e7e7e4; padding: 9px 16px 9px 0; vertical-align: top; }
+.doc .ProseMirror td + td, .doc .ProseMirror th + th, .task-table td + td, .task-table th + th, .task-table td + th, .task-table th + td { padding-left: 16px; }
+.doc .ProseMirror tr:last-child > *, .task-table tr:last-child > * { border-bottom: 0; }
+.doc .ProseMirror th, .task-table th { background: transparent; font: 600 11px/1.4 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--hair-strong); padding-top: 10px; padding-bottom: 8px; }
+.task-table td, .doc .ProseMirror td { font-family: var(--serif); font-size: 15.5px; color: var(--ink); }
+/* "All lines": a soft grid */
+.task-table.lines-all td + td, .task-table.lines-all th + th, .task-table.lines-all td + th, .task-table.lines-all th + td,
+.doc .ProseMirror table.lines-all td + td, .doc .ProseMirror table.lines-all th + th { border-left: 1px solid #e7e7e4; }
+/* "Rows": only lines between rows (the default look above) */
+/* "None": no lines at all */
+.task-table.lines-none, .task-table.lines-none th, .task-table.lines-none td { border-color: transparent !important; }
+.doc .ProseMirror table.lines-none { border-top-color: #e6e6e6; border-bottom-color: #e6e6e6; }
+.doc .ProseMirror table.lines-none th, .doc .ProseMirror table.lines-none td { border-bottom: 1px dashed #ececec; }
+/* Coloured cells get a little room */
+.task-table td[style*="background"], .task-table th[style*="background"], .doc .ProseMirror td[data-bg], .doc .ProseMirror th[data-bg] { padding-left: 12px; padding-right: 12px; }
+.task-table.striped tr:nth-child(even) td:not([style*="background"]), .doc .ProseMirror table[data-striped] tr:nth-child(even) td:not([data-bg]) { background: #f8f8f7; }
+.doc .ProseMirror .selectedCell::after { background: color-mix(in srgb, var(--accent) 12%, transparent); }

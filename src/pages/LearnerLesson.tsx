@@ -256,6 +256,7 @@ export function LearnerLesson() {
                   flags={flags}
                   shared={shared}
                   classmates={classmates}
+                  classId={classId}
                   selfId={learnerId}
                   received={received}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}

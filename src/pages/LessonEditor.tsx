@@ -387,6 +387,7 @@ export function LessonEditor() {
                     colScroll={task.colScroll ?? 'separate'}
                     teacher
                     classmates={classmates}
+                    classId={classId}
                     onOpenTask={(id) => select(id)}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
@@ -435,6 +436,7 @@ export function LessonEditor() {
                     content={draft.content}
                     onChange={(content) => change({ content })}
                     classmates={classmates}
+                    classId={classId}
                     places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
                   />
                 </div>

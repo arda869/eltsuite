@@ -2,6 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
 import { highlightBg } from '../editor/Highlight';
+import { textColor } from '../editor/TextColor';
+import { cellBg } from '../editor/tableStyle';
+import { Icon } from '../editor/Icons';
+import { Sym } from '../editor/Symbols';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
@@ -38,6 +42,7 @@ type Props = {
   classmates?: { id: string; name: string }[];
   selfId?: string;
   received?: SentFeedback[]; // peer feedback other learners sent to this learner
+  classId?: string; // for audio clips
 };
 
 const TICK = (
@@ -96,6 +101,8 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
     if (mark.type === 'bold') out = <strong>{out}</strong>;
     else if (mark.type === 'italic') out = <em>{out}</em>;
     else if (mark.type === 'underline') out = <u>{out}</u>;
+    else if (mark.type === 'strike') out = <s>{out}</s>;
+    else if (mark.type === 'textColor') out = <span style={{ color: textColor(mark.attrs?.color) }}>{out}</span>;
     else if (mark.type === 'highlight') out = <mark className="hl" style={{ backgroundColor: highlightBg(mark.attrs?.color) }}>{out}</mark>;
   }
   if (def) out = <DefWord word={String(text)} data={(def.attrs?.data ?? {}) as DefData}>{out}</DefWord>;
@@ -105,7 +112,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -647,7 +654,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       case 'table':
         return (
           <div key={key} className="table-wrap-task">
-            <table className={'task-table lines-' + (node.attrs?.lines ?? 'all')}>
+            <table className={'task-table lines-' + (node.attrs?.lines ?? 'all') + (node.attrs?.striped ? ' striped' : '')}>
               <tbody>{kids()}</tbody>
             </table>
           </div>
@@ -656,13 +663,13 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         return <tr key={key}>{kids()}</tr>;
       case 'tableHeader':
         return (
-          <th key={key} colSpan={node.attrs?.colspan ?? 1} rowSpan={node.attrs?.rowspan ?? 1}>
+          <th key={key} colSpan={node.attrs?.colspan ?? 1} rowSpan={node.attrs?.rowspan ?? 1} style={{ backgroundColor: cellBg(node.attrs?.bg), textAlign: node.attrs?.align || undefined }}>
             {kids()}
           </th>
         );
       case 'tableCell':
         return (
-          <td key={key} colSpan={node.attrs?.colspan ?? 1} rowSpan={node.attrs?.rowspan ?? 1}>
+          <td key={key} colSpan={node.attrs?.colspan ?? 1} rowSpan={node.attrs?.rowspan ?? 1} style={{ backgroundColor: cellBg(node.attrs?.bg), textAlign: node.attrs?.align || undefined }}>
             {kids()}
           </td>
         );
@@ -767,8 +774,20 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           </div>
         );
       }
+      case 'icon':
+        return <Icon key={key} name={node.attrs?.name} tone={node.attrs?.tone} />;
+      case 'sym':
+        return <Sym key={key} text={node.attrs?.text ?? '+'} shape={node.attrs?.shape ?? 'box'} tone={node.attrs?.tone ?? 'ink'} />;
       case 'ipa':
-        return <IpaText key={key} text={(node.attrs?.text as string) ?? ''} accent={(node.attrs?.accent ?? 'RP') as 'RP' | 'GA'} showAccent={!!node.attrs?.showAccent} />;
+        return (
+          <IpaText
+            key={key}
+            text={(node.attrs?.text as string) ?? ''}
+            accent={(node.attrs?.accent ?? 'RP') as 'RP' | 'GA'}
+            showAccent={!!node.attrs?.showAccent}
+            listen={{ mode: (node.attrs?.listen ?? 'off') as 'off' | 'voice' | 'audio', say: node.attrs?.say, audioId: node.attrs?.audioId, classId }}
+          />
+        );
       case 'stress':
         return <StressedWord key={key} syllables={(node.attrs?.syllables as string[]) ?? []} stressed={Number(node.attrs?.stressed ?? 0)} style={(node.attrs?.style ?? 'box') as 'box' | 'bold' | 'big'} />;
       case 'columnBreak':

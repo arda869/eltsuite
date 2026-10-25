@@ -18,6 +18,10 @@ import { Reflect, newReflect } from './Reflect';
 import { EditorContextMenu } from './ContextMenu';
 import { EditorClassContext } from './context';
 import { Highlight, HighlightTool } from './Highlight';
+import { TextColor, TextColorTool } from './TextColor';
+import { IconNode, IconTool } from './Icons';
+import { SymNode, SymbolTool } from './Symbols';
+import { CELL_COLORS, cellBg } from './tableStyle';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
@@ -158,13 +162,18 @@ const ICON_OL = ICON(<><text x="0.5" y="5.5" fontSize="5" fill="currentColor" st
 const ICON_LINK = ICON(<><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2" /><path d="M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8" /></>);
 const ICON_TABLE = ICON(<><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" /><path d="M1.5 6.5h13M6 6.5v7M10.5 6.5v7" /></>);
 
+const cellAttrs = {
+  bg: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-bg') || '', renderHTML: (a: { bg: string }) => (a.bg ? { 'data-bg': a.bg, style: `background-color: ${cellBg(a.bg)}` } : {}) },
+  align: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-align') || '', renderHTML: (a: { align: string }) => (a.align ? { 'data-align': a.align, style: `text-align: ${a.align}` } : {}) },
+};
+
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
     {text}
   </button>
 );
 
-export function TaskEditor({ content, onChange, places = [], classmates = [] }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[] }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '' }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -176,13 +185,14 @@ export function TaskEditor({ content, onChange, places = [], classmates = [] }: 
         addAttributes() {
           return {
             ...this.parent?.(),
+            striped: { default: false, parseHTML: (el: HTMLElement) => el.hasAttribute('data-striped'), renderHTML: (a: { striped: boolean }) => (a.striped ? { 'data-striped': '' } : {}) },
             lines: { default: 'all', parseHTML: (el: HTMLElement) => el.getAttribute('data-lines') || 'all', renderHTML: (a: { lines: string }) => ({ 'data-lines': a.lines, class: 'lines-' + a.lines }) },
           };
         },
       }).configure({ resizable: false }),
       TableRow,
-      TableHeader,
-      TableCell,
+      TableHeader.extend({ addAttributes() { return { ...this.parent?.(), ...cellAttrs }; } }),
+      TableCell.extend({ addAttributes() { return { ...this.parent?.(), ...cellAttrs }; } }),
       Image,
       jsonClip(Gap, 'span', 'data-gap'),
       jsonClip(Mcq, 'div', 'data-mcq'),
@@ -198,6 +208,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [] }: 
       PickCard,
       Definition,
       Highlight,
+      TextColor,
+      IconNode,
+      SymNode,
       Stress,
       Ipa,
       LessonLink,
@@ -213,7 +226,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [] }: 
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
-  const classCtx = useMemo(() => ({ classmates }), [classmates]);
+  const classCtx = useMemo(() => ({ classmates, classId }), [classmates, classId]);
 
   useEffect(() => {
     if (!editor || !slash.state) return;
@@ -252,6 +265,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [] }: 
         {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)}
         {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)}
         {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u className="ti ti-u">U</u>)}
+        {BTN('Strikethrough', editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), <s className="ti ti-s">S</s>)}
+        <TextColorTool editor={editor} />
         <HighlightTool editor={editor} />
         {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <span className="ti ti-h">Heading</span>)}
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)}
@@ -284,6 +299,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [] }: 
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
         {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
+        <IconTool editor={editor} />
+        <SymbolTool editor={editor} />
         {BTN('More question types', false, () => editor.chain().focus().insertContent(' /').run(), '/ More')}
       </div>
       {editor.isActive('table') && (
@@ -311,6 +328,22 @@ export function TaskEditor({ content, onChange, places = [], classmates = [] }: 
             {(['all', 'rows', 'none'] as const).map((l) =>
               BTN(l === 'all' ? 'Show all lines' : l === 'rows' ? 'Lines between rows only' : 'Hide the lines', (editor.getAttributes('table').lines ?? 'all') === l, () => editor.chain().focus().updateAttributes('table', { lines: l }).run(), l === 'all' ? 'All' : l === 'rows' ? 'Rows' : 'None'),
             )}
+          </span>
+          <span className="tb-group">
+            <span className="tb-label">Cell colour</span>
+            <span className="hl-swatches">
+              {CELL_COLORS.map((c) => (
+                <button key={c.key} type="button" title={c.label} className={'hl-sw' + ((editor.getAttributes('tableCell').bg || editor.getAttributes('tableHeader').bg) === c.key ? ' on' : '')} style={{ background: c.bg }} onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().setCellAttribute('bg', c.key).run()} />
+              ))}
+              <button type="button" className="hl-none" title="No colour" onMouseDown={(e) => e.preventDefault()} onClick={() => editor.chain().focus().setCellAttribute('bg', '').run()}>
+                ×
+              </button>
+            </span>
+          </span>
+          <span className="tb-group">
+            {BTN('Align left', (editor.getAttributes('tableCell').align || editor.getAttributes('tableHeader').align || 'left') === 'left', () => editor.chain().focus().setCellAttribute('align', 'left').run(), 'Left')}
+            {BTN('Centre', (editor.getAttributes('tableCell').align || editor.getAttributes('tableHeader').align) === 'center', () => editor.chain().focus().setCellAttribute('align', 'center').run(), 'Centre')}
+            {BTN('Striped rows', !!editor.getAttributes('table').striped, () => editor.chain().focus().updateAttributes('table', { striped: !editor.getAttributes('table').striped }).run(), 'Striped')}
           </span>
           <span className="tb-group" style={{ marginLeft: 'auto' }}>
             {BTN('Delete table', false, () => editor.chain().focus().deleteTable().run(), 'Delete table')}

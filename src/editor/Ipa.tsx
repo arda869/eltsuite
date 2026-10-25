@@ -2,6 +2,8 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { Grip } from './nodes';
+import { useEditorClass } from './context';
+import { MAX_AUDIO_BYTES, playAudio, saveAudio, speak } from '../lib/media';
 
 // IPA transcription shown like a dictionary entry: grey, between slashes.
 // The symbol picker follows the layout of Adrian Underhill's phonemic chart.
@@ -42,10 +44,112 @@ const MARKS: Sym[] = [['ˈ', 'main stress, before the syllable'], ['ˌ', 'second
 
 export const accentLabel = (a: Accent) => (a === 'GA' ? 'US' : 'UK');
 
-export function IpaText({ text, accent, showAccent }: { text: string; accent: Accent; showAccent?: boolean }) {
-  return (
-    <span className="ipa" lang="en-fonipa" title={accent === 'GA' ? 'Standard American' : 'British (RP)'}>
+export type Listen = { mode: 'off' | 'voice' | 'audio'; say?: string; audioId?: string; classId?: string };
+
+const SPEAKER = (
+  <svg className="ipa-spk" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 9v6h4l5 4V5L8 9H4z" />
+    <path d="M16.5 8.5a5 5 0 0 1 0 7" />
+  </svg>
+);
+
+export function playListen(l: Listen, accent: Accent) {
+  if (l.mode === 'voice' && l.say?.trim()) speak(l.say, accent);
+  if (l.mode === 'audio' && l.audioId && l.classId) playAudio(l.classId, l.audioId);
+}
+
+export function IpaText({ text, accent, showAccent, listen }: { text: string; accent: Accent; showAccent?: boolean; listen?: Listen }) {
+  const inner = (
+    <>
       {showAccent && <span className="ipa-acc">{accentLabel(accent)}</span>}/{text}/
+    </>
+  );
+  const can = listen && ((listen.mode === 'voice' && listen.say?.trim()) || (listen.mode === 'audio' && listen.audioId));
+  if (!can)
+    return (
+      <span className="ipa" lang="en-fonipa" title={accent === 'GA' ? 'Standard American' : 'British (RP)'}>
+        {inner}
+      </span>
+    );
+  return (
+    <button type="button" className="ipa ipa-play" lang="en-fonipa" title="Listen" onClick={() => playListen(listen!, accent)}>
+      {inner}
+      {SPEAKER}
+    </button>
+  );
+}
+
+// Teacher's recording or upload for an IPA item.
+function Recorder({ classId, audioId, onSaved, accent }: { classId: string; audioId?: string; onSaved: (id: string) => void; accent: Accent }) {
+  const [rec, setRec] = useState<MediaRecorder | null>(null);
+  const [secs, setSecs] = useState(0);
+  const [msg, setMsg] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+  void accent;
+
+  async function start() {
+    setMsg('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const type = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+      const r = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 32000 } : undefined);
+      const parts: Blob[] = [];
+      r.ondataavailable = (e) => e.data.size && parts.push(e.data);
+      r.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        setRec(null);
+        const blob = new Blob(parts, { type: r.mimeType || 'audio/webm' });
+        await store(blob);
+      };
+      r.start();
+      setRec(r);
+      setSecs(0);
+    } catch {
+      setMsg('The microphone could not be used. Check that the browser is allowed to use it.');
+    }
+  }
+  useEffect(() => {
+    if (!rec) return;
+    const t = window.setInterval(() => setSecs((s) => {
+      if (s + 1 >= 10) rec.state === 'recording' && rec.stop();
+      return s + 1;
+    }), 1000);
+    return () => window.clearInterval(t);
+  }, [rec]);
+
+  async function store(blob: Blob) {
+    if (!classId) return setMsg('Open this task from a class to save recordings.');
+    if (blob.size > MAX_AUDIO_BYTES) return setMsg('That file is too big. Use a clip under 600 KB (about 30 seconds).');
+    setMsg('Saving…');
+    try {
+      onSaved(await saveAudio(classId, blob));
+      setMsg('Saved.');
+    } catch {
+      setMsg('The recording could not be saved. Please try again.');
+    }
+  }
+
+  return (
+    <span className="ipa-rec">
+      {rec ? (
+        <button type="button" className="btn small-btn rec-on" onClick={() => rec.stop()}>
+          <span className="rec-dot" aria-hidden="true" /> Stop · {secs}s
+        </button>
+      ) : (
+        <button type="button" className="btn small-btn" onClick={start}>
+          <span className="rec-dot idle" aria-hidden="true" /> {audioId ? 'Record again' : 'Record'}
+        </button>
+      )}
+      <button type="button" className="btn small-btn" onClick={() => fileRef.current?.click()}>
+        Upload a file
+      </button>
+      <input ref={fileRef} type="file" accept="audio/*" hidden onChange={(e) => e.target.files?.[0] && store(e.target.files[0])} />
+      {audioId && !rec && (
+        <button type="button" className="btn small-btn" onClick={() => playAudio(classId, audioId)}>
+          ▶ Play
+        </button>
+      )}
+      {msg && <span className="hint">{msg}</span>}
     </span>
   );
 }
@@ -98,6 +202,17 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
   const text: string = node.attrs.text ?? '';
   const accent = (node.attrs.accent ?? 'RP') as Accent;
   const showAccent = !!node.attrs.showAccent;
+  const listen = (node.attrs.listen ?? 'off') as Listen['mode'];
+  const say: string = node.attrs.say ?? '';
+  const { classId } = useEditorClass();
+  // The word just before the IPA, used as the default for the computer voice.
+  const wordBefore = () => {
+    const pos = typeof getPos === 'function' ? getPos() : undefined;
+    if (typeof pos !== 'number') return '';
+    const $p = editor.state.doc.resolve(pos);
+    const before = $p.parent.textBetween(0, $p.parentOffset, ' ', ' ').trim();
+    return before.split(/\s+/).pop()?.replace(/[^\p{L}'’-]/gu, '') ?? '';
+  };
   const [open, setOpen] = useState(!text);
   const ref = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +245,7 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
       <Grip editor={editor} getPos={getPos} />
       <span className="ipa-chip" contentEditable={false} onClick={() => setOpen(true)} title="Edit IPA">
         {text ? <IpaText text={text} accent={accent} showAccent={showAccent} /> : <span className="stress-empty">IPA</span>}
+        {text && listen !== 'off' && <span className="ipa-has-audio" title="Learners can listen">{SPEAKER}</span>}
       </span>
       {open && (
         <span className="gap-pop ipa-pop" contentEditable={false}>
@@ -149,6 +265,30 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             <span className="ipa-slash">/</span>
           </span>
           <Chart accent={accent} onPick={insert} />
+          <span className="ipa-listen">
+            <span className="ipa-cap">Learners can listen</span>
+            <span className="seg small-seg" role="radiogroup" aria-label="Listening">
+              {([
+                ['off', 'Off'],
+                ['voice', 'Computer voice'],
+                ['audio', 'My recording'],
+              ] as const).map(([k, l]) => (
+                <button key={k} type="button" role="radio" aria-checked={listen === k} className={listen === k ? 'on' : ''} onClick={() => updateAttributes({ listen: k, ...(k === 'voice' && !say ? { say: wordBefore() } : {}) })}>
+                  {l}
+                </button>
+              ))}
+            </span>
+            {listen === 'voice' && (
+              <span className="ipa-say">
+                <input value={say} placeholder="The word or phrase to say" onChange={(e) => updateAttributes({ say: e.target.value })} />
+                <button type="button" className="btn small-btn" disabled={!say.trim()} onClick={() => speak(say, accent)}>
+                  ▶ Try it
+                </button>
+              </span>
+            )}
+            {listen === 'audio' && <Recorder classId={classId} audioId={node.attrs.audioId || undefined} accent={accent} onSaved={(id) => updateAttributes({ audioId: id })} />}
+            {listen !== 'off' && <span className="hint">Learners tap the transcription to hear it.</span>}
+          </span>
           <label className="ipa-show">
             <input type="checkbox" checked={showAccent} onChange={() => updateAttributes({ showAccent: !showAccent })} />
             Show {accentLabel(accent)} before the transcription
@@ -169,6 +309,9 @@ export const Ipa = Node.create({
     text: { default: '' },
     accent: { default: 'RP' },
     showAccent: { default: false },
+    listen: { default: 'off' },
+    say: { default: '' },
+    audioId: { default: '' },
   }),
   parseHTML: () => [{ tag: 'span[data-ipa]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-ipa': '' })],

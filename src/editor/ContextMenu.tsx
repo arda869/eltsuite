@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { Swatches } from './Highlight';
+import { ColorSwatches } from './TextColor';
 
 // Right-click menu in the task editor. Right-clicking a word selects it first.
 
@@ -45,9 +46,31 @@ export function EditorContextMenu({
   useEffect(() => {
     if (!host) return;
     const open = (e: MouseEvent) => {
-      const pm = (e.target as HTMLElement).closest('.ProseMirror');
-      if (!pm || (e.target as HTMLElement).closest('input, textarea, [contenteditable="false"]')) return;
+      const target = e.target as HTMLElement;
+      const pm = target.closest('.ProseMirror');
+      if (!pm || target.closest('input, textarea, select, .gap-pop, .def-pop, .pick-settings, .r-item, .r-add')) return;
       e.preventDefault();
+      // Right-click on a question or other object: select the whole object.
+      const obj = target.closest('[data-node-view-wrapper]') as HTMLElement | null;
+      const inText = target.closest('[data-node-view-content]');
+      if (obj && pm.contains(obj) && !(inText && obj.contains(inText))) {
+        const h0 = host.getBoundingClientRect();
+        const x0 = Math.min(e.clientX - h0.left, h0.width - 250);
+        const y0 = e.clientY - h0.top;
+        window.setTimeout(() => {
+          try {
+            const pos = editor.view.posAtDOM(obj, 0);
+            const $pos = editor.state.doc.resolve(pos);
+            const nodePos = editor.state.doc.nodeAt(pos) ? pos : $pos.before();
+            editor.chain().setNodeSelection(nodePos).run();
+          } catch {
+            /* fall back to the cursor */
+          }
+          editor.view.focus();
+          setAt({ x: x0, y: y0 });
+        }, 0);
+        return;
+      }
       const hit = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
       const { from, to, empty } = editor.state.selection;
       const h = host.getBoundingClientRect();
@@ -79,9 +102,37 @@ export function EditorContextMenu({
   }, [at]);
 
   if (!at) return null;
+  const sel = editor.state.selection as typeof editor.state.selection & { node?: { type: { name: string } } };
+  const isObject = !!sel.node;
   const { from, to, empty } = editor.state.selection;
+  const copy = () => {
+    editor.view.focus();
+    document.execCommand('copy');
+  };
+  const cut = () => {
+    editor.view.focus();
+    document.execCommand('cut');
+  };
+  const paste = async () => {
+    editor.view.focus();
+    try {
+      const items = await navigator.clipboard.read();
+      for (const it of items) {
+        if (it.types.includes('text/html')) {
+          const html = await (await it.getType('text/html')).text();
+          (editor.view as unknown as { pasteHTML: (h: string) => void }).pasteHTML(html);
+          return;
+        }
+      }
+      const text = await navigator.clipboard.readText();
+      (editor.view as unknown as { pasteText: (t: string) => void }).pasteText(text);
+    } catch {
+      window.alert('Your browser blocked pasting from this menu. Press Ctrl+V (or ⌘V on a Mac) to paste.');
+    }
+  };
   const text = editor.state.doc.textBetween(from, to, ' ').trim();
-  const has = !empty && !!text;
+  const has = !empty && !!text && !isObject;
+  const anything = !empty;
   const short = text.length > 22 ? text.slice(0, 20) + '…' : text;
   const run = (f: () => void) => () => {
     setAt(null);
@@ -100,7 +151,12 @@ export function EditorContextMenu({
     { label: 'Bold', run: run(() => editor.chain().focus().toggleBold().run()), show: has },
     { label: 'Italic', run: run(() => editor.chain().focus().toggleItalic().run()), show: has },
     { label: 'Underline', run: run(() => editor.chain().focus().toggleUnderline().run()), show: has },
-    { label: 'Copy', run: run(() => navigator.clipboard?.writeText(text).catch(() => {})), show: has },
+    { label: 'Strikethrough', run: run(() => editor.chain().focus().toggleStrike().run()), show: has },
+    'sep',
+    { label: 'Cut', hint: '⌘X', run: run(cut), show: anything },
+    { label: 'Copy', hint: '⌘C', run: run(copy), show: anything },
+    { label: 'Paste', hint: '⌘V', run: run(paste) },
+    { label: isObject ? 'Delete' : 'Delete', run: run(() => editor.chain().focus().deleteSelection().run()), show: anything, danger: isObject },
     'sep',
     { label: 'Remove definition', run: run(() => editor.chain().focus().extendMarkRange('definition').unsetMark('definition').run()), show: editor.isActive('definition'), danger: true },
     { label: 'Remove link', run: run(() => editor.chain().focus().extendMarkRange('lessonLink').unsetMark('lessonLink').run()), show: editor.isActive('lessonLink'), danger: true },
@@ -121,6 +177,12 @@ export function EditorContextMenu({
         <span className="ctx-hl">
           <span className="ctx-hl-label">Highlight</span>
           <Swatches editor={editor} onDone={() => setAt(null)} />
+        </span>
+      )}
+      {has && (
+        <span className="ctx-hl">
+          <span className="ctx-hl-label">Colour</span>
+          <ColorSwatches editor={editor} onDone={() => setAt(null)} />
         </span>
       )}
       {clean.map((i, k) =>
