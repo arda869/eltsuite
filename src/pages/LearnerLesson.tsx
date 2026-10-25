@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
@@ -19,8 +19,10 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
-import { isLive, isSynced, liveRef, revealedCount, revealedSubset, type LiveState } from '../lib/live';
+import { isLive, isSynced, liveRef, revealedCount, revealedSingles, revealedSubset, type LiveState } from '../lib/live';
 import { TextSizeControl } from '../components/TextSizeControl';
+import { NoticeToasts } from '../components/NoticeToasts';
+import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { TEXT_SCALE } from '../lib/auth';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
@@ -43,6 +45,7 @@ export function LearnerLesson() {
   const [key, setKey] = useState<AnswerKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [live, setLiveState] = useState<LiveState | null>(null);
+  const panels = usePanels('ll.learnerPanels');
   const timer = useRef<number>();
   const dirty = useRef(false);
 
@@ -70,15 +73,25 @@ export function LearnerLesson() {
     if (synced && live?.taskId && tasks.some((t) => t.id === live.taskId)) setCurrent(live.taskId);
   }, [synced, live?.taskId, tasks]);
   const go = (id: string) => !synced && setCurrent(id);
+  // Arriving from a notification or link: open that task.
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const t = params.get('task');
+    if (t && tasks.some((x) => x.id === t && !x.locked)) {
+      setCurrent(t);
+      setParams({}, { replace: true });
+    }
+  }, [params, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Answers the teacher has revealed to the class for this task.
   const revealN = revealedCount(live, itemId, current);
+  const singles = revealedSingles(live, itemId, current);
   const [revealKey, setRevealKey] = useState<AnswerKey | null>(null);
   useEffect(() => {
     setRevealKey(null);
-    if (!revealN || !classId || !current) return;
+    if ((!revealN && !singles.length) || !classId || !current) return;
     loadKey(classId, itemId, current).then(setRevealKey).catch(() => setRevealKey(null));
-  }, [revealN !== 0, classId, itemId, current]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [revealN !== 0 || singles.length > 0, classId, itemId, current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load this learner's saved answers for the current task.
   useEffect(() => {
@@ -216,7 +229,8 @@ export function LearnerLesson() {
         </span>
       </header>
 
-      <div className="lesson-layout learner">
+      <NoticeToasts classId={classId} to={learnerId} link={(i, t) => `/learn/${i}?task=${t}`} />
+      <div className={'lesson-layout learner' + panels.cls}>
         <nav className="task-list" aria-label="Tasks">
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
             {item?.title}
@@ -249,6 +263,10 @@ export function LearnerLesson() {
           {tasks.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks yet.</span>}
         </nav>
 
+        <div className="center-col">
+        <div className="panel-toggles">
+          <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
+        </div>
         <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
           {task ? (
             <div className="frame-inner">
@@ -274,7 +292,7 @@ export function LearnerLesson() {
                   content={task.content}
                   responses={responses}
                   onChange={change}
-                  revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN) : null}
+                  revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN, singles) : null}
                   results={checked ? key : null}
                   disabled={task.locked}
                   hideAnswers={task.afterCheck === 'retry'}
@@ -286,7 +304,7 @@ export function LearnerLesson() {
                   classId={classId}
                   selfId={learnerId}
                   received={received}
-                  boardMe={user && profile?.role === 'learner' ? { classId, taskId: current, uid: user.uid, name: profile.displayName } : undefined}
+                  boardMe={user && profile?.role === 'learner' ? { classId, taskId: current, itemId, uid: user.uid, name: profile.displayName, selfId: learnerId, people: classmates } : undefined}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   onOpenTask={(id) => {
                     const t = tasks.find((x) => x.id === id);
@@ -346,6 +364,7 @@ export function LearnerLesson() {
             </p>
           )}
         </main>
+        </div>
       </div>
     </div>
   );

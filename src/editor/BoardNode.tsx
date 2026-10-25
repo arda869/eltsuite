@@ -37,6 +37,11 @@ function BoardView({ node, updateAttributes, deleteNode, editor, getPos, selecte
         {toggle('replies', 'Replies', 'Learners can reply to a message')}
         {toggle('reactions', 'Reactions', 'Hearts, likes, claps and ideas')}
         {toggle('anonymous', 'Anonymous', 'Learners’ names are not shown')}
+        <label className="r-share">
+          <input type="checkbox" checked={a.tagging !== false} onChange={() => updateAttributes({ tagging: a.tagging === false })} />
+          Tagging
+          <span className="hint">Learners can type @ to tag a classmate or you; that person gets a notification</span>
+        </label>
       </div>
       <div className="board-preview">
         <Board attrs={a} preview />
@@ -57,6 +62,7 @@ export const BoardNode = Node.create({
     replies: { default: true },
     reactions: { default: true },
     anonymous: { default: false },
+    tagging: { default: true },
   }),
   parseHTML: () => [{ tag: 'div[data-board]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-board': '' })],

@@ -9,6 +9,7 @@ import { isLive, liveRef, type LiveState } from '../lib/live';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { initials } from '../components/TopBar';
+import { NoticeToasts } from '../components/NoticeToasts';
 
 export function LearnerHome({ classId, name }: { classId: string; name: string }) {
   const { signOutNow, user, profile } = useAuth();
@@ -41,6 +42,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
 
   return (
     <div className="shell" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
+      <NoticeToasts classId={classId} to={profile?.role === 'learner' ? profile.learnerId : ''} link={(i, tk) => `/learn/${i}?task=${tk}`} />
       <header className="topbar">
         <Wordmark />
         <span className="sub">{c?.name ?? ''}</span>

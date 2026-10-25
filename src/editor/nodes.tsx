@@ -15,16 +15,98 @@ export const DOTS = (
 );
 
 // Grip on the left of a question: drag to move it, click to select it (then Backspace deletes it).
+// Inline items (gaps, choices, words) are moved with our own pointer drag so they can go
+// anywhere in a line, not only between lines. Block items use the editor's own dragging.
 export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getPos: NodeViewProps['getPos'] }) {
+  const pos0 = () => (typeof getPos === 'function' ? getPos() : undefined);
+  const inline = (() => {
+    const p = pos0();
+    return typeof p === 'number' ? !!editor.state.doc.nodeAt(p)?.isInline : false;
+  })();
+
+  const startInlineDrag = (e: React.PointerEvent) => {
+    const from = pos0();
+    if (typeof from !== 'number') return;
+    const node = editor.state.doc.nodeAt(from);
+    if (!node) return;
+    const sx = e.clientX;
+    const sy = e.clientY;
+    let moving = false;
+    let target: number | null = null;
+    const caret = document.createElement('div');
+    caret.className = 'drag-caret';
+    const ghost = (e.currentTarget.parentElement?.cloneNode(true) as HTMLElement) ?? document.createElement('span');
+    ghost.classList.add('drag-ghost');
+    const move = (ev: PointerEvent) => {
+      if (!moving && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+      if (!moving) {
+        moving = true;
+        document.body.append(caret, ghost);
+        document.body.classList.add('is-dragging-inline');
+      }
+      ghost.style.left = ev.clientX + 8 + 'px';
+      ghost.style.top = ev.clientY + 8 + 'px';
+      const hit = editor.view.posAtCoords({ left: ev.clientX, top: ev.clientY });
+      if (!hit) return;
+      const $p = editor.state.doc.resolve(hit.pos);
+      if (!$p.parent.inlineContent || (hit.pos >= from && hit.pos <= from + node.nodeSize)) {
+        target = null;
+        caret.style.display = 'none';
+        return;
+      }
+      target = hit.pos;
+      const c = editor.view.coordsAtPos(hit.pos);
+      caret.style.display = 'block';
+      caret.style.left = c.left - 1 + 'px';
+      caret.style.top = c.top + 'px';
+      caret.style.height = c.bottom - c.top + 'px';
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      caret.remove();
+      ghost.remove();
+      document.body.classList.remove('is-dragging-inline');
+      if (!moving) {
+        editor.chain().setNodeSelection(from).run();
+        editor.view.focus();
+        return;
+      }
+      if (target === null) return;
+      const tr = editor.state.tr;
+      const insertAt = target > from ? target - node.nodeSize : target;
+      tr.delete(from, from + node.nodeSize);
+      tr.insert(insertAt, node);
+      editor.view.dispatch(tr.scrollIntoView());
+      editor.chain().setNodeSelection(insertAt).run();
+      editor.view.focus();
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
   return (
     <span
       className="grip"
-      data-drag-handle
+      {...(inline ? { draggable: false } : { 'data-drag-handle': '' })}
       contentEditable={false}
       title="Drag to move · click to select"
-      onMouseDown={(e) => {
+      onDragStart={inline ? (e) => e.preventDefault() : undefined}
+      onPointerDown={(e) => {
         if (e.button !== 0) return;
-        const pos = typeof getPos === 'function' ? getPos() : undefined;
+        if (inline) {
+          e.preventDefault();
+          e.stopPropagation();
+          startInlineDrag(e);
+          return;
+        }
+      }}
+      onMouseDown={(e) => {
+        if (e.button !== 0 || inline) {
+          if (inline) e.preventDefault();
+          return;
+        }
+        const pos = pos0();
         if (typeof pos === 'number') {
           editor.chain().setNodeSelection(pos).run();
           editor.view.focus();

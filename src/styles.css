@@ -1464,3 +1464,45 @@ mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radi
 .sc-row dd { margin: 0; font: 14px var(--sans); }
 kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--hair-strong); border-bottom-width: 2px; background: #fff; font: 600 12px var(--sans); color: var(--ink); }
 .icon-help { width: 30px; padding: 0; justify-content: center; font-weight: 700; }
+/* Moving inline items within a line */
+.drag-caret { position: fixed; z-index: 100; width: 2px; background: var(--accent, #d98f63); border-radius: 1px; pointer-events: none; box-shadow: 0 0 0 2px rgba(217,143,99,0.15); }
+.drag-ghost { position: fixed; z-index: 101; pointer-events: none; opacity: 0.85; transform: rotate(-2deg); background: #fff; border-radius: 6px; box-shadow: 0 10px 20px -8px rgba(0,0,0,0.35); padding: 2px 6px; font-family: var(--serif); white-space: nowrap; }
+.drag-ghost .grip, .drag-ghost .gap-pop, .drag-ghost .choice-pop { display: none !important; }
+body.is-dragging-inline, body.is-dragging-inline * { cursor: grabbing !important; user-select: none; }
+
+/* Tags */
+.mention { color: var(--accent-text); font-weight: 600; background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 4px; padding: 0 3px; white-space: nowrap; }
+.mention.me { color: #fff; background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); animation: tag-me 1.6s ease-out 2; }
+@keyframes tag-me { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+.mention-menu { z-index: 70; width: 220px; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 16px 36px -12px rgba(0,0,0,0.28); padding: 5px; font-family: var(--sans); }
+.mention-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.mention-item.on { background: #f2f2f1; }
+.mention-item .rf-av { width: 22px; height: 22px; font-size: 9px; }
+.bd-tags { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.bd-tag-opt { border: 1px solid var(--hair-strong); background: #fff; border-radius: 999px; padding: 2px 10px; font: 600 12px var(--sans); color: var(--accent-text); cursor: pointer; }
+.bd-tag-opt:first-child { border-color: var(--accent); }
+.bd-reply-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.toasts { position: fixed; right: 18px; bottom: 18px; z-index: 90; display: flex; flex-direction: column; gap: 10px; width: min(340px, calc(100vw - 36px)); }
+.toast { display: flex; gap: 12px; padding: 14px 16px; background: #fff; border-radius: 14px; border: 1px solid rgba(0,0,0,0.06); box-shadow: 0 20px 40px -16px rgba(0,0,0,0.35); animation: toast-in 0.4s cubic-bezier(.2,.9,.3,1.2) both; font-family: var(--sans); font-size: 13px; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+.toast-at { width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--accent, #d98f63); color: #fff; display: inline-flex; align-items: center; justify-content: center; font: 700 15px var(--sans); }
+.toast-body { display: flex; flex-direction: column; gap: 6px; }
+.toast-text { font: 14px/1.4 var(--serif); color: var(--muted); }
+.toast-actions { display: flex; gap: 10px; align-items: center; }
+/* Teaching view: click a question to reveal it */
+.teach-view [data-qid] { cursor: pointer; border-radius: 6px; transition: background 0.12s; }
+.teach-view [data-qid]:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
+.teach-view input, .teach-view textarea, .teach-view select, .teach-view .opt, .teach-view [data-qid] button { pointer-events: none; }
+.teach-view .pk button, .teach-view .bd button, .teach-view .bd textarea, .teach-view .bd input, .teach-view .lesson-link, .teach-view .ipa-play, .teach-view .def-trigger { pointer-events: auto; }
+/* Collapsible side panels */
+.panel-toggles { display: flex; justify-content: space-between; height: 0; position: relative; z-index: 3; }
+.panel-toggle { position: relative; top: -2px; width: 28px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--soft); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.panel-toggle:hover { background: #f0f0ef; color: var(--ink); }
+.panel-toggle.left { left: -6px; }
+.panel-toggle.right { right: -6px; }
+.panel-toggle:not(.is-open) { color: var(--accent-text); }
+.lesson-layout.no-left > .task-list { display: none; }
+.lesson-layout.no-right > .task-side { display: none; }
+.lesson-layout.learner .center-col { flex: 1; min-width: 0; }
+.panel-toggles + .notes-drawer, .panel-toggles + .session-strip { margin-top: 18px; }
+.center-col > .panel-toggles + main, .center-col > .panel-toggles + .session-strip { margin-top: 22px; }

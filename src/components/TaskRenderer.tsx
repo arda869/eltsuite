@@ -7,6 +7,7 @@ import { cellBg } from '../editor/tableStyle';
 import { Icon } from '../editor/Icons';
 import { Sym } from '../editor/Symbols';
 import { Board, type BoardAttrs, type BoardMe } from './Board';
+import { MentionTag } from '../editor/Mention';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
@@ -228,7 +229,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       return resultText(key, id, value, right, entry?.kind === 'gap' ? entry.answers[0] : undefined);
     }
     return (
-      <span key={key} className="gap-wrap">
+      <span key={key} className="gap-wrap" data-qid={id}>
         {num(id)}
         <input
           className="gap-input"
@@ -298,7 +299,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         else onChange?.(id, chosen.includes(i) ? '' : i);
       };
       return (
-        <span key={key} className="slash-choice" role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
+        <span key={key} className="slash-choice" data-qid={id} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
           {num(id)}
           {shown.map(({ o, i }, k) => {
             const state = optionState(i, chosen, correct);
@@ -326,7 +327,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     }
     if (display === 'radio')
       return (
-        <span key={key} className="stacked-choice" role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
+        <span key={key} className="stacked-choice" data-qid={id} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
           <span className="stack-num">{num(id)}</span>
           <span className="stack">
             {choiceOptions(id, options, multi, display)}
@@ -335,7 +336,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
         </span>
       );
     return (
-      <span key={key} className={'inline-choice d-' + display} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
+      <span key={key} className={'inline-choice d-' + display} data-qid={id} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
         {num(id)}
         {choiceOptions(id, options, multi, display)}
         {revealChip(node)}
@@ -346,7 +347,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
   const mcq = (node: JSONContent, key: string) => {
     const id = node.attrs!.id as string;
     return (
-      <fieldset key={key} className="mcq-q">
+      <fieldset key={key} className="mcq-q" data-qid={node.attrs?.id}>
         <legend>
           {num(id)}
           {node.attrs!.prompt}
@@ -392,7 +393,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     const active = (side: 'l' | 'r', i: number) => pair?.id === id && pair.side === side && pair.i === i;
     const waiting = pair?.id === id;
     return (
-      <div key={key} className={'match-q' + (waiting ? ' waiting-' + pair!.side : '')}>
+      <div key={key} className={'match-q' + (waiting ? ' waiting-' + pair!.side : '')} data-qid={id}>
         <ol className="match-left">
           {left.map((l, i) => {
             const c = chosen[i] ?? -1;
@@ -442,7 +443,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     const entry = results?.[id];
     if (results) return resultText(key, id, value, scoreQuestion(entry, value).got === 1, entry?.kind === 'drop' ? entry.answer : undefined);
     return (
-      <span key={key} className="gap-wrap">
+      <span key={key} className="gap-wrap" data-qid={id}>
         {num(id)}
         <button
           type="button"
@@ -523,7 +524,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     if (results) {
       const ok = scoreQuestion(entry, responses[id]).got === 1;
       return (
-        <div key={key} className="order-q">
+        <div key={key} className="order-q" data-qid={id}>
           {num(id)}
           <span className={ok ? 'ans right' : 'ans wrong'}>{placed.join(' ') || '—'}</span>
           {ok ? TICK : !hideAnswers && entry?.kind === 'order' && <span className="fix">{entry.answer}</span>}
@@ -532,7 +533,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       );
     }
     return (
-      <div key={key} className="order-q">
+      <div key={key} className="order-q" data-qid={id}>
         <div className="order-line">
           {num(id)}
           {placed.length === 0 && <span className="order-empty">Tap the words in order</span>}
@@ -776,6 +777,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           </div>
         );
       }
+      case 'mention':
+        return <MentionTag key={key} label={node.attrs?.label ?? ''} me={(teacher && node.attrs?.id === 'teacher') || (!!selfId && node.attrs?.id === selfId)} />;
       case 'board':
         return <Board key={key} attrs={node.attrs as BoardAttrs} me={boardMe} preview={!boardMe} />;
       case 'icon':

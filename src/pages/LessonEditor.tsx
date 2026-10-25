@@ -21,9 +21,11 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
-import { isLive, liveRef, revealedCount, revealedSubset, setLive, type LiveState } from '../lib/live';
+import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLive, type LiveState } from '../lib/live';
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
+import { NoticeToasts } from '../components/NoticeToasts';
+import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { useAuth } from '../lib/auth';
 import { isOnline, usePresence } from '../lib/presence';
 import { initials } from '../components/TopBar';
@@ -120,6 +122,12 @@ export function LessonEditor() {
 
   const [params, setParams] = useSearchParams();
   useEffect(() => {
+    const t = params.get('task');
+    if (t && tasks.some((x) => x.id === t)) {
+      setParams({}, { replace: true });
+      select(t);
+      return;
+    }
     if (params.get('teach') === '1' && selected && live !== undefined) {
       setParams({}, { replace: true });
       if (!teachingHere) toggleTeaching();
@@ -133,11 +141,22 @@ export function LessonEditor() {
   const setReveal = (n: number) => task && setLive(classId, { revealed: { ...(live?.revealed ?? {}), [task.id]: n } });
   const revealNext = () => setReveal(revealN < 0 ? -1 : Math.min(qCount, revealN + 1));
   const revealAll = () => setReveal(-1);
-  const hideAnswers = () => setReveal(0);
+  const hideAnswers = () => task && setLive(classId, { revealed: { ...(live?.revealed ?? {}), [task.id]: 0 }, revealedQs: { ...(live?.revealedQs ?? {}), [task.id]: [] } });
+  const singles = task ? revealedSingles(live, itemId, task.id) : [];
+  const toggleSingle = (qid: string) => {
+    if (!task || !teachingHere) return;
+    const cur = live?.revealedQs?.[task.id] ?? [];
+    setLive(classId, { revealedQs: { ...(live?.revealedQs ?? {}), [task.id]: cur.includes(qid) ? cur.filter((x) => x !== qid) : [...cur, qid] } });
+  };
+  const taskList = tasks.filter((x) => x.kind !== 'section');
+  const ti = taskList.findIndex((x) => x.id === selected);
+  const prevTask = ti > 0 ? taskList[ti - 1] : undefined;
+  const nextTask = ti >= 0 && ti < taskList.length - 1 ? taskList[ti + 1] : undefined;
   const toggleSync = () => setLive(classId, { sync: !live?.sync, taskId: selected });
 
   // Teaching shortcuts (not while typing).
   const [help, setHelp] = useState(false);
+  const panels = usePanels('ll.teacherPanels');
   const [present, setPresent] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
@@ -181,9 +200,14 @@ export function LessonEditor() {
   });
 
   async function toggleTeaching() {
-    if (teachingHere) await setLive(classId, { teaching: false });
+    // Always come back to the read-only teaching view, not an editing or preview state left over.
+    setEditWhileTeaching(false);
+    setPreview(false);
+    await flush();
+    if (teachingHere) await setLive(classId, { teaching: false, sync: false });
     else
       await setLive(classId, {
+        sync: false,
         teaching: true,
         itemId,
         taskId: selected,
@@ -311,10 +335,11 @@ export function LessonEditor() {
         <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
       </TopBar>
 
+      <NoticeToasts classId={classId} to="teacher" link={(i, t) => `/class/${classId}/lesson/${i}?task=${t}`} />
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
       {item && (
-        <div className={'lesson-layout' + (present ? ' present' : '')}>
+        <div className={'lesson-layout' + (present ? ' present' : '') + panels.cls}>
           <nav className="task-list" aria-label="Tasks">
             <input
               className="lesson-title"
@@ -386,9 +411,11 @@ export function LessonEditor() {
                     <button type="button" className={'row-act' + (t.locked ? ' on' : '')} title={t.locked ? 'Unlock' : 'Lock · learners see it but can’t open it'} aria-label={t.locked ? 'Unlock' : 'Lock'} onClick={() => setTaskFlags(classId, itemId, t.id, { locked: !t.locked })}>
                       {t.locked ? LOCK : UNLOCK}
                     </button>
-                    <button type="button" className="row-act" title="Delete task" aria-label="Delete task" onClick={() => remove(t)}>
-                      {TRASH}
-                    </button>
+                    {!teachingHere && (
+                      <button type="button" className="row-act" title="Delete task" aria-label="Delete task" onClick={() => remove(t)}>
+                        {TRASH}
+                      </button>
+                    )}
                   </span>
                 )}
               </div>
@@ -404,6 +431,10 @@ export function LessonEditor() {
           </nav>
 
           <div className="center-col">
+          <div className="panel-toggles">
+            <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
+            <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />
+          </div>
           {teachingHere && (
             <div className="session-strip" aria-label="Learners in this session">
               <span className="session-count">
@@ -441,7 +472,7 @@ export function LessonEditor() {
                     <button type="button" className="btn small-btn" disabled={revealN < 0} onClick={revealAll} title="Shortcut: Shift + R">
                       Reveal all
                     </button>
-                    {revealN !== 0 && (
+                    {(revealN !== 0 || singles.length > 0) && (
                       <button type="button" className="btn small-btn" onClick={hideAnswers} title="Shortcut: H">
                         Hide
                       </button>
@@ -474,7 +505,14 @@ export function LessonEditor() {
                   <h1 className="task-title">{draft.title}</h1>
                   {draft.instructions && <p className="task-instr">{draft.instructions}</p>}
                 </div>
-                <div className="frame-body">
+                <div
+                  className={'frame-body' + (!preview ? ' teach-view' : '')}
+                  onClick={(e) => {
+                    if (preview || !task) return;
+                    const q = (e.target as HTMLElement).closest('[data-qid]') as HTMLElement | null;
+                    if (q?.dataset.qid) toggleSingle(q.dataset.qid);
+                  }}
+                >
                   <TaskRenderer
                     content={previewKey?.content ?? null}
                     responses={previewResponses}
@@ -485,10 +523,10 @@ export function LessonEditor() {
                     layout={task.layout ?? 'single'}
                     colScroll={task.colScroll ?? 'separate'}
                     teacher
-                    revealed={!preview && previewKey && revealN !== 0 ? revealedSubset(previewKey.key, questionIds(previewKey.content).filter((q) => q.type !== 'writing' && q.type !== 'reflect'), revealN) : null}
+                    revealed={!preview && previewKey ? revealedSubset(previewKey.key, questionIds(previewKey.content), revealN, singles) : null}
                     classmates={classmates}
                     classId={classId}
-                    boardMe={!preview && user ? { classId, taskId: task.id, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true } : undefined}
+                    boardMe={!preview && user ? { classId, taskId: task.id, itemId, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true, people: classmates } : undefined}
                     onOpenTask={(id) => select(id)}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
@@ -496,8 +534,18 @@ export function LessonEditor() {
                   />
                 </div>
                 <div className="frame-foot">
-                  <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · the task is read-only so you don’t change it by accident'}</span>
+                  <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                    {!preview && (
+                      <button className="btn" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} title="Shortcut: ←">
+                        Previous
+                      </button>
+                    )}
+                    {!preview && (
+                      <button className="btn" disabled={!nextTask} onClick={() => nextTask && select(nextTask.id)} title="Shortcut: →">
+                        Next
+                      </button>
+                    )}
                     {!preview ? (
                       <button className="btn" onClick={() => setEditWhileTeaching(true)}>
                         Edit task

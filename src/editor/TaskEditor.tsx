@@ -22,6 +22,7 @@ import { TextColor, TextColorTool } from './TextColor';
 import { IconNode, IconTool } from './Icons';
 import { SymNode, SymbolTool } from './Symbols';
 import { BoardNode, newBoard } from './BoardNode';
+import { Mention, MentionMenu, useMentionMenu } from './Mention';
 import { CELL_COLORS, cellBg } from './tableStyle';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
@@ -215,6 +216,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       IconNode,
       SymNode,
       BoardNode,
+      Mention,
       Stress,
       Ipa,
       LessonLink,
@@ -230,6 +232,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const mention = useMentionMenu(editor, classmates);
   const classCtx = useMemo(() => ({ classmates, classId }), [classmates, classId]);
 
   useEffect(() => {
@@ -358,6 +361,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         <EditorContent editor={editor} className="doc" />
         <TableInsert editor={editor} host={host} />
         <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+        <MentionMenu menu={mention} />
         <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />
         <EditorContextMenu
           editor={editor}

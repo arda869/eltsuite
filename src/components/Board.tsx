@@ -1,11 +1,69 @@
 import { useMemo, useRef, useState } from 'react';
 import { addPost, boardKey, react, removePost, usePosts, type Post } from '../lib/boards';
 import { Icon } from '../editor/Icons';
+import { findMentions, notify, type Person } from '../lib/notices';
+
+const TEACHER: Person = { id: 'teacher', name: 'Teacher' };
+const escapeRe = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Message text with @tags highlighted; your own tag stands out.
+function Tagged({ text, people, meId }: { text: string; people: Person[]; meId?: string }) {
+  if (!people.length || !text.includes('@')) return <>{text}</>;
+  const sorted = [...people].sort((a, b) => b.name.length - a.name.length);
+  const re = new RegExp('(@(?:' + sorted.map((p) => escapeRe(p.name)).join('|') + '))', 'gi');
+  return (
+    <>
+      {text.split(re).map((part, i) => {
+        const p = part.startsWith('@') ? sorted.find((x) => '@' + x.name.toLowerCase() === part.toLowerCase()) : undefined;
+        return p ? (
+          <span key={i} className={'mention' + (p.id === meId ? ' me' : '')}>
+            {part}
+          </span>
+        ) : (
+          <span key={i}>{part}</span>
+        );
+      })}
+    </>
+  );
+}
+
+// Suggestions while typing @ in a message.
+function useTagInput(people: Person[], value: string, setValue: (v: string) => void, enabled: boolean) {
+  const [caret, setCaret] = useState(0);
+  const before = value.slice(0, caret);
+  const m = enabled ? /(?:^|\s)@([\p{L}' ]{0,24})$/u.exec(before) : null;
+  const q = m ? m[1].toLowerCase() : '';
+  const items = m ? people.filter((p) => p.name.toLowerCase().startsWith(q) || p.name.toLowerCase().split(' ').some((w) => w.startsWith(q))).slice(0, 6) : [];
+  const choose = (p: Person, el?: HTMLTextAreaElement | HTMLInputElement | null) => {
+    if (!m) return;
+    const start = caret - m[1].length - 1;
+    const next = value.slice(0, start) + '@' + p.name + ' ' + value.slice(caret);
+    setValue(next);
+    const c = start + p.name.length + 2;
+    setCaret(c);
+    window.setTimeout(() => el && (el.focus(), el.setSelectionRange(c, c)), 0);
+  };
+  const track = (e: { currentTarget: HTMLTextAreaElement | HTMLInputElement }) => setCaret(e.currentTarget.selectionStart ?? 0);
+  return { items, choose, track };
+}
+
+function TagList({ items, onPick }: { items: Person[]; onPick: (p: Person) => void }) {
+  if (!items.length) return null;
+  return (
+    <span className="bd-tags" role="listbox">
+      {items.map((p) => (
+        <button key={p.id} type="button" className="bd-tag-opt" onMouseDown={(e) => (e.preventDefault(), onPick(p))}>
+          @{p.name}
+        </button>
+      ))}
+    </span>
+  );
+}
 
 // A live message board, or a wall of post-it notes, shared by the whole class.
 
-export type BoardAttrs = { id: string; mode: 'board' | 'postits'; prompt: string; replies: boolean; reactions: boolean; anonymous: boolean };
-export type BoardMe = { classId: string; taskId: string; uid: string; name: string; teacher?: boolean };
+export type BoardAttrs = { id: string; mode: 'board' | 'postits'; prompt: string; replies: boolean; reactions: boolean; anonymous: boolean; tagging?: boolean };
+export type BoardMe = { classId: string; taskId: string; itemId?: string; uid: string; name: string; teacher?: boolean; selfId?: string; people?: Person[] };
 
 export const NOTE_COLORS = [
   { key: 'yellow', bg: '#fdf0a6', edge: '#f1dd76' },
@@ -43,6 +101,14 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
   const seen = useRef<Set<string>>(new Set());
+  const tagging = attrs.tagging !== false;
+  const people: Person[] = useMemo(() => [TEACHER, ...(me?.people ?? []).filter((p) => p.id !== me?.selfId)], [me?.people, me?.selfId]);
+  const allPeople: Person[] = useMemo(() => [TEACHER, ...(me?.people ?? [])], [me?.people]);
+  const meTagId = me?.teacher ? 'teacher' : me?.selfId;
+  const composeRef = useRef<HTMLTextAreaElement>(null);
+  const replyRef = useRef<HTMLInputElement>(null);
+  const tagMain = useTagInput(people, text, setText, tagging && !!me);
+  const tagReply = useTagInput(people, replyText, setReplyText, tagging && !!me);
   const fresh = (id: string) => {
     const isNew = posts !== null && !seen.current.has(id) && seen.current.size > 0;
     seen.current.add(id);
@@ -68,6 +134,20 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         ...(isNotes && !parentId ? { color } : {}),
         ...(parentId ? { parentId } : {}),
       });
+      // Tell everyone who was tagged.
+      if (tagging) {
+        for (const p of findMentions(t, people)) {
+          notify(me.classId, {
+            to: p.id,
+            fromName: attrs.anonymous && !me.teacher ? 'Someone' : me.name.split(' ')[0],
+            fromUid: me.uid,
+            what: isNotes ? 'on the post-it wall' : 'on the message board',
+            text: t,
+            itemId: me.itemId ?? '',
+            taskId: me.taskId,
+          }).catch(() => {});
+        }
+      }
       if (parentId) {
         setReplyText('');
         setReplyTo(null);
@@ -120,7 +200,10 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
           send(p.id);
         }}
       >
-        <input autoFocus value={replyText} maxLength={500} placeholder="Write a reply" onChange={(e) => setReplyText(e.target.value)} />
+        <span className="bd-reply-wrap">
+          <input ref={replyRef} autoFocus value={replyText} maxLength={500} placeholder={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} onChange={(e) => (setReplyText(e.target.value), tagReply.track(e))} onKeyUp={tagReply.track} onClick={tagReply.track} />
+          <TagList items={tagReply.items} onPick={(p) => tagReply.choose(p, replyRef.current)} />
+        </span>
         <button type="submit" className="btn small-btn primary" disabled={!replyText.trim() || busy}>
           Reply
         </button>
@@ -143,7 +226,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
                 </button>
               )}
             </span>
-            <span className="bd-reply-text">{r.text}</span>
+            <span className="bd-reply-text"><Tagged text={r.text} people={allPeople} meId={meTagId} /></span>
           </span>
         ))}
       </span>
@@ -171,15 +254,19 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         >
           {!isNotes && <span className="bd-av me">{attrs.anonymous && !me.teacher ? <Icon name="question" size="14" /> : initials(me.name)}</span>}
           <textarea
+            ref={composeRef}
+            onKeyUp={tagMain.track}
+            onClick={tagMain.track}
             value={text}
             maxLength={isNotes ? 240 : 1000}
             rows={isNotes ? 3 : 2}
-            placeholder={isNotes ? 'Write on your note…' : attrs.anonymous && !me.teacher ? 'Write a message. Your name won’t be shown.' : 'Write a message to the class…'}
-            onChange={(e) => setText(e.target.value)}
+            placeholder={(isNotes ? 'Write on your note…' : attrs.anonymous && !me.teacher ? 'Write a message. Your name won’t be shown.' : 'Write a message to the class…') + (tagging ? ' Type @ to tag someone.' : '')}
+            onChange={(e) => (setText(e.target.value), tagMain.track(e))}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
             }}
           />
+          <TagList items={tagMain.items} onPick={(p) => tagMain.choose(p, composeRef.current)} />
           <span className="bd-compose-foot">
             {isNotes && (
               <span className="bd-colors" role="radiogroup" aria-label="Note colour">
@@ -207,7 +294,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
             return (
               <div key={p.id} className={'bd-note' + (fresh(p.id) ? ' fresh' : '')} style={{ ['--note' as string]: c.bg, ['--edge' as string]: c.edge, ['--tilt' as string]: `${tilt(p.id)}deg` }}>
                 <span className="bd-tape" aria-hidden="true" />
-                <span className="bd-note-text">{p.text}</span>
+                <span className="bd-note-text"><Tagged text={p.text} people={allPeople} meId={meTagId} /></span>
                 <span className="bd-note-foot">
                   <span className="bd-note-by">{who(p)}</span>
                   {tools(p)}
@@ -230,7 +317,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
                   {p.teacher && <span className="bd-teacher">Teacher</span>}
                   <span className="bd-time">{ago(p)}</span>
                 </span>
-                <p className="bd-text">{p.text}</p>
+                <p className="bd-text"><Tagged text={p.text} people={allPeople} meId={meTagId} /></p>
                 <span className="bd-msg-foot">
                   {reactionsRow(p)}
                   {tools(p)}

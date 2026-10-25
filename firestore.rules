@@ -61,7 +61,8 @@ service cloud.firestore {
             allow read: if teachesClass(classId)
               || (docId == 'key' && memberOf(classId)
                   && (get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true
-                      || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealed', {}).get(taskId, 0) != 0));
+                      || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealed', {}).get(taskId, 0) != 0
+                      || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealedQs', {}).get(taskId, []).size() > 0));
             allow write: if teachesClass(classId);
           }
         }
@@ -90,6 +91,14 @@ service cloud.firestore {
       match /media/{mediaId} {
         allow read: if teachesClass(classId) || memberOf(classId);
         allow create: if teachesClass(classId) && request.resource.data.size < 700000;
+        allow delete: if teachesClass(classId);
+      }
+
+      // Tag notifications
+      match /notices/{nid} {
+        allow read: if teachesClass(classId)
+          || (memberOf(classId) && resource.data.to == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.learnerId);
+        allow create: if (teachesClass(classId) || memberOf(classId)) && request.resource.data.fromUid == request.auth.uid;
         allow delete: if teachesClass(classId);
       }
 

@@ -10,6 +10,7 @@ export type LiveState = {
   teacherName: string;
   sync?: boolean; showMarker?: boolean; // learners follow the teacher's task
   revealed?: Record<string, number>; // taskId -> how many answers are revealed (-1 = all)
+  revealedQs?: Record<string, string[]>; // taskId -> single questions the teacher revealed
   startedAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -32,9 +33,10 @@ export const revealedCount = (s: LiveState | null | undefined, itemId: string, t
   isLive(s) && s!.itemId === itemId ? s!.revealed?.[taskId] ?? 0 : 0;
 
 // The part of the answer key the teacher has revealed: the first n questions, or all (-1).
-export function revealedSubset(key: AnswerKey, qs: { id: string }[], n: number): AnswerKey {
-  if (n === 0) return {};
+export function revealedSubset(key: AnswerKey, qs: { id: string }[], n: number, extra: string[] = []): AnswerKey {
   const all = qs.map((q) => q.id).filter((id) => key[id] && key[id].kind !== 'writing');
-  const ids = n < 0 ? all : all.slice(0, n);
+  const ids = [...(n < 0 ? all : all.slice(0, n)), ...extra.filter((id) => all.includes(id))];
   return Object.fromEntries(ids.filter((id) => key[id]).map((id) => [id, key[id]]));
 }
+
+export const revealedSingles = (s: LiveState | null | undefined, itemId: string, taskId: string) => (isLive(s) && s!.itemId === itemId ? s!.revealedQs?.[taskId] ?? [] : []);
