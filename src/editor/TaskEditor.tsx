@@ -15,6 +15,10 @@ import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
 import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
+import { RevealBox, newReveal } from './Reveal';
+import { LinkCard } from './LinkCard';
+import { BLOCKS } from './coursebook';
+import Link from '@tiptap/extension-link';
 import { EditorContextMenu } from './ContextMenu';
 import { EditorClassContext } from './context';
 import { Highlight, HighlightTool } from './Highlight';
@@ -42,7 +46,9 @@ function insertDropGap(e: Editor) {
   }
 }
 
-type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text'; run: (e: Editor) => void };
+type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text' | 'Blocks'; run: (e: Editor) => void };
+
+const BLOCK_CMDS: Cmd[] = BLOCKS.map((b) => ({ key: 'b-' + b.key, label: b.label, hint: b.hint, group: 'Blocks', run: (e) => e.chain().focus().insertContent([...b.make(), { type: 'paragraph' }]).run() }));
 
 const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
@@ -62,6 +68,8 @@ const COMMANDS: Cmd[] = [
   { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
   { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
+  { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
+  { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
   { key: 'info', label: 'Information box', hint: 'Grammar rules, tips, useful language', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('info', 'sand', 'Grammar', '!'), { type: 'paragraph' }]).run() },
@@ -106,6 +114,7 @@ const COMMANDS: Cmd[] = [
   },
   { key: 'table', label: 'Table', hint: '3 × 3, with a header row', group: 'Text', run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { key: 'quote', label: 'Quote', hint: 'Set a passage apart', group: 'Text', run: (e) => e.chain().focus().toggleBlockquote().run() },
+  ...BLOCK_CMDS,
 ];
 
 function useSlash(editor: Editor | null) {
@@ -141,7 +150,7 @@ function useSlash(editor: Editor | null) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits'].includes(c.key) && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
     },
     [state, editor],
   );
@@ -217,6 +226,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       SymNode,
       BoardNode,
       Mention,
+      RevealBox,
+      LinkCard,
+      Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
       Ipa,
       LessonLink,
@@ -292,10 +304,10 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
         )}
         {BTN(
-          editor.isActive('lessonLink') ? 'Change the link' : 'Link the selected words to another task',
-          editor.isActive('lessonLink'),
+          editor.isActive('lessonLink') || editor.isActive('link') ? 'Change the link' : 'Link the selected words to another task or a web page',
+          editor.isActive('lessonLink') || editor.isActive('link'),
           () => {
-            if (editor.state.selection.empty && !editor.isActive('lessonLink')) {
+            if (editor.state.selection.empty && !editor.isActive('lessonLink') && !editor.isActive('link')) {
               window.alert('Select the words to link first.');
               return;
             }
@@ -395,7 +407,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         />
         {slash.state && (
           <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
-            {(['Questions', 'Text'] as const).map((g) => {
+            {(['Questions', 'Text', 'Blocks'] as const).map((g) => {
               const list = slash.items.filter((c) => c.group === g);
               if (!list.length) return null;
               return (

@@ -1,6 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Grip } from './nodes';
 
 // A container for reading texts and model answers, shown in one of several styles.
@@ -29,10 +29,45 @@ export const BOX_TONES: { key: BoxTone; label: string; bg: string }[] = [
 
 export const SYMBOLS = ['!', '?', 'i', '✓', '★', '✎', '→', '≠', '＋'];
 
-export type BoxAttrs = { style: BoxStyle; tone: BoxTone; label: string; meta: string; side: 'left' | 'right'; symbol: string };
+export type BoxAttrs = { style: BoxStyle; tone: BoxTone; label: string; meta: string; side: 'left' | 'right'; symbol: string; numbering?: 'none' | 'paras' | 'lines' };
+
+// Line numbers every five lines, in the margin of a reading text.
+function LineNumbered({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [lines, setLines] = useState(0);
+  const [lh, setLh] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const l = parseFloat(getComputedStyle(el).lineHeight) || 26;
+      setLh(l);
+      setLines(Math.round(el.scrollHeight / l));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div className="ln-wrap">
+      <div className="ln-gutter" aria-hidden="true">
+        {Array.from({ length: Math.floor(lines / 5) }, (_, i) => (
+          <span key={i} style={{ top: (i + 1) * 5 * lh - lh }}>
+            {(i + 1) * 5}
+          </span>
+        ))}
+      </div>
+      <div ref={ref} className="ln-text">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 // Shared frame used by both the editor and the learner view.
-export function BoxFrame({ attrs, children, editable, onMeta }: { attrs: BoxAttrs; children: ReactNode; editable?: boolean; onMeta?: (patch: Partial<BoxAttrs>) => void }) {
+export function BoxFrame({ attrs, children: kids, editable, onMeta }: { attrs: BoxAttrs; children: ReactNode; editable?: boolean; onMeta?: (patch: Partial<BoxAttrs>) => void }) {
+  let children = kids;
   const ce = editable ? { contentEditable: false as const } : {};
   const field = (key: 'label' | 'meta', placeholder: string, className: string) =>
     editable ? (
@@ -41,7 +76,8 @@ export function BoxFrame({ attrs, children, editable, onMeta }: { attrs: BoxAttr
       <span className={className}>{attrs[key]}</span>
     ) : null;
 
-  const cls = `tbox s-${attrs.style} t-${attrs.tone ?? 'grey'} side-${attrs.side ?? 'left'}`;
+  const cls = `tbox s-${attrs.style} t-${attrs.tone ?? 'grey'} side-${attrs.side ?? 'left'}` + (attrs.numbering && attrs.numbering !== 'none' ? ' num-' + attrs.numbering : '');
+  if (attrs.numbering === 'lines' && !editable) children = <LineNumbered>{children}</LineNumbered>;
   switch (attrs.style) {
     case 'info':
       return (
@@ -146,6 +182,13 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected, editor, get
             ))}
           </span>
         )}
+        {['box', 'paper', 'browser', 'email', 'notebook'].includes(attrs.style) && (
+          <select value={attrs.numbering ?? 'none'} onChange={(e) => updateAttributes({ numbering: e.target.value })} aria-label="Numbering" title="Numbering for reading texts">
+            <option value="none">No numbering</option>
+            <option value="paras">Paragraph letters</option>
+            <option value="lines">Line numbers</option>
+          </select>
+        )}
         {(attrs.style === 'speech' || attrs.style === 'message') && (
           <span className="seg small-seg" role="radiogroup" aria-label="Bubble side">
             {(['left', 'right'] as const).map((sd) => (
@@ -180,6 +223,7 @@ export const TextBox = Node.create({
     meta: { default: '' },
     side: { default: 'left' },
     symbol: { default: '!' },
+    numbering: { default: 'none' },
   }),
   parseHTML: () => [{ tag: 'div[data-text-box]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-text-box': '' }), 0],

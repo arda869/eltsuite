@@ -29,11 +29,17 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [q, setQ] = useState('');
+  const [tab, setTab] = useState<'task' | 'web'>('task');
+  const [url, setUrl] = useState('');
   const current = editor.getAttributes('lessonLink').taskId as string | undefined;
   const existing = editor.isActive('lessonLink');
 
   useEffect(() => {
     if (open && existing) editor.chain().extendMarkRange('lessonLink').run();
+    const web = editor.getAttributes('link').href as string | undefined;
+    if (open && web) editor.chain().extendMarkRange('link').run();
+    setUrl(web ?? '');
+    setTab(web ? 'web' : 'task');
     setQ('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -68,15 +74,43 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
     <div ref={ref} className="def-pop link-pop" style={{ position: 'fixed', top: pos.top, left: pos.left }} role="dialog" aria-label="Link">
       <span className="pop-type">Link to</span>
       <div className="seg small-seg" role="tablist" aria-label="Link to">
-        <button type="button" role="tab" aria-selected className="on">
+        <button type="button" role="tab" aria-selected={tab === 'task'} className={tab === 'task' ? 'on' : ''} onClick={() => setTab('task')}>
           A task in this lesson
         </button>
-        <button type="button" role="tab" aria-selected={false} disabled title="Coming soon">
+        <button type="button" role="tab" aria-selected={tab === 'web'} className={tab === 'web' ? 'on' : ''} onClick={() => setTab('web')}>
+          A web page
+        </button>
+        <button type="button" role="tab" aria-selected={false} disabled title="Coming with the class notebook">
           Notebook
         </button>
       </div>
-      {places.length > 6 && <input className="link-search" autoFocus value={q} placeholder="Find a task" onChange={(e) => setQ(e.target.value)} />}
-      <div className="link-list">
+      {tab === 'web' && (
+        <form
+          className="link-web"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const u = url.trim();
+            if (!/^https:\/\//i.test(u)) return;
+            editor.chain().focus().extendMarkRange('lessonLink').unsetMark('lessonLink').setLink({ href: u }).run();
+            onClose();
+          }}
+        >
+          <input autoFocus className="link-search" value={url} placeholder="https://…" onChange={(e) => setUrl(e.target.value)} />
+          {url.trim() && !/^https:\/\//i.test(url.trim()) && <span className="error">The link must start with https://</span>}
+          <span style={{ display: 'flex', gap: 8 }}>
+            <button type="submit" className="btn small-btn primary" disabled={!/^https:\/\//i.test(url.trim())}>
+              Add link
+            </button>
+            {editor.isActive('link') && (
+              <button type="button" className="btn link small" onClick={() => (editor.chain().focus().extendMarkRange('link').unsetLink().run(), onClose())}>
+                Remove web link
+              </button>
+            )}
+          </span>
+        </form>
+      )}
+      {tab === 'task' && places.length > 6 && <input className="link-search" autoFocus value={q} placeholder="Find a task" onChange={(e) => setQ(e.target.value)} />}
+      {tab === 'task' && <div className="link-list">
         {list.length === 0 && <span className="hint">No other tasks in this lesson yet.</span>}
         {list.map((p) => (
           <button key={p.id} type="button" className={'link-item' + (current === p.id ? ' on' : '')} onClick={() => choose(p.id)}>
@@ -84,8 +118,8 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
             <span>{p.title || 'Untitled task'}</span>
           </button>
         ))}
-      </div>
-      {existing && (
+      </div>}
+      {tab === 'task' && existing && (
         <button
           type="button"
           className="btn link small"

@@ -8,6 +8,8 @@ import { Icon } from '../editor/Icons';
 import { Sym } from '../editor/Symbols';
 import { Board, type BoardAttrs, type BoardMe } from './Board';
 import { MentionTag } from '../editor/Mention';
+import { RevealBlock } from '../editor/Reveal';
+import { LinkCardView } from '../editor/LinkCard';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
 import type { ReflectAnswer, RItem } from '../editor/Reflect';
@@ -105,6 +107,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
     else if (mark.type === 'italic') out = <em>{out}</em>;
     else if (mark.type === 'underline') out = <u>{out}</u>;
     else if (mark.type === 'strike') out = <s>{out}</s>;
+    else if (mark.type === 'link' && /^https:\/\//i.test(mark.attrs?.href ?? '')) out = <a href={mark.attrs!.href} target="_blank" rel="noopener noreferrer" className="web-link">{out}</a>;
     else if (mark.type === 'textColor') out = <span style={{ color: textColor(mark.attrs?.color) }}>{out}</span>;
     else if (mark.type === 'highlight') out = <mark className="hl" style={{ backgroundColor: highlightBg(mark.attrs?.color) }}>{out}</mark>;
   }
@@ -777,6 +780,14 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           </div>
         );
       }
+      case 'reveal':
+        return (
+          <RevealBlock key={key} label={node.attrs?.label ?? ''}>
+            {kids()}
+          </RevealBlock>
+        );
+      case 'linkCard':
+        return <LinkCardView key={key} url={node.attrs?.url ?? ''} title={node.attrs?.title ?? ''} note={node.attrs?.note} />;
       case 'mention':
         return <MentionTag key={key} label={node.attrs?.label ?? ''} me={(teacher && node.attrs?.id === 'teacher') || (!!selfId && node.attrs?.id === selfId)} />;
       case 'board':
