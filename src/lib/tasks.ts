@@ -83,7 +83,13 @@ export async function loadKey(classId: string, itemId: string, taskId: string): 
 
 // Learner answers --------------------------------------------------------------
 
-export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number };
+export type Mark = { score: number | null; comment: string };
+export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number; marks?: Record<string, Mark> };
+
+// The teacher's mark and comment for a long answer.
+export async function saveMark(classId: string, taskId: string, learnerUid: string, qid: string, mark: Mark) {
+  await updateDoc(answerRef(classId, taskId, learnerUid), { [`marks.${qid}`]: mark });
+}
 
 export const answerRef = (classId: string, taskId: string, uid: string) => doc(db, 'classes', classId, 'answers', `${taskId}_${uid}`);
 

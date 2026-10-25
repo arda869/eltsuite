@@ -2,7 +2,7 @@
 import type { JSONContent } from '@tiptap/react';
 
 export type KeyEntry = (
-  | { kind: 'gap'; answers: string[] }
+  | { kind: 'gap'; answers: string[]; cs?: boolean }
   | { kind: 'mcq'; correct: number }
   | { kind: 'multi'; correct: number[] }
   | { kind: 'match'; map: number[] } // for each left item, the index of the matching right item (as shown)
@@ -50,8 +50,9 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
     const id = a.id as string | undefined;
     if (id) {
       if (n.type === 'gap') {
-        key[id] = { kind: 'gap', answers: (a.answers ?? []).filter((x: string) => x.trim()) };
+        key[id] = { kind: 'gap', answers: (a.answers ?? []).filter((x: string) => x.trim()), ...(a.caseSensitive ? { cs: true } : {}) };
         out.attrs = { ...a, answers: [] };
+        delete (out.attrs as Record<string, unknown>).caseSensitive;
       } else if (n.type === 'mcq' || n.type === 'choice') {
         if (a.multi) {
           key[id] = { kind: 'multi', correct: Array.isArray(a.correct) ? a.correct : [] };
@@ -82,7 +83,7 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
         out.attrs = { id, words: shuffle(splitWords(sentence), id) };
       } else if (n.type === 'writing') {
         key[id] = { kind: 'writing', model: a.model ?? '' };
-        out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck };
+        out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5 };
       }
       if (key[id]) {
         if (a.feedback?.trim()) key[id].feedback = a.feedback.trim();
@@ -121,7 +122,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
     const a = n.attrs ?? {};
     const k = a.id ? key[a.id] : undefined;
     if (k) {
-      if (n.type === 'gap' && k.kind === 'gap') out.attrs = { ...a, answers: k.answers };
+      if (n.type === 'gap' && k.kind === 'gap') out.attrs = { ...a, answers: k.answers, caseSensitive: !!k.cs };
       if ((n.type === 'mcq' || n.type === 'choice') && (k.kind === 'mcq' || k.kind === 'multi')) out.attrs = { ...a, correct: k.correct };
       if (n.type === 'match' && k.kind === 'match') {
         const right: string[] = a.right ?? [];
@@ -193,6 +194,19 @@ export function normalise(s: string) {
     .trim();
 }
 
+// Same as normalise, but capital letters still count.
+export function normaliseKeepCase(s: string) {
+  return s
+    .normalize('NFKC')
+    .replace(/[‘’‚‛′`´ʼʹ＇]/g, "'")
+    .replace(/[“”„‟″«»＂]/g, '"')
+    .replace(/[‐-―]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[.!?,;:]+$/, '')
+    .trim();
+}
+
 // Plain text of a rich-text answer.
 export function textOf(r: Response): string {
   if (r && typeof r === 'object' && !Array.isArray(r)) {
@@ -223,7 +237,7 @@ export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: 
   if (!entry) return { got: 0, max: 0 };
   switch (entry.kind) {
     case 'gap':
-      return { got: isAnswered(r) && entry.answers.some((a) => normalise(a) === normalise(String(r))) ? 1 : 0, max: 1 };
+      return { got: isAnswered(r) && entry.answers.some((a) => (entry.cs ? normaliseKeepCase(a) === normaliseKeepCase(String(r)) : normalise(a) === normalise(String(r)))) ? 1 : 0, max: 1 };
     case 'mcq':
       return { got: isAnswered(r) && Number(r) === entry.correct ? 1 : 0, max: 1 };
     case 'multi': {

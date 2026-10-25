@@ -48,6 +48,7 @@ type Props = {
   received?: SentFeedback[]; // peer feedback other learners sent to this learner
   classId?: string; // for audio clips
   boardMe?: BoardMe; // who is posting on message boards
+  teacherMarks?: Record<string, { score: number | null; comment: string }>; // teacher's marks on long answers
 };
 
 const TICK = (
@@ -132,7 +133,7 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe }: Props) {
+export function TaskRenderer({ content, responses, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -616,6 +617,19 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           {under ? ' · keep going' : over ? ' · too long' : ''}
           {results ? ' · sent to your teacher' : ''}
         </span>
+        {teacherMarks?.[id] && (teacherMarks[id].score !== null || teacherMarks[id].comment) && (
+          <div className="t-mark">
+            <span className="t-mark-head">
+              <span className="eyebrow">Your teacher</span>
+              {teacherMarks[id].score !== null && (
+                <span className="t-mark-score">
+                  {teacherMarks[id].score} / {node.attrs?.points ?? 5}
+                </span>
+              )}
+            </span>
+            {teacherMarks[id].comment && <p>{teacherMarks[id].comment}</p>}
+          </div>
+        )}
       </div>
     );
   };

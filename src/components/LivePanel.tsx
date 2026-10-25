@@ -3,6 +3,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { learnersCol, type Learner } from '../lib/learners';
+import { TaskRenderer } from './TaskRenderer';
+import { saveMark, type Mark } from '../lib/tasks';
 import { useClassAvatars } from '../lib/avatars';
 import { Avatar } from './avatars';
 import { isOnline, type Presence } from '../lib/presence';
@@ -18,6 +20,8 @@ type Props = {
   onShowMarker: (v: boolean) => void;
   seeLearners: boolean;
   onSeeLearners: (v: boolean) => void;
+  revealedIds?: string[];
+  onRevealQuestion?: (qid: string) => void;
 };
 
 // Find every question node by id, so answers can be shown as words rather than option numbers.
@@ -57,7 +61,8 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion }: Props) {
+  const [detail, setDetail] = useState<Learner | null>(null);
   const [roster, setRoster] = useState<Learner[]>([]);
   const [answers, setAnswers] = useState<AnswerDoc[]>([]);
   const [focus, setFocus] = useState<string | null>(null);
@@ -99,6 +104,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 
   return (
     <aside className="task-side live-panel" aria-label="Live answers">
+      {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} />}
       <h2>Live answers</h2>
       <span className="hint">
         {started} of {roster.length} started · {done} checked
@@ -124,11 +130,12 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
             const a = byLearner[l.id];
             return (
               <div key={l.id} className="lg-row" role="row">
-                <span className={'lg-name' + (onlineIds.has(l.id) ? ' online' : '')} title={onlineIds.has(l.id) ? (here.has(l.id) ? 'On this task' : 'Online') : 'Offline'}>
+                <span role="button" tabIndex={0} onClick={() => setDetail(l)} onKeyDown={(e) => e.key === 'Enter' && setDetail(l)} className={'lg-name clickable' + (onlineIds.has(l.id) ? ' online' : '')} title={(onlineIds.has(l.id) ? (here.has(l.id) ? 'On this task' : 'Online') : 'Offline') + ' · click to see all answers'}>
                   <span className="lg-dot" aria-hidden="true" />
                   <Avatar k={avatars.byLearner[l.id]} name={l.displayName} size={20} />
                   {l.displayName.split(' ')[0]}
                   {a?.checked && <span className="lg-checked">checked</span>}
+                  {qs.some((q) => q.type === 'writing' && isAnswered(a?.responses?.[q.id]) && a?.marks?.[q.id]?.score == null) && <span className="lg-tomark" title="Long answer to mark">to mark</span>}
                 </span>
                 {qs.map((q) => {
                   const r = a?.responses?.[q.id];
@@ -153,6 +160,11 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
           <span className="eyebrow" style={{ fontSize: 11 }}>
             Question {qs.findIndex((q) => q.id === focus) + 1} · common wrong answers
           </span>
+          {onRevealQuestion && answerKey[focus] && answerKey[focus].kind !== 'writing' && (
+            <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => onRevealQuestion(focus)}>
+              {revealedIds.includes(focus) ? 'Hide this answer from the class' : 'Show this answer to the class'}
+            </button>
+          )}
           {wrongs.length === 0 ? (
             <span className="hint">None yet.</span>
           ) : (
@@ -182,5 +194,61 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
         <input type="checkbox" checked={seeLearners} onChange={() => onSeeLearners(!seeLearners)} />
       </label>
     </aside>
+  );
+}
+
+// One learner's answers for the task, with marking for long answers.
+function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, onClose }: { classId: string; taskId: string; learner: Learner; answer?: AnswerDoc; content: JSONContent | null; answerKey: AnswerKey; onClose: () => void }) {
+  const writing = questionIds(content).filter((q) => q.type === 'writing');
+  const nodes = nodesById(content);
+  const [draft, setDraft] = useState<Record<string, Mark>>(() => answer?.marks ?? {});
+  const [saved, setSaved] = useState('');
+  const result = answer ? questionIds(content).reduce((acc, q) => {
+    const s = scoreQuestion(answerKey[q.id], answer.responses?.[q.id]);
+    return { got: acc.got + s.got, max: acc.max + s.max };
+  }, { got: 0, max: 0 }) : { got: 0, max: 0 };
+  async function save(qid: string) {
+    if (!answer) return;
+    await saveMark(classId, taskId, answer.learnerUid, qid, draft[qid] ?? { score: null, comment: '' });
+    setSaved(qid);
+    window.setTimeout(() => setSaved(''), 1500);
+  }
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog detail-dialog" role="dialog" aria-label={learner.displayName} onClick={(e) => e.stopPropagation()}>
+        <div className="row-between">
+          <h2 style={{ margin: 0 }}>{learner.displayName}</h2>
+          <span className="hint">{!answer ? 'No answers yet' : `${result.got} of ${result.max} correct${answer.checked ? ' · checked' : ' · not checked yet'}`}</span>
+        </div>
+        <div className="detail-body">
+          <TaskRenderer content={content} responses={answer?.responses ?? {}} results={answerKey} disabled teacherMarks={answer?.marks} />
+        </div>
+        {writing.length > 0 && answer && (
+          <div className="mark-box">
+            <span className="eyebrow">Mark the long answers</span>
+            {writing.map((q) => {
+              const m = draft[q.id] ?? { score: null, comment: '' };
+              const out = (nodes[q.id]?.attrs?.points as number) ?? 5;
+              return (
+                <div key={q.id} className="mark-row">
+                  <span className="mark-q">Question {questionIds(content).findIndex((x) => x.id === q.id) + 1}</span>
+                  <span className="mark-score">
+                    <input inputMode="numeric" value={m.score ?? ''} placeholder="–" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, score: e.target.value === '' ? null : Math.min(out, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, '')))) } }))} />
+                    <span className="hint">/ {out}</span>
+                  </span>
+                  <textarea value={m.comment} placeholder="A comment for the learner" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, comment: e.target.value } }))} />
+                  <button type="button" className="btn small-btn primary" onClick={() => save(q.id)}>
+                    {saved === q.id ? 'Saved' : 'Save mark'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
   );
 }

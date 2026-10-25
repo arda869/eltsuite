@@ -14,6 +14,7 @@ import {
   saveResponses,
   tasksCol,
   type AnswerDoc,
+  type Mark,
   type AnswerKey,
   type Responses,
   type Task,
@@ -105,6 +106,7 @@ export function LearnerLesson() {
     return onSnapshot(answerRef(classId, current, user.uid), async (s) => {
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
       setFlags(d?.flags ?? []);
+      setMarks(d?.marks ?? {});
       if (dirty.current) return;
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
@@ -124,6 +126,7 @@ export function LearnerLesson() {
   const base = user && task ? { learnerUid: user.uid, learnerId, itemId, taskId: task.id } : null;
 
   const [flags, setFlags] = useState<string[]>([]);
+  const [marks, setMarks] = useState<Record<string, Mark>>({});
   function toggleFlag(id: string) {
     if (!base) return;
     const next = flags.includes(id) ? flags.filter((f) => f !== id) : [...flags, id];
@@ -307,6 +310,7 @@ export function LearnerLesson() {
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
                   flags={flags}
+                  teacherMarks={marks}
                   shared={shared}
                   classmates={classmates}
                   classId={classId}

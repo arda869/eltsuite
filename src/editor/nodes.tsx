@@ -171,6 +171,10 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             }}
           />
           <span className="hint">Separate other accepted answers with |</span>
+          <label className="pop-check">
+            <input type="checkbox" checked={!!node.attrs.caseSensitive} onChange={() => updateAttributes({ caseSensitive: !node.attrs.caseSensitive })} />
+            Capital letters must match
+          </label>
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>
       )}
@@ -189,6 +193,7 @@ export const Gap = Node.create({
     return {
       id: { default: null },
       answers: { default: [] },
+      caseSensitive: { default: false },
       hint: { default: '' },
       feedback: { default: '' },
     };

@@ -1589,3 +1589,21 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .tt-bar button { border: 0; background: transparent; border-radius: 999px; padding: 6px 16px; font: 600 13px var(--sans); color: var(--muted); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
 .tt-bar button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .tt-count { min-width: 18px; height: 18px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; }
+.pop-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink); }
+/* Learner detail and marking */
+.lg-name.clickable { cursor: pointer; }
+.lg-name.clickable:hover { color: var(--accent-text); }
+.lg-tomark { font: 600 9.5px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-text); }
+.detail-dialog { width: 760px; max-height: 88vh; }
+.detail-body { overflow: auto; max-height: 50vh; padding: 4px 2px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+.mark-box { display: flex; flex-direction: column; gap: 8px; }
+.mark-row { display: grid; grid-template-columns: 90px 90px 1fr auto; gap: 10px; align-items: start; }
+.mark-q { font: 600 13px var(--sans); padding-top: 6px; }
+.mark-score { display: flex; align-items: center; gap: 4px; }
+.mark-score input { width: 44px; height: 32px; border: 1px solid var(--hair-strong); border-radius: 7px; text-align: center; font: 600 14px var(--sans); }
+.mark-row textarea { min-height: 54px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 6px 10px; font: 14px var(--sans); resize: vertical; field-sizing: content; }
+.t-mark { margin-top: 10px; padding: 10px 14px; border-radius: 12px; background: #fbfaf7; border: 1px solid var(--hair); }
+.t-mark-head { display: flex; align-items: center; justify-content: space-between; }
+.t-mark-score { font: 700 15px var(--sans); color: var(--accent-text); }
+.t-mark p { margin: 6px 0 0; font: 15px/1.5 var(--serif); }
+@media (max-width: 640px) { .mark-row { grid-template-columns: 1fr 1fr; } }

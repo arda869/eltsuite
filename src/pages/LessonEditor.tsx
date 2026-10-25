@@ -617,6 +617,8 @@ export function LessonEditor() {
               onShowMarker={(v) => setLive(classId, { showMarker: v })}
               seeLearners={seeLearners}
               onSeeLearners={setSeeLearners}
+              revealedIds={singles}
+              onRevealQuestion={toggleSingle}
             />
           )}
           {task && draft && !(teachingHere && !editWhileTeaching && !preview) && (

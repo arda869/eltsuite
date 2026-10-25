@@ -287,6 +287,10 @@ function WritingView(props: NodeViewProps) {
           <input type="checkbox" checked={!!node.attrs.spellcheck} onChange={() => updateAttributes({ spellcheck: !node.attrs.spellcheck })} />
           Spell check
         </label>
+        <label className="check-row">
+          Marked out of
+          <input inputMode="numeric" style={{ width: 44 }} value={node.attrs.points ?? 5} onChange={(e) => updateAttributes({ points: Math.max(1, Math.min(100, Number(e.target.value.replace(/\D/g, '')) || 1)) })} />
+        </label>
       </div>
       <label className="inline-field" style={{ alignItems: 'flex-start' }}>
         Model answer
@@ -303,7 +307,7 @@ export const Writing = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false } }),
+  addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false }, points: { default: 5 } }),
   parseHTML: () => [{ tag: 'div[data-writing]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-writing': '' })],
   addNodeView: () => ReactNodeViewRenderer(WritingView),

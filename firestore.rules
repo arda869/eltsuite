@@ -72,9 +72,16 @@ service cloud.firestore {
       match /answers/{answerId} {
         allow read: if teachesClass(classId)
           || (signedIn() && answerId.split('_')[1] == request.auth.uid);
-        allow create, update: if memberOf(classId)
+        allow create: if memberOf(classId)
           && request.resource.data.learnerUid == request.auth.uid
-          && answerId == request.resource.data.taskId + '_' + request.auth.uid;
+          && answerId == request.resource.data.taskId + '_' + request.auth.uid
+          && !('marks' in request.resource.data);
+        allow update: if memberOf(classId)
+          && request.resource.data.learnerUid == request.auth.uid
+          && answerId == request.resource.data.taskId + '_' + request.auth.uid
+          && request.resource.data.get('marks', {}) == resource.data.get('marks', {});
+        // The teacher only adds marks and comments.
+        allow update: if teachesClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks']);
         allow delete: if teachesClass(classId);
       }
 
