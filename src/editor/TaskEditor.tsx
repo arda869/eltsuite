@@ -84,8 +84,16 @@ function useSlash(editor: Editor | null) {
   }, [editor]);
 
   const items = useMemo(
-    () => (state ? COMMANDS.filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim())) : []),
-    [state],
+    () => {
+      if (!state || !editor) return [];
+      let hasColumns = false;
+      editor.state.doc.descendants((n) => {
+        if (n.type.name === 'columnBreak') hasColumns = true;
+      });
+      const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
+      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested))).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+    },
+    [state, editor],
   );
 
   const choose = (c: Cmd) => {
