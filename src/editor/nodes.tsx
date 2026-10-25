@@ -176,9 +176,8 @@ export const newMcq = () => ({ type: 'mcq', attrs: { id: newId(), prompt: '', op
 
 export type ChoiceDisplay = 'letters' | 'radio' | 'dropdown';
 const DISPLAYS: { key: ChoiceDisplay; label: string }[] = [
-  { key: 'letters', label: 'Letters' },
-  { key: 'radio', label: 'Circles' },
-  { key: 'dropdown', label: 'List' },
+  { key: 'dropdown', label: 'In line' },
+  { key: 'radio', label: 'Radio buttons' },
 ];
 
 function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
@@ -232,7 +231,7 @@ function ChoiceView({ node, updateAttributes, selected }: NodeViewProps) {
   return (
     <NodeViewWrapper as="span" className={'choice-node' + (selected ? ' is-selected' : '') + ' d-' + display} ref={ref}>
       <span className="choice-chip" contentEditable={false} onClick={() => setOpen(true)} title="Edit choices">
-        {display === 'dropdown' ? <span className="c-drop">{summary}<span className="c-caret">▾</span></span> : summary}
+        {summary}
       </span>
       {open && (
         <span className="choice-pop" contentEditable={false} onKeyDown={(e) => e.stopPropagation()}>
@@ -331,7 +330,7 @@ export const Choice = Node.create({
   },
 });
 
-export const newChoice = (display: ChoiceDisplay = 'letters', options: string[] = ['', '', '']) => ({
+export const newChoice = (display: ChoiceDisplay = 'dropdown', options: string[] = ['', '', '']) => ({
   type: 'choice',
   attrs: { id: newId(), options, correct: -1, multi: false, display },
 });

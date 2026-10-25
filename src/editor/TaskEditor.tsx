@@ -15,10 +15,8 @@ type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Tex
 
 const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
-  { key: 'choice', label: 'Choice with letters', hint: 'a, b or c inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('letters')).run() },
-  { key: 'radio', label: 'Choice with circles', hint: 'Tick one circle inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
-  { key: 'dropdown', label: 'Choice from a list', hint: 'Pick a word from a drop-down list', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
-  { key: 'multi', label: 'Choice with more than one answer', hint: 'Learners pick all the right options', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newChoice('letters'), attrs: { ...newChoice('letters').attrs, multi: true, correct: [] } }).run() },
+  { key: 'radio', label: 'Multiple choice radio buttons', hint: 'Options listed under the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
+  { key: 'dropdown', label: 'Multiple choice in line', hint: 'go / goes / going · learners circle one', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
   { key: 'truefalse', label: 'True or false', hint: 'True / False inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False'])).run() },
   { key: 'notgiven', label: 'True, false or not given', hint: 'For reading tasks', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False', 'Not given'])).run() },
   { key: 'match', label: 'Matching', hint: 'Match items on the left to the right', group: 'Questions', run: (e) => e.chain().focus().insertContent([newMatch(), { type: 'paragraph' }]).run() },
@@ -159,21 +157,34 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
         {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), 'H')}
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '•')}
         {BTN('Table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), '▦')}
-        {editor.isActive('table') && (
-          <>
-            {BTN('Add row', false, () => editor.chain().focus().addRowAfter().run(), '+ Row')}
-            {BTN('Add column', false, () => editor.chain().focus().addColumnAfter().run(), '+ Column')}
-            {BTN('Delete row', false, () => editor.chain().focus().deleteRow().run(), '− Row')}
-            {BTN('Delete column', false, () => editor.chain().focus().deleteColumn().run(), '− Column')}
-            {BTN('Delete table', false, () => editor.chain().focus().deleteTable().run(), 'Delete table')}
-          </>
-        )}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
-        {BTN('Insert multiple choice', false, () => editor.chain().focus().insertContent(newChoice('letters')).run(), '+ Choice')}
-        {BTN('Insert dropdown', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ List')}
+        {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
         {BTN('More question types', false, () => editor.chain().focus().insertContent(' /').run(), '/ More')}
       </div>
+      {editor.isActive('table') && (
+        <div className="table-bar" role="toolbar" aria-label="Table">
+          <span className="tb-group">
+            <span className="tb-label">Row</span>
+            {BTN('Add row above', false, () => editor.chain().focus().addRowBefore().run(), '+ Above')}
+            {BTN('Add row below', false, () => editor.chain().focus().addRowAfter().run(), '+ Below')}
+            {BTN('Delete row', false, () => editor.chain().focus().deleteRow().run(), 'Delete')}
+          </span>
+          <span className="tb-group">
+            <span className="tb-label">Column</span>
+            {BTN('Add column left', false, () => editor.chain().focus().addColumnBefore().run(), '+ Left')}
+            {BTN('Add column right', false, () => editor.chain().focus().addColumnAfter().run(), '+ Right')}
+            {BTN('Delete column', false, () => editor.chain().focus().deleteColumn().run(), 'Delete')}
+          </span>
+          <span className="tb-group">
+            {BTN('Header row', false, () => editor.chain().focus().toggleHeaderRow().run(), 'Header row')}
+            {BTN('Merge or split cells', false, () => editor.chain().focus().mergeOrSplit().run(), 'Merge cells')}
+          </span>
+          <span className="tb-group" style={{ marginLeft: 'auto' }}>
+            {BTN('Delete table', false, () => editor.chain().focus().deleteTable().run(), 'Delete table')}
+          </span>
+        </div>
+      )}
       <div className="editor-host">
         <EditorContent editor={editor} className="doc" />
         {slash.state && (

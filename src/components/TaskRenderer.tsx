@@ -143,36 +143,50 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
     const options: string[] = a.options ?? [];
     const display = (a.display ?? 'letters') as string;
     const multi = !!a.multi;
-    if (display === 'dropdown' && !multi) {
+    if (display === 'dropdown') {
+      // Options in the line, separated by slashes; the chosen one is circled.
       const raw = responses[id];
-      const chosen = isAnswered(raw) ? Number(raw) : -1;
+      const chosen: number[] = Array.isArray(raw) ? raw : isAnswered(raw) ? [Number(raw)] : [];
       const entry = results?.[id];
-      if (results) {
-        const correct = entry?.kind === 'mcq' ? entry.correct : -1;
-        return resultText(key, id, chosen >= 0 ? options[chosen] : '', chosen === correct, correct >= 0 ? options[correct] : undefined);
-      }
+      const correct = entry?.kind === 'multi' ? entry.correct : entry?.kind === 'mcq' ? [entry.correct] : [];
+      const shown = options.map((o, i) => ({ o, i })).filter((x) => x.o.trim());
+      const pick = (i: number) => {
+        if (multi) onChange?.(id, chosen.includes(i) ? chosen.filter((x) => x !== i) : [...chosen, i].sort());
+        else onChange?.(id, chosen.includes(i) ? '' : i);
+      };
       return (
-        <span key={key} className="gap-wrap">
+        <span key={key} className="slash-choice" role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
           {num(id)}
-          <select
-            className="drop-input"
-            aria-label={`Question ${numbers[id]}`}
-            value={chosen >= 0 ? String(chosen) : ''}
-            disabled={disabled}
-            onChange={(e) => onChange?.(id, e.target.value === '' ? '' : Number(e.target.value))}
-          >
-            <option value="">choose…</option>
-            {options.map((o, i) =>
-              o.trim() ? (
-                <option key={i} value={i}>
+          {shown.map(({ o, i }, k) => {
+            const state = optionState(i, chosen, correct);
+            const isOk = results && state === 'right' && chosen.includes(i);
+            return (
+              <span key={i}>
+                {k > 0 && <span className="slash-sep" aria-hidden="true">/</span>}
+                <button
+                  type="button"
+                  role={multi ? 'checkbox' : 'radio'}
+                  aria-checked={chosen.includes(i)}
+                  className={'slash-opt ' + state}
+                  disabled={locked}
+                  onClick={() => pick(i)}
+                >
                   {o}
-                </option>
-              ) : null,
-            )}
-          </select>
+                </button>
+                {isOk && TICK}
+              </span>
+            );
+          })}
         </span>
       );
     }
+    if (display === 'radio')
+      return (
+        <span key={key} className="stacked-choice" role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
+          <span className="stack-num">{num(id)}</span>
+          <span className="stack">{choiceOptions(id, options, multi, display)}</span>
+        </span>
+      );
     return (
       <span key={key} className={'inline-choice d-' + display} role={multi ? 'group' : 'radiogroup'} aria-label={`Question ${numbers[id]}`}>
         {num(id)}
