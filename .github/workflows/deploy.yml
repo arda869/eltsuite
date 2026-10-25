@@ -53,12 +53,8 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
-          set -o pipefail
-          if ! npx --yes firebase-tools@14 deploy --only firestore:rules --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/rules.log"; then
-            msg=$(grep -iE "error|denied|permission" "$RUNNER_TEMP/rules.log" | tail -3 | tr '\n' ' ')
-            echo "::error::Rules deploy failed: ${msg:-see log}"
-            exit 1
-          fi
+          npm install --no-save --no-audit --no-fund google-auth-library@9
+          node scripts/deploy-rules.mjs
 
       - name: Remove key
         if: always()
