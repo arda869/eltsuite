@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { UpdateBanner } from './components/UpdateBanner';
 import { AuthProvider, useAuth } from './lib/auth';
 import { SignIn } from './pages/SignIn';
 import { EmailLinkFinish } from './pages/EmailLinkFinish';
@@ -60,6 +61,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
+        <UpdateBanner />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
