@@ -46,15 +46,16 @@ export function BoxFrame({ attrs, children, editable, onMeta }: { attrs: BoxAttr
     case 'info':
       return (
         <div className={cls}>
-          {attrs.symbol && (
-            <span className="tbox-symbol" aria-hidden="true" {...ce}>
-              {attrs.symbol}
-            </span>
-          )}
-          <div className="tbox-main">
+          <div className="tbox-ihead">
+            {attrs.symbol && (
+              <span className="tbox-symbol" aria-hidden="true" {...ce}>
+                {attrs.symbol}
+              </span>
+            )}
             {field('label', 'Title, for example: Grammar', 'tbox-title')}
-            <div className="tbox-body">{children}</div>
+            <span className="tbox-rule" aria-hidden="true" {...ce} />
           </div>
+          <div className="tbox-body">{children}</div>
         </div>
       );
     case 'browser':

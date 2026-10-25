@@ -1327,3 +1327,20 @@ mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radi
 .task-table td[style*="background"], .task-table th[style*="background"], .doc .ProseMirror td[data-bg], .doc .ProseMirror th[data-bg] { padding-left: 12px; padding-right: 12px; }
 .task-table.striped tr:nth-child(even) td:not([style*="background"]), .doc .ProseMirror table[data-striped] tr:nth-child(even) td:not([data-bg]) { background: #f8f8f7; }
 .doc .ProseMirror .selectedCell::after { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* Information box, redesigned: a quiet panel with a labelled rule */
+.tbox.s-info { display: block; background: var(--tone); border: 0; border-left: 0; border-radius: 16px; padding: 16px 22px 16px; box-shadow: inset 0 0 0 1px var(--tone-line); }
+.tbox.s-info.t-grey { --tone: #f6f6f4; --tone-line: #ebebe8; --tone-ink: #5f5e5a; }
+.tbox-ihead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tbox.s-info .tbox-symbol { width: 24px; height: 24px; margin: 0; background: transparent; color: var(--tone-ink); border: 1.5px solid var(--tone-ink); font: 700 13px/1 var(--serif); flex: none; }
+.tbox.s-info .tbox-title { font: 600 11px/1.3 var(--sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tone-ink); margin: 0; flex: none; max-width: 70%; background: transparent; border: 0; padding: 0; }
+.tbox.s-info input.tbox-title { flex: 0 1 220px; min-width: 120px; }
+.tbox.s-info input.tbox-title::placeholder { color: color-mix(in srgb, var(--tone-ink) 45%, transparent); letter-spacing: 0.12em; }
+.tbox-rule { flex: 1; height: 1px; background: var(--tone-line); }
+.tbox.s-info .tbox-body { font-family: var(--serif); font-size: 16px; line-height: 1.6; }
+.tbox.s-info .tbox-body p { margin: 0 0 6px; }
+.tbox.s-info .tbox-body p:last-child { margin-bottom: 0; }
+.tbox.s-info .tbox-body strong { color: var(--ink); }
+.tbox.s-info .tbox-body ul { margin: 4px 0; padding-left: 1.1em; }
+.tbox.s-info .tbox-body li::marker { color: var(--tone-ink); }
+.tbox.s-info input.tbox-title { field-sizing: content; flex: none; min-width: 8ch; max-width: 60%; }
