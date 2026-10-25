@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { DefCard, type DefData } from '../editor/Definition';
+import { StressedWord } from '../editor/Stress';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { drawnCards, isAnswered, normalise, pickState, scoreQuestion, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
-import { PickStage } from './PickStage';
+import { PickStage, type PickLook } from './PickStage';
 import type { SharedPick } from '../lib/picks';
 
 const LETTERS = 'abcdefghijklmnop';
@@ -33,13 +35,58 @@ const TICK = (
   </svg>
 );
 
+function DefWord({ word, data, children }: { word: string; data: DefData; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [at, setAt] = useState<{ top: number; left: number; below: boolean }>({ top: 0, left: 0, below: true });
+  useEffect(() => {
+    if (!pinned) return;
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && (setPinned(false), setOpen(false));
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [pinned]);
+  const place = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    const below = window.innerHeight - r.bottom > 320 || r.top < 320;
+    const w = Math.min(320, window.innerWidth - 24);
+    setAt({ below, top: below ? r.bottom + 6 : r.top - 6, left: Math.max(12, Math.min(r.left - 8, window.innerWidth - 12 - w)) });
+  };
+  useEffect(() => {
+    if (!open) return;
+    const close = () => (setOpen(false), setPinned(false));
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [open]);
+  return (
+    <span
+      ref={ref}
+      className={'def-word' + (open ? ' open' : '')}
+      onMouseEnter={() => (place(), setOpen(true))}
+      onMouseLeave={() => !pinned && setOpen(false)}
+    >
+      <button type="button" className="def-trigger" aria-expanded={open} onClick={() => (place(), setPinned(!pinned), setOpen(!pinned))}>
+        {children}
+      </button>
+      {open && (
+        <span className={'def-card' + (at.below ? ' below' : ' above')} style={{ top: at.top, left: at.left }} role="tooltip">
+          <DefCard word={word} d={data} />
+        </span>
+      )}
+    </span>
+  );
+}
+
 function marks(text: ReactNode, m: JSONContent['marks']) {
   let out = text;
+  const def = m?.find((x) => x.type === 'definition');
   for (const mark of m ?? []) {
     if (mark.type === 'bold') out = <strong>{out}</strong>;
     else if (mark.type === 'italic') out = <em>{out}</em>;
     else if (mark.type === 'underline') out = <u>{out}</u>;
   }
+  if (def) out = <DefWord word={String(text)} data={(def.attrs?.data ?? {}) as DefData}>{out}</DefWord>;
   return out;
 }
 
@@ -648,6 +695,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           <PickStage
             key={key}
             mode={(node.attrs?.mode ?? 'cards') as 'cards' | 'wheel' | 'boxes'}
+            look={(node.attrs?.look ?? 'graphite') as PickLook}
+            symbol={node.attrs?.symbol ?? '✦'}
             repeat={!!node.attrs?.repeat}
             titles={cards.map((c) => (c.attrs?.title as string) ?? '')}
             state={pickOf(node)}
@@ -661,6 +710,8 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
           />
         );
       }
+      case 'stress':
+        return <StressedWord key={key} syllables={(node.attrs?.syllables as string[]) ?? []} stressed={Number(node.attrs?.stressed ?? 0)} style={(node.attrs?.style ?? 'box') as 'box' | 'bold' | 'big'} />;
       case 'columnBreak':
         return null;
       default:

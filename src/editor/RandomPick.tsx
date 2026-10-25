@@ -2,6 +2,16 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { newId } from '../lib/tasks';
 import { Grip } from './nodes';
+import { PICK_LOOKS, PICK_SYMBOLS, PickStage, type PickLook } from '../components/PickStage';
+
+// A small, non-interactive preview of how learners will see it.
+function PickPreview({ mode, look, symbol, titles }: { mode: PickMode; look: PickLook; symbol: string; titles: string[] }) {
+  return (
+    <div className="pick-preview-inner" aria-hidden="true">
+      <PickStage mode={mode} look={look} symbol={symbol} repeat titles={titles} state={{ h: [], b: [] }} canDraw={false} onDraw={() => {}} renderCard={() => null} />
+    </div>
+  );
+}
 
 // "Draw a card": a pile of cards with rich text (and questions) on them. Learners draw one at random.
 // The same cards can be shown as a spinning wheel or as boxes to open.
@@ -68,6 +78,28 @@ function RandomPickView(props: NodeViewProps) {
             </button>
           </span>
         )}
+        <span className="pick-look" role="radiogroup" aria-label="Look">
+          <span className="hint">Look</span>
+          {PICK_LOOKS.map((l) => (
+            <button key={l.key} type="button" role="radio" aria-checked={(node.attrs.look ?? 'graphite') === l.key} title={l.label} className={'look-sw' + ((node.attrs.look ?? 'graphite') === l.key ? ' on' : '')} onClick={() => updateAttributes({ look: l.key })}>
+              <span style={{ background: l.sw[0] }} />
+              <span style={{ background: l.sw[1] }} />
+            </button>
+          ))}
+        </span>
+        {mode === 'cards' && (
+          <span className="pick-look" role="radiogroup" aria-label="Symbol on the back of the cards">
+            <span className="hint">Card back</span>
+            {PICK_SYMBOLS.map((sy) => (
+              <button key={sy || 'none'} type="button" role="radio" aria-checked={(node.attrs.symbol ?? '✦') === sy} className={'sym-btn' + ((node.attrs.symbol ?? '✦') === sy ? ' on' : '')} onClick={() => updateAttributes({ symbol: sy })} title={sy ? 'Symbol ' + sy : 'No symbol'}>
+                {sy || '–'}
+              </button>
+            ))}
+          </span>
+        )}
+      </div>
+      <div className="pick-preview" contentEditable={false}>
+        <PickPreview mode={mode} look={(node.attrs.look ?? 'graphite') as PickLook} symbol={node.attrs.symbol ?? '✦'} titles={node.content.content.map((c) => c.attrs.title as string)} />
       </div>
       <NodeViewContent className="pick-cards" />
       <div className="pick-foot" contentEditable={false}>
@@ -131,7 +163,9 @@ export const RandomPick = Node.create({
     mode: { default: 'cards' },
     repeat: { default: false },
     play: { default: 'own' }, // 'own': each learner plays alone · 'class': one pile, the same on every screen
-    whoDraws: { default: 'teacher' }, // when played together: 'teacher' or 'anyone'
+    whoDraws: { default: 'teacher' },
+    look: { default: 'graphite' },
+    symbol: { default: '✦' }, // when played together: 'teacher' or 'anyone'
   }),
   parseHTML: () => [{ tag: 'div[data-random-pick]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-random-pick': '' }), 0],

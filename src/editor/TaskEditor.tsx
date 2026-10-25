@@ -11,6 +11,8 @@ import TableHeader from '@tiptap/extension-table-header';
 import { Choice, Gap, Mcq, newChoice, newGap } from './nodes';
 import { FreshIds, jsonClip } from './clipboard';
 import { TableInsert } from './TableInsert';
+import { Definition, DefinitionPop } from './Definition';
+import { Stress, newStress } from './Stress';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
@@ -47,6 +49,19 @@ const COMMANDS: Cmd[] = [
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
   { key: 'info', label: 'Information box', hint: 'Grammar rules, tips, useful language', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('info', 'sand', 'Grammar', '!'), { type: 'paragraph' }]).run() },
+  {
+    key: 'stress',
+    label: 'Word stress',
+    hint: 'A word with its stressed syllable marked',
+    group: 'Text',
+    run: (e) => {
+      let last: string | undefined;
+      e.state.doc.descendants((n) => {
+        if (n.type.name === 'stress') last = n.attrs.style;
+      });
+      e.chain().focus().insertContent(newStress((last as 'box' | 'bold' | 'big') ?? 'box')).run();
+    },
+  },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
   { key: 'list', label: 'Bulleted list', hint: 'A simple list', group: 'Text', run: (e) => e.chain().focus().toggleBulletList().run() },
   { key: 'numbered', label: 'Numbered list', hint: 'A list with numbers', group: 'Text', run: (e) => e.chain().focus().toggleOrderedList().run() },
@@ -159,6 +174,8 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
       TextBox,
       RandomPick,
       PickCard,
+      Definition,
+      Stress,
       FreshIds,
       Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
     ],
@@ -168,6 +185,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
 
   const slash = useSlash(editor);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
+  const [defOpen, setDefOpen] = useState(false);
 
   useEffect(() => {
     if (!editor || !slash.state) return;
@@ -209,6 +227,18 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
         {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)}
         {BTN('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), ICON_OL)}
         {BTN('Insert a table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), <span className="ti-row">{ICON_TABLE}<span>Table</span></span>)}
+        {BTN(
+          editor.isActive('definition') ? 'Edit the definition' : 'Add a definition to the selected word',
+          editor.isActive('definition'),
+          () => {
+            if (editor.state.selection.empty && !editor.isActive('definition')) {
+              window.alert('Select a word or phrase first, then add its definition.');
+              return;
+            }
+            setDefOpen(true);
+          },
+          <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
+        )}
         <span className="tool-sep" />
         {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
         {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
@@ -248,6 +278,7 @@ export function TaskEditor({ content, onChange }: { content: JSONContent; onChan
       <div className="editor-host" ref={setHost}>
         <EditorContent editor={editor} className="doc" />
         <TableInsert editor={editor} host={host} />
+        <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
         {slash.state && (
           <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
             {(['Questions', 'Text'] as const).map((g) => {

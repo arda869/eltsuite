@@ -4,7 +4,18 @@ import type { PickState } from '../lib/questions';
 // Learner view of a "draw a card" activity: a pile of cards, a wheel, or boxes to open.
 
 type Mode = 'cards' | 'wheel' | 'boxes';
+export type PickLook = 'graphite' | 'ivory' | 'theme' | 'midnight';
+export const PICK_LOOKS: { key: PickLook; label: string; sw: [string, string] }[] = [
+  { key: 'graphite', label: 'Graphite', sw: ['#2f2e2d', 'var(--accent)'] },
+  { key: 'ivory', label: 'Ivory', sw: ['#f3f1ec', '#3a3936'] },
+  { key: 'theme', label: 'Class colour', sw: ['var(--accent)', '#ffffff'] },
+  { key: 'midnight', label: 'Midnight', sw: ['#1f2b44', '#c9a45c'] },
+];
+export const PICK_SYMBOLS = ['✦', '?', '!', '★', '♣', '♥', '✎', ''];
+
 type Props = {
+  look?: PickLook;
+  symbol?: string;
   mode: Mode;
   repeat: boolean;
   titles: string[]; // one per card
@@ -22,7 +33,7 @@ const reduceMotion = () => typeof window !== 'undefined' && window.matchMedia?.(
 const rnd = (n: number) => Math.floor(Math.random() * n);
 const cardName = (titles: string[], i: number) => titles[i]?.trim() || `Card ${i + 1}`;
 
-export function PickStage({ mode, repeat, titles, state, seq, drawnBy, canDraw, waitingText, onDraw, onReset, renderCard }: Props) {
+export function PickStage({ look = 'graphite', symbol = '✦', mode, repeat, titles, state, seq, drawnBy, canDraw, waitingText, onDraw, onReset, renderCard }: Props) {
   const n = titles.length;
   const drawn: number[] = [];
   for (const x of state.h) if (!drawn.includes(x) && x < n) drawn.push(x);
@@ -70,14 +81,14 @@ export function PickStage({ mode, repeat, titles, state, seq, drawnBy, canDraw, 
     ) : null;
 
   return (
-    <div className={'pk pk-' + mode}>
+    <div className={'pk pk-' + mode + ' look-' + look} style={{ ['--pk-symbol' as string]: JSON.stringify(symbol ?? '') }}>
       {mode === 'cards' && <Deck {...common} n={n} remaining={remaining} repeat={repeat} canDraw={canDraw} onDraw={() => draw()} current={current} result={result} />}
       {mode === 'wheel' && <Wheel {...common} titles={titles} drawn={repeat ? [] : drawn} current={current} canDraw={canDraw && remaining > 0} onSpin={() => draw()} result={result} />}
       {mode === 'boxes' && <Boxes {...common} n={n} repeat={repeat} opened={state.b} lastBox={state.b[state.b.length - 1]} canDraw={canDraw && remaining > 0} onOpen={(b) => draw(b)} result={result} />}
 
       <div className="pk-foot">
         {!canDraw && waitingText && remaining > 0 && <span className="pk-wait">{waitingText}</span>}
-        {!repeat && n > 0 && remaining === 0 && <span className="pk-wait">All {n} cards have been drawn.</span>}
+        {!repeat && n > 0 && remaining === 0 && mode !== 'cards' && <span className="pk-wait">All {n} cards have been drawn.</span>}
         {drawn.length > 1 && (
           <span className="pk-history" aria-label="Cards drawn so far">
             <span className="hint">Drawn</span>
@@ -148,12 +159,15 @@ function Deck({ n, remaining, repeat, canDraw, onDraw, current, result, animKey,
       <div className="pk-deck-col">
         <button ref={deckRef} type="button" className={'pk-deck' + (empty ? ' empty' : '') + (canDraw && !empty ? ' can' : '')} disabled={!canDraw || empty || busy} onClick={onDraw} aria-label={empty ? 'No cards left' : 'Draw a card'}>
           {empty ? (
-            <span className="pk-empty">No cards left</span>
+            <span className="pk-empty">
+              <span className="pk-empty-mark" aria-hidden="true">✦</span>
+              All drawn
+            </span>
           ) : (
             [...Array(layers)].map((_, i) => <span key={i} className="pk-back" style={{ ['--i' as string]: layers - 1 - i }} aria-hidden="true" />)
           )}
         </button>
-        <span className="pk-deck-label">{empty ? `${n} of ${n} drawn` : canDraw ? (current === undefined ? 'Tap the pile to draw' : 'Draw another') : repeat ? `${n} cards` : `${remaining} left`}</span>
+        <span className="pk-deck-label">{empty ? '' : canDraw ? (current === undefined ? 'Tap the pile to draw' : 'Draw another') : repeat ? `${n} cards` : `${remaining} left`}</span>
       </div>
       <div className="pk-slot">
         {result ? (
@@ -213,14 +227,14 @@ function Wheel({ titles, drawn, current, canDraw, onSpin, result, animKey, setBu
     const a = ((deg - 90) * Math.PI) / 180;
     return [Math.cos(a) * r, Math.sin(a) * r];
   };
-  const fills = ['#ffffff', '#f2f2f1', '#e8e8e6'];
+  const fills = ['var(--pk-f1)', 'var(--pk-f2)', 'var(--pk-f3)'];
 
   return (
     <div className="pk-wheel-layout">
       <div className={'pk-wheel-wrap' + (spinning ? ' spinning' : '')}>
         <span className="pk-pointer" aria-hidden="true" />
         <svg className="pk-wheel-svg" viewBox="-104 -104 208 208" style={{ transform: `rotate(${rot}deg)`, transition: spinning ? `transform ${SPIN_MS}ms cubic-bezier(.12,.72,.08,1)` : 'none' }} aria-hidden="true">
-          <circle r="103" fill="#fff" stroke="var(--ink)" strokeWidth="1.4" />
+          <circle r="103" fill="var(--pk-f1)" stroke="var(--pk-rim)" strokeWidth="3" />
           {titles.map((t, i) => {
             const a0 = i * seg;
             const a1 = (i + 1) * seg;
@@ -234,7 +248,7 @@ function Wheel({ titles, drawn, current, canDraw, onSpin, result, animKey, setBu
             const fill = n % 3 === 1 && i === n - 1 && n > 1 ? fills[1] : fills[i % 3];
             return (
               <g key={i} className={'pk-seg' + (used ? ' used' : '') + (win === i ? ' win' : '')}>
-                {d ? <path d={d} fill={fill} stroke="#d8d8d6" strokeWidth="0.6" /> : <circle r={R} fill={fills[0]} />}
+                {d ? <path d={d} fill={fill} stroke="var(--pk-line)" strokeWidth="0.6" /> : <circle r={R} fill={fills[0]} />}
                 <text transform={`rotate(${mid}) translate(0 ${-R * 0.64})`} textAnchor="middle" dominantBaseline="middle" className="pk-seg-label" style={{ fontSize: n > 10 ? 7 : n > 6 ? 8.5 : 10 }}>
                   {label}
                 </text>
@@ -243,7 +257,7 @@ function Wheel({ titles, drawn, current, canDraw, onSpin, result, animKey, setBu
           })}
           {titles.map((_, i) => {
             const [x, y] = pt(i * seg, 97);
-            return <circle key={'p' + i} cx={x} cy={y} r="1.8" fill="var(--ink)" />;
+            return <circle key={'p' + i} cx={x} cy={y} r="1.8" fill="var(--pk-peg)" />;
           })}
         </svg>
         <button type="button" className="pk-hub" disabled={!canDraw || busy} onClick={onSpin}>
