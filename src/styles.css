@@ -347,3 +347,15 @@ a.btn.primary { color: #ffffff; }
 
 .letter.right, .c-opt.right .c-letter { background: #7f9c84; border-color: #7f9c84; color: #ffffff; }
 .c-opt.right { font-weight: 600; }
+
+/* Gap: lighter, coursebook-style blank */
+.gap-input {
+  min-width: 5em; padding: 0 6px 1px; margin: 0 2px;
+  border: 0; border-bottom: 1px solid #b8b8b6; border-radius: 4px 4px 0 0;
+  background: transparent; color: var(--ink); vertical-align: baseline;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.gap-input:hover { border-bottom-color: #868686; }
+.gap-input:focus { outline: none; background: #f7f7f6; border-bottom: 1.5px solid var(--accent); padding-bottom: 0.5px; }
+.gap-input:not(:placeholder-shown) { border-bottom-color: #868686; }
+.drop-input { border-bottom: 1px solid #868686; }

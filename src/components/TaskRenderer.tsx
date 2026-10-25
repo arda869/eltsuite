@@ -72,6 +72,7 @@ export function TaskRenderer({ content, responses, onChange, results, disabled }
         {num(id)}
         <input
           className="gap-input"
+          placeholder=" "
           aria-label={`Question ${numbers[id]}`}
           value={value}
           disabled={disabled}
