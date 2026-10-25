@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { Grip } from './nodes';
+import { usePopPos } from './usePopPos';
 
 // A word with its stressed syllable marked: bold, a small box above it, or slightly bigger.
 
@@ -32,6 +33,7 @@ function StressView({ node, updateAttributes, selected, editor, getPos }: NodeVi
   const [text, setText] = useState(syllables.join('·'));
   const ref = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const popStyle = usePopPos(ref, open, 310);
   const style = (node.attrs.style ?? 'box') as StressStyle;
   const stressed = Number(node.attrs.stressed ?? 0);
 
@@ -58,7 +60,7 @@ function StressView({ node, updateAttributes, selected, editor, getPos }: NodeVi
         {syllables.length ? <StressedWord syllables={syllables} stressed={stressed} style={style} /> : <span className="stress-empty">word stress</span>}
       </span>
       {open && (
-        <span className="gap-pop stress-pop" contentEditable={false}>
+        <span className="gap-pop stress-pop" contentEditable={false} style={popStyle}>
           <span className="pop-type">Word stress</span>
           <label className="pop-field">
             <span>Word, with a dot between syllables</span>

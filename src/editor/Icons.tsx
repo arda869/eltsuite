@@ -1,5 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps, type Editor } from '@tiptap/react';
+import { usePopPos } from './usePopPos';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 // Our own "emoji": simple line drawings in the app's style (thin strokes, rounded ends),
@@ -86,6 +87,7 @@ export const ICON_TONES = [
 function IconView({ node, updateAttributes, selected }: NodeViewProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 340);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
@@ -98,7 +100,7 @@ function IconView({ node, updateAttributes, selected }: NodeViewProps) {
         <Icon name={node.attrs.name} tone={node.attrs.tone} />
       </span>
       {open && (
-        <span className="gap-pop emo-pop" contentEditable={false}>
+        <span className="gap-pop emo-pop" contentEditable={false} style={popStyle}>
           <IconGrid tone={node.attrs.tone} current={node.attrs.name} onPick={(name) => updateAttributes({ name })} onTone={(tone) => updateAttributes({ tone })} />
         </span>
       )}
@@ -140,6 +142,7 @@ export function IconTool({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const [tone, setTone] = useState('ink');
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 340);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
@@ -152,7 +155,7 @@ export function IconTool({ editor }: { editor: Editor }) {
         <Icon name="smile" size="16" />
       </button>
       {open && (
-        <span className="hl-pop emo-pop">
+        <span className="hl-pop emo-pop" style={popStyle}>
           <IconGrid
             tone={tone}
             onTone={setTone}

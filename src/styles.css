@@ -1430,3 +1430,37 @@ mark.hl { color: inherit; padding: 0.05em 0.15em; margin: 0 -0.05em; border-radi
 .bd-note .bd-reply-form input { background: rgba(255,255,255,0.7); }
 @media (prefers-reduced-motion: reduce) { .bd-note, .bd-msg, .bd-reply { animation: none !important; } }
 .bd-note .bd-react { padding: 0 5px; height: 24px; } .bd-note .bd-reacts { gap: 2px; }
+
+/* Text size */
+.task-frame .frame-inner { zoom: var(--ts, 1); }
+.ts-ctl { position: relative; display: inline-flex; }
+.ts-btn { gap: 1px; align-items: baseline; padding: 0 10px; }
+.ts-a { font: 600 15px var(--serif); }
+.ts-a.small { font-size: 11px; }
+.ts-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; display: flex; align-items: flex-end; gap: 4px; flex-wrap: wrap; width: 200px; background: #fff; border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; box-shadow: 0 14px 30px -12px rgba(0,0,0,0.25); padding: 10px; }
+.ts-pop button { width: 40px; height: 38px; border: 1px solid var(--hair-strong); background: #fff; border-radius: 8px; font-family: var(--serif); font-weight: 600; cursor: pointer; }
+.ts-pop button.on { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.ts-pop .hint { flex-basis: 100%; }
+
+/* Live controls while teaching */
+.live-ctl { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.reveal-ctl { display: inline-flex; align-items: center; gap: 6px; padding-left: 10px; border-left: 1px solid var(--hair); }
+.btn.on-accent { border-color: var(--accent); color: var(--accent-text); box-shadow: inset 0 0 0 1px var(--accent); }
+.sync-banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 12px; border-radius: 10px; background: #f7f7f6; font: 13px var(--sans); color: var(--muted); }
+.notes-drawer { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; margin-bottom: 10px; border-radius: 12px; background: #fbfaf7; border: 1px solid var(--hair); }
+.notes-drawer textarea, .notes-input { width: 100%; min-height: 70px; border: 0; background: transparent; font: 14px/1.5 var(--sans); resize: vertical; outline: none; field-sizing: content; }
+.notes-input { border: 1px solid var(--hair-strong); border-radius: 8px; padding: 8px 10px; background: #fff; }
+
+/* Present mode */
+.lesson-layout.present .task-list, .lesson-layout.present .task-side:not(.live-panel) { display: none; }
+.lesson-layout.present .live-panel { position: fixed; right: 16px; top: 70px; bottom: 16px; z-index: 30; background: #fff; border: 1px solid var(--hair); border-radius: 14px; box-shadow: 0 20px 40px -20px rgba(0,0,0,0.3); padding: 14px; overflow: auto; }
+.lesson-layout.present .center-col { max-width: 1100px; margin: 0 auto; width: 100%; }
+
+/* Shortcut overlay */
+.shortcuts { width: 420px; }
+.shortcuts dl { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.sc-row { display: flex; align-items: center; gap: 14px; }
+.sc-row dt { flex: 0 0 120px; display: flex; gap: 3px; align-items: center; font: 12px var(--sans); color: var(--muted); }
+.sc-row dd { margin: 0; font: 14px var(--sans); }
+kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--hair-strong); border-bottom-width: 2px; background: #fff; font: 600 12px var(--sans); color: var(--ink); }
+.icon-help { width: 30px; padding: 0; justify-content: center; font-weight: 700; }

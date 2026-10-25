@@ -1,5 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps, type Editor } from '@tiptap/react';
+import { usePopPos } from './usePopPos';
 import { useEffect, useRef, useState } from 'react';
 
 // Small marks used in language teaching: + − ? in a box, parts of speech in a circle, etc.
@@ -184,6 +185,7 @@ export function SymbolPicker({ onPick, onClose }: { onPick: (a: SymAttrs) => voi
 function SymView({ node, updateAttributes, selected }: NodeViewProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 370);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
@@ -196,7 +198,7 @@ function SymView({ node, updateAttributes, selected }: NodeViewProps) {
         <Sym {...(node.attrs as SymAttrs)} />
       </span>
       {open && (
-        <span className="gap-pop sym-pop" contentEditable={false}>
+        <span className="gap-pop sym-pop" contentEditable={false} style={popStyle}>
           <SymbolPicker onPick={(a) => updateAttributes(a)} onClose={() => setOpen(false)} />
         </span>
       )}
@@ -207,6 +209,7 @@ function SymView({ node, updateAttributes, selected }: NodeViewProps) {
 export function SymbolTool({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 370);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
@@ -216,10 +219,13 @@ export function SymbolTool({ editor }: { editor: Editor }) {
   return (
     <span className="hl-tool" ref={ref}>
       <button type="button" className="tool" title="Add a symbol" aria-label="Add a symbol" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)}>
-        <Sym text="+" shape="box" tone="ink" />
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+          <rect x="2" y="2" width="12" height="12" rx="2.5" />
+          <path d="M8 5.2v5.6M5.2 8h5.6" />
+        </svg>
       </button>
       {open && (
-        <span className="hl-pop sym-pop">
+        <span className="hl-pop sym-pop" style={popStyle}>
           <SymbolPicker onPick={(a) => editor.chain().focus().insertContent({ type: 'sym', attrs: a }).run()} onClose={() => setOpen(false)} />
         </span>
       )}

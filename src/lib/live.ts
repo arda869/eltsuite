@@ -1,3 +1,4 @@
+import type { AnswerKey } from './questions';
 import { doc, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -29,3 +30,11 @@ export function isLive(s: LiveState | null | undefined) {
 export const isSynced = (s: LiveState | null | undefined, itemId: string) => isLive(s) && s!.itemId === itemId && !!s!.sync;
 export const revealedCount = (s: LiveState | null | undefined, itemId: string, taskId: string) =>
   isLive(s) && s!.itemId === itemId ? s!.revealed?.[taskId] ?? 0 : 0;
+
+// The part of the answer key the teacher has revealed: the first n questions, or all (-1).
+export function revealedSubset(key: AnswerKey, qs: { id: string }[], n: number): AnswerKey {
+  if (n === 0) return {};
+  const all = qs.map((q) => q.id).filter((id) => key[id] && key[id].kind !== 'writing');
+  const ids = n < 0 ? all : all.slice(0, n);
+  return Object.fromEntries(ids.filter((id) => key[id]).map((id) => [id, key[id]]));
+}

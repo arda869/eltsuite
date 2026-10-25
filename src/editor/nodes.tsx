@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { newId } from '../lib/tasks';
+import { usePopPos } from './usePopPos';
 import { NoteFields } from './NoteFields';
 
 const LETTERS = 'abcdefghij';
@@ -42,6 +43,7 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
   const [open, setOpen] = useState(answers.length === 0);
   const [value, setValue] = useState(answers.join(' | '));
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 270);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -70,7 +72,7 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
         {answers.length ? answers.join(' / ') : 'answer'}
       </span>
       {open && (
-        <span className="gap-pop" contentEditable={false}>
+        <span className="gap-pop" contentEditable={false} style={popStyle}>
           <span className="pop-type">Gap fill</span>
           <input
             ref={inputRef}
@@ -224,6 +226,7 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
   const filled = options.filter((o) => o.trim());
   const [open, setOpen] = useState(filled.length === 0);
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 330);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
 
@@ -267,7 +270,7 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
         {summary}
       </span>
       {open && (
-        <span className="choice-pop" contentEditable={false} onKeyDown={(e) => e.stopPropagation()}>
+        <span className="choice-pop" contentEditable={false} style={popStyle} onKeyDown={(e) => e.stopPropagation()}>
           <span className="pop-type">{multi ? 'Multiple choice · more than one answer' : 'Multiple choice'}</span>
           <span className="seg" role="radiogroup" aria-label="Show as">
             {DISPLAYS.map((d) => (

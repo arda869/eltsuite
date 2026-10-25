@@ -14,12 +14,16 @@ import {
   splitKey,
   questionIds,
   tasksCol,
+  loadNotes,
+  saveNotes,
   type AnswerKey,
   type Responses,
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
-import { isLive, liveRef, setLive, type LiveState } from '../lib/live';
+import { isLive, liveRef, revealedCount, revealedSubset, setLive, type LiveState } from '../lib/live';
+import { TEXT_SCALE } from '../lib/auth';
+import { TextSizeControl } from '../components/TextSizeControl';
 import { useAuth } from '../lib/auth';
 import { isOnline, usePresence } from '../lib/presence';
 import { initials } from '../components/TopBar';
@@ -57,7 +61,7 @@ export function LessonEditor() {
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const [previewChecked, setPreviewChecked] = useState(false);
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [live, setLiveState] = useState<LiveState | null>(null);
   const timer = useRef<number>();
   const pending = useRef<{ taskId: string; patch: Partial<Draft> } | null>(null);
@@ -122,6 +126,59 @@ export function LessonEditor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
+
+  // Sync and reveal while teaching.
+  const qCount = useMemo(() => (draft ? questionIds(splitKey(draft.content).content).filter((q) => q.type !== 'writing' && q.type !== 'reflect').length : 0), [draft]);
+  const revealN = task ? revealedCount(live, itemId, task.id) : 0;
+  const setReveal = (n: number) => task && setLive(classId, { revealed: { ...(live?.revealed ?? {}), [task.id]: n } });
+  const revealNext = () => setReveal(revealN < 0 ? -1 : Math.min(qCount, revealN + 1));
+  const revealAll = () => setReveal(-1);
+  const hideAnswers = () => setReveal(0);
+  const toggleSync = () => setLive(classId, { sync: !live?.sync, taskId: selected });
+
+  // Teaching shortcuts (not while typing).
+  const [help, setHelp] = useState(false);
+  const [present, setPresent] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  // Teacher notes for the selected task (only the teacher can read them).
+  const [notes, setNotes] = useState('');
+  const notesTimer = useRef<number>();
+  useEffect(() => {
+    setNotes('');
+    if (task) loadNotes(classId, itemId, task.id).then(setNotes).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.id]);
+  const changeNotes = (v: string) => {
+    setNotes(v);
+    window.clearTimeout(notesTimer.current);
+    const id = task?.id;
+    notesTimer.current = window.setTimeout(() => id && saveNotes(classId, itemId, id, v).catch(() => {}), 700);
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === '?') return setHelp((h) => !h);
+      if (e.key === 'Escape') return (setHelp(false), setPresent(false));
+      if (!teachingHere) return;
+      const list = tasks.filter((x) => x.kind !== 'section');
+      const i = list.findIndex((x) => x.id === selected);
+      if (e.key === 'ArrowRight' && i < list.length - 1) select(list[i + 1].id);
+      else if (e.key === 'ArrowLeft' && i > 0) select(list[i - 1].id);
+      else if (e.key === 's' || e.key === 'S') toggleSync();
+      else if (e.key === 'R') revealAll();
+      else if (e.key === 'r') revealNext();
+      else if (e.key === 'h' || e.key === 'H') hideAnswers();
+      else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
+      else if ((e.key === 'p' || e.key === 'P')) setPresent((v) => !v);
+      else if ((e.key === 'n' || e.key === 'N')) setNotesOpen((v) => !v);
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   async function toggleTeaching() {
     if (teachingHere) await setLive(classId, { teaching: false });
@@ -240,17 +297,24 @@ export function LessonEditor() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
+        <button type="button" className="btn small-btn" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
+          {present ? 'Exit present mode' : 'Present'}
+        </button>
+        <button type="button" className="btn small-btn icon-help" onClick={() => setHelp(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+          ?
+        </button>
         <button type="button" className={'btn small-btn teach-btn' + (teachingHere ? ' on' : '')} onClick={toggleTeaching} title="Shows learners which task you are on">
           {teachingHere && <span className="live-dot" aria-hidden="true" />}
           {teachingHere ? 'Teaching · stop' : 'Start teaching'}
         </button>
+        <TextSizeControl />
         <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
       </TopBar>
 
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
       {item && (
-        <div className="lesson-layout">
+        <div className={'lesson-layout' + (present ? ' present' : '')}>
           <nav className="task-list" aria-label="Tasks">
             <input
               className="lesson-title"
@@ -356,9 +420,44 @@ export function LessonEditor() {
                   </span>
                 ))}
               </span>
+              <span className="live-ctl">
+                <button type="button" className={'btn small-btn' + (notesOpen ? ' on-accent' : '')} onClick={() => setNotesOpen((v) => !v)} title="Shortcut: N">
+                  Notes{notes.trim() ? ' •' : ''}
+                </button>
+                {present && (
+                  <button type="button" className={'btn small-btn' + (showGrid ? ' on-accent' : '')} onClick={() => setShowGrid((v) => !v)}>
+                    Live answers
+                  </button>
+                )}
+                <button type="button" className={'btn small-btn' + (live?.sync ? ' on-accent' : '')} onClick={toggleSync} title="Shortcut: S">
+                  {live?.sync ? 'Class follows me · stop' : 'Sync class to me'}
+                </button>
+                {qCount > 0 && (
+                  <span className="reveal-ctl" aria-label="Reveal answers">
+                    <span className="hint">{revealN === 0 ? 'Answers hidden' : revealN < 0 || revealN >= qCount ? 'All answers shown' : `${revealN} of ${qCount} shown`}</span>
+                    <button type="button" className="btn small-btn" disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} title="Shortcut: R">
+                      Reveal next
+                    </button>
+                    <button type="button" className="btn small-btn" disabled={revealN < 0} onClick={revealAll} title="Shortcut: Shift + R">
+                      Reveal all
+                    </button>
+                    {revealN !== 0 && (
+                      <button type="button" className="btn small-btn" onClick={hideAnswers} title="Shortcut: H">
+                        Hide
+                      </button>
+                    )}
+                  </span>
+                )}
+              </span>
             </div>
           )}
-          <main className="task-frame">
+          {teachingHere && notesOpen && (
+            <div className="notes-drawer">
+              <span className="eyebrow">Your notes for this task</span>
+              <textarea value={notes} placeholder="Only you can see these notes." onChange={(e) => changeNotes(e.target.value)} />
+            </div>
+          )}
+          <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
             {!task || !draft ? (
               <div className="empty" style={{ padding: 28 }}>
                 <h2>{tasks.length ? 'Loading…' : 'Add the first task'}</h2>
@@ -386,6 +485,7 @@ export function LessonEditor() {
                     layout={task.layout ?? 'single'}
                     colScroll={task.colScroll ?? 'separate'}
                     teacher
+                    revealed={!preview && previewKey && revealN !== 0 ? revealedSubset(previewKey.key, questionIds(previewKey.content).filter((q) => q.type !== 'writing' && q.type !== 'reflect'), revealN) : null}
                     classmates={classmates}
                     classId={classId}
                     boardMe={!preview && user ? { classId, taskId: task.id, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true } : undefined}
@@ -446,7 +546,7 @@ export function LessonEditor() {
           </main>
           </div>
 
-          {task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (
+          {task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid) && (
             <LivePanel
               classId={classId}
               taskId={task.id}
@@ -529,6 +629,10 @@ export function LessonEditor() {
                   {task.afterCheck === 'retry' ? 'Learners only see which answers are right or wrong, then try the wrong ones again.' : 'Learners see the correct answers after they check.'}
                 </span>
               </div>
+              <div className="field" style={{ gap: 6 }}>
+                <span>Teacher notes</span>
+                <textarea className="notes-input" value={notes} placeholder="Timing, instructions, answers to check… Only you can see these." onChange={(e) => changeNotes(e.target.value)} />
+              </div>
               <h2>Tips</h2>
               <p className="hint" style={{ margin: 0 }}>
                 Type <strong>/</strong> in the text for a gap or a multiple-choice question. In a gap, separate other accepted answers with |, for example
@@ -536,6 +640,38 @@ export function LessonEditor() {
               </p>
             </aside>
           )}
+        </div>
+      )}
+      {help && (
+        <div className="scrim" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelp(false)}>
+          <div className="dialog shortcuts" onClick={(e) => e.stopPropagation()}>
+            <h2>Keyboard shortcuts</h2>
+            <p className="hint" style={{ margin: 0 }}>While teaching. They don’t work while you are typing.</p>
+            <dl>
+              {[
+                ['← →', 'Previous or next task'],
+                ['S', 'Sync the class to you, or stop'],
+                ['R', 'Reveal the next answer'],
+                ['Shift + R', 'Reveal all answers'],
+                ['H', 'Hide the answers again'],
+                ['L', 'Lock or unlock this task'],
+                ['N', 'Show or hide your notes'],
+                ['P', 'Present mode'],
+                ['Esc', 'Leave present mode, close this'],
+                ['?', 'Show these shortcuts'],
+              ].map(([k, d]) => (
+                <div key={k} className="sc-row">
+                  <dt>
+                    {k.split(' ').map((x, i) => (x === '+' ? <span key={i}> + </span> : <kbd key={i}>{x}</kbd>))}
+                  </dt>
+                  <dd>{d}</dd>
+                </div>
+              ))}
+            </dl>
+            <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={() => setHelp(false)}>
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>

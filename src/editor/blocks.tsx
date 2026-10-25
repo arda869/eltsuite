@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { newId } from '../lib/tasks';
+import { usePopPos } from './usePopPos';
 import { NoteFields } from './NoteFields';
 import { Grip } from './nodes';
 
@@ -45,6 +46,7 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
   const [open, setOpen] = useState(!node.attrs.answer);
   const [value, setValue] = useState<string>(node.attrs.answer ?? '');
   const ref = useRef<HTMLSpanElement>(null);
+  const popStyle = usePopPos(ref, open, 270);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (open) window.setTimeout(() => input.current?.focus(), 30);
@@ -61,7 +63,7 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
         {node.attrs.answer || 'word'}
       </span>
       {open && (
-        <span className="gap-pop" contentEditable={false} onKeyDown={(e) => e.stopPropagation()}>
+        <span className="gap-pop" contentEditable={false} style={popStyle} onKeyDown={(e) => e.stopPropagation()}>
           <span className="pop-type">Drag-and-drop gap</span>
           <input
             ref={input}

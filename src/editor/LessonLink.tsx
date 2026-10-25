@@ -40,10 +40,9 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
 
   useLayoutEffect(() => {
     if (!open) return;
-    const host = ref.current?.offsetParent as HTMLElement | null;
     const c = editor.view.coordsAtPos(editor.state.selection.from);
-    const h = host?.getBoundingClientRect() ?? { left: 0, top: 0, width: 600 };
-    setPos({ top: c.bottom - h.top + 8, left: Math.max(0, Math.min(c.left - h.left - 20, (h.width ?? 600) - 320)) });
+    const room = window.innerHeight - c.bottom - 16;
+    setPos({ top: room > 300 ? c.bottom + 8 : Math.max(8, c.top - 8 - Math.min(560, window.innerHeight * 0.7)), left: Math.max(8, Math.min(c.left - 20, window.innerWidth - 320 - 8)) });
   }, [open, editor]);
 
   useEffect(() => {
@@ -66,7 +65,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
   const list = places.filter((p) => (p.title || '').toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
-    <div ref={ref} className="def-pop link-pop" style={{ top: pos.top, left: pos.left }} role="dialog" aria-label="Link">
+    <div ref={ref} className="def-pop link-pop" style={{ position: 'fixed', top: pos.top, left: pos.left }} role="dialog" aria-label="Link">
       <span className="pop-type">Link to</span>
       <div className="seg small-seg" role="tablist" aria-label="Link to">
         <button type="button" role="tab" aria-selected className="on">

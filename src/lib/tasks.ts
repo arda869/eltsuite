@@ -94,3 +94,13 @@ export async function saveResponses(classId: string, base: Omit<AnswerDoc, 'chec
     { merge: true },
   );
 }
+
+// Teacher notes for a task, kept apart from what learners can read.
+export const notesRef = (classId: string, itemId: string, taskId: string) => doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'private', 'notes');
+export async function loadNotes(classId: string, itemId: string, taskId: string) {
+  const s = await getDoc(notesRef(classId, itemId, taskId));
+  return (s.data()?.text as string) ?? '';
+}
+export async function saveNotes(classId: string, itemId: string, taskId: string, text: string) {
+  await setDoc(notesRef(classId, itemId, taskId), { text, updatedAt: serverTimestamp() });
+}

@@ -1,16 +1,19 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { isLearnerEmail } from './learners';
 
-export type Profile =
+export type TextSize = 'S' | 'M' | 'L' | 'XL';
+export type Profile = (
   | { role: 'teacher'; displayName?: string }
-  | { role: 'learner'; classId: string; learnerId: string; displayName: string };
+  | { role: 'learner'; classId: string; learnerId: string; displayName: string }
+) & { textSize?: TextSize };
 
-type AuthState = { user: User | null; profile: Profile | null; ready: boolean; signOutNow: () => Promise<void> };
+type AuthState = { user: User | null; profile: Profile | null; ready: boolean; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void };
 
-const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, signOutNow: async () => {} });
+const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, signOutNow: async () => {}, setTextSize: () => {} });
+export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
 async function loadProfile(user: User): Promise<Profile | null> {
   const ref = doc(db, 'users', user.uid);
@@ -46,7 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  return <Ctx.Provider value={{ user, profile, ready, signOutNow: () => signOut(auth) }}>{children}</Ctx.Provider>;
+  const setTextSize = (t: TextSize) => {
+    setProfile((p) => (p ? { ...p, textSize: t } : p));
+    if (user) updateDoc(doc(db, 'users', user.uid), { textSize: t }).catch(() => {});
+  };
+  return <Ctx.Provider value={{ user, profile, ready, signOutNow: () => signOut(auth), setTextSize }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

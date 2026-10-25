@@ -1,5 +1,6 @@
 import { Mark, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
+import { usePopPos } from './usePopPos';
 import { useEffect, useRef, useState } from 'react';
 
 // Text colour, from a short palette that sits well with the rest of the page.
@@ -62,6 +63,7 @@ export function TextColorTool({ editor }: { editor: Editor }) {
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
   const cur = editor.isActive('textColor') ? textColor(editor.getAttributes('textColor').color) : undefined;
+  const popStyle = usePopPos(ref, open, 260);
   return (
     <span className="hl-tool" ref={ref}>
       <button type="button" className={'tool' + (cur ? ' on' : '')} title="Text colour" aria-label="Text colour" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)}>
@@ -70,7 +72,7 @@ export function TextColorTool({ editor }: { editor: Editor }) {
         </span>
       </button>
       {open && (
-        <span className="hl-pop">
+        <span className="hl-pop" style={popStyle}>
           <ColorSwatches editor={editor} onDone={() => setOpen(false)} />
         </span>
       )}

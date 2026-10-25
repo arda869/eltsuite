@@ -54,9 +54,8 @@ export function EditorContextMenu({
       const obj = target.closest('[data-node-view-wrapper]') as HTMLElement | null;
       const inText = target.closest('[data-node-view-content]');
       if (obj && pm.contains(obj) && !(inText && obj.contains(inText))) {
-        const h0 = host.getBoundingClientRect();
-        const x0 = Math.min(e.clientX - h0.left, h0.width - 250);
-        const y0 = e.clientY - h0.top;
+        const x0 = Math.min(e.clientX, window.innerWidth - 260);
+        const y0 = Math.min(e.clientY, window.innerHeight - 220);
         window.setTimeout(() => {
           try {
             const pos = editor.view.posAtDOM(obj, 0);
@@ -73,9 +72,8 @@ export function EditorContextMenu({
       }
       const hit = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
       const { from, to, empty } = editor.state.selection;
-      const h = host.getBoundingClientRect();
-      const x = Math.min(e.clientX - h.left, h.width - 250);
-      const y = e.clientY - h.top;
+      const x = Math.min(e.clientX, window.innerWidth - 260);
+      const y = Math.max(8, Math.min(e.clientY, window.innerHeight - 560));
       // Wait for the browser to finish its own click handling, which can move the cursor.
       window.setTimeout(() => {
         if (hit && (empty || hit.pos < from || hit.pos > to)) {
@@ -166,13 +164,13 @@ export function EditorContextMenu({
   const clean = visible.filter((i, k) => i !== 'sep' || (k > 0 && k < visible.length - 1 && visible[k - 1] !== 'sep'));
   if (!clean.some((i) => i !== 'sep')) {
     return (
-      <div ref={ref} className="ctx-menu" style={{ left: at.x, top: at.y }} role="menu">
+      <div ref={ref} className="ctx-menu" style={{ position: 'fixed', left: at.x, top: at.y, maxHeight: 'calc(100vh - 16px)', overflow: 'auto' }} role="menu">
         <span className="ctx-empty">Select a word or phrase to see options. Type / to add questions.</span>
       </div>
     );
   }
   return (
-    <div ref={ref} className="ctx-menu" style={{ left: at.x, top: at.y }} role="menu" onMouseDown={(e) => e.preventDefault()}>
+    <div ref={ref} className="ctx-menu" style={{ position: 'fixed', left: at.x, top: at.y, maxHeight: 'calc(100vh - 16px)', overflow: 'auto' }} role="menu" onMouseDown={(e) => e.preventDefault()}>
       {has && (
         <span className="ctx-hl">
           <span className="ctx-hl-label">Highlight</span>

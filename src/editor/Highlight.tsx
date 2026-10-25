@@ -1,5 +1,6 @@
 import { Mark, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
+import { usePopPos } from './usePopPos';
 import { useEffect, useRef, useState } from 'react';
 
 // Marker-pen highlighting in a few soft colours.
@@ -82,6 +83,7 @@ export function HighlightTool({ editor }: { editor: Editor }) {
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
   const active = editor.isActive('highlight');
+  const popStyle = usePopPos(ref, open, 240);
   return (
     <span className="hl-tool" ref={ref}>
       <button
@@ -101,7 +103,7 @@ export function HighlightTool({ editor }: { editor: Editor }) {
         ▾
       </button>
       {open && (
-        <span className="hl-pop" onClick={() => setLast(editor.getAttributes('highlight').color ?? last)}>
+        <span className="hl-pop" style={popStyle} onClick={() => setLast(editor.getAttributes('highlight').color ?? last)}>
           <Swatches editor={editor} onDone={() => (setLast(editor.getAttributes('highlight').color || last), setOpen(false))} />
         </span>
       )}

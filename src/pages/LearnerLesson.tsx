@@ -19,7 +19,9 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
-import { isLive, liveRef, type LiveState } from '../lib/live';
+import { isLive, isSynced, liveRef, revealedCount, revealedSubset, type LiveState } from '../lib/live';
+import { TextSizeControl } from '../components/TextSizeControl';
+import { TEXT_SCALE } from '../lib/auth';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
 import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
@@ -61,7 +63,22 @@ export function LearnerLesson() {
     return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
   }, [classId]);
   usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current });
-  const teacherAt = isLive(live) && live?.itemId === itemId && live?.showMarker !== false ? live.taskId : '';
+  const synced = isSynced(live, itemId);
+  const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? live!.taskId : '';
+  // When the teacher syncs the class, everyone follows the teacher's task.
+  useEffect(() => {
+    if (synced && live?.taskId && tasks.some((t) => t.id === live.taskId)) setCurrent(live.taskId);
+  }, [synced, live?.taskId, tasks]);
+  const go = (id: string) => !synced && setCurrent(id);
+
+  // Answers the teacher has revealed to the class for this task.
+  const revealN = revealedCount(live, itemId, current);
+  const [revealKey, setRevealKey] = useState<AnswerKey | null>(null);
+  useEffect(() => {
+    setRevealKey(null);
+    if (!revealN || !classId || !current) return;
+    loadKey(classId, itemId, current).then(setRevealKey).catch(() => setRevealKey(null));
+  }, [revealN !== 0, classId, itemId, current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load this learner's saved answers for the current task.
   useEffect(() => {
@@ -189,11 +206,14 @@ export function LearnerLesson() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
+        <span className="right-push" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <TextSizeControl />
         {c?.meeting?.url && c.meeting.visibility === 'always' && (
           <a className="btn small-btn right-push" href={c.meeting.url} target="_blank" rel="noopener noreferrer">
             Join call
           </a>
         )}
+        </span>
       </header>
 
       <div className="lesson-layout learner">
@@ -208,7 +228,7 @@ export function LearnerLesson() {
               </span>
             ) : (
             <div key={t.id} className={'task-row' + (t.id === current ? ' on' : '')}>
-              <button type="button" className={'task-pick' + (t.locked ? ' is-locked' : '')} disabled={t.locked} title={t.locked ? 'Your teacher will open this task soon' : undefined} onClick={() => setCurrent(t.id)}>
+              <button type="button" className={'task-pick' + (t.locked ? ' is-locked' : '')} disabled={t.locked || (synced && t.id !== current)} title={t.locked ? 'Your teacher will open this task soon' : synced ? 'Your teacher is leading the class' : undefined} onClick={() => go(t.id)}>
                 <span>{t.title}</span>
                 {t.locked && (
                   <svg className="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-label="locked">
@@ -229,7 +249,7 @@ export function LearnerLesson() {
           {tasks.length === 0 && <span className="hint" style={{ padding: '0 10px' }}>No tasks yet.</span>}
         </nav>
 
-        <main className="task-frame">
+        <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
           {task ? (
             <div className="frame-inner">
               <div className="frame-head">
@@ -238,8 +258,14 @@ export function LearnerLesson() {
 
               </div>
               <div className="frame-body">
-                {teacherAt && teacherAt !== task.id && (
-                  <button type="button" className="teacher-banner" onClick={() => setCurrent(teacherAt)}>
+                {synced && (
+                  <div className="sync-banner" role="status">
+                    <span className="live-dot" aria-hidden="true" />
+                    Following {live?.teacherName ?? 'your teacher'}. Your screen moves with the class.
+                  </div>
+                )}
+                {!synced && teacherAt && teacherAt !== task.id && (
+                  <button type="button" className="teacher-banner" onClick={() => go(teacherAt)}>
                     <span className="live-dot" aria-hidden="true" />
                     {live?.teacherName ?? 'Your teacher'} is on “{tasks.find((t) => t.id === teacherAt)?.title ?? 'another task'}”. Go there
                   </button>
@@ -248,6 +274,7 @@ export function LearnerLesson() {
                   content={task.content}
                   responses={responses}
                   onChange={change}
+                  revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN) : null}
                   results={checked ? key : null}
                   disabled={task.locked}
                   hideAnswers={task.afterCheck === 'retry'}
@@ -290,7 +317,7 @@ export function LearnerLesson() {
                   </span>
                 )}
                 <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                  <button className="btn" disabled={!prevOpen} onClick={() => prevOpen && setCurrent(prevOpen.id)}>
+                  <button className="btn" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)}>
                     Previous
                   </button>
                   {qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
@@ -307,7 +334,7 @@ export function LearnerLesson() {
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : 'Check answers'}
                       </button>
                     ))}
-                  <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={!nextOpen} onClick={() => nextOpen && setCurrent(nextOpen.id)}>
+                  <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)}>
                     Next
                   </button>
                 </span>

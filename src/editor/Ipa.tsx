@@ -2,6 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { Grip } from './nodes';
+import { usePopPos } from './usePopPos';
 import { useEditorClass } from './context';
 import { MAX_AUDIO_BYTES, playAudio, saveAudio, speak } from '../lib/media';
 
@@ -216,6 +217,7 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
   const [open, setOpen] = useState(!text);
   const ref = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const popStyle = usePopPos(ref, open, 440);
 
   useEffect(() => {
     if (open) window.setTimeout(() => inputRef.current?.focus(), 30);
@@ -248,7 +250,7 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
         {text && listen !== 'off' && <span className="ipa-has-audio" title="Learners can listen">{SPEAKER}</span>}
       </span>
       {open && (
-        <span className="gap-pop ipa-pop" contentEditable={false}>
+        <span className="gap-pop ipa-pop" contentEditable={false} style={popStyle}>
           <span className="ipa-pop-head">
             <span className="pop-type">IPA</span>
             <span className="seg small-seg" role="radiogroup" aria-label="Accent">
