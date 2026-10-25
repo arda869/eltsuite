@@ -647,7 +647,10 @@ export function TaskRenderer({ content, responses, onChange, results, disabled, 
       .map((id) => {
         const e = results[id];
         if (!e || scoreQuestion(e, responses[id]).got === scoreQuestion(e, responses[id]).max) return null;
-        const text = hideAnswers ? e.hint : e.feedback;
+        // Feedback written for the option the learner picked, otherwise the question's feedback.
+        const r = responses[id];
+        const optText = !hideAnswers && (e.kind === 'mcq' || e.kind === 'multi') && e.optFb ? (Array.isArray(r) ? (r as number[]) : [Number(r)]).map((x) => e.optFb?.[x]).filter((x) => x?.trim()).join(' ') : '';
+        const text = hideAnswers ? e.hint : optText || e.feedback;
         return text ? { id, text } : null;
       })
       .filter(Boolean) as { id: string; text: string }[];

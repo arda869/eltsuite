@@ -103,8 +103,15 @@ function TopicTitle({ c, t }: { c: ClassDoc; t: Topic }) {
   );
 }
 
-function ItemRow({ c, item }: { c: ClassDoc; item: Item }) {
+function ItemRow({ c, item, list, topics }: { c: ClassDoc; item: Item; list: Item[]; topics: Topic[] }) {
   const [copying, setCopying] = useState(false);
+  const i = list.findIndex((x) => x.id === item.id);
+  // Move up or down within its topic by swapping order with the neighbour.
+  const move = async (d: number) => {
+    const other = list[i + d];
+    if (!other) return;
+    await Promise.all([updateItem(c.id, item.id, { order: other.order }), updateItem(c.id, other.id, { order: item.order === other.order ? item.order + d : item.order })]);
+  };
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   return (
@@ -114,6 +121,22 @@ function ItemRow({ c, item }: { c: ClassDoc; item: Item }) {
       <Link to={`/class/${c.id}/lesson/${item.id}`} className="title">
         {item.title}
       </Link>
+      <span className="item-move">
+        <button type="button" className="icon-btn" aria-label="Move up" title="Move up" disabled={i <= 0} onClick={() => move(-1)}>
+          ↑
+        </button>
+        <button type="button" className="icon-btn" aria-label="Move down" title="Move down" disabled={i < 0 || i >= list.length - 1} onClick={() => move(1)}>
+          ↓
+        </button>
+        <select className="move-topic" value={item.topicId ?? ''} aria-label="Move to topic" title="Move to topic" onChange={(e) => updateItem(c.id, item.id, { topicId: e.target.value || null, order: Date.now() % 100000 })}>
+          {topics.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+          <option value="">Unsorted</option>
+        </select>
+      </span>
       <span className="status">{msg || [item.hidden ? 'Hidden from learners' : '', item.locked ? 'Locked' : ''].filter(Boolean).join(' · ')}</span>
       <button
         type="button"
@@ -170,6 +193,31 @@ function ItemRow({ c, item }: { c: ClassDoc; item: Item }) {
 export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[]; items: Item[] }) {
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
   const [importing, setImporting] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('ll.folded.' + c.id) ?? '[]'));
+    } catch {
+      return new Set();
+    }
+  });
+  const toggleFold = (id: string) =>
+    setCollapsed((cur) => {
+      const n = new Set(cur);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      try {
+        localStorage.setItem('ll.folded.' + c.id, JSON.stringify([...n]));
+      } catch {
+        /* ignore */
+      }
+      return n;
+    });
+  const moveTopic = async (t: Topic, d: number) => {
+    const j = sortedTopics.findIndex((x) => x.id === t.id) + d;
+    const other = sortedTopics[j];
+    if (!other) return;
+    await Promise.all([updateTopic(c.id, t.id, { order: other.order }), updateTopic(c.id, other.id, { order: t.order === other.order ? t.order + d : t.order })]);
+  };
   const [exporting, setExporting] = useState(false);
   const byTopic = (id: string | null) => items.filter((i) => (i.topicId ?? null) === id).sort((a, b) => a.order - b.order);
   const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId));
@@ -208,8 +256,11 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
       {sortedTopics.map((t) => {
         const list = byTopic(t.id);
         return (
-          <section key={t.id} className="topic" aria-label={t.name}>
+          <section key={t.id} className={'topic' + (collapsed.has(t.id) ? ' collapsed' : '')} aria-label={t.name}>
             <div className="topic-head">
+              <button type="button" className="icon-btn topic-fold" aria-expanded={!collapsed.has(t.id)} aria-label={collapsed.has(t.id) ? 'Expand topic' : 'Collapse topic'} onClick={() => toggleFold(t.id)}>
+                {collapsed.has(t.id) ? '▸' : '▾'}
+              </button>
               <TopicTitle c={c} t={t} />
               <span className="hint">
                 {list.length} {list.length === 1 ? 'item' : 'items'}
@@ -217,6 +268,12 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
                 {t.locked ? ' · locked' : ''}
               </span>
               <span className="topic-acts">
+                <button type="button" className="icon-btn" aria-label="Move topic up" title="Move topic up" onClick={() => moveTopic(t, -1)}>
+                  ↑
+                </button>
+                <button type="button" className="icon-btn" aria-label="Move topic down" title="Move topic down" onClick={() => moveTopic(t, 1)}>
+                  ↓
+                </button>
                 <button type="button" className={'icon-btn' + (t.hidden ? ' on' : '')} title={t.hidden ? 'Show this topic to learners' : 'Hide this whole topic from learners'} aria-label={t.hidden ? 'Show topic' : 'Hide topic'} onClick={() => updateTopic(c.id, t.id, { hidden: !t.hidden })}>
                   {t.hidden ? EYE_OFF : EYE}
                 </button>
@@ -237,7 +294,7 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
             </div>
             <ul className="items">
               {list.map((i) => (
-                <ItemRow key={i.id} c={c} item={i} />
+                <ItemRow key={i.id} c={c} item={i} list={list} topics={sortedTopics} />
               ))}
             </ul>
             <div className="indent">
@@ -254,13 +311,13 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
           </div>
           <ul className="items">
             {unsorted.map((i) => (
-              <ItemRow key={i.id} c={c} item={i} />
+              <ItemRow key={i.id} c={c} item={i} list={unsorted} topics={sortedTopics} />
             ))}
           </ul>
         </section>
       )}
 
-      <InlineAdd label="+ New topic" placeholder="For example: Unit 4 · Present perfect" onAdd={(name) => addTopic(c.id, name, nextOrder(topics))} />
+      <InlineAdd label="+ New topic" placeholder="For example: Unit 4 · Present perfect" onAdd={async (name) => void (await addTopic(c.id, name, nextOrder(topics)))} />
     </div>
   );
 }

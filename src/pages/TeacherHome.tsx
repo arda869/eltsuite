@@ -7,6 +7,7 @@ import { updateClass, type ClassDoc, type Item } from '../lib/classes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
 import { theme } from '../lib/themes';
 import { DELETE_AFTER_DAYS, purgeClass, restoreClass } from '../lib/deletion';
+import { createDemoClass } from '../lib/demo';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
 
@@ -44,6 +45,19 @@ export function TeacherHome() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [demoStep, setDemoStep] = useState('');
+  async function makeDemo() {
+    if (!user) return;
+    try {
+      const { classId } = await createDemoClass(user.uid, setDemoStep);
+      navigate(`/class/${classId}`);
+    } catch (e) {
+      console.error(e);
+      setError('The demo class could not be created. Please try again.');
+    } finally {
+      setDemoStep('');
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -136,6 +150,11 @@ export function TeacherHome() {
                   {showArchived ? 'Hide archived classes' : `Archived classes (${archived.length})`}
                 </button>
               )}
+              {active.length > 0 && !active.some((c) => c.name === 'Demo class') && (
+                <button className="btn link small" disabled={!!demoStep} onClick={makeDemo}>
+                  {demoStep ? demoStep + '…' : 'Add a demo class'}
+                </button>
+              )}
               {active.length > 0 && (
                 <button className="btn" onClick={() => setCreating(true)}>
                   + New class
@@ -181,9 +200,15 @@ export function TeacherHome() {
             <div className="empty">
               <h2>Create your first class</h2>
               <p>A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.</p>
-              <button className="btn primary" onClick={() => setCreating(true)}>
-                + New class
-              </button>
+              <span style={{ display: 'flex', gap: 8 }}>
+                <button className="btn primary" onClick={() => setCreating(true)}>
+                  + New class
+                </button>
+                <button className="btn" disabled={!!demoStep} onClick={makeDemo}>
+                  {demoStep ? demoStep + '…' : 'Try a demo class'}
+                </button>
+              </span>
+              <span className="hint">The demo class has 6 learners and a sample lesson that uses every question type.</span>
             </div>
           ) : (
             <div className="classes">

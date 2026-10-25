@@ -167,7 +167,7 @@ export function LessonEditor() {
   const [copyMsg, setCopyMsg] = useState('');
   const panels = usePanels('ll.teacherPanels');
   const [present, setPresent] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<'answers' | 'notes'>('answers');
   const [showGrid, setShowGrid] = useState(false);
   // Teacher notes for the selected task (only the teacher can read them).
   const [notes, setNotes] = useState('');
@@ -186,6 +186,12 @@ export function LessonEditor() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
+        e.preventDefault();
+        flush();
+        setPreview((v) => !v);
+        return;
+      }
       if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === '?') return setHelp((h) => !h);
       if (e.key === 'Escape') return (setHelp(false), setPresent(false));
@@ -195,12 +201,17 @@ export function LessonEditor() {
       if (e.key === 'ArrowRight' && i < list.length - 1) select(list[i + 1].id);
       else if (e.key === 'ArrowLeft' && i > 0) select(list[i - 1].id);
       else if (e.key === 's' || e.key === 'S') toggleSync();
-      else if (e.key === 'R') revealAll();
-      else if (e.key === 'r') revealNext();
-      else if (e.key === 'h' || e.key === 'H') hideAnswers();
+      else if (e.key === 'R') (revealN < 0 ? hideAnswers() : revealAll());
+      else if (e.key === 'r') (revealN < 0 || revealN >= qCount ? hideAnswers() : revealNext());
+      else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
+      else if (e.key === 'c' || e.key === 'C') panels.toggleRight();
       else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
       else if ((e.key === 'p' || e.key === 'P')) setPresent((v) => !v);
-      else if ((e.key === 'n' || e.key === 'N')) setNotesOpen((v) => !v);
+      else if (e.key === 'n' || e.key === 'N') {
+        if (!panels.right) panels.toggleRight();
+        if (present) setShowGrid(true);
+        setPanelTab((t) => (t === 'notes' ? 'answers' : 'notes'));
+      }
       else return;
       e.preventDefault();
     };
@@ -491,9 +502,6 @@ export function LessonEditor() {
                 ))}
               </span>
               <span className="live-ctl">
-                <button type="button" className={'btn small-btn' + (notesOpen ? ' on-accent' : '')} onClick={() => setNotesOpen((v) => !v)} title="Shortcut: N">
-                  Notes{notes.trim() ? ' •' : ''}
-                </button>
                 {present && (
                   <button type="button" className={'btn small-btn' + (showGrid ? ' on-accent' : '')} onClick={() => setShowGrid((v) => !v)}>
                     Live answers
@@ -519,12 +527,6 @@ export function LessonEditor() {
                   </span>
                 )}
               </span>
-            </div>
-          )}
-          {teachingHere && notesOpen && (
-            <div className="notes-drawer">
-              <span className="eyebrow">Your notes for this task</span>
-              <textarea value={notes} placeholder="Only you can see these notes." onChange={(e) => changeNotes(e.target.value)} />
             </div>
           )}
           <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
@@ -646,6 +648,10 @@ export function LessonEditor() {
               onSeeLearners={setSeeLearners}
               revealedIds={singles}
               onRevealQuestion={toggleSingle}
+              tab={panelTab}
+              onTab={setPanelTab}
+              notes={notes}
+              onNotes={changeNotes}
             />
           )}
           {task && draft && !(teachingHere && !editWhileTeaching && !preview) && (
@@ -719,6 +725,13 @@ export function LessonEditor() {
                   {task.afterCheck === 'retry' ? 'Learners only see which answers are right or wrong, then try the wrong ones again.' : 'Learners see the correct answers after they check.'}
                 </span>
               </div>
+              <label className="switch-row">
+                <span>
+                  Show the score after checking
+                  <span className="hint">Learners see how many they got right</span>
+                </span>
+                <input type="checkbox" checked={task.showScore !== false} onChange={() => setTaskFlags(classId, itemId, task.id, { showScore: task.showScore === false })} />
+              </label>
               <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
                 Version history
               </button>
@@ -773,15 +786,19 @@ export function LessonEditor() {
             <p className="hint" style={{ margin: 0 }}>While teaching. They don’t work while you are typing.</p>
             <dl>
               {[
-                ['← →', 'Previous or next task'],
+                ['← →', 'Previous or next task (moves the class when synced)'],
                 ['S', 'Sync the class to you, or stop'],
-                ['R', 'Reveal the next answer'],
-                ['Shift + R', 'Reveal all answers'],
-                ['H', 'Hide the answers again'],
+                ['R', 'Reveal the next answer (again at the end to hide)'],
+                ['Shift + R', 'Reveal all answers, or hide them'],
+                ['H', 'Hide or show this task'],
                 ['L', 'Lock or unlock this task'],
-                ['N', 'Show or hide your notes'],
+                ['C', 'Show or hide the class panel'],
+                ['N', 'Teacher notes'],
                 ['P', 'Present mode'],
                 ['Esc', 'Leave present mode, close this'],
+                ['⌘ + K', 'Editor: link the selected words'],
+                ['Alt + ↑ ↓', 'Editor: move the block up or down'],
+                ['⌘ + Shift + P', 'Preview as learner'],
                 ['?', 'Show these shortcuts'],
               ].map(([k, d]) => (
                 <div key={k} className="sc-row">

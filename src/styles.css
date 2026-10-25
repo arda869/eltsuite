@@ -1642,3 +1642,13 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .menu-legal a { color: var(--soft); }
 .legal main h2 { font-size: 16px; margin: 10px 0 0; }
 .legal main p, .legal main li { font: 15px/1.6 var(--serif); }
+.lp-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 999px; background: #f1f1ef; align-self: flex-start; }
+.lp-tabs button { border: 0; background: transparent; border-radius: 999px; padding: 5px 12px; font: 600 12px var(--sans); color: var(--muted); cursor: pointer; }
+.lp-tabs button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.lp-notes { min-height: 240px; border: 1px solid var(--hair-strong); border-radius: 10px; padding: 10px 12px; font: 14px/1.55 var(--sans); resize: vertical; background: #fbfaf7; field-sizing: content; }
+.item-move { display: inline-flex; align-items: center; gap: 0; opacity: 0; transition: opacity 0.12s; }
+.item:hover .item-move, .item:focus-within .item-move { opacity: 1; }
+.move-topic { height: 26px; border: 1px solid var(--hair-strong); border-radius: 6px; font: 12px var(--sans); background: #fff; max-width: 140px; margin-left: 4px; }
+.topic.collapsed .items, .topic.collapsed .indent { display: none; }
+.topic-fold { width: 22px; font-size: 12px; color: var(--muted); }
+.opt-fb { flex-basis: 100%; margin-left: 30px; border: 0; border-bottom: 1px dashed var(--hair-strong); font: 12px var(--sans); padding: 2px 0; outline: none; background: transparent; } .mcq-option { flex-wrap: wrap; }

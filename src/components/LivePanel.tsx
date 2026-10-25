@@ -22,6 +22,10 @@ type Props = {
   onSeeLearners: (v: boolean) => void;
   revealedIds?: string[];
   onRevealQuestion?: (qid: string) => void;
+  tab?: 'answers' | 'notes';
+  onTab?: (t: 'answers' | 'notes') => void;
+  notes?: string;
+  onNotes?: (v: string) => void;
 };
 
 // Find every question node by id, so answers can be shown as words rather than option numbers.
@@ -61,7 +65,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes }: Props) {
   const [detail, setDetail] = useState<Learner | null>(null);
   const [roster, setRoster] = useState<Learner[]>([]);
   const [answers, setAnswers] = useState<AnswerDoc[]>([]);
@@ -105,7 +109,18 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
   return (
     <aside className="task-side live-panel" aria-label="Live answers">
       {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} />}
-      <h2>Live answers</h2>
+      <div className="lp-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'answers'} className={tab === 'answers' ? 'on' : ''} onClick={() => onTab?.('answers')}>
+          Live answers
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'notes'} className={tab === 'notes' ? 'on' : ''} onClick={() => onTab?.('notes')} title="Shortcut: N">
+          Teacher notes{notes.trim() ? ' •' : ''}
+        </button>
+      </div>
+      {tab === 'notes' ? (
+        <textarea className="lp-notes" value={notes} placeholder="Notes for this task. Only you can see them." onChange={(e) => onNotes?.(e.target.value)} />
+      ) : (
+      <>
       <span className="hint">
         {started} of {roster.length} started · {done} checked
       </span>
@@ -178,6 +193,8 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
         </div>
       )}
 
+      </>
+      )}
       <h2>While teaching</h2>
       <label className="switch-row">
         <span>

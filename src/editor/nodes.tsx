@@ -316,6 +316,7 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
   const popStyle = usePopPos(ref, open, 330);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
+  const [showOptFb, setShowOptFb] = useState<boolean>(() => ((node.attrs.optFeedback ?? []) as string[]).some((x) => !!x?.trim()));
 
   useEffect(() => {
     if (open) window.setTimeout(() => inputs.current[0]?.focus(), 30);
@@ -404,8 +405,24 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
                 }}
               />
               {isRight(i) && <span className="right-note">correct</span>}
+              {showOptFb && !isRight(i) && o.trim() && (
+                <input
+                  className="opt-fb"
+                  value={(node.attrs.optFeedback ?? [])[i] ?? ''}
+                  placeholder="Feedback if a learner picks this"
+                  onChange={(e) => {
+                    const fb = [...(node.attrs.optFeedback ?? [])];
+                    while (fb.length < options.length) fb.push('');
+                    fb[i] = e.target.value;
+                    updateAttributes({ optFeedback: fb });
+                  }}
+                />
+              )}
             </span>
           ))}
+          <button type="button" className="btn link small" style={{ alignSelf: 'flex-start' }} onClick={() => setShowOptFb((v) => !v)}>
+            {showOptFb ? 'Hide feedback for each option' : '+ Feedback for each wrong option'}
+          </button>
           <label className="check-row">
             <input
               type="checkbox"
@@ -437,6 +454,7 @@ export const Choice = Node.create({
     return {
       id: { default: null },
       options: { default: ['', '', ''] },
+      optFeedback: { default: [] },
       correct: { default: -1 },
       multi: { default: false },
       display: { default: 'letters' },

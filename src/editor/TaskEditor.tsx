@@ -21,6 +21,7 @@ import { BLOCKS } from './coursebook';
 import Link from '@tiptap/extension-link';
 import { EditorContextMenu } from './ContextMenu';
 import { EditorClassContext } from './context';
+import { Selection } from '@tiptap/pm/state';
 import { Highlight, HighlightTool } from './Highlight';
 import { TextColor, TextColorTool } from './TextColor';
 import { IconNode, IconTool } from './Icons';
@@ -245,6 +246,42 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const mention = useMentionMenu(editor, classmates);
+  // Editor shortcuts: ⌘K link, Alt+↑/↓ move the current block.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const key = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        if (!editor.state.selection.empty || editor.isActive('lessonLink') || editor.isActive('link')) setLinkOpen(true);
+        return;
+      }
+      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        const { state } = editor;
+        const $f = state.selection.$from;
+        const index = $f.index(0);
+        const doc = state.doc;
+        const j = e.key === 'ArrowUp' ? index - 1 : index + 1;
+        if (j < 0 || j >= doc.childCount) return;
+        e.preventDefault();
+        const a = doc.child(Math.min(index, j));
+        const b = doc.child(Math.max(index, j));
+        let pos = 0;
+        for (let k = 0; k < Math.min(index, j); k++) pos += doc.child(k).nodeSize;
+        const tr = state.tr.replaceWith(pos, pos + a.nodeSize + b.nodeSize, [b, a]);
+        const offset = state.selection.from - (pos + (index < j ? 0 : a.nodeSize));
+        const newStart = index < j ? pos + b.nodeSize : pos;
+        try {
+          tr.setSelection(Selection.near(tr.doc.resolve(Math.max(0, Math.min(tr.doc.content.size, newStart + offset)))));
+        } catch {
+          /* keep the cursor where it lands */
+        }
+        editor.view.dispatch(tr.scrollIntoView());
+      }
+    };
+    dom.addEventListener('keydown', key);
+    return () => dom.removeEventListener('keydown', key);
+  }, [editor]);
   const classCtx = useMemo(() => ({ classmates, classId }), [classmates, classId]);
 
   useEffect(() => {

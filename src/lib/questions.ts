@@ -3,8 +3,8 @@ import type { JSONContent } from '@tiptap/react';
 
 export type KeyEntry = (
   | { kind: 'gap'; answers: string[]; cs?: boolean }
-  | { kind: 'mcq'; correct: number }
-  | { kind: 'multi'; correct: number[] }
+  | { kind: 'mcq'; correct: number; optFb?: string[] }
+  | { kind: 'multi'; correct: number[]; optFb?: string[] }
   | { kind: 'match'; map: number[] } // for each left item, the index of the matching right item (as shown)
   | { kind: 'drop'; answer: string }
   | { kind: 'order'; answer: string }
@@ -54,13 +54,15 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
         out.attrs = { ...a, answers: [] };
         delete (out.attrs as Record<string, unknown>).caseSensitive;
       } else if (n.type === 'mcq' || n.type === 'choice') {
+        const optFb = (a.optFeedback ?? []).some((x: string) => x?.trim()) ? (a.optFeedback as string[]) : undefined;
         if (a.multi) {
-          key[id] = { kind: 'multi', correct: Array.isArray(a.correct) ? a.correct : [] };
+          key[id] = { kind: 'multi', correct: Array.isArray(a.correct) ? a.correct : [], ...(optFb ? { optFb } : {}) };
           out.attrs = { ...a, correct: [] };
         } else {
-          key[id] = { kind: 'mcq', correct: typeof a.correct === 'number' ? a.correct : -1 };
+          key[id] = { kind: 'mcq', correct: typeof a.correct === 'number' ? a.correct : -1, ...(optFb ? { optFb } : {}) };
           out.attrs = { ...a, correct: -1 };
         }
+        delete (out.attrs as Record<string, unknown>).optFeedback;
       } else if (n.type === 'match') {
         const pairs: { left: string; right: string }[] = (a.pairs ?? []).filter((p: { left: string; right: string }) => p.left.trim() || p.right.trim());
         const extras: string[] = (a.extras ?? []).filter((x: string) => x.trim());
@@ -123,7 +125,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
     const k = a.id ? key[a.id] : undefined;
     if (k) {
       if (n.type === 'gap' && k.kind === 'gap') out.attrs = { ...a, answers: k.answers, caseSensitive: !!k.cs };
-      if ((n.type === 'mcq' || n.type === 'choice') && (k.kind === 'mcq' || k.kind === 'multi')) out.attrs = { ...a, correct: k.correct };
+      if ((n.type === 'mcq' || n.type === 'choice') && (k.kind === 'mcq' || k.kind === 'multi')) out.attrs = { ...a, correct: k.correct, optFeedback: k.optFb ?? [] };
       if (n.type === 'match' && k.kind === 'match') {
         const right: string[] = a.right ?? [];
         const usedIdx = new Set(k.map);
@@ -241,8 +243,12 @@ export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: 
     case 'mcq':
       return { got: isAnswered(r) && Number(r) === entry.correct ? 1 : 0, max: 1 };
     case 'multi': {
-      const chosen = Array.isArray(r) ? [...r].sort().join(',') : '';
-      return { got: chosen && chosen === [...entry.correct].sort().join(',') ? 1 : 0, max: 1 };
+      // Partial credit: right picks minus wrong picks, out of the number of right answers.
+      const picked = Array.isArray(r) ? (r as number[]) : [];
+      if (!entry.correct.length) return { got: 0, max: 1 };
+      const right = picked.filter((x) => entry.correct.includes(x)).length;
+      const wrong = picked.length - right;
+      return { got: Math.max(0, Math.round(((right - wrong) / entry.correct.length) * 100) / 100), max: 1 };
     }
     case 'match': {
       const arr = Array.isArray(r) ? r : [];

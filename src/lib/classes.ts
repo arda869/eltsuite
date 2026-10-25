@@ -88,7 +88,9 @@ export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'na
 // Topics and items ------------------------------------------------------------
 
 export async function addTopic(classId: string, name: string, order: number) {
-  await setDoc(doc(collection(db, 'classes', classId, 'topics')), { name, order, createdAt: serverTimestamp() });
+  const ref = doc(collection(db, 'classes', classId, 'topics'));
+  await setDoc(ref, { name, order, createdAt: serverTimestamp() });
+  return ref.id;
 }
 
 export const renameTopic = (classId: string, topicId: string, name: string) =>

@@ -213,7 +213,7 @@ export function LearnerLesson() {
   const prevOpen = [...tasks.slice(0, Math.max(0, index))].reverse().find((t) => !t.locked && t.kind !== 'section');
   const nextOpen = tasks.slice(index + 1).find((t) => !t.locked && t.kind !== 'section');
   const th = theme(c?.themeColor);
-  const showScore = true;
+  const showScore = task?.showScore !== false;
 
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
@@ -337,7 +337,7 @@ export function LearnerLesson() {
                   <span className="score">
                     {result.total > 0 ? (
                       <>
-                        <span className="big">{score}</span> of {result.total} correct
+                        <span className="big">{Math.round(score * 10) / 10}</span> of {result.total} correct
                       </>
                     ) : null}
                     {result.hasWriting && <span className="hint">{result.total > 0 ? ' · ' : ''}Your writing has gone to your teacher</span>}
