@@ -45,7 +45,7 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
-import { Whiteboard } from '../components/Whiteboard';
+import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
@@ -81,6 +81,7 @@ export function LessonEditor() {
   const [status, setStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [preview, setPreview] = useState(false);
   const [boardView, setBoardView] = useState(false);
+  const [boardPageLocal, setBoardPageLocal] = useState('');
   const [inkMode, setInkMode] = useState<InkMode>('off');
   const [inkColor, setInkColor] = useState(INK_COLORS[0]);
   const [inkHl, setInkHl] = useState(HIGHLIGHTS[0]);
@@ -254,6 +255,16 @@ export function LessonEditor() {
   const prevTask = ti > 0 ? taskList[ti - 1] : undefined;
   const nextTask = ti >= 0 && ti < taskList.length - 1 ? taskList[ti + 1] : undefined;
   const toggleSync = () => setLive(classId, live?.sync ? { sync: false, syncRoom: null, roomTask: null } : { sync: true, taskId: selected, ...(live?.syncRoom ? { roomTask: { [live.syncRoom]: selected } } : {}) });
+  // The lesson board: one board with pages for the whole lesson. While teaching, learners follow the page.
+  const boardPage = (teachingHere && live?.board?.page) || boardPageLocal || firstPage(item);
+  const goBoardPage = (id: string) => {
+    setBoardPageLocal(id);
+    if (teachingHere) setLive(classId, { board: { open: true, page: id } });
+  };
+  const showBoard = (on: boolean) => {
+    setBoardView(on);
+    if (teachingHere) setLive(classId, { board: on ? { open: true, page: boardPage } : null });
+  };
   // With breakout rooms, sync can move one room with the teacher; other rooms stay where they are.
   const syncWho = (room: string | null) => setLive(classId, room ? { syncRoom: room, ...(live?.sync ? { roomTask: { ...(live?.roomTask ?? {}), [room]: selected } } : {}) } : { syncRoom: null, roomTask: null });
 
@@ -324,7 +335,7 @@ export function LessonEditor() {
     setPreview(false);
     setBoardView(false);
     await flush();
-    if (teachingHere) await setLive(classId, { teaching: false, sync: false, boardTask: null });
+    if (teachingHere) await setLive(classId, { teaching: false, sync: false, board: null });
     else
       await setLive(classId, {
         sync: false,
@@ -410,10 +421,7 @@ export function LessonEditor() {
   async function select(id: string) {
     await flush();
     setSelected(id);
-    if (boardView) {
-      setBoardView(false);
-      if (teachingHere) setLive(classId, { boardTask: null });
-    }
+    if (boardView) showBoard(false);
   }
 
   async function newTask() {
@@ -484,7 +492,7 @@ export function LessonEditor() {
         </nav>
         <button
           type="button"
-          className="btn small-btn"
+          className="btn small-btn hide-phone"
           title="Download this lesson as a text file you can edit and import again"
           onClick={async () => {
             await flush();
@@ -494,13 +502,16 @@ export function LessonEditor() {
         >
           Export
         </button>
+        <button type="button" className={'btn small-btn' + (boardView ? ' on-accent' : '')} onClick={() => showBoard(!boardView)} title="The lesson board: pages you can prepare and show in class">
+          Board
+        </button>
         <button type="button" className={'btn small-btn' + (teachingHere && live?.groupSetId ? ' on-accent' : '')} onClick={() => setGroupsOpen(true)} title="Group sets and breakout rooms">
           Groups
         </button>
-        <button type="button" className="btn small-btn" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
+        <button type="button" className="btn small-btn hide-phone" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
           {present ? 'Exit present mode' : 'Present'}
         </button>
-        <button type="button" className="btn small-btn icon-help" onClick={() => setHelp(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+        <button type="button" className="btn small-btn icon-help hide-phone" onClick={() => setHelp(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
           ?
         </button>
         <button type="button" className={'btn small-btn teach-btn' + (teachingHere ? ' on' : '')} onClick={toggleTeaching} title="Shows learners which task you are on">
@@ -740,7 +751,17 @@ export function LessonEditor() {
             </div>
           )}
           <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
-            {!task || !draft ? (
+            {boardView && !(teachingHere && !editWhileTeaching) && item && user ? (
+              <div className="frame-inner">
+                <div className="frame-head">
+                  <h1 className="task-title">Lesson board</h1>
+                  <p className="hint" style={{ margin: 0 }}>Prepare pages before class. When you teach, learners see the page you are on.</p>
+                </div>
+                <div className="frame-body">
+                  <LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} />
+                </div>
+              </div>
+            ) : !task || !draft ? (
               <div className="empty" style={{ padding: 28 }}>
                 <h2>{tasks.length ? 'Loading…' : 'Add the first task'}</h2>
                 {!tasks.length && <p>A lesson is a set of tasks. Each task is like a page: a short title, a bold instruction, then the text and questions.</p>}
@@ -757,16 +778,16 @@ export function LessonEditor() {
                   {draft.instructions && <p className="task-instr">{draft.instructions}</p>}
                   {!preview && (
                     <span className="seg small-seg board-tabs" role="tablist" aria-label="Task or board">
-                      <button type="button" role="tab" aria-selected={!boardView} className={!boardView ? 'on' : ''} onClick={() => (setBoardView(false), setLive(classId, { boardTask: null }))}>
+                      <button type="button" role="tab" aria-selected={!boardView} className={!boardView ? 'on' : ''} onClick={() => showBoard(false)}>
                         Task
                       </button>
-                      <button type="button" role="tab" aria-selected={boardView} className={boardView ? 'on' : ''} onClick={() => (setBoardView(true), setLive(classId, { boardTask: task.id }))}>
+                      <button type="button" role="tab" aria-selected={boardView} className={boardView ? 'on' : ''} onClick={() => showBoard(true)}>
                         Board
                       </button>
                     </span>
                   )}
                 </div>
-                {!preview && boardView && user && <Whiteboard classId={classId} boardId={task.id} uid={user.uid} teacher people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} />}
+                {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
                 {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} />}
                 {!preview && <PickedBanner picked={live?.picked} />}
@@ -813,7 +834,7 @@ export function LessonEditor() {
                 {!preview && <InkBar mode={inkMode} setMode={setInkMode} color={inkColor} setColor={setInkColor} highlight={inkHl} setHighlight={setInkHl} onClear={() => setInkClear((n) => n + 1)} />}
                 <div className="frame-foot">
                   <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
-                  <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                  <span className="foot-acts">
                     {!preview && (
                       <button className="btn" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} title="Shortcut: ←">
                         Previous

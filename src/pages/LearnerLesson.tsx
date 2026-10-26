@@ -37,7 +37,7 @@ import { useClassmates } from '../lib/learners';
 import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
-import { Whiteboard } from '../components/Whiteboard';
+import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { chooseLevel, familyOf, isVariant, roomOf, useGroupSets, useMyLevels, useTaskBodies } from '../lib/groups';
 import { TaskRenderer } from '../components/TaskRenderer';
 
@@ -108,7 +108,7 @@ export function LearnerLesson() {
   const synced = (isSynced(live, itemId) && !live?.syncRoom) || !!roomTarget;
   const syncTo = entryFor(roomTarget ?? live?.taskId)?.id;
   const liveHere = isLive(live) && live?.itemId === itemId;
-  const boardOpen = liveHere && !!live?.boardTask && entryFor(live.boardTask)?.id === current;
+  const boardOpen = liveHere && !!live?.board?.open;
   const [onBoard, setOnBoard] = useState(false);
   useEffect(() => setOnBoard(boardOpen), [boardOpen]); // jump to the board when the teacher opens it
   const pointer = usePointer(liveHere ? classId : '');
@@ -369,7 +369,7 @@ export function LearnerLesson() {
                 )}
 
               </div>
-              {boardOpen && onBoard && user && <Whiteboard classId={classId} boardId={task.id} uid={user.uid} teacher={false} />}
+              {boardOpen && onBoard && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher={false} page={live?.board?.page || firstPage(item)} /></div>}
               <div className="frame-body" ref={bodyRef} hidden={boardOpen && onBoard}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
                 <AnnotationLayer container={bodyRef} annotations={anns} classId={classId} taskId={task.id} canAnnotate={false} me={{ uid: user?.uid ?? '', name: profile?.role === 'learner' ? profile.displayName : '', teacher: false }} />
@@ -386,7 +386,7 @@ export function LearnerLesson() {
                   </button>
                 )}
                 {task.needsLevel && task.levels ? (
-                  <div className="level-pick">
+                  <div className="lvl-choose">
                     <span className="eyebrow">Choose your level</span>
                     <p>Pick the one that feels right for you today.</p>
                     <span className="level-pick-row">
@@ -453,8 +453,8 @@ export function LearnerLesson() {
                     {flags.filter((f) => qs.some((q) => q.id === f)).length > 0 && ` · ${flags.filter((f) => qs.some((q) => q.id === f)).length} flagged`}
                   </span>
                 )}
-                <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                  <button className="btn" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)}>
+                <span className="foot-acts">
+                  <button className="btn foot-prev" aria-label="Previous task" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)}>
                     Previous
                   </button>
                   {qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
@@ -467,11 +467,11 @@ export function LearnerLesson() {
                         </button>
                       )
                     ) : (
-                      <button className="btn primary" disabled={busy || task.locked || answered === 0} onClick={check}>
+                      <button className="btn primary" disabled={busy || task.locked || answered === 0 || !!task.needsLevel} onClick={check}>
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : 'Check answers'}
                       </button>
                     ))}
-                  <button className={'btn' + (checked || qs.length === 0 ? ' primary' : '')} disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)}>
+                  <button className={'btn foot-next' + (checked || qs.length === 0 ? ' primary' : '')} aria-label="Next task" disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)}>
                     Next
                   </button>
                 </span>

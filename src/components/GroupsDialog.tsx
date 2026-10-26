@@ -194,6 +194,7 @@ function SetEditor({ classId, set, roster, active, onActivate, onDeleted }: { cl
   );
   const zone = (gid: string | null, children: React.ReactNode, cls: string) => (
     <div
+      key={gid ?? 'loose'}
       className={cls + (over === (gid ?? 'loose') ? ' over' : '') + (picked ? ' can-drop' : '')}
       onDragOver={(e) => (e.preventDefault(), setOver(gid ?? 'loose'))}
       onDragLeave={() => setOver(null)}
