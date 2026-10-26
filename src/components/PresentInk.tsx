@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { IconBtn } from './UiIcon';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { getStroke } from 'perfect-freehand';
@@ -76,7 +77,9 @@ export function PresentInk({ container, mode, color, highlight, clearKey }: { co
 
   const at = (e: React.PointerEvent) => {
     const r = svg.current!.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top, e.pressure || 0.5];
+    // On-screen distances, scaled back when the task text is enlarged (zoomed).
+    const z = zoomOf(svg.current);
+    return [(e.clientX - r.left) / z, (e.clientY - r.top) / z, e.pressure || 0.5];
   };
   const base = container.current?.getBoundingClientRect();
   const el = container.current;
@@ -88,7 +91,7 @@ export function PresentInk({ container, mode, color, highlight, clearKey }: { co
           marks.flatMap((m, i) =>
             [...m.range.getClientRects()]
               .filter((x) => x.width > 1)
-              .map((x, k) => <span key={i + ':' + k} className="ink-mark" style={{ left: x.left - base.left + el.scrollLeft, top: x.top - base.top + el.scrollTop, width: x.width, height: x.height, background: m.color }} />),
+              .map((x, k) => <span key={i + ':' + k} className="ink-mark" style={{ left: (x.left - base.left) / zoomOf(el) + el.scrollLeft, top: (x.top - base.top) / zoomOf(el) + el.scrollTop, width: x.width / zoomOf(el), height: x.height / zoomOf(el), background: m.color }} />),
           )}
       </div>
       <svg

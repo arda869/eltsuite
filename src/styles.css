@@ -641,6 +641,7 @@ a.btn.primary { color: #ffffff; }
 .tbox-content > :last-child, .tbox-body > :last-child { margin-bottom: 0; }
 
 .tbox { --tone: #f4f4f3; --tone-line: rgba(51,48,44,0.12); --tone-ink: #5a5a5a; margin: 12px 0 16px; font-family: var(--serif); font-size: 16px; line-height: 1.65; }
+.tbox.t-mist { --tone: #f8f8f7; --tone-line: #ebebe9; --tone-ink: #6b6b69; }
 .tbox.t-sand { --tone: #f6f1e8; --tone-line: #e6dccb; --tone-ink: #8a6a3a; }
 .tbox.t-sage { --tone: #eef3ef; --tone-line: #d5e2d8; --tone-ink: #4e6b55; }
 .tbox.t-sky { --tone: #eef2f6; --tone-line: #d6e0ea; --tone-ink: #4f6279; }
@@ -4389,6 +4390,7 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 :root[data-theme='dark'] .person .avatar.small { background: #253227; }
 :root[data-theme='dark'] .on-task { background: #253227; }
 :root[data-theme='dark'] .tbox { --tone: #2d2d2a; --tone-ink: #bdbdbd; }
+:root[data-theme='dark'] .tbox.t-mist { --tone: #2b2b29; --tone-line: #42423f; --tone-ink: #c4c4c1; }
 :root[data-theme='dark'] .tbox.t-sand { --tone: #392f1e; --tone-line: #5f513a; --tone-ink: #d2c1a7; }
 :root[data-theme='dark'] .tbox.t-sage { --tone: #263128; --tone-line: #435647; --tone-ink: #b4c5b8; }
 :root[data-theme='dark'] .tbox.t-sky { --tone: #222b35; --tone-line: #3b4c5e; --tone-ink: #b2bcc8; }
@@ -4638,3 +4640,8 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .task-frame.is-opening { position: relative; }
 .frame-veil { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; border-radius: inherit; background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(1.5px); animation: veil-in .18s ease-out .12s both; }
 @keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Table cells: no paragraph spacing inside, a little less padding */
+:is(.task-table, .doc .ProseMirror table) :is(td, th) > .para { margin: 0; }
+:is(.task-table, .doc .ProseMirror table) :is(td, th) > .para + .para { margin-top: 4px; }
+.task-table td, .doc .ProseMirror td { padding-top: 7px; padding-bottom: 7px; line-height: 1.5; }

@@ -6,7 +6,7 @@ import { Grip } from './nodes';
 // A container for reading texts and model answers, shown in one of several styles.
 
 export type BoxStyle = 'info' | 'box' | 'paper' | 'browser' | 'email' | 'notebook' | 'sticky' | 'speech' | 'message';
-export type BoxTone = 'grey' | 'sand' | 'sage' | 'sky' | 'rose';
+export type BoxTone = 'grey' | 'mist' | 'sand' | 'sage' | 'sky' | 'rose';
 
 export const BOX_STYLES: { key: BoxStyle; label: string }[] = [
   { key: 'info', label: 'Information box' },
@@ -21,6 +21,7 @@ export const BOX_STYLES: { key: BoxStyle; label: string }[] = [
 ];
 export const BOX_TONES: { key: BoxTone; label: string; bg: string }[] = [
   { key: 'grey', label: 'Grey', bg: '#f4f4f3' },
+  { key: 'mist', label: 'Very light grey', bg: '#f8f8f7' },
   { key: 'sand', label: 'Sand', bg: '#f6f1e8' },
   { key: 'sage', label: 'Sage', bg: '#eef3ef' },
   { key: 'sky', label: 'Sky', bg: '#eef2f6' },

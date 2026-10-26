@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { ask } from '../lib/ask';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getStroke } from 'perfect-freehand';
@@ -170,7 +171,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
   }, [base, uid]);
   useEffect(() => {
     if (!svg.current) return;
-    const ro = new ResizeObserver(() => svg.current && setFrameW(svg.current.getBoundingClientRect().width || 800));
+    const ro = new ResizeObserver(() => svg.current && setFrameW(svg.current.getBoundingClientRect().width / zoomOf(svg.current) || 800));
     ro.observe(svg.current);
     return () => ro.disconnect();
   }, []);
