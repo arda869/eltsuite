@@ -118,12 +118,13 @@ export function applyFx(x: Float32Array, rate: number, fx: VoiceFx): Float32Arra
 
 // ------------------------------------------------------------------ sound effects
 
-export type Sfx = { k: string; label: string; group: string; dur: number };
+// dur: how long the sound can be; def: how long it is when added (a beep can be stretched).
+export type Sfx = { k: string; label: string; group: string; dur: number; def?: number };
 export const SFX: Sfx[] = [
   { k: 'bell', label: 'School bell', group: 'Signals', dur: 1.6 },
   { k: 'chime', label: 'Chime', group: 'Signals', dur: 1.2 },
   { k: 'ding', label: 'Notification', group: 'Signals', dur: 0.7 },
-  { k: 'beep', label: 'Beep', group: 'Signals', dur: 0.45 },
+  { k: 'beep', label: 'Beep (any length)', group: 'Signals', dur: 30, def: 0.3 },
   { k: 'beeps', label: 'Three beeps', group: 'Signals', dur: 1.6 },
   { k: 'doorbell', label: 'Doorbell', group: 'Home', dur: 1.6 },
   { k: 'knock', label: 'Knock on the door', group: 'Home', dur: 1.1 },
@@ -144,7 +145,6 @@ export const SFX: Sfx[] = [
   { k: 'siren', label: 'Siren', group: 'Outside', dur: 4 },
   { k: 'shutter', label: 'Camera', group: 'Things', dur: 0.4 },
   { k: 'whoosh', label: 'Whoosh', group: 'Things', dur: 0.9 },
-  { k: 'silence', label: 'Silence', group: 'Things', dur: 1 },
 ];
 
 function rng(seed: number) {
@@ -202,8 +202,11 @@ export function synth(k: string, rate: number, dur: number): Float32Array {
       tone(2349, 0.09, 0.6, 0.18, 0.22);
       break;
     case 'beep':
+      // one long tone: the clip decides how long it lasts
+      for (let i = 0; i < n; i++) y[i] = 0.28 * Math.min(1, i / (0.008 * rate)) * Math.sin((2 * Math.PI * 1000 * i) / rate);
+      break;
     case 'beeps':
-      for (const at of k === 'beep' ? [0.1] : [0.1, 0.6, 1.1]) {
+      for (const at of [0.1, 0.6, 1.1]) {
         const a = Math.round(at * rate);
         const m = Math.round(0.22 * rate);
         for (let i = 0; i < m && a + i < n; i++) {

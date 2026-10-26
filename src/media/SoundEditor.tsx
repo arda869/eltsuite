@@ -264,7 +264,47 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       })),
     }));
   };
+  // Silence at the playhead pushes everything after it along, and shows as its own clip.
+  const insertSilence = (d: number) => {
+    const t = head;
+    if (!sources.current.silence) addSource('silence', new Float32Array(Math.round(rate * 120)), 'Silence');
+    const target = pickedTrack?.kind === 'voice' ? pickedTrack.id : p.tracks.find((tr) => tr.kind === 'voice')?.id;
+    const sil: Clip = { id: newId(), src: 'silence', a: 0, b: d, at: t, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
+    edit((x) => ({
+      ...x,
+      tracks: x.tracks.map((tr) => ({
+        ...tr,
+        clips: [
+          ...tr.clips.flatMap((c) => {
+            if (clipEnd(c) <= t + 1e-6) return [c];
+            if (c.at >= t - 1e-6) return [{ ...c, at: c.at + d }];
+            const cut = c.a + (t - c.at);
+            return [
+              { ...c, b: cut, fadeOut: 0 },
+              { ...c, id: newId(), a: cut, at: t + d, fadeIn: 0 },
+            ];
+          }),
+          ...(tr.id === target ? [sil] : []),
+        ],
+      })),
+      lines: x.lines.map((l) => (l.a >= t ? { ...l, a: l.a + d, b: l.b + d } : l.b > t ? { ...l, b: l.b + d } : l)),
+    }));
+    if (target) setPick({ kind: 'clip', track: target, id: sil.id });
+  };
+  const [silLen, setSilLen] = useState(1);
   const removePicked = () => {
+    // Taking out a silence closes the gap it made.
+    if (pick?.kind === 'clip' && pickedClip?.src === 'silence') {
+      const a = pickedClip.at;
+      const d = clipLen(pickedClip);
+      edit((x) => ({
+        ...x,
+        tracks: x.tracks.map((t) => ({ ...t, clips: t.clips.filter((c) => c.id !== pickedClip.id).map((c) => (c.at >= a + d - 1e-6 ? { ...c, at: c.at - d } : c)) })),
+        lines: x.lines.map((l) => (l.a >= a + d - 1e-6 ? { ...l, a: l.a - d, b: l.b - d } : l)),
+      }));
+      setPick(null);
+      return;
+    }
     if (pick?.kind === 'clip') edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id === pick.track ? { ...t, clips: t.clips.filter((c) => c.id !== pick.id) } : t)) }));
     else if (pick?.kind === 'line') edit((x) => ({ ...x, lines: x.lines.filter((l) => l.id !== pick.id) }));
     else if (pick?.kind === 'track' && p.tracks.filter((t) => t.kind === 'voice').length > 1 && pickedTrack?.kind === 'voice') edit((x) => ({ ...x, tracks: x.tracks.filter((t) => t.id !== pick.id) }));
@@ -364,7 +404,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const id = 'sfx:' + k;
     if (!sources.current[id]) addSource(id, synth(k, rate, fx.dur), fx.label);
     let lane = p.tracks.find((t) => t.kind === 'sfx');
-    const clip: Clip = { id: newId(), src: id, a: 0, b: fx.dur, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
+    const clip: Clip = { id: newId(), src: id, a: 0, b: fx.def ?? fx.dur, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
     edit((x) => {
       let tracks = x.tracks;
       if (!lane) (lane = newTrack('Sound effects', 'sfx')), (tracks = [...tracks, lane]);
@@ -379,7 +419,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const c = ac();
     void c.resume();
     const s = c.createBufferSource();
-    s.buffer = bufferOf(synth(k, rate, fx.dur), rate);
+    s.buffer = bufferOf(synth(k, rate, fx.def ?? fx.dur), rate);
     s.connect(c.destination);
     s.start();
   };
@@ -907,7 +947,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         <aside className="sx-insp">
           {pickedClip && pick?.kind === 'clip' ? (
             <>
-              <h4>{pickedTrack?.kind === 'sfx' ? 'Sound effect' : 'Clip'} · {pickedLabel}</h4>
+              <h4>{pickedClip.src === 'silence' ? 'Silence' : pickedTrack?.kind === 'sfx' ? 'Sound effect' : 'Clip'} · {pickedLabel}</h4>
+              {pickedClip.src === 'silence' && <span className="hint">Drag its right edge to make it longer or shorter. Delete takes it out and closes the gap.</span>}
+              {pickedClip.src === 'sfx:beep' && <span className="hint">Drag its right edge to make the beep as long as you need.</span>}
               <span className="hint">
                 {short(pickedClip.at)} to {short(clipEnd(pickedClip))} · {clipLen(pickedClip).toFixed(1)} s
               </span>
@@ -1048,6 +1090,18 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             </>
           )}
           <div className="sx-adds">
+            <span className="sx-sil">
+              <button type="button" className="btn small-btn" onClick={() => insertSilence(silLen)} data-tip="Adds silence at the playhead and moves the rest along">
+                <UiIcon name="silence" size={13} /> Silence
+              </button>
+              <select value={silLen} onChange={(e) => setSilLen(Number(e.target.value))} aria-label="Length of silence">
+                {[0.5, 1, 2, 3, 5, 10, 20, 30].map((x) => (
+                  <option key={x} value={x}>
+                    {x} s
+                  </option>
+                ))}
+              </select>
+            </span>
             <button type="button" className="btn small-btn" onClick={() => fileIn.current?.click()}>
               <UiIcon name="upload" size={13} /> Bring in sounds
             </button>
@@ -1169,11 +1223,11 @@ function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked
   const fi = c.fadeIn * pps;
   const fo = c.fadeOut * pps;
   return (
-    <span className={'sx-clip ' + kind + (picked ? ' picked' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')}>
+    <span className={'sx-clip ' + kind + (c.src === 'silence' ? ' silence' : '') + (picked ? ' picked' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')}>
       <canvas ref={cv} className="sx-clip-wave" style={{ left: from, width: Math.max(0, to - from) }} />
-      {w > 50 && (
+      {w > 30 && (
         <span className="sx-clip-name">
-          {label}
+          {c.src === 'silence' ? `Silence ${clipLen(c).toFixed(1)} s` : label}
           {c.fx && <em>{VOICE_FX.find((f) => f.k === c.fx)?.label}</em>}
           {c.gain !== 1 && <em>{Math.round(c.gain * 100)}%</em>}
         </span>
