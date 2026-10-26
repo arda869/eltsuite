@@ -8,6 +8,7 @@ import { theme } from '../lib/themes';
 import { Wordmark } from '../components/Wordmark';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { PhoneMessagesLink } from '../components/ChatDock';
+import { LearnerNav } from './ColleaguesPage';
 import { Notebook } from '../components/Notebook';
 
 // The learner's notebook page: class notebook, my notebook, grammar bank and vocabulary bank.
@@ -45,6 +46,7 @@ export function LearnerNotebook() {
           <TextSizeControl />
         </span>
       </header>
+      <LearnerNav on="notebook" phoneOnly />
       <main className="nb-page">
         <h1 className="page-title">Notebook</h1>
         <Notebook classId={classId} c={c} me={{ uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false }} items={items} topics={topics} focus={params.get('entry')} />

@@ -9,6 +9,7 @@ import { useClassmates } from '../lib/learners';
 import { Wordmark } from '../components/Wordmark';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { PhoneMessagesLink } from '../components/ChatDock';
+import { LearnerNav } from './ColleaguesPage';
 import { DiscussionBoard } from '../components/Discussion';
 import { NoticeToasts } from '../components/NoticeToasts';
 
@@ -45,6 +46,7 @@ export function LearnerDiscussion() {
           <TextSizeControl />
         </span>
       </header>
+      <LearnerNav on="discuss" phoneOnly />
       <main>
         {c && <DiscussionBoard c={c} me={{ uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false }} people={people} open={tid ?? null} onOpen={(id) => navigate(id ? `/discuss/${id}` : '/discuss')} threadLink={(id) => `/discuss/${id}`} />}
       </main>

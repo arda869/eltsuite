@@ -131,7 +131,12 @@ export function PhoneMessagesLink() {
   if (!me || isProxyTab() || loc.pathname.startsWith('/messages')) return null;
   const label = unread ? `Messages · ${unread} new` : 'Messages';
   const badge = unread ? <span className="icon-badge">{unread}</span> : null;
-  if (phone) return <IconLink icon="message" label={label} to="/messages" badge={badge} />;
+  if (phone)
+    return (
+      <span className="pml">
+        <IconLink icon="message" label={label} to="/messages" badge={badge} />
+      </span>
+    );
   return (
     <button type="button" className={'icon-tool' + (st.open ? ' on' : '')} aria-label={label} data-tip={label} aria-pressed={!!st.open} onClick={() => setDock({ open: !st.open, chat: st.chat })}>
       <UiIcon name="message" />

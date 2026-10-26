@@ -17,20 +17,45 @@ const when = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { da
 export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | 'messages' | '' }) {
   const { user } = useAuth();
   const unread = useUnread(user?.uid);
+  // With icons; on a phone it becomes the tab bar at the bottom of the screen.
+  const tab = (to: string, key: typeof on, icon: string, label: string, short: string, badge?: number) => (
+    <Link to={to} className={'mn-tab' + (on === key ? ' on' : '')} aria-current={on === key ? 'page' : undefined}>
+      <span className="mn-ic">
+        <UiIcon name={icon} size={18} />
+        {!!badge && <span className="nav-badge">{badge}</span>}
+      </span>
+      <span className="mn-l">{label}</span>
+      <span className="mn-s">{short}</span>
+    </Link>
+  );
   return (
-    <nav aria-label="Main">
-      <Link to="/" className={on === 'classes' ? 'on' : ''}>
-        Classes
-      </Link>
-      <Link to="/messages" className={on === 'messages' ? 'on' : ''}>
-        Messages{unread > 0 && <span className="nav-badge">{unread}</span>}
-      </Link>
-      <Link to="/colleagues" className={on === 'colleagues' ? 'on' : ''}>
-        Colleagues
-      </Link>
-      <Link to="/archive" className={on === 'archive' ? 'on' : ''}>
-        Media archive
-      </Link>
+    <nav aria-label="Main" className="main-nav">
+      {tab('/', 'classes', 'classes', 'Classes', 'Classes')}
+      {tab('/messages', 'messages', 'message', 'Messages', 'Messages', unread)}
+      {tab('/colleagues', 'colleagues', 'groups', 'Colleagues', 'Colleagues')}
+      {tab('/archive', 'archive', 'archive', 'Media archive', 'Media')}
+    </nav>
+  );
+}
+
+// The learner's main places, the same way: in the top bar on a computer, at the bottom on a phone.
+export function LearnerNav({ on, unreadMsgs = 0, unreadThreads = 0, phoneOnly }: { on: 'home' | 'notebook' | 'messages' | 'discuss'; unreadMsgs?: number; unreadThreads?: number; phoneOnly?: boolean }) {
+  const tab = (to: string, key: typeof on, icon: string, label: string, badge?: number) => (
+    <Link to={to} className={'mn-tab' + (on === key ? ' on' : '')} aria-current={on === key ? 'page' : undefined}>
+      <span className="mn-ic">
+        <UiIcon name={icon} size={18} />
+        {!!badge && <span className="nav-badge">{badge}</span>}
+      </span>
+      <span className="mn-l">{label}</span>
+      <span className="mn-s">{label}</span>
+    </Link>
+  );
+  return (
+    <nav aria-label="Main" className={'main-nav' + (phoneOnly ? ' mn-phone' : '')}>
+      {tab('/', 'home', 'home', 'Home')}
+      {tab('/notebook', 'notebook', 'notebook', 'Notebook')}
+      {tab('/messages', 'messages', 'message', 'Messages', unreadMsgs)}
+      {tab('/discuss', 'discuss', 'discuss', 'Discussion', unreadThreads)}
     </nav>
   );
 }

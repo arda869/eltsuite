@@ -31,11 +31,13 @@ export async function setLive(classId: string, patch: Partial<LiveState>) {
   await setDoc(liveRef(classId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
 }
 
-// A lesson counts as live only if the teacher has been active in the last 3 hours.
+// A lesson counts as live only while the teacher's teaching screen is open: it checks in every
+// minute, and a lesson with no check-in for 10 minutes (screen closed, laptop asleep) has ended.
+export const LIVE_BEAT = 60 * 1000;
 export function isLive(s: LiveState | null | undefined) {
   if (!s?.teaching) return false;
   const t = s.updatedAt?.toMillis?.() ?? Date.now();
-  return Date.now() - t < 3 * 60 * 60 * 1000;
+  return Date.now() - t < 10 * 60 * 1000;
 }
 
 export const isSynced = (s: LiveState | null | undefined, itemId: string) => isLive(s) && s!.itemId === itemId && !!s!.sync;

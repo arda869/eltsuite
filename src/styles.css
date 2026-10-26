@@ -4775,3 +4775,69 @@ li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
 .as-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 640px) { .dialog.app-setup { width: 100%; border-radius: 22px 22px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom)); } }
 .msg-push-link { align-self: flex-start; margin: 2px 0 4px; }
+
+/* Opened from the home screen */
+html[data-standalone] { touch-action: manipulation; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+html[data-standalone] body { -webkit-tap-highlight-color: transparent; }
+/* Light: the top bar is white, so it runs on from the white status bar */
+html[data-standalone]:not([data-theme='dark']) .topbar { position: sticky; top: 0; z-index: 40; background: #fff; margin-top: -12px; padding-top: 10px; }
+html[data-standalone]:not([data-theme='dark']) .topbar::before { content: ''; position: absolute; inset: 0 -100vmax; z-index: -1; background: #fff; border-bottom: 1px solid var(--hair); pointer-events: none; }
+/* Dark: the status bar is see-through, so leave room under it */
+html[data-standalone][data-theme='dark'] body { padding-top: env(safe-area-inset-top); }
+html[data-standalone][data-theme='dark'] .topbar { position: sticky; top: env(safe-area-inset-top); z-index: 40; background: var(--page); }
+html[data-standalone][data-theme='dark'] .topbar::before { content: ''; position: absolute; top: calc(-1 * env(safe-area-inset-top) - 2px); bottom: 0; left: -100vmax; right: -100vmax; z-index: -1; background: var(--page); pointer-events: none; }
+html[data-standalone] .msg.has-chat { padding-top: env(safe-area-inset-top); }
+
+/* Main places: icons with names in the top bar; a tab bar at the bottom on a phone */
+.topbar nav.main-nav { display: flex; gap: 2px; }
+.topbar nav.main-nav .mn-tab { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px 7px 10px; border-radius: 10px; color: var(--muted); font-weight: 500; text-decoration: none; transition: background .12s, color .12s; }
+.topbar nav.main-nav .mn-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.topbar nav.main-nav .mn-tab.on { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 13%, var(--paper)); font-weight: 600; }
+.mn-ic { position: relative; display: inline-grid; place-items: center; }
+.mn-ic .nav-badge { position: absolute; top: -7px; right: -10px; margin: 0; min-width: 16px; height: 16px; font-size: 10px; box-shadow: 0 0 0 2px var(--page, #f5f4f1); }
+.mn-s { display: none; }
+.main-nav.mn-phone { display: none !important; }
+@media (max-width: 640px) {
+  .main-nav, .topbar nav.main-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; order: 0; width: auto; margin: 0; display: grid !important; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; overflow: visible; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: saturate(1.4) blur(16px); -webkit-backdrop-filter: saturate(1.4) blur(16px); box-shadow: 0 -1px 0 var(--hair), 0 -8px 24px -18px rgba(51, 48, 44, .35); }
+  .main-nav.mn-phone { display: grid !important; }
+  .main-nav .mn-tab, .topbar nav.main-nav .mn-tab { flex-direction: column; justify-content: center; gap: 3px; padding: 5px 0 3px; border-radius: 12px; background: none !important; color: var(--soft); font: 600 10.5px/1.1 var(--sans); letter-spacing: .01em; text-decoration: none; }
+  .main-nav .mn-tab .mn-ic { width: 46px; height: 28px; border-radius: 99px; transition: background .15s; }
+  .main-nav .mn-tab.on { color: var(--accent-text); }
+  .main-nav .mn-tab.on .mn-ic { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); }
+  .main-nav .mn-l { display: none; } .main-nav .mn-s { display: block; }
+  .main-nav .mn-ic .nav-badge { top: -3px; right: 4px; }
+  .shell:has(.main-nav) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .shell:has(.main-nav) .pml { display: none; }
+  .shell:has(.main-nav) .msg { height: calc(100dvh - 150px - 64px); }
+}
+html[data-standalone], html[data-standalone] body { overflow-x: clip; }
+
+/* Messages and colleagues: white panels on the warm page, colour used for accents only */
+.msg-side { background: var(--paper); }
+.msg-row:hover { background: color-mix(in srgb, var(--accent) 6%, var(--paper)); }
+.msg-row.on { background: color-mix(in srgb, var(--accent) 10%, var(--paper)); box-shadow: inset 3px 0 0 var(--accent); }
+.chat-body, .chat-typing { background: var(--paper); }
+.bub-box { background: color-mix(in srgb, var(--accent) 7%, var(--paper)); box-shadow: none; }
+.bub.tagged:not(.mine) .bub-box { box-shadow: 0 0 0 1.5px var(--accent); }
+.chat-day-h { background: color-mix(in srgb, var(--accent) 8%, var(--paper)); box-shadow: none; color: var(--accent-text); }
+.bub-av { background: color-mix(in srgb, var(--accent) 12%, var(--paper)); box-shadow: none; }
+.msg-side .ma-search { background: var(--paper); }
+.chat-compose { background: var(--paper); }
+.ma-empty { background: var(--paper); border: 0 !important; box-shadow: 0 0 0 1px var(--hair), 0 10px 30px -22px rgba(51, 48, 44, .35); border-radius: 18px; }
+.ma-empty > svg:first-child, .ma-empty > .ui-icon:first-child { width: 52px; height: 52px; padding: 13px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--accent-text); box-sizing: border-box; }
+@media (max-width: 640px) {
+  /* Phones: a size down across the board */
+  .page-title, h1.page-title { font-size: 22px; }
+  .task-title { font-size: 16px; }
+  .task-body, .task-frame .ProseMirror { font-size: 15px; }
+  .frame-head .instr, .frame-head .task-instr, .frame-head .instr-view { font-size: 14px; }
+  .tbox { font-size: 15px; }
+  .tbox.s-info .tbox-body { font-size: 14.5px; }
+  .btn { font-size: 13px; }
+  .btn:not(.small-btn):not(.link) { padding: 8px 14px; }
+  .shell { gap: 12px; padding-left: 14px; padding-right: 14px; }
+  .dl-text { line-height: 1.55; }
+  .task-list button, .task-pick { font-size: 12.5px; padding: 5px 11px; }
+  .ld-card, .lh-card, .item-card, .class-card { border-radius: 14px; }
+}
+body:has(.scrim) .main-nav, body:has(.msg.has-chat) .main-nav, body:has(.sp-window) .main-nav { display: none !important; }

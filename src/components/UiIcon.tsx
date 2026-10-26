@@ -6,6 +6,8 @@ const P: Record<string, ReactNode> = {
   plus: <path d="M12 6v12M6 12h12" />,
   textSize: <><path d="M3.5 6.5h10M8.5 6.5V19" /><path d="M13.5 11.5h7M17 11.5V19" /></>,
   export: <><path d="M12 4v11" /><path d="M7.5 8.5 12 4l4.5 4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
+  classes: <><path d="M3.5 6c2.8-1.2 5.6-1.2 8.5.8 2.9-2 5.7-2 8.5-.8v12.5c-2.8-1.2-5.6-1.2-8.5.8-2.9-2-5.7-2-8.5-.8z" strokeLinejoin="round" /><path d="M12 6.8v12.5" /></>,
+  home: <><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z" strokeLinejoin="round" /></>,
   notebook: <><path d="M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z" /><path d="M9 3.5v17" /><path d="M12 8h4M12 11.5h4" /></>,
   board: <><rect x="3.5" y="4.5" width="17" height="11.5" rx="1.5" /><path d="M8.5 20l3.5-4 3.5 4" /><path d="M7 12.5c1.4-2.6 2.6-3.6 3.6-2.3s1.8 1.4 3.4-1.6 2.5-1.8 3 .2" /></>,
   task: <><rect x="5" y="3.5" width="14" height="17" rx="1.5" /><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" /></>,

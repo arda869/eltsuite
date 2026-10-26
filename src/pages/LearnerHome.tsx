@@ -6,11 +6,12 @@ import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
-import { IconLink } from '../components/UiIcon';
 import { useMyRecaps } from '../lib/recap';
 import { useMistakes } from '../lib/mistakes';
 import { useNotebook } from '../lib/notebook';
 import { PhoneMessagesLink } from '../components/ChatDock';
+import { LearnerNav } from './ColleaguesPage';
+import { useUnread } from '../lib/chat';
 import { AppSetupDialog } from '../components/AppSetup';
 import { CoverArt } from '../components/Covers';
 import { isProxyTab } from '../lib/proxy';
@@ -62,6 +63,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const menuRef = useDismiss<HTMLDivElement>(menu, () => setMenu(false));
   const [picking, setPicking] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
+  const unreadMsgs = useUnread(profile?.role === 'learner' ? profile.learnerId : undefined);
   const [secretOpen, setSecretOpen] = useState(false);
   // First visit: invite the learner to choose a picture.
   const [askPicture, setAskPicture] = useState(() => !isProxyTab()) // a teacher viewing as the learner is not asked to choose their picture;
@@ -132,10 +134,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       <header className="topbar">
         <Wordmark />
         <span className="sub">{c?.name ?? ''}</span>
-        <span className="nb-link icon-row">
-          <IconLink icon="notebook" label="Notebook" to="/notebook" />
+        <LearnerNav on="home" unreadMsgs={unreadMsgs} unreadThreads={unreadThreads} />
+        <span className="icon-row">
           <PhoneMessagesLink />
-          <IconLink icon="discuss" label={unreadThreads ? `Discussion · ${unreadThreads} new` : 'Discussion'} to="/discuss" badge={unreadThreads ? <span className="icon-badge">{unreadThreads}</span> : null} />
         </span>
         <div className="right" ref={menuRef}>
           <button className="avatar" style={{ background: 'var(--tint)', color: 'var(--accent-text)' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>

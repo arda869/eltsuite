@@ -14,7 +14,23 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Lesson Lit" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" id="sbs" />
+    <script>
+      /* Opened from the home screen: behave like an app. The top of the screen (time, battery)
+         blends with the app: white over the light top bar, see-through over the dark theme. */
+      try {
+        var sa = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (sa) {
+          var h = document.documentElement;
+          h.dataset.standalone = '';
+          if (h.dataset.theme === 'dark') document.getElementById('sbs').setAttribute('content', 'black-translucent');
+          /* No pinch or double-tap zoom, like an app (text size is in the Aa menu). */
+          document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+          document.addEventListener('touchmove', function (e) { if (e.scale !== undefined && e.scale !== 1) e.preventDefault(); }, { passive: false });
+          document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+        }
+      } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400,50;0,9..144,500,50;0,9..144,600,50;1,9..144,400,50&family=Karla:wght@400;500;600&family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans:wght@400;500&display=swap" />

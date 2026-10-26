@@ -1,3 +1,4 @@
+import { LIVE_BEAT } from '../lib/live';
 import { ask, askText } from '../lib/ask';
 import { usePhone } from '../lib/useMedia';
 import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
@@ -213,6 +214,15 @@ export function LessonEditor() {
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
+  // While this screen teaches, it checks in every minute, so the lesson stays live for the class.
+  const mineLive = teachingHere && (!live?.teacherUid || live.teacherUid === user?.uid);
+  useEffect(() => {
+    if (!mineLive) return;
+    const beat = () => void setLive(classId, {}).catch(() => {});
+    const id = window.setInterval(beat, LIVE_BEAT);
+    document.addEventListener('visibilitychange', beat);
+    return () => (window.clearInterval(id), document.removeEventListener('visibilitychange', beat));
+  }, [mineLive, classId]);
   const presence = usePresence(classId, teachingHere);
   const online = presence.filter(isOnline).sort((a, b) => a.name.localeCompare(b.name));
   const inLesson = online.filter((p) => p.itemId === itemId);

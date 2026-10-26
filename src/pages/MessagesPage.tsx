@@ -21,7 +21,7 @@ import { TaskRenderer } from '../components/TaskRenderer';
 import { TopBar } from '../components/TopBar';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
-import { MainNav } from './ColleaguesPage';
+import { LearnerNav, MainNav } from './ColleaguesPage';
 import { SharedWindow } from './SharedPage';
 import { setDock } from '../components/ChatDock';
 import { AppSetupDialog } from '../components/AppSetup';
@@ -73,12 +73,7 @@ export function MessagesPage() {
         </TopBar>
       ) : (
         <TopBar>
-          <nav aria-label="Main">
-            <Link to="/">Home</Link>
-            <Link to="/messages" className="on">
-              Messages
-            </Link>
-          </nav>
+          <LearnerNav on="messages" />
         </TopBar>
       )}
       {!user || !me || chats === null ? (
