@@ -28,8 +28,22 @@ export type CollabAttrs = {
 
 type AnyProps = CollabProps & { kind?: 'doc' | 'slides'; ownSlides?: boolean; templateKey?: string };
 // A shared document or shared slides, with the same settings.
+// Double-click (outside the writing) opens it in its own tab, like a document app.
+export const openDocTab = (p: { docKey: string; kind?: string; title?: string; classId?: string; modes?: string[] }) =>
+  window.open(`/doc/k/${encodeURIComponent(p.docKey)}?kind=${p.kind ?? 'doc'}&t=${encodeURIComponent(p.title ?? '')}&c=${encodeURIComponent(p.classId ?? '')}&m=${(p.modes ?? []).join(',')}`, '_blank');
 function AnyDoc({ kind, ownSlides, templateKey, template, ...p }: AnyProps) {
-  return kind === 'slides' ? <SlidesDoc {...p} ownSlides={ownSlides} templateKey={templateKey} /> : <CollabDoc {...p} template={template} />;
+  const open = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.ProseMirror, input, textarea, select, canvas, button, [contenteditable="true"], .sl-stage')) return;
+    openDocTab({ docKey: p.docKey, kind, title: p.title, classId: p.classId, modes: p.teacher ? ['edit', 'suggest', 'comment'] : p.modes });
+  };
+  return (
+    <div className="co-open" onDoubleClick={open} data-tip="Double-click to open in a new tab">
+      <button type="button" className="co-tab" onClick={() => openDocTab({ docKey: p.docKey, kind, title: p.title, classId: p.classId, modes: p.teacher ? ['edit', 'suggest', 'comment'] : p.modes })} aria-label="Open in a new tab" title="Open in a new tab">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+      </button>
+      {kind === 'slides' ? <SlidesDoc {...p} ownSlides={ownSlides} templateKey={templateKey} /> : <CollabDoc {...p} template={template} />}
+    </div>
+  );
 }
 export const templateKeyOf = (a: Pick<CollabAttrs, 'docKey'>) => `${a.docKey}~t`;
 export const keyFor = (a: Pick<CollabAttrs, 'docKey'>, who?: { group?: string; learner?: string; preview?: string }) =>

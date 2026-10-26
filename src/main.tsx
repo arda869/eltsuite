@@ -1,3 +1,4 @@
+import { DocPage } from './pages/DocPage';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
@@ -129,6 +130,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/studio/task/:id" element={<TeacherOnly><TaskStudio /></TeacherOnly>} />
           <Route path="/studio/session/:id" element={<TeacherOnly><StudioSession /></TeacherOnly>} />
           <Route path="/studio/sound/:id" element={<TeacherOnly><SoundStudio /></TeacherOnly>} />
+          <Route path="/doc/:id" element={<SignedIn><DocPage /></SignedIn>} />
+          <Route path="/doc/k/:key" element={<SignedIn><DocPage /></SignedIn>} />
           <Route path="/settings" element={<SignedIn><SettingsPage /></SignedIn>} />
           <Route path="/messages" element={<SignedIn><MessagesPage /></SignedIn>} />
           <Route path="/colleagues" element={<TeacherOnly><ColleaguesPage /></TeacherOnly>} />

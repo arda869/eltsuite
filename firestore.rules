@@ -467,6 +467,14 @@ service cloud.firestore {
     // The class decides: no messages; only with teachers (or groups the teacher makes); or freely.
     function msgMode() { return classData(myClass()).get('messaging', {}).get('mode', 'free'); }
     function learnerMayStart(c) { return msgMode() == 'free' || (msgMode() != 'off' && c.roles.values().removeAll(['teacher']).size() <= 1); }
+    // Collaborative documents in a teacher's files, shared person by person.
+    match /sharedDocs/{id} {
+      allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
+      allow create: if isTeacher() && request.resource.data.owner == request.auth.uid;
+      allow update: if signedIn() && (resource.data.owner == request.auth.uid
+        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt'])));
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+    }
     // Recordings of the sounds of English. The default set, for everyone, is kept by the app's
     // owner; each teacher can add their own, which learners hear in that teacher's tasks.
     match /phonemeAudio/{key} {

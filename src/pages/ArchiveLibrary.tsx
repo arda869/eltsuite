@@ -1,4 +1,6 @@
 import { ask } from '../lib/ask';
+import { useAuth } from '../lib/auth';
+import { newSharedDoc, removeSharedDoc, useMyDocs, type SharedDoc } from '../lib/sharedDocs';
 import { exportLesson } from '../lib/textformat';
 import { openMenu } from '../components/ContextMenu';
 import { FileIcon, type FileKind } from '../components/FileIcon';
@@ -223,6 +225,70 @@ export function ArchiveTasks({ uid }: { uid: string }) {
   );
 }
 
+// Documents and slides in the teacher's own files: written with colleagues or learners, shared
+// person by person. Each opens in its own tab.
+function FileDocs({ uid }: { uid: string }) {
+  const { user } = useAuth();
+  const { mine, withMe } = useMyDocs(uid);
+  const make = async (kind: 'doc' | 'slides') => {
+    const w = window.open('about:blank', '_blank');
+    const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, kind);
+    if (w) w.location.href = `/doc/${id}`;
+    else window.location.href = `/doc/${id}`;
+  };
+  const card = (d: SharedDoc, shared: boolean) => (
+    <a key={d.id} href={`/doc/${d.id}`} target="_blank" rel="noopener" className="al-doc fd-doc" onContextMenu={(e) => !shared && openMenu(e, [{ label: 'Delete', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone it is shared with?`).then((ok) => void (ok && removeSharedDoc(d.id))) }])}>
+      <span className={'al-doc-art k-' + d.kind}>
+        {d.kind === 'slides' ? (
+          <>
+            <i />
+            <i />
+            <b />
+          </>
+        ) : (
+          <>
+            <em />
+            <em />
+            <em />
+            <em className="short" />
+          </>
+        )}
+      </span>
+      <span className="al-doc-t">
+        <b>{d.title}</b>
+        <span className="al-meta">
+          {shared ? `From ${d.ownerName}` : Object.keys(d.members ?? {}).length ? `Shared with ${Object.keys(d.members).length}` : 'Only you'}
+          {d.classes && Object.keys(d.classes).length > 0 && ` · ${Object.values(d.classes).map((c) => c.name).join(', ')}`}
+        </span>
+      </span>
+    </a>
+  );
+  return (
+    <section className="fd">
+      <div className="fd-head">
+        <h2 className="fd-h">Your documents</h2>
+        <span className="fd-new">
+          <button type="button" className="btn" onClick={() => void make('doc')}>
+            + New document
+          </button>
+          <button type="button" className="btn" onClick={() => void make('slides')}>
+            + New slides
+          </button>
+        </span>
+      </div>
+      <span className="hint">Write with colleagues or learners. Share each one with the people you choose, or send it in a chat. Each opens in its own tab.</span>
+      {mine && mine.length > 0 ? <div className="al-grid">{mine.map((d) => card(d, false))}</div> : <span className="hint fd-none">{mine ? 'No documents of your own yet.' : ''}</span>}
+      {withMe && withMe.length > 0 && (
+        <>
+          <h2 className="fd-h">Shared with you</h2>
+          <div className="al-grid">{withMe.map((d) => card(d, true))}</div>
+        </>
+      )}
+      <h2 className="fd-h">In your classes</h2>
+    </section>
+  );
+}
+
 export function ArchiveDocs({ uid }: { uid: string }) {
   const { lib } = useLibrary(uid);
   const [q, setQ] = useState('');
@@ -246,6 +312,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
   const c = open && lib.classes.find((x) => x.id === open.classId);
   return (
     <>
+      <FileDocs uid={uid} />
       <div className="ma-bar-row">
         <input className="ma-search" type="search" value={q} placeholder="Search names, classes and lessons" onChange={(e) => setQ(e.target.value)} />
         <span className="seg small-seg" role="radiogroup" aria-label="Kind">

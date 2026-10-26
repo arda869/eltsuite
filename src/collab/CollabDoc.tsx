@@ -246,7 +246,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
           )}
         </span>
-        {teacher && (
+        {teacher && classId && (
           <button type="button" className={'btn small-btn cd-lock' + (flags.lock ? ' on' : '')} onClick={() => setLock(classId, docKey, !flags.lock)} data-tip={flags.lock ? 'Let learners change it again' : 'Stop learners changing it'}>
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>

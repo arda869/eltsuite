@@ -1,7 +1,8 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useState } from 'react';
-import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { ROLES, modesFor, noteClass, useMyDocs, type DocRole, type SharedDoc } from '../lib/sharedDocs';
 import { db } from '../lib/firebase';
 import { Grip } from './nodes';
 import { useEditorClass } from './context';
@@ -28,6 +29,7 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
   const [open, setOpen] = useState(false);
   const [choosing, setChoosing] = useState<CollabEntry[] | null>(null);
   const [tplOpen, setTplOpen] = useState(false);
+  const [fromFiles, setFromFiles] = useState(false);
   const { user } = useAuth();
   const slides = a.kind === 'slides';
   // Every shared document is listed with its class, so it can be found and continued later.
@@ -171,6 +173,9 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
         >
           Keep working on an earlier document…
         </button>
+        <button type="button" className="btn small-btn" onClick={() => setFromFiles(true)} disabled={!classId}>
+          From your files…
+        </button>
         <button type="button" className="btn link" onClick={() => updateAttributes({ docKey: newId() })} data-tip="Start a new, empty document for this task">
           Start a new document
         </button>
@@ -187,6 +192,18 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
             Cancel
           </button>
         </div>
+      )}
+      {fromFiles && user && (
+        <FromFiles
+          uid={user.uid}
+          onCancel={() => setFromFiles(false)}
+          onPick={async (d, role) => {
+            updateAttributes({ docKey: d.docKey, title: d.title, kind: d.kind, scope: 'class', modes: modesFor(role).filter((m) => m !== 'view' || role === 'view'), fileDoc: d.id });
+            const cn = await getDoc(doc(db, 'classes', classId)).then((x) => String(x.data()?.name ?? 'A class')).catch(() => 'A class');
+            await noteClass(d, classId, cn, role).catch(() => {});
+            setFromFiles(false);
+          }}
+        />
       )}
       {open && classId && <CollabTask a={a} classId={classId} teacher classmates={classmates} />}
     </NodeViewWrapper>
@@ -210,6 +227,7 @@ export const CollabBlock = Node.create({
     download: { default: true },
     start: { default: null },
     ownSlides: { default: false },
+    fileDoc: { default: '' },
   }),
   parseHTML: () => [{ tag: 'div[data-collab]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-collab': '' })],
@@ -217,3 +235,50 @@ export const CollabBlock = Node.create({
 });
 
 export const newCollab = () => ({ type: 'collab', attrs: { id: newId(), docKey: newId(), kind: 'doc', title: '', scope: 'group', groupSet: '', modes: ['edit', 'suggest', 'comment'], display: 'expand', download: true, start: null } });
+
+// A document from the teacher's files, added to a lesson: everyone in the class gets access, so
+// the teacher confirms that and chooses what learners can do.
+function FromFiles({ uid, onPick, onCancel }: { uid: string; onPick: (d: SharedDoc, role: DocRole) => void; onCancel: () => void }) {
+  const { mine } = useMyDocs(uid);
+  const [d, setD] = useState<SharedDoc | null>(null);
+  const [role, setRole] = useState<DocRole>('comment');
+  return (
+    <div className="co-choose co-files">
+      {!d ? (
+        <>
+          <span className="hint">{mine === null ? 'Opening your files…' : mine.length ? 'Choose a document or slides from your files.' : 'There are no documents in your files yet. Make one in the resources library, under Collaborative documents.'}</span>
+          {(mine ?? []).map((x) => (
+            <button key={x.id} type="button" className="ap-chip" onClick={() => setD(x)}>
+              {x.kind === 'slides' ? 'Slides: ' : ''}
+              {x.title}
+            </button>
+          ))}
+          <button type="button" className="btn link" onClick={onCancel}>
+            Cancel
+          </button>
+        </>
+      ) : (
+        <div className="co-warn" role="alertdialog" aria-label="Give the class access">
+          <b>Everyone in this class will be able to open “{d.title}”.</b>
+          <span className="hint">The colleagues and learners you shared it with keep their access. What should learners in this class be able to do?</span>
+          <span className="dp-roles" role="radiogroup" aria-label="What learners can do">
+            {ROLES.map((r) => (
+              <button key={r.k} type="button" role="radio" aria-checked={role === r.k} className={role === r.k ? 'on' : ''} onClick={() => setRole(r.k)}>
+                <b>{r.label}</b>
+                <span className="hint">{r.about}</span>
+              </button>
+            ))}
+          </span>
+          <span className="co-warn-acts">
+            <button type="button" className="btn" onClick={() => setD(null)}>
+              Back
+            </button>
+            <button type="button" className="btn primary" onClick={() => onPick(d, role)}>
+              Give the class access
+            </button>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,225 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../lib/auth';
+import { auth } from '../lib/firebase';
+import { CollabDoc } from '../collab/CollabDoc';
+import { SlidesDoc } from '../collab/slides/SlidesDoc';
+import type { CollabMode } from '../collab/suggest';
+import { ROLES, docLink, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
+import { useDirectory } from '../lib/directory';
+import type { Person } from '../lib/chat';
+import { UiIcon } from '../components/UiIcon';
+
+// A collaborative document or slides on a page of its own, in its own tab: the title at the top,
+// sharing, and the whole window for writing.
+
+function DocIcon({ kind }: { kind: 'doc' | 'slides' }) {
+  return (
+    <span className={'dp-icon k-' + kind} aria-hidden="true">
+      {kind === 'slides' ? (
+        <svg width="22" height="22" viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="16" rx="2.5" fill="currentColor" />
+          <rect x="6.5" y="8" width="11" height="7" rx="1" fill="#fff" opacity="0.9" />
+        </svg>
+      ) : (
+        <svg width="22" height="22" viewBox="0 0 24 24">
+          <path d="M6 2.5h8l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V4A1.5 1.5 0 0 1 6 2.5z" fill="currentColor" />
+          <path d="M14 2.5V7a.5.5 0 0 0 .5.5H19" fill="#fff" opacity="0.5" />
+          <path d="M8 11.5h8M8 14.5h8M8 17.5h5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+export function DocPage() {
+  const { id = '', key = '' } = useParams();
+  const [qs] = useSearchParams();
+  const { user, profile } = useAuth();
+  const d = useSharedDoc(id || undefined);
+  const uid = user?.uid ?? auth.currentUser?.uid ?? '';
+  const name = (profile?.role === 'learner' ? profile.displayName : user?.displayName || 'Teacher').split(' ')[0];
+  const [sharing, setSharing] = useState(false);
+  const [title, setTitle] = useState('');
+  useEffect(() => setTitle(d?.title ?? qs.get('t') ?? ''), [d?.title, qs]);
+  // A lesson's shared document, opened in its own tab.
+  const lesson = !!key;
+  const kind = (lesson ? (qs.get('kind') === 'slides' ? 'slides' : 'doc') : d?.kind ?? 'doc') as 'doc' | 'slides';
+  const role: DocRole | null = lesson ? null : d && uid ? roleOf(d, uid) : null;
+  const teacher = lesson ? profile?.role === 'teacher' : d?.owner === uid;
+  const modes: CollabMode[] = lesson ? ((qs.get('m') ?? 'edit').split(',').filter(Boolean) as CollabMode[]) : role ? modesFor(role) : ['view'];
+  useEffect(() => {
+    document.title = `${title || 'Document'} · Lesson Lit`;
+  }, [title]);
+  useEffect(() => {
+    if (d && role && role !== 'view' && role !== 'comment') {
+      const t = window.setInterval(() => touchDoc(d.id), 5 * 60 * 1000);
+      return () => window.clearInterval(t);
+    }
+  }, [d, role]);
+
+  if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
+  if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
+  if (!lesson && (d === null || !role)) return <div className="dp-msg">This document is not shared with you, or it was deleted.<Link to="/">Back to Lesson Lit</Link></div>;
+  const docKey = lesson ? key : d!.docKey;
+  const classId = lesson ? qs.get('c') ?? '' : '';
+  const canRename = !lesson && role === 'edit';
+  const others = d ? Object.keys(d.members ?? {}).length : 0;
+  const props = { docKey, title, modes, teacher, me: { uid, name }, classId, display: 'inline' as const, canDownload: true };
+  return (
+    <div className={'dp k-' + kind}>
+      <header className="dp-bar">
+        <Link to={profile?.role === 'learner' ? '/' : '/archive?s=docs'} className="dp-home" aria-label="Back to Lesson Lit">
+          <DocIcon kind={kind} />
+        </Link>
+        <span className="dp-names">
+          {canRename ? (
+            <input className="dp-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
+          ) : (
+            <span className="dp-title ro">{title || (kind === 'slides' ? 'Slides' : 'Document')}</span>
+          )}
+          <span className="dp-sub">
+            {lesson ? `${qs.get('cn') ? qs.get('cn') + ' · ' : ''}Shared with the class` : teacher ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}` : 'Only you') : `${d!.ownerName}’s ${kind === 'slides' ? 'slides' : 'document'} · ${ROLES.find((r) => r.k === role)?.label.toLowerCase()}`}
+            {d?.classes && Object.keys(d.classes).length > 0 && ` · in ${Object.values(d.classes).map((c) => c.name).join(', ')}`}
+          </span>
+        </span>
+        <span className="dp-acts">
+          {d && teacher && (
+            <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
+              <UiIcon name="lock" size={15} /> Share
+            </button>
+          )}
+          {d && (
+            <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(docLink(d.id))} data-tip="Only people it is shared with can open it">
+              <UiIcon name="link" size={14} /> Copy link
+            </button>
+          )}
+        </span>
+      </header>
+      <main className="dp-main">{kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
+      {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
+    </div>
+  );
+}
+
+// Sharing: people and what each can do, with a chat message that carries the link.
+export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void }) {
+  const dir = useDirectory();
+  const [q, setQ] = useState('');
+  const [picked, setPicked] = useState<Person[]>([]);
+  const [role, setRole] = useState<DocRole>('edit');
+  const [tell, setTell] = useState(true);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState('');
+  const people = useMemo(() => {
+    const all = new Map<string, Person & { where: string }>();
+    for (const g of dir?.groups ?? []) for (const p of g.people) if (p.key !== dir?.me.key && !all.has(p.key)) all.set(p.key, { ...p, where: g.label });
+    return [...all.values()];
+  }, [dir]);
+  const s = q.trim().toLowerCase();
+  const found = people.filter((p) => !d.members?.[p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
+  const go = async () => {
+    if (!dir || !picked.length) return;
+    setBusy(true);
+    try {
+      await shareWith(d, picked, role);
+      if (tell) await sendDocInChat(d, dir.me, picked, note);
+      setDone(`Shared with ${picked.map((p) => p.name.split(' ')[0]).join(', ')}.`);
+      setPicked([]);
+      setNote('');
+    } catch (e) {
+      console.error(e);
+      setDone('It could not be shared. Try again.');
+    }
+    setBusy(false);
+  };
+  const members = Object.entries(d.members ?? {});
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog dp-dialog" role="dialog" aria-label={`Share ${d.title}`}>
+        <h2>Share “{d.title}”</h2>
+        <div className="dp-add">
+          <span className="dp-chips">
+            {picked.map((p) => (
+              <span key={p.key} className="lang-chip">
+                {p.name}
+                <button type="button" aria-label={`Remove ${p.name}`} onClick={() => setPicked((x) => x.filter((y) => y.key !== p.key))}>
+                  ×
+                </button>
+              </span>
+            ))}
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={picked.length ? 'Add more' : 'Colleagues or learners'} aria-label="Find people" autoFocus />
+          </span>
+          {(s || !picked.length) && found.length > 0 && (
+            <span className="dp-found">
+              {found.map((p) => (
+                <button key={p.key} type="button" onClick={() => (setPicked((x) => [...x, p]), setQ(''))}>
+                  <b>{p.name}</b>
+                  <span className="hint">{p.role === 'teacher' ? 'Teacher' : 'Learner'} · {p.where}</span>
+                </button>
+              ))}
+            </span>
+          )}
+        </div>
+        {picked.length > 0 && (
+          <>
+            <span className="dp-roles" role="radiogroup" aria-label="What they can do">
+              {ROLES.map((r) => (
+                <button key={r.k} type="button" role="radio" aria-checked={role === r.k} className={role === r.k ? 'on' : ''} onClick={() => setRole(r.k)}>
+                  <b>{r.label}</b>
+                  <span className="hint">{r.about}</span>
+                </button>
+              ))}
+            </span>
+            <label className="switch-row">
+              <span>
+                Send them a message with the link
+                <span className="hint">In your chat with each of them</span>
+              </span>
+              <input type="checkbox" checked={tell} onChange={() => setTell((v) => !v)} />
+            </label>
+            {tell && <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="A note (optional)" />}
+            <button type="button" className="btn primary" disabled={busy} onClick={() => void go()}>
+              {busy ? 'Sharing…' : `Share with ${picked.length} ${picked.length === 1 ? 'person' : 'people'}`}
+            </button>
+          </>
+        )}
+        {done && <span className="hint dp-done">{done}</span>}
+        <div className="dp-members">
+          <span className="dp-mem">
+            <b>{d.ownerName || 'You'}</b>
+            <span className="hint">Owner</span>
+          </span>
+          {members.map(([k, m]) => (
+            <span key={k} className="dp-mem">
+              <b>{m.name}</b>
+              <span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span>
+              <select value={m.role} onChange={(e) => void setMemberRole(d, k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
+                {ROLES.map((r) => (
+                  <option key={r.k} value={r.k}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="btn link small" onClick={() => void unshare(d, k)}>
+                Remove
+              </button>
+            </span>
+          ))}
+          {Object.entries(d.classes ?? {}).map(([k, c]) => (
+            <span key={k} className="dp-mem">
+              <b>{c.name}</b>
+              <span className="hint">Whole class, in a lesson · {ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}</span>
+            </span>
+          ))}
+        </div>
+        <div className="row-between" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
