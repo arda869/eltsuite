@@ -3965,3 +3965,10 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .sl-text.title { font-family: var(--serif); }
 .sl-mbtn { display: inline-flex; align-items: center; justify-content: center; }
 .sl-mbtn .sl-shape-ic { display: block; }
+.gl-slides { display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto; gap: 4px 6px; width: 100%; }
+.gl-slides > i { width: 26px; aspect-ratio: 16 / 9; border-radius: 3px; background: #fff; box-shadow: 0 0 0 1px var(--hair-strong); }
+.gl-slides > i.on { box-shadow: 0 0 0 1.5px var(--accent); }
+.gl-slides b { grid-column: 2; grid-row: 1 / 3; position: relative; aspect-ratio: 16 / 9; border-radius: 4px; background: #fff; box-shadow: 0 0 0 1px var(--hair-strong); }
+.gl-slides b em { position: absolute; left: 10%; top: 14%; width: 46%; height: 12%; border-radius: 2px; background: var(--ink); opacity: .75; }
+.gl-slides b u { position: absolute; right: 10%; top: 38%; width: 34%; height: 44%; border-radius: 50%; background: var(--accent); opacity: .8; }
+.gl-slides { width: 62%; margin-top: 6px; }

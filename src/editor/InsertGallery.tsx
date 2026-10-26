@@ -10,10 +10,11 @@ const SECTIONS: Section[] = [
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
   { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
-  { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'collab', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
+  { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
+  { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'collab-slides', 'drawboard'] },
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['textbox', 'info', 'reveal', 'image', 'linkcard', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
-  { title: 'Board, notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['drawboard', 'grammarlink', 'vocablink', 'bankpick'] },
+  { title: 'Notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['grammarlink', 'vocablink', 'bankpick'] },
 ];
 
 // Longer explanations than the / menu hints: what learners do and how it is marked.
@@ -82,7 +83,8 @@ const ABOUT: Record<string, string> = {
   'b-didyouknow': 'A culture or fact box.',
   'b-note': 'A sticky note for examples or a list.',
   'b-cando': 'An end-of-lesson self-assessment; answers go to you.',
-  drawboard: 'A drawing board in the task: draw, write and add pictures, live in class, with "who can draw".',
+  'collab-slides': 'Shared slides, made live like Google Slides: text boxes, pictures, shapes, layouts and backgrounds. The whole class, each group or each learner; learners can each make their own slides in one deck. Present full screen; download as PowerPoint or PDF.',
+  drawboard: 'A drawing board, live: draw, write and add pictures. One for the whole class, each group or each learner; lock it, show everyone’s cursor, use the pointer.',
   grammarlink: 'A card that opens a grammar page in the class notebook.',
   vocablink: 'A card that opens a vocabulary page in the class notebook.',
   bankpick: 'Insert a question or a task you saved to your personal bank.',
@@ -459,6 +461,22 @@ const PREVIEW: Record<string, () => ReactNode> = {
       </span>
       <span className="gl-kara">
         We went <b>to the beach</b> and <s>swam</s> swam.
+      </span>
+    </span>
+  ),
+  'collab-slides': () => (
+    <span className="gl-col">
+      <span className="gl-collab">
+        <i style={{ background: '#3d6fb6' }} />
+        <i style={{ background: '#7a5cb8' }} />
+      </span>
+      <span className="gl-slides">
+        <i className="on" />
+        <i />
+        <b>
+          <em />
+          <u />
+        </b>
       </span>
     </span>
   ),

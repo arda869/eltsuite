@@ -98,11 +98,12 @@ const COMMANDS: Cmd[] = [
     },
   },
   { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
-  { key: 'collab', label: 'Collaborate', hint: 'A document the class writes together, live: edit, suggest, comment', group: 'Questions', run: (e) => e.chain().focus().insertContent([newCollab(), { type: 'paragraph' }]).run() },
+  { key: 'collab', label: 'Shared document', hint: 'A document the class writes together, live: edit, suggest, comment', group: 'Questions', run: (e) => e.chain().focus().insertContent([newCollab(), { type: 'paragraph' }]).run() },
   { key: 'upload', label: 'File upload', hint: 'Learners hand in files: documents, photos, sound or video', group: 'Questions', run: (e) => e.chain().focus().insertContent([newUpload(), { type: 'paragraph' }]).run() },
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
   { key: 'reflect', label: 'Self-reflection', hint: 'Learners rate how they did: stars, faces, scales, can-do lists', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('self'), { type: 'paragraph' }]).run() },
   { key: 'peer', label: 'Peer feedback', hint: 'Learners choose a classmate and rate how they did', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('peer'), { type: 'paragraph' }]).run() },
+  { key: 'collab-slides', label: 'Shared slides', hint: 'Slides the class makes together, live, like Google Slides', group: 'Questions', run: (e) => e.chain().focus().insertContent([{ ...newCollab(), attrs: { ...newCollab().attrs, kind: 'slides' } }, { type: 'paragraph' }]).run() },
   { key: 'board', label: 'Message board', hint: 'Learners post messages the whole class sees', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('board'), { type: 'paragraph' }]).run() },
   { key: 'postits', label: 'Post-it wall', hint: 'Learners stick notes on a shared wall', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('postits'), { type: 'paragraph' }]).run() },
   { key: 'grammarlink', label: 'Grammar bank link', hint: 'A card that opens a grammar page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('grammar'), { type: 'paragraph' }]).run() },
@@ -272,7 +273,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab'];
+const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;

@@ -50,7 +50,7 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
     <NodeViewWrapper className={'block-node co-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">
         <Grip editor={editor} getPos={getPos} />
-        <span className="block-label">Collaborate</span>
+        <span className="block-label">{a.kind === 'slides' ? 'Shared slides' : 'Shared document'}</span>
         <button type="button" className="remove" style={{ marginLeft: 'auto' }} onClick={deleteNode}>
           Remove
         </button>
