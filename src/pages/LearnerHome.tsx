@@ -118,6 +118,29 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
             </section>
           )}
 
+          {visible.some((i) => i.type === 'exam') && (
+            <section className="exams-home" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <h2 style={{ fontSize: 16 }}>Exams</h2>
+              <ul className="items">
+                {visible
+                  .filter((i) => i.type === 'exam')
+                  .sort((a, b) => a.order - b.order)
+                  .map((i) => (
+                    <li key={i.id} className={'item' + (lockedItem(i) ? ' is-locked' : '')}>
+                      <span className="type">exam</span>
+                      {lockedItem(i) ? (
+                        <span className="title locked-title">{i.title}</span>
+                      ) : (
+                        <Link to={`/learn/${i.id}`} className="title">
+                          {i.title}
+                        </Link>
+                      )}
+                      <span className="hint">{i.examReleased ? 'Results ready' : i.exam?.minutes ? `${i.exam.minutes} minutes` : ''}</span>
+                    </li>
+                  ))}
+              </ul>
+            </section>
+          )}
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <h2 style={{ fontSize: 16 }}>Lessons and work</h2>
             {groups.length === 0 ? (

@@ -153,6 +153,7 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
       <span className={'gap-chip' + (answers.length ? '' : ' empty')} contentEditable={false} onClick={() => setOpen(true)} title="Edit accepted answers">
         {answers.length ? answers.join(' / ') : 'answer'}
       </span>
+      {node.attrs.stem && <span className="wf-stem" contentEditable={false}>{node.attrs.stem}</span>}
       {open && (
         <span className="gap-pop" contentEditable={false} style={popStyle}>
           <span className="pop-type">Gap fill</span>
@@ -175,6 +176,10 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             <input type="checkbox" checked={!!node.attrs.caseSensitive} onChange={() => updateAttributes({ caseSensitive: !node.attrs.caseSensitive })} />
             Capital letters must match
           </label>
+          <label className="pop-stem">
+            <span>Word formation</span>
+            <input value={node.attrs.stem ?? ''} placeholder="Stem word, for example DECIDE" onChange={(e) => updateAttributes({ stem: e.target.value.toUpperCase() })} onKeyDown={(e) => e.stopPropagation()} />
+          </label>
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>
       )}
@@ -194,6 +199,7 @@ export const Gap = Node.create({
       id: { default: null },
       answers: { default: [] },
       caseSensitive: { default: false },
+      stem: { default: '' }, // word formation: the word in capitals beside the gap
       hint: { default: '' },
       feedback: { default: '' },
     };

@@ -1,3 +1,4 @@
+import { mergePack, scorePack, splitPack, type PackKey, type PackKind } from './pack';
 // Question types: what is public, what goes into the answer key, and how answers are scored.
 import type { JSONContent } from '@tiptap/react';
 
@@ -9,13 +10,14 @@ export type KeyEntry = (
   | { kind: 'drop'; answer: string }
   | { kind: 'order'; answer: string }
   | { kind: 'writing'; model: string }
+  | PackKey
 ) & { feedback?: string; hint?: string };
 export type AnswerKey = Record<string, KeyEntry>;
 export type Response = string | number | number[] | JSONContent | null | undefined;
 export type Responses = Record<string, Response>;
 
-export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect'] as const;
-export const isQuestion = (n: JSONContent) => !!n.attrs?.id && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '');
+export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect', 'pq'] as const;
+export const isQuestion = (n: JSONContent) => !!n.attrs?.id && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '') && !(n.type === 'pq' && n.attrs?.kind === 'speaking');
 
 // Seeded shuffle so a question always appears in the same shuffled order.
 export function shuffle<T>(list: T[], seed: string): T[] {
@@ -83,9 +85,13 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
         const sentence = (a.sentence ?? '').trim();
         key[id] = { kind: 'order', answer: sentence };
         out.attrs = { id, words: shuffle(splitWords(sentence), id) };
+      } else if (n.type === 'pq') {
+        const { pub, key: k } = splitPack(a.kind as PackKind, a.data ?? {}, id);
+        if (k) key[id] = { kind: 'pack', t: a.kind, k };
+        out.attrs = { id, kind: a.kind, data: pub, ...(a.kind === 'odd' && a.data?.reason ? { reason: true } : {}) };
       } else if (n.type === 'writing') {
         key[id] = { kind: 'writing', model: a.model ?? '' };
-        out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5 };
+        out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5, genre: a.genre ?? '', rubric: a.rubric ?? 'none', criteria: a.criteria ?? [] };
       }
       if (key[id]) {
         if (a.feedback?.trim()) key[id].feedback = a.feedback.trim();
@@ -138,6 +144,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
       if (n.type === 'dropgap' && k.kind === 'drop') out.attrs = { ...a, answer: k.answer };
       if (n.type === 'order' && k.kind === 'order') out.attrs = { id: a.id, sentence: k.answer };
       if (n.type === 'writing' && k.kind === 'writing') out.attrs = { ...a, model: k.model };
+      if (n.type === 'pq' && k.kind === 'pack') out.attrs = { id: a.id, kind: a.kind, data: mergePack(a.kind as PackKind, a.data ?? {}, k.k) };
       out.attrs = { ...out.attrs, feedback: k.feedback ?? '', hint: k.hint ?? '' };
     }
     if (n.type === 'wordbank') out.attrs = { extras: a.extras ?? [] };
@@ -170,7 +177,7 @@ export function drawnCards(r: Response): number[] {
 export function questionIds(content: JSONContent | null, responses?: Responses): QRef[] {
   const out: QRef[] = [];
   const walk = (n: JSONContent) => {
-    if (isQuestion(n)) out.push({ id: n.attrs!.id, type: n.type!, rows: n.type === 'match' ? (n.attrs?.left ?? []).length || 1 : 1 });
+    if (isQuestion(n)) out.push({ id: n.attrs!.id, type: n.type === 'pq' ? 'pq:' + n.attrs!.kind : n.type!, rows: n.type === 'match' ? (n.attrs?.left ?? []).length || 1 : 1 });
     if (n.type === 'randomPick' && responses) {
       for (const i of drawnCards(responses[n.attrs?.id])) if (n.content?.[i]) walk(n.content[i]);
       return;
@@ -231,6 +238,7 @@ const reflectAnswered = (r: Response) => {
   return !!v.ratings && Object.values(v.ratings).some((x) => (typeof x === 'number' ? x > 0 || x === 0 : Array.isArray(x) ? x.length > 0 : typeof x === 'string' && !!x.trim()));
 };
 export const isAnswered = (r: Response): boolean =>
+  !!r && typeof r === 'object' && !Array.isArray(r) && 'pick' in (r as object) ? (Array.isArray((r as { pick: unknown }).pick) ? ((r as { pick: unknown[] }).pick.length > 0) : typeof (r as { pick: unknown }).pick === 'number') :
   !!r && typeof r === 'object' && !Array.isArray(r) && 'ratings' in (r as object) ? reflectAnswered(r) : !!(
   r !== undefined && !(r && typeof r === 'object' && !Array.isArray(r) && !textOf(r)) &&
   r !== undefined && r !== null && r !== '' && !(Array.isArray(r) && (r.length === 0 || r.every((x) => x === -1 || x === null))));
@@ -260,6 +268,8 @@ export function scoreQuestion(entry: KeyEntry | undefined, r: Response): { got: 
       return { got: isAnswered(r) && normalise(String(r)) === normalise(entry.answer) ? 1 : 0, max: 1 };
     case 'writing':
       return { got: 0, max: 0 }; // marked by the teacher
+    case 'pack':
+      return scorePack(entry, r as never);
   }
 }
 

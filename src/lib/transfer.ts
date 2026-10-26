@@ -11,7 +11,7 @@ export async function gatherLesson(classId: string, itemId: string): Promise<{ t
   for (const d of snap.docs) {
     const t = { id: d.id, ...(d.data() as Omit<Task, 'id'>) };
     const [key, notes] = await Promise.all([loadKey(classId, itemId, t.id), loadNotes(classId, itemId, t.id).catch(() => '')]);
-    tasks.push({ title: t.title, instructions: t.instructions, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, notes, content: mergeKey(t.content ?? { type: 'doc' }, key) });
+    tasks.push({ title: t.title, instructions: t.instructions, hidden: t.hidden, locked: t.locked, layout: t.layout, kind: t.kind, exam: t.exam ?? null, notes, content: mergeKey(t.content ?? { type: 'doc' }, key) });
   }
   return { title: (item.data()?.title as string) ?? 'Lesson', tasks };
 }
@@ -59,6 +59,7 @@ export async function createLessonFromImport(classId: string, topicId: string | 
       hidden: !!t.hidden,
       locked: !!t.locked,
       ...(t.layout && t.layout !== 'single' ? { layout: t.layout } : {}),
+      ...(t.exam ? { exam: t.exam } : {}),
       createdAt: serverTimestamp(),
     });
     b.set(keyRef(classId, itemRef.id, ref.id), key);

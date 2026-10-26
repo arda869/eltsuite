@@ -72,7 +72,12 @@ service cloud.firestore {
                   && (get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('restricted', false) == false
                       || get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
                          in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
-                  && (get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true
+                  && ((get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true
+                       && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('exam', null) == null
+                       && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('type', 'lesson') != 'exam')
+                      || get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('examReleased', false) == true
+                      || (get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('type', 'lesson') == 'exam'
+                          && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('examReleased', false) == true)
                       || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealed', {}).get(taskId, 0) != 0
                       || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealedQs', {}).get(taskId, []).size() > 0));
             allow write: if teachesClass(classId);
@@ -101,6 +106,38 @@ service cloud.firestore {
       match /groupSets/{sid} {
         allow read: if teachesClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
+      }
+
+      // Survey and poll answers. Anonymous answers carry no uid, learner id or name and have a
+      // random id; named answers use surveyId_uid so the learner can change them.
+      match /surveyResponses/{rid} {
+        allow read: if teachesClass(classId) || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
+        allow create: if memberOf(classId) && (
+          (!('uid' in request.resource.data) && !('learnerId' in request.resource.data) && !('name' in request.resource.data))
+          || (request.resource.data.uid == request.auth.uid && rid == request.resource.data.surveyId + '_' + request.auth.uid));
+        allow update: if memberOf(classId) && resource.data.get('uid', '') == request.auth.uid && request.resource.data.uid == request.auth.uid;
+        allow delete: if teachesClass(classId);
+      }
+      match /surveyDone/{did} {
+        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create, update: if memberOf(classId) && request.resource.data.uid == request.auth.uid && did == request.resource.data.surveyId + '_' + request.auth.uid;
+        allow delete: if teachesClass(classId);
+      }
+      // Shared results: counts and texts only
+      match /surveyResults/{sid} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId);
+      }
+
+      // Exam attempts: a learner starts once and can only add the time they submitted
+      match /examRuns/{rid} {
+        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create: if memberOf(classId) && request.resource.data.uid == request.auth.uid
+          && rid == request.resource.data.scope + '_' + request.auth.uid
+          && request.resource.data.submittedMs == null;
+        allow update: if signedIn() && resource.data.uid == request.auth.uid && resource.data.submittedMs == null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['submittedMs']);
+        allow delete: if teachesClass(classId);
       }
 
       // The level a learner chose for a task with level versions

@@ -5,6 +5,7 @@ import { newId } from '../lib/tasks';
 import { usePopPos } from './usePopPos';
 import { NoteFields } from './NoteFields';
 import { Grip } from './nodes';
+import { CAMBRIDGE, criteriaOf, GENRES, genreLabel, maxOf, type Criterion } from '../lib/rubric';
 
 const LETTERS = 'abcdefghijklmnop';
 
@@ -287,11 +288,59 @@ function WritingView(props: NodeViewProps) {
           <input type="checkbox" checked={!!node.attrs.spellcheck} onChange={() => updateAttributes({ spellcheck: !node.attrs.spellcheck })} />
           Spell check
         </label>
+        {!criteriaOf(node.attrs) && (
+          <label className="check-row">
+            Marked out of
+            <input inputMode="numeric" style={{ width: 44 }} value={node.attrs.points ?? 5} onChange={(e) => updateAttributes({ points: Math.max(1, Math.min(100, Number(e.target.value.replace(/\D/g, '')) || 1)) })} />
+          </label>
+        )}
+      </div>
+      <div className="writing-edit">
         <label className="check-row">
-          Marked out of
-          <input inputMode="numeric" style={{ width: 44 }} value={node.attrs.points ?? 5} onChange={(e) => updateAttributes({ points: Math.max(1, Math.min(100, Number(e.target.value.replace(/\D/g, '')) || 1)) })} />
+          Type of writing
+          <select value={node.attrs.genre ?? ''} onChange={(e) => updateAttributes({ genre: e.target.value })}>
+            <option value="">Any</option>
+            {GENRES.map((g) => (
+              <option key={g} value={g}>
+                {genreLabel(g)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="check-row">
+          Marking scale
+          <select
+            value={node.attrs.rubric ?? 'none'}
+            onChange={(e) => {
+              const r = e.target.value;
+              const crit = r === 'cambridge' ? CAMBRIDGE : r === 'custom' ? (node.attrs.criteria?.length ? node.attrs.criteria : [{ name: 'Ideas', max: 5 }, { name: 'Language', max: 5 }]) : null;
+              updateAttributes({ rubric: r, ...(r === 'custom' ? { criteria: crit } : {}), ...(crit ? { points: maxOf(crit) } : {}) });
+            }}
+          >
+            <option value="none">One mark</option>
+            <option value="cambridge">Cambridge-style (4 × 0–5)</option>
+            <option value="custom">My own criteria</option>
+          </select>
         </label>
       </div>
+      {node.attrs.rubric === 'custom' && (
+        <div className="rubric-edit">
+          {(node.attrs.criteria ?? []).map((c: Criterion, i: number) => (
+            <span key={i} className="pq-line">
+              <input value={c.name} placeholder="Criterion, for example: Task achievement" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => { const next = node.attrs.criteria.map((x: Criterion, k: number) => (k === i ? { ...x, name: e.target.value } : x)); updateAttributes({ criteria: next }); }} />
+              <span className="hint">0 to</span>
+              <input inputMode="numeric" style={{ width: 44 }} value={c.max} onChange={(e) => { const next = node.attrs.criteria.map((x: Criterion, k: number) => (k === i ? { ...x, max: Math.max(1, Math.min(20, Number(e.target.value.replace(/\D/g, '')) || 1)) } : x)); updateAttributes({ criteria: next, points: maxOf(next) }); }} />
+              <button type="button" className="icon-btn" aria-label="Remove criterion" disabled={node.attrs.criteria.length <= 1} onClick={() => { const next = node.attrs.criteria.filter((_: Criterion, k: number) => k !== i); updateAttributes({ criteria: next, points: maxOf(next) }); }}>
+                ×
+              </button>
+            </span>
+          ))}
+          <button type="button" className="btn link small" style={{ alignSelf: 'flex-start' }} onClick={() => { const next = [...(node.attrs.criteria ?? []), { name: '', max: 5 }]; updateAttributes({ criteria: next, points: maxOf(next) }); }}>
+            + Criterion
+          </button>
+        </div>
+      )}
+      {criteriaOf(node.attrs) && <span className="hint">Marked out of {maxOf(criteriaOf(node.attrs)!)}: {criteriaOf(node.attrs)!.map((c) => c.name).join(', ')}.</span>}
       <label className="inline-field" style={{ alignItems: 'flex-start' }}>
         Model answer
         <textarea rows={3} value={node.attrs.model ?? ''} placeholder="Optional. Learners see it after you mark their writing." onChange={(e) => updateAttributes({ model: e.target.value })} />
@@ -307,7 +356,7 @@ export const Writing = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false }, points: { default: 5 } }),
+  addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false }, points: { default: 5 }, genre: { default: '' }, rubric: { default: 'none' }, criteria: { default: [] } }),
   parseHTML: () => [{ tag: 'div[data-writing]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-writing': '' })],
   addNodeView: () => ReactNodeViewRenderer(WritingView),

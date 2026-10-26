@@ -17,6 +17,8 @@ export type LiveState = {
   groupSetId?: string | null; // the group set in use (breakout rooms)
   syncRoom?: string | null; // when set, "Sync" moves only this room with the teacher
   roomTask?: Record<string, string> | null; // room -> task the room is synced to
+  poll?: { id: string; q: import('./survey').SurveyQ; anonymous: boolean; open: boolean; at: number } | null; // a quick live poll
+  quiz?: boolean | null; // a team quiz is running (details in the Realtime Database)
   board?: { open: boolean; page: string } | null; // the lesson board, and the page the teacher is on
   startedAt?: Timestamp;
   updatedAt?: Timestamp;

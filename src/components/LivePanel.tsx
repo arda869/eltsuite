@@ -9,6 +9,8 @@ import { TaskRenderer } from './TaskRenderer';
 import { saveMark, setCorrection, type Correction, type Mark } from '../lib/tasks';
 import { addAnnotation, removeAnnotation, DEFAULT_CODES, type Annotation, type Code } from '../lib/annotations';
 import { AnswerMarkup } from './AnswerMarkup';
+import { packLabel } from '../lib/pack';
+import { criteriaOf } from '../lib/rubric';
 import { useClassAvatars } from '../lib/avatars';
 import { Avatar } from './avatars';
 import { isOnline, type Presence } from '../lib/presence';
@@ -67,6 +69,8 @@ function label(node: JSONContent | undefined, r: Response): string {
       const v = r as unknown as { peerName?: string };
       return v.peerName ? `for ${v.peerName.split(' ')[0]}` : 'done';
     }
+    case 'pq':
+      return packLabel(a.kind, a.data ?? {}, r);
     case 'writing': {
       const words = textOf(r).split(/\s+/).filter(Boolean).length;
       return `${words} ${words === 1 ? 'word' : 'words'}`;
@@ -296,10 +300,43 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
               return (
                 <div key={q.id} className="mark-block">
                   <WritingReview classId={classId} taskId={taskId} learnerUid={answer.learnerUid} qid={q.id} text={textOf(answer.responses?.[q.id])} corr={answer.corrections?.[q.id]} codes={codes} anns={annotations.filter((a) => a.target === 'answer' && a.qid === q.id && a.learnerUid === answer.learnerUid)} />
+                {criteriaOf(nodes[q.id]?.attrs) && (
+                  <div className="rubric-mark">
+                    {criteriaOf(nodes[q.id]?.attrs)!.map((c) => {
+                      const v = m.crit?.[c.name] ?? null;
+                      return (
+                        <span key={c.name} className="rubric-row">
+                          <span className="rubric-name">{c.name}</span>
+                          <span className="rubric-scale" role="radiogroup" aria-label={c.name}>
+                            {Array.from({ length: c.max + 1 }, (_, n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                role="radio"
+                                aria-checked={v === n}
+                                className={v === n ? 'on' : ''}
+                                onClick={() =>
+                                  setDraft((d) => {
+                                    const cr = { ...(m.crit ?? {}), [c.name]: v === n ? null : n };
+                                    const all = criteriaOf(nodes[q.id]?.attrs)!;
+                                    const filled = all.filter((x) => typeof cr[x.name] === 'number');
+                                    return { ...d, [q.id]: { ...m, crit: cr, score: filled.length ? filled.reduce((sum, x) => sum + (cr[x.name] as number), 0) : null } };
+                                  })
+                                }
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="mark-row">
                   <span className="mark-q">Question {questionIds(content).findIndex((x) => x.id === q.id) + 1}</span>
                   <span className="mark-score">
-                    <input inputMode="numeric" value={m.score ?? ''} placeholder="–" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, score: e.target.value === '' ? null : Math.min(out, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, '')))) } }))} />
+                    <input inputMode="numeric" value={m.score ?? ''} placeholder="–" readOnly={!!criteriaOf(nodes[q.id]?.attrs)} onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, score: e.target.value === '' ? null : Math.min(out, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, '')))) } }))} />
                     <span className="hint">/ {out}</span>
                   </span>
                   <textarea value={m.comment} placeholder="A comment for the learner" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, comment: e.target.value } }))} />

@@ -52,6 +52,10 @@ import { useClassmates } from '../lib/learners';
 import { applyAccess, familyOf, isVariant, makeVariant, roleOf, ROLE_NAMES, unlinkVariant, useClassLevels, useGroupSets, useTaskBodies } from '../lib/groups';
 import { GroupsDialog } from '../components/GroupsDialog';
 import { TaskAudience } from '../components/TaskAudience';
+import { ExamSettings } from '../components/ExamSettings';
+import { PollDialog } from '../components/Poll';
+import { TeacherQuiz } from '../components/TeamQuiz';
+import { examScope, useRuns } from '../lib/exam';
 import { HIGHLIGHTS, INK_COLORS, InkBar, PresentInk, type InkMode } from '../components/PresentInk';
 
 const svg = (d: React.ReactNode) => (
@@ -83,6 +87,8 @@ export function LessonEditor() {
   const [boardView, setBoardView] = useState(false);
   const [boardPageLocal, setBoardPageLocal] = useState('');
   const [inkMode, setInkMode] = useState<InkMode>('off');
+  const [pollOpen, setPollOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
   const [inkColor, setInkColor] = useState(INK_COLORS[0]);
   const [inkHl, setInkHl] = useState(HIGHLIGHTS[0]);
   const [inkClear, setInkClear] = useState(0);
@@ -131,8 +137,11 @@ export function LessonEditor() {
   const choices = useClassLevels(classId, famMain?.dist?.mode === 'choose' && fam.length > 1 ? famMain.id : undefined);
   const vLabel = (t?: Task) => (!t ? '' : t.variant && /^[A-Z]$/.test(t.variant) ? `Version ${t.variant}` : t.variant ?? 'Version A');
   const gridOnly: string[] | null = !task || task.kind === 'section' ? null : fam.length > 1 && famMain?.dist?.mode === 'choose' ? Object.entries(choices).filter(([, tid]) => tid === task.id).map(([lid]) => lid) : task.allowed ?? null;
+  const examRuns = useRuns(classId, examScope(item, task)?.id);
   const tagOf = (lid: string) => {
     const parts: string[] = [];
+    const er = examRuns.find((r) => r.learnerId === lid);
+    if (er) parts.push(er.submittedMs ? 'submitted' : 'in exam');
     if (fam.length > 1) {
       const d = famMain.dist;
       if (d?.mode === 'role') {
@@ -522,6 +531,8 @@ export function LessonEditor() {
         <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
       </TopBar>
 
+      {quizOpen && <TeacherQuiz classId={classId} itemId={itemId} tasks={tasks} taskId={selected} roster={classmates} online={inLesson.map((p) => p.learnerId)} activeSet={activeSet} onClose={() => setQuizOpen(false)} />}
+      {pollOpen && <PollDialog classId={classId} poll={live?.poll} onClose={() => setPollOpen(false)} />}
       {groupsOpen && (
         <GroupsDialog
           classId={classId}
@@ -692,6 +703,12 @@ export function LessonEditor() {
                   </span>
                   <button type="button" className="btn small-btn" onClick={pickLearner} disabled={!!picking} title="Choose a learner at random">
                     {picking || 'Pick a learner'}
+                  </button>
+                  <button type="button" className={'btn small-btn' + (live?.poll?.open ? ' on-accent' : '')} onClick={() => setPollOpen(true)} title="Ask the class a quick question">
+                    Poll
+                  </button>
+                  <button type="button" className={'btn small-btn' + (live?.quiz ? ' on-accent' : '')} onClick={() => setQuizOpen(true)} title="Turn this task’s questions into a team race">
+                    Team quiz
                   </button>
                   <button type="button" className={'btn small-btn' + (inkMode !== 'off' ? ' on-accent' : '')} onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} title="Draw or highlight on the task while you present. Not saved. Shortcut: D">
                     Draw
@@ -998,6 +1015,7 @@ export function LessonEditor() {
                 </span>
                 <input type="checkbox" checked={task.showScore !== false} onChange={() => setTaskFlags(classId, itemId, task.id, { showScore: task.showScore === false })} />
               </label>
+              {item && <ExamSettings classId={classId} item={item} task={task} />}
               <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
                 Version history
               </button>

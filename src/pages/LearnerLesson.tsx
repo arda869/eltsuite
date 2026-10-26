@@ -1,3 +1,6 @@
+import { LearnerQuiz } from '../components/TeamQuiz';
+import { PollCard } from '../components/Poll';
+import { examScope, fmt, startExam, submitExam, timeLeft, useMyRun } from '../lib/exam';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
@@ -189,8 +192,9 @@ export function LearnerLesson() {
     setDoc(answerRef(classId, base.taskId, base.learnerUid), { ...base, flags: next }, { merge: true }).catch((e) => console.error(e));
   }
 
+  const examLockedRef = useRef(false);
   function change(id: string, v: Responses[string]) {
-    if (!base || task?.locked || (checked && corrections[id]?.status !== 'open')) return;
+    if (!base || task?.locked || examLockedRef.current || (checked && corrections[id]?.status !== 'open')) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
     dirty.current = true;
@@ -268,6 +272,34 @@ export function LearnerLesson() {
   const th = theme(c?.themeColor);
   const showScore = task?.showScore !== false;
 
+  // Exams: Start, a timer, no checking, locked after submitting, results when the teacher releases them.
+  const scope = examScope(item, task);
+  const run = useMyRun(classId, scope?.id, user?.uid);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!scope || !run || run.submittedMs) return;
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, [scope?.id, run?.startMs, run?.submittedMs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const left = timeLeft(run, scope?.minutes ?? null, now);
+  const examState = !scope ? 'none' : run === undefined ? 'loading' : run === null ? 'before' : run.submittedMs ? (scope.released ? 'released' : 'submitted') : 'running';
+  const examLocked = examState === 'before' || examState === 'submitted' || examState === 'loading' || (examState === 'released' && !checked);
+  examLockedRef.current = examLocked;
+  async function submitNow(auto = false) {
+    if (!scope || !user) return;
+    if (!auto && !window.confirm(scope.kind === 'item' ? 'Submit the whole exam? You can’t change your answers after this.' : 'Submit this exam? You can’t change your answers after this.')) return;
+    window.clearTimeout(timer.current);
+    if (base) await saveResponses(classId, base, responses).catch(() => {});
+    await submitExam(classId, scope.id, user.uid).catch((e) => console.error(e));
+  }
+  useEffect(() => {
+    if (examState === 'running' && left === 0) submitNow(true);
+  }, [examState, left === 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  // When results are released, mark this task so the learner sees how they did.
+  useEffect(() => {
+    if (examState === 'released' && !checked && !busy && base && qs.length) check();
+  }, [examState, checked, current]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
     <div className="shell wide lesson-shell" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
@@ -291,6 +323,8 @@ export function LearnerLesson() {
       </header>
 
       <AnnouncementCards classId={classId} learnerId={learnerId} />
+      {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}
+      {liveHere && live?.poll && user && <PollCard classId={classId} poll={live.poll} me={{ uid: user.uid, learnerId, name: profile?.role === 'learner' ? profile.displayName : '' }} />}
       {liveHere && (
         <div className="live-float">
           <TimerChip timer={live?.timer} />
@@ -385,7 +419,20 @@ export function LearnerLesson() {
                     {live?.teacherName ?? 'Your teacher'} is on “{tasks.find((t) => t.id === teacherAt)?.title ?? 'another task'}”. Go there
                   </button>
                 )}
-                {task.needsLevel && task.levels ? (
+                {scope && (examState === 'before' || examState === 'loading') ? (
+                  <div className="exam-start">
+                    <span className="eyebrow">Exam</span>
+                    <h2>{scope.title}</h2>
+                    <ul>
+                      <li>{scope.minutes ? `You have ${scope.minutes} minutes from when you start.` : 'There is no time limit.'}</li>
+                      <li>You won’t see the answers until your teacher releases the results.</li>
+                      <li>When you submit{scope.minutes ? ' or the time is up' : ''}, your answers are locked.</li>
+                    </ul>
+                    <button type="button" className="btn primary tall" disabled={examState === 'loading'} onClick={() => user && startExam(classId, scope.id, user.uid, learnerId, profile?.role === 'learner' ? profile.displayName : '')}>
+                      Start the exam
+                    </button>
+                  </div>
+                ) : task.needsLevel && task.levels ? (
                   <div className="lvl-choose">
                     <span className="eyebrow">Choose your level</span>
                     <p>Pick the one that feels right for you today.</p>
@@ -409,7 +456,7 @@ export function LearnerLesson() {
                   onChange={change}
                   revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN, singles) : null}
                   results={checked ? key : null}
-                  disabled={task.locked}
+                  disabled={task.locked || examLocked}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
@@ -437,7 +484,13 @@ export function LearnerLesson() {
                 )}
               </div>
               <div className="frame-foot">
-                {checked && key && showScore ? (
+                {scope && examState === 'running' ? (
+                  <span className={'exam-clock' + (left !== null && left < 60000 ? ' soon' : '')} role="timer">
+                    {left !== null ? `${fmt(left)} left` : 'Exam'} · {answered} of {qs.length} answered
+                  </span>
+                ) : scope && examState === 'submitted' ? (
+                  <span className="hint">Submitted. Your teacher will release the results.</span>
+                ) : checked && key && showScore ? (
                   <span className="score">
                     {result.total > 0 ? (
                       <>
@@ -457,7 +510,13 @@ export function LearnerLesson() {
                   <button className="btn foot-prev" aria-label="Previous task" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)}>
                     Previous
                   </button>
-                  {qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
+                  {scope ? (
+                    examState === 'running' ? (
+                      <button className="btn primary" onClick={() => submitNow()}>
+                        {scope.kind === 'item' ? 'Submit the exam' : 'Submit'}
+                      </button>
+                    ) : null
+                  ) : qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
                     <span className="hint saved-auto">{Object.keys(responses).length ? 'Saved. Your teacher can see your answers.' : ''}</span>
                   ) : qs.length > 0 &&
                     (checked ? (

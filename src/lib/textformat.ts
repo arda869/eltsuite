@@ -5,7 +5,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { newId } from './tasks';
 
-export type ExportTask = { title: string; instructions?: string; hidden?: boolean; locked?: boolean; layout?: string; kind?: string; content: JSONContent; notes?: string };
+export type ExportTask = { title: string; instructions?: string; hidden?: boolean; locked?: boolean; layout?: string; kind?: string; content: JSONContent; notes?: string; exam?: { minutes: number | null } | null };
 
 // ---------------------------------------------------------------- export
 
@@ -22,7 +22,7 @@ function inline(nodes: JSONContent[] | undefined): string {
         return t;
       }
       const a = n.attrs ?? {};
-      if (n.type === 'gap') return `{{${(a.answers ?? []).join('|')}${a.caseSensitive ? '|case=sensitive' : ''}}}`;
+      if (n.type === 'gap') return `{{${(a.answers ?? []).join('|')}${a.stem ? '|^' + a.stem : ''}${a.caseSensitive ? '|case=sensitive' : ''}}}`;
       if (n.type === 'choice') {
         const correct: number[] = Array.isArray(a.correct) ? a.correct : [a.correct];
         const opts = (a.options ?? []).map((o: string, i: number) => (correct.includes(i) ? '*' : '') + o).join('|');
@@ -80,9 +80,23 @@ function block(n: JSONContent, out: string[], listPrefix = '') {
       return;
     case 'writing': {
       const words = a.minWords && a.maxWords ? ` words=${a.minWords}-${a.maxWords}` : a.maxWords ? ` words=${a.maxWords}` : a.minWords ? ` words=${a.minWords}-` : '';
-      out.push(`[[long${words}${a.points ? ' points=' + a.points : ''}]]`);
+      out.push(`[[long${words}${a.points ? ' points=' + a.points : ''}${a.genre ? ' genre=' + a.genre : ''}${a.rubric && a.rubric !== 'none' ? ' rubric=' + a.rubric : ''}]]`);
       if (a.model) out.push('model: ' + a.model);
       out.push('[[/long]]', '');
+      return;
+    }
+    case 'pq':
+      packExport(a.kind, a.data ?? {}, out);
+      return;
+    case 'survey': {
+      out.push(`[[survey anonymous=${a.anonymous ? 'yes' : 'no'}${a.title ? ` title="${String(a.title).replace(/"/g, "'")}"` : ''}]]`);
+      (a.questions ?? []).forEach((q: any) => {
+        out.push(q.prompt || '…');
+        if (q.type === 'scale') out.push(`scale: 1-${q.max ?? 5} | ${q.low ?? ''} | ${q.high ?? ''}`);
+        else if (q.type === 'single' || q.type === 'multi' || q.type === 'rank') out.push(`${q.type === 'single' ? 'choice' : q.type}: ${(q.options ?? []).join(' | ')}`);
+        else if (q.type !== 'text') out.push(q.type);
+      });
+      out.push('[[/survey]]', '');
       return;
     }
     case 'textBox':
@@ -99,6 +113,50 @@ function block(n: JSONContent, out: string[], listPrefix = '') {
   }
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function packExport(kind: string, d: Record<string, any>, out: string[]) {
+  const list = (x: unknown) => (Array.isArray(x) ? x.filter(Boolean) : []);
+  switch (kind) {
+    case 'fix': {
+      const w = String(d.wrong ?? '').trim();
+      const s = String(d.sentence ?? '');
+      const marked = w && s.includes(w) ? s.replace(w, `*${w}*`) : s;
+      out.push('[[fix]]', `${marked} = ${list(d.fixes).join('|')}`, '[[/fix]]', '');
+      return;
+    }
+    case 'categorise':
+      out.push('[[categorise]]', ...(d.cats ?? []).map((c: any) => `${c.name}: ${list(c.items).join(', ')}`), '[[/categorise]]', '');
+      return;
+    case 'transform':
+      out.push(`[[transform words=${d.min ?? ''}-${d.max ?? ''} key=${d.keyWord ?? ''}]]`, d.first ?? '', `${d.before ?? ''} {{${list(d.answers).join('|')}}} ${d.after ?? ''}`.trim(), '[[/transform]]', '');
+      return;
+    case 'highlight':
+      out.push(`[[highlight${d.penalty === false ? ' penalty=no' : ''}]]`, `${d.instruction ? d.instruction.replace(/:?\s*$/, '') + ': ' : ''}${d.text ?? ''}`, '[[/highlight]]', '');
+      return;
+    case 'sentences':
+      out.push('[[sentences]]', ...list(d.items), '[[/sentences]]', '');
+      return;
+    case 'label':
+      out.push(`[[label image=${d.image ?? ''}]]`, ...(d.points ?? []).map((p: any) => `${p.label} @ ${p.x}%,${p.y}%`), ...(list(d.extras).length ? ['extra: ' + list(d.extras).join(', ')] : []), '[[/label]]', '');
+      return;
+    case 'odd':
+      out.push(`[[odd${d.reason ? ' reason=yes' : ''}]]`, (d.words ?? []).map((w: string, i: number) => (i === d.odd ? '*' : '') + w).join(', '), '[[/odd]]', '');
+      return;
+    case 'gapped': {
+      const ex = list(d.extras);
+      const tags = ex.map((_, i) => String.fromCharCode(71 + i)); // G, H, …
+      out.push(`[[gapped${ex.length ? ' extra=' + tags.join(',') : ''}]]`, ...String(d.text ?? '').split('\n'), ...(d.removed ?? []).map((r: string, i: number) => `${i + 1} = ${r}`), ...ex.map((r, i) => `${tags[i]} = ${r}`), '[[/gapped]]', '');
+      return;
+    }
+    case 'matching':
+      out.push(`[[matching options=${(d.options ?? []).join(',')}]]`, ...(d.names ?? []).map((n: string, i: number) => (n ? `${d.options[i]}: ${n}` : '')).filter(Boolean), ...(d.statements ?? []).map((s: any) => `${s.text} = ${d.options?.[s.answer] ?? ''}`), '[[/matching]]', '');
+      return;
+    case 'speaking':
+      out.push(`[[speaking timer=${d.timer ?? 60}${d.pairs === false ? ' pairs=no' : ''}]]`, d.prompt ?? '', ...list(d.images).map((x: string) => 'image: ' + x), ...list(d.questions).map((q: string) => '- ' + q), '[[/speaking]]', '');
+      return;
+  }
+}
+
 export function exportLesson(title: string, tasks: ExportTask[], withNotes = true) {
   const out: string[] = [`# ${title}`, ''];
   tasks.forEach((t, i) => {
@@ -109,6 +167,7 @@ export function exportLesson(title: string, tasks: ExportTask[], withNotes = tru
     out.push(`## Task ${i + 1}: ${t.title}`);
     if (t.instructions) out.push('instructions: ' + t.instructions);
     out.push(`hidden: ${t.hidden ? 'yes' : 'no'}`, `locked: ${t.locked ? 'yes' : 'no'}`);
+    if (t.exam) out.push(`exam: ${t.exam.minutes ? t.exam.minutes + 'min' : 'yes'}`);
     if (t.layout && t.layout !== 'single') out.push('layout: ' + (t.layout === 'two-wide' ? 'two-columns 60/40' : t.layout === 'media' ? 'media-questions' : 'two-columns 50/50'));
     out.push('');
     (t.content.content ?? []).forEach((n) => block(n, out));
@@ -145,9 +204,10 @@ function parseInline(s: string, line: number, errors: ImportError[]): JSONConten
       } else {
         const parts = inner.split('|').map((x) => x.trim());
         const cs = parts.includes('case=sensitive');
-        const answers = parts.filter((x) => x && x !== 'case=sensitive');
+        const stem = parts.find((x) => x.startsWith('^'))?.slice(1).trim().toUpperCase() ?? '';
+        const answers = parts.filter((x) => x && x !== 'case=sensitive' && !x.startsWith('^'));
         if (!answers.length) errors.push({ line, message: 'A gap {{ }} has no answer inside it' });
-        out.push({ type: 'gap', attrs: { id: newId(), answers, caseSensitive: cs } });
+        out.push({ type: 'gap', attrs: { id: newId(), answers, caseSensitive: cs, ...(stem ? { stem } : {}) } });
       }
     } else if (tok.startsWith('[[raw]]')) {
       try {
@@ -174,6 +234,123 @@ const attrsOf = (head: string) => {
   for (const m of head.matchAll(/(\w+)=(?:"([^"]*)"|(.+?))(?=\s+\w+=|\s*$)/g)) a[m[1]] = (m[2] ?? m[3] ?? '').trim();
   return a;
 };
+
+// Levenshtein distance, for guessing the wrong word in [[fix]] when it isn't marked.
+function dist(a: string, b: string) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+
+function packImport(kind: string, a: Record<string, string>, content: string[], start: number, at: (k: number) => number, errors: ImportError[]): JSONContent[] {
+  const node = (k: string, data: Record<string, unknown>) => ({ type: 'pq', attrs: { id: newId(), kind: k, data } });
+  const lines = content.map((x, k) => ({ x, k })).filter((l) => l.x);
+  const csv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
+  switch (kind) {
+    case 'fix':
+      return lines.map(({ x, k }) => {
+        const m = /^(.*?)\s*=\s*(.+)$/.exec(x);
+        if (!m) {
+          errors.push({ line: at(k), message: 'Write a [[fix]] line like “She *have* been to Paris. = has”' });
+          return node('fix', { sentence: x, wrong: '', fixes: [] });
+        }
+        const fixes = m[2].split('|').map((f) => f.trim()).filter(Boolean);
+        const mark = /\*([^*]+)\*/.exec(m[1]);
+        const sentence = m[1].replace(/\*([^*]+)\*/, '$1').trim();
+        let wrong = mark?.[1].trim() ?? '';
+        if (!wrong) {
+          const toks = sentence.split(/\s+/);
+          const f = (fixes[0] ?? '').toLowerCase();
+          wrong = toks.filter((t) => t.toLowerCase() !== f).sort((p, q) => dist(p.toLowerCase().replace(/[.,!?]$/, ''), f) - dist(q.toLowerCase().replace(/[.,!?]$/, ''), f))[0] ?? '';
+        }
+        return node('fix', { sentence, wrong, fixes });
+      });
+    case 'categorise': {
+      const cats = lines.map(({ x, k }) => {
+        const m = /^([^:]+):\s*(.*)$/.exec(x);
+        if (!m) errors.push({ line: at(k), message: 'Write a column like “Countable: apple, chair, idea”' });
+        return { name: m?.[1].trim() ?? x, items: csv(m?.[2] ?? '') };
+      });
+      if (cats.length < 2) errors.push({ line: start + 1, message: '[[categorise]] needs at least two columns' });
+      return [node('categorise', { cats })];
+    }
+    case 'transform': {
+      const [mn, mx] = (a.words ?? '').split('-').map((x) => Number(x) || null);
+      const first = lines[0]?.x ?? '';
+      const second = lines[1]?.x ?? '';
+      const m = /^(.*?)\{\{([^}]*)\}\}(.*)$/.exec(second);
+      if (!m) errors.push({ line: start + 3, message: '[[transform]] needs a second sentence with the answer in {{ }}' });
+      if (!a.key) errors.push({ line: start + 1, message: '[[transform]] needs a key word, for example key=NEVER' });
+      return [node('transform', { first, keyWord: (a.key ?? '').toUpperCase(), before: m?.[1].trim() ?? '', after: m?.[3].trim() ?? '', answers: (m?.[2] ?? '').split('|').map((x) => x.trim()).filter(Boolean), min: mn ?? null, max: mx ?? null })];
+    }
+    case 'highlight':
+      return lines.map(({ x, k }) => {
+        const brace = x.indexOf('{{');
+        const colon = x.indexOf(': ');
+        const hasInstr = colon > 0 && (brace < 0 || colon < brace);
+        if (brace < 0) errors.push({ line: at(k), message: 'Put the words to tap in {{ }}' });
+        return node('highlight', { instruction: hasInstr ? x.slice(0, colon + 1) : '', text: hasInstr ? x.slice(colon + 2) : x, penalty: !/^(no|false)$/i.test(a.penalty ?? '') });
+      });
+    case 'sentences':
+      if (lines.length < 2) errors.push({ line: start + 1, message: '[[sentences]] needs at least two sentences' });
+      return [node('sentences', { items: lines.map((l) => l.x) })];
+    case 'label': {
+      const points: { x: number; y: number; label: string }[] = [];
+      let extras: string[] = [];
+      lines.forEach(({ x, k }) => {
+        if (/^extra:/i.test(x)) return void (extras = csv(x.replace(/^extra:\s*/i, '')));
+        const m = /^(.*?)\s*@\s*([\d.]+)%\s*,\s*([\d.]+)%$/.exec(x);
+        if (!m) return void errors.push({ line: at(k), message: 'Write a label like “kitchen @ 20%,35%”' });
+        points.push({ label: m[1].trim(), x: Number(m[2]), y: Number(m[3]) });
+      });
+      if (!a.image) errors.push({ line: start + 1, message: '[[label]] needs a picture: image=https://…' });
+      return [node('label', { image: a.image ?? '', points, extras })];
+    }
+    case 'odd':
+      return lines.map(({ x, k }) => {
+        const ws = csv(x);
+        const odd = ws.findIndex((w) => w.startsWith('*'));
+        if (odd < 0) errors.push({ line: at(k), message: 'Mark the odd one out with *' });
+        return node('odd', { words: ws.map((w) => w.replace(/^\*/, '')), odd: Math.max(0, odd), reason: /^(yes|true)$/i.test(a.reason ?? '') });
+      });
+    case 'gapped': {
+      const extraTags = csv(a.extra ?? '');
+      const text: string[] = [];
+      const removed: string[] = [];
+      const extras: string[] = [];
+      content.forEach((x) => {
+        const m = /^(\w+)\s*=\s*(.+)$/.exec(x.trim());
+        if (m && /^\d+$/.test(m[1])) removed[Number(m[1]) - 1] = m[2].trim();
+        else if (m && extraTags.includes(m[1])) extras.push(m[2].trim());
+        else text.push(x);
+      });
+      const gaps = (text.join('\n').match(/\{\{\d+\}\}/g) ?? []).length;
+      if (gaps !== removed.filter(Boolean).length) errors.push({ line: start + 1, message: `[[gapped]] has ${gaps} gaps but ${removed.filter(Boolean).length} sentences for them` });
+      return [node('gapped', { text: text.join('\n').trim(), removed: Array.from({ length: Math.max(gaps, removed.length) }, (_, i) => removed[i] ?? ''), extras })];
+    }
+    case 'matching': {
+      const options = csv(a.options ?? 'A,B,C,D');
+      const names = options.map(() => '');
+      const statements: { text: string; answer: number }[] = [];
+      lines.forEach(({ x, k }) => {
+        const nm = /^([A-Z]):\s*(.+)$/.exec(x);
+        if (nm && options.includes(nm[1])) return void (names[options.indexOf(nm[1])] = nm[2].trim());
+        const m = /^(.*?)\s*=\s*([A-Z])\s*$/.exec(x);
+        if (!m || !options.includes(m[2])) return void errors.push({ line: at(k), message: `Write a statement like “Which person regrets a decision? = ${options[0] ?? 'A'}”` });
+        statements.push({ text: m[1].trim(), answer: options.indexOf(m[2]) });
+      });
+      return [node('matching', { options, names, statements })];
+    }
+    case 'speaking': {
+      const images = lines.filter((l) => /^image:/i.test(l.x)).map((l) => l.x.replace(/^image:\s*/i, ''));
+      const questions = lines.filter((l) => /^- /.test(l.x)).map((l) => l.x.slice(2).trim());
+      const prompt = lines.filter((l) => !/^image:/i.test(l.x) && !/^- /.test(l.x)).map((l) => l.x).join(' ');
+      return [node('speaking', { prompt, images, questions, timer: Number(a.timer) || 60, pairs: !/^(no|false)$/i.test(a.pairs ?? '') })];
+    }
+  }
+  return [];
+}
 
 export function importLesson(text: string): ImportResult {
   const lines = text.replace(/\r\n?/g, '\n').split('\n');
@@ -221,13 +398,14 @@ export function importLesson(text: string): ImportResult {
       i++;
       continue;
     }
-    const meta = /^(hidden|locked|layout|instructions):\s*(.*)$/i.exec(l);
+    const meta = /^(hidden|locked|layout|instructions|exam):\s*(.*)$/i.exec(l);
     if (meta && body.length === 0) {
       const [, k, v] = meta;
       const key = k.toLowerCase();
       if (key === 'hidden') cur.hidden = /^yes|true$/i.test(v);
       else if (key === 'locked') cur.locked = /^yes|true$/i.test(v);
       else if (key === 'instructions') cur.instructions = v;
+      else if (key === 'exam') cur.exam = /^(no|false)$/i.test(v) ? null : { minutes: Number((/(\d+)/.exec(v) ?? [])[1]) || null };
       else cur.layout = /60\/40|wide/.test(v) ? 'two-wide' : /media/.test(v) ? 'media' : /two/.test(v) ? 'two' : 'single';
       i++;
       continue;
@@ -335,19 +513,46 @@ export function importLesson(text: string): ImportResult {
         }
         case 'long': {
           const [mn, mx] = (a.words ?? '').split('-').map((x) => Number(x) || null);
+          const extra = { ...(a.genre ? { genre: a.genre } : {}), ...(a.rubric ? { rubric: a.rubric === 'cambridge' ? 'cambridge' : 'custom' } : {}), ...(a.rubric === 'cambridge' ? { points: 20 } : {}) };
           const model = content.find((x) => /^model:/i.test(x))?.replace(/^model:\s*/i, '') ?? '';
           const prompt = content.filter((x) => x && !/^model:/i.test(x));
           prompt.forEach((x, k) => body.push(para(x, at(k))));
-          body.push({ type: 'writing', attrs: { id: newId(), minWords: a.words && !a.words.includes('-') ? null : mn ?? null, maxWords: a.words && !a.words.includes('-') ? Number(a.words) || null : mx ?? null, model, rich: false, spellcheck: false, points: Number(a.points) || 5 } });
+          body.push({ type: 'writing', attrs: { id: newId(), minWords: a.words && !a.words.includes('-') ? null : mn ?? null, maxWords: a.words && !a.words.includes('-') ? Number(a.words) || null : mx ?? null, model, rich: false, spellcheck: false, points: Number(a.points) || 5, ...extra } });
           break;
         }
         case 'survey': {
-          const q = content.filter((x) => x && !/^scale:/i.test(x)).join(' ');
-          const sc = content.find((x) => /^scale:/i.test(x))?.replace(/^scale:\s*/i, '').split('|').map((x) => x.trim()) ?? [];
-          const pts = Number((sc[0] ?? '').split('-')[1]) || 5;
-          body.push({ type: 'reflect', attrs: { id: newId(), about: 'self', title: '', items: [{ id: newId(), type: 'scale', prompt: q, points: pts, low: sc[1] ?? '', high: sc[2] ?? '' }] } });
+          // A question line, optionally followed by a type line (scale:, choice:, multi:, rank:, emoji, thumbs, text).
+          const qs: Record<string, unknown>[] = [];
+          const typeLine = /^(scale|choice|multi|rank|emoji|thumbs|text)\b:?\s*(.*)$/i;
+          content.filter(Boolean).forEach((x, k) => {
+            const m = typeLine.exec(x);
+            if (!m) return void qs.push({ id: newId(), type: 'text', prompt: x });
+            const last = qs[qs.length - 1];
+            if (!last || last.type !== 'text' || last.typed) return void errors.push({ line: at(k), message: `“${x}” must come straight after its question` });
+            const parts = m[2].split('|').map((y) => y.trim());
+            const t = m[1].toLowerCase();
+            last.typed = true;
+            if (t === 'scale') Object.assign(last, { type: 'scale', max: Number((parts[0] ?? '').split('-')[1]) === 10 ? 10 : 5, low: parts[1] ?? '', high: parts[2] ?? '' });
+            else if (t === 'choice' || t === 'multi' || t === 'rank') Object.assign(last, { type: t === 'choice' ? 'single' : t, options: parts.filter(Boolean) });
+            else Object.assign(last, { type: t });
+          });
+          qs.forEach((q) => delete q.typed);
+          if (!qs.length) errors.push({ line: start + 1, message: '[[survey]] has no questions' });
+          body.push({ type: 'survey', attrs: { id: 's' + newId(), title: a.title ?? '', anonymous: /^(yes|true)$/i.test(a.anonymous ?? ''), questions: qs } });
           break;
         }
+        case 'fix':
+        case 'categorise':
+        case 'transform':
+        case 'highlight':
+        case 'sentences':
+        case 'label':
+        case 'odd':
+        case 'gapped':
+        case 'matching':
+        case 'speaking':
+          packImport(kind, a, content, start, at, errors).forEach((n) => body.push(n));
+          break;
         case 'box': {
           const sub = importLesson('## x\n' + inner.join('\n'));
           sub.errors.forEach((e) => errors.push({ line: start + e.line - 1, message: e.message }));

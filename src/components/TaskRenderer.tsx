@@ -1,3 +1,7 @@
+import { SurveyBlock } from './Survey';
+import { criteriaOf, genreLabel } from '../lib/rubric';
+import { PackQuestion } from './PackRender';
+import { answerFromKey } from '../lib/pack';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { StressedWord } from '../editor/Stress';
@@ -52,7 +56,7 @@ type Props = {
   received?: SentFeedback[]; // peer feedback other learners sent to this learner
   classId?: string; // for audio clips
   boardMe?: BoardMe; // who is posting on message boards
-  teacherMarks?: Record<string, { score: number | null; comment: string }>; // teacher's marks on long answers
+  teacherMarks?: Record<string, { score: number | null; comment: string; crit?: Record<string, number | null> }>; // teacher's marks on long answers
   writingReview?: { anns: Annotation[]; corrections: Record<string, Correction>; codes: Code[]; onResubmit: (qid: string) => void };
 };
 
@@ -135,7 +139,7 @@ function useNarrow() {
 }
 const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.includes(n.type ?? '') ? [n.attrs.id as string] : []), ...(n.content ?? []).flatMap(questionsIn)];
 
-const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing'];
+const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
 export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
@@ -157,6 +161,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       else if (e.kind === 'multi') out[id] = e.correct;
       else if (e.kind === 'match') out[id] = e.map;
       else if (e.kind === 'drop' || e.kind === 'order') out[id] = e.answer;
+      else if (e.kind === 'pack') out[id] = answerFromKey(e) as Responses[string];
     }
     return out;
   }, [penKey, responsesIn]);
@@ -181,9 +186,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       for (const i of drawnCards(pickOf(node) as unknown as Response)) if (node.content?.[i]) walk(node.content[i], ol);
       return;
     }
-    if (node.attrs?.id && QTYPES.includes(node.type ?? '')) {
+    if (node.attrs?.id && QTYPES.includes(node.type ?? '') && !(node.type === 'pq' && node.attrs.kind === 'speaking')) {
       numbers[node.attrs.id] = n + 1;
-      n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : 1;
+      n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : node.type === 'pq' && node.attrs.kind === 'matching' ? Math.max(1, (node.attrs.data?.statements ?? []).length) : 1;
       if (ol) listed.add(node.attrs.id);
     }
     node.content?.forEach((c) => walk(c, ol));
@@ -288,6 +293,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           size={Math.max(6, value.length + 1)}
           onChange={(e) => onChange?.(id, e.target.value)}
         />
+        {node.attrs?.stem && <span className="wf-stem">{node.attrs.stem}</span>}
         {revealChip(node)}
       </span>
     );
@@ -620,6 +626,12 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     return (
       <div key={key} className="writing-q">
         {num(id)}
+        {(node.attrs?.genre || criteriaOf(node.attrs)) && (
+          <span className="writing-meta">
+            {node.attrs?.genre && <span className="writing-genre">{genreLabel(node.attrs.genre)}</span>}
+            {criteriaOf(node.attrs) && <span className="hint">Marked on {criteriaOf(node.attrs)!.map((c) => c.name.toLowerCase()).join(', ')}</span>}
+          </span>
+        )}
         {(myAnns.length > 0 || corr) && (
           <div className="wr-review">
             <span className="eyebrow">
@@ -672,6 +684,21 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
                 </span>
               )}
             </span>
+            {criteriaOf(node.attrs) && teacherMarks[id].crit && (
+              <span className="t-rubric">
+                {criteriaOf(node.attrs)!.map((c) => (
+                  <span key={c.name} className="t-rubric-row">
+                    <span>{c.name}</span>
+                    <span className="t-rubric-bar" aria-hidden="true">
+                      <span style={{ width: `${((teacherMarks[id].crit?.[c.name] ?? 0) / c.max) * 100}%` }} />
+                    </span>
+                    <strong>
+                      {teacherMarks[id].crit?.[c.name] ?? '–'} / {c.max}
+                    </strong>
+                  </span>
+                ))}
+              </span>
+            )}
             {teacherMarks[id].comment && <p>{teacherMarks[id].comment}</p>}
           </div>
         )}
@@ -820,6 +847,27 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return order(node, key);
       case 'writing':
         return writing(node, key);
+      case 'pq': {
+        const id = node.attrs?.id as string;
+        const res = results?.[id];
+        const rev = revealed?.[id];
+        return (
+          <PackQuestion
+            key={key + pf(id)}
+            id={id}
+            kind={node.attrs?.kind}
+            data={node.attrs?.data ?? {}}
+            value={responses[id]}
+            onChange={(v) => onChange?.(id, v)}
+            result={res?.kind === 'pack' ? res : null}
+            revealed={!inPen(id) && rev?.kind === 'pack' ? rev : null}
+            hideAnswers={hideAnswers}
+            locked={locked}
+            num={num}
+            classId={classId}
+          />
+        );
+      }
       case 'randomPick': {
         const id = node.attrs?.id as string;
         const cards = node.content ?? [];
@@ -880,6 +928,18 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <LinkCardView key={key} url={node.attrs?.url ?? ''} title={node.attrs?.title ?? ''} note={node.attrs?.note} />;
       case 'mention':
         return <MentionTag key={key} label={node.attrs?.label ?? ''} me={(teacher && node.attrs?.id === 'teacher') || (!!selfId && node.attrs?.id === selfId)} />;
+      case 'survey':
+        return (
+          <SurveyBlock
+            key={key}
+            attrs={node.attrs as never}
+            classId={boardMe?.classId ?? classId}
+            teacher={!!boardMe?.teacher}
+            me={boardMe && !boardMe.teacher ? { uid: boardMe.uid, learnerId: boardMe.selfId ?? '', name: boardMe.name } : undefined}
+            itemId={boardMe?.itemId}
+            taskId={boardMe?.taskId}
+          />
+        );
       case 'drawBoard':
         return (
           <div key={key} className="drawboard">

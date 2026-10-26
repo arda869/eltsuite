@@ -29,6 +29,9 @@ import { IconNode, IconTool } from './Icons';
 import { SymNode, SymbolTool } from './Symbols';
 import { BoardNode, newBoard } from './BoardNode';
 import { DrawBoardNode, newDrawBoard } from './DrawBoard';
+import { newPack, PackNode } from './PackNode';
+import { newSurvey, SurveyNode } from './SurveyNode';
+import type { PackKind } from '../lib/pack';
 import { Mention, MentionMenu, useMentionMenu } from './Mention';
 import { CELL_COLORS, cellBg } from './tableStyle';
 import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
@@ -55,6 +58,7 @@ const BLOCK_CMDS: Cmd[] = BLOCKS.map((b) => ({ key: 'b-' + b.key, label: b.label
 
 const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
+  { key: 'wordform', label: 'Word formation', hint: 'A gap with the stem word in capitals beside it', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, stem: 'WORD' } }).run() },
   { key: 'radio', label: 'Multiple choice radio buttons', hint: 'Options listed under the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
   { key: 'dropdown', label: 'Multiple choice in line', hint: 'go / goes / going · learners circle one', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
   { key: 'truefalse', label: 'True or false', hint: 'True / False inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False'])).run() },
@@ -69,6 +73,17 @@ const COMMANDS: Cmd[] = [
   { key: 'board', label: 'Message board', hint: 'Learners post messages the whole class sees', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('board'), { type: 'paragraph' }]).run() },
   { key: 'postits', label: 'Post-it wall', hint: 'Learners stick notes on a shared wall', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('postits'), { type: 'paragraph' }]).run() },
   { key: 'drawboard', label: 'Board', hint: 'A drawing board: draw, write and add pictures, live in class', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newDrawBoard(), { type: 'paragraph' }]).run() },
+  { key: 'pq-fix', label: 'Find and fix the mistake', hint: 'Learners tap the wrong word, then correct it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('fix' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-categorise', label: 'Categorise', hint: 'Sort words into labelled columns', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('categorise' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-transform', label: 'Key word transformation', hint: 'Rewrite a sentence using a given word', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('transform' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-highlight', label: 'Highlight in text', hint: 'Learners tap every word that matches', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('highlight' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-sentences', label: 'Order sentences', hint: 'Put sentences or paragraphs in order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('sentences' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-label', label: 'Label the image', hint: 'Drag labels onto points on a picture', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('label' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-odd', label: 'Odd one out', hint: 'Pick the word that doesn’t belong', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('odd' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-gapped', label: 'Gapped text', hint: 'Put removed sentences back into a text', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('gapped' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-matching', label: 'Multiple matching', hint: 'Match statements to texts A, B, C, D', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('matching' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-speaking', label: 'Speaking prompt', hint: 'A prompt card with photos, questions and a timer', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('speaking' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'survey', label: 'Survey', hint: 'Ratings, faces, choices, ranking or open answers; anonymous if you like', group: 'Questions', run: (e) => e.chain().focus().insertContent([newSurvey(), { type: 'paragraph' }]).run() },
   { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
   { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
@@ -227,6 +242,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       jsonClip(Match, 'div', 'data-match'),
       jsonClip(Order, 'div', 'data-order'),
       jsonClip(Writing, 'div', 'data-writing'),
+      jsonClip(PackNode, 'div', 'data-pq'),
+      jsonClip(SurveyNode, 'div', 'data-survey'),
       ColumnBreak,
       TextBox,
       RandomPick,

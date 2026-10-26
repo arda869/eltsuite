@@ -38,6 +38,8 @@ export type Task = {
   dist?: Dist | null; // on the main task: how versions are given out
   allowed?: string[] | null; // learner ids who may open it (null = everyone)
   restricted?: boolean; // content lives in private/body
+  exam?: { minutes: number | null; single?: boolean } | null; // exam mode for this task
+  examReleased?: boolean; // the teacher has released the results
 };
 
 export const tasksCol = (classId: string, itemId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks');
@@ -82,7 +84,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   await batch.commit();
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {
@@ -98,7 +100,7 @@ export async function loadKey(classId: string, itemId: string, taskId: string): 
 
 // Learner answers --------------------------------------------------------------
 
-export type Mark = { score: number | null; comment: string };
+export type Mark = { score: number | null; comment: string; crit?: Record<string, number | null> }; // crit: score per rubric criterion
 export type Correction = { status: 'open' | 'resubmitted' | 'approved'; before?: string; at: number };
 export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number; marks?: Record<string, Mark>; corrections?: Record<string, Correction> };
 

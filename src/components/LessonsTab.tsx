@@ -117,7 +117,12 @@ function ItemRow({ c, item, list, topics }: { c: ClassDoc; item: Item; list: Ite
   return (
     <li className={'item' + (item.hidden ? ' is-hidden' : '')}>
       {copying && <CopyDialog kind="lesson" fromClass={c.id} itemId={item.id} title={item.title} onClose={() => setCopying(false)} onDone={setMsg} />}
-      <span className="type">{item.type}</span>
+      <select className="type type-pick" value={item.type} aria-label="Type" title="Lesson, homework, exam or practice" onChange={(e) => updateItem(c.id, item.id, { type: e.target.value as Item['type'] })}>
+        <option value="lesson">Lesson</option>
+        <option value="homework">Homework</option>
+        <option value="exam">Exam</option>
+        <option value="practice">Practice</option>
+      </select>
       <Link to={`/class/${c.id}/lesson/${item.id}`} className="title">
         {item.title}
       </Link>
