@@ -1,3 +1,4 @@
+import { TimelineFigure, type TlAttrs } from '../editor/Timeline';
 import { LetterGap } from './LetterGap';
 import { PicFrame } from '../editor/Picture';
 import { listLabel } from '../lib/listLabel';
@@ -1056,6 +1057,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       case 'bankLink':
         return <BankLinkCard key={key} bank={node.attrs?.bank ?? 'grammar'} title={node.attrs?.title} label={node.attrs?.label} onOpen={onOpenNotebook && node.attrs?.entryId ? () => onOpenNotebook(node.attrs!.entryId) : undefined} />;
+      case 'timeline':
+        return <TimelineFigure key={key} a={node.attrs as TlAttrs} />;
       case 'drawBoard':
         return (
           <div key={key} className="drawboard">

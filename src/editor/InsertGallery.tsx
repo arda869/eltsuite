@@ -12,7 +12,7 @@ const SECTIONS: Section[] = [
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'collab-slides', 'drawboard'] },
-  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['textbox', 'info', 'reveal', 'image', 'linkcard', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['timeline', 'textbox', 'info', 'reveal', 'image', 'linkcard', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['grammarlink', 'vocablink', 'bankpick'] },
 ];
@@ -84,6 +84,7 @@ const ABOUT: Record<string, string> = {
   'b-note': 'A sticky note for examples or a list.',
   'b-cando': 'An end-of-lesson self-assessment; answers go to you.',
   'collab-slides': 'Shared slides, made live like Google Slides: text boxes, pictures, shapes, layouts and backgrounds. The whole class, each group or each learner; learners can each make their own slides in one deck. Present full screen; download as PowerPoint or PDF.',
+  timeline: 'A timeline for teaching tenses: NOW, single events, actions in progress, periods, repeated actions, arrows and “not sure”, each with a label. Start from a ready-made tense and change it.',
   drawboard: 'A drawing board, live: draw, write and add pictures. One for the whole class, each group or each learner; lock it, show everyone’s cursor, use the pointer.',
   grammarlink: 'A card that opens a grammar page in the class notebook.',
   vocablink: 'A card that opens a vocabulary page in the class notebook.',
@@ -463,6 +464,16 @@ const PREVIEW: Record<string, () => ReactNode> = {
         We went <b>to the beach</b> and <s>swam</s> swam.
       </span>
     </span>
+  ),
+  timeline: () => (
+    <svg className="gl-tl" viewBox="0 0 200 70" aria-hidden="true">
+      <line x1="8" y1="40" x2="192" y2="40" stroke="currentColor" strokeWidth="2" />
+      <path d="M186 35l7 5-7 5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <line x1="125" y1="30" x2="125" y2="50" stroke="currentColor" strokeWidth="2" />
+      <path d="M52 34l10 12M62 34l-10 12" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
+      <path d="M57 30Q91 2 125 30" fill="none" stroke="var(--accent)" strokeWidth="2" />
+      <text x="125" y="64" textAnchor="middle" fontSize="9" fill="currentColor">NOW</text>
+    </svg>
   ),
   'collab-slides': () => (
     <span className="gl-col">

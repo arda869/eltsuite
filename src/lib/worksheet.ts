@@ -1,3 +1,4 @@
+import type { TlAttrs } from '../editor/Timeline';
 import { listLabel } from './listLabel';
 import type { JSONContent } from '@tiptap/react';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType, ImageRun } from 'docx';
@@ -42,6 +43,7 @@ export type Block =
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
   | { kind: 'draw'; prompt?: string }
+  | { kind: 'timeline'; a: TlAttrs }
   | { kind: 'media'; id: string; title: string; video: boolean; mode: string };
 
 // Self-reflection, peer feedback and surveys on paper.
@@ -348,6 +350,9 @@ export function flattenTask(t: ExportTask): WsTask {
         if (a.prompt) cur.push({ kind: 'p', runs: [{ t: String(a.prompt) }] });
         cur.push({ kind: 'lines', n: 0, count: 3 });
         return;
+      case 'timeline':
+        cur.push({ kind: 'timeline', a: a as TlAttrs });
+        return;
       case 'drawBoard':
         cur.push({ kind: 'draw', prompt: String(a.prompt ?? '') });
         return;
@@ -556,7 +561,10 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
               }),
           ),
         );
-      else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
+      else if (b.kind === 'timeline') {
+        const t = b.a;
+        out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('TIMELINE  '), new TextRun({ text: [t.title, (t.items ?? []).map((i) => i.label).filter(Boolean).join(' · '), t.sentence].filter(Boolean).join(' — '), font: SERIF })], spacing: { after: 100 } }));
+      } else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
       else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'callout') out.push(shaded(ACC_TINT, [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'lines') {

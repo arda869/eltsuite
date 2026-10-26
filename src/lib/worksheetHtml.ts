@@ -1,3 +1,4 @@
+import { timelineSvgString } from '../editor/Timeline';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Icon } from '../editor/Icons';
@@ -114,6 +115,8 @@ function block(b: Block): string {
       if (b.list === 'bullet' && b.mark === '') return `<p class="li"><span class="mk"></span><span>${runs(b.runs)}</span></p>`;
       if (b.list) return `<p class="li ${b.list}"><span class="mk"></span><span>${runs(b.runs)}</span></p>`;
       return `<p>${runs(b.runs)}</p>`;
+    case 'timeline':
+      return `<figure class="tl">${b.a.title ? `<figcaption class="tl-title">${esc(b.a.title)}</figcaption>` : ''}${timelineSvgString(b.a)}${b.a.sentence ? `<p class="tl-sentence">${esc(b.a.sentence)}</p>` : ''}</figure>`;
     case 'note':
       return `<p class="note">${esc(b.text.replace(/^\[|\]$/g, ''))}</p>`;
     case 'box':
@@ -235,6 +238,8 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>
+.tl { margin: 3mm 0 4mm; break-inside: avoid; } .tl-svg { width: 100%; height: auto; display: block; color: #2b2a28; } .tl-title { font-weight: 600; font-size: 10pt; margin-bottom: 1mm; } .tl-sentence { font-style: italic; margin: 1mm 0 0; text-align: center; }
+.tl-line { stroke: #2b2a28; stroke-width: 2.5; color: #2b2a28; } .tl-end { font: 600 11px sans-serif; letter-spacing: .1em; fill: #8a847d; } .tl-now line { stroke: #2b2a28; stroke-width: 3; } .tl-now text { font: 700 13px sans-serif; letter-spacing: .1em; fill: #2b2a28; } .tl-label { font: 15px Georgia, serif; } .tl-q { font: 700 34px Georgia, serif; } .tl-hit { display: none; }
 @font-face { font-family: Fraunces; src: url('${opts.origin ?? ''}/fonts/Fraunces.ttf') format('truetype'); font-weight: 100 900; font-display: block; }
 @font-face { font-family: Karla; src: url('${opts.origin ?? ''}/fonts/Karla.ttf') format('truetype'); font-weight: 200 800; font-display: block; }
 :root { --accent: ${accent}; --accent-ink: color-mix(in srgb, var(--accent) 72%, black); --accent-text: var(--accent-ink); --tint: color-mix(in srgb, var(--accent) 10%, white); --ink: #262420; --muted: #66615b; --band: #ecebe7; --tint-line: color-mix(in srgb, var(--accent) 35%, white); --pw: ${pw}mm; --ph: ${ph}mm; --side: ${small ? 10 : 13}mm; }
