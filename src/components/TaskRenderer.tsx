@@ -907,7 +907,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           label = listLabel(picCount[mk], mk);
         }
         const pa = node.attrs ?? {};
-        return <PicFrame key={key} w={Number(pa.w) || 0} src={String(pa.src ?? '')} alt={pa.alt} size={pa.size} label={label} classId={classId ?? ''} crop={pa.crop} ar={Number(pa.ar) || 0} filter={pa.filter} cover={coverOf(pa)} />;
+        return <PicFrame key={key} w={Number(pa.w) || 0} src={String(pa.src ?? '')} alt={pa.alt} size={pa.size} label={label} classId={classId ?? ''} crop={pa.crop} ar={Number(pa.ar) || 0} filter={pa.filter} cover={coverOf(pa)} tags={Array.isArray(pa.tags) ? pa.tags : undefined} />;
       }
       case 'image':
         return node.attrs?.src ? <img key={key} data-bk={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;

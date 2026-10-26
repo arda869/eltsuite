@@ -55,13 +55,17 @@ export const GRIDS = [
   { k: '4', label: '4 × 4' },
 ];
 
-type FrameProps = { w?: number; children?: React.ReactNode; src: string; alt?: string; size?: string; label?: string; classId: string; crop?: string; ar?: number; filter?: string; cover?: CoverProps; coverHint?: string };
-export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cover, coverHint, w, children }: FrameProps) {
+// A word placed on (or just beside) a picture: a small label box, its centre at x, y (percent).
+export type PicTag = { id: string; x: number; y: number; text: string };
+type TagEdit = { onMove: (id: string, x: number, y: number) => void; onText: (id: string, text: string) => void; onDelete: (id: string) => void; focus?: string };
+
+type FrameProps = { w?: number; children?: React.ReactNode; src: string; alt?: string; size?: string; label?: string; classId: string; crop?: string; ar?: number; filter?: string; cover?: CoverProps; coverHint?: string; tags?: PicTag[]; tagEdit?: TagEdit };
+export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cover, coverHint, w, children, tags, tagEdit }: FrameProps) {
   const url = useImageSrc(classId, src);
   const cs = cropStyles(crop, ar);
   const img = url ? <img src={url} alt={alt ?? ''} draggable={false} style={{ ...cs.img, filter: filterCss(filter) }} /> : <span className="pic-wait" />;
-  return (
-    <span className={'pic pic-' + (w ? 'w' : size || 'm') + (cover ? ' has-cover' : '')} style={w ? { width: w } : undefined}>
+  const inner = (
+    <>
       {cs.box ? (
         <span className="pic-crop" style={cs.box}>
           {img}
@@ -72,17 +76,98 @@ export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cov
       {cover && <PicCover {...cover} />}
       {coverHint && <span className="pic-cover-hint">{coverHint}</span>}
       {label && <span className="pic-label">{label}</span>}
+    </>
+  );
+  const tagged = !!(tags?.length || tagEdit);
+  return (
+    <span className={'pic pic-' + (w ? 'w' : size || 'm') + (cover ? ' has-cover' : '') + (tagged ? ' has-tags' : '')} style={w ? { width: w } : undefined}>
+      {tagged ? <span className="pic-clip">{inner}</span> : inner}
+      {(tags ?? []).map((t) => (tagEdit ? <EditTag key={t.id} t={t} edit={tagEdit} /> : <span key={t.id} className="pic-tag" style={{ left: `${t.x}%`, top: `${t.y}%` }}>{t.text}</span>))}
       {children}
+    </span>
+  );
+}
+
+// A label while editing: drag it to move it (it may sit a little outside the picture), type to change it.
+function EditTag({ t, edit }: { t: PicTag; edit: TagEdit }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [at, setAt] = useState<{ x: number; y: number } | null>(null);
+  const drag = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).tagName === 'INPUT' && !e.altKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const pic = ref.current?.closest('.pic') as HTMLElement | null;
+    if (!pic) return;
+    const r = pic.getBoundingClientRect();
+    let p = { x: t.x, y: t.y };
+    const mv = (ev: PointerEvent) => {
+      p = { x: Math.round(Math.max(-25, Math.min(125, ((ev.clientX - r.left) / r.width) * 100)) * 10) / 10, y: Math.round(Math.max(-25, Math.min(125, ((ev.clientY - r.top) / r.height) * 100)) * 10) / 10 };
+      setAt(p);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      setAt(null);
+      if (p.x !== t.x || p.y !== t.y) edit.onMove(t.id, p.x, p.y);
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
+  const x = at?.x ?? t.x;
+  const y = at?.y ?? t.y;
+  return (
+    <span ref={ref} className={'pic-tag editing' + (at ? ' moving' : '')} style={{ left: `${x}%`, top: `${y}%` }} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+      <span className="pic-tag-grip" onPointerDown={drag} title="Drag to move" aria-hidden="true" />
+      <input
+        value={t.text}
+        size={Math.max(3, t.text.length + 1)}
+        placeholder="Label"
+        autoFocus={edit.focus === t.id}
+        aria-label="Label on the picture"
+        onChange={(e) => edit.onText(t.id, e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter' || e.key === 'Escape') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Backspace' && !t.text) edit.onDelete(t.id);
+        }}
+        onBlur={() => !t.text.trim() && edit.onDelete(t.id)}
+      />
+      <button type="button" className="pic-tag-x" onClick={() => edit.onDelete(t.id)} aria-label="Remove this label">
+        ×
+      </button>
     </span>
   );
 }
 
 function PictureView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const a = node.attrs as { w: number; src: string; alt: string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string };
+  const a = node.attrs as { w: number; src: string; alt: string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  // Labels on the picture: "Add a label", then click where it goes.
+  const [placing, setPlacing] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const tags: PicTag[] = Array.isArray(a.tags) ? a.tags : [];
+  const setTags = (next: PicTag[]) => updateAttributes({ tags: next });
+  const tagEdit: TagEdit | undefined = editor.isEditable
+    ? {
+        onMove: (id, x, y) => setTags(tags.map((t) => (t.id === id ? { ...t, x, y } : t))),
+        onText: (id, text) => setTags(tags.map((t) => (t.id === id ? { ...t, text } : t))),
+        onDelete: (id) => setTags(tags.filter((t) => t.id !== id)),
+        focus: newTag,
+      }
+    : undefined;
+  const place = (e: React.MouseEvent) => {
+    const pic = (e.currentTarget as HTMLElement).querySelector('.pic') as HTMLElement | null;
+    if (!placing || !pic) return false;
+    const r = pic.getBoundingClientRect();
+    const id = newId();
+    setTags([...tags, { id, x: Math.round(((e.clientX - r.left) / r.width) * 1000) / 10, y: Math.round(((e.clientY - r.top) / r.height) * 1000) / 10, text: '' }]);
+    setNewTag(id);
+    setPlacing(false);
+    return true;
+  };
   // Corner dots: drag to make the picture bigger or smaller.
   const [dragW, setDragW] = useState<number | null>(null);
   const resize = (e: React.PointerEvent, corner: 'nw' | 'ne' | 'sw' | 'se') => {
@@ -132,8 +217,8 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
   );
   return (
     <NodeViewWrapper as="span" className={'pic-node' + (selected ? ' is-selected' : '')} ref={ref} contentEditable={false}>
-      <span onClick={() => setOpen(true)} title="Picture settings">
-        <PicFrame src={a.src} alt={a.alt} size={a.size} w={dragW ?? a.w} label={label} classId={classId} crop={a.crop} ar={a.ar} filter={a.filter} coverHint={hint}>
+      <span className={placing ? 'pic-placing' : ''} onClick={(e) => place(e) || setOpen(true)} title={placing ? 'Click where the label goes' : 'Picture settings'}>
+        <PicFrame src={a.src} alt={a.alt} size={a.size} w={dragW ?? a.w} label={label} classId={classId} crop={a.crop} ar={a.ar} filter={a.filter} coverHint={hint} tags={tags} tagEdit={tagEdit}>
           {editor.isEditable && (['nw', 'ne', 'sw', 'se'] as const).map((c) => <i key={c} className={'pic-corner c-' + c} onPointerDown={(e) => resize(e, c)} onClick={(e) => e.stopPropagation()} aria-hidden="true" />)}
         </PicFrame>
       </span>
@@ -160,6 +245,13 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
           <span className="pic-row">
             <span className="hint">Label</span>
             {seg(PIC_MARKS, a.mark || '', (k) => updateAttributes({ mark: k }), 'Label')}
+          </span>
+          <span className="pic-row">
+            <span className="hint">Words on it</span>
+            <button type="button" className="btn small-btn" onClick={() => (setPlacing(true), setOpen(false))}>
+              + Add a label
+            </button>
+            {tags.length > 0 && <span className="hint">{tags.length} on the picture · drag one by its dot to move it</span>}
           </span>
           <span className="pic-row">
             <span className="hint">Cover</span>
@@ -223,6 +315,7 @@ export const Picture = Node.create({
     coverBy: { default: 'teacher' },
     pid: { default: '' }, // keeps the class's opened boxes together while teaching
     w: { default: 0 }, // a width set by dragging a corner, in pixels
+    tags: { default: [] }, // words placed on the picture: { id, x, y, text }
   }),
   // Pictures pasted or dropped from anywhere become pictures you can edit.
   parseHTML: () => [{ tag: 'span[data-picture]' }, { tag: 'img[src]', priority: 60, getAttrs: (el: HTMLElement | string) => (typeof el === 'string' ? {} : { src: el.getAttribute('src') ?? '', alt: el.getAttribute('alt') ?? '' }) }],
