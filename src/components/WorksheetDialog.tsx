@@ -73,7 +73,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     const w = window.open('', '_blank');
     if (!w) return setBusy('Your browser blocked the print window. Allow pop-ups for this site.');
     (w as unknown as { __autoPrint: boolean }).__autoPrint = true; // the page prints itself once it is laid out
-    w.document.write(worksheetHtml(lesson!.title, tasks, { ...look(), cover }));
+    w.document.write(worksheetHtml(lesson!.title, tasks, { ...look(), cover, origin: location.origin }));
     w.document.close();
     w.focus();
   };
@@ -128,7 +128,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
             </div>
             <label className="pop-check">
               <input type="checkbox" checked={header} onChange={() => setHeader((v) => !v)} />
-              Name and class boxes in the header
+              Name box in the header
             </label>
             {isExam && (
               <label className="pop-check">

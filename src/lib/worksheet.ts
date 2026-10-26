@@ -19,7 +19,7 @@ export type CutCard = { title: string; blocks: Block[] };
 export type WsTask = { title: string; instructions?: string; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
-export type Options = { header: boolean; key: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string };
+export type Options = { header: boolean; key: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string };
 
 const LET = 'abcdefghijklmnop';
 const UP = 'ABCDEFGHIJKLMNOP';
@@ -273,16 +273,29 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   // Word keeps the same look as the print version: serif text, the class colour for numbers and
   // labels, tinted boxes. Fonts that ship with Word and Google Docs are used so it looks right anywhere.
   const ACC = (opts.accent ?? '#d98f63').replace('#', '').toUpperCase();
-  const SERIF = 'Georgia';
-  const SANS = 'Arial';
-  const TINT: Record<string, string> = { sand: 'FBF4EA', sky: 'EEF4F8', sage: 'EEF4EF', rose: 'FAEEEC', grey: 'F4F3F1' };
+  // Same mixes as the printed page: a darker accent for text, a pale accent for boxes.
+  const mix = (hex: string, other: number, t: number) => [0, 2, 4].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - t) + other * t).toString(16).padStart(2, '0')).join('').toUpperCase();
+  const ACC_INK = mix(ACC, 0, 0.28);
+  const ACC_TINT = mix(ACC, 255, 0.9);
+  // Our fonts, embedded in the file so Word shows them even where they are not installed
+  // (Google Docs has both as Google Fonts).
+  const SERIF = 'Fraunces';
+  const SANS = 'Karla';
+  const fontData = async (f: string) => new Uint8Array(await (await fetch(`/fonts/${f}`)).arrayBuffer()) as unknown as Buffer;
+  const embedded = await Promise.all([fontData('Fraunces-Regular.ttf'), fontData('Karla-Regular.ttf')]).then(
+    ([fr, ka]) => [
+      { name: 'Fraunces', data: fr },
+      { name: 'Karla', data: ka },
+    ],
+    () => [],
+  );
   const label = (t: string) => new TextRun({ text: t.toUpperCase(), bold: true, font: SANS, size: 15, color: '8A847D', characterSpacing: 30 });
   const runsToDocx = (runs: Run[]) =>
     runs.flatMap((r) => {
-      if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.min(40, r.blank)), underline: {} })];
+      if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.max(6, Math.min(18, Math.round(r.blank * 0.6)))), underline: {} })];
       if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: 20 })];
       if (r.stack) return r.stack.map((o) => new TextRun({ text: '      ' + o, break: 1, font: SERIF }));
-      if (r.num !== undefined) return [new TextRun({ text: ` ${r.num} `, bold: true, font: SERIF })];
+      if (r.num !== undefined) return [new TextRun({ text: ` ${r.num} `, bold: true, font: SERIF, color: ACC_INK })];
       const q = /^\s*\((\d+)\)\s*$/.exec(r.t ?? '');
       if (q) return [new TextRun({ text: ` ${q[1]} `, bold: true, font: SANS, size: 16, color: ACC, superScript: false })];
       return [new TextRun({ text: r.t ?? '', bold: r.bold, italics: r.italic, font: SERIF })];
@@ -299,7 +312,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       if (b.kind === 'p') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: runsToDocx(b.runs), bullet: b.list === 'bullet' ? { level: 0 } : undefined, numbering: b.list === 'number' ? { reference: 'nums', level: 0 } : undefined, heading: b.heading ? HeadingLevel.HEADING_3 : undefined, spacing: { after: 100, line: 320 } }));
       else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
       else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
-      else if (b.kind === 'callout') out.push(shaded(TINT[b.tone] ?? 'F4F3F1', [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
+      else if (b.kind === 'callout') out.push(shaded(ACC_TINT, [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'lines') {
         if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SANS, size: 16, color: '8A847D' })] }));
         const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
@@ -319,7 +332,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   };
   const children: (Paragraph | Table)[] = [];
   const tasks = items.flatMap((i) => (i.kind === 'task' ? [i.task] : []));
-  children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ______________________   CLASS ____________' : ' ', font: SANS, size: 15, bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: 26, bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
+  children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ________________________________' : ' ', font: SANS, size: 15, bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: 26, bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
   children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: 30, bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: 15, bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: ACC, space: 4 } }, spacing: { after: 280 } }));
   const body: (Paragraph | Table)[] = [];
   const markRun = (n: number) => new TextRun({ text: `   _____ / ${n}`, font: SANS, size: 17, bold: true, color: '57534D' });
@@ -334,13 +347,13 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     if (it.kind === 'section') {
       closeSec();
       sec = it.title;
-      body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACC, space: 2 } }, children: [new TextRun({ text: it.title.toUpperCase(), font: SANS, size: 21, bold: true, color: '262420', characterSpacing: 20 })] }));
+      body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACC, space: 2 } }, children: [new TextRun({ text: it.title.toUpperCase(), font: SANS, size: 21, bold: true, color: ACC_INK, characterSpacing: 20 })] }));
       continue;
     }
     const t = it.task;
     num++;
     secMarks += t.marks;
-    body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: 23 }), new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: 23 })] }));
+    body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: 23, color: ACC_INK }), new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: 23 })] }));
     body.push(...toParas(t.blocks, true));
     body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 160 }, children: opts.marks && t.marks ? [markRun(t.marks)] : [] }));
   }
@@ -384,6 +397,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   }
   const SIZES: Record<string, { width: number; height: number }> = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 }, A5: { width: 8391, height: 11906 } };
   const doc = new Document({
+    fonts: embedded,
     numbering: { config: [{ reference: 'nums', levels: [{ level: 0, format: 'decimal', text: '%1.', alignment: AlignmentType.LEFT }] }] },
     styles: { default: { document: { run: { font: SERIF, size: opts.paper === 'A5' ? 20 : 22, color: '2F2C29' } } } },
     sections: [

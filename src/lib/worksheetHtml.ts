@@ -1,7 +1,7 @@
 import type { Block, Options, Run, WsItem, WsTask } from './worksheet';
 
 // The printed worksheet or test, laid out like a coursebook photocopiable: a grey header band
-// with Name and Class boxes, the Lesson Lit logo and a class-colour graphic; section headings;
+// with a Name box, the Lesson Lit logo and a class-colour graphic; section headings;
 // numbered exercises in normal text size; mark boxes for exams. Pages are laid out in the
 // browser before printing, so an exercise is never split between two columns or two pages
 // (unless it is longer than a whole column).
@@ -18,7 +18,7 @@ function runs(rs: Run[]) {
   const inline = rs
     .map((r) => {
       if (r.num !== undefined) return `<b class="qn">${r.num}</b>`;
-      if (r.blank) return `<span class="blank" style="width:${Math.min(16, Math.max(3.5, r.blank * 0.38)).toFixed(1)}em"></span>`;
+      if (r.blank) return `<span class="blank" style="width:${Math.min(8, Math.max(2.6, r.blank * 0.2)).toFixed(1)}em"></span>`;
       if (r.options) return `<span class="opts">${r.options.map(esc).join(' / ')}</span>`;
       if (r.stack) {
         stack = `<span class="stack">${r.stack.map((o) => `<span>${esc(o).replace(/^(\w)\s+/, '<b class="ml">$1</b>')}</span>`).join('')}</span>`;
@@ -109,28 +109,29 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
         .filter(Boolean)
     : [];
 
-  // Cut-out cards (draw a card, spin the wheel, open a box): their own sheets, a grid of cards with cut lines.
-  const perPage = opts.paper === 'A5' ? 4 : 8;
-  const allCards: { ex: number; title: string; body: string; symbol: string }[] = [];
+  // Cut-out cards (draw a card, spin the wheel, open a box): one set per exercise, laid out by the
+  // script so that every card on the sheet is the same size.
+  const cardSets: string[] = [];
   {
     let k = 0;
     for (const it of items) {
       if (it.kind !== 'task') continue;
       k++;
-      for (const set of it.task.cutouts ?? []) for (const c of set.cards) allCards.push({ ex: k, title: c.title, body: c.blocks.map(block).join(''), symbol: set.symbol });
+      for (const set of it.task.cutouts ?? [])
+        if (set.cards.length)
+          cardSets.push(
+            `<div class="cut-set" data-head="${esc(`${k}  ${it.task.instructions?.trim() || it.task.title}`)}">${set.cards
+              .map((c) => `<div class="cut-card"><span class="cut-title">${esc(c.title)}</span><div class="cut-body">${c.blocks.map(block).join('')}</div>${set.symbol ? `<span class="cut-sym">${esc(set.symbol)}</span>` : ''}</div>`)
+              .join('')}</div>`,
+          );
     }
-  }
-  const cardPages: string[] = [];
-  for (let i = 0; i < allCards.length; i += perPage) {
-    const chunk = allCards.slice(i, i + perPage);
-    cardPages.push(`<div class="cut-grid">${chunk.map((c) => `<div class="cut-card"><span class="cut-ex">${c.ex}</span><span class="cut-title">${esc(c.title)}</span><div class="cut-body">${c.body}</div>${c.symbol ? `<span class="cut-sym">${esc(c.symbol)}</span>` : ''}</div>`).join('')}${Array.from({ length: perPage - chunk.length }, () => '<div class="cut-card empty"></div>').join('')}</div>`);
   }
 
   const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
   const band = (heading: string) => `
     <header class="band">
       <div class="band-left">
-        ${opts.header ? `<div class="namebox"><span>Name</span><span>Class</span></div>` : '<div class="namebox empty"></div>'}
+        ${opts.header ? `<div class="namebox"><span>Name</span></div>` : '<div class="namebox empty"></div>'}
         <h1>${esc(heading)}</h1>
       </div>
       <div class="band-right">
@@ -141,10 +142,10 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · Lesson Lit · photocopiable for this class</span><span class="pn"></span></footer>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root { --accent: ${accent}; --ink: #262420; --muted: #66615b; --band: #dad8d4; --tint-line: color-mix(in srgb, var(--accent) 35%, white); --pw: ${pw}mm; --ph: ${ph}mm; --side: ${small ? 10 : 13}mm; }
+@font-face { font-family: Fraunces; src: url('${opts.origin ?? ''}/fonts/Fraunces.ttf') format('truetype'); font-weight: 100 900; font-display: block; }
+@font-face { font-family: Karla; src: url('${opts.origin ?? ''}/fonts/Karla.ttf') format('truetype'); font-weight: 200 800; font-display: block; }
+:root { --accent: ${accent}; --accent-ink: color-mix(in srgb, var(--accent) 72%, black); --tint: color-mix(in srgb, var(--accent) 10%, white); --ink: #262420; --muted: #66615b; --band: #dad8d4; --tint-line: color-mix(in srgb, var(--accent) 35%, white); --pw: ${pw}mm; --ph: ${ph}mm; --side: ${small ? 10 : 13}mm; }
 @page { size: ${opts.paper === 'Letter' ? 'letter' : opts.paper ?? 'A4'}; margin: 0; }
 * { box-sizing: border-box; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -157,7 +158,7 @@ body { margin: 0; color: var(--ink); font: ${small ? '9pt' : '10.2pt'}/1.5 Fraun
 /* Header band */
 .band { flex: none; display: grid; grid-template-columns: 1fr 34%; height: ${small ? 24 : 30}mm; margin-top: ${small ? 7 : 10}mm; background: var(--band); }
 .band-left { padding: 0 0 0 var(--side); display: flex; flex-direction: column; justify-content: space-between; }
-.namebox { display: grid; grid-template-columns: 1.4fr 1fr; width: 92%; height: ${small ? 8 : 10}mm; background: #fff; padding: 1.2mm 3mm 0; font: 600 7pt Karla, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #3d3a36; }
+.namebox { display: block; width: 78%; height: ${small ? 8 : 10}mm; background: #fff; padding: 1.2mm 3mm 0; font: 600 7pt Karla, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #3d3a36; }
 .namebox.empty { background: transparent; }
 h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12 Karla, sans-serif; color: #4b4843; letter-spacing: -.005em; }
 .band-right { position: relative; overflow: hidden; }
@@ -220,16 +221,35 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .total.grand > span:first-child { font-size: 8pt; text-transform: uppercase; letter-spacing: .06em; }
 
 /* Cut-out cards */
-.cut-wrap { flex: 1; min-height: 0; position: relative; padding: ${small ? 5 : 7}mm var(--side) 0; display: flex; }
-.cut-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; border-top: .8pt dashed #8d8983; border-left: .8pt dashed #8d8983; }
-.cut-card { position: relative; overflow: hidden; border-right: .8pt dashed #8d8983; border-bottom: .8pt dashed #8d8983; padding: 6mm 6mm 5mm; display: flex; flex-direction: column; gap: 2mm; }
-.cut-card.empty { background: repeating-linear-gradient(45deg, #fff 0 3mm, #f6f5f2 3mm 6mm); }
-.cut-title { font: 800 9pt Karla, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); padding-bottom: 1.6mm; border-bottom: 1.4pt solid var(--accent); align-self: flex-start; }
-.cut-body { font-size: ${small ? '9pt' : '10.5pt'}; line-height: 1.45; overflow: hidden; }
-.cut-ex { position: absolute; top: 2.2mm; right: 2.6mm; font: 700 6.5pt Karla, sans-serif; color: #8d8983; }
-.cut-ex::before { content: 'Ex. '; }
-.cut-sym { position: absolute; right: 4mm; bottom: 3mm; font-size: 12pt; color: var(--tint-line); }
-.scissors { position: absolute; top: ${small ? 3 : 4.6}mm; left: calc(var(--side) - 2mm); font-size: 11pt; color: #57534d; background: #fff; padding: 0 1mm; line-height: 1; z-index: 2; }
+.cut-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: ${small ? 4 : 6}mm var(--side) 0; }
+.cut-head { flex: none; display: flex; align-items: center; gap: 2.5mm; margin-bottom: 2.5mm; font-size: 1.08em; }
+.cut-ex { font: 400 1em Fraunces, serif; white-space: pre; }
+.scissors { font-size: 12pt; color: #57534d; line-height: 1; }
+.cut-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; align-content: start; padding: .5pt 0 0 .5pt; }
+.cut-card { position: relative; overflow: hidden; margin: -.5pt 0 0 -.5pt; border: .9pt dashed #6f6a64; padding: 3.6mm 4.4mm 3mm; display: flex; flex-direction: column; gap: 1.4mm; font: ${small ? '8.6pt' : '9.6pt'}/1.4 Karla, sans-serif; }
+.cut-title { font: 700 ${small ? '10.5pt' : '12pt'}/1.25 Karla, sans-serif; color: var(--ink); padding-left: 2.4mm; border-left: 1.6pt solid var(--accent); }
+.cut-body p { margin: 0 0 .8mm; }
+.cut-body .li { gap: 1.4mm; }
+.cut-sym { position: absolute; right: 3mm; bottom: 2.2mm; font-size: 10pt; color: var(--tint-line); }
+
+/* Class colour, more prominent */
+.band { box-shadow: inset 0 -2.2pt 0 var(--accent); }
+h1 { color: var(--ink); }
+.namebox { box-shadow: inset 0 2pt 0 var(--accent); }
+.section h2 { color: var(--accent-ink); }
+.section h2::after { height: 1.4pt; opacity: 1; background: var(--accent); }
+.ex-n { color: var(--accent-ink); }
+.qn, .ml { color: var(--accent-ink); }
+.wordbox { border-color: var(--accent); }
+.callout { background: var(--tint); border-left-width: 2.4pt; }
+.c-label { color: var(--accent-ink); }
+.pn { background: var(--accent); }
+.mb-max { background: var(--accent); }
+.total .mb-max { background: var(--accent-ink); }
+.markbox, .total > span:first-child { border-color: var(--accent-ink); }
+.cut-title { border-left: 0; padding: 1.2mm 2.6mm; background: var(--accent); color: #fff; border-radius: 1.2mm; align-self: flex-start; }
+.scissors { color: var(--accent-ink); }
+.li.bullet .mk::before { color: var(--accent); }
 
 /* Answer key */
 .key .ex-body p { margin-bottom: .6mm; }
@@ -237,7 +257,7 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 <div class="toolbar"><span id="status">Laying out the pages…</span><button onclick="window.print()">Print or save as PDF</button></div>
 <div id="pages"></div>
 <template id="u-main">${units.join('')}</template>
-<template id="cards">${cardPages.map((g) => `<div class="cut-page">${g}</div>`).join('')}</template>
+<template id="cards">${cardSets.join('')}</template>
 <template id="band-cards">${band(title + ' · Cards to cut out')}</template>
 <template id="u-key">${keyUnits.join('')}</template>
 <template id="band-main">${band(title)}</template>
@@ -290,16 +310,44 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
       nextCol();
     }
   }
+  // Cards: measure the tallest card at the column width, then give every card that height and
+  // fit as many rows as the page takes. Each exercise's cards start on a new sheet.
+  function cardPage(head) {
+    var page = document.createElement('div');
+    page.className = 'page';
+    page.innerHTML = document.getElementById('band-cards').innerHTML + '<div class="cut-wrap"><div class="cut-head"><span class="scissors">✂</span><span class="cut-ex"></span></div><div class="cut-grid"></div></div>' + document.getElementById('foot').innerHTML;
+    page.querySelector('.cut-ex').textContent = head;
+    pagesEl.appendChild(page);
+    return page.querySelector('.cut-grid');
+  }
+  function layoutCards(set) {
+    var cards = Array.prototype.slice.call(set.children).map(function (n) { return n.cloneNode(true); });
+    var head = set.getAttribute('data-head') || '';
+    var grid = cardPage(head);
+    var colW = grid.clientWidth / 2;
+    var avail = grid.clientHeight;
+    var probe = document.createElement('div');
+    probe.className = 'cut-grid';
+    probe.style.cssText = 'position:absolute;visibility:hidden;left:0;top:0;height:auto;width:' + grid.clientWidth + 'px;grid-auto-rows:auto';
+    document.body.appendChild(probe);
+    var tallest = 0;
+    cards.forEach(function (c) { probe.appendChild(c); tallest = Math.max(tallest, c.getBoundingClientRect().height); });
+    document.body.removeChild(probe);
+    var minH = avail / 7; // never smaller than a seventh of the page, so cards are easy to cut and hold
+    var rows = Math.max(1, Math.min(7, Math.floor(avail / Math.max(tallest, minH))));
+    var h = Math.floor(avail / rows);
+    var per = rows * 2;
+    for (var i = 0; i < cards.length; i++) {
+      if (i > 0 && i % per === 0) grid = cardPage(head + ' (cont.)');
+      cards[i].style.height = h + 'px';
+      grid.appendChild(cards[i]);
+    }
+  }
   function layout() {
     pagesEl.innerHTML = '';
     flow('u-main', 'band-main');
-    var cardSheets = document.getElementById('cards').content.children;
-    for (var cs = 0; cs < cardSheets.length; cs++) {
-      var page = document.createElement('div');
-      page.className = 'page';
-      page.innerHTML = document.getElementById('band-cards').innerHTML + '<div class="cut-wrap"><span class="scissors">✂</span>' + cardSheets[cs].innerHTML + '</div>' + document.getElementById('foot').innerHTML;
-      pagesEl.appendChild(page);
-    }
+    var sets = document.getElementById('cards').content.children;
+    for (var si = 0; si < sets.length; si++) layoutCards(sets[si]);
     flow('u-key', 'band-key');
     var pages = pagesEl.querySelectorAll('.page');
     for (var p = 0; p < pages.length; p++) pages[p].querySelector('.pn').textContent = (p + 1) + ' / ' + pages.length;
@@ -307,8 +355,15 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
     window.__laidOut = true;
     if (window.__autoPrint) setTimeout(function () { window.print(); }, 120);
   }
-  var go = function () { layout(); };
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else setTimeout(go, 300);
+  // Lay out only once our fonts have loaded, so the measurements match what is printed.
+  var done = false;
+  var go = function () { if (!done) { done = true; layout(); } };
+  if (document.fonts && document.fonts.load) {
+    Promise.all(['400 10pt Fraunces', '600 10pt Fraunces', 'italic 400 10pt Fraunces', '400 10pt Karla', '700 10pt Karla', '800 10pt Karla'].map(function (f) { return document.fonts.load(f); }))
+      .then(function () { return document.fonts.ready; })
+      .then(go, go);
+    setTimeout(go, 4000); // never wait for ever
+  } else setTimeout(go, 400);
   window.__relayout = layout;
 })();
 </script>

@@ -345,8 +345,14 @@ export function LessonEditor() {
   const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const presentRef = useRef(present);
+  presentRef.current = present;
   useEffect(() => {
-    const on = () => setFullscreen(!!document.fullscreenElement);
+    const on = () => {
+      setFullscreen(!!document.fullscreenElement);
+      // leaving full screen (Esc) leaves Presenting too
+      if (!document.fullscreenElement && presentRef.current) setPresent(false);
+    };
     document.addEventListener('fullscreenchange', on);
     return () => document.removeEventListener('fullscreenchange', on);
   }, []);
@@ -444,6 +450,8 @@ export function LessonEditor() {
     if (teachingHere) await toggleTeaching();
   }
   async function changeMode(m: Mode) {
+    // Presenting fills the whole screen, like F11. It must be asked for straight away, inside the click.
+    if (m === 'present' && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
     await flush();
     if (m === 'edit') {
       setPreview(false);
@@ -896,7 +904,7 @@ export function LessonEditor() {
               {present && (
                 <span className="tb-group hide-phone">
                   <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />
-                  {document.fullscreenEnabled && <IconBtn icon={fullscreen ? 'fullscreenOff' : 'fullscreen'} label={fullscreen ? 'Leave full screen (F)' : 'Full screen (F)'} active={fullscreen} onClick={toggleFullscreen} />}
+                  <IconBtn icon="presentOff" label="Stop presenting (Esc)" onClick={() => changeMode('teach')} />
                 </span>
               )}
               {(hands.length > 0 || stuckN > 0) && (
