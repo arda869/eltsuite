@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
-import { db } from './firebase';
+import { db, rtdb } from './firebase';
+import { onDisconnect, onValue, ref, remove, set } from 'firebase/database';
 import type { AnswerKey } from './questions';
 
 // Messages. Learners write to classmates and their teachers; teachers write to learners in
@@ -136,16 +137,93 @@ export async function sendMsg(c: Chat, me: Person, m: Omit<Msg, 'id' | 'by' | 'n
 }
 export const editMsg = (c: Chat, id: string, patch: Partial<Msg>) => updateDoc(doc(msgsCol(c.id), id), JSON.parse(JSON.stringify({ ...patch, edited: Date.now() })));
 export const deleteMsg = (c: Chat, id: string) => updateDoc(doc(msgsCol(c.id), id), { deleted: true, content: null, text: '', key: {}, share: null, blocks: 0 });
-// Quick replies to a message, in words.
-export const REACTS: [string, string][] = [
-  ['thanks', 'Thanks'],
-  ['gotit', 'Got it'],
-  ['great', 'Great'],
-  ['question', 'Question'],
-];
+// Quick reactions: a few of the app's own emoji, and any other from the full set.
+export const QUICK_REACTS = ['thumbsup', 'love', 'laugh', 'wow', 'think', 'sad'];
+// Older reactions were words.
+export const WORD_REACTS: Record<string, string> = { thanks: 'Thanks', gotit: 'Got it', great: 'Great', question: 'Question' };
 export function react(c: Chat, m: Msg, r: string, me: string) {
   const on = (m.reactions?.[r] ?? []).includes(me);
   return updateDoc(doc(msgsCol(c.id), m.id), { [`reactions.${r}`]: on ? arrayRemove(me) : arrayUnion(me) });
 }
 
 export const chatTitle = (c: Chat, me: string) => (c.kind === 'group' ? c.title || 'Group' : c.names[c.members.find((k) => k !== me) ?? ''] ?? 'Chat');
+
+// Who is typing: a time stamp in the live database while someone writes, cleared on send.
+export function setTyping(chatId: string, me: string, on: boolean) {
+  const r = ref(rtdb, `typing/${chatId}/${me}`);
+  if (on) {
+    set(r, Date.now()).catch(() => {});
+    onDisconnect(r).remove().catch(() => {});
+  } else remove(r).catch(() => {});
+}
+export function useTyping(chatId: string, me: string) {
+  const [map, setMap] = useState<Record<string, number>>({});
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const off = onValue(ref(rtdb, `typing/${chatId}`), (s) => setMap((s.val() as Record<string, number>) ?? {}), () => {});
+    const t = window.setInterval(() => tick((x) => x + 1), 2000);
+    return () => (off(), window.clearInterval(t));
+  }, [chatId]);
+  return Object.entries(map).filter(([k, at]) => k !== me && Date.now() - at < 7000).map(([k]) => k);
+}
+
+// Sounds, made in the browser: a soft two-note chime for a new message, a light tap on send.
+let ctx: AudioContext | null = null;
+export function chime(kind: 'in' | 'out') {
+  if (!soundsOn()) return;
+  try {
+    ctx ??= new AudioContext();
+    const t = ctx.currentTime;
+    const notes = kind === 'in' ? [[880, 0], [1318.5, 0.09]] : [[660, 0]];
+    for (const [f, d] of notes) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, t + d);
+      g.gain.linearRampToValueAtTime(kind === 'in' ? 0.12 : 0.06, t + d + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + (kind === 'in' ? 0.45 : 0.12));
+      o.connect(g).connect(ctx.destination);
+      o.start(t + d);
+      o.stop(t + d + 0.5);
+    }
+  } catch {
+    /* no sound */
+  }
+}
+export function soundsOn() {
+  try {
+    return localStorage.getItem('ll.msgSounds') !== 'off';
+  } catch {
+    return true;
+  }
+}
+export function setSounds(on: boolean) {
+  try {
+    localStorage.setItem('ll.msgSounds', on ? 'on' : 'off');
+  } catch {
+    /* fine */
+  }
+}
+
+// Each teacher chooses whether unread messages come by email, and after how long.
+export type MsgPrefs = { email: boolean; after: number }; // minutes
+export const AFTER: [number, string][] = [
+  [15, '15 minutes'],
+  [60, '1 hour'],
+  [240, '4 hours'],
+  [1440, '1 day'],
+  [4320, '3 days'],
+];
+export function useMsgPrefs(uid?: string) {
+  const [p, setP] = useState<MsgPrefs>({ email: false, after: 60 });
+  useEffect(() => {
+    if (!uid) return;
+    return onSnapshot(doc(db, 'users', uid), (s) => {
+      const v = s.data()?.msgPrefs as Partial<MsgPrefs> | undefined;
+      setP({ email: !!v?.email, after: v?.after ?? 60 });
+    }, () => {});
+  }, [uid]);
+  return p;
+}
+export const saveMsgPrefs = (uid: string, p: MsgPrefs) => updateDoc(doc(db, 'users', uid), { msgPrefs: p });

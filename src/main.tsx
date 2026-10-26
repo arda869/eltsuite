@@ -1,3 +1,5 @@
+import { startTilt } from './lib/tilt';
+import { ChatDock } from './components/ChatDock';
 import { startTheme } from './lib/theme';
 import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
 import { ColleaguesPage } from './pages/ColleaguesPage';
@@ -91,6 +93,7 @@ function LearnerOnly({ children }: { children: JSX.Element }) {
 }
 
 startTheme();
+startTilt();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -124,6 +127,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <ChatDock />
         </ProxyGate>
       </BrowserRouter>
     </AuthProvider>

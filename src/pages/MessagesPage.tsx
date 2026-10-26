@@ -5,7 +5,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, REACTS, renameGroup, sendMsg, unreadIn, useChats, useMessages, type Chat, type Msg, type Person } from '../lib/chat';
+import { addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -22,6 +22,8 @@ import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { MainNav } from './ColleaguesPage';
 import { setClip, writeClip, type Clip } from '../lib/clip';
+import { Icon, IconGrid, iconByKey } from '../editor/Icons';
+import { useDismiss } from '../lib/useDismiss';
 import type { ClassDoc } from '../lib/classes';
 
 // Messages: chats on the left, the conversation on the right. Messages use the same tools as
@@ -78,9 +80,12 @@ export function MessagesPage() {
           <aside className="msg-side">
             <div className="msg-side-top">
               <h1 className="page-title">Messages</h1>
-              <button type="button" className="btn primary small-btn" onClick={() => setCreating(true)}>
-                + New
-              </button>
+              <span style={{ display: 'flex', gap: 6 }}>
+                <MsgSettings uid={teacher ? user.uid : ''} />
+                <button type="button" className="btn primary small-btn" onClick={() => setCreating(true)}>
+                  + New
+                </button>
+              </span>
             </div>
             <input className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
             <div className="msg-list" role="listbox" aria-label="Chats">
@@ -218,7 +223,7 @@ function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void
   );
 }
 
-function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void }) {
+export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void }) {
   const msgs = useMessages(c.id);
   const navigate = useNavigate();
   const [content, setContent] = useState<JSONContent>(EMPTY);
@@ -242,7 +247,17 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
     end.current?.scrollIntoView({ block: 'end' });
   }, [msgs?.length]);
 
-  const reset = () => (setContent(EMPTY), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null));
+  const reset = () => (setContent(EMPTY), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
+  // Others see that I am typing (sent at most every few seconds).
+  const typedAt = useRef(0);
+  const onType = (v: JSONContent) => {
+    setContent(v);
+    const now = Date.now();
+    if (isEmptyContent(v)) return setTyping(c.id, me.key, false);
+    if (now - typedAt.current > 2500) (typedAt.current = now), setTyping(c.id, me.key, true);
+  };
+  useEffect(() => () => setTyping(c.id, me.key, false), [c.id, me.key]);
+  const typing = useTyping(c.id, me.key);
   const send = async () => {
     if (isEmptyContent(content) || busy) return;
     const tasky = blocksIn(content) + questionIds(content).length;
@@ -253,7 +268,7 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
       const { content: body, key } = splitKey(content);
       const m = { text: plainOf(content).trim(), content: body, key, blocks: tasky, mentions: [...new Set(mentionsOf(content))] };
       if (editing) await editMsg(c, editing.id, m);
-      else await sendMsg(c, me, { ...m, replyTo: replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null });
+      else chime('out'), await sendMsg(c, me, { ...m, replyTo: replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null });
       reset();
     } finally {
       setBusy(false);
@@ -315,6 +330,18 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
         ))}
         <div ref={end} />
       </div>
+      <div className="chat-typing" aria-live="polite">
+        {typing.length > 0 && (
+          <>
+            <span className="typing-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            {typing.length === 1 ? `${(c.names[typing[0]] ?? 'Someone').split(' ')[0]} is typing…` : typing.length === 2 ? `${typing.map((k) => (c.names[k] ?? '').split(' ')[0]).join(' and ')} are typing…` : 'Several people are typing…'}
+          </>
+        )}
+      </div>
       <div className="chat-compose" onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? (e.preventDefault(), void send()) : undefined)}>
         {(replyTo || editing) && (
           <span className="chat-replying">
@@ -329,7 +356,7 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
         )}
         {err && <span className="error">{err}</span>}
         <div className={'chat-editor' + (elementsOk ? '' : ' text-only')}>
-          <TaskEditor handles={false} key={edKey} content={content} onChange={setContent} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
+          <TaskEditor handles={false} key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
         </div>
         <span className="chat-actions">
           {teacher && colleaguesHere.length > 0 && (
@@ -425,9 +452,9 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
         </div>
         {m.reactions && Object.values(m.reactions).some((l) => l.length) && (
           <span className="bub-reacts">
-            {REACTS.filter(([k]) => m.reactions?.[k]?.length).map(([k, l]) => (
-              <button key={k} type="button" className={'bub-react' + (m.reactions![k].includes(me.key) ? ' on' : '')} onClick={() => react(c, m, k, me.key)} title={m.reactions![k].map((x) => c.names[x] ?? '').join(', ')}>
-                {l} <b>{m.reactions![k].length}</b>
+            {Object.entries(m.reactions).filter(([, l]) => l.length).map(([k, l]) => (
+              <button key={k} type="button" className={'bub-react' + (l.includes(me.key) ? ' on' : '')} onClick={() => react(c, m, k, me.key)} title={l.map((x) => (x === me.key ? 'You' : c.names[x] ?? '')).join(', ')}>
+                {iconByKey(k) ? <Icon name={k} size="16" /> : WORD_REACTS[k] ?? k} <b>{l.length}</b>
               </button>
             ))}
           </span>
@@ -437,11 +464,14 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
             <button type="button" onClick={onReply}>
               Reply
             </button>
-            {REACTS.map(([k, l]) => (
-              <button key={k} type="button" className={(m.reactions?.[k] ?? []).includes(me.key) ? 'on' : ''} onClick={() => react(c, m, k, me.key)}>
-                {l}
-              </button>
-            ))}
+            <span className="bub-emo">
+              {QUICK_REACTS.map((k) => (
+                <button key={k} type="button" className={(m.reactions?.[k] ?? []).includes(me.key) ? 'on' : ''} onClick={() => react(c, m, k, me.key)} aria-label={iconByKey(k)?.label} title={iconByKey(k)?.label}>
+                  <Icon name={k} size="17" />
+                </button>
+              ))}
+              <MoreReacts onPick={(k) => react(c, m, k, me.key)} />
+            </span>
             {!!m.content && (
               <button type="button" onClick={copy} data-tip="Copy, then paste into a task or another message">
                 {copied ? 'Copied' : 'Copy'}
@@ -694,5 +724,71 @@ function PrivateMessages() {
         </Link>
       </div>
     </div>
+  );
+}
+
+function MoreReacts({ onPick }: { onPick: (k: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
+  return (
+    <span className="bub-more" ref={ref}>
+      <button type="button" aria-label="More emoji" title="More emoji" onClick={() => setOpen((o) => !o)}>
+        +
+      </button>
+      {open && (
+        <span className="hl-pop emo-pop bub-emo-pop">
+          <IconGrid onPick={(k) => (onPick(k), setOpen(false))} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Sounds, and (for teachers) an email when messages wait unread.
+function MsgSettings({ uid }: { uid: string }) {
+  const [open, setOpen] = useState(false);
+  const [sounds, setS] = useState(soundsOn());
+  const prefs = useMsgPrefs(uid || undefined);
+  const ref = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
+  return (
+    <span className="msg-set" ref={ref}>
+      <button type="button" className="cd-icon" aria-label="Message settings" data-tip="Sounds and email" onClick={() => setOpen((o) => !o)}>
+        <UiIcon name="bell" size={15} />
+      </button>
+      {open && (
+        <span className="menu msg-set-menu" role="menu">
+          <label className="switch-row">
+            <span>
+              Sounds
+              <span className="hint">A soft chime when a message comes in</span>
+            </span>
+            <input type="checkbox" checked={sounds} onChange={(e) => (setSounds(e.target.checked), setS(e.target.checked), e.target.checked && chime('in'))} />
+          </label>
+          {uid && (
+            <>
+              <label className="switch-row">
+                <span>
+                  Email me about unread messages
+                  <span className="hint">A short summary of what is waiting</span>
+                </span>
+                <input type="checkbox" checked={prefs.email} onChange={(e) => saveMsgPrefs(uid, { ...prefs, email: e.target.checked })} />
+              </label>
+              {prefs.email && (
+                <label className="field msg-after">
+                  When they stay unread for
+                  <select value={prefs.after} onChange={(e) => saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
+                    {AFTER.map(([m, l]) => (
+                      <option key={m} value={m}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </>
+          )}
+        </span>
+      )}
+    </span>
   );
 }

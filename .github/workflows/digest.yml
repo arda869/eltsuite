@@ -1,0 +1,28 @@
+name: Email summaries of unread messages
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Send summaries
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SMTP_URL: ${{ secrets.SMTP_URL }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+        run: |
+          if [ -z "$SMTP_URL" ]; then echo "No SMTP_URL secret yet: nothing to send."; exit 0; fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs "$RUNNER_TEMP/d/" && cd "$RUNNER_TEMP/d"
+          npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 nodemailer@6 >/dev/null
+          node digest.mjs
+          rm -f "$RUNNER_TEMP/sa.json"

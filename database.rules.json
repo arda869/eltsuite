@@ -96,6 +96,14 @@
           ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
         }
       }
+    },
+    "typing": {
+      "$chat": {
+        ".read": "auth != null",
+        "$key": {
+          ".write": "auth != null && (!newData.exists() || newData.isNumber())"
+        }
+      }
     }
   }
 }
