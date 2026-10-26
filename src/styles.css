@@ -4645,3 +4645,15 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 :is(.task-table, .doc .ProseMirror table) :is(td, th) > .para { margin: 0; }
 :is(.task-table, .doc .ProseMirror table) :is(td, th) > .para + .para { margin-top: 4px; }
 .task-table td, .doc .ProseMirror td { padding-top: 7px; padding-bottom: 7px; line-height: 1.5; }
+
+/* Worksheet options: fits the screen, the settings side by side */
+.dialog.ws-dialog { width: 600px; max-height: calc(100dvh - 48px); overflow-y: auto; gap: 12px; }
+.scrim:has(.ws-dialog) { padding-top: 24px; padding-bottom: 24px; align-items: flex-start; }
+.ws-dialog .ws-tasks { max-height: 168px; gap: 0; padding: 4px; border-radius: 12px; background: var(--surface); }
+.ws-dialog .ws-tasks .pop-check { padding: 5px 8px; border-radius: 8px; margin: 0; min-height: 0; }
+.ws-dialog .ws-tasks .pop-check:hover { background: var(--paper); }
+.ws-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ws-opts .seg { width: 100%; }
+.ws-opts .seg button { padding-left: 4px; padding-right: 4px; white-space: nowrap; }
+@media (max-width: 640px) { .ws-opts { grid-template-columns: 1fr; } }
+:where(input[type=checkbox], input[type=radio]) { accent-color: var(--accent, #d98f63); }

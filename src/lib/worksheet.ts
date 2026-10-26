@@ -71,7 +71,13 @@ export function flattenTask(t: ExportTask): WsTask {
   let n = 0;
   let marks = 0;
   const cutouts: NonNullable<WsTask['cutouts']> = [];
+  // Every word to drag in the task, read first: the word box usually comes before its gaps.
   const bank: string[] = [];
+  const findDrops = (x: JSONContent) => {
+    if (x.type === 'dropgap' && x.attrs?.answer) bank.push(String(x.attrs.answer));
+    x.content?.forEach(findDrops);
+  };
+  findDrops(t.content);
   // Words with a definition: listed under the exercise, since paper can't be tapped.
   const glossary: { word: string; d: DefData; key: string }[] = [];
   const picCount: Record<string, number> = {};
@@ -138,7 +144,6 @@ export function flattenTask(t: ExportTask): WsTask {
           n++;
           marks++;
           answers.push({ n, text: a.answer ?? '' });
-          if (a.answer) bank.push(a.answer);
           out.push({ num: n }, { blank: 14 });
           break;
         }

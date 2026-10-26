@@ -194,7 +194,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   };
   return (
     <div className="scrim" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-label="Worksheet" onClick={(e) => e.stopPropagation()}>
+      <div className="dialog ws-dialog" role="dialog" aria-label="Worksheet" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>Worksheet</h2>
         {loadError ? (
           <>
@@ -225,9 +225,10 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
                 ))}
               </div>
             </div>
+            <div className="ws-opts">
             <div className="field" style={{ gap: 6 }}>
               <span>Paper</span>
-              <span className="seg small-seg" role="radiogroup" aria-label="Paper size" style={{ width: 260 }}>
+              <span className="seg small-seg" role="radiogroup" aria-label="Paper size" style={{ width: '100%' }}>
                 {(['A4', 'Letter', 'A5'] as const).map((p) => (
                   <button key={p} type="button" role="radio" aria-checked={paper === p} className={paper === p ? 'on' : ''} onClick={() => setPaper(p)}>
                     {p === 'Letter' ? 'US Letter' : p}
@@ -237,7 +238,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
             </div>
             <div className="field" style={{ gap: 6 }}>
               <span>Layout</span>
-              <span className="seg small-seg" role="radiogroup" aria-label="Columns" style={{ width: 260 }}>
+              <span className="seg small-seg" role="radiogroup" aria-label="Columns" style={{ width: '100%' }}>
                 {([1, 2] as const).map((c) => (
                   <button key={c} type="button" role="radio" aria-checked={columns === c} className={columns === c ? 'on' : ''} onClick={() => setColumns(c)}>
                     {c === 1 ? 'One column' : 'Two columns'}
@@ -247,13 +248,14 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
             </div>
             <div className="field" style={{ gap: 6 }}>
               <span>Text size</span>
-              <span className="seg small-seg" role="radiogroup" aria-label="Text size" style={{ width: 260 }}>
+              <span className="seg small-seg" role="radiogroup" aria-label="Text size" style={{ width: '100%' }}>
                 {(['standard', 'large', 'xl'] as const).map((v) => (
                   <button key={v} type="button" role="radio" aria-checked={size === v} className={size === v ? 'on' : ''} onClick={() => setSize(v)}>
                     {{ standard: 'Standard', large: 'Large', xl: 'Extra large' }[v]}
                   </button>
                 ))}
               </span>
+            </div>
             </div>
             <label className="pop-check">
               <input type="checkbox" checked={clear} onChange={() => setClear(!clear)} />
