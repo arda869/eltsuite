@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getStroke } from 'perfect-freehand';
-import { onValue, ref, remove, set, update } from 'firebase/database';
+import { onDisconnect, onValue, ref, remove, set, update } from 'firebase/database';
 import { rtdb } from '../lib/firebase';
 import { audioUrl as mediaUrl, saveImage } from '../lib/media';
 
@@ -10,8 +10,8 @@ import { audioUrl as mediaUrl, saveImage } from '../lib/media';
 
 const W = 1600;
 const H = 900;
-type Tool = 'move' | 'pen' | 'marker' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'text' | 'eraser';
-type Kind = Exclude<Tool, 'move' | 'eraser'> | 'image';
+type Tool = 'move' | 'pen' | 'marker' | 'line' | 'arrow' | 'rect' | 'ellipse' | 'text' | 'eraser' | 'laser';
+type Kind = Exclude<Tool, 'move' | 'eraser' | 'laser'> | 'image';
 export type Stroke = { id: string; by: string; tool: Kind; color: string; size: number; pts: number[][]; text?: string; media?: string; t: number };
 
 // No red or green: those colours mean right and wrong answers.
@@ -26,7 +26,16 @@ const TOOLS: { key: Tool; label: string; icon: string }[] = [
   { key: 'ellipse', label: 'Ellipse', icon: 'M12 5c5 0 8 3 8 7s-3 7-8 7-8-3-8-7 3-7 8-7z' },
   { key: 'text', label: 'Text', icon: 'M5 6h14M12 6v13' },
   { key: 'eraser', label: 'Eraser', icon: 'M8 20h12M4 16l9-9 5 5-6 6H8z' },
+  { key: 'laser', label: 'Pointer: everyone sees where you point', icon: 'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M12 3v3M12 18v3M3 12h3M18 12h3' },
 ];
+// People's cursors on the board, each in their own colour (not red or green).
+const CUR_COLORS = ['#3d6fb6', '#7a5cb8', '#c7772f', '#b8508f', '#4f6b7a', '#a8861a', '#4a55a8', '#8a6a4a'];
+const curColor = (uid: string) => {
+  let h = 0;
+  for (const ch of uid) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return CUR_COLORS[h % CUR_COLORS.length];
+};
+type Cur = { x: number; y: number; n: string; c: string; l?: boolean; at: number };
 const IMAGE_ICON = 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9.5a1.5 1.5 0 1 0 0-.01';
 
 function pathOf(points: number[][], size: number, marker: boolean) {
@@ -126,7 +135,8 @@ async function imageFromFile(classId: string, file: Blob) {
   return { id, w: c.width, h: c.height };
 }
 
-export function Whiteboard({ classId, boardId, uid, teacher, people = [], compact }: { classId: string; boardId: string; uid: string; teacher: boolean; people?: { uid: string; name: string }[]; compact?: boolean }) {
+// free: a group's or a learner's own board, where everyone in it draws unless the teacher locks it.
+export function Whiteboard({ classId, boardId, uid, teacher, people = [], compact, free, name = '' }: { classId: string; boardId: string; uid: string; teacher: boolean; people?: { uid: string; name: string }[]; compact?: boolean; free?: boolean; name?: string }) {
   const base = `sessions/${classId}/board/${boardId}`;
   const [strokes, setStrokes] = useState<Record<string, Stroke>>({});
   const [pen, setPen] = useState<string>('teacher');
@@ -139,6 +149,10 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
   const [sel, setSel] = useState<string | null>(null);
   const [busy, setBusy] = useState('');
   const [frameW, setFrameW] = useState(800);
+  const [curs, setCurs] = useState<Record<string, Cur>>({});
+  const [showCur, setShowCur] = useState(false);
+  const curSent = useRef(0);
+  const curOn = useRef(false);
   const svg = useRef<SVGSVGElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const fileIn = useRef<HTMLInputElement>(null);
@@ -148,8 +162,11 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
   useEffect(() => {
     const u1 = onValue(ref(rtdb, `${base}/strokes`), (s) => setStrokes(s.val() ?? {}), () => {});
     const u2 = onValue(ref(rtdb, `${base}/pen`), (s) => setPen(s.val() ?? 'teacher'), () => {});
-    return () => (u1(), u2());
-  }, [base]);
+    const u3 = onValue(ref(rtdb, `${base}/cur`), (s) => setCurs((s.val() as Record<string, Cur>) ?? {}), () => {});
+    const u4 = onValue(ref(rtdb, `${base}/showCur`), (s) => setShowCur(!!s.val()), () => {});
+    onDisconnect(ref(rtdb, `${base}/cur/${uid}`)).remove().catch(() => {});
+    return () => (u1(), u2(), u3(), u4(), void remove(ref(rtdb, `${base}/cur/${uid}`)).catch(() => {}));
+  }, [base, uid]);
   useEffect(() => {
     if (!svg.current) return;
     const ro = new ResizeObserver(() => svg.current && setFrameW(svg.current.getBoundingClientRect().width || 800));
@@ -157,7 +174,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
     return () => ro.disconnect();
   }, []);
 
-  const canDraw = teacher || pen === 'all' || pen === uid;
+  const canDraw = teacher || (free ? pen !== 'locked' : pen === 'all' || pen === uid);
   const list = useMemo(() => Object.values(strokes).sort((a, b) => a.t - b.t), [strokes]);
   const mine = (s: Stroke) => teacher || s.by === uid;
 
@@ -259,7 +276,24 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
     (e.target as Element).setPointerCapture?.(e.pointerId);
     setDraft({ id: newSid(), by: uid, tool: tool as Kind, color, size, pts: [p], t: Date.now() });
   };
+  // Where my pointer is, for everyone (when cursors are shown, or I am using the pointer).
+  const sendCursor = (e: React.PointerEvent) => {
+    if (!showCur && tool !== 'laser') return;
+    const now = Date.now();
+    if (now - curSent.current < 60) return;
+    curSent.current = now;
+    const p = at(e);
+    curOn.current = true;
+    set(ref(rtdb, `${base}/cur/${uid}`), { x: Math.round(p[0]), y: Math.round(p[1]), n: name || (teacher ? 'Teacher' : ''), c: curColor(uid), l: tool === 'laser', at: now } satisfies Cur).catch(() => {});
+  };
+  const hideCursor = () => {
+    if (!curOn.current) return;
+    curOn.current = false;
+    remove(ref(rtdb, `${base}/cur/${uid}`)).catch(() => {});
+  };
   const move = (e: React.PointerEvent) => {
+    sendCursor(e);
+    if (tool === 'laser') return;
     const p = at(e);
     if (drag.current) {
       const d = drag.current;
@@ -357,10 +391,23 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
             )}
           </>
         ) : (
-          <span className="hint">Your teacher is drawing. You can draw when your teacher gives you the pen.</span>
+          <>
+            <button type="button" className={'wb-tool' + (tool === 'laser' ? ' on' : '')} title="Pointer: everyone sees where you point" aria-label="Pointer" onClick={() => setTool(tool === 'laser' ? 'pen' : 'laser')}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d={TOOLS.find((t) => t.key === 'laser')!.icon} />
+              </svg>
+            </button>
+            <span className="hint">{pen === 'locked' ? 'Your teacher has locked this board.' : 'Your teacher is drawing. You can draw when your teacher gives you the pen.'}</span>
+          </>
         )}
         {teacher && (
-          <select className="wb-pen" value={pen} onChange={(e) => set(ref(rtdb, `${base}/pen`), e.target.value).catch(() => {})} aria-label="Who can draw">
+          <label className="wb-showcur" data-tip="Everyone sees where everyone’s cursor is on the board">
+            <input type="checkbox" checked={showCur} onChange={(e) => set(ref(rtdb, `${base}/showCur`), e.target.checked || null).catch(() => {})} />
+            Show everyone’s cursor
+          </label>
+        )}
+        {teacher && !free && (
+          <select className="wb-pen" value={pen === 'locked' ? 'teacher' : pen} onChange={(e) => set(ref(rtdb, `${base}/pen`), e.target.value).catch(() => {})} aria-label="Who can draw">
             <option value="teacher">Only I draw</option>
             <option value="all">Everyone can draw</option>
             {people.map((p) => (
@@ -373,7 +420,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
         {!teacher && canDraw && <span className="wb-you">You have the pen</span>}
       </div>
       <div className="wb-frame">
-        <svg ref={svg} className={'wb-canvas' + (canDraw ? ' can t-' + tool : '')} viewBox={`0 0 ${W} ${H}`} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerLeave={up}>
+        <svg ref={svg} className={'wb-canvas' + (canDraw || tool === 'laser' ? ' can t-' + tool : '')} viewBox={`0 0 ${W} ${H}`} onPointerDown={(e) => tool !== 'laser' && down(e)} onPointerMove={move} onPointerUp={up} onPointerLeave={() => (up(), hideCursor())}>
           <rect width={W} height={H} fill="transparent" />
           {shown.map((s) => (
             <Shape key={s.id} s={s} classId={classId} />
@@ -385,6 +432,23 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
             </g>
           )}
         </svg>
+        <div className="wb-curs" aria-hidden="true">
+          {Object.entries(curs)
+            .filter(([id, c]) => (id !== uid || (c.l && tool === 'laser')) && Date.now() - c.at < 15000 && (showCur || c.l))
+            .map(([id, c]) => (
+              <span key={id} className={'wb-cur' + (c.l ? ' laser' : '')} style={{ left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%`, ['--cc' as string]: c.c }}>
+                {c.l ? (
+                  <i className="wb-laser" />
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M1 1l5.5 13 2-5.5L14 6.5z" fill="currentColor" stroke="#fff" strokeWidth="1.2" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {c.n && id !== uid && <b>{c.n.split(' ')[0]}</b>}
+              </span>
+            ))}
+          {tool === 'laser' && <span className="wb-laser-hint">Pointer on: everyone sees where you point</span>}
+        </div>
         {textAt && (
           <input
             className="wb-text"

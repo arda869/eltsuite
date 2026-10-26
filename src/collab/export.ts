@@ -11,7 +11,7 @@ const hex = (c?: string) => {
   return v.startsWith('#') ? v : c === 'accent' ? '#b8744e' : '';
 };
 
-function inlineHtml(n: JSONContent): string {
+export function inlineHtml(n: JSONContent): string {
   if (n.type === 'text') {
     const marks = n.marks ?? [];
     if (marks.some((m) => m.type === 'suggestDel')) return '';
@@ -39,7 +39,7 @@ function inlineHtml(n: JSONContent): string {
   if (n.type === 'sym') return `<span class="sym">${esc(String(n.attrs?.text ?? ''))}</span>`;
   return (n.content ?? []).map(inlineHtml).join('');
 }
-function blockHtml(n: JSONContent): string {
+export function blockHtml(n: JSONContent): string {
   const kids = () => (n.content ?? []).map(blockHtml).join('');
   switch (n.type) {
     case 'doc':

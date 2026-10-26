@@ -30,8 +30,16 @@
             },
             "strokes": {
               "$sid": {
-                ".write": "auth != null && ((root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true) || ((root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === 'all' || root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === auth.uid) && (!data.exists() || data.child('by').val() === auth.uid) && (!newData.exists() || newData.child('by').val() === auth.uid)))"
+                ".write": "auth != null && ((root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true) || ((root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === 'all' || root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === auth.uid) && (!data.exists() || data.child('by').val() === auth.uid) && (!newData.exists() || newData.child('by').val() === auth.uid)) || ($taskId.contains('~') && root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() !== 'locked' && (!data.exists() || data.child('by').val() === auth.uid) && (!newData.exists() || newData.child('by').val() === auth.uid)))"
               },
+              ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
+            },
+            "cur": {
+              "$uid": {
+                ".write": "auth != null && auth.uid === $uid"
+              }
+            },
+            "showCur": {
               ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
             }
           }

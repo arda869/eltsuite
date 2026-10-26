@@ -18,9 +18,10 @@ import { SymNode, SymbolTool } from '../editor/Symbols';
 import { EditorClassContext } from '../editor/context';
 import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
-import { claimStart, collabRef, RtdbProvider, setLock, watchFlags } from './provider';
+import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
 import { downloadDocx, printDoc } from './export';
+import { useCollabSession, type CollabSession } from './session';
 
 // A document the class writes together, live: everyone's cursor and name, editing,
 // suggesting (changes others accept or reject) and comments, as in Google Docs.
@@ -73,25 +74,12 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
 }
 
 export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head }: CollabProps) {
-  // The shared document and its connection, made when the component mounts (and remade if it
-  // opens another document). React may mount twice in development, so it lives in an effect.
-  const [session, setSession] = useState<{ doc: Y.Doc; provider: RtdbProvider; pud: Y.PermanentUserData } | null>(null);
-  useEffect(() => {
-    const doc = new Y.Doc();
-    const provider = new RtdbProvider(docKey, doc, me.uid);
-    const pud = new Y.PermanentUserData(doc);
-    pud.setUserMapping(doc, doc.clientID, me.uid);
-    setSession({ doc, provider, pud });
-    return () => {
-      provider.destroy();
-      doc.destroy();
-    };
-  }, [docKey, me.uid]);
+  const session = useCollabSession(docKey, me.uid);
   if (!session) return <div className="cd cd-wait" />;
   return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head }} session={session} />;
 }
 
-function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, session }: CollabProps & { session: { doc: Y.Doc; provider: RtdbProvider; pud: Y.PermanentUserData } }) {
+function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, session }: CollabProps & { session: CollabSession }) {
   const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   const allowed = (teacher ? (['edit', 'suggest', 'comment'] as CollabMode[]) : modes).filter(Boolean);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');

@@ -15,7 +15,7 @@ import { cellBg } from '../editor/tableStyle';
 import { Icon } from '../editor/Icons';
 import { Sym } from '../editor/Symbols';
 import { Board, type BoardAttrs, type BoardMe } from './Board';
-import { Whiteboard } from './Whiteboard';
+import { BoardTask, type BoardAttrs2 } from './BoardTask';
 import { MentionTag } from '../editor/Mention';
 import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
@@ -1059,8 +1059,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'drawBoard':
         return (
           <div key={key} className="drawboard">
-            {node.attrs?.prompt && <p className="drawboard-title">{node.attrs.prompt}</p>}
-            {boardMe && node.attrs?.id ? <Whiteboard classId={boardMe.classId} boardId={node.attrs.id} uid={boardMe.uid} teacher={!!boardMe.teacher} people={boardMe.penPeople} compact /> : <div className="drawboard-empty hint">The board opens during the lesson.</div>}
+            <BoardTask a={node.attrs as BoardAttrs2} me={boardMe} classmates={classmates} />
           </div>
         );
       case 'board':
