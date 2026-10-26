@@ -23,6 +23,10 @@ export function LearnerJoin() {
   const [found, setFound] = useState<Found | null>(null);
   const [learnerId, setLearnerId] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
+  const [usePassword, setUsePassword] = useState(false);
+  const [password, setPassword] = useState('');
+  const secret = usePassword ? password : pin.join('');
+  const ready = usePassword ? password.length >= 8 : pin.join('').length === 4;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -64,11 +68,11 @@ export function LearnerJoin() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!found || !learnerId || pin.join('').length !== 4) return;
+    if (!found || !learnerId || !ready) return;
     setBusy(true);
     setError('');
     try {
-      await signInWithEmailAndPassword(auth, learnerEmail(learnerId), learnerPassword(found.code, pin.join('')));
+      await signInWithEmailAndPassword(auth, learnerEmail(learnerId), learnerPassword(found.code, secret));
       try {
         localStorage.setItem('lastClassCode', found.code);
       } catch {
@@ -81,10 +85,13 @@ export function LearnerJoin() {
           ? 'Too many tries. Please wait a minute, or ask your teacher for your PIN.'
           : c === 'auth/network-request-failed'
             ? 'No connection. Check your internet and try again.'
-            : 'That PIN doesn’t match. Try again, or ask your teacher.',
+            : usePassword
+              ? 'That password doesn’t match. Try again.'
+              : 'That PIN doesn’t match. Try again, or ask your teacher.',
       );
       setPin(['', '', '', '']);
-      pinRefs.current[0]?.focus();
+      setPassword('');
+      if (!usePassword) pinRefs.current[0]?.focus();
       setBusy(false);
     }
   }
@@ -129,7 +136,18 @@ export function LearnerJoin() {
           </label>
         )}
 
+        {found && learnerId && usePassword && (
+          <label className="field">
+            Your password
+            <input type="password" value={password} autoFocus autoComplete="current-password" onChange={(e) => setPassword(e.target.value)} />
+          </label>
+        )}
         {found && learnerId && (
+          <button type="button" className="btn link small" style={{ alignSelf: 'flex-start' }} onClick={() => (setUsePassword((v) => !v), setError(''))}>
+            {usePassword ? 'Use my PIN instead' : 'I use a password'}
+          </button>
+        )}
+        {found && learnerId && !usePassword && (
           <fieldset className="pin-field">
             <legend>PIN</legend>
             <div className="pin-boxes">
@@ -152,11 +170,11 @@ export function LearnerJoin() {
 
         {error && <span className="error" role="alert">{error}</span>}
 
-        <button className="btn primary tall block" disabled={busy || !found || !learnerId || pin.join('').length !== 4}>
+        <button className="btn primary tall block" disabled={busy || !found || !learnerId || !ready}>
           {busy ? 'Joining…' : 'Join class'}
         </button>
         <div className="row-between small">
-          <span className="hint">Forgot your PIN? Ask your teacher.</span>
+          <span className="hint">Forgot your PIN? Ask your teacher (unless you chose your own).</span>
           <Link to="/">I am a teacher</Link>
         </div>
       </form>

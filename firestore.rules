@@ -356,6 +356,12 @@ service cloud.firestore {
       match /secrets/{learnerId} {
         allow read: if teachesClass(classId);
         allow write: if teachesClass(classId);
+        // A learner who sets their own PIN or password replaces the record with a note that
+        // says so; the PIN itself is never written, so the teacher cannot see it.
+        allow create, update: if memberOf(classId)
+          && get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId == learnerId
+          && request.resource.data.keys().hasOnly(['own', 'kind', 'at'])
+          && request.resource.data.own == true;
       }
       match /members/{memberUid} {
         allow read: if viewsClass(classId) || isSelf(memberUid);

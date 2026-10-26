@@ -7,6 +7,7 @@ import { AnnouncementBoard } from '../components/AnnouncementBoard';
 import { IconLink } from '../components/UiIcon';
 import { useMyRecaps } from '../lib/recap';
 import { isProxyTab } from '../lib/proxy';
+import { MySecretDialog } from '../components/MySecretDialog';
 import { isUnread, readSeen, useThreads } from '../lib/discussion';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
@@ -51,6 +52,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [items, setItems] = useState<Item[]>([]);
   const [menu, setMenu] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [secretOpen, setSecretOpen] = useState(false);
   // First visit: invite the learner to choose a picture.
   const [askPicture, setAskPicture] = useState(() => !isProxyTab()) // a teacher viewing as the learner is not asked to choose their picture;
   const [live, setLiveState] = useState<LiveState | null>(null);
@@ -124,6 +126,11 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               <button role="menuitem" onClick={() => (setPicking(true), setMenu(false))}>
                 Choose a profile picture
               </button>
+              {!isProxyTab() && (
+                <button role="menuitem" onClick={() => (setSecretOpen(true), setMenu(false))}>
+                  Change my PIN or password
+                </button>
+              )}
               <button role="menuitem" onClick={signOutNow}>
                 Sign out
               </button>
@@ -131,6 +138,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
           )}
         </div>
       </header>
+      {secretOpen && c && profile?.role === 'learner' && <MySecretDialog classId={classId} classCode={c.classCode} learnerId={profile.learnerId} onClose={() => setSecretOpen(false)} />}
       {(picking || (profile && !profile.avatar && askPicture)) && <AvatarPicker classIds={[classId]} onClose={() => (setPicking(false), setAskPicture(false))} />}
 
       {c === null || c?.status === 'deleted' ? (

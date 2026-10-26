@@ -65,8 +65,9 @@ export function ClassPage() {
   const topics = useCollection<Topic>(['classes', classId, 'topics'], ok);
   const items = useCollection<Item>(['classes', classId, 'items'], ok);
   const learners = useCollection<Learner>(['classes', classId, 'learners'], ok);
-  const secrets = useCollection<{ id: string; pin: string }>(['classes', classId, 'secrets'], ok);
-  const pins = Object.fromEntries(secrets.map((s) => [s.id, s.pin]));
+  const secrets = useCollection<{ id: string; pin?: string; own?: boolean; kind?: string }>(['classes', classId, 'secrets'], ok);
+  const pins = Object.fromEntries(secrets.filter((s) => !s.own).map((s) => [s.id, s.pin ?? '']));
+  const ownSecret = Object.fromEntries(secrets.filter((s) => s.own).map((s) => [s.id, s.kind === 'password' ? 'password' : 'PIN']));
 
   useEffect(() => {
     if (!menu) return;
@@ -190,7 +191,7 @@ export function ClassPage() {
           {tab === 'lessons' ? (
             <LessonsTab c={c} topics={topics} items={items} onResults={(i) => (setResultsItem(i), setTab('reports'))} />
           ) : tab === 'learners' ? (
-            <LearnersTab c={c} learners={learners} pins={pins} />
+            <LearnersTab c={c} learners={learners} pins={pins} own={ownSecret} />
           ) : tab === 'reports' ? (
             <Reports key={resultsItem?.id ?? 'all'} c={c} items={items} learners={learners} initialItem={resultsItem} />
           ) : tab === 'discussion' ? (

@@ -13,7 +13,11 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from 'firebase/auth';
+import { setDoc } from 'firebase/firestore';
+import { auth as mainAuth } from './firebase';
 import { useEffect, useState } from 'react';
 import { arrayRemove, arrayUnion, collection, doc, getDoc, increment, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
@@ -81,6 +85,23 @@ export async function resetPin(c: ClassDoc, learner: Learner, oldPin: string) {
   batch.set(doc(db, 'classes', c.id, 'secrets', learner.id), { pin });
   await batch.commit();
   return pin;
+}
+
+// A learner sets their own PIN or a longer password. The teacher no longer sees it: the
+// secrets record only says that the learner chose their own.
+export type OwnSecret = { kind: 'pin' | 'password' };
+export async function changeMySecret(o: { classId: string; classCode: string; learnerId: string; current: string; next: string; kind: 'pin' | 'password' }) {
+  const u = mainAuth.currentUser;
+  if (!u || !u.email) throw new Error('Please sign in again.');
+  if (o.kind === 'pin' && !/^\d{4}$/.test(o.next)) throw new Error('A PIN is 4 numbers.');
+  if (o.kind === 'password' && o.next.length < 8) throw new Error('Use at least 8 characters.');
+  try {
+    await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, learnerPassword(o.classCode, o.current)));
+  } catch {
+    throw new Error('Your current PIN or password is not right.');
+  }
+  await updatePassword(u, learnerPassword(o.classCode, o.next));
+  await setDoc(doc(db, 'classes', o.classId, 'secrets', o.learnerId), { own: true, kind: o.kind, at: Date.now() });
 }
 
 export async function removeLearner(c: ClassDoc, learner: Learner, pin: string) {

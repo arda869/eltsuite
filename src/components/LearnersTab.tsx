@@ -4,7 +4,7 @@ import { addLearners, removeLearner, resetPin, type Learner } from '../lib/learn
 import type { ClassDoc } from '../lib/classes';
 import { initials } from './TopBar';
 
-export function LearnersTab({ c, learners, pins }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string> }) {
+export function LearnersTab({ c, learners, pins, own = {} }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string> }) {
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(learners.length === 0);
   const [names, setNames] = useState('');
@@ -132,18 +132,24 @@ export function LearnersTab({ c, learners, pins }: { c: ClassDoc; learners: Lear
                       </span>
                     </td>
                     <td>
-                      <span className="pin-cell">
-                        <span className={shown[l.id] ? 'pin' : 'pin masked'}>{shown[l.id] ? pins[l.id] ?? '—' : '••••'}</span>
-                        <button type="button" className="btn link small" onClick={() => setShown((s) => ({ ...s, [l.id]: !s[l.id] }))}>
-                          {shown[l.id] ? 'Hide' : 'Show'}
-                        </button>
-                      </span>
+                      {own[l.id] ? (
+                        <span className="hint" title="The learner chose their own, so you cannot see or reset it. If they forget it, resetting needs the Phase 5 server; removing and re-adding them starts a new account without their work.">
+                          Own {own[l.id]}, private
+                        </span>
+                      ) : (
+                        <span className="pin-cell">
+                          <span className={shown[l.id] ? 'pin' : 'pin masked'}>{shown[l.id] ? pins[l.id] ?? '—' : '••••'}</span>
+                          <button type="button" className="btn link small" onClick={() => setShown((s) => ({ ...s, [l.id]: !s[l.id] }))}>
+                            {shown[l.id] ? 'Hide' : 'Show'}
+                          </button>
+                        </span>
+                      )}
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button className="btn small-btn" disabled={!pins[l.id]} title="Open a new tab signed in as this learner" onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || window.alert('Your browser blocked the new tab. Allow pop-ups for this site.')}>
                         View as {l.displayName.split(' ')[0]}
                       </button>{' '}
-                      <button className="btn small-btn" disabled={busy === l.id} onClick={() => reset(l)}>
+                      <button className="btn small-btn" disabled={busy === l.id || !!own[l.id]} title={own[l.id] ? 'The learner set their own, so it can only be changed by them' : undefined} onClick={() => reset(l)}>
                         {busy === l.id ? 'Working…' : 'Reset PIN'}
                       </button>{' '}
                       <button className="btn link small" disabled={busy === l.id} onClick={() => remove(l)}>
