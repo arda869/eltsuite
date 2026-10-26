@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { assemble, bufferOf, EFFECTS, finishedLength, keptRanges, mapTime, peakIndex, rangePeak, reduceEcho, toMono, toOut, toSrc, type Edit, type Effect, type NoiseLevel, type PeakIndex } from '../lib/sound';
-import { encodeMp3, keepAsIs, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
+import { bufferOf, decodeSound, peakIndex, rangePeak, reduceEcho, toMono, type NoiseLevel, type PeakIndex } from '../lib/sound';
+import { clipEnd, clipLen, mixdown, projectLen, renderClip, SFX, stackRows, synth, VOICE_FX, type Clip, type Line, type Project, type Track, type VoiceFx } from '../lib/mix';
+import { encodeMp3, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
 import { cleanNoise } from '../lib/soundJobs';
 import { archiveAdd, formatBytes, saveSound, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
-import { splitScript } from './ScriptEditor';
 import { UiIcon } from '../components/UiIcon';
 
-// The sound editor, laid out like audio software: a transport bar with a large time display, a
-// zoomable wave with a time ruler, a selection to play, loop, cut out or keep, and a rack of effects
-// (volume, fades, background noise, room echo, added sounds). Undo and keyboard shortcuts throughout.
-// Saving puts it in the class and the resources library.
+// The Sound editor, laid out like audio software. Voice tracks hold clips: split them (Ctrl B),
+// move them, trim their edges, drag their top corners to fade, and give each its own volume and
+// voice effect (on the phone, radio, far away…). A lane below holds sound effects, which may
+// overlap. The script lane holds lines with a start and an end, which never overlap. Bring in
+// more files, or record a new track while the others play. Undo, and the usual shortcuts.
 
 export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
+export type Use = { cls: string; lesson: string; task: string };
+export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress: (p: number) => void) => Promise<void> };
 
 const savedQ = (): SoundQuality => {
   try {
@@ -24,8 +27,6 @@ const savedQ = (): SoundQuality => {
     return 'standard';
   }
 };
-const EFFECT_ICON: Record<Effect, string> = { silence: 'silence', bell: 'bell', chime: 'music', beep: 'beep', beeps: 'beep' };
-// 0:12.34
 const clock = (s: number) => {
   const t = Math.max(0, s);
   return `${Math.floor(t / 60)}:${(t % 60).toFixed(2).padStart(5, '0')}`;
@@ -34,123 +35,135 @@ const short = (s: number) => {
   const t = Math.max(0, s);
   return `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
 };
+const HEAD_W = 168; // the track names on the left
+const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
+type Progress = { stage: string; p: number };
+type Pick = { kind: 'clip'; track: string; id: string } | { kind: 'line'; id: string } | { kind: 'track'; id: string } | null;
 
-type Progress = { stage: string; p: number }; // p: 0 to 1 across the whole save
-type Sel = { a: number; b: number } | null;
-
-export type Use = { cls: string; lesson: string; task: string };
-export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress: (p: number) => void) => Promise<void> };
+const newTrack = (name: string, kind: Track['kind'] = 'voice'): Track => ({ id: newId(), name, kind, clips: [], gain: 1, mute: false, solo: false, noise: 0, echo: 0 });
 
 export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folder = '', replace }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string; folder?: string; replace?: ReplaceTarget }) {
   const { user } = useAuth();
   const rate = source.buffer.sampleRate;
-  const mono = useMemo(() => toMono(source.buffer), [source.buffer]);
-  const length = mono.length / rate;
-  const [noise, setNoise] = useState<NoiseLevel>(source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0);
-  const cleaned = useRef<Partial<Record<NoiseLevel, Float32Array>>>({ 0: mono });
-  const cleaning = useRef<Partial<Record<NoiseLevel, Promise<Float32Array>>>>({});
-  const [clean, setClean] = useState<{ level: NoiseLevel; p: number } | null>(null);
-  const [, bump] = useState(0);
 
-  // ------------------------------------------------------------ the edit, with undo
-  const [edit, setEditState] = useState<Edit>({ start: 0, end: length, gain: 1, even: false, noise: 0, inserts: [], cuts: [], fadeIn: 0, fadeOut: 0, echo: 0 });
-  const past = useRef<Edit[]>([]);
-  const future = useRef<Edit[]>([]);
+  // ------------------------------------------------------------ sources (the raw sounds)
+  const sources = useRef<Record<string, Float32Array>>({});
+  const names = useRef<Record<string, string>>({});
+  const [srcVer, bumpSrc] = useState(0);
+  const addSource = (id: string, data: Float32Array, name: string) => {
+    sources.current[id] = data;
+    names.current[id] = name;
+    bumpSrc((n) => n + 1);
+  };
+  const first = useMemo(() => {
+    const d = toMono(source.buffer);
+    sources.current.main = d;
+    names.current.main = source.name;
+    return d;
+  }, [source.buffer, source.name]);
+  const length0 = first.length / rate;
+
+  // ------------------------------------------------------------ the project, with undo
+  const initial = useMemo<Project>(() => {
+    const voice = { ...newTrack(source.recorded ? 'Recording' : 'Voice'), clips: [{ id: newId(), src: 'main', a: 0, b: length0, at: 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
+    const marks = source.marks ?? [];
+    const texts = source.script ?? [];
+    const lines: Line[] = texts.map((text, i) => {
+      const a = Number.isFinite(marks[i]) ? marks[i] : (length0 * i) / Math.max(1, texts.length);
+      const nextT = marks.slice(i + 1).find((m) => Number.isFinite(m));
+      const b = Math.min(nextT ?? length0, a + 12, length0);
+      const sp = /^\s*([A-Z][\p{L} .'-]{0,18}?)\s*:\s+(.+)$/u.exec(text);
+      return { id: newId(), text: sp ? sp[2] : text, who: sp ? sp[1] : undefined, a, b: Math.max(a + 0.3, b) };
+    });
+    return { tracks: [voice, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [p, setP] = useState<Project>(initial);
+  const past = useRef<Project[]>([]);
+  const future = useRef<Project[]>([]);
+  const lastGroup = useRef({ g: '', t: 0 });
   const [, tick] = useState(0);
-  const setEdit = useCallback((f: Edit | ((e: Edit) => Edit), group?: string) => {
-    setEditState((cur) => {
-      const next = typeof f === 'function' ? f(cur) : f;
+  const edit = useCallback((f: (x: Project) => Project, group?: string) => {
+    setP((cur) => {
+      const next = f(cur);
       if (next === cur) return cur;
-      // Dragging a slider or a handle is one step to undo, not hundreds.
       const now = performance.now();
-      const last = lastGroup.current;
-      if (!group || last.g !== group || now - last.t > 900) past.current.push(cur), (future.current = []);
+      if (!group || lastGroup.current.g !== group || now - lastGroup.current.t > 900) past.current.push(cur), (future.current = []);
       lastGroup.current = { g: group ?? '', t: now };
-      if (past.current.length > 100) past.current.shift();
+      if (past.current.length > 150) past.current.shift();
       return next;
     });
     tick((n) => n + 1);
   }, []);
-  const lastGroup = useRef({ g: '', t: 0 });
   const undo = () => {
     const prev = past.current.pop();
     if (!prev) return;
-    future.current.push(edit);
-    setEditState(prev);
+    future.current.push(p);
+    setP(prev);
     tick((n) => n + 1);
   };
   const redo = () => {
     const next = future.current.pop();
     if (!next) return;
-    past.current.push(edit);
-    setEditState(next);
+    past.current.push(p);
+    setP(next);
     tick((n) => n + 1);
   };
+  const setClip = (tid: string, cid: string, patch: Partial<Clip>, group?: string) => edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id !== tid ? t : { ...t, clips: t.clips.map((c) => (c.id === cid ? { ...c, ...patch } : c)) })) }), group);
+  const setTrack = (tid: string, patch: Partial<Track>, group?: string) => edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id === tid ? { ...t, ...patch } : t)) }), group);
+  const setLine = (id: string, patch: Partial<Line>, group?: string) => edit((x) => ({ ...x, lines: x.lines.map((l) => (l.id === id ? { ...l, ...patch } : l)) }), group);
 
-  const [head, setHead] = useState(0);
-  const [sel, setSel] = useState<Sel>(null);
-  const [loop, setLoop] = useState(false);
-  const [zoom, setZoom] = useState(1);
-  const [silence, setSilence] = useState(1);
-  const [quality, setQualityState] = useState<SoundQuality>(savedQ);
-  const [title, setTitle] = useState(source.name);
-  const [script, setScript] = useState((source.script ?? []).join('\n'));
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState<Progress | null>(null);
-  const [asking, setAsking] = useState<Use[] | null | 'loading'>(null); // replacing: where it is used
-  const [playing, setPlaying] = useState(false);
-  const [hearing, setHearing] = useState(''); // the added sound playing now
-  const [meter, setMeter] = useState(0);
-  const ctx = useRef<AudioContext | null>(null);
-  const node = useRef<{ src: AudioBufferSourceNode; an: AnalyserNode; at: number; from: number; edit: Edit; until?: number } | null>(null);
-
-  const setQuality = (q: SoundQuality) => {
-    setQualityState(q);
-    try {
-      localStorage.setItem('ll.soundQuality', q);
-    } catch {
-      /* fine */
-    }
-  };
-
-  // Noise reduction takes a moment (in the background), so each strength is worked out once.
-  const cleanFor = (level: NoiseLevel) => {
-    if (cleaned.current[level]) return Promise.resolve(cleaned.current[level]!);
-    if (!cleaning.current[level])
-      cleaning.current[level] = cleanNoise(mono, rate, level, (p) => setClean((c) => (c && c.level === level ? { level, p } : c))).then((y) => {
-        cleaned.current[level] = y;
-        bump((n) => n + 1);
-        return y;
-      });
-    return cleaning.current[level]!;
-  };
-  useEffect(() => {
-    if (cleaned.current[noise]) return setClean(null);
-    let live = true;
-    setClean({ level: noise, p: 0 });
-    cleanFor(noise).then(() => live && setClean(null));
-    return () => {
-      live = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noise]);
-  useEffect(() => setEditState((e) => ({ ...e, noise })), [noise]);
-
-  const echo = edit.echo ?? 0;
-  const base = cleaned.current[noise] ?? mono;
-  const data = useMemo(() => reduceEcho(base, rate, echo), [base, rate, echo]);
-
-  const peakIn = useMemo(() => {
-    let m = 0;
-    for (const [a0, b0] of keptRanges(edit)) for (let i = Math.round(a0 * rate), b = Math.round(b0 * rate); i < b; i += 4) m = Math.max(m, Math.abs(data[i] ?? 0));
-    return m;
-  }, [data, edit, rate]);
-  const effGain = edit.even && peakIn > 0.001 ? (edit.gain * 0.89) / peakIn : edit.gain;
-  const loud = peakIn * effGain > 1.02;
+  // ------------------------------------------------------------ cleaning a track (noise, echo)
+  const cleaned = useRef<Record<string, Float32Array>>({});
+  const cleaning = useRef<Record<string, boolean>>({});
+  const [cleanBusy, setCleanBusy] = useState('');
+  const variant = (src: string, noise: 0 | 1 | 2, echo: 0 | 1 | 2) => `${src}~${noise}${echo}`;
+  // The sounds as heard: each track's sources with its noise and echo settings.
+  const heard = useMemo(() => {
+    const out: Record<string, Float32Array> = { ...sources.current };
+    const tracks = p.tracks.map((t) => {
+      if (!t.noise && !t.echo) return t;
+      return {
+        ...t,
+        clips: t.clips.map((c) => {
+          const key = variant(c.src, t.noise, t.echo);
+          const raw = sources.current[c.src];
+          if (!raw) return c;
+          if (!cleaned.current[key]) {
+            const noiseKey = variant(c.src, t.noise, 0);
+            const denoised = t.noise ? cleaned.current[noiseKey] : raw;
+            if (t.noise && !denoised && !cleaning.current[noiseKey]) {
+              cleaning.current[noiseKey] = true;
+              setCleanBusy('Cleaning up the sound…');
+              void cleanNoise(raw, rate, t.noise as NoiseLevel, (q) => setCleanBusy(`Cleaning up the sound… ${Math.round(q * 100)}%`)).then((y) => {
+                cleaned.current[noiseKey] = y;
+                setCleanBusy('');
+                bumpSrc((n) => n + 1);
+              });
+            }
+            if (denoised) cleaned.current[key] = t.echo ? reduceEcho(denoised, rate, t.echo as NoiseLevel) : denoised;
+          }
+          if (!cleaned.current[key]) return c;
+          out[key] = cleaned.current[key];
+          return { ...c, src: key };
+        }),
+      };
+    });
+    return { sources: out, project: { ...p, tracks } };
+  }, [p, srcVer, rate]);
+  const mix = useMemo(() => mixdown(heard.project, heard.sources, rate), [heard, rate]);
+  const total = Math.max(projectLen(p), 0.2);
 
   // ------------------------------------------------------------ playing
-  // The finished sound (with every change) from the playhead; the playhead follows it on the wave.
-  const finished = useMemo(() => assemble(data, rate, edit), [data, rate, edit]);
+  const [head, setHead] = useState(0);
+  const [sel, setSel] = useState<{ a: number; b: number } | null>(null);
+  const [pick, setPick] = useState<Pick>(null);
+  const [loop, setLoop] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [playing, setPlaying] = useState(false);
+  const [meter, setMeter] = useState(0);
+  const ctx = useRef<AudioContext | null>(null);
+  const node = useRef<{ src: AudioBufferSourceNode; an: AnalyserNode; at: number; from: number; until?: number } | null>(null);
+  const ac = () => (ctx.current ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)());
   const stop = () => {
     try {
       node.current?.src.stop();
@@ -159,12 +172,10 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     }
     node.current = null;
     setPlaying(false);
-    setHearing('');
     setMeter(0);
   };
   useEffect(() => () => (stop(), void ctx.current?.close()), []);
-  const ac = () => (ctx.current ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)());
-  const playFrom = (t: number, e: Edit = edit, buf: Float32Array = finished, until?: number) => {
+  const playFrom = (t: number, until?: number, buf = mix) => {
     stop();
     const c = ac();
     void c.resume();
@@ -174,15 +185,20 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     an.fftSize = 1024;
     src.connect(an);
     an.connect(c.destination);
-    const total = buf.length / rate;
-    const from = Math.min(Math.max(0, toOut(t, e)), Math.max(0, total - 0.05));
-    const start = from >= total - 0.06 ? 0 : from;
-    src.start(0, start);
+    const len = buf.length / rate;
+    const from = t >= len - 0.05 ? 0 : Math.max(0, t);
+    src.start(0, from);
     src.onended = () => node.current?.src === src && stop();
-    node.current = { src, an, at: c.currentTime, from: start, edit: e, until: until !== undefined ? toOut(until, e) : undefined };
+    node.current = { src, an, at: c.currentTime, from, until };
     setPlaying(true);
   };
-  const playSel = () => sel && playFrom(sel.a, edit, finished, sel.b);
+  // A change while playing is heard straight away.
+  const mixRef = useRef(mix);
+  useEffect(() => {
+    if (mixRef.current !== mix && playing && node.current) playFrom(head, node.current.until, mix);
+    mixRef.current = mix;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mix]);
   const loopRef = useRef({ loop, sel });
   loopRef.current = { loop, sel };
   useEffect(() => {
@@ -192,18 +208,15 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const step = () => {
       const n = node.current;
       if (n && ctx.current) {
-        const o = n.from + (ctx.current.currentTime - n.at);
-        const where = toSrc(o, n.edit);
-        setHead(where.t);
-        setHearing(where.ins ? EFFECTS.find((f) => f.k === where.ins!.kind)?.label ?? '' : '');
+        const t = n.from + (ctx.current.currentTime - n.at);
+        setHead(t);
         n.an.getFloatTimeDomainData(buf);
         let pk = 0;
         for (const v of buf) pk = Math.max(pk, Math.abs(v));
         setMeter((m) => Math.max(pk, m * 0.9));
-        const end = n.until;
-        if (end !== undefined && o >= end) {
+        if (n.until !== undefined && t >= n.until) {
           const { loop: lp, sel: s } = loopRef.current;
-          if (lp && s) playFrom(s.a, n.edit, finished, s.b);
+          if (lp && s) playFrom(s.a, s.b);
           else stop();
         }
       }
@@ -213,120 +226,321 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     return () => cancelAnimationFrame(raf);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing]);
-  const toggle = () => (playing ? stop() : sel && loop ? playSel() : playFrom(head >= edit.end - 0.05 ? edit.start : head));
+  const toggle = () => (playing ? stop() : sel && loop ? playFrom(sel.a, sel.b) : playFrom(head >= total - 0.05 ? 0 : head));
   const nudge = (d: number) => {
-    const t = Math.max(edit.start, Math.min(edit.end, head + d));
+    const t = Math.max(0, Math.min(total, head + d));
     setHead(t);
     if (playing) playFrom(t);
   };
 
   // ------------------------------------------------------------ editing actions
-  // Added where the playhead is, then played from just before it so you hear it in place.
-  const add = (kind: Effect) => {
-    const fx = EFFECTS.find((x) => x.k === kind)!;
-    const at = Math.max(edit.start, Math.min(edit.end, head));
-    const next = { ...edit, inserts: [...edit.inserts, { id: newId(), at, kind, dur: kind === 'silence' ? silence : fx.dur }] };
-    setEdit(next);
-    playFrom(Math.max(edit.start, at - 1.2), next, assemble(data, rate, next));
+  const found = (pk: Pick) => (pk?.kind === 'clip' ? p.tracks.find((t) => t.id === pk.track)?.clips.find((c) => c.id === pk.id) ?? null : null);
+  const pickedClip = found(pick);
+  const pickedTrack = pick?.kind === 'clip' || pick?.kind === 'track' ? p.tracks.find((t) => t.id === (pick.kind === 'clip' ? pick.track : pick.id)) ?? null : null;
+  const pickedLine = pick?.kind === 'line' ? p.lines.find((l) => l.id === pick.id) ?? null : null;
+  // Ctrl B: split the chosen clip (or every clip under the playhead) at the playhead.
+  const split = () => {
+    const t = head;
+    edit((x) => ({
+      ...x,
+      tracks: x.tracks.map((tr) => ({
+        ...tr,
+        clips: tr.clips.flatMap((c) => {
+          if (pickedClip && c.id !== pickedClip.id) return [c];
+          if (!(t > c.at + 0.02 && t < clipEnd(c) - 0.02)) return [c];
+          const cut = c.a + (t - c.at);
+          return [
+            { ...c, b: cut, fadeOut: 0 },
+            { ...c, id: newId(), a: cut, at: t, fadeIn: 0 },
+          ];
+        }),
+      })),
+    }));
   };
-  // Quiet at the ends of a recording: found from the level, with a little room left.
-  const trimQuiet = () => {
-    const thr = Math.max(0.02, peakIn * 0.06);
-    let a = 0;
-    let b = data.length - 1;
-    while (a < data.length && Math.abs(data[a]) < thr) a++;
-    while (b > a && Math.abs(data[b]) < thr) b--;
-    if (b <= a) return;
-    setEdit((e) => ({ ...e, start: Math.max(0, a / rate - 0.25), end: Math.min(length, b / rate + 0.35) }));
+  const removePicked = () => {
+    if (pick?.kind === 'clip') edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id === pick.track ? { ...t, clips: t.clips.filter((c) => c.id !== pick.id) } : t)) }));
+    else if (pick?.kind === 'line') edit((x) => ({ ...x, lines: x.lines.filter((l) => l.id !== pick.id) }));
+    else if (pick?.kind === 'track' && p.tracks.filter((t) => t.kind === 'voice').length > 1 && pickedTrack?.kind === 'voice') edit((x) => ({ ...x, tracks: x.tracks.filter((t) => t.id !== pick.id) }));
+    setPick(null);
   };
-  const cutSel = () => {
-    if (!sel || sel.b - sel.a < 0.02) return;
-    stop();
-    setEdit((e) => ({ ...e, cuts: [...(e.cuts ?? []), { id: newId(), a: sel.a, b: sel.b }] }));
-    setHead(sel.a);
+  const duplicate = () => {
+    if (!pickedClip || pick?.kind !== 'clip') return;
+    const copy = { ...pickedClip, id: newId(), at: clipEnd(pickedClip) };
+    edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id === pick.track ? { ...t, clips: [...t.clips, copy] } : t)) }));
+    setPick({ kind: 'clip', track: pick.track, id: copy.id });
+  };
+  // Take a stretch out of everything (clips and lines), closing the gap.
+  const cutRange = (a: number, b: number) => {
+    const d = b - a;
+    if (d < 0.02) return;
+    edit((x) => ({
+      ...x,
+      tracks: x.tracks.map((t) => ({
+        ...t,
+        clips: t.clips.flatMap((c) => {
+          const s = c.at;
+          const e = clipEnd(c);
+          if (e <= a) return [c];
+          if (s >= b) return [{ ...c, at: c.at - d }];
+          const out: Clip[] = [];
+          if (s < a) out.push({ ...c, b: c.a + (a - s), fadeOut: 0 });
+          if (e > b) out.push({ ...c, id: newId(), a: c.a + (b - s), at: a, fadeIn: 0 });
+          return out;
+        }),
+      })),
+      lines: x.lines.flatMap((l) => (l.b <= a ? [l] : l.a >= b ? [{ ...l, a: l.a - d, b: l.b - d }] : l.a < a && l.b > b ? [{ ...l, b: l.b - d }] : l.a < a ? [{ ...l, b: a }] : l.b > b ? [{ ...l, a, b: l.b - d }] : [])),
+    }));
+    setHead(a);
     setSel(null);
   };
-  const keepSel = () => {
-    if (!sel || sel.b - sel.a < 0.2) return;
-    stop();
-    setEdit((e) => ({ ...e, start: sel.a, end: sel.b }));
-    setHead(sel.a);
-    setSel(null);
+  const keepRange = (a: number, b: number) => {
+    const end = total;
+    edit((x) => x); // one undo step for both
+    cutRange(b, end + 1);
+    cutRange(0, a);
   };
-  // Long pauses shortened to half a second: tidies a reading without changing the words.
-  const tightenPauses = () => {
-    const thr = Math.max(0.015, peakIn * 0.05);
+  // In the chosen clip: the quiet start and end trimmed; long pauses shortened to half a second.
+  const speechIn = (c: Clip) => {
+    const src = heard.sources[c.src] ?? sources.current[c.src];
+    if (!src) return [] as [number, number][];
     const win = Math.round(0.02 * rate);
-    const cuts: { id: string; a: number; b: number }[] = [];
-    let quietFrom = -1;
-    for (let i = Math.round(edit.start * rate); i < Math.round(edit.end * rate); i += win) {
+    let pk = 0;
+    for (let i = Math.round(c.a * rate); i < Math.round(c.b * rate); i += 4) pk = Math.max(pk, Math.abs(src[i] ?? 0));
+    const thr = Math.max(0.015, pk * 0.06);
+    const parts: [number, number][] = [];
+    let on = -1;
+    let quiet = 0;
+    for (let i = Math.round(c.a * rate); i < Math.round(c.b * rate); i += win) {
       let m = 0;
-      for (let k = i; k < Math.min(data.length, i + win); k++) m = Math.max(m, Math.abs(data[k]));
-      if (m < thr) {
-        if (quietFrom < 0) quietFrom = i;
-      } else if (quietFrom >= 0) {
-        const len = (i - quietFrom) / rate;
-        if (len > 1.2) cuts.push({ id: newId(), a: quietFrom / rate + 0.25, b: i / rate - 0.25 });
-        quietFrom = -1;
+      for (let k = i; k < Math.min(src.length, i + win); k++) m = Math.max(m, Math.abs(src[k]));
+      if (m >= thr) {
+        if (on < 0) on = i;
+        quiet = 0;
+      } else if (on >= 0 && (quiet += win) > 1.2 * rate) {
+        parts.push([on / rate, (i - quiet + win) / rate]);
+        on = -1;
+        quiet = 0;
       }
     }
-    if (cuts.length) setEdit((e) => ({ ...e, cuts: [...(e.cuts ?? []), ...cuts] }));
-    return cuts.length;
+    if (on >= 0) parts.push([on / rate, Math.min(c.b, (Math.round(c.b * rate) - quiet) / rate)]);
+    return parts;
+  };
+  const trimQuiet = () => {
+    if (!pickedClip || pick?.kind !== 'clip') return;
+    const s = speechIn(pickedClip);
+    if (!s.length) return;
+    const a = Math.max(pickedClip.a, s[0][0] - 0.25);
+    const b = Math.min(pickedClip.b, s[s.length - 1][1] + 0.35);
+    setClip(pick.track, pickedClip.id, { a, b, at: pickedClip.at + (a - pickedClip.a) });
   };
   const [tightened, setTightened] = useState<number | null>(null);
+  const tighten = () => {
+    if (!pickedClip || pick?.kind !== 'clip') return;
+    const s = speechIn(pickedClip);
+    if (s.length < 2) return setTightened(0);
+    let at = pickedClip.at + Math.max(0, s[0][0] - 0.25 - pickedClip.a);
+    const parts: Clip[] = s.map(([a, b], i) => {
+      const a2 = Math.max(pickedClip.a, a - 0.25);
+      const b2 = Math.min(pickedClip.b, b + 0.25);
+      const c = { ...pickedClip, id: i ? newId() : pickedClip.id, a: a2, b: b2, at, fadeIn: i ? 0.01 : pickedClip.fadeIn, fadeOut: i < s.length - 1 ? 0.01 : pickedClip.fadeOut };
+      at += b2 - a2;
+      return c;
+    });
+    const shift = clipEnd(pickedClip) - at;
+    edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id !== pick.track ? t : { ...t, clips: [...t.clips.filter((c) => c.id !== pickedClip.id).map((c) => (c.at >= clipEnd(pickedClip) - 0.01 ? { ...c, at: c.at - shift } : c)), ...parts] })) }));
+    setTightened(s.length - 1);
+  };
+  // Sound effects go on their lane at the playhead.
+  const addSfx = (k: string) => {
+    const fx = SFX.find((s) => s.k === k);
+    if (!fx) return;
+    const id = 'sfx:' + k;
+    if (!sources.current[id]) addSource(id, synth(k, rate, fx.dur), fx.label);
+    let lane = p.tracks.find((t) => t.kind === 'sfx');
+    const clip: Clip = { id: newId(), src: id, a: 0, b: fx.dur, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
+    edit((x) => {
+      let tracks = x.tracks;
+      if (!lane) (lane = newTrack('Sound effects', 'sfx')), (tracks = [...tracks, lane]);
+      return { ...x, tracks: tracks.map((t) => (t.id === lane!.id ? { ...t, clips: [...t.clips, clip] } : t)) };
+    });
+    setPick({ kind: 'clip', track: lane!.id, id: clip.id });
+  };
+  const hearSfx = (k: string) => {
+    const fx = SFX.find((s) => s.k === k);
+    if (!fx) return;
+    stop();
+    const c = ac();
+    void c.resume();
+    const s = c.createBufferSource();
+    s.buffer = bufferOf(synth(k, rate, fx.dur), rate);
+    s.connect(c.destination);
+    s.start();
+  };
+  // A script line at the playhead, up to 3 s, never over another line.
+  const addLine = () => {
+    const a = head;
+    if (p.lines.some((l) => a >= l.a && a < l.b)) return;
+    const next = p.lines.filter((l) => l.a > a).sort((x, y) => x.a - y.a)[0];
+    const b = Math.min(a + 3, next ? next.a : a + 3);
+    if (b - a < 0.2) return;
+    const line: Line = { id: newId(), text: '', a, b };
+    edit((x) => ({ ...x, lines: [...x.lines, line] }));
+    setPick({ kind: 'line', id: line.id });
+    setTimeout(() => document.querySelector<HTMLInputElement>('.sx-line-text')?.focus(), 30);
+  };
+  // More files: each comes in on a track of its own, at the playhead.
+  const fileIn = useRef<HTMLInputElement>(null);
+  const [importBusy, setImportBusy] = useState('');
+  const importFiles = async (files: FileList) => {
+    for (const f of Array.from(files)) {
+      setImportBusy(`Opening ${f.name}…`);
+      try {
+        const b = await decodeSound(f);
+        let d = toMono(b);
+        if (b.sampleRate !== rate) {
+          const off = new OfflineAudioContext(1, Math.ceil((d.length / b.sampleRate) * rate), rate);
+          const s = off.createBufferSource();
+          s.buffer = bufferOf(d, b.sampleRate);
+          s.connect(off.destination);
+          s.start();
+          d = (await off.startRendering()).getChannelData(0).slice();
+        }
+        const id = newId();
+        const name = f.name.replace(/\.[a-z0-9]+$/i, '');
+        addSource(id, d, name);
+        const tr = { ...newTrack(name), clips: [{ id: newId(), src: id, a: 0, b: d.length / rate, at: head, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }] };
+        edit((x) => ({ ...x, tracks: [...x.tracks.filter((t) => t.kind === 'voice'), tr, ...x.tracks.filter((t) => t.kind !== 'voice')] }));
+      } catch {
+        setImportBusy(`${f.name} could not be opened as a sound.`);
+        return;
+      }
+    }
+    setImportBusy('');
+  };
+  // Record a new track while everything else plays (wear headphones).
+  const [rec, setRec] = useState<{ at: number; started: number } | null>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const [recError, setRecError] = useState('');
+  const startRec = async () => {
+    setRecError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: false, channelCount: 1 } });
+      const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((t) => MediaRecorder.isTypeSupported?.(t));
+      const r = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+      const chunks: Blob[] = [];
+      const at = head;
+      r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      r.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        try {
+          const b = await decodeSound(new Blob(chunks, { type: r.mimeType || 'audio/webm' }));
+          let d = toMono(b);
+          if (b.sampleRate !== rate) {
+            const off = new OfflineAudioContext(1, Math.ceil((d.length / b.sampleRate) * rate), rate);
+            const s = off.createBufferSource();
+            s.buffer = bufferOf(d, b.sampleRate);
+            s.connect(off.destination);
+            s.start();
+            d = (await off.startRendering()).getChannelData(0).slice();
+          }
+          // Recording starts a moment after pressing; line it up with what was playing.
+          const latency = Math.min(0.25, (ctx.current?.baseLatency ?? 0) + (ctx.current?.outputLatency ?? 0.05));
+          const id = newId();
+          const n = p.tracks.filter((t) => t.kind === 'voice').length + 1;
+          addSource(id, d, `Recording ${n}`);
+          const tr = { ...newTrack(`Recording ${n}`), clips: [{ id: newId(), src: id, a: Math.min(latency, d.length / rate), b: d.length / rate, at, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }] };
+          edit((x) => ({ ...x, tracks: [...x.tracks.filter((t) => t.kind === 'voice'), tr, ...x.tracks.filter((t) => t.kind !== 'voice')] }));
+        } catch {
+          setRecError('The recording could not be read. Try again.');
+        }
+      };
+      playFrom(at);
+      r.start(250);
+      recorder.current = r;
+      setRec({ at, started: performance.now() });
+    } catch (e) {
+      setRecError((e as Error).name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the address bar, then try again.' : 'No microphone was found.');
+    }
+  };
+  const stopRec = () => {
+    recorder.current?.stop();
+    recorder.current = null;
+    setRec(null);
+    stop();
+  };
+  const [recNow, setRecNow] = useState(0);
+  useEffect(() => {
+    if (!rec) return;
+    const id = window.setInterval(() => setRecNow((performance.now() - rec.started) / 1000), 100);
+    return () => window.clearInterval(id);
+  }, [rec]);
 
-  // Keyboard shortcuts, like audio software.
+  // ------------------------------------------------------------ shortcuts
+  const clipBoard = useRef<{ clip: Clip; kind: Track['kind'] } | null>(null);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, select, [contenteditable=true]')) return;
       const mod = e.metaKey || e.ctrlKey;
-      if (e.code === 'Space') e.preventDefault(), e.stopPropagation(), toggle();
-      else if (mod && e.key.toLowerCase() === 'z') e.preventDefault(), e.shiftKey ? redo() : undo();
-      else if (mod && e.key.toLowerCase() === 'y') e.preventDefault(), redo();
-      else if ((e.key === 'Delete' || e.key === 'Backspace') && sel) e.preventDefault(), cutSel();
-      else if (e.key === 'Home') e.preventDefault(), setHead(edit.start);
-      else if (e.key === 'End') e.preventDefault(), setHead(edit.end);
-      else if (e.key === 'ArrowLeft' && !el.closest('[role=slider]')) e.preventDefault(), nudge(e.shiftKey ? -5 : -1);
-      else if (e.key === 'ArrowRight' && !el.closest('[role=slider]')) e.preventDefault(), nudge(e.shiftKey ? 5 : 1);
-      else if (e.key === '+' || e.key === '=') setZoom((z) => Math.min(64, z * 1.6));
+      const k = e.key.toLowerCase();
+      if (e.code === 'Space') e.preventDefault(), e.stopPropagation(), rec ? stopRec() : toggle();
+      else if (mod && k === 'z') e.preventDefault(), e.shiftKey ? redo() : undo();
+      else if (mod && k === 'y') e.preventDefault(), redo();
+      else if (mod && (k === 'b' || k === 'k')) e.preventDefault(), split();
+      else if (mod && k === 'd') e.preventDefault(), duplicate();
+      else if (mod && k === 'c' && pickedClip && pickedTrack) (clipBoard.current = { clip: pickedClip, kind: pickedTrack.kind });
+      else if (mod && k === 'x' && pickedClip && pickedTrack) (clipBoard.current = { clip: pickedClip, kind: pickedTrack.kind }), removePicked();
+      else if (mod && k === 'v' && clipBoard.current) {
+        e.preventDefault();
+        const cb = clipBoard.current;
+        const into = pickedTrack?.kind === cb.kind ? pickedTrack : p.tracks.find((t) => t.kind === cb.kind);
+        if (into) {
+          const c = { ...cb.clip, id: newId(), at: head };
+          edit((x) => ({ ...x, tracks: x.tracks.map((t) => (t.id === into.id ? { ...t, clips: [...t.clips, c] } : t)) }));
+          setPick({ kind: 'clip', track: into.id, id: c.id });
+        }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') e.preventDefault(), pick ? removePicked() : sel && cutRange(sel.a, sel.b);
+      else if (e.key === 'Home') e.preventDefault(), setHead(0);
+      else if (e.key === 'End') e.preventDefault(), setHead(total);
+      else if (e.key === 'ArrowLeft') e.preventDefault(), nudge(e.shiftKey ? -5 : -1);
+      else if (e.key === 'ArrowRight') e.preventDefault(), nudge(e.shiftKey ? 5 : 1);
+      else if (e.key === '+' || e.key === '=') setZoom((z) => Math.min(80, z * 1.6));
       else if (e.key === '-') setZoom((z) => Math.max(1, z / 1.6));
-      else if (e.key.toLowerCase() === 'l') setLoop((v) => !v);
-      else if (e.key === 'Escape') setSel(null);
+      else if (k === 'l' && !mod) setLoop((v) => !v);
+      else if (k === 'm' && !mod && pickedTrack) setTrack(pickedTrack.id, { mute: !pickedTrack.mute });
+      else if (k === 's' && !mod && pickedTrack) setTrack(pickedTrack.id, { solo: !pickedTrack.solo });
+      else if (k === 'r' && !mod) rec ? stopRec() : void startRec();
+      else if (k === 't' && !mod) addLine();
+      else if (e.key === 'Escape') setSel(null), setPick(null);
     };
     window.addEventListener('keydown', key, true);
     return () => window.removeEventListener('keydown', key, true);
   });
 
   // ------------------------------------------------------------ saving
-  const finalLen = finishedLength(edit);
-  const unchanged = edit.start < 0.01 && edit.end > length - 0.01 && edit.gain === 1 && !edit.even && noise === 0 && !edit.inserts.length && !(edit.cuts ?? []).length && !edit.fadeIn && !edit.fadeOut && !echo;
-  const asIs = unchanged && keepAsIs(source.file, length, quality);
-  const est = asIs && source.file ? (source.file.size * 4) / 3 : (finalLen / 60) * storedPerMinute(quality);
-  // The finished sound as a file, with its script timed to the new version.
+  const [quality, setQualityState] = useState<SoundQuality>(savedQ);
+  const setQuality = (q: SoundQuality) => {
+    setQualityState(q);
+    try {
+      localStorage.setItem('ll.soundQuality', q);
+    } catch {
+      /* fine */
+    }
+  };
+  const [title, setTitle] = useState(source.name);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState<Progress | null>(null);
+  const [asking, setAsking] = useState<Use[] | null | 'loading'>(null);
+  const est = (total / 60) * storedPerMinute(quality);
   const produce = async () => {
-    let d = data;
-    if (!cleaned.current[noise]) {
-      setSaving({ stage: 'Cleaning up the sound', p: 0 });
-      d = reduceEcho(await cleanFor(noise), rate, echo);
-    }
-    let blob: Blob;
-    let duration = length;
-    if (asIs && source.file) blob = source.file;
-    else {
-      setSaving({ stage: 'Putting it together', p: 0.05 });
-      const out = assemble(d, rate, edit);
-      duration = out.length / rate;
-      setSaving({ stage: 'Making it smaller', p: 0.08 });
-      blob = await encodeMp3(out, rate, quality, (p) => setSaving({ stage: 'Making it smaller', p: 0.08 + p * 0.52 }));
-    }
-    const lines = script
-      .split('\n')
-      .map((x) => x.trim())
-      .filter(Boolean);
-    const marks = source.marks ?? [];
-    const sc: ScriptLine[] = lines.map((text, i) => ({ text, t: marks[i] !== undefined && Number.isFinite(marks[i]) ? mapTime(marks[i], edit) : null }));
-    return { blob, duration: +duration.toFixed(2), sc, name: title.trim() || 'Recording', base: asIs ? 0 : 0.6 };
+    // wait for any cleaning still going on
+    for (let k = 0; k < 600 && cleanBusy; k++) await new Promise((r) => setTimeout(r, 100));
+    setSaving({ stage: 'Putting it together', p: 0.05 });
+    const out = mixdown(heard.project, heard.sources, rate);
+    setSaving({ stage: 'Making it smaller', p: 0.08 });
+    const blob = await encodeMp3(out, rate, quality, (q) => setSaving({ stage: 'Making it smaller', p: 0.08 + q * 0.52 }));
+    const sc: ScriptLine[] = [...p.lines].filter((l) => l.text.trim()).sort((a, b) => a.a - b.a).map((l) => ({ text: l.text.trim(), t: +l.a.toFixed(2), e: +l.b.toFixed(2), ...(l.who ? { who: l.who } : {}) }));
+    return { blob, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.6 };
   };
   const save = async () => {
     if (!user) return setError('Sign in again to save.');
@@ -335,7 +549,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     try {
       const { blob, duration, sc, name, base } = await produce();
       setSaving({ stage: 'Uploading', p: base });
-      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration }, (p) => setSaving({ stage: 'Uploading', p: base + p * (0.97 - base) }));
+      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration }, (q) => setSaving({ stage: 'Uploading', p: base + q * (0.97 - base) }));
       setSaving({ stage: 'Adding it to your resources library', p: 0.98 });
       const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder, tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
       setSaving({ stage: 'Saved', p: 1 });
@@ -358,7 +572,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     try {
       const { blob, duration, sc, base } = await produce();
       setSaving({ stage: 'Replacing it everywhere', p: base });
-      await replace.run(blob, { script: sc, duration }, (p) => setSaving({ stage: 'Replacing it everywhere', p: base + p * (0.99 - base) }));
+      await replace.run(blob, { script: sc, duration }, (q) => setSaving({ stage: 'Replacing it everywhere', p: base + q * (0.99 - base) }));
       setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId: '', archiveId: '', title: replace.name, script: sc });
     } catch (e) {
@@ -366,6 +580,151 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       setSaving(null);
       setError('It could not be replaced. Check your connection and try again.');
     }
+  };
+
+  // ------------------------------------------------------------ the timeline: sizes and pointers
+  const scroller = useRef<HTMLDivElement>(null);
+  const [vw, setVw] = useState(900);
+  const [scroll, setScroll] = useState(0);
+  useLayoutEffect(() => {
+    const s = scroller.current;
+    if (!s) return;
+    const ro = new ResizeObserver(() => setVw(Math.max(200, s.clientWidth - HEAD_W)));
+    ro.observe(s);
+    setVw(Math.max(200, s.clientWidth - HEAD_W));
+    return () => ro.disconnect();
+  }, [saving]);
+  const viewLen = Math.max(total + 4, 8);
+  const width = vw * zoom;
+  const pps = width / viewLen;
+  const X = (t: number) => t * pps;
+  const T = (clientX: number) => {
+    const s = scroller.current!;
+    const r = s.getBoundingClientRect();
+    return Math.max(0, (clientX - r.left - HEAD_W + s.scrollLeft) / pps);
+  };
+  // Keep the playhead in view while playing.
+  useEffect(() => {
+    const s = scroller.current;
+    if (!s || !playing) return;
+    const x = X(head);
+    if (x < s.scrollLeft || x > s.scrollLeft + vw - 40) s.scrollLeft = Math.max(0, x - vw * 0.15);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing && Math.floor(X(head) / Math.max(1, vw * 0.7))]);
+  // Snapping to the playhead and to clip edges, like other editors (hold Alt to move freely).
+  const snaps = useMemo(() => [0, ...p.tracks.flatMap((t) => t.clips.flatMap((c) => [c.at, clipEnd(c)])), ...p.lines.flatMap((l) => [l.a, l.b])], [p]);
+  const snap = (t: number, alt: boolean, except?: number[]) => {
+    if (alt) return t;
+    const near = [...snaps, head].filter((s) => !except?.includes(s)).find((s) => Math.abs(s - t) * pps < 7);
+    return near ?? t;
+  };
+
+  const backgroundDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const t0 = T(e.clientX);
+    const x0 = e.clientX;
+    let moved = false;
+    const mv = (ev: PointerEvent) => {
+      if (!moved && Math.abs(ev.clientX - x0) < 4) return;
+      moved = true;
+      const t = T(ev.clientX);
+      setSel({ a: Math.min(t0, t), b: Math.max(t0, t) });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      if (!moved) {
+        setSel(null);
+        setPick(null);
+        setHead(t0);
+        if (playing) playFrom(t0);
+      } else setHead(Math.min(t0, T(x0)));
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
+  // Dragging a clip: the middle moves it; the sides trim it; the top corners set its fades.
+  const clipDown = (tr: Track, c: Clip, mode: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    setPick({ kind: 'clip', track: tr.id, id: c.id });
+    setSel(null);
+    const x0 = e.clientX;
+    const src = sources.current[c.src];
+    const srcLen = src ? src.length / rate : c.b;
+    let moved = false;
+    const group = 'drag-' + c.id + '-' + Date.now();
+    const mv = (ev: PointerEvent) => {
+      const dt = (ev.clientX - x0) / pps;
+      if (!moved && Math.abs(ev.clientX - x0) < 3) return;
+      moved = true;
+      if (mode === 'move') {
+        const at = Math.max(0, snap(c.at + dt, ev.altKey, [c.at]));
+        const at2 = Math.max(0, snap(c.at + dt + clipLen(c), ev.altKey, [clipEnd(c)]) - clipLen(c));
+        setClip(tr.id, c.id, { at: Math.abs(at - (c.at + dt)) <= Math.abs(at2 - (c.at + dt)) ? at : at2 }, group);
+      } else if (mode === 'l') {
+        const a = Math.max(0, Math.min(c.b - 0.05, c.a + dt));
+        const at = c.at + (a - c.a);
+        if (at < 0) return;
+        const sa = snap(at, ev.altKey, [c.at]);
+        setClip(tr.id, c.id, { a: a + (sa - at), at: sa }, group);
+      } else if (mode === 'r') {
+        const b = Math.min(srcLen, Math.max(c.a + 0.05, c.b + dt));
+        const end = snap(c.at + (b - c.a), ev.altKey, [clipEnd(c)]);
+        setClip(tr.id, c.id, { b: Math.min(srcLen, c.a + (end - c.at)) }, group);
+      } else if (mode === 'fi') setClip(tr.id, c.id, { fadeIn: Math.max(0, Math.min(clipLen(c) - c.fadeOut, c.fadeIn + dt)) }, group);
+      else setClip(tr.id, c.id, { fadeOut: Math.max(0, Math.min(clipLen(c) - c.fadeIn, c.fadeOut - dt)) }, group);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      if (!moved && mode === 'move') setHead(T(x0));
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
+  // Script lines move and stretch, but never into another line.
+  const lineDown = (l: Line, mode: 'move' | 'l' | 'r') => (e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    setPick({ kind: 'line', id: l.id });
+    setSel(null);
+    const x0 = e.clientX;
+    const others = p.lines.filter((o) => o.id !== l.id).sort((a, b) => a.a - b.a);
+    const prevEnd = others.filter((o) => o.b <= l.a + 0.001).reduce((m, o) => Math.max(m, o.b), 0);
+    const nextStart = others.filter((o) => o.a >= l.b - 0.001).reduce((m, o) => Math.min(m, o.a), Infinity);
+    const group = 'line-' + l.id + '-' + Date.now();
+    let moved = false;
+    const mv = (ev: PointerEvent) => {
+      const dt = (ev.clientX - x0) / pps;
+      if (!moved && Math.abs(ev.clientX - x0) < 3) return;
+      moved = true;
+      const len = l.b - l.a;
+      if (mode === 'move') {
+        const a = Math.max(prevEnd, Math.min(nextStart - len, snap(l.a + dt, ev.altKey, [l.a])));
+        setLine(l.id, { a, b: a + len }, group);
+      } else if (mode === 'l') setLine(l.id, { a: Math.max(prevEnd, Math.min(l.b - 0.2, snap(l.a + dt, ev.altKey, [l.a]))) }, group);
+      else setLine(l.id, { b: Math.min(nextStart, Math.max(l.a + 0.2, snap(l.b + dt, ev.altKey, [l.b]))) }, group);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      if (!moved && mode === 'move') setHead(l.a);
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
+  const wheel = (e: React.WheelEvent) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const s = scroller.current!;
+    const r = s.getBoundingClientRect();
+    const tAt = T(e.clientX);
+    setZoom((z) => {
+      const nz = Math.max(1, Math.min(80, z * (e.deltaY < 0 ? 1.25 : 0.8)));
+      requestAnimationFrame(() => (s.scrollLeft = Math.max(0, tAt * ((vw * nz) / viewLen) - (e.clientX - r.left - HEAD_W))));
+      return nz;
+    });
   };
 
   if (saving)
@@ -377,25 +736,30 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         </span>
         <span className="sed-saving-n">{Math.round(saving.p * 100)}%</span>
         <span className="hint">
-          {formatBytes(est)} · {short(finalLen)} long. Keep this window open until it is saved.
+          {formatBytes(est)} · {short(total)} long. Keep this window open until it is saved.
         </span>
       </div>
     );
 
-  const outHead = Math.max(0, toOut(head, edit));
-  const cuts = edit.cuts ?? [];
+  const voice = p.tracks.filter((t) => t.kind === 'voice');
+  const sfxTracks = p.tracks.filter((t) => t.kind === 'sfx');
+  const pickedLabel = pickedClip ? names.current[pickedClip.src] ?? 'Clip' : '';
+  const rulerStep = STEPS.find((s) => s * pps >= 70) ?? 600;
+  const ticks: number[] = [];
+  for (let t = Math.floor(scroll / pps / rulerStep) * rulerStep; t <= (scroll + vw) / pps + rulerStep; t += rulerStep) ticks.push(+t.toFixed(3));
+
   return (
-    <div className="daw">
+    <div className="daw sx">
       {/* Transport */}
       <div className="daw-transport">
         <span className="daw-btns">
-          <button type="button" className="daw-b" onClick={() => (setHead(edit.start), playing && playFrom(edit.start))} aria-label="To the start" data-tip="To the start (Home)">
+          <button type="button" className="daw-b" onClick={() => (setHead(0), playing && playFrom(0))} aria-label="To the start" data-tip="To the start (Home)">
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5v11M13 3 6 8l7 5z" fill="currentColor" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /></svg>
           </button>
           <button type="button" className="daw-b" onClick={() => nudge(-5)} aria-label="Back 5 seconds" data-tip="Back 5 s (Shift ←)">
             <svg width="16" height="14" viewBox="0 0 18 16" aria-hidden="true"><path d="M9 3 2 8l7 5zM16 3 9 8l7 5z" fill="currentColor" /></svg>
           </button>
-          <button type="button" className={'daw-play' + (playing ? ' on' : '')} onClick={toggle} aria-label={playing ? 'Stop' : 'Play'} data-tip={playing ? 'Stop (Space)' : 'Play (Space)'}>
+          <button type="button" className={'daw-play' + (playing ? ' on' : '')} onClick={() => (rec ? stopRec() : toggle())} aria-label={playing ? 'Stop' : 'Play'} data-tip={playing ? 'Stop (Space)' : 'Play (Space)'}>
             {playing ? (
               <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
             ) : (
@@ -405,20 +769,26 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           <button type="button" className="daw-b" onClick={() => nudge(5)} aria-label="Forward 5 seconds" data-tip="Forward 5 s (Shift →)">
             <svg width="16" height="14" viewBox="0 0 18 16" aria-hidden="true"><path d="M2 3l7 5-7 5zM9 3l7 5-7 5z" fill="currentColor" /></svg>
           </button>
+          <button type="button" className={'daw-rec' + (rec ? ' on' : '')} onClick={() => (rec ? stopRec() : void startRec())} aria-label={rec ? 'Stop recording' : 'Record a new track'} data-tip={rec ? 'Stop recording (R)' : 'Record a new track from the playhead (R). Wear headphones.'}>
+            <i />
+          </button>
           <button type="button" className={'daw-b' + (loop ? ' on' : '')} onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Loop the selection" data-tip="Loop the selection (L)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 2l3 3-3 3" /><path d="M4 11V9a4 4 0 0 1 4-4h12" /><path d="M7 22l-3-3 3-3" /><path d="M20 13v2a4 4 0 0 1-4 4H4" /></svg>
           </button>
         </span>
         <span className="daw-lcd" aria-live="off">
-          <b>{clock(outHead)}</b>
-          <span>/ {clock(finalLen)}</span>
-          {hearing && <em>{hearing}</em>}
+          <b>{clock(head)}</b>
+          <span>/ {clock(total)}</span>
+          {rec && <em className="rec">● Recording {short(recNow)}</em>}
         </span>
         <span className="daw-meter" aria-hidden="true" title="Level">
           <span style={{ width: `${Math.min(100, meter * 100)}%` }} className={meter > 0.97 ? 'hot' : ''} />
         </span>
         <span style={{ flex: 1 }} />
         <span className="daw-btns">
+          <button type="button" className="daw-b" onClick={split} aria-label="Split" data-tip="Split at the playhead (Ctrl B)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 3v18" /><path d="M5 8l-3 4 3 4M19 8l3 4-3 4" /></svg>
+          </button>
           <button type="button" className="daw-b" onClick={undo} disabled={!past.current.length} aria-label="Undo" data-tip="Undo (Ctrl Z)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5" /><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg>
           </button>
@@ -433,213 +803,294 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           <button type="button" className="daw-zoom-n" onClick={() => setZoom(1)} data-tip="Show it all">
             {zoom <= 1 ? 'All' : `${Math.round(zoom * 10) / 10}×`}
           </button>
-          <button type="button" className="daw-b" onClick={() => setZoom((z) => Math.min(64, z * 1.6))} aria-label="Zoom in" data-tip="Zoom in (+)">
+          <button type="button" className="daw-b" onClick={() => setZoom((z) => Math.min(80, z * 1.6))} aria-label="Zoom in" data-tip="Zoom in (+)">
             +
           </button>
         </span>
       </div>
 
-      {/* The wave */}
-      <WaveEdit data={data} rate={rate} edit={edit} head={head} sel={sel} zoom={zoom} playing={playing} onZoom={setZoom} onHead={(t) => (setHead(t), playing && playFrom(t))} onSel={setSel} onEdit={(f) => setEdit(f, 'trim')} marks={source.marks} onRemoveCut={(id) => setEdit((e) => ({ ...e, cuts: (e.cuts ?? []).filter((c) => c.id !== id) }))} />
-
-      {/* What can be done with the selection, or a hint */}
-      <div className="daw-selbar">
-        {sel ? (
-          <>
-            <span className="daw-sel-t">
-              Selection <b>{short(sel.a)}</b> to <b>{short(sel.b)}</b> · {(sel.b - sel.a).toFixed(1)} s
-            </span>
-            <button type="button" className="btn small-btn" onClick={playSel}>
-              <UiIcon name="video" size={13} /> Play it
-            </button>
-            <button type="button" className="btn small-btn" onClick={cutSel} data-tip="Delete">
-              <UiIcon name="trash" size={13} /> Cut it out
-            </button>
-            <button type="button" className="btn small-btn" onClick={keepSel}>
-              Keep only this
-            </button>
-            <button type="button" className="btn link small" onClick={() => setSel(null)}>
-              Clear
-            </button>
-          </>
-        ) : (
-          <span className="hint">
-            Click to place the playhead. Drag across the wave to select a part to play, loop, cut out or keep. Drag the dark handles to trim the ends. Scroll with Ctrl or pinch to zoom.
-          </span>
-        )}
-      </div>
-
-      <div className="daw-body">
-        {/* The rack */}
-        <div className="daw-rack">
-          <section className="daw-mod">
-            <h4>Level</h4>
-            <span className="daw-row">
-              <span className="daw-lab">Volume</span>
-              <input type="range" min={0.2} max={3} step={0.05} value={edit.gain} onChange={(e) => setEdit((x) => ({ ...x, gain: Number(e.target.value) }), 'gain')} aria-label="Volume" />
-              <b className="daw-val">{Math.round(edit.gain * 100)}%</b>
-            </span>
-            <label className="check-row">
-              <input type="checkbox" checked={edit.even} onChange={(e) => setEdit((x) => ({ ...x, even: e.target.checked }))} />
-              As loud as it can be without distortion
-            </label>
-            {loud && <span className="hint warn">Some loud parts will be softened to avoid distortion.</span>}
-          </section>
-          <section className="daw-mod">
-            <h4>Fades</h4>
-            <span className="daw-row">
-              <span className="daw-lab">Fade in</span>
-              <input type="range" min={0} max={4} step={0.1} value={edit.fadeIn ?? 0} onChange={(e) => setEdit((x) => ({ ...x, fadeIn: Number(e.target.value) }), 'fi')} aria-label="Fade in" />
-              <b className="daw-val">{(edit.fadeIn ?? 0).toFixed(1)} s</b>
-            </span>
-            <span className="daw-row">
-              <span className="daw-lab">Fade out</span>
-              <input type="range" min={0} max={4} step={0.1} value={edit.fadeOut ?? 0} onChange={(e) => setEdit((x) => ({ ...x, fadeOut: Number(e.target.value) }), 'fo')} aria-label="Fade out" />
-              <b className="daw-val">{(edit.fadeOut ?? 0).toFixed(1)} s</b>
-            </span>
-          </section>
-          <section className="daw-mod">
-            <h4>Clean up</h4>
-            <span className="daw-row col">
-              <span className="daw-lab">Background noise</span>
-              <span className="seg small-seg" role="radiogroup" aria-label="Background noise">
-                {(['Leave', 'Reduce', 'More'] as const).map((l, i) => (
-                  <button key={l} type="button" role="radio" aria-checked={noise === i} className={noise === i ? 'on' : ''} onClick={() => setNoise(i as NoiseLevel)}>
-                    {l}
-                  </button>
-                ))}
+      <div className="sx-main">
+        {/* The timeline */}
+        <div className="sx-tl" ref={scroller} onScroll={(e) => setScroll((e.target as HTMLElement).scrollLeft)} onWheel={wheel}>
+          <div className="sx-inner" style={{ width: width + HEAD_W }}>
+            <div className="sx-row sx-ruler" onPointerDown={backgroundDown}>
+              <span className="sx-head-cell">
+                <span className="hint">{rec ? 'Recording…' : 'Tracks'}</span>
               </span>
-            </span>
-            <span className="hint">{clean ? `Cleaning up the sound… ${Math.round(clean.p * 100)}%` : source.roomDb !== undefined ? `Your room measured ${Math.round(source.roomDb)} dB${source.roomDb > -50 ? ', so a little reduction helps.' : ', which is quiet.'}` : 'Hum, hiss and fan noise.'}</span>
-            <span className="daw-row col">
-              <span className="daw-lab">Room echo</span>
-              <span className="seg small-seg" role="radiogroup" aria-label="Room echo">
-                {(['Leave', 'Reduce', 'More'] as const).map((l, i) => (
-                  <button key={l} type="button" role="radio" aria-checked={echo === i} className={echo === i ? 'on' : ''} onClick={() => setEdit((x) => ({ ...x, echo: i as NoiseLevel }))}>
-                    {l}
-                  </button>
-                ))}
-              </span>
-            </span>
-            <span className="hint">Shortens the ring after each word in a bare room. Listen to check it sounds natural.</span>
-            <span className="daw-row wrap">
-              <button type="button" className="btn small-btn" onClick={trimQuiet}>
-                Trim the quiet ends
-              </button>
-              <button type="button" className="btn small-btn" onClick={() => setTightened(tightenPauses())}>
-                Shorten long pauses
-              </button>
-            </span>
-            {tightened !== null && <span className="hint">{tightened ? `${tightened} long ${tightened === 1 ? 'pause' : 'pauses'} shortened. Undo to put ${tightened === 1 ? 'it' : 'them'} back.` : 'No long pauses found.'}</span>}
-          </section>
-          <section className="daw-mod">
-            <h4>Add at the playhead · {short(outHead)}</h4>
-            <span className="daw-row wrap">
-              <span className="sed-silence">
-                <button type="button" className="btn small-btn" onClick={() => add('silence')}>
-                  <UiIcon name="silence" size={14} /> Silence
-                </button>
-                <select value={silence} onChange={(e) => setSilence(Number(e.target.value))} aria-label="Length of silence">
-                  {[0.5, 1, 2, 3, 5, 10, 20, 30].map((x) => (
-                    <option key={x} value={x}>
-                      {x} s
-                    </option>
-                  ))}
-                </select>
-              </span>
-              {EFFECTS.filter((f) => f.k !== 'silence').map((f) => (
-                <button key={f.k} type="button" className="btn small-btn" onClick={() => add(f.k)}>
-                  <UiIcon name={EFFECT_ICON[f.k]} size={14} /> {f.label}
-                </button>
-              ))}
-            </span>
-            {(edit.inserts.length > 0 || cuts.length > 0) && (
-              <span className="sed-ins">
-                {[...edit.inserts]
-                  .sort((a, b) => a.at - b.at)
-                  .map((i) => (
-                    <span key={i.id} className="sed-chip">
-                      <button type="button" className="sed-chip-play" onClick={() => playFrom(Math.max(edit.start, i.at - 1.2))} aria-label="Play it">
-                        <UiIcon name={EFFECT_ICON[i.kind]} size={14} />
-                        {EFFECTS.find((f) => f.k === i.kind)?.label}
-                        {i.kind === 'silence' && ` ${i.dur} s`} at {short(toOut(i.at, edit))}
-                      </button>
-                      <button type="button" aria-label="Remove" onClick={() => setEdit((e) => ({ ...e, inserts: e.inserts.filter((x) => x.id !== i.id) }))}>
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                {cuts.length > 0 && (
-                  <span className="sed-chip">
-                    <span className="sed-chip-play">
-                      <UiIcon name="trash" size={13} /> {cuts.length} {cuts.length === 1 ? 'part' : 'parts'} cut out
-                    </span>
-                    <button type="button" aria-label="Put them back" title="Put them back" onClick={() => setEdit((e) => ({ ...e, cuts: [] }))}>
-                      ×
-                    </button>
+              <span className="sx-lane">
+                {ticks.map((t) => (
+                  <span key={t} className="sx-tick" style={{ left: X(t) }}>
+                    {rulerStep < 1 ? short(t) : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`}
                   </span>
-                )}
+                ))}
               </span>
-            )}
-          </section>
+            </div>
+            {voice.map((tr) => (
+              <div key={tr.id} className={'sx-row sx-voice' + (tr.mute ? ' muted' : '') + (pickedTrack?.id === tr.id ? ' picked' : '')}>
+                <span className="sx-head-cell" onClick={() => setPick({ kind: 'track', id: tr.id })}>
+                  <b className="sx-tname">{tr.name}</b>
+                  <span className="sx-tbtns">
+                    <button type="button" className={'sx-ms' + (tr.mute ? ' on' : '')} onClick={(e) => (e.stopPropagation(), setTrack(tr.id, { mute: !tr.mute }))} data-tip="Mute (M)">
+                      M
+                    </button>
+                    <button type="button" className={'sx-ms' + (tr.solo ? ' on solo' : '')} onClick={(e) => (e.stopPropagation(), setTrack(tr.id, { solo: !tr.solo }))} data-tip="Solo (S)">
+                      S
+                    </button>
+                    {(tr.noise > 0 || tr.echo > 0) && <span className="sx-clean" data-tip="Cleaned up">✦</span>}
+                  </span>
+                  <input className="sx-tvol" type="range" min={0} max={2} step={0.05} value={tr.gain} onClick={(e) => e.stopPropagation()} onChange={(e) => setTrack(tr.id, { gain: Number(e.target.value) }, 'tg' + tr.id)} aria-label={`${tr.name} volume`} />
+                </span>
+                <span className="sx-lane" onPointerDown={backgroundDown}>
+                  {tr.clips.map((c) => (
+                    <ClipView key={c.id} c={c} kind="voice" data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} />
+                  ))}
+                  {rec && voice[voice.length - 1].id === tr.id && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, recNow * pps) }} />}
+                </span>
+              </div>
+            ))}
+            {sfxTracks.map((tr) => {
+              const rows = stackRows(tr.clips);
+              const n = Math.max(1, ...Object.values(rows).map((r) => r + 1));
+              return (
+                <div key={tr.id} className={'sx-row sx-sfx' + (tr.mute ? ' muted' : '') + (pickedTrack?.id === tr.id ? ' picked' : '')} style={{ height: Math.max(62, n * 30 + 12) }}>
+                  <span className="sx-head-cell" onClick={() => setPick({ kind: 'track', id: tr.id })}>
+                    <b className="sx-tname">{tr.name}</b>
+                    <span className="sx-tbtns">
+                      <button type="button" className={'sx-ms' + (tr.mute ? ' on' : '')} onClick={(e) => (e.stopPropagation(), setTrack(tr.id, { mute: !tr.mute }))} data-tip="Mute">
+                        M
+                      </button>
+                      <SfxMenu onAdd={addSfx} onHear={hearSfx} />
+                    </span>
+                  </span>
+                  <span className="sx-lane" onPointerDown={backgroundDown}>
+                    {tr.clips.map((c) => (
+                      <ClipView key={c.id} c={c} kind="sfx" row={rows[c.id] ?? 0} data={sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} />
+                    ))}
+                  </span>
+                </div>
+              );
+            })}
+            <div className="sx-row sx-script">
+              <span className="sx-head-cell">
+                <b className="sx-tname">Script</b>
+                <button type="button" className="sx-add" onClick={addLine} data-tip="Add a line at the playhead (T)">
+                  + Line
+                </button>
+              </span>
+              <span className="sx-lane" onPointerDown={backgroundDown}>
+                {p.lines.map((l) => (
+                  <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' empty')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
+                    <span className="sx-edge l" onPointerDown={lineDown(l, 'l')} />
+                    <span className="sx-line-t">
+                      {l.who && <b>{l.who}</b>}
+                      {l.text || 'Type the line'}
+                    </span>
+                    <span className="sx-edge r" onPointerDown={lineDown(l, 'r')} />
+                  </span>
+                ))}
+              </span>
+            </div>
+            {/* the selection and the playhead run through every track */}
+            {sel && <span className="sx-sel" style={{ left: HEAD_W + X(sel.a), width: X(sel.b) - X(sel.a) }} />}
+            <span className="sx-playhead" style={{ left: HEAD_W + X(head) }} />
+          </div>
         </div>
 
-        {/* Saving */}
-        <div className="daw-side">
-          <label className="field">
-            <span>Name</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="For example: Unit 4, listening 2" />
-          </label>
-          <div className="field" style={{ gap: 6 }}>
-            <span>Quality</span>
-            <span className="seg small-seg" role="radiogroup" aria-label="Quality">
-              {SOUND_QUALITY.map((q) => (
-                <button key={q.k} type="button" role="radio" aria-checked={quality === q.k} className={quality === q.k ? 'on' : ''} onClick={() => setQuality(q.k)}>
-                  {q.label}
+        {/* The inspector: what is picked */}
+        <aside className="sx-insp">
+          {pickedClip && pick?.kind === 'clip' ? (
+            <>
+              <h4>{pickedTrack?.kind === 'sfx' ? 'Sound effect' : 'Clip'} · {pickedLabel}</h4>
+              <span className="hint">
+                {short(pickedClip.at)} to {short(clipEnd(pickedClip))} · {clipLen(pickedClip).toFixed(1)} s
+              </span>
+              <span className="daw-row">
+                <span className="daw-lab">Volume</span>
+                <input type="range" min={0} max={3} step={0.05} value={pickedClip.gain} onChange={(e) => setClip(pick.track, pickedClip.id, { gain: Number(e.target.value) }, 'cg' + pickedClip.id)} aria-label="Clip volume" />
+                <b className="daw-val">{Math.round(pickedClip.gain * 100)}%</b>
+              </span>
+              {pickedTrack?.kind === 'voice' && (
+                <div className="sx-fx">
+                  <span className="daw-lab">Voice</span>
+                  <span className="sx-fx-grid">
+                    {VOICE_FX.map((f) => (
+                      <button key={f.k || 'none'} type="button" className={pickedClip.fx === f.k ? 'on' : ''} onClick={() => setClip(pick.track, pickedClip.id, { fx: f.k })} title={f.about}>
+                        {f.label}
+                      </button>
+                    ))}
+                  </span>
+                  <span className="hint">Split the clip first (Ctrl B) to change only part of it.</span>
+                </div>
+              )}
+              <span className="hint">Fades: drag the small corners at the top of the clip. {pickedClip.fadeIn || pickedClip.fadeOut ? `In ${pickedClip.fadeIn.toFixed(1)} s, out ${pickedClip.fadeOut.toFixed(1)} s.` : ''}</span>
+              <span className="daw-row wrap">
+                <button type="button" className="btn small-btn" onClick={split}>
+                  Split <kbd>Ctrl B</kbd>
                 </button>
-              ))}
-            </span>
-            <span className="hint">
-              {SOUND_QUALITY.find((q) => q.k === quality)?.about.split(',')[0]}. About {formatBytes(est)}
-              {asIs ? ', kept as it is' : ''}.
-            </span>
+                <button type="button" className="btn small-btn" onClick={duplicate}>
+                  Duplicate <kbd>Ctrl D</kbd>
+                </button>
+                {pickedTrack?.kind === 'voice' && (
+                  <>
+                    <button type="button" className="btn small-btn" onClick={trimQuiet}>
+                      Trim the quiet ends
+                    </button>
+                    <button type="button" className="btn small-btn" onClick={tighten}>
+                      Shorten long pauses
+                    </button>
+                  </>
+                )}
+                <button type="button" className="btn small-btn" onClick={removePicked}>
+                  <UiIcon name="trash" size={13} /> Delete
+                </button>
+              </span>
+              {tightened !== null && <span className="hint">{tightened ? `${tightened} long ${tightened === 1 ? 'pause' : 'pauses'} shortened. Ctrl Z puts ${tightened === 1 ? 'it' : 'them'} back.` : 'No long pauses found.'}</span>}
+            </>
+          ) : pickedLine ? (
+            <>
+              <h4>Script line</h4>
+              <span className="hint">
+                {short(pickedLine.a)} to {short(pickedLine.b)} · drag its edges on the script lane
+              </span>
+              <label className="field">
+                <span>Line</span>
+                <input className="sx-line-text" value={pickedLine.text} onChange={(e) => setLine(pickedLine.id, { text: e.target.value }, 'lt' + pickedLine.id)} placeholder="What is said" />
+              </label>
+              <label className="field">
+                <span>Speaker (optional)</span>
+                <input value={pickedLine.who ?? ''} list="sx-speakers" onChange={(e) => setLine(pickedLine.id, { who: e.target.value || undefined }, 'lw' + pickedLine.id)} placeholder="A, B, or a name" />
+                <datalist id="sx-speakers">
+                  {[...new Set(p.lines.map((l) => l.who).filter(Boolean))].map((w) => (
+                    <option key={w} value={w} />
+                  ))}
+                </datalist>
+              </label>
+              <span className="daw-row wrap">
+                <button type="button" className="btn small-btn" onClick={() => playFrom(pickedLine.a, pickedLine.b)}>
+                  Play this line
+                </button>
+                <button type="button" className="btn small-btn" onClick={removePicked}>
+                  <UiIcon name="trash" size={13} /> Delete
+                </button>
+              </span>
+            </>
+          ) : pickedTrack ? (
+            <>
+              <h4>Track</h4>
+              <label className="field">
+                <span>Name</span>
+                <input value={pickedTrack.name} onChange={(e) => setTrack(pickedTrack.id, { name: e.target.value }, 'tn' + pickedTrack.id)} />
+              </label>
+              {pickedTrack.kind === 'voice' && (
+                <>
+                  <span className="daw-row col">
+                    <span className="daw-lab">Background noise</span>
+                    <span className="seg small-seg">
+                      {(['Leave', 'Reduce', 'More'] as const).map((l, i) => (
+                        <button key={l} type="button" className={pickedTrack.noise === i ? 'on' : ''} onClick={() => setTrack(pickedTrack.id, { noise: i as 0 | 1 | 2 })}>
+                          {l}
+                        </button>
+                      ))}
+                    </span>
+                  </span>
+                  <span className="daw-row col">
+                    <span className="daw-lab">Room echo</span>
+                    <span className="seg small-seg">
+                      {(['Leave', 'Reduce', 'More'] as const).map((l, i) => (
+                        <button key={l} type="button" className={pickedTrack.echo === i ? 'on' : ''} onClick={() => setTrack(pickedTrack.id, { echo: i as 0 | 1 | 2 })}>
+                          {l}
+                        </button>
+                      ))}
+                    </span>
+                  </span>
+                  {cleanBusy && <span className="hint">{cleanBusy}</span>}
+                  {voice.length > 1 && (
+                    <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={removePicked}>
+                      <UiIcon name="trash" size={13} /> Delete the track
+                    </button>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <h4>The whole sound</h4>
+              <span className="daw-row">
+                <span className="daw-lab">Volume</span>
+                <input type="range" min={0.2} max={3} step={0.05} value={p.gain} onChange={(e) => edit((x) => ({ ...x, gain: Number(e.target.value) }), 'mg')} aria-label="Volume" />
+                <b className="daw-val">{Math.round(p.gain * 100)}%</b>
+              </span>
+              <label className="check-row">
+                <input type="checkbox" checked={p.loud} onChange={(e) => edit((x) => ({ ...x, loud: e.target.checked }))} />
+                As loud as it can be without distortion
+              </label>
+              <span className="hint">Click a clip, a line or a track name to change it. Drag across the wave to select a stretch: Delete takes it out of everything.</span>
+              {sel && (
+                <span className="daw-row wrap">
+                  <button type="button" className="btn small-btn" onClick={() => playFrom(sel.a, sel.b)}>
+                    Play the selection
+                  </button>
+                  <button type="button" className="btn small-btn" onClick={() => cutRange(sel.a, sel.b)}>
+                    Cut it out
+                  </button>
+                  <button type="button" className="btn small-btn" onClick={() => keepRange(sel.a, sel.b)}>
+                    Keep only this
+                  </button>
+                </span>
+              )}
+            </>
+          )}
+          <div className="sx-adds">
+            <button type="button" className="btn small-btn" onClick={() => fileIn.current?.click()}>
+              <UiIcon name="upload" size={13} /> Bring in sounds
+            </button>
+            <button type="button" className="btn small-btn" onClick={() => (rec ? stopRec() : void startRec())}>
+              <span className="sx-dot" /> {rec ? 'Stop recording' : 'Record a track'}
+            </button>
+            <input ref={fileIn} type="file" accept="audio/*,video/*" multiple hidden onChange={(e) => (e.target.files && void importFiles(e.target.files), (e.target.value = ''))} />
           </div>
-          <label className="field">
-            <span>Script for karaoke (optional)</span>
-            <textarea className="se-bulk short" value={script} onChange={(e) => setScript(e.target.value)} placeholder="One line for each sentence or speaker turn. You can time the lines after saving." />
-            <span className="se-tools">
-              {source.marks?.some((m) => Number.isFinite(m)) ? <span className="hint">{source.marks.filter((m) => Number.isFinite(m)).length} lines timed{source.recorded ? ' while recording' : ''}; the times follow your edits.</span> : <span className="hint">Time each line after saving, in Script and timing.</span>}
-              <span style={{ flex: 1 }} />
-              <button type="button" className="btn link" disabled={!script.trim()} onClick={() => setScript(splitScript(script).join('\n'))}>
-                One line per sentence
-              </button>
-            </span>
-          </label>
-        </div>
+          {(importBusy || recError) && <span className="hint">{importBusy || recError}</span>}
+          {!rec && <span className="hint sx-phones">Recording over other tracks? Wear headphones, so they are not recorded again.</span>}
+        </aside>
       </div>
 
-      {error && <span className="hint warn">{error}</span>}
-      <span className="pe-actions">
+      <div className="sx-save">
+        <label className="field">
+          <span>Name</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="For example: Unit 4, listening 2" />
+        </label>
+        <div className="field" style={{ gap: 6 }}>
+          <span>Quality</span>
+          <span className="seg small-seg" role="radiogroup" aria-label="Quality">
+            {SOUND_QUALITY.map((q) => (
+              <button key={q.k} type="button" role="radio" aria-checked={quality === q.k} className={quality === q.k ? 'on' : ''} onClick={() => setQuality(q.k)}>
+                {q.label}
+              </button>
+            ))}
+          </span>
+          <span className="hint">About {formatBytes(est)}.</span>
+        </div>
+        <span style={{ flex: 1 }} />
+        {error && <span className="hint warn">{error}</span>}
         <button type="button" className="btn link" onClick={onBack}>
           {backLabel}
         </button>
-        <span className="hint daw-keys">Space play · ← → move · Delete cut · Ctrl Z undo · L loop · + − zoom</span>
-        <span style={{ flex: 1 }} />
         {replace ? (
           <>
-            <button type="button" className="btn" onClick={save} disabled={finalLen < 0.2}>
+            <button type="button" className="btn" onClick={save} disabled={total < 0.2}>
               Save as a new sound
             </button>
-            <button type="button" className="btn primary" onClick={askReplace} disabled={finalLen < 0.2}>
+            <button type="button" className="btn primary" onClick={askReplace} disabled={total < 0.2}>
               Replace this sound…
             </button>
           </>
         ) : (
-          <button type="button" className="btn primary" onClick={save} disabled={finalLen < 0.2}>
+          <button type="button" className="btn primary" onClick={save} disabled={total < 0.2}>
             Save
           </button>
         )}
-      </span>
+      </div>
+      <span className="hint daw-keys">Space play · Ctrl B split · Delete remove · Ctrl D duplicate · Ctrl C / V copy and paste · Ctrl Z undo · R record · T add a line · M mute · S solo · L loop · + − zoom · Alt while dragging: no snapping</span>
       {asking && (
         <div className="sed-replace" role="alertdialog" aria-label="Replace this sound?" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
           <strong>Replace “{replace?.name}” everywhere?</strong>
@@ -676,193 +1127,109 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   );
 }
 
-// A sensible step for the time ruler at this zoom.
-const STEPS = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
-
-// The wave: a ruler, the sound drawn at any zoom, trim handles, cut parts, the selection and the
-// playhead. Scrolls sideways when zoomed in, and follows the playhead while playing.
-function WaveEdit({ data, rate, edit, head, sel, zoom, playing, onZoom, onHead, onSel, onEdit, marks, onRemoveCut }: { data: Float32Array; rate: number; edit: Edit; head: number; sel: Sel; zoom: number; playing: boolean; onZoom: (f: (z: number) => number) => void; onHead: (t: number) => void; onSel: (s: Sel) => void; onEdit: (f: (e: Edit) => Edit) => void; marks?: number[]; onRemoveCut: (id: string) => void }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const inner = useRef<HTMLDivElement>(null);
+// A clip on its track: its own wave (after its effect and volume), edges to trim, corners to fade.
+function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked, onDown }: { c: Clip; kind: 'voice' | 'sfx'; row?: number; data?: Float32Array; rate: number; pps: number; scroll: number; vw: number; label: string; picked: boolean; onDown: (m: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => void }) {
   const cv = useRef<HTMLCanvasElement>(null);
-  const len = data.length / rate;
-  const idx = useMemo<PeakIndex>(() => peakIndex(data), [data]);
-  const top = useMemo(() => {
-    let m = 0.001;
-    for (let k = 0; k < idx.max.length; k++) m = Math.max(m, idx.max[k], -idx.min[k]);
-    return m;
-  }, [idx]);
-  const drag = useRef<'s' | 'e' | null>(null);
-  const [vw, setVw] = useState(800);
-  const [scroll, setScroll] = useState(0);
-  const width = vw * zoom;
-
+  const left = c.at * pps;
+  const w = Math.max(3, clipLen(c) * pps);
+  const y = useMemo(() => (data ? renderClip(c, data, rate) : null), [c, data, rate]);
+  const idx = useMemo<PeakIndex | null>(() => (y ? peakIndex(y) : null), [y]);
+  // Only the visible part of a long clip is drawn.
+  const from = Math.max(0, scroll - left - 50);
+  const to = Math.min(w, scroll + vw - left + 50);
   useLayoutEffect(() => {
-    const s = scroller.current;
-    if (!s) return;
-    const ro = new ResizeObserver(() => setVw(s.clientWidth));
-    ro.observe(s);
-    setVw(s.clientWidth);
-    return () => ro.disconnect();
-  }, []);
-  // Keep the playhead in view while zooming and playing.
-  useEffect(() => {
-    const s = scroller.current;
-    if (!s || zoom <= 1) return;
-    const x = (head / len) * width;
-    if (x < s.scrollLeft + 40 || x > s.scrollLeft + vw - 40) s.scrollLeft = Math.max(0, x - (playing ? vw * 0.2 : vw / 2));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, playing && Math.floor((head / len) * width / Math.max(1, vw * 0.6))]);
-
-  // Only the part in view is drawn.
-  useLayoutEffect(() => {
-    const c = cv.current;
-    if (!c) return;
+    const el = cv.current;
+    if (!el || !y || !idx || to <= from) return;
     const dpr = window.devicePixelRatio || 1;
-    const w = vw;
-    const h = c.clientHeight;
-    c.width = Math.round(w * dpr);
-    c.height = Math.round(h * dpr);
-    const g = c.getContext('2d')!;
+    const cw = Math.max(1, Math.round(to - from));
+    const h = el.clientHeight;
+    el.width = Math.round(cw * dpr);
+    el.height = Math.round(h * dpr);
+    const g = el.getContext('2d')!;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, w, h);
-    const css = getComputedStyle(c);
-    const accent = css.getPropertyValue('--accent').trim() || '#d98f63';
-    const ink = css.getPropertyValue('--muted').trim() || '#8a847d';
-    const RULER = 20;
-    const mid = RULER + (h - RULER) / 2;
-    const amp = (h - RULER) / 2 - 6;
-    // centre line
-    g.fillStyle = 'rgba(128,128,128,.18)';
-    g.fillRect(0, mid, w, 1);
-    // the wave, as a filled outline (min to max per pixel)
-    const spp = (len * rate) / width; // samples per pixel
-    g.fillStyle = accent;
-    for (let x = 0; x < w; x++) {
-      const a = (scroll + x) * spp;
-      const [lo, hi] = rangePeak(data, idx, a, a + Math.max(1, spp));
-      const y0 = mid - (hi / top) * amp;
-      const y1 = mid - (lo / top) * amp;
+    g.clearRect(0, 0, cw, h);
+    g.fillStyle = getComputedStyle(el).color;
+    const mid = h / 2;
+    const spp = rate / pps;
+    for (let x = 0; x < cw; x++) {
+      const a = (from + x) * spp;
+      const [lo, hi] = rangePeak(y, idx, a, a + Math.max(1, spp));
+      const y0 = mid - Math.min(1, hi) * (mid - 2);
+      const y1 = mid - Math.max(-1, lo) * (mid - 2);
       g.fillRect(x, y0, 1, Math.max(1, y1 - y0));
     }
-    // the ruler
-    const pps = width / len; // pixels per second
-    const step = STEPS.find((s) => s * pps >= 70) ?? 600;
-    g.font = '10px ui-monospace, SFMono-Regular, Menlo, monospace';
-    g.fillStyle = ink;
-    g.textBaseline = 'top';
-    const t0 = Math.floor(scroll / pps / step) * step;
-    for (let t = t0; t <= (scroll + w) / pps + step; t += step / 2) {
-      const x = t * pps - scroll;
-      if (x < -40 || x > w + 40) continue;
-      const major = Math.abs(t / step - Math.round(t / step)) < 1e-6;
-      g.fillRect(Math.round(x), major ? 12 : 15, 1, major ? 8 : 5);
-      if (major) g.fillText(step < 1 ? `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}` : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`, Math.round(x) + 3, 1);
-    }
-    g.fillStyle = 'rgba(128,128,128,.22)';
-    g.fillRect(0, RULER, w, 1);
-  }, [idx, top, vw, width, scroll, len, rate, data]);
-
-  const at = (clientX: number) => {
-    const r = inner.current!.getBoundingClientRect();
-    return Math.max(0, Math.min(len, ((clientX - r.left) / r.width) * len));
-  };
-  const pc = (t: number) => `${(t / len) * 100}%`;
-  const down = (e: React.PointerEvent) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest('.we-handle, .daw-cut-x')) return;
-    const t0 = at(e.clientX);
-    const x0 = e.clientX;
-    const extend = e.shiftKey && sel;
-    let moved = false;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    const mv = (ev: PointerEvent) => {
-      if (!moved && Math.abs(ev.clientX - x0) < 4) return;
-      moved = true;
-      const t = at(ev.clientX);
-      const a = extend ? (Math.abs(t0 - sel!.a) < Math.abs(t0 - sel!.b) ? sel!.b : sel!.a) : t0;
-      onSel({ a: Math.min(a, t), b: Math.max(a, t) });
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', mv);
-      window.removeEventListener('pointerup', up);
-      if (!moved) {
-        if (extend) onSel({ a: Math.min(sel!.a, t0), b: Math.max(sel!.b, t0) });
-        else onSel(null), onHead(t0);
-      } else onHead(Math.min(t0, at(x0)));
-    };
-    window.addEventListener('pointermove', mv);
-    window.addEventListener('pointerup', up);
-  };
-  const wheel = (e: React.WheelEvent) => {
-    if (!(e.ctrlKey || e.metaKey)) return;
-    e.preventDefault();
-    const s = scroller.current!;
-    const r = s.getBoundingClientRect();
-    const tAt = ((s.scrollLeft + e.clientX - r.left) / width) * len;
-    onZoom((z) => {
-      const nz = Math.max(1, Math.min(64, z * (e.deltaY < 0 ? 1.25 : 0.8)));
-      requestAnimationFrame(() => (s.scrollLeft = Math.max(0, (tAt / len) * vw * nz - (e.clientX - r.left))));
-      return nz;
-    });
-  };
+  }, [y, idx, from, to, pps, rate]);
+  const fi = c.fadeIn * pps;
+  const fo = c.fadeOut * pps;
   return (
-    <div className="daw-wave" ref={scroller} onScroll={(e) => setScroll((e.target as HTMLElement).scrollLeft)} onWheel={wheel}>
-      <div className="daw-inner" ref={inner} style={{ width }} onPointerDown={down}>
-        <canvas ref={cv} className="daw-cv" style={{ left: scroll, width: vw }} />
-        <span className="we-cut" style={{ left: 0, width: pc(edit.start) }} />
-        <span className="we-cut" style={{ left: pc(edit.end), right: 0 }} />
-        {(edit.cuts ?? []).map((c) => (
-          <span key={c.id} className="daw-cut" style={{ left: pc(Math.min(c.a, c.b)), width: pc(Math.abs(c.b - c.a)) }}>
-            <button type="button" className="daw-cut-x" onClick={() => onRemoveCut(c.id)} aria-label="Put this part back" data-tip="Put this part back">
-              ×
-            </button>
-          </span>
-        ))}
-        {sel && <span className="daw-sel" style={{ left: pc(sel.a), width: pc(sel.b - sel.a) }} />}
-        {(marks ?? []).map((m, i) => (
-          <span key={'m' + i} className="wv-mark" style={{ left: pc(m) }}>
-            <span className="wv-flag">{i + 1}</span>
-          </span>
-        ))}
-        {edit.inserts.map((i) => (
-          <span key={i.id} className="we-ins" style={{ left: pc(Math.max(edit.start, Math.min(edit.end, i.at))) }} title={EFFECTS.find((f) => f.k === i.kind)?.label}>
-            <UiIcon name={EFFECT_ICON[i.kind]} size={12} />
-          </span>
-        ))}
-        <span className="daw-head" style={{ left: pc(head) }} />
-        {(['s', 'e'] as const).map((k) => (
-          <span
-            key={k}
-            className={'we-handle ' + k}
-            style={{ left: pc(k === 's' ? edit.start : edit.end) }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-              drag.current = k;
-            }}
-            onPointerMove={(e) => {
-              if (drag.current !== k) return;
-              const t = at(e.clientX);
-              onEdit((x) => (k === 's' ? { ...x, start: Math.min(t, x.end - 0.2) } : { ...x, end: Math.max(t, x.start + 0.2) }));
-            }}
-            onPointerUp={() => (drag.current = null)}
-            onPointerCancel={() => (drag.current = null)}
-            role="slider"
-            aria-label={k === 's' ? 'Start' : 'End'}
-            aria-valuemin={0}
-            aria-valuemax={Math.round(len)}
-            aria-valuenow={Math.round(k === 's' ? edit.start : edit.end)}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              const d = e.key === 'ArrowLeft' ? -0.1 : e.key === 'ArrowRight' ? 0.1 : 0;
-              if (!d) return;
-              e.preventDefault();
-              e.stopPropagation();
-              onEdit((x) => (k === 's' ? { ...x, start: Math.max(0, Math.min(x.end - 0.2, x.start + d)) } : { ...x, end: Math.min(len, Math.max(x.start + 0.2, x.end + d)) }));
-            }}
-          />
-        ))}
-      </div>
-    </div>
+    <span className={'sx-clip ' + kind + (picked ? ' picked' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')}>
+      <canvas ref={cv} className="sx-clip-wave" style={{ left: from, width: Math.max(0, to - from) }} />
+      {w > 50 && (
+        <span className="sx-clip-name">
+          {label}
+          {c.fx && <em>{VOICE_FX.find((f) => f.k === c.fx)?.label}</em>}
+          {c.gain !== 1 && <em>{Math.round(c.gain * 100)}%</em>}
+        </span>
+      )}
+      {/* fades: a shaded slope, and a handle at each top corner */}
+      {fi > 1 && (
+        <svg className="sx-fade" style={{ left: 0, width: fi }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 0 L0 100 Q 60 95 100 0 Z" />
+        </svg>
+      )}
+      {fo > 1 && (
+        <svg className="sx-fade" style={{ right: 0, width: fo }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M100 0 L100 100 Q 40 95 0 0 Z" />
+        </svg>
+      )}
+      <span className="sx-edge l" onPointerDown={onDown('l')} />
+      <span className="sx-edge r" onPointerDown={onDown('r')} />
+      {w > 24 && (
+        <>
+          <span className="sx-fh" style={{ left: Math.min(w - 8, fi) - 5 }} onPointerDown={onDown('fi')} data-tip="Drag to fade in" />
+          <span className="sx-fh" style={{ left: Math.max(0, w - fo) - 5 }} onPointerDown={onDown('fo')} data-tip="Drag to fade out" />
+        </>
+      )}
+    </span>
+  );
+}
+
+// The library of sound effects: hear one, or add it at the playhead.
+function SfxMenu({ onAdd, onHear }: { onAdd: (k: string) => void; onHear: (k: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  const groups = [...new Set(SFX.map((s) => s.group))];
+  return (
+    <span className="sx-sfxmenu" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button type="button" className="sx-add" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        + Effect
+      </button>
+      {open && (
+        <span className="sx-sfxpop" role="menu">
+          {groups.map((g) => (
+            <span key={g} className="sx-sfxg">
+              <span className="sx-sfxh">{g}</span>
+              {SFX.filter((s) => s.group === g).map((s) => (
+                <span key={s.k} className="sx-sfxrow">
+                  <button type="button" className="sx-hear" onClick={() => onHear(s.k)} aria-label={`Hear ${s.label}`}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor" /></svg>
+                  </button>
+                  <button type="button" className="sx-pick" onClick={() => (onAdd(s.k), setOpen(false))}>
+                    {s.label}
+                    <span className="hint">{s.dur < 1 ? `${s.dur.toFixed(1)} s` : `${Math.round(s.dur)} s`}</span>
+                  </button>
+                </span>
+              ))}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
   );
 }
