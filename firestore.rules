@@ -466,7 +466,9 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.createdBy == chatKey();
       match /msgs/{mid} {
         allow read: if inChat(chatOf(id)) || oversees(chatOf(id));
-        allow create: if inChat(chatOf(id)) && request.resource.data.by == chatKey();
+        allow create: if inChat(chatOf(id)) && request.resource.data.by == chatKey()
+          && (!learnerAccount() || request.resource.data.get('blocks', 0) == 0
+            || classData(myClass()).get('messaging', {}).get('learnerElements', true) == true);
         allow update: if inChat(chatOf(id)) && (resource.data.by == chatKey() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));
         allow delete: if signedIn() && resource.data.by == chatKey();
       }

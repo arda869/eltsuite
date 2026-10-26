@@ -20,6 +20,7 @@ import { TopBar } from '../components/TopBar';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { MainNav } from './ColleaguesPage';
+import { setClip, writeClip, type Clip } from '../lib/clip';
 import type { ClassDoc } from '../lib/classes';
 
 // Messages: chats on the left, the conversation on the right. Messages use the same tools as
@@ -229,6 +230,9 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
   const people = c.members.filter((k) => k !== me.key).map((k) => ({ id: k, name: c.names[k] ?? 'Someone' }));
   const colleaguesHere = c.members.filter((k) => k !== me.key && c.roles[k] === 'teacher');
   const learnersHere = c.members.some((k) => c.roles[k] === 'learner');
+  // The class teacher decides whether learners may send task elements.
+  const elementsOk = teacher || dir.learnerElements !== false;
+  const [err, setErr] = useState('');
   useEffect(() => {
     markRead(c, me.key);
   }, [c.lastAt]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -239,10 +243,13 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
   const reset = () => (setContent(EMPTY), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null));
   const send = async () => {
     if (isEmptyContent(content) || busy) return;
+    const tasky = blocksIn(content) + questionIds(content).length;
+    if (!elementsOk && tasky) return setErr('Your teacher has turned off task elements in messages. Take out the questions to send.');
+    setErr('');
     setBusy(true);
     try {
       const { content: body, key } = splitKey(content);
-      const m = { text: plainOf(content).trim(), content: body, key, blocks: blocksIn(content), mentions: [...new Set(mentionsOf(content))] };
+      const m = { text: plainOf(content).trim(), content: body, key, blocks: tasky, mentions: [...new Set(mentionsOf(content))] };
       if (editing) await editMsg(c, editing.id, m);
       else await sendMsg(c, me, { ...m, replyTo: replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null });
       reset();
@@ -319,7 +326,8 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
             </button>
           </span>
         )}
-        <div className="chat-editor">
+        {err && <span className="error">{err}</span>}
+        <div className={'chat-editor' + (elementsOk ? '' : ' text-only')}>
           <TaskEditor key={edKey} content={content} onChange={setContent} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
         </div>
         <span className="chat-actions">
@@ -347,6 +355,12 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
   const qs = useMemo(() => (m.content ? questionIds(m.content) : []), [m.content]);
   const score = checked ? scoreTask(qs, m.key ?? {}, responses) : null;
   const tagged = m.mentions?.includes(me.key);
+  const [copied, setCopied] = useState(false);
+  // Copy the message (its text and task elements, with answers) to paste into a task or another chat.
+  const clip = (): Clip => ({ v: 1, space: 'chat:' + c.id, content: (m.content ? mergeKey(m.content, m.key ?? {}) : { type: 'doc', content: [] }).content ?? [] });
+  const copy = async () => {
+    if (await writeClip(clip(), m.text)) setCopied(true), window.setTimeout(() => setCopied(false), 1500);
+  };
   return (
     <div className={'bub' + (mine ? ' mine' : '') + (first ? ' first' : '') + (tagged ? ' tagged' : '')} id={'m-' + m.id}>
       {!mine && first && <span className="bub-av">{initial(m.name)}</span>}
@@ -369,7 +383,7 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
           ) : (
             <>
               {m.content && !isEmptyContent(m.content) && (
-                <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')}>
+                <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')} onCopy={(e) => setClip(e, clip(), window.getSelection()?.toString() || m.text)}>
                   <TaskRenderer content={m.content} responses={responses} onChange={(id, r) => setResponses((x) => ({ ...x, [id]: r }))} results={checked} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
                 </div>
               )}
@@ -427,6 +441,11 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
                 {l}
               </button>
             ))}
+            {!!m.content && (
+              <button type="button" onClick={copy} data-tip="Copy, then paste into a task or another message">
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            )}
             {teacher && !!m.blocks && (
               <button type="button" onClick={onCopy}>
                 Copy to a lesson

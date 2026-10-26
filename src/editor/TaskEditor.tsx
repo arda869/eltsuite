@@ -1,3 +1,7 @@
+import { clipHtml, freshIds, readClip, type Clip } from '../lib/clip';
+import { carryMedia, remap } from '../lib/fullcopy';
+import { getHTMLFromFragment } from '@tiptap/core';
+import type { EditorView } from '@tiptap/pm/view';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -367,11 +371,23 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
       // Paste or drop pictures straight into the task: they are uploaded to the class.
-      handlePaste: (_view, e) => {
+      handlePaste: (view, e) => {
+        // Elements copied from a message or another task: with answers, pictures and sounds.
+        const clip = readClip(e.clipboardData?.getData('text/html'));
+        if (clip) {
+          e.preventDefault();
+          void pasteClip(clip);
+          return true;
+        }
+        void view;
         const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
         if (!files.length || !classRef.current) return false;
         pastePictures(files);
         return true;
+      },
+      handleDOMEvents: {
+        copy: (view, e) => copyOut(view, e as ClipboardEvent, false),
+        cut: (view, e) => copyOut(view, e as ClipboardEvent, true),
       },
       handleDrop: (_view, e) => {
         const files = Array.from((e as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
@@ -386,6 +402,33 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   classRef.current = classId;
   const editorRef = useRef<Editor | null>(null);
   editorRef.current = editor;
+  // Copy: the usual, plus the elements as JSON with where their media live.
+  function copyOut(view: EditorView, e: ClipboardEvent, cut: boolean) {
+    const sel = view.state.selection;
+    if (sel.empty || !e.clipboardData) return false;
+    const slice = sel.content();
+    const ed = editorRef.current;
+    if (!ed) return false;
+    const html = getHTMLFromFragment(slice.content, ed.schema);
+    const text = slice.content.textBetween(0, slice.content.size, '\n', ' ');
+    const json = (slice.content.toJSON() ?? []) as JSONContent[];
+    e.clipboardData.setData('text/html', clipHtml({ v: 1, space: classRef.current, content: json }, html, text));
+    e.clipboardData.setData('text/plain', text);
+    e.preventDefault();
+    if (cut) view.dispatch(view.state.tr.deleteSelection());
+    return true;
+  }
+  async function pasteClip(clip: Clip) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    let content = clip.content;
+    const to = classRef.current;
+    if (to && clip.space && clip.space !== to) {
+      const map = await carryMedia(clip.space, to, [content]).catch(() => ({}) as Record<string, string>);
+      content = remap(content, map) as JSONContent[];
+    }
+    ed.chain().focus().insertContent(content.map(freshIds)).run();
+  }
   async function pastePictures(files: File[]) {
     const ed = editorRef.current;
     if (!ed) return;

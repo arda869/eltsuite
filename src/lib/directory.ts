@@ -9,7 +9,7 @@ import type { Person } from './chat';
 // Who I can write to, in groups: my colleagues and the learners and teachers of each class
 // (for a teacher); my classmates and teachers (for a learner).
 
-export type Directory = { me: Person; groups: { id: string; label: string; people: Person[] }[] };
+export type Directory = { me: Person; groups: { id: string; label: string; people: Person[] }[]; learnerElements?: boolean };
 
 export function useDirectory(): Directory | null {
   const { user, profile } = useAuth();
@@ -28,6 +28,7 @@ export function useDirectory(): Directory | null {
         if (!dead)
           setDir({
             me,
+            learnerElements: cd?.messaging?.learnerElements !== false,
             groups: [
               { id: 'teachers', label: 'Teachers', people: teachers },
               { id: profile.classId, label: cd?.name ? `${cd.name} · classmates` : 'Classmates', people: roster.map((r) => ({ key: r.id, name: r.name, role: 'learner', classId: profile.classId })) },

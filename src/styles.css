@@ -4229,3 +4229,4 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .chat-actions { display: flex; align-items: center; gap: 10px; justify-content: flex-end; } .chat-actions .hint { margin-right: auto; font-size: 11.5px; }
 .chat-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
 .msg-side .ma-search { flex: 0 0 auto; height: 36px; }
+.chat-editor.text-only .tool[aria-label="Insert gap"], .chat-editor.text-only .tool[aria-label="Insert multiple choice in line"], .chat-editor.text-only .tool[aria-label="Everything you can add, with pictures"], .chat-editor.text-only .slash { display: none !important; }

@@ -26,6 +26,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [cover, setCover] = useState<string>(c.cover ?? 'preset:waves');
   const [showMarker, setShowMarker] = useState(c.teaching?.showMarker !== false);
   const [seeLearners, setSeeLearners] = useState(c.teaching?.seeLearners !== false);
+  const [learnerElements, setLearnerElements] = useState(c.messaging?.learnerElements !== false);
   const [showCodes, setShowCodes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -49,6 +50,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         themeColor,
         cover,
         teaching: { showMarker, seeLearners },
+        messaging: { learnerElements },
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -137,6 +139,13 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               <span className="hint">See which task each learner is on</span>
             </span>
             <input type="checkbox" checked={seeLearners} onChange={() => setSeeLearners((v) => !v)} />
+          </label>
+          <label className="switch-row">
+            <span>
+              Learners can send task elements in messages
+              <span className="hint">Questions, vocabulary boxes and other elements from + Add. When off, learners send text and pictures.</span>
+            </span>
+            <input type="checkbox" checked={learnerElements} onChange={() => setLearnerElements((v) => !v)} />
           </label>
         </div>
         <TeachersPanel c={c} />
