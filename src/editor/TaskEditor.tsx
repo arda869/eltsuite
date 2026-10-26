@@ -341,7 +341,7 @@ const TrailingLine = Extension.create({
   },
 });
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true }: { handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false }: { compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -569,12 +569,29 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     slashRef.current?.querySelector('.slash-item.on')?.scrollIntoView({ block: 'nearest' });
   }, [slash.index, slash.state]);
 
+  // A narrow toolbar (in a chat): the tools that fit, and an arrow that opens the rest on new lines.
+  const tbRef = useRef<HTMLDivElement>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [toolsOver, setToolsOver] = useState(false);
+  useEffect(() => {
+    const el = tbRef.current;
+    if (!compact || !el) return;
+    const check = () => {
+      const r = el.getBoundingClientRect();
+      const kids = Array.from(el.children).filter((k) => !(k as HTMLElement).classList.contains('tb-more-tools')) as HTMLElement[];
+      setToolsOver(kids.some((k) => k.getBoundingClientRect().right > r.right - 34 || k.offsetTop > 4));
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [compact, editor, toolsOpen]);
   if (!editor) return null;
 
   return (
     <EditorClassContext.Provider value={classCtx}>
     <div className={'task-editor' + (handles ? ' with-handles' : '')}>
-      <div className="toolbar" role="toolbar" aria-label="Formatting">
+      <div ref={tbRef} className={'toolbar' + (compact ? ' tb-compact' + (toolsOpen ? ' open' : '') : '')} role="toolbar" aria-label="Formatting">
         {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)}
         {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)}
         {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u className="ti ti-u">U</u>)}
@@ -615,6 +632,11 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         <IconTool editor={editor} />
         <SymbolTool editor={editor} />
         {BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
+        {compact && (toolsOver || toolsOpen) && (
+          <button type="button" className={'tb-more-tools' + (toolsOpen ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setToolsOpen((v) => !v)} aria-expanded={toolsOpen} aria-label={toolsOpen ? 'Fewer tools' : 'All the tools'} data-tip={toolsOpen ? 'Fewer tools' : 'All the tools'}>
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        )}
       </div>
       {picOpen && editor && <PictureDialog editor={editor} classId={classId} onClose={() => setPicOpen(false)} />}
       {gallery && (

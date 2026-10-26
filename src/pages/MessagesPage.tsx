@@ -327,6 +327,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
                 c={c}
                 me={me}
                 first={i === 0 || list[i - 1].by !== m.by || m.at - list[i - 1].at > 5 * 60000}
+                last={i === list.length - 1 || list[i + 1].by !== m.by || list[i + 1].at - m.at > 5 * 60000}
                 teacher={teacher}
                 onReply={() => (setReplyTo(m), setEditing(null))}
                 onEdit={() => startEdit(m)}
@@ -377,7 +378,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
         )}
         {err && <span className="error">{err}</span>}
         <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '')}>
-          <TaskEditor handles={false} key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
+          <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
         </div>
         <span className="chat-actions">
           {teacher && colleaguesHere.length > 0 && (
@@ -411,7 +412,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
   );
 }
 
-function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare }: { m: Msg; c: Chat; me: Person; first: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void }) {
+function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpenShare }: { m: Msg; c: Chat; me: Person; first: boolean; last?: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void }) {
   const mine = m.by === me.key;
   const [responses, setResponses] = useState<Responses>({});
   const [checked, setChecked] = useState<AnswerKey | null>(null);
@@ -446,14 +447,14 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
     if (await writeClip(clip(), m.text)) setCopied(true), window.setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <div className={'bub' + (mine ? ' mine' : '') + (first ? ' first' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '')} id={'m-' + m.id}>
-      {!mine && first && <span className="bub-av">{initial(m.name)}</span>}
+    <div className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '')} id={'m-' + m.id}>
+      {/* Like a messaging app: the picture by the last message of a run, the name over the first (in groups), the time inside the bubble. */}
+      {!mine && (last ? <span className="bub-av">{initial(m.name)}</span> : <span className="bub-av-space" />)}
       <div className="bub-col">
-        {first && (
+        {first && !mine && c.kind === 'group' && (
           <span className="bub-who">
-            {!mine && <b>{m.name}</b>}
-            {m.role === 'teacher' && !mine && c.kind === 'group' && <span className="ld-tag">Teacher</span>}
-            <span className="hint">{clock(m.at)}</span>
+            <b>{m.name.split(' ')[0]}</b>
+            {m.role === 'teacher' && <span className="ld-tag">Teacher</span>}
           </span>
         )}
         <div className="bub-box" onClick={(e) => !(e.target as HTMLElement).closest('button, a, input, textarea, select, label, .ProseMirror [contenteditable], [role=button]') && setSel((v) => !v)}>
@@ -524,7 +525,10 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
               )}
             </>
           )}
-          {m.edited && !m.deleted && <span className="bub-edited hint">edited</span>}
+          <span className="bub-meta">
+            {m.edited && !m.deleted && <span>edited · </span>}
+            {clock(m.at)}
+          </span>
         </div>
         {m.reactions && Object.values(m.reactions).some((l) => l.length) && (
           <span className="bub-reacts">
