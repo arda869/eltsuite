@@ -521,7 +521,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
               if (!list.length) return null;
               return (
                 <div key={g}>
-                  <span className="slash-group">{g}</span>
+                  <span className="slash-group">{g === 'Blocks' ? 'Lesson boxes' : g}</span>
                   {list.map((c) => {
                     const i = slash.items.indexOf(c);
                     return (

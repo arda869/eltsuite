@@ -1954,9 +1954,6 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
   .frame-foot > .hint, .frame-foot > .score { flex: 1 1 100%; }
   .foot-acts { flex: 1 1 100%; margin-left: 0; }
   .foot-acts .btn { flex: 1; min-width: 0; height: 42px; }
-  .foot-acts .foot-prev, .foot-acts .foot-next { flex: 0 0 48px; font-size: 0; padding: 0; }
-  .foot-acts .foot-prev::before { content: '←'; font-size: 18px; }
-  .foot-acts .foot-next::before { content: '→'; font-size: 18px; }
   .foot-acts .saved-auto { flex: 1; text-align: center; }
 
   /* Inputs at 16 px so phones don't zoom in when you tap them */
@@ -2771,14 +2768,11 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .icon-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon-tool.on { background: color-mix(in srgb, var(--accent) 12%, white); border-color: var(--accent); color: var(--accent-text); }
 .icon-tool:disabled { opacity: 0.45; cursor: default; }
-.icon-tool::after { content: attr(data-tip); position: absolute; top: calc(100% + 7px); left: 50%; transform: translate(-50%, -2px); padding: 5px 9px; border-radius: 7px; background: #2f2c29; color: #fff; font: 500 12px var(--sans); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.12s 0.25s, transform 0.12s 0.25s; z-index: 60; }
-.icon-tool:hover::after, .icon-tool:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
-.ink-bar .icon-tool::after { top: auto; bottom: calc(100% + 7px); }
 .topbar .icon-tool { margin: 0 -14px 0 0; } /* the top bar has wide gaps; icons sit closer */
 .topbar .icon-tool + .icon-tool, .topbar .menu-anchor + .icon-tool { margin-left: -6px; }
 .picking-name { display: inline-flex; align-items: center; height: 34px; padding: 0 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, white); color: var(--accent-text); font: 600 13px var(--sans); }
 .tool-group:last-of-type { border-right: 0; }
-@media (pointer: coarse) { .icon-tool { width: 40px; height: 40px; } .icon-tool::after { display: none; } }
+@media (pointer: coarse) { .icon-tool { width: 40px; height: 40px; } }
 .picked-banner { align-items: center; }
 .picked-x { margin-left: 6px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.16); color: #fff; font: 16px/1 var(--sans); cursor: pointer; display: grid; place-items: center; }
 .picked-x:hover { background: rgba(255, 255, 255, 0.3); }
@@ -2820,7 +2814,6 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .icon-row { display: inline-flex; gap: 6px; align-items: center; }
 a.icon-tool { text-decoration: none; }
 .icon-badge { position: absolute; top: -5px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 10px/16px var(--sans); text-align: center; }
-.signal-bar .icon-tool::after, .live-float .icon-tool::after { top: auto; bottom: calc(100% + 7px); }
 .signal-bar .icon-tool { width: 40px; height: 40px; border-radius: 12px; }
 
 /* ---- Use the whole screen on laptops and large monitors ---- */
@@ -2844,3 +2837,72 @@ a.icon-tool { text-decoration: none; }
 .add-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .add-row > input { flex: 1; min-width: 200px; font: inherit; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 6px 10px; }
 .type-pick { cursor: pointer; border-radius: 6px; } .type-pick:hover { background: #f3f1ee; }
 @media (max-width: 640px) { .add-item { margin-left: 0; } .add-kinds { grid-template-columns: 1fr 1fr; } }
+
+/* ---- Floating tooltip ---- */
+.tip-float { position: fixed; z-index: 1000; transform: translate(-50%, -100%); max-width: 280px; padding: 6px 10px; border-radius: 8px; background: #2f2c29; color: #fff; font: 500 12.5px/1.35 var(--sans); pointer-events: none; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); animation: tip-in 0.12s ease-out; text-align: center; }
+.tip-float.below { transform: translate(-50%, 0); }
+@keyframes tip-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- Previous / next: round arrows in the class colour ---- */
+.icon-tool.nav-arrow { width: 42px; height: 42px; border-radius: 50%; border-color: var(--accent); background: var(--accent); color: #fff; }
+.icon-tool.nav-arrow:hover { background: var(--accent-text); border-color: var(--accent-text); }
+.icon-tool.nav-arrow:disabled { background: #fff; color: var(--faint); border-color: var(--hair-strong); opacity: 1; }
+.icon-tool.nav-arrow.pulse:not(:disabled) { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); animation: nav-pulse 1.8s ease-out 2; }
+@keyframes nav-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+.foot-acts { align-items: center; }
+.reveal-ctl { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ======================================================================
+   Softer look: light grey page, white cards, class colour accents
+   ====================================================================== */
+:root { --page: #f5f4f1; --card: #ffffff; --tint: color-mix(in srgb, var(--accent) 8%, white); --tint-strong: color-mix(in srgb, var(--accent) 16%, white); }
+html, body { background: var(--page); }
+.shell { background: var(--page); }
+.topbar { background: transparent; border-bottom-color: rgba(51, 48, 44, 0.1); }
+.wordmark { color: var(--ink); }
+
+/* Cards and frames sit on the grey as white surfaces */
+.task-frame, .live-card, .todo, .board, .recaps .recap-list a, .disc-row > a, .disc-row > button, .post, .nb-card, .rp-section, .lessons .topic, .disc-new, .add-item { background: var(--card); }
+.task-frame { border-color: rgba(51, 48, 44, 0.08); box-shadow: 0 1px 2px rgba(51, 48, 44, 0.04), 0 8px 24px -12px rgba(51, 48, 44, 0.12); }
+.frame-head { background: linear-gradient(180deg, var(--tint), var(--card)); border-bottom-color: color-mix(in srgb, var(--accent) 18%, transparent); }
+.frame-foot { background: #fbfaf8; }
+.task-title { color: var(--ink); }
+.task-instr { color: var(--accent-text); }
+
+/* Task list: the current task is a white tab with the class colour */
+.task-row.on { background: var(--card); box-shadow: inset 3px 0 0 var(--accent), 0 1px 3px rgba(51, 48, 44, 0.08); }
+.task-row:not(.on):hover { background: rgba(255, 255, 255, 0.6); }
+.task-list .sec-label, .task-list .section-row { color: var(--accent-text); }
+
+/* Side panels: quiet grey, white blocks */
+.task-side { border-left-color: rgba(51, 48, 44, 0.08); }
+.task-side .seg, .seg { background: #ebe9e5; }
+.seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(51, 48, 44, 0.12); }
+
+/* Tabs use the class colour */
+.tabs { border-bottom-color: rgba(51, 48, 44, 0.1); }
+.tabs button.on { color: var(--accent-text); box-shadow: inset 0 -2px 0 var(--accent); }
+
+/* Buttons: white on the grey page; primary actions in the class colour */
+.btn { background: var(--card); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: var(--accent-text); border-color: var(--accent-text); }
+.icon-tool { background: var(--card); border-color: rgba(51, 48, 44, 0.14); }
+.icon-tool:hover { background: var(--tint); border-color: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-text); }
+
+/* Teacher home: each class is a bordered card with its colour on top */
+.classes { gap: 16px; }
+.class-card { position: relative; padding: 16px 18px 14px; border: 1px solid rgba(51, 48, 44, 0.1); border-radius: 14px; background: var(--card); box-shadow: inset 0 4px 0 var(--accent), 0 1px 2px rgba(51, 48, 44, 0.04); transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; }
+.class-card:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: inset 0 4px 0 var(--accent), 0 10px 24px -14px rgba(51, 48, 44, 0.3); }
+.class-card .name { font-size: 16px; }
+.class-card .code { margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(51, 48, 44, 0.07); }
+.attention { background: var(--card); border: 1px solid rgba(51, 48, 44, 0.08); border-radius: 14px; padding: 14px 16px; }
+
+/* Lessons list on the class page */
+.lessons .topic { border: 1px solid rgba(51, 48, 44, 0.08); border-radius: 14px; padding: 10px 14px 12px; }
+.topic-name { color: var(--ink); }
+.type-pick, .item-type { color: var(--accent-text); }
+
+/* Dialogs stay white */
+.dialog, .menu, .ctx-menu, .slash { background: var(--card); }
+.icon-tool.nav-arrow:hover:not(:disabled) { color: #fff; background: var(--accent-text); border-color: var(--accent-text); }

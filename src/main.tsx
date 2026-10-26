@@ -17,6 +17,7 @@ import { LearnerHome } from './pages/LearnerHome';
 import { LearnerRecap, SharedRecap } from './pages/RecapPages';
 import { LearnerDiscussion } from './pages/LearnerDiscussion';
 import { ProxyGate } from './components/ProxyGate';
+import { TooltipLayer } from './components/Tooltip';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
 
@@ -68,6 +69,7 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <BrowserRouter>
         <UpdateBanner />
+        <TooltipLayer />
         <ConnectionBanner />
         <ProxyGate>
         <Routes>

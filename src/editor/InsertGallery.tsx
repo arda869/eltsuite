@@ -12,7 +12,7 @@ const SECTIONS: Section[] = [
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['textbox', 'info', 'reveal', 'linkcard', 'image', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
-  { title: 'Coursebook blocks', blurb: 'Ready-made boxes with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
+  { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Board, notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['drawboard', 'grammarlink', 'vocablink', 'bankpick'] },
 ];
 

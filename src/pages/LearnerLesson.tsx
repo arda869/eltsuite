@@ -544,9 +544,7 @@ export function LearnerLesson() {
                   </span>
                 )}
                 <span className="foot-acts">
-                  <button className="btn foot-prev" aria-label="Previous task" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)}>
-                    Previous
-                  </button>
+                  <IconBtn icon="prev" label={synced ? 'Your teacher is moving the class' : 'Previous task'} className="nav-arrow foot-prev" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)} />
                   {scope ? (
                     examState === 'running' ? (
                       <button className="btn primary" onClick={() => submitNow()}>
@@ -573,9 +571,7 @@ export function LearnerLesson() {
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : 'Check answers'}
                       </button>
                     ))}
-                  <button className={'btn foot-next' + (checked || qs.length === 0 ? ' primary' : '')} aria-label="Next task" disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)}>
-                    Next
-                  </button>
+                  <IconBtn icon="next" label={synced ? 'Your teacher is moving the class' : 'Next task'} className={'nav-arrow foot-next' + (checked || qs.length === 0 ? ' pulse' : '')} disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)} />
                 </span>
               </div>
             </div>

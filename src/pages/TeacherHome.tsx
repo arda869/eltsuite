@@ -244,7 +244,7 @@ export function TeacherHome() {
                 const lessons = list.filter((i) => i.type === 'lesson').length;
                 const teaching = isLive(live[c.id]);
                 return (
-                  <Link key={c.id} to={`/class/${c.id}`} className="class-card">
+                  <Link key={c.id} to={`/class/${c.id}`} className="class-card" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
                     <span className="name">
                       <span className="dot" style={{ background: t.accent }} />
                       {c.name}

@@ -866,17 +866,9 @@ export function LessonEditor() {
                 {qCount > 0 && (
                   <span className="reveal-ctl" aria-label="Reveal answers">
                     <span className="hint">{revealN === 0 ? 'Answers hidden' : revealN < 0 || revealN >= qCount ? 'All answers shown' : `${revealN} of ${qCount} shown`}</span>
-                    <button type="button" className="btn small-btn" disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} title="Shortcut: R">
-                      Reveal next
-                    </button>
-                    <button type="button" className="btn small-btn" disabled={revealN < 0} onClick={revealAll} title="Shortcut: Shift + R">
-                      Reveal all
-                    </button>
-                    {(revealN !== 0 || singles.length > 0) && (
-                      <button type="button" className="btn small-btn" onClick={hideAnswers} title="Shortcut: H">
-                        Hide
-                      </button>
-                    )}
+                    <IconBtn icon="revealOne" label="Reveal the next answer (R)" disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
+                    <IconBtn icon="revealAll" label="Reveal all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
+                    {(revealN !== 0 || singles.length > 0) && <IconBtn icon="hideAnswers" label="Hide the answers again (H)" onClick={hideAnswers} />}
                   </span>
                 )}
               </span>
@@ -959,21 +951,10 @@ export function LessonEditor() {
                 <div className="frame-foot">
                   <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
-                    {!preview && (
-                      <button className="btn" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} title="Shortcut: ←">
-                        Previous
-                      </button>
-                    )}
-                    {!preview && (
-                      <button className="btn" disabled={!nextTask} onClick={() => nextTask && select(nextTask.id)} title="Shortcut: →">
-                        Next
-                      </button>
-                    )}
-                    {!preview ? (
-                      <button className="btn" onClick={() => setEditWhileTeaching(true)}>
-                        Edit task
-                      </button>
-                    ) : questionIds(previewKey?.content ?? null).every((q) => q.type === 'reflect') ? null : previewChecked ? (
+                    {!preview && <IconBtn icon="edit" label="Edit this task" onClick={() => setEditWhileTeaching(true)} />}
+                    {!preview && <IconBtn icon="prev" label="Previous task (←)" className="nav-arrow" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} />}
+                    {!preview && <IconBtn icon="next" label="Next task (→)" className="nav-arrow" disabled={!nextTask} onClick={() => nextTask && select(nextTask.id)} />}
+                    {!preview ? null : questionIds(previewKey?.content ?? null).every((q) => q.type === 'reflect') ? null : previewChecked ? (
                       <button className="btn" onClick={() => setPreviewChecked(false)}>
                         Try again
                       </button>
