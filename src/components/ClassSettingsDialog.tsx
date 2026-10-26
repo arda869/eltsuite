@@ -7,6 +7,7 @@ import { db } from '../lib/firebase';
 import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
+import { ClassKindPicker } from './NewClassDialog';
 import { LEARNER_TOOLS, learnerToolOn } from '../lib/toolbarPrefs';
 import { LIVE_AUDIO, type LiveAudioMode } from '../lib/liveAudio';
 
@@ -38,6 +39,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(c.accounts?.email ?? 'optional');
   const [tools, setTools] = useState<Record<string, boolean>>(() => Object.fromEntries(LEARNER_TOOLS.map((t) => [t.k, learnerToolOn(t.k, c.learnerTools)])));
   const [showTools, setShowTools] = useState(false);
+  const [kind, setKind] = useState<'language' | 'training'>(c.kind ?? 'language');
   const [liveAudio, setLiveAudio] = useState<LiveAudioMode>(c.liveAudio ?? 'self');
   const [learners, setLearners] = useState<{ id: string; name: string }[] | null>(null);
   useEffect(() => {
@@ -75,6 +77,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         accounts: { email: emailLink },
         learnerTools: tools,
         liveAudio,
+        kind,
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -95,7 +98,20 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           Class name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         </label>
-        <LevelPicker value={level} onChange={setLevel} />
+        <ClassKindPicker kind={kind} onChange={setKind} />
+        {c.kind === 'training' && kind === 'language' && (
+          <span className="error" role="alert">
+            As a language class, the teacher training tools are hidden: language analysis cards, lesson plans, observation forms, video comments and loop input notes no longer show in lessons. They come back if you change it back.
+          </span>
+        )}
+        {kind === 'language' ? (
+          <LevelPicker value={level} onChange={setLevel} />
+        ) : (
+          <label className="field">
+            Course
+            <input value={level} onChange={(e) => setLevel(e.target.value)} placeholder="For example: CELTA" />
+          </label>
+        )}
 
         <div className="field">
           Theme colour

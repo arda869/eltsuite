@@ -15,6 +15,7 @@ import { StressedWord } from '../editor/Stress';
 import { LinkMark, prosodyAttrs } from '../editor/Prosody';
 import { SubstSlot } from '../editor/Subst';
 import { PhonView } from '../editor/Phonemes';
+import { TimeNotes, TTBlock, useTrainingClass, type Fields, type TTKind } from '../training/Training';
 import { DictCutout } from '../editor/DictCut';
 import { glabelAttrs } from '../editor/Symbols';
 import { highlightBg } from '../editor/Highlight';
@@ -184,6 +185,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
+  const training = useTrainingClass(classId);
   const narrow = useNarrow();
   const [tab, setTab] = useState(0);
   // Covered pictures: boxes opened here. On the teaching screen the teacher's boxes open for the
@@ -1076,7 +1078,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'media':
         return node.attrs?.media ? (
           <div key={key} data-bk={key} className="task-media">
-            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} />
+            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} below={node.attrs.notes && classId && training ? (e) => <TimeNotes classId={classId} noteKey={String(node.attrs!.media)} time={e.time} seek={(t) => (e.seek(t), e.play())} teacher={teacher} /> : undefined} />
           </div>
         ) : null;
       case 'linkCard':
@@ -1125,6 +1127,15 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <StressedWord key={key} syllables={(node.attrs?.syllables as string[]) ?? []} stressed={Number(node.attrs?.stressed ?? 0)} style={(node.attrs?.style ?? 'box') as 'box' | 'bold' | 'big'} />;
       case 'plink':
         return <LinkMark key={key} k={String(node.attrs?.k ?? 'link')} s={String(node.attrs?.s ?? 'under')} />;
+      case 'tt': {
+        if (!training) return null;
+        const id = node.attrs?.id as string;
+        return (
+          <div key={key} className="tt-wrap">
+            <TTBlock kind={(node.attrs?.kind ?? 'analysis') as TTKind} title={String(node.attrs?.title ?? '')} mode={node.attrs?.mode === 'complete' ? 'complete' : 'model'} data={(node.attrs?.data ?? {}) as Record<string, string>} value={responses[id] as unknown as Fields | undefined} onChange={onChange && node.attrs?.mode === 'complete' ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={locked} />
+          </div>
+        );
+      }
       case 'phonChart':
       case 'phonCard':
         return <PhonView key={key} type={node.type} a={(node.attrs ?? {}) as Record<string, unknown>} />;

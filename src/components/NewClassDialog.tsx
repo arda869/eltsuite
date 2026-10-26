@@ -1,12 +1,14 @@
 import { LevelPicker } from './LevelPicker';
 import { useEffect, useState, type FormEvent } from 'react';
-import { createClass } from '../lib/classes';
+import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
 export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: string; onClose: () => void; onCreated: (id: string) => void }) {
   const [name, setName] = useState('');
   const [level, setLevel] = useState('B1');
   const [themeColor, setThemeColor] = useState<ThemeKey>('flame');
+  const [kind, setKind] = useState<ClassKind>('language');
+  const [course, setCourse] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,7 +24,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     setBusy(true);
     setError('');
     try {
-      const id = await createClass(teacherId, { name: name.trim(), level, themeColor });
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -39,7 +41,20 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           Class name
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="For example: B1 Evening Group" />
         </label>
-        <LevelPicker value={level} onChange={setLevel} />
+        <ClassKindPicker kind={kind} onChange={setKind} />
+        {kind === 'language' ? (
+          <LevelPicker value={level} onChange={setLevel} />
+        ) : (
+          <label className="field">
+            Course
+            <input value={course} onChange={(e) => setCourse(e.target.value)} list="tt-courses" placeholder="For example: CELTA, Delta Module 2, in-service training" />
+            <datalist id="tt-courses">
+              {['CELTA', 'CertTESOL', 'Delta Module 1', 'Delta Module 2', 'Delta Module 3', 'DipTESOL', 'TKT', 'In-service training', 'MA TESOL'].map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+        )}
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">
@@ -69,6 +84,32 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+export function ClassKindPicker({ kind, onChange }: { kind: ClassKind; onChange: (k: ClassKind) => void }) {
+  return (
+    <div className="field">
+      <span>What kind of class</span>
+      <div className="ck" role="radiogroup" aria-label="What kind of class">
+        <button type="button" role="radio" aria-checked={kind === 'language'} className={'ck-o' + (kind === 'language' ? ' on' : '')} onClick={() => onChange('language')}>
+          <b>A language class</b>
+          <span className="hint">Learners of English: lessons, tasks, live teaching, messages.</span>
+        </button>
+        <button type="button" role="radio" aria-checked={kind === 'training'} className={'ck-o' + (kind === 'training' ? ' on' : '')} onClick={() => onChange('training')}>
+          <b>Teacher training</b>
+          <span className="hint">Everything in a language class, and tools for training teachers.</span>
+        </button>
+      </div>
+      {kind === 'training' && (
+        <ul className="ck-adds">
+          {TRAINING_ADDS.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      )}
+      <span className="hint">You can change this later in class settings.</span>
     </div>
   );
 }

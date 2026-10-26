@@ -273,6 +273,13 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Teacher training: comments pinned to moments in a lesson video.
+      match /ttnotes/{key}/c/{noteId} {
+        allow read: if viewsClass(classId) || memberOf(classId);
+        allow create: if (teachesClass(classId) || memberOf(classId)) && request.resource.data.by == request.auth.uid && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
+        allow delete: if teachesClass(classId) || (signedIn() && resource.data.by == request.auth.uid);
+      }
+
       // Shared documents (Collaborate), listed so they can be found and continued
       match /collabs/{docId} {
         allow read: if viewsClass(classId) || memberOf(classId);

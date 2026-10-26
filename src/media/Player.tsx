@@ -562,7 +562,7 @@ function PlayerWave({ e, classId, mediaId, lines, locked, range, onRange }: { e:
 
 // teacher: the lesson editor (everything shows). teaching: the teaching screen, which the class may
 // see, so the script follows the setting and the teacher opens it with a button.
-export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void }) {
+export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode }) {
   const teacher = editing || teaching;
   const e = useEngine(classId, mediaId, manifest);
   const [open, setOpen] = useState(false);
@@ -715,6 +715,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
         </button>
       )}
       {!teacher && scriptMode === 'after' && lines.length > 0 && e.ends === 0 && <span className="mp-note">The script appears after you listen to the end.</span>}
+      {below?.(e)}
     </div>
   );
 }

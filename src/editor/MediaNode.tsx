@@ -89,6 +89,10 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
                 <option value={3}>Three times</option>
               </select>
             </label>
+            <label className="check-row up-shrink">
+              <input type="checkbox" checked={!!(a as MediaAttrs & { notes?: boolean }).notes} onChange={(e) => updateAttributes({ notes: e.target.checked })} />
+              Comments at moments in it: for lesson observation and feedback
+            </label>
             <span className="md-btns">
               <button type="button" className="btn small-btn" onClick={() => setScript(true)}>
                 <UiIcon name="script" size={14} /> Script and timing
@@ -129,6 +133,7 @@ export const MediaBlock = Node.create({
     scriptMode: { default: 'karaoke' },
     plays: { default: 0 },
     mute: { default: [] }, // speakers left silent when it plays (learners say their lines)
+    notes: { default: false }, // comments pinned to moments (observation and feedback)
   }),
   parseHTML: () => [{ tag: 'div[data-media]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-media': '' })],

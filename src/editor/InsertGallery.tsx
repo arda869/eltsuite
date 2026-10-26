@@ -14,6 +14,7 @@ const SECTIONS: Section[] = [
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'collab-slides', 'drawboard'] },
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans, observation and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['grammarlink', 'vocablink', 'bankpick'] },
 ];
@@ -63,6 +64,10 @@ const ABOUT: Record<string, string> = {
   reveal: 'Content hidden behind a button until a learner opens it: hints, answers, extra help.',
   media: 'A sound or video: record it in the app, upload a sound, or link to YouTube. Add a script that lights up word by word as it plays. Kept in your resources library, and on worksheets as a QR code.',
   linkcard: 'A card for a YouTube video, an audio file or a web page, played in place.',
+  'tt-analysis': 'Meaning, form and pronunciation of the target language, concept-checking questions, and problems learners may have, with solutions. A model to read, or for trainees to complete.',
+  'tt-plan': 'Main and subsidiary aims, assumptions, and the stages with aims, procedure, interaction and timing. Start from PPP, test-teach-test, task-based, ESA or a skills lesson.',
+  'tt-observe': 'Criteria for planning, language, teaching and learners, rated with evidence, then strengths and action points.',
+  'tt-loop': 'After you model a technique, trainees open the box to see what you did and why, with questions to discuss.',
   dictcut: 'A word’s dictionary entry, as if cut out of a printed dictionary page: meaning, examples, pronunciation, collocations, only the fields you fill in.',
   subst: 'The words that can go in one place of a sentence, stacked between two lines: I want to go to | Lisbon, Istanbul, Hong Kong | this summer.',
   image: 'Pictures from your computer, your resources library or a web address. Crop them, change the colour, or cover them for learners to reveal.',
@@ -447,6 +452,35 @@ const PREVIEW: Record<string, () => ReactNode> = {
       <Chip on>Show the answer ▾</Chip>
     </span>
   ),
+  'tt-analysis': () => (
+    <span className="gl-tt">
+      <i className="m">Meaning</i>
+      <i className="f">Form</i>
+      <i className="p">Pron.</i>
+    </span>
+  ),
+  'tt-plan': () => (
+    <span className="gl-col">
+      <Line w="60%" />
+      <span className="gl-tt-rows">
+        <i />
+        <i />
+        <i />
+      </span>
+    </span>
+  ),
+  'tt-observe': () => (
+    <span className="gl-col">
+      <span className="gl-tt-rate"><Line w="50%" faint /><b /><b className="on" /><b /></span>
+      <span className="gl-tt-rate"><Line w="40%" faint /><b /><b /><b className="on" /></span>
+      <span className="gl-tt-rate"><Line w="55%" faint /><b className="on" /><b /><b /></span>
+    </span>
+  ),
+  'tt-loop': () => (
+    <span className="gl-reveal">
+      <Chip on>Step back +</Chip>
+    </span>
+  ),
   dictcut: () => (
     <span className="gl-dcut">
       <b>re·luc·tant</b> <i>adj.</i>
@@ -757,7 +791,7 @@ export function InsertGallery({ commands, onPick, onClose }: { commands: Gallery
                 Favourites
                 <span className="hint">{favs.filter((k) => byKey[k]).length}</span>
               </button>
-              {SECTIONS.map((s, i) => (
+              {SECTIONS.map((s, i) => !s.keys.some((k) => byKey[k]) ? null : (
                 <button key={s.title} type="button" className={section === i ? 'on' : ''} onClick={() => setSection(i)}>
                   {s.title}
                   <span className="hint">{s.keys.filter((k) => byKey[k]).length}</span>

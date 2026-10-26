@@ -43,6 +43,7 @@ export type ClassDoc = {
   learnerTools?: Record<string, boolean>; // the text tools learners get when they write
   langs?: string[]; // languages the learners speak, for translations
   liveAudio?: 'self' | 'together' | 'teacher'; // who plays sounds and videos in live lessons
+  kind?: ClassKind; // a language class, or a teacher training course
 };
 
 // Messaging for learners: off; only with teachers; in groups the teacher makes; freely with each other.
@@ -81,7 +82,8 @@ export function makeClassCode(name: string) {
 }
 
 // Creates the class and reserves a unique class code in one transaction.
-export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey }) {
+export type ClassKind = 'language' | 'training';
+export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey; kind?: ClassKind }) {
   const classRef = doc(collection(db, 'classes'));
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = makeClassCode(input.name);
@@ -94,6 +96,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
         name: input.name,
         level: input.level,
         themeColor: input.themeColor,
+        kind: input.kind ?? 'language',
         classCode: code,
         status: 'active',
         learnerCount: 0,
@@ -108,7 +111,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('Could not find a free class code. Please try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });
@@ -146,3 +149,12 @@ export async function getClass(classId: string) {
 
 
 export const updateTopic = (classId: string, topicId: string, patch: Partial<Omit<Topic, 'id'>>) => updateDoc(doc(db, 'classes', classId, 'topics', topicId), patch);
+
+// What a teacher training course adds, shown when a class is made or changed.
+export const TRAINING_ADDS = [
+  'Language analysis cards: meaning, form, pronunciation, concept questions, problems and solutions',
+  'Lesson plan templates with PPP, test-teach-test, task-based, ESA and skills frameworks',
+  'Observation forms with criteria, strengths and action points',
+  'Comments pinned to moments in a lesson video, for feedback',
+  'Loop input: a step-back note you reveal after modelling a technique',
+];

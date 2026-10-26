@@ -5766,3 +5766,59 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .dp.k-lesson { --dp: #c8764a; } .dp-icon.k-lesson { color: #c8764a; }
 .al-doc-art.k-lesson { display: grid; place-items: center; } .al-doc-art.k-lesson svg { width: 40px; height: 40px; }
 @media (max-width: 860px) { .lf { grid-template-columns: 1fr; } .lf-side { position: static; max-height: none; } }
+
+/* Teacher training */
+.ck { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ck-o { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 12px 14px; border: 0; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); font: 14px var(--sans); color: inherit; cursor: pointer; }
+.ck-o.on { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--paper)); }
+.ck-adds { margin: 6px 0 0; padding: 10px 12px 10px 28px; border-radius: 10px; background: var(--surface); font: 13px/1.5 var(--sans); }
+.tt { --tt: #4f6b7a; display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px color-mix(in srgb, var(--tt) 22%, var(--hair)); border-top: 4px solid var(--tt); }
+.tt.k-plan { --tt: #3667a6; } .tt.k-observe { --tt: #7a4fa3; } .tt.k-loop { --tt: #a8701f; }
+.tt-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tt-head b { font: 500 18px var(--serif); }
+.tt-kind { font: 700 10.5px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--tt); }
+.tt-title { font: 500 17px var(--serif); border: 0; border-bottom: 1px solid var(--hair); background: none; padding: 4px 0; margin: 4px 0; color: var(--ink); }
+.tt-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tt-f { display: flex; flex-direction: column; gap: 5px; font: 13px var(--sans); }
+.tt-f > span:first-child { font-weight: 600; }
+.tt-f.wide { grid-column: 1 / -1; }
+.tt-in { width: 100%; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 9px; font: 14px/1.45 var(--sans); background: var(--paper); color: inherit; resize: vertical; }
+.tt-ro { display: block; font: 15px/1.5 var(--serif); white-space: pre-wrap; }
+.tt-mfp { align-self: flex-start; padding: 2px 10px; border-radius: 999px; color: #fff; font: 700 11px var(--sans) !important; letter-spacing: 0.06em; text-transform: uppercase; }
+.tt-mfp.m { background: #3667a6; } .tt-mfp.f { background: #7a4fa3; } .tt-mfp.p { background: #a8701f; }
+.tt-ccq { margin: 0; padding-left: 22px; font: 15px/1.6 var(--serif); }
+.tt-table { width: 100%; border-collapse: collapse; font: 14px var(--sans); }
+.tt-table th { text-align: left; font: 700 11px var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--tt); padding: 6px 8px; border-bottom: 2px solid color-mix(in srgb, var(--tt) 30%, transparent); }
+.tt-table td { padding: 6px 8px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+.tt-stages .tt-table td { padding: 4px; }
+.tt-stages .tt-in { border-color: transparent; background: var(--surface); }
+.tt-stages td.c-proc { width: 38%; } .tt-stages td.c-time { width: 70px; } .tt-stages td.c-int { width: 96px; }
+.tt-stages select { width: 100%; padding: 6px; border-radius: 8px; border: 1px solid var(--hair); background: var(--paper); font: 13px var(--sans); }
+.tt-frames { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tt-rowacts { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+.tt-crit { display: flex; flex-direction: column; gap: 6px; }
+.tt-crit-h { font: 700 11px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--tt); margin-top: 6px; }
+.tt-crit-row { display: grid; grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1.4fr); gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--hair); }
+.tt-crit-t { font: 14px var(--sans); }
+.tt-rate { display: inline-flex; border-radius: 999px; box-shadow: 0 0 0 1px var(--hair); overflow: hidden; }
+.tt-rate button { border: 0; background: var(--paper); padding: 5px 10px; font: 12px var(--sans); color: var(--muted); cursor: pointer; }
+.tt-rate button + button { border-left: 1px solid var(--hair); }
+.tt-rate button.on { background: var(--tt); color: #fff; }
+.tt-rate button:disabled { cursor: default; }
+.tt-loop-btn { display: flex; align-items: center; gap: 10px; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; padding: 0; }
+.tt-loop-btn b { font: 500 17px var(--serif); flex: 1; }
+.tt-loop-chev { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 999px; background: color-mix(in srgb, var(--tt) 14%, var(--paper)); color: var(--tt); font: 700 18px var(--sans); }
+@media (max-width: 760px) { .tt-grid { grid-template-columns: 1fr; } .tt-crit-row { grid-template-columns: 1fr; } .ck { grid-template-columns: 1fr; } }
+/* Comments at moments in a video */
+.tn { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hair); }
+.tn-add { display: flex; gap: 8px; align-items: center; }
+.tn-at { font: 700 12px var(--sans); color: var(--accent-text); min-width: 42px; }
+.tn-add input { flex: 1; padding: 7px 10px; border: 1px solid var(--hair); border-radius: 9px; font: 14px var(--sans); }
+.tn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; }
+.tn-list li { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; padding: 6px 8px; border-radius: 8px; font: 14px var(--sans); }
+.tn-list li.now { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.tn-t { border: 0; background: none; font: 700 12px var(--sans); color: var(--accent-text); cursor: pointer; padding: 0; }
+.gl-tt { display: flex; gap: 4px; } .gl-tt i { padding: 3px 7px; border-radius: 99px; color: #fff; font: 700 9px var(--sans); font-style: normal; }
+.gl-tt .m { background: #3667a6; } .gl-tt .f { background: #7a4fa3; } .gl-tt .p { background: #a8701f; }
+.gl-tt-rows { display: flex; flex-direction: column; gap: 3px; } .gl-tt-rows i { display: block; height: 8px; border-radius: 3px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--hair); width: 120px; }
+.gl-tt-rate { display: flex; align-items: center; gap: 3px; } .gl-tt-rate b { width: 12px; height: 8px; border-radius: 3px; background: var(--surface); } .gl-tt-rate b.on { background: #7a4fa3; }

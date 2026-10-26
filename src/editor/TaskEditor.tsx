@@ -27,6 +27,7 @@ import { Stress, newStress } from './Stress';
 import { ProsodyTool } from './Prosody';
 import { LANG_MARKS } from './langMarks';
 import { newPhonCard, newPhonChart } from './Phonemes';
+import { TTNode, newTT, useTrainingClass } from '../training/Training';
 import { noteSlash, topSlash } from '../lib/slashUse';
 import { useToolGate } from '../lib/toolbarPrefs';
 import { DictCut } from './DictCut';
@@ -181,6 +182,10 @@ const COMMANDS: Cmd[] = [
     },
   },
   { key: 'dictcut', label: 'Dictionary cutout', hint: 'A word’s entry, as if cut out of a dictionary page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'dictCut', attrs: { word: '', data: {} } }, { type: 'paragraph' }]).run() },
+  { key: 'tt-analysis', label: 'Language analysis', hint: 'Meaning, form, pronunciation, concept questions, problems and solutions', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('analysis'), { type: 'paragraph' }]).run() },
+  { key: 'tt-plan', label: 'Lesson plan', hint: 'Aims, assumptions and stages, from a framework', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('plan'), { type: 'paragraph' }]).run() },
+  { key: 'tt-observe', label: 'Observation form', hint: 'Criteria, strengths and action points', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('observe'), { type: 'paragraph' }]).run() },
+  { key: 'tt-loop', label: 'Loop input: step back', hint: 'What you just modelled, and why; trainees open it after', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('loop'), { type: 'paragraph' }]).run() },
   { key: 'phonchart', label: 'Phonemic chart', hint: 'The sounds of English, British or American; tap to hear', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonChart()).run() },
   { key: 'phoncard', label: 'Sound card', hint: 'One sound, in its colour, with an example word', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonCard('sound')).run() },
   { key: 'phonhow', label: 'How a sound is made', hint: 'Place and manner, or tongue and lips, for one sound', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonCard('how')).run() },
@@ -203,7 +208,7 @@ const COMMANDS: Cmd[] = [
 // Writing that is not a task (an email): only text tools, no questions or task elements.
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
 const TEXT_ONLY = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
-function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
+function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
   const [all, setAll] = useState(false);
@@ -244,14 +249,14 @@ function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      const fit = [...COMMANDS, ...extra].filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
+      const fit = [...COMMANDS, ...extra].filter((c) => training || !c.key.startsWith('tt-')).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
       const q = state.query.trim();
       if (q) return fit.filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(q));
       // Just "/": the teacher's three most used, then "Show all".
       if (!all && fit.length > 4) return [...topSlash(fit, 3), MORE];
       return fit;
     },
-    [state, editor, extra, textOnly, all],
+    [state, editor, extra, textOnly, all, training],
   );
 
   const choose = (c: Cmd) => {
@@ -321,7 +326,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
+const TOP_ONLY = ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -441,6 +446,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       Stress,
       ...LANG_MARKS,
       DictCut,
+      TTNode,
       Ipa,
       LessonLink,
       jsonClip(Reflect, 'div', 'data-reflect'),
@@ -531,7 +537,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     () => (onPickBank ? [{ key: 'bankpick', label: 'From my question bank…', hint: 'Insert a saved question or task', group: 'Questions', run: (e) => onPickBank((nodes) => e.chain().focus().insertContent(nodes).run()) }] : []),
     [onPickBank],
   );
-  const slash = useSlash(editor, bankCmds, textOnly);
+  const training = useTrainingClass(classId);
+  const slash = useSlash(editor, bankCmds, textOnly, training);
   const toolPlace = useToolGate();
   const [moreOpen, setMoreOpen] = useState(false);
   const [gallery, setGallery] = useState(false);
@@ -726,7 +733,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       {picOpen && editor && <PictureDialog editor={editor} classId={classId} onClose={() => setPicOpen(false)} />}
       {gallery && (
         <InsertGallery
-          commands={[...COMMANDS, ...bankCmds]}
+          commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-'))}
           onClose={() => setGallery(false)}
           onPick={(key) => {
             setGallery(false);
