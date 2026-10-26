@@ -43,7 +43,7 @@ export function LearnerDiscussion() {
           <TextSizeControl />
         </span>
       </header>
-      <main style={{ maxWidth: 820 }}>
+      <main>
         {c && <DiscussionBoard c={c} me={{ uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false }} people={people} open={tid ?? null} onOpen={(id) => navigate(id ? `/discuss/${id}` : '/discuss')} threadLink={(id) => `/discuss/${id}`} />}
       </main>
     </div>

@@ -42,6 +42,7 @@ import { WorksheetDialog } from '../components/WorksheetDialog';
 import { RecapDialog } from '../components/Recap';
 import { IconBtn } from '../components/UiIcon';
 import { NotesEditor } from '../editor/NotesEditor';
+import { ViewAsLearner } from '../components/ViewAsLearner';
 import { BankPicker, SaveToBankDialog } from '../components/QuestionBank';
 import { withFreshIds } from '../lib/bank';
 import { startThread } from '../lib/discussion';
@@ -1056,6 +1057,7 @@ export function LessonEditor() {
               <button className={'btn block' + (preview ? ' primary' : '')} onClick={() => (flush(), setPreview((p) => !p))}>
                 {preview ? 'Back to editing' : 'Preview as learner'}
               </button>
+              <ViewAsLearner classId={classId} classCode={c?.classCode ?? ''} roster={classmates} path={`/learn/${itemId}?task=${task.id}`} />
               <button type="button" className="btn link small" onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
                 Save task to my bank
               </button>

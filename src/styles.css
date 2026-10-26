@@ -2808,3 +2808,39 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .notes-body .ProseMirror p { margin: 0 0 6px; } .notes-body .ProseMirror h3 { font: 600 15px var(--serif); margin: 8px 0 4px; } .notes-body .ProseMirror ul, .notes-body .ProseMirror ol { margin: 0 0 6px; padding-left: 20px; }
 .notes-body .ProseMirror a { color: var(--accent-text); }
 .notes-body .ProseMirror p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--soft); float: left; height: 0; pointer-events: none; }
+
+/* ---- No sideways scrolling in a task: content wraps; only wide pieces scroll inside themselves ---- */
+.frame-body, .task-columns .col, .task-columns.separate .col { overflow-x: hidden; overflow-y: auto; }
+.frame-body .ProseMirror, .frame-body .task-doc, .frame-body p, .frame-body li { overflow-wrap: break-word; }
+.frame-body img, .frame-body video, .frame-body iframe { max-width: 100%; height: auto; }
+.frame-body .tableWrapper, .frame-body .table-wrap-task, .pq-cw-wrap > .pq-cw-grid, .pq-cw-wrap > .pq-ws-grid, .lgrid { max-width: 100%; overflow-x: auto; }
+.shell.wide .task-side { overflow-x: hidden; }
+.task-side .seg { flex-wrap: wrap; }
+.task-side .seg button { flex: 1 1 auto; white-space: nowrap; }
+.icon-row { display: inline-flex; gap: 6px; align-items: center; }
+a.icon-tool { text-decoration: none; }
+.icon-badge { position: absolute; top: -5px; right: -6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 10px/16px var(--sans); text-align: center; }
+.signal-bar .icon-tool::after, .live-float .icon-tool::after { top: auto; bottom: calc(100% + 7px); }
+.signal-bar .icon-tool { width: 40px; height: 40px; border-radius: 12px; }
+
+/* ---- Use the whole screen on laptops and large monitors ---- */
+.shell, .shell.wide { max-width: none; }
+.lesson-layout.present .center-col, .lesson-layout.fullscreen .center-col { max-width: none; }
+.topbar .icon-row .icon-tool { margin: 0; }
+.lessons { max-width: none; }
+.proxy-bar { position: sticky; top: 0; z-index: 90; display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 8px 16px; background: #2f2c29; color: #fff; font: 14px var(--sans); }
+.proxy-bar strong { color: #f1c7a5; }
+.va-menu { max-height: 320px; overflow: auto; left: 0; right: auto; min-width: 220px; }
+.proxy-bar .btn { color: var(--ink); background: #fff; }
+
+/* ---- + Add lesson, homework, exam or practice ---- */
+.add-item { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--hair); border-radius: 14px; background: #fcfbfa; margin: 6px 0 4px 84px; max-width: 760px; }
+.add-kinds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.add-kind { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 10px; background: #fff; font: inherit; color: inherit; cursor: pointer; }
+.add-kind:hover { border-color: var(--hair-strong); }
+.add-kind.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.add-kind-name { font: 600 14px var(--sans); }
+.add-kind .hint { font-size: 12px; line-height: 1.35; }
+.add-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .add-row > input { flex: 1; min-width: 200px; font: inherit; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 6px 10px; }
+.type-pick { cursor: pointer; border-radius: 6px; } .type-pick:hover { background: #f3f1ee; }
+@media (max-width: 640px) { .add-item { margin-left: 0; } .add-kinds { grid-template-columns: 1fr 1fr; } }

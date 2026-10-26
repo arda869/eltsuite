@@ -1,3 +1,4 @@
+import { IconBtn } from './UiIcon';
 import { useEffect, useRef, useState } from 'react';
 import { acknowledge, chime, useAnnouncements } from '../lib/announce';
 import { setSignal, useMySignal, type Reaction } from '../lib/session';
@@ -95,18 +96,10 @@ export function SignalBar({ classId, uid, name, learnerId }: { classId: string; 
   const send = (p: Parameters<typeof setSignal>[2]) => setSignal(classId, uid, { name, learnerId, ...p });
   return (
     <div className="signal-bar" role="group" aria-label="Tell your teacher">
-      <button type="button" className={'sig-btn' + (me?.hand ? ' on' : '')} aria-pressed={!!me?.hand} onClick={() => send({ hand: !me?.hand, handAt: Date.now() })} title="Raise your hand">
-        <Icon name="wave" size="18" />
-        <span>{me?.hand ? 'Hand up' : 'Raise hand'}</span>
-      </button>
-      <button type="button" className={'sig-btn' + (me?.stuck ? ' on' : '')} aria-pressed={!!me?.stuck} onClick={() => send({ stuck: !me?.stuck })} title="Tell your teacher you need help">
-        <Icon name="question" size="18" />
-        <span>{me?.stuck ? 'I’m stuck' : 'I’m stuck?'}</span>
-      </button>
+      <IconBtn icon="hand" label={me?.hand ? 'Your hand is up · lower it' : 'Raise your hand'} active={!!me?.hand} onClick={() => send({ hand: !me?.hand, handAt: Date.now() })} />
+      <IconBtn icon="stuck" label={me?.stuck ? 'Your teacher knows you need help · click when you are fine' : 'I’m stuck: tell your teacher'} active={!!me?.stuck} onClick={() => send({ stuck: !me?.stuck })} />
       <span className="sig-react">
-        <button type="button" className="sig-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Send a reaction">
-          <Icon name="smile" size="18" />
-        </button>
+        <IconBtn icon="react" label="Send a reaction" aria-expanded={open} active={open} onClick={() => setOpen((o) => !o)} />
         {open && (
           <span className="sig-pop">
             {REACTIONS.map((r) => (

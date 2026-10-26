@@ -106,9 +106,9 @@ export const renameTopic = (classId: string, topicId: string, name: string) =>
 
 export const deleteTopic = (classId: string, topicId: string) => deleteDoc(doc(db, 'classes', classId, 'topics', topicId));
 
-export async function addItem(classId: string, topicId: string | null, title: string, order: number) {
+export async function addItem(classId: string, topicId: string | null, title: string, order: number, type: Item['type'] = 'lesson', due: number | null = null) {
   const ref = doc(collection(db, 'classes', classId, 'items'));
-  await setDoc(ref, { topicId, type: 'lesson', title, order, hidden: false, locked: false, createdAt: serverTimestamp() });
+  await setDoc(ref, { topicId, type, title, order, hidden: false, locked: false, ...(type === 'exam' ? { exam: { minutes: null }, examReleased: false } : {}), ...(due ? { due } : {}), createdAt: serverTimestamp() });
   return ref.id;
 }
 

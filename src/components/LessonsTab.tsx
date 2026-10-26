@@ -5,6 +5,7 @@ import { ImportDialog } from './ImportDialog';
 import { classText, download } from '../lib/transfer';
 import { classBundle, downloadJson } from '../lib/fullcopy';
 import { RecapDialog } from './Recap';
+import { IconBtn } from './UiIcon';
 import { copyLesson } from '../lib/copy';
 import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, updateTopic, type ClassDoc, type Item, type Topic } from '../lib/classes';
 
@@ -68,6 +69,69 @@ function InlineAdd({ placeholder, label, onAdd }: { placeholder: string; label: 
       <button type="button" className="btn small-btn" onClick={() => setOpen(false)}>
         Cancel
       </button>
+    </form>
+  );
+}
+
+const KINDS: { type: Item['type']; label: string; about: string }[] = [
+  { type: 'lesson', label: 'Lesson', about: 'Taught live; learners follow you' },
+  { type: 'homework', label: 'Homework', about: 'Self-paced, with a due date' },
+  { type: 'exam', label: 'Exam', about: 'Start button, timer, results you release' },
+  { type: 'practice', label: 'Practice', about: 'Always open, try again as often as they like' },
+];
+
+// "+ Add": choose what to add, give it a title (and a due date for homework and exams).
+function AddItem({ onAdd }: { onAdd: (title: string, type: Item['type'], due: number | null) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<Item['type']>('lesson');
+  const [title, setTitle] = useState('');
+  const [due, setDue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const label = KINDS.find((k) => k.type === type)!.label;
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!title.trim()) return;
+    setBusy(true);
+    try {
+      await onAdd(title.trim(), type, due && (type === 'homework' || type === 'exam') ? new Date(due).getTime() : null);
+      setTitle('');
+      setDue('');
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (!open)
+    return (
+      <button type="button" className="btn link small add-link" onClick={() => setOpen(true)}>
+        + Add lesson, homework, exam or practice
+      </button>
+    );
+  return (
+    <form className="add-item" onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
+      <div className="add-kinds" role="radiogroup" aria-label="What to add">
+        {KINDS.map((k) => (
+          <button key={k.type} type="button" role="radio" aria-checked={type === k.type} className={'add-kind' + (type === k.type ? ' on' : '')} onClick={() => setType(k.type)}>
+            <span className="add-kind-name">{k.label}</span>
+            <span className="hint">{k.about}</span>
+          </button>
+        ))}
+      </div>
+      <span className="add-row">
+        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`${label} title`} maxLength={120} aria-label="Title" />
+        {(type === 'homework' || type === 'exam') && (
+          <label className="item-due">
+            <span className="hint">Due</span>
+            <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
+          </label>
+        )}
+        <button className="btn primary small-btn" disabled={busy || !title.trim()}>
+          Add {label.toLowerCase()}
+        </button>
+        <button type="button" className="btn small-btn" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </span>
     </form>
   );
 }
@@ -299,12 +363,10 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
   return (
     <div className="lessons">
       <div className="lessons-tools">
-        <button type="button" className="btn small-btn" onClick={() => setImporting(true)}>
-          Import a lesson
-        </button>
-        <button
-          type="button"
-          className="btn small-btn"
+        <IconBtn icon="import" label="Import a lesson: text, Moodle GIFT or a full copy" onClick={() => setImporting(true)} />
+        <IconBtn
+          icon="export"
+          label={exporting ? 'Exporting…' : 'Export the class as text'}
           disabled={exporting}
           onClick={async () => {
             setExporting(true);
@@ -314,14 +376,11 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
               setExporting(false);
             }
           }}
-        >
-          {exporting ? 'Exporting…' : 'Export the class as text'}
-        </button>
-        <button
-          type="button"
-          className="btn small-btn"
+        />
+        <IconBtn
+          icon="copyall"
+          label="Full copy of the class (with boards and pictures)"
           disabled={exporting}
-          title="Every lesson with answer keys, notes, board drawings and pictures, in one file you can import into another class"
           onClick={async () => {
             setExporting(true);
             try {
@@ -330,9 +389,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
               setExporting(false);
             }
           }}
-        >
-          Full copy of the class
-        </button>
+        />
       </div>
       {importing && <ImportDialog classId={c.id} topics={sortedTopics} onClose={() => setImporting(false)} />}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
@@ -387,7 +444,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
               ))}
             </ul>
             <div className="indent">
-              <InlineAdd label="+ Add lesson" placeholder="Lesson title" onAdd={async (title) => void (await addItem(c.id, t.id, title, nextOrder(list)))} />
+              <AddItem onAdd={async (title, type, due) => void (await addItem(c.id, t.id, title, nextOrder(list), type, due))} />
             </div>
           </section>
         );
@@ -403,6 +460,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
               <ItemRow key={i.id} c={c} item={i} list={unsorted} topics={sortedTopics} onResults={onResults} />
             ))}
           </ul>
+          <AddItem onAdd={async (title, type, due) => void (await addItem(c.id, null, title, nextOrder(unsorted), type, due))} />
         </section>
       )}
 

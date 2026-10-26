@@ -43,6 +43,7 @@ import { TEXT_SCALE } from '../lib/auth';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
 import { useThreads } from '../lib/discussion';
+import { IconBtn, IconLink } from '../components/UiIcon';
 import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
@@ -343,15 +344,10 @@ export function LearnerLesson() {
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
         <span className="right-push" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button type="button" className="btn small-btn" onClick={() => setNbOpen(true)} title="Class notebook and my notebook">
-            Notebook
-          </button>
+          {c?.meeting?.url && c.meeting.visibility === 'always' && <IconLink icon="call" label="Join the call" href={c.meeting.url} />}
+          <IconLink icon="discuss" label="Class discussion" to="/discuss" />
+          <IconBtn icon="notebook" label="Notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
           <TextSizeControl />
-        {c?.meeting?.url && c.meeting.visibility === 'always' && (
-          <a className="btn small-btn right-push" href={c.meeting.url} target="_blank" rel="noopener noreferrer">
-            Join call
-          </a>
-        )}
         </span>
       </header>
 

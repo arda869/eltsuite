@@ -1,3 +1,4 @@
+import { openAsLearner } from '../lib/proxy';
 import { useState, type FormEvent } from 'react';
 import { addLearners, removeLearner, resetPin, type Learner } from '../lib/learners';
 import type { ClassDoc } from '../lib/classes';
@@ -139,6 +140,9 @@ export function LearnersTab({ c, learners, pins }: { c: ClassDoc; learners: Lear
                       </span>
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button className="btn small-btn" disabled={!pins[l.id]} title="Open a new tab signed in as this learner" onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || window.alert('Your browser blocked the new tab. Allow pop-ups for this site.')}>
+                        View as {l.displayName.split(' ')[0]}
+                      </button>{' '}
                       <button className="btn small-btn" disabled={busy === l.id} onClick={() => reset(l)}>
                         {busy === l.id ? 'Working…' : 'Reset PIN'}
                       </button>{' '}

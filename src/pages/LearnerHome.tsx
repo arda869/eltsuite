@@ -4,7 +4,9 @@ import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
+import { IconLink } from '../components/UiIcon';
 import { useMyRecaps } from '../lib/recap';
+import { isProxyTab } from '../lib/proxy';
 import { isUnread, readSeen, useThreads } from '../lib/discussion';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
@@ -50,7 +52,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [menu, setMenu] = useState(false);
   const [picking, setPicking] = useState(false);
   // First visit: invite the learner to choose a picture.
-  const [askPicture, setAskPicture] = useState(true);
+  const [askPicture, setAskPicture] = useState(() => !isProxyTab()) // a teacher viewing as the learner is not asked to choose their picture;
   const [live, setLiveState] = useState<LiveState | null>(null);
 
   useEffect(() => {
@@ -105,12 +107,10 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       <header className="topbar">
         <Wordmark />
         <span className="sub">{c?.name ?? ''}</span>
-        <Link className="btn small-btn nb-link" to="/notebook">
-          Notebook
-        </Link>
-        <Link className="btn small-btn nb-link" to="/discuss">
-          Discussion{unreadThreads ? <span className="board-badge" style={{ marginLeft: 6 }}>{unreadThreads}</span> : null}
-        </Link>
+        <span className="nb-link icon-row">
+          <IconLink icon="notebook" label="Notebook" to="/notebook" />
+          <IconLink icon="discuss" label={unreadThreads ? `Discussion · ${unreadThreads} new` : 'Discussion'} to="/discuss" badge={unreadThreads ? <span className="icon-badge">{unreadThreads}</span> : null} />
+        </span>
         <div className="right">
           <button className="avatar" style={{ background: '#eef4ef', color: '#4e6b55' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : initials(name)}
@@ -136,7 +136,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       {c === null || c?.status === 'deleted' ? (
         <p className="placeholder">You’re no longer in this class. Ask your teacher if this is a mistake.</p>
       ) : (
-        <main style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 820 }}>
+        <main style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <h1 className="page-title">Hello, {firstName}</h1>
             <span className="sub">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
