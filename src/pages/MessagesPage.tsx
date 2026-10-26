@@ -1,4 +1,5 @@
 import { ask } from '../lib/ask';
+import { FileIcon, type FileKind } from '../components/FileIcon';
 import { isProxyTab } from '../lib/proxy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -524,9 +525,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
               ))}
               {m.share && (
                 <button type="button" className="bub-share" onClick={() => onOpenShare(m.share!.id)}>
-                  <span className="sh-ic">
-                    <UiIcon name={m.share.kind === 'media' ? 'picture' : m.share.kind === 'doc' ? 'discuss' : 'task'} size={16} />
-                  </span>
+                  <FileIcon kind={(m.share.kind as FileKind) || 'lesson'} size={36} />
                   <span className="sh-pt">
                     <b>{m.share.title}</b>
                     <span className="hint">

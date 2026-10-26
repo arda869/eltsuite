@@ -1,9 +1,9 @@
 import { ask } from '../lib/ask';
+import { FileIcon, type FileKind } from './FileIcon';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { createShare, refreshShare, setShareAccess, shareLink, stopShare, useColleagues, useMyShares, type Share } from '../lib/sharing';
-import { UiIcon } from './UiIcon';
 
 // Share with colleagues: a read-only copy, for chosen colleagues or anyone with the link.
 // Opened again for the same thing, it shows the share as it is, to change or stop.
@@ -55,9 +55,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
     <div className="scrim" onClick={onClose}>
       <div className="dialog sh-dialog" role="dialog" aria-label="Share" onClick={(e) => e.stopPropagation()}>
         <span className="sh-head">
-          <span className="sh-ic">
-            <UiIcon name="link" size={18} />
-          </span>
+          <FileIcon kind={(what.kind as FileKind) || 'lesson'} size={38} />
           <span>
             <h2 style={{ margin: 0 }}>Share “{what.title}”</h2>
             <span className="hint">Colleagues get a read-only copy of this {KIND[what.kind]}. They can make their own copy to change. Learners’ work is never shared.</span>

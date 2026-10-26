@@ -18,6 +18,8 @@ import { MediaPlayer } from '../media/Player';
 import { ScriptEditor } from '../media/ScriptEditor';
 import { fmtTime } from '../lib/sound';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
+import { FileIcon, FolderIcon } from '../components/FileIcon';
+import { askText } from '../lib/ask';
 import { PIC_QUALITY, uploadPicture, type PicQuality } from '../editor/PackNode';
 
 // The media archive: every picture, sound and video the teacher has added, to use again in any
@@ -31,6 +33,17 @@ const KINDS = [
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Sort = 'new' | 'name' | 'size';
+type View = 'icons' | 'list' | 'time';
+const VIEWS: { k: View; label: string }[] = [
+  { k: 'icons', label: 'Icons' },
+  { k: 'list', label: 'List' },
+  { k: 'time', label: 'Timeline' },
+];
+const MOVE = 'application/x-ll-media';
+const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Earlier');
+const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
+const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
+const kindName = (k: string) => (k === 'image' ? 'Picture' : k === 'video' ? 'Video' : 'Sound');
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
@@ -53,7 +66,46 @@ export function MediaArchive() {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('new');
   const [openId, setOpenId] = useState<string | null>(null);
-  const [newFolder, setNewFolder] = useState<string | null>(null);
+  const [view, setViewS] = useState<View>(() => {
+    try {
+      return (localStorage.getItem('ll.maView') as View) || 'icons';
+    } catch {
+      return 'icons';
+    }
+  });
+  const setView = (v: View) => {
+    setViewS(v);
+    try {
+      localStorage.setItem('ll.maView', v);
+    } catch {
+      /* fine */
+    }
+  };
+  // Drag a picture or sound onto a folder to move it there.
+  const [dropOn, setDropOn] = useState<string | null>(null);
+  const folderDrop = (f: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes(MOVE)) return;
+      e.preventDefault();
+      setDropOn(f);
+    },
+    onDragLeave: () => setDropOn((d) => (d === f ? null : d)),
+    onDrop: (e: React.DragEvent) => {
+      const id = e.dataTransfer.getData(MOVE);
+      if (!id) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setDropOn(null);
+      const it = all.find((i) => i.id === id);
+      if (it && uid && it.folder !== f) archiveUpdate(uid, it, { folder: f }).catch(() => {});
+    },
+  });
+  const newFolder = async () => {
+    const n = (await askText('Name the new folder', '', { ok: 'Make the folder' }))?.trim();
+    if (!n || !uid) return;
+    await addFolder(uid, n).catch(() => {});
+    setFolder(n);
+  };
   const [adding, setAdding] = useState(false);
   const addRef = useDismiss<HTMLSpanElement>(adding, () => setAdding(false));
   const [dialog, setDialog] = useState<{ tab: MediaTab; file?: File } | null>(null);
@@ -106,6 +158,8 @@ export function MediaArchive() {
   const total = all.reduce((s, i) => s + spaceOf(i), 0);
   const byKind = KINDS.map((k) => ({ ...k, n: all.filter((i) => i.kind === k.k).length, bytes: all.filter((i) => i.kind === k.k).reduce((s, i) => s + spaceOf(i), 0) }));
   const open = all.find((i) => i.id === openId) ?? null;
+  // In All media, the folders come first, like a folder on a computer.
+  const showFolders = folder === null && !q.trim() && !kind && !tag && view !== 'time';
 
   return (
     <div className="shell">
@@ -178,13 +232,13 @@ export function MediaArchive() {
               <UiIcon name="archive" size={16} />
               All media <b>{all.length}</b>
             </button>
-            <button type="button" className={folder === '' ? 'on' : ''} onClick={() => setFolder('')}>
+            <button type="button" className={(folder === '' ? 'on' : '') + (dropOn === '' ? ' drop' : '')} onClick={() => setFolder('')} {...folderDrop('')}>
               <UiIcon name="folder" size={16} />
               Not in a folder <b>{all.filter((i) => !i.folder).length}</b>
             </button>
             {allFolders.map((f) => (
               <span key={f} className="ma-folder">
-                <button type="button" className={folder === f ? 'on' : ''} onClick={() => setFolder(f)}>
+                <button type="button" className={(folder === f ? 'on' : '') + (dropOn === f ? ' drop' : '')} onClick={() => setFolder(f)} {...folderDrop(f)}>
                   <UiIcon name="folder" size={16} />
                   {f} <b>{all.filter((i) => i.folder === f).length}</b>
                 </button>
@@ -203,24 +257,6 @@ export function MediaArchive() {
                 </button>
               </span>
             ))}
-            {newFolder === null ? (
-              <button type="button" className="ma-new" onClick={() => setNewFolder('')}>
-                + New folder
-              </button>
-            ) : (
-              <form
-                className="ma-new-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const n = newFolder.trim();
-                  if (n && uid) addFolder(uid, n).catch(() => {});
-                  setNewFolder(null);
-                  if (n) setFolder(n);
-                }}
-              >
-                <input autoFocus value={newFolder} placeholder="Folder name" onChange={(e) => setNewFolder(e.target.value)} onBlur={(e) => !e.target.value.trim() && setNewFolder(null)} />
-              </form>
-            )}
           </nav>
 
           {tags.length > 0 && (
@@ -280,6 +316,9 @@ export function MediaArchive() {
               <span className="sub">Everything you upload, record or link is kept here, ready to use in any lesson.</span>
             </div>
             <span className="ma-add" ref={addRef}>
+              <button type="button" className="btn ma-new-folder" onClick={() => void newFolder()}>
+                <UiIcon name="folder" size={15} /> New folder
+              </button>
               <button type="button" className="btn primary" onClick={() => setAdding((a) => !a)} aria-expanded={adding}>
                 + Add media
               </button>
@@ -342,17 +381,94 @@ export function MediaArchive() {
               <option value="name">By name</option>
               <option value="size">Largest first</option>
             </select>
+            <span className="seg small-seg ma-views" role="radiogroup" aria-label="View">
+              {VIEWS.map((v) => (
+                <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} aria-label={v.label} data-tip={v.label}>
+                  <ViewGlyph k={v.k} />
+                </button>
+              ))}
+            </span>
           </div>
           {items === null ? (
             <Loader label="Opening your media archive" />
-          ) : shown.length === 0 ? (
+          ) : shown.length === 0 && !(folder === null && allFolders.length && !q && !kind && !tag) ? (
             <div className="ma-empty">
               <UiIcon name="archive" size={28} />
               <strong>{all.length ? 'Nothing here' : 'Your media archive is empty'}</strong>
               <span className="hint">{all.length ? 'Try another folder, tag or search.' : 'Pictures, recordings and videos you add to a task appear here, so you can use them again without uploading them twice.'}</span>
             </div>
+          ) : view === 'list' ? (
+            <div className="ma-list" role="table" aria-label="Media">
+              <span className="ma-lrow ma-lhead" role="row">
+                <span>Name</span>
+                <span>Kind</span>
+                <span>Size</span>
+                <span>Folder</span>
+                <span>Added</span>
+              </span>
+              {showFolders &&
+                allFolders.map((f) => (
+                  <button key={'f-' + f} type="button" className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '')} onClick={() => setFolder(f)} {...folderDrop(f)}>
+                    <span className="ma-lname">
+                      <FolderIcon size={22} />
+                      <b>{f}</b>
+                    </span>
+                    <span className="hint">Folder</span>
+                    <span className="hint">{nItems(all.filter((i) => i.folder === f).length)}</span>
+                    <span />
+                    <span />
+                  </button>
+                ))}
+              {shown.map((i) => (
+                <button key={i.id} type="button" draggable onDragStart={(e) => e.dataTransfer.setData(MOVE, i.id)} className={'ma-lrow' + (openId === i.id ? ' on' : '')} onClick={() => setOpenId(i.id)}>
+                  <span className="ma-lname">
+                    {i.kind === 'image' && (i.thumb || i.link) ? <img className="ma-lthumb" src={i.thumb || i.link} alt="" /> : <FileIcon kind={i.kind} size={22} label={false} />}
+                    <b>{i.name}</b>
+                    {i.tags.slice(0, 2).map((t) => (
+                      <span key={t} className="ma-ltag">
+                        {t}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="hint">{kindName(i.kind)}{i.duration ? ' · ' + fmtTime(i.duration) : ''}</span>
+                  <span className="hint">{i.link ? 'Link' : formatBytes(spaceOf(i))}</span>
+                  <span className="hint">{i.folder || '·'}</span>
+                  <span className="hint">{dayOf(i.createdAt)}</span>
+                </button>
+              ))}
+            </div>
+          ) : view === 'time' ? (
+            <div className="ma-time">
+              {months(shown).map(([m, list]) => (
+                <section key={m} className="ma-tm">
+                  <span className="ma-tm-h">
+                    <i aria-hidden="true" />
+                    <b>{m}</b>
+                    <span className="hint">{nItems(list.length)}</span>
+                  </span>
+                  <div className="ma-tm-strip">
+                    {list.map((i) => (
+                      <span key={i.id} className="ma-tm-it">
+                        <span className="ma-tm-day">{dayOf(i.createdAt)}</span>
+                        <Card item={i} on={openId === i.id} onOpen={() => setOpenId(i.id)} />
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
           ) : (
             <div className="ma-grid">
+              {showFolders &&
+                allFolders.map((f) => (
+                  <button key={'f-' + f} type="button" className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '')} onClick={() => setFolder(f)} {...folderDrop(f)}>
+                    <span className="ma-thumb ma-fthumb">
+                      <FolderIcon size={64} open={dropOn === f} />
+                    </span>
+                    <span className="ma-name">{f}</span>
+                    <span className="ma-meta">{nItems(all.filter((i) => i.folder === f).length)}</span>
+                  </button>
+                ))}
               {shown.map((i) => (
                 <Card key={i.id} item={i} on={openId === i.id} onOpen={() => setOpenId(i.id)} />
               ))}
@@ -371,14 +487,14 @@ export function MediaArchive() {
 function Card({ item, on, onOpen }: { item: ArchiveItem; on: boolean; onOpen: () => void }) {
   const places = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter((c) => c && !c.startsWith('user:'))).size;
   return (
-    <button type="button" className={'ma-card' + (on ? ' on' : '')} onClick={onOpen}>
+    <button type="button" className={'ma-card' + (on ? ' on' : '')} onClick={onOpen} draggable onDragStart={(e) => e.dataTransfer.setData(MOVE, item.id)}>
       <span className={'ma-thumb k-' + item.kind}>
         {item.kind === 'image' && (item.thumb || item.link) ? (
           <img src={item.thumb || item.link} alt="" />
         ) : item.link && item.kind === 'video' && /youtu/.test(item.link) ? (
           <img src={`https://img.youtube.com/vi/${/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(item.link)?.[1] ?? ''}/mqdefault.jpg`} alt="" />
         ) : (
-          <UiIcon name={item.kind === 'video' ? 'video' : 'music'} size={26} />
+          <FileIcon kind={item.kind} size={44} />
         )}
         {item.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
         {(item.script?.length ?? 0) > 0 && (
@@ -401,6 +517,39 @@ function Card({ item, on, onOpen }: { item: ArchiveItem; on: boolean; onOpen: ()
         </span>
       )}
     </button>
+  );
+}
+
+function months(list: ArchiveItem[]): [string, ArchiveItem[]][] {
+  const m = new Map<string, ArchiveItem[]>();
+  [...list].sort((a, b) => b.createdAt - a.createdAt).forEach((i) => {
+    const k = monthOf(i.createdAt);
+    m.set(k, [...(m.get(k) ?? []), i]);
+  });
+  return [...m];
+}
+
+function ViewGlyph({ k }: { k: View }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+      {k === 'icons' ? (
+        <>
+          <rect x="2" y="2" width="5" height="5" rx="1.2" />
+          <rect x="9" y="2" width="5" height="5" rx="1.2" />
+          <rect x="2" y="9" width="5" height="5" rx="1.2" />
+          <rect x="9" y="9" width="5" height="5" rx="1.2" />
+        </>
+      ) : k === 'list' ? (
+        <path d="M2.5 4h1M6 4h7.5M2.5 8h1M6 8h7.5M2.5 12h1M6 12h7.5" />
+      ) : (
+        <>
+          <path d="M3.5 2v12" />
+          <circle cx="3.5" cy="4.5" r="1.4" fill="currentColor" />
+          <circle cx="3.5" cy="10.5" r="1.4" fill="currentColor" />
+          <path d="M7 4.5h6.5M7 10.5h4.5" />
+        </>
+      )}
+    </svg>
   );
 }
 

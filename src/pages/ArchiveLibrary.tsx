@@ -1,4 +1,5 @@
 import { ask } from '../lib/ask';
+import { FileIcon, type FileKind } from '../components/FileIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
@@ -147,9 +148,7 @@ export function ArchiveTasks({ uid }: { uid: string }) {
         <div className="al-list">
           {shown.slice(0, 300).map((t) => (
             <div key={t.classId + t.id} className="al-row" style={{ ['--cc' as string]: color(t.classId) }}>
-              <span className="al-ic">
-                <UiIcon name="task" size={16} />
-              </span>
+              <FileIcon kind="task" size={30} label={false} />
               <span className="al-main">
                 <Link to={`/class/${t.classId}/lesson/${t.itemId}?task=${t.id}`} className="al-title">
                   {t.title}
@@ -350,9 +349,7 @@ export function ArchiveShared({ uid }: { uid: string }) {
         <div className="al-list">
           {list.map((s) => (
             <div key={s.id} className="al-row" style={{ ['--cc' as string]: 'var(--accent)' }}>
-              <span className="al-ic">
-                <UiIcon name={SKIND[s.kind ?? 'lesson'].icon} size={16} />
-              </span>
+              <FileIcon kind={(s.kind ?? 'lesson') as FileKind} size={30} label={false} />
               <span className="al-main">
                 <Link to={`/s/${s.id}`} className="al-title">
                   {s.title}
