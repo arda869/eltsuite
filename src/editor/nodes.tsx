@@ -1,3 +1,5 @@
+import { BlockMenu } from './BlockMenu';
+import { useEditorClass } from './context';
 import { ExampleToggle } from './ExampleToggle';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -21,6 +23,12 @@ export const DOTS = (
 // anywhere in a line, not only between lines. Block items use the editor's own dragging.
 export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getPos: NodeViewProps['getPos'] }) {
   const pos0 = () => (typeof getPos === 'function' ? getPos() : undefined);
+  const { classId } = useEditorClass();
+  const [menu, setMenu] = useState<{ pos: number; anchor: DOMRect } | null>(null);
+  const openMenu = (el: Element) => {
+    const p = pos0();
+    if (typeof p === 'number' && editor.isEditable) setMenu({ pos: p, anchor: el.getBoundingClientRect() });
+  };
   const inline = (() => {
     const p = pos0();
     return typeof p === 'number' ? !!editor.state.doc.nodeAt(p)?.isInline : false;
@@ -37,6 +45,7 @@ export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getP
     let target: number | null = null;
     const caret = document.createElement('div');
     caret.className = 'drag-caret';
+    const gripEl = e.currentTarget;
     const ghost = (e.currentTarget.parentElement?.cloneNode(true) as HTMLElement) ?? document.createElement('span');
     ghost.classList.add('drag-ghost');
     const move = (ev: PointerEvent) => {
@@ -72,6 +81,7 @@ export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getP
       if (!moving) {
         editor.chain().setNodeSelection(from).run();
         editor.view.focus();
+        openMenu(gripEl);
         return;
       }
       if (target === null) return;
@@ -88,11 +98,12 @@ export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getP
   };
 
   return (
+    <>
     <span
       className="grip"
       {...(inline ? { draggable: false } : { 'data-drag-handle': '' })}
       contentEditable={false}
-      title="Drag to move · click to select"
+      title="Drag to move · click for options"
       onDragStart={inline ? (e) => e.preventDefault() : undefined}
       onPointerDown={(e) => {
         if (e.button !== 0) return;
@@ -114,9 +125,12 @@ export function Grip({ editor, getPos }: { editor: NodeViewProps['editor']; getP
           editor.view.focus();
         }
       }}
+      onClick={(e) => !inline && openMenu(e.currentTarget)}
     >
       {DOTS}
     </span>
+    {menu && <BlockMenu editor={editor} pos={menu.pos} anchor={menu.anchor} space={classId} onClose={() => setMenu(null)} />}
+    </>
   );
 }
 

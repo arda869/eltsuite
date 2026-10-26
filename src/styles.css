@@ -4396,3 +4396,41 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 :root[data-theme='dark'] img:not([src^='data:image/svg']) { filter: brightness(.92); }
 :root[data-theme='dark'] .cover { filter: brightness(.68) saturate(.9); }
 :root[data-theme='dark'] ::-webkit-scrollbar-thumb { background: #4a4743; }
+
+/* Drag handles (the six dots) beside paragraphs, and the block menu */
+.task-editor.with-handles .editor-host { margin-left: 30px; }
+@media (hover: none), (max-width: 760px) { .task-editor.with-handles .editor-host { margin-left: 0; } .block-handle { display: none !important; } }
+.task-editor.with-handles .line-add { left: -50px; }
+.block-handle { position: absolute; z-index: 3; width: 20px; height: 22px; margin-top: -11px; display: grid; place-items: center; border-radius: 6px; color: var(--soft); cursor: grab; }
+.block-handle:hover { color: var(--ink); background: var(--surface); }
+.block-handle:active { cursor: grabbing; }
+.block-menu { position: fixed; z-index: 80; display: flex; flex-direction: column; min-width: 210px; padding: 6px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 12px 30px var(--shadow); font-family: var(--sans); }
+.block-menu button[role='menuitem'] { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; font: 13px var(--sans); color: var(--ink); cursor: pointer; text-align: left; }
+.block-menu button[role='menuitem']:hover:not(:disabled) { background: var(--surface); }
+.block-menu button:disabled { opacity: .4; cursor: default; }
+.bm-ic { width: 18px; display: grid; place-items: center; color: var(--muted); }
+.bm-keys { margin-left: auto; font-size: 11px; color: var(--faint); }
+.bm-h { padding: 4px 10px 2px; font: 600 10.5px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+.bm-turn { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px 6px; }
+.bm-turn button { height: 26px; padding: 0 9px; border: 1px solid var(--hair-strong); border-radius: 99px; background: var(--paper); font: 600 11.5px var(--sans); color: var(--muted); cursor: pointer; }
+.bm-turn button.on, .bm-turn button:hover { border-color: var(--accent); color: var(--accent-text); }
+.bm-sep { height: 1px; margin: 4px 6px; background: var(--hair); }
+.bm-arrow, .bm-cut { font-size: 14px; line-height: 1; }
+.bm-sel { width: 12px; height: 12px; border: 1.5px dashed currentColor; border-radius: 3px; }
+.tbl-handle { position: absolute; z-index: 4; display: grid; place-items: center; border-radius: 6px; color: var(--soft); cursor: grab; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); touch-action: none; }
+.tbl-handle.row { width: 16px; height: 22px; margin-top: -11px; }
+.tbl-handle.col { width: 22px; height: 14px; margin-left: -11px; margin-top: -7px; }
+.tbl-handle:hover { color: var(--ink); box-shadow: 0 0 0 1px var(--hair-strong); }
+.tbl-drop { position: absolute; z-index: 6; border-radius: 2px; background: var(--accent); pointer-events: none; }
+body.is-dragging-table, body.is-dragging-table * { cursor: grabbing !important; user-select: none; }
+@media (hover: none), (max-width: 760px) { .tbl-handle { display: none; } }
+
+/* Picture corner dots: drag to resize */
+.pic-w { max-width: 100%; }
+.pic-corner { position: absolute; z-index: 3; width: 12px; height: 12px; border-radius: 99px; background: var(--paper); box-shadow: 0 0 0 2px var(--accent); opacity: 0; transition: opacity .12s; line-height: 0; }
+.pic-node:hover .pic-corner, .pic-node.is-selected .pic-corner { opacity: 1; }
+.pic-corner.c-nw { left: 5px; top: 5px; cursor: nwse-resize; } .pic-corner.c-ne { right: 5px; top: 5px; cursor: nesw-resize; }
+.pic-corner.c-sw { left: 5px; bottom: 5px; cursor: nesw-resize; } .pic-corner.c-se { right: 5px; bottom: 5px; cursor: nwse-resize; }
+body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; user-select: none; }
+@media (hover: none) { .pic-corner { display: none; } }
+.block-menu { width: max-content; max-width: 280px; right: auto; bottom: auto; }

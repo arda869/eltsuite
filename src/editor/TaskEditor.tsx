@@ -1,3 +1,5 @@
+import { TableHandles } from './TableHandles';
+import { BlockHandles } from './BlockMenu';
 import { clipHtml, freshIds, readClip, type Clip } from '../lib/clip';
 import { carryMedia, remap } from '../lib/fullcopy';
 import { getHTMLFromFragment } from '@tiptap/core';
@@ -301,7 +303,13 @@ const BTN = (label: string, active: boolean, onClick: () => void, text: React.Re
   </button>
 );
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder }: { placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+// Older plain images become pictures, which have settings, crop and resizing.
+function withPictures(n: JSONContent): JSONContent {
+  if (!n.content) return n;
+  return { ...n, content: n.content.map((c) => (c.type === 'image' && c.attrs?.src ? { type: 'paragraph', content: [{ type: 'picture', attrs: { src: c.attrs.src, alt: c.attrs.alt ?? '', size: 'm' } }] } : withPictures(c))) };
+}
+
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true }: { handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -367,7 +375,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       FreshIds,
       Placeholder.configure({ placeholder: placeholder ?? 'Write the task. Type / for a question, list or image.' }),
     ],
-    content,
+    content: withPictures(content),
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
       // Paste or drop pictures straight into the task: they are uploaded to the class.
@@ -527,7 +535,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
 
   return (
     <EditorClassContext.Provider value={classCtx}>
-    <div className="task-editor">
+    <div className={'task-editor' + (handles ? ' with-handles' : '')}>
       <div className="toolbar" role="toolbar" aria-label="Formatting">
         {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)}
         {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)}
@@ -656,7 +664,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       <div className="editor-host" ref={setHost}>
         <EditorContent editor={editor} className="doc" />
         <TableInsert editor={editor} host={host} />
-        <LineAdder editor={editor} host={host} />
+        {handles && <LineAdder editor={editor} host={host} />}
+        {handles && <BlockHandles editor={editor} host={host} space={classId} />}
+        {handles && <TableHandles editor={editor} host={host} />}
         <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
         <MentionMenu menu={mention} />
         <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />

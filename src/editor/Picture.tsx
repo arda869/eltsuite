@@ -54,13 +54,13 @@ export const GRIDS = [
   { k: '4', label: '4 × 4' },
 ];
 
-type FrameProps = { src: string; alt?: string; size?: string; label?: string; classId: string; crop?: string; ar?: number; filter?: string; cover?: CoverProps; coverHint?: string };
-export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cover, coverHint }: FrameProps) {
+type FrameProps = { w?: number; children?: React.ReactNode; src: string; alt?: string; size?: string; label?: string; classId: string; crop?: string; ar?: number; filter?: string; cover?: CoverProps; coverHint?: string };
+export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cover, coverHint, w, children }: FrameProps) {
   const url = useImageSrc(classId, src);
   const cs = cropStyles(crop, ar);
   const img = url ? <img src={url} alt={alt ?? ''} draggable={false} style={{ ...cs.img, filter: filterCss(filter) }} /> : <span className="pic-wait" />;
   return (
-    <span className={'pic pic-' + (size || 'm') + (cover ? ' has-cover' : '')}>
+    <span className={'pic pic-' + (w ? 'w' : size || 'm') + (cover ? ' has-cover' : '')} style={w ? { width: w } : undefined}>
       {cs.box ? (
         <span className="pic-crop" style={cs.box}>
           {img}
@@ -71,16 +71,44 @@ export function PicFrame({ src, alt, size, label, classId, crop, ar, filter, cov
       {cover && <PicCover {...cover} />}
       {coverHint && <span className="pic-cover-hint">{coverHint}</span>}
       {label && <span className="pic-label">{label}</span>}
+      {children}
     </span>
   );
 }
 
 function PictureView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const a = node.attrs as { src: string; alt: string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string };
+  const a = node.attrs as { w: number; src: string; alt: string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  // Corner dots: drag to make the picture bigger or smaller.
+  const [dragW, setDragW] = useState<number | null>(null);
+  const resize = (e: React.PointerEvent, corner: 'nw' | 'ne' | 'sw' | 'se') => {
+    e.preventDefault();
+    e.stopPropagation();
+    const pic = (e.currentTarget as HTMLElement).parentElement;
+    if (!pic) return;
+    const w0 = pic.getBoundingClientRect().width;
+    const max = (ref.current?.closest('.ProseMirror') as HTMLElement | null)?.clientWidth ?? 900;
+    const x0 = e.clientX;
+    const dir = corner.endsWith('e') ? 1 : -1;
+    let w = w0;
+    const mv = (ev: PointerEvent) => {
+      w = Math.round(Math.max(60, Math.min(max, w0 + dir * (ev.clientX - x0))));
+      setDragW(w);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('is-resizing-pic');
+      if (Math.abs(w - w0) > 2) updateAttributes({ w: w >= max - 4 ? 0 : w, size: w >= max - 4 ? 'full' : a.size });
+      setDragW(null);
+    };
+    document.body.classList.add('is-resizing-pic');
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
   const popStyle = usePopPos(ref, open, 320);
   const pos = typeof getPos === 'function' ? getPos() : undefined;
   const label = typeof pos === 'number' ? pictureLabel(editor.state.doc as never, pos, a.mark) : '';
@@ -103,7 +131,9 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
   return (
     <NodeViewWrapper as="span" className={'pic-node' + (selected ? ' is-selected' : '')} ref={ref} contentEditable={false}>
       <span onClick={() => setOpen(true)} title="Picture settings">
-        <PicFrame src={a.src} alt={a.alt} size={a.size} label={label} classId={classId} crop={a.crop} ar={a.ar} filter={a.filter} coverHint={hint} />
+        <PicFrame src={a.src} alt={a.alt} size={a.size} w={dragW ?? a.w} label={label} classId={classId} crop={a.crop} ar={a.ar} filter={a.filter} coverHint={hint}>
+          {editor.isEditable && (['nw', 'ne', 'sw', 'se'] as const).map((c) => <i key={c} className={'pic-corner c-' + c} onPointerDown={(e) => resize(e, c)} onClick={(e) => e.stopPropagation()} aria-hidden="true" />)}
+        </PicFrame>
       </span>
       {editing && (
         <PictureEditor
@@ -123,7 +153,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
           <span className="pop-type">Picture</span>
           <span className="pic-row">
             <span className="hint">Size</span>
-            {seg(PIC_SIZES, a.size || 'm', (k) => updateAttributes({ size: k }), 'Size')}
+            {seg(PIC_SIZES, a.w ? ('' as PicSize) : a.size || 'm', (k) => updateAttributes({ size: k, w: 0 }), 'Size')}
           </span>
           <span className="pic-row">
             <span className="hint">Label</span>
@@ -190,8 +220,10 @@ export const Picture = Node.create({
     grid: { default: 3 },
     coverBy: { default: 'teacher' },
     pid: { default: '' }, // keeps the class's opened boxes together while teaching
+    w: { default: 0 }, // a width set by dragging a corner, in pixels
   }),
-  parseHTML: () => [{ tag: 'span[data-picture]' }],
+  // Pictures pasted or dropped from anywhere become pictures you can edit.
+  parseHTML: () => [{ tag: 'span[data-picture]' }, { tag: 'img[src]', priority: 60, getAttrs: (el: HTMLElement | string) => (typeof el === 'string' ? {} : { src: el.getAttribute('src') ?? '', alt: el.getAttribute('alt') ?? '' }) }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-picture': '' })],
   addNodeView: () => ReactNodeViewRenderer(PictureView),
 });

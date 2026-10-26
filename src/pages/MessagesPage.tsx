@@ -1,3 +1,4 @@
+import { isProxyTab } from '../lib/proxy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, getDocs, type DocumentData } from 'firebase/firestore';
@@ -48,6 +49,8 @@ export function MessagesPage() {
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState('');
   const teacher = profile?.role === 'teacher';
+  // A teacher looking at the app as a learner does not see that learner's messages.
+  if (isProxyTab()) return <PrivateMessages />;
   const cur = chats?.find((c) => c.id === open);
   const shown = (chats ?? []).filter((c) => !q.trim() || chatTitle(c, me?.key ?? '').toLowerCase().includes(q.trim().toLowerCase()) || Object.values(c.names).some((n) => n.toLowerCase().includes(q.trim().toLowerCase())));
   const pick = (id: string) => setParams(id ? { c: id } : {});
@@ -229,7 +232,6 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
   const end = useRef<HTMLDivElement>(null);
   const people = c.members.filter((k) => k !== me.key).map((k) => ({ id: k, name: c.names[k] ?? 'Someone' }));
   const colleaguesHere = c.members.filter((k) => k !== me.key && c.roles[k] === 'teacher');
-  const learnersHere = c.members.some((k) => c.roles[k] === 'learner');
   // The class teacher decides whether learners may send task elements.
   const elementsOk = teacher || dir.learnerElements !== false;
   const [err, setErr] = useState('');
@@ -288,7 +290,6 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
           </button>
         )}
       </header>
-      {learnersHere && <div className="chat-note hint">{teacher ? 'Learners are in this chat. Their class’s teachers can read it.' : 'Your teacher can read the messages in your class.'}</div>}
       {settings && c.kind === 'group' && <GroupSettings c={c} me={me} dir={dir} onLeave={() => (leaveGroup(c, me.key), onBack())} />}
       <div className="chat-body">
         {msgs === null && <Loader label="Opening the chat" />}
@@ -328,7 +329,7 @@ function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: D
         )}
         {err && <span className="error">{err}</span>}
         <div className={'chat-editor' + (elementsOk ? '' : ' text-only')}>
-          <TaskEditor key={edKey} content={content} onChange={setContent} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
+          <TaskEditor handles={false} key={edKey} content={content} onChange={setContent} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
         </div>
         <span className="chat-actions">
           {teacher && colleaguesHere.length > 0 && (
@@ -675,6 +676,22 @@ function CopyElement({ c, m, onClose }: { c: Chat; m: Msg; onClose: () => void }
             {busy ? 'Copying…' : 'Copy'}
           </button>
         </span>
+      </div>
+    </div>
+  );
+}
+
+function PrivateMessages() {
+  return (
+    <div className="shell">
+      <TopBar />
+      <div className="msg-empty msg-private">
+        <UiIcon name="lock" size={30} />
+        <strong>Messages are private</strong>
+        <span className="hint">Learners’ messages are only for the people in each chat. Viewing as a learner does not open them, and teachers cannot read them.</span>
+        <Link className="btn" to="/">
+          Back
+        </Link>
       </div>
     </div>
   );
