@@ -40,8 +40,9 @@ import { downloadJson, lessonBundle } from '../lib/fullcopy';
 import { roleIn } from '../lib/coteach';
 import { WorksheetDialog } from '../components/WorksheetDialog';
 import { RecapDialog } from '../components/Recap';
-import { IconBtn } from '../components/UiIcon';
+import { IconBtn, UiIcon } from '../components/UiIcon';
 import { NotesEditor } from '../editor/NotesEditor';
+import { PaneResizer, usePaneWidths } from '../components/PaneResizer';
 import { ViewAsLearner } from '../components/ViewAsLearner';
 import { BankPicker, SaveToBankDialog } from '../components/QuestionBank';
 import { withFreshIds } from '../lib/bank';
@@ -334,6 +335,7 @@ export function LessonEditor() {
   const [copyTask, setCopyTask] = useState<Task | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
   const panels = usePanels('ll.teacherPanels');
+  const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   useEffect(() => {
@@ -344,6 +346,14 @@ export function LessonEditor() {
   useEffect(() => {
     if (!present && document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }, [present]);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const activityRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!activityOpen) return;
+    const close = (e: MouseEvent) => activityRef.current && !activityRef.current.contains(e.target as Node) && setActivityOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [activityOpen]);
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     else document.documentElement.requestFullscreen?.().catch(() => {});
@@ -583,10 +593,30 @@ export function LessonEditor() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
-        <div className="menu-anchor hide-phone" ref={exportRef}>
-          <IconBtn icon="export" label="Export: worksheet, recap, text or full copy" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
+        <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
+        {!viewer && (
+          <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Lesson board'} active={boardView} onClick={() => showBoard(!boardView)} />
+        )}
+        <div className="menu-anchor" ref={exportRef}>
+          <IconBtn icon="more" label="More: groups, present mode, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
           {exportOpen && (
             <div className="menu" role="menu">
+              {!viewer && (
+                <button role="menuitem" onClick={() => (setExportOpen(false), setGroupsOpen(true))}>
+                  Groups and breakout rooms
+                </button>
+              )}
+              <button role="menuitem" className="hide-phone" onClick={() => (setExportOpen(false), setPresent((v) => !v))}>
+                {present ? 'Leave present mode' : 'Present mode'}
+                <span className="hint" style={{ display: 'block' }}>
+                  Hide the side panels for screen sharing (P)
+                </span>
+              </button>
+              <button role="menuitem" className="hide-phone" onClick={() => (setExportOpen(false), setHelp(true))}>
+                Keyboard shortcuts
+              </button>
+              <span className="menu-sep" aria-hidden="true" />
+              <span className="menu-label">Export</span>
               {item?.type === 'lesson' && c && (
                 <button role="menuitem" onClick={() => (setExportOpen(false), setRecapOpen(true))}>
                   Lesson recap…
@@ -631,15 +661,7 @@ export function LessonEditor() {
             </div>
           )}
         </div>
-        <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
-        {!viewer && (
-          <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Lesson board'} active={boardView} onClick={() => showBoard(!boardView)} />
-        )}
-        {!viewer && (
-          <IconBtn icon="groups" label="Groups and breakout rooms" active={!!(teachingHere && live?.groupSetId)} onClick={() => setGroupsOpen(true)} />
-        )}
-        <IconBtn icon={present ? 'presentOff' : 'present'} label={present ? 'Leave present mode (P)' : 'Present: hide the side panels (P)'} active={present} className="hide-phone" onClick={() => setPresent((v) => !v)} />
-        <IconBtn icon="help" label="Keyboard shortcuts (?)" className="hide-phone" onClick={() => setHelp(true)} />
+        {present && <IconBtn icon="presentOff" label="Leave present mode (P)" active className="hide-phone" onClick={() => setPresent(false)} />}
         {viewer ? (
           teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
         ) : (
@@ -671,7 +693,7 @@ export function LessonEditor() {
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
       {item && (
-        <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls}>
+        <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls} style={panes.style}>
           <nav className="task-list" aria-label="Tasks">
             <input
               className="lesson-title"
@@ -778,6 +800,7 @@ export function LessonEditor() {
               </div>
             )}
           </nav>
+          {panels.left && !present && <PaneResizer side="left" width={panes.widths.left} onWidth={(px) => panes.set('left', px)} onReset={() => panes.reset('left')} />}
 
           <div className="center-col">
           <div className="panel-toggles">
@@ -785,26 +808,35 @@ export function LessonEditor() {
             <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />
           </div>
           {teachingHere && (
-            <div className="session-strip" aria-label="Learners in this session">
-              <span className="session-count">
-                <span className="live-dot" aria-hidden="true" />
-                {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
+            <div className="session-strip teach-bar" aria-label="Teaching tools">
+              <span className="tb-group" aria-label="The class">
+                <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? 'Learners follow you from task to task. Click to let them move freely (S)' : 'Bring everyone to the task you are on, and keep them with you (S)'}>
+                  <UiIcon name="sync" />
+                  {live?.sync ? (live.syncRoom ? `${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room'} follows you` : 'Class follows you') : 'Sync class'}
+                </button>
+                {activeSet && (
+                  <select className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
+                    <option value="">Whole class</option>
+                    {activeSet.groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </span>
-              <span className="session-people">
-                {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
-                {online.map((p) => (
-                  <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere')} title={p.itemId === itemId ? !seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}` : `${p.name} · online, not in this lesson`}>
-                    <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
-                    <span className="pname">{p.name.split(' ')[0]}</span>
-                    {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
-                  </span>
-                ))}
-              </span>
-              <span className="live-ctl">
-                <span className="tool-group" aria-label="Classroom tools">
-                  <IconBtn icon={boardView ? 'task' : 'board'} label={boardView ? 'Back to the task' : 'Show the lesson board'} active={boardView} onClick={() => showBoard(!boardView)} />
-                  <IconBtn icon="pointer" label="Pointer: a dot everyone sees" active={pointerOn} onClick={togglePointer} />
-                  <span className="timer-ctl">
+              {qCount > 0 && (
+                <span className="tb-group reveal-ctl" aria-label="Answers">
+                  <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
+                  <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
+                  {(revealN !== 0 || singles.length > 0) && <IconBtn icon="hideAnswers" label="Hide the answers again (H)" onClick={hideAnswers} />}
+                </span>
+              )}
+              <span className="tb-group" aria-label="Screen">
+                <IconBtn icon={boardView ? 'task' : 'board'} label={boardView ? 'Back to the task' : 'Show the lesson board'} active={boardView} onClick={() => showBoard(!boardView)} />
+                <IconBtn icon="pointer" label="Pointer: a dot everyone sees" active={pointerOn} className="hide-phone" onClick={togglePointer} />
+                <IconBtn icon="annotate" label="Annotate: pen and highlighter on the screen, not saved (D)" active={inkMode !== 'off'} className="hide-phone" onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} />
+                <span className="timer-ctl">
                     <IconBtn icon="timer" label="Timer (T)" active={!!(live?.timer && live.timer.endsAt > Date.now())} onClick={() => setTimerMenu((v) => !v)} />
                     {timerMenu && (
                       <span className="timer-menu">
@@ -824,54 +856,53 @@ export function LessonEditor() {
                       </span>
                     )}
                   </span>
-                  {picking ? <span className="picking-name">{picking}</span> : <IconBtn icon="pick" label="Pick a learner at random" onClick={pickLearner} />}
-                  <IconBtn icon="poll" label="Quick poll" active={!!live?.poll?.open} onClick={() => setPollOpen(true)} />
-                  <IconBtn icon="quiz" label="Team quiz from this task" active={!!live?.quiz} onClick={() => setQuizOpen(true)} />
-                  <IconBtn icon="annotate" label="Annotate: pen and highlighter on the screen, not saved (D)" active={inkMode !== 'off'} onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} />
-                  <IconBtn icon="announce" label="Announcement (A)" onClick={() => setAnnouncing(true)} />
-                </span>
-                {hands.length > 0 && (
-                  <span className="hands" title={hands.map((h) => h.name).join(', ')}>
-                    <Icon name="wave" size="15" /> {hands.length} {hands.length === 1 ? 'hand' : 'hands'} up
-                    <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
-                      Lower all
+              </span>
+              <span className="tb-group menu-anchor" ref={activityRef}>
+                {picking ? (
+                  <span className="picking-name">{picking}</span>
+                ) : (
+                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.quiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip="Pick a learner, poll, team quiz, announcement">
+                    Activities
+                    <span aria-hidden="true">▾</span>
+                  </button>
+                )}
+                {activityOpen && (
+                  <div className="menu tb-menu" role="menu">
+                    <button role="menuitem" onClick={() => (setActivityOpen(false), pickLearner())}>
+                      <UiIcon name="pick" /> Pick a learner
                     </button>
-                  </span>
-                )}
-                {stuckN > 0 && (
-                  <span className="hands stuck" title={Object.values(signals).filter((x) => x.stuck).map((x) => x.name).join(', ')}>
-                    <Icon name="question" size="15" /> {stuckN} stuck
-                  </span>
-                )}
-                <span className="tool-group">
-                  {present && <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />}
-                  {present && document.fullscreenEnabled && <IconBtn icon={fullscreen ? 'fullscreenOff' : 'fullscreen'} label={fullscreen ? 'Leave full screen (F)' : 'Full screen (F)'} active={fullscreen} onClick={toggleFullscreen} />}
-                  <IconBtn
-                    icon="sync"
-                    label={live?.sync ? `${live.syncRoom ? activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room' : 'The class'} follows you · click to stop (S)` : live?.syncRoom ? `Sync ${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'room'} to me (S)` : 'Sync the class to me (S)'}
-                    active={!!live?.sync}
-                    onClick={toggleSync}
-                  />
-                </span>
-                {activeSet && (
-                  <select className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
-                    <option value="">Whole class</option>
-                    {activeSet.groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {qCount > 0 && (
-                  <span className="reveal-ctl" aria-label="Reveal answers">
-                    <span className="hint">{revealN === 0 ? 'Answers hidden' : revealN < 0 || revealN >= qCount ? 'All answers shown' : `${revealN} of ${qCount} shown`}</span>
-                    <IconBtn icon="revealOne" label="Reveal the next answer (R)" disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
-                    <IconBtn icon="revealAll" label="Reveal all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
-                    {(revealN !== 0 || singles.length > 0) && <IconBtn icon="hideAnswers" label="Hide the answers again (H)" onClick={hideAnswers} />}
-                  </span>
+                    <button role="menuitem" onClick={() => (setActivityOpen(false), setPollOpen(true))}>
+                      <UiIcon name="poll" /> Quick poll{live?.poll?.open ? ' · open' : ''}
+                    </button>
+                    <button role="menuitem" onClick={() => (setActivityOpen(false), setQuizOpen(true))}>
+                      <UiIcon name="quiz" /> Team quiz{live?.quiz ? ' · running' : ''}
+                    </button>
+                    <button role="menuitem" onClick={() => (setActivityOpen(false), setAnnouncing(true))}>
+                      <UiIcon name="announce" /> Announcement
+                    </button>
+                  </div>
                 )}
               </span>
+              {present && (
+                <span className="tb-group hide-phone">
+                  <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />
+                  {document.fullscreenEnabled && <IconBtn icon={fullscreen ? 'fullscreenOff' : 'fullscreen'} label={fullscreen ? 'Leave full screen (F)' : 'Full screen (F)'} active={fullscreen} onClick={toggleFullscreen} />}
+                </span>
+              )}
+              {(hands.length > 0 || stuckN > 0) && (
+                <span className="tb-signals">
+                  {hands.length > 0 && (
+                    <span className="hands" data-tip={hands.map((h) => h.name).join(', ')}>
+                      <Icon name="wave" size="15" /> {hands.length}
+                    </span>
+                  )}
+                  {stuckN > 0 && (
+                    <span className="hands stuck" data-tip={Object.values(signals).filter((x) => x.stuck).map((x) => x.name).join(', ') + ' · stuck'}>
+                      <Icon name="question" size="15" /> {stuckN}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
           )}
           <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
@@ -1001,6 +1032,7 @@ export function LessonEditor() {
           </main>
           </div>
 
+          {panels.right && !present && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
           {task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid) && (
             <LivePanel
               classId={classId}
@@ -1020,6 +1052,32 @@ export function LessonEditor() {
               onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
               tab={panelTab}
               onTab={setPanelTab}
+              people={
+                <div className="lp-people">
+                  <span className="session-count">
+                    <span className="live-dot" aria-hidden="true" />
+                    {inLesson.length} of {c?.learnerCount ?? 0} in this lesson
+                  </span>
+                  <span className="session-people">
+                    {online.length === 0 && <span className="hint">No learners online yet. Share the class code {c?.classCode}.</span>}
+                    {online.map((p) => (
+                      <span key={p.id} className={'person' + (p.itemId === itemId ? '' : ' elsewhere') + (signals[p.id]?.hand ? ' hand' : '') + (signals[p.id]?.stuck ? ' stuck' : '')} data-tip={p.itemId === itemId ? (!seeLearners ? `${p.name} · in this lesson` : `${p.name} · ${tasks.find((t) => t.id === p.taskId)?.title ?? 'in this lesson'}`) + (signals[p.id]?.hand ? ' · hand up' : '') + (signals[p.id]?.stuck ? ' · stuck' : '') : `${p.name} · online, not in this lesson`}>
+                        <Avatar k={p.avatar} name={p.name} size={24} className="avatar-24" />
+                        <span className="pname">{p.name.split(' ')[0]}</span>
+                        {seeLearners && p.itemId === itemId && p.taskId !== selected && <span className="ptask">{tasks.findIndex((t) => t.id === p.taskId) + 1 || ''}</span>}
+                      </span>
+                    ))}
+                  </span>
+                  {hands.length > 0 && (
+                    <span className="hint">
+                      <Icon name="wave" size="14" /> {hands.map((h) => h.name.split(' ')[0]).join(', ')} {hands.length === 1 ? 'has a hand up' : 'have hands up'} ·{' '}
+                      <button type="button" className="btn link small" onClick={() => clearAllHands(classId, signalUids.filter((u) => signals[u]?.hand))}>
+                        Lower all
+                      </button>
+                    </span>
+                  )}
+                </div>
+              }
               notes={notes}
               notesEditor={notesEditor('lp-notes', 'Notes for this task. Only you can see them.')}
               rooms={activeSet?.groups}

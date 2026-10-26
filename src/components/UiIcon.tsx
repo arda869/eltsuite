@@ -25,6 +25,7 @@ const P: Record<string, ReactNode> = {
   answers: <><rect x="4" y="4" width="6.5" height="6.5" rx="1.2" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2" /></>,
   fullscreen: <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4" />,
   fullscreenOff: <path d="M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 15h4a1 1 0 0 1 1 1v4" />,
+  more: <><circle cx="5.5" cy="12" r="1.4" fill="currentColor" /><circle cx="12" cy="12" r="1.4" fill="currentColor" /><circle cx="18.5" cy="12" r="1.4" fill="currentColor" /></>,
   prev: <path d="M14.5 6l-6 6 6 6" strokeWidth="2" strokeLinejoin="round" />,
   next: <path d="M9.5 6l6 6-6 6" strokeWidth="2" strokeLinejoin="round" />,
   edit: <><path d="M14.5 5.5l4 4L9 19l-4.5 1 1-4.5z" strokeLinejoin="round" /><path d="M12.5 7.5l4 4" /></>,

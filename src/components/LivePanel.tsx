@@ -32,6 +32,7 @@ type Props = {
   onTab?: (t: 'answers' | 'notes') => void;
   notes?: string;
   notesEditor?: React.ReactNode;
+  people?: React.ReactNode;
   onNotes?: (v: string) => void;
   signals?: Record<string, Signal>;
   onSpotlight?: (qid: string, text: string) => void;
@@ -81,7 +82,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, people, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
   const [room, setRoom] = useState<string>('all');
   const [detail, setDetail] = useState<Learner | null>(null);
   const [allRoster, setRoster] = useState<Learner[]>([]);
@@ -130,6 +131,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
   return (
     <aside className="task-side live-panel" aria-label="Live answers">
       {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} onSpotlight={onSpotlight} codes={codes} annotations={annotations} />}
+      {people}
       <div className="lp-tabs" role="tablist">
         <button type="button" role="tab" aria-selected={tab === 'answers'} className={tab === 'answers' ? 'on' : ''} onClick={() => onTab?.('answers')}>
           Live answers
