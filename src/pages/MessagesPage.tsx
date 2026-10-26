@@ -431,6 +431,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   // they have answered, if the sender allowed it).
   const ans = useAnswers(c.id, m, me.key, qs.length > 0 && !m.deleted);
   const [viewing, setViewing] = useState<ChatAnswer | null>(null);
+  const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (ans.mine && !checked) setResponses(ans.mine.responses as Responses), setChecked(m.key ?? {});
@@ -482,7 +483,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             <>
               {m.content && !isEmptyContent(m.content) && (
                 <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')} onCopy={(e) => setClip(e, clip(), window.getSelection()?.toString() || m.text)}>
-                  <TaskRenderer content={m.content} responses={viewing ? (viewing.responses as Responses) : responses} onChange={(id, r) => !viewing && !mine && setResponses((x) => ({ ...x, [id]: r }))} results={viewing ? m.key ?? {} : checked} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
+                  <TaskRenderer content={m.content} responses={viewing ? (viewing.responses as Responses) : responses} onChange={(id, r) => !viewing && setResponses((x) => ({ ...x, [id]: r }))} results={viewing ? m.key ?? {} : checked} revealed={showKey && !viewing ? m.key ?? {} : null} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
                 </div>
               )}
               {viewing && (
@@ -490,6 +491,25 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
                   {viewing.by === me.key ? 'Your answers' : `${first1(viewing.name)}’s answers`}
                   <button type="button" className="btn link small" onClick={() => setViewing(null)}>
                     {mine ? 'Hide' : 'Back to mine'}
+                  </button>
+                </span>
+              )}
+              {qs.length > 0 && mine && !viewing && (
+                <span className="bub-check">
+                  {checked ? (
+                    <>
+                      <span className="ld-pct">{score!.total ? `${score!.score} of ${score!.total}` : 'Checked'}</span>
+                      <button type="button" className="btn link small" onClick={() => (setChecked(null), setResponses({}))}>
+                        Try again
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn small-btn" disabled={!Object.keys(responses).length} onClick={() => setChecked(m.key ?? {})} data-tip="Only you see this check">
+                      Check
+                    </button>
+                  )}
+                  <button type="button" className={'btn small-btn bub-key' + (showKey ? ' on' : '')} onClick={() => setShowKey((v) => !v)} aria-pressed={showKey}>
+                    <UiIcon name="check" size={13} /> {showKey ? 'Hide the answers' : 'Show the answers'}
                   </button>
                 </span>
               )}

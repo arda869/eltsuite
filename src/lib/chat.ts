@@ -139,7 +139,10 @@ const INLINE_ONLY = new Set(['paragraph', 'text', 'hardBreak', 'mention', 'headi
 // Only the task parts of a message: its task elements and the lines with questions in them.
 export const taskPartsOf = (n: JSONContent, hasQuestion: (x: JSONContent) => boolean): JSONContent[] => (n.content ?? []).filter((c) => !INLINE_ONLY.has(c.type ?? '') || hasQuestion(c));
 export const blocksIn = (n?: JSONContent | null): number => (!n ? 0 : (n.content ?? []).filter((c) => !INLINE_ONLY.has(c.type ?? '')).length);
-export const isEmptyContent = (n?: JSONContent | null) => !plainOf(n).trim() && blocksIn(n) === 0 && !JSON.stringify(n ?? {}).includes('"image"');
+// Empty: no words and nothing else in it. A question, a gap or any task element on its own is enough to send.
+const BARE = new Set(['doc', 'paragraph', 'text', 'hardBreak']);
+const hasThing = (n?: JSONContent | null): boolean => !!n && (!BARE.has(n.type ?? 'doc') || (n.content ?? []).some(hasThing));
+export const isEmptyContent = (n?: JSONContent | null) => !plainOf(n).trim() && !hasThing(n);
 
 export async function sendMsg(c: Chat, me: Person, m: Omit<Msg, 'id' | 'by' | 'name' | 'role' | 'at'>) {
   const at = Date.now();

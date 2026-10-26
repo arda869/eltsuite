@@ -1,4 +1,5 @@
 import { AskHost } from './lib/ask';
+import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
 import { startTilt } from './lib/tilt';
 import { ChatDock } from './components/ChatDock';
@@ -133,6 +134,7 @@ createRoot(document.getElementById('root')!).render(
         </Routes>
         <ChatDock />
         <AskHost />
+        <MenuHost />
         </ProxyGate>
       </BrowserRouter>
     </AuthProvider>

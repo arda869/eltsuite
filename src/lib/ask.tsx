@@ -80,9 +80,12 @@ function AskBox({ r, done }: { r: Req; done: (v: unknown) => void }) {
   const inRef = useRef<HTMLInputElement>(null);
   const no = () => done(r.kind === 'ask' ? false : r.kind === 'text' ? null : undefined);
   const yes = () => done(r.kind === 'ask' ? true : r.kind === 'text' ? text : undefined);
+  // Focus once, when it opens (not on every key typed).
   useEffect(() => {
     if (r.kind === 'text') inRef.current?.select();
     else okRef.current?.focus();
+  }, [r]);
+  useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') e.preventDefault(), no();
     };
