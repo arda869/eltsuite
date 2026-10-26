@@ -11,6 +11,7 @@ import { useMyRecaps } from '../lib/recap';
 import { useMistakes } from '../lib/mistakes';
 import { useNotebook } from '../lib/notebook';
 import { PhoneMessagesLink } from '../components/ChatDock';
+import { AppSetupDialog } from '../components/AppSetup';
 import { CoverArt } from '../components/Covers';
 import { isProxyTab } from '../lib/proxy';
 import { MySecretDialog } from '../components/MySecretDialog';
@@ -60,6 +61,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [menu, setMenu] = useState(false);
   const menuRef = useDismiss<HTMLDivElement>(menu, () => setMenu(false));
   const [picking, setPicking] = useState(false);
+  const [appOpen, setAppOpen] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
   // First visit: invite the learner to choose a picture.
   const [askPicture, setAskPicture] = useState(() => !isProxyTab()) // a teacher viewing as the learner is not asked to choose their picture;
@@ -148,6 +150,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               <button role="menuitem" onClick={() => (setPicking(true), setMenu(false))}>
                 Choose a profile picture
               </button>
+              <button role="menuitem" onClick={() => (setAppOpen(true), setMenu(false))}>
+                App and notifications
+              </button>
               {!isProxyTab() && (
                 <button role="menuitem" onClick={() => (setSecretOpen(true), setMenu(false))}>
                   Change my PIN or password
@@ -162,6 +167,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
         </div>
       </header>
       {secretOpen && c && profile?.role === 'learner' && <MySecretDialog classId={classId} classCode={c.classCode} learnerId={profile.learnerId} onClose={() => setSecretOpen(false)} />}
+      {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
       {(picking || (profile && !profile.avatar && askPicture)) && <AvatarPicker classIds={[classId]} onClose={() => (setPicking(false), setAskPicture(false))} />}
 
       {c === null || c?.status === 'deleted' ? (

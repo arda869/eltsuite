@@ -24,6 +24,7 @@ import { UiIcon } from '../components/UiIcon';
 import { MainNav } from './ColleaguesPage';
 import { SharedWindow } from './SharedPage';
 import { setDock } from '../components/ChatDock';
+import { AppSetupDialog } from '../components/AppSetup';
 import { setClip, writeClip, type Clip } from '../lib/clip';
 import { Icon, IconGrid, iconByKey } from '../editor/Icons';
 import { useDismiss } from '../lib/useDismiss';
@@ -828,10 +829,12 @@ function MoreReacts({ onPick }: { onPick: (k: string) => void }) {
 function MsgSettings({ uid }: { uid: string }) {
   const [open, setOpen] = useState(false);
   const [sounds, setS] = useState(soundsOn());
+  const [appOpen, setAppOpen] = useState(false);
   const prefs = useMsgPrefs(uid || undefined);
   const ref = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
   return (
     <span className="msg-set" ref={ref}>
+      {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
       <button type="button" className="cd-icon" aria-label="Message settings" data-tip="Sounds and email" onClick={() => setOpen((o) => !o)}>
         <UiIcon name="bell" size={15} />
       </button>
@@ -844,6 +847,9 @@ function MsgSettings({ uid }: { uid: string }) {
             </span>
             <input type="checkbox" checked={sounds} onChange={(e) => (setSounds(e.target.checked), setS(e.target.checked), e.target.checked && chime('in'))} />
           </label>
+          <button type="button" className="btn link small msg-push-link" onClick={() => (setAppOpen(true), setOpen(false))}>
+            Notifications on this device…
+          </button>
           {uid && (
             <>
               <label className="switch-row">

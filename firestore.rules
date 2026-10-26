@@ -487,6 +487,12 @@ service cloud.firestore {
       }
     }
 
+    // Devices that get notifications: each person adds and removes their own.
+    match /pushTokens/{t} {
+      allow read, delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid && request.resource.data.key == chatKey();
+    }
+
     // Class codes: looked up one at a time when learners join
     match /classCodes/{code} {
       allow get: if true;

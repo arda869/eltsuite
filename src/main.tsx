@@ -1,4 +1,5 @@
 import { AskHost } from './lib/ask';
+import { startServiceWorker } from './lib/push';
 import { startTilt } from './lib/tilt';
 import { ChatDock } from './components/ChatDock';
 import { startTheme } from './lib/theme';
@@ -135,3 +136,4 @@ createRoot(document.getElementById('root')!).render(
     </AuthProvider>
   </StrictMode>,
 );
+startServiceWorker();

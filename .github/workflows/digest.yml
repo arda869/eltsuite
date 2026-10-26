@@ -1,4 +1,4 @@
-name: Email summaries of unread messages
+name: Notifications and email summaries
 
 on:
   schedule:
@@ -13,16 +13,16 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Send summaries
+      - name: Send notifications and email summaries
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           SMTP_URL: ${{ secrets.SMTP_URL }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
         run: |
-          if [ -z "$SMTP_URL" ]; then echo "No SMTP_URL secret yet: nothing to send."; exit 0; fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs "$RUNNER_TEMP/d/" && cd "$RUNNER_TEMP/d"
+          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs "$RUNNER_TEMP/d/" && cd "$RUNNER_TEMP/d"
           npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 nodemailer@6 >/dev/null
-          node digest.mjs
+          node push.mjs || echo "Notifications could not be sent this time."
+          if [ -n "$SMTP_URL" ]; then node digest.mjs; else echo "No SMTP_URL secret yet: no email summaries."; fi
           rm -f "$RUNNER_TEMP/sa.json"

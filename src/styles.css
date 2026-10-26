@@ -4762,3 +4762,16 @@ li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
   .topbar .wordmark { font-size: 17px; }
   .topbar .mode-btn { padding: 0 8px; }
 }
+
+/* Lesson Lit on this device: install and notifications */
+.dialog.app-setup { width: 440px; gap: 0; padding: 26px 26px 20px; border-radius: 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #d98f63) 9%, var(--paper)) 0, var(--paper) 130px); box-shadow: 0 0 0 1px var(--hair), 0 30px 70px -10px rgba(38, 36, 32, .32); animation: ask-in .2s cubic-bezier(.2, .9, .3, 1.15); }
+.as-icon img { width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 6px 16px -6px rgba(38, 36, 32, .45); margin-bottom: 14px; display: block; }
+.as-step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.as-step > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font: 14px/1.5 var(--sans); }
+.as-step b { font-weight: 600; color: var(--ink); }
+.as-n { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--ink); font: 700 13px var(--sans); }
+.as-n.done { background: var(--accent); color: #fff; }
+.as-key { display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--hair-strong); font-weight: 600; color: var(--ink); }
+.as-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) { .dialog.app-setup { width: 100%; border-radius: 22px 22px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom)); } }
+.msg-push-link { align-self: flex-start; margin: 2px 0 4px; }

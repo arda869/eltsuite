@@ -9,6 +9,7 @@ import { Avatar } from './avatars';
 import { AvatarPicker } from './AvatarPicker';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { PhoneMessagesLink } from './ChatDock';
+import { AppSetupDialog } from './AppSetup';
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -20,6 +21,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const { user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [appOpen, setAppOpen] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [classIds, setClassIds] = useState<string[]>([]);
   useEffect(() => {
@@ -65,6 +67,9 @@ export function TopBar({ children }: { children?: ReactNode }) {
             <button role="menuitem" onClick={() => (setPicking(true), setOpen(false))}>
               Choose a profile picture
             </button>
+            <button role="menuitem" onClick={() => (setAppOpen(true), setOpen(false))}>
+              App and notifications
+            </button>
             <ThemeChoice />
             <button role="menuitem" onClick={signOutNow}>
               Sign out
@@ -82,6 +87,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
       </div>
       {deletingAccount && <DeleteAccountDialog onClose={() => setDeletingAccount(false)} />}
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
+      {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
     </header>
   );
 }
