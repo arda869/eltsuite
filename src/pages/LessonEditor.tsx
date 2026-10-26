@@ -332,6 +332,19 @@ export function LessonEditor() {
   const [copyMsg, setCopyMsg] = useState('');
   const panels = usePanels('ll.teacherPanels');
   const [present, setPresent] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  useEffect(() => {
+    const on = () => setFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, []);
+  useEffect(() => {
+    if (!present && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, [present]);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  };
   const [panelTab, setPanelTab] = useState<'answers' | 'notes'>('answers');
   const [showGrid, setShowGrid] = useState(false);
   // Teacher notes for the selected task (only the teacher can read them).
@@ -360,6 +373,7 @@ export function LessonEditor() {
       if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === '?') return setHelp((h) => !h);
       if (e.key === 'Escape') return (setHelp(false), setPresent(false), setInkMode('off'));
+      if ((e.key === 'f' || e.key === 'F') && present) return toggleFullscreen();
       if (!teachingHere) return;
       const list = tasks.filter((x) => x.kind !== 'section');
       const i = list.findIndex((x) => x.id === selected);
@@ -655,7 +669,7 @@ export function LessonEditor() {
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
       {item && (
-        <div className={'lesson-layout' + (present ? ' present' : '') + panels.cls}>
+        <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls}>
           <nav className="task-list" aria-label="Tasks">
             <input
               className="lesson-title"
@@ -843,6 +857,11 @@ export function LessonEditor() {
                 {present && (
                   <button type="button" className={'btn small-btn' + (showGrid ? ' on-accent' : '')} onClick={() => setShowGrid((v) => !v)}>
                     Live answers
+                  </button>
+                )}
+                {present && document.fullscreenEnabled && (
+                  <button type="button" className={'btn small-btn' + (fullscreen ? ' on-accent' : '')} onClick={toggleFullscreen} title="Use the whole screen, without the browser bars (F)">
+                    {fullscreen ? 'Exit full screen' : 'Full screen'}
                   </button>
                 )}
                 <button type="button" className={'btn small-btn' + (live?.sync ? ' on-accent' : '')} onClick={toggleSync} title="Shortcut: S">
@@ -1237,6 +1256,7 @@ export function LessonEditor() {
                 ['T', 'Start a 2-minute timer, or stop it'],
                 ['A', 'New announcement'],
                 ['Esc', 'Leave present mode, close this'],
+                ['F', 'Full screen while presenting'],
                 ['⌘ + K', 'Editor: link the selected words'],
                 ['Alt + ↑ ↓', 'Editor: move the block up or down'],
                 ['⌘ + Shift + P', 'Preview as learner'],

@@ -39,6 +39,7 @@ import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
+import { InsertGallery } from './InsertGallery';
 
 // Adds a drag-and-drop gap, and a word bank above the paragraph if the task has none yet.
 function insertDropGap(e: Editor) {
@@ -283,6 +284,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     [onPickBank],
   );
   const slash = useSlash(editor, bankCmds);
+  const [gallery, setGallery] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -398,8 +400,19 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
         <IconTool editor={editor} />
         <SymbolTool editor={editor} />
-        {BTN('More question types', false, () => editor.chain().focus().insertContent(' /').run(), '/ More')}
+        {BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
       </div>
+      {gallery && (
+        <InsertGallery
+          commands={[...COMMANDS, ...bankCmds]}
+          onClose={() => setGallery(false)}
+          onPick={(key) => {
+            setGallery(false);
+            const c = [...COMMANDS, ...bankCmds].find((x) => x.key === key);
+            if (c) window.setTimeout(() => c.run(editor), 0);
+          }}
+        />
+      )}
       {editor.isActive('orderedList') && (
         <div className="table-bar" role="toolbar" aria-label="Numbered list">
           <span className="tb-group">
