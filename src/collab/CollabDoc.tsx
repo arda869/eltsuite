@@ -431,7 +431,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   return big ? createPortal(<div className="cd-overlay">{body}</div>, document.body) : body;
 }
 
-function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: () => void; onReply: (text: string) => void; onResolve?: () => void }) {
+export function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: () => void; onReply: (text: string) => void; onResolve?: () => void }) {
   const [text, setText] = useState('');
   const replies = Object.values(t.r ?? {}).sort((a, b) => a.at - b.at);
   return (

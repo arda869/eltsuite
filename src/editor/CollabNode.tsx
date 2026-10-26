@@ -11,7 +11,9 @@ import { NoteEditor } from '../components/NoteEditor';
 import { UiIcon } from '../components/UiIcon';
 import type { CollabAttrs } from '../collab/CollabTask';
 import type { CollabMode } from '../collab/suggest';
-import { CollabTask } from '../collab/CollabTask';
+import { CollabTask, templateKeyOf } from '../collab/CollabTask';
+import { SlidesDoc } from '../collab/slides/SlidesDoc';
+import { useAuth } from '../lib/auth';
 
 // "Collaborate": a document the class writes together, live. The block holds the settings;
 // the writing lives in the shared document, kept with the class (and listed in the archive).
@@ -25,6 +27,9 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
   const sets = useGroupSets(classId);
   const [open, setOpen] = useState(false);
   const [choosing, setChoosing] = useState<CollabEntry[] | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
+  const { user } = useAuth();
+  const slides = a.kind === 'slides';
   // Every shared document is listed with its class, so it can be found and continued later.
   useEffect(() => {
     if (!classId || !a.docKey) return;
@@ -51,9 +56,21 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
         </button>
       </div>
       <div className="co-settings">
+        <div className="md-set">
+          <span>Make</span>
+          {seg(
+            [
+              ['doc', 'A document'],
+              ['slides', 'Slides'],
+            ],
+            a.kind === 'slides' ? 'slides' : 'doc',
+            (k) => updateAttributes({ kind: k }),
+            'Document or slides',
+          )}
+        </div>
         <label className="md-set co-title">
           <span>Name</span>
-          <input value={a.title} onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} placeholder="For example: Our class story" />
+          <input value={a.title} onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} placeholder={slides ? 'For example: Our trip to Japan' : 'For example: Our class story'} />
         </label>
         <div className="md-set">
           <span>Who writes together</span>
@@ -112,18 +129,36 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
         </div>
         <label className="check-row up-shrink">
           <input type="checkbox" checked={a.download} onChange={(e) => updateAttributes({ download: e.target.checked })} />
-          Learners can download it (Word or PDF)
+          {slides ? 'Learners can download it (PowerPoint or PDF)' : 'Learners can download it (Word or PDF)'}
         </label>
+        {slides && a.scope !== 'solo' && (
+          <label className="check-row up-shrink" data-tip="Learners add their own slides and change only those; they can comment on everyone's">
+            <input type="checkbox" checked={!!a.ownSlides} onChange={(e) => updateAttributes({ ownSlides: e.target.checked })} />
+            Each learner makes their own slides in the shared deck
+          </label>
+        )}
       </div>
-      <div className="co-start">
+      {slides ? (
+        <div className="co-start">
+          <span className="hint">{a.scope === 'class' ? 'Starting slides: the class deck begins with them.' : a.scope === 'group' ? 'Starting slides: each group’s deck begins with them.' : 'Starting slides: each learner’s deck begins with them.'} Without them, a deck begins with a title slide.</span>
+          <span>
+            <button type="button" className="btn small-btn" onClick={() => setTplOpen((o) => !o)} disabled={!classId}>
+              <UiIcon name="present" size={14} /> {tplOpen ? 'Close the starting slides' : 'Make the starting slides'}
+            </button>
+          </span>
+          {tplOpen && classId && user && <SlidesDoc docKey={templateKeyOf(a)} title={(a.title || 'Slides') + ' · starting slides'} modes={['edit']} teacher me={{ uid: user.uid, name: user.displayName || 'Teacher' }} classId={classId} display="expand" canDownload />}
+        </div>
+      ) : (
+        <div className="co-start">
         <span className="hint">
           {a.scope === 'class' ? 'Starting text: it is put in the document when it is first opened.' : a.scope === 'group' ? 'Starting text: each group’s document begins with it.' : 'Starting text: each learner’s document begins with it.'}
         </span>
         <NoteEditor value={a.start} onChange={(v) => updateAttributes({ start: v })} placeholder="Optional: a heading, questions to answer, a text to improve…" />
       </div>
+      )}
       <span className="co-acts">
         <button type="button" className="btn small-btn" onClick={() => setOpen((o) => !o)}>
-          <UiIcon name="task" size={14} /> {open ? 'Close the documents' : a.scope === 'class' ? 'Open the class document' : 'Open the documents'}
+          <UiIcon name="task" size={14} /> {open ? (slides ? 'Close the slides' : 'Close the documents') : a.scope === 'class' ? (slides ? 'Open the class slides' : 'Open the class document') : slides ? 'Open the slides' : 'Open the documents'}
         </button>
         <button
           type="button"
@@ -174,6 +209,7 @@ export const CollabBlock = Node.create({
     display: { default: 'expand' },
     download: { default: true },
     start: { default: null },
+    ownSlides: { default: false },
   }),
   parseHTML: () => [{ tag: 'div[data-collab]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-collab': '' })],

@@ -146,3 +146,13 @@ export function watchFlags(key: string, cb: (f: { lock?: boolean; shared?: boole
 }
 export const setShared = (key: string, v: boolean) => set(collabRef(key, 'flags/shared'), v || null);
 export const setLock = (classId: string, key: string, v: boolean) => set(lockRef(classId, key), v || null);
+
+// Everything written in a document so far, as one update (for starting another from it).
+export async function readState(key: string): Promise<Uint8Array | null> {
+  const [snap, list] = await Promise.all([get(collabRef(key, 'snap')).catch(() => null), get(collabRef(key, 'u')).catch(() => null)]);
+  const parts: Uint8Array[] = [];
+  const s = snap?.val() as { s?: string } | null;
+  if (s?.s) parts.push(unb64(s.s));
+  for (const v of Object.values((list?.val() ?? {}) as Record<string, { u?: string }>)) if (v?.u) parts.push(unb64(v.u));
+  return parts.length ? Y.mergeUpdates(parts) : null;
+}
