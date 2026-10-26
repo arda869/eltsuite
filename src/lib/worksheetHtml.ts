@@ -109,6 +109,23 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
         .filter(Boolean)
     : [];
 
+  // Cut-out cards (draw a card, spin the wheel, open a box): their own sheets, a grid of cards with cut lines.
+  const perPage = opts.paper === 'A5' ? 4 : 8;
+  const allCards: { ex: number; title: string; body: string; symbol: string }[] = [];
+  {
+    let k = 0;
+    for (const it of items) {
+      if (it.kind !== 'task') continue;
+      k++;
+      for (const set of it.task.cutouts ?? []) for (const c of set.cards) allCards.push({ ex: k, title: c.title, body: c.blocks.map(block).join(''), symbol: set.symbol });
+    }
+  }
+  const cardPages: string[] = [];
+  for (let i = 0; i < allCards.length; i += perPage) {
+    const chunk = allCards.slice(i, i + perPage);
+    cardPages.push(`<div class="cut-grid">${chunk.map((c) => `<div class="cut-card"><span class="cut-ex">${c.ex}</span><span class="cut-title">${esc(c.title)}</span><div class="cut-body">${c.body}</div>${c.symbol ? `<span class="cut-sym">${esc(c.symbol)}</span>` : ''}</div>`).join('')}${Array.from({ length: perPage - chunk.length }, () => '<div class="cut-card empty"></div>').join('')}</div>`);
+  }
+
   const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
   const band = (heading: string) => `
     <header class="band">
@@ -202,12 +219,26 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .total .mb-max { background: #262420; }
 .total.grand > span:first-child { font-size: 8pt; text-transform: uppercase; letter-spacing: .06em; }
 
+/* Cut-out cards */
+.cut-wrap { flex: 1; min-height: 0; position: relative; padding: ${small ? 5 : 7}mm var(--side) 0; display: flex; }
+.cut-grid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; border-top: .8pt dashed #8d8983; border-left: .8pt dashed #8d8983; }
+.cut-card { position: relative; overflow: hidden; border-right: .8pt dashed #8d8983; border-bottom: .8pt dashed #8d8983; padding: 6mm 6mm 5mm; display: flex; flex-direction: column; gap: 2mm; }
+.cut-card.empty { background: repeating-linear-gradient(45deg, #fff 0 3mm, #f6f5f2 3mm 6mm); }
+.cut-title { font: 800 9pt Karla, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--ink); padding-bottom: 1.6mm; border-bottom: 1.4pt solid var(--accent); align-self: flex-start; }
+.cut-body { font-size: ${small ? '9pt' : '10.5pt'}; line-height: 1.45; overflow: hidden; }
+.cut-ex { position: absolute; top: 2.2mm; right: 2.6mm; font: 700 6.5pt Karla, sans-serif; color: #8d8983; }
+.cut-ex::before { content: 'Ex. '; }
+.cut-sym { position: absolute; right: 4mm; bottom: 3mm; font-size: 12pt; color: var(--tint-line); }
+.scissors { position: absolute; top: ${small ? 3 : 4.6}mm; left: calc(var(--side) - 2mm); font-size: 11pt; color: #57534d; background: #fff; padding: 0 1mm; line-height: 1; z-index: 2; }
+
 /* Answer key */
 .key .ex-body p { margin-bottom: .6mm; }
 </style></head><body>
 <div class="toolbar"><span id="status">Laying out the pages…</span><button onclick="window.print()">Print or save as PDF</button></div>
 <div id="pages"></div>
 <template id="u-main">${units.join('')}</template>
+<template id="cards">${cardPages.map((g) => `<div class="cut-page">${g}</div>`).join('')}</template>
+<template id="band-cards">${band(title + ' · Cards to cut out')}</template>
 <template id="u-key">${keyUnits.join('')}</template>
 <template id="band-main">${band(title)}</template>
 <template id="band-key">${band(title + ' · Answer key')}</template>
@@ -262,6 +293,13 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
   function layout() {
     pagesEl.innerHTML = '';
     flow('u-main', 'band-main');
+    var cardSheets = document.getElementById('cards').content.children;
+    for (var cs = 0; cs < cardSheets.length; cs++) {
+      var page = document.createElement('div');
+      page.className = 'page';
+      page.innerHTML = document.getElementById('band-cards').innerHTML + '<div class="cut-wrap"><span class="scissors">✂</span>' + cardSheets[cs].innerHTML + '</div>' + document.getElementById('foot').innerHTML;
+      pagesEl.appendChild(page);
+    }
     flow('u-key', 'band-key');
     var pages = pagesEl.querySelectorAll('.page');
     for (var p = 0; p < pages.length; p++) pages[p].querySelector('.pn').textContent = (p + 1) + ' / ' + pages.length;

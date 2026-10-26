@@ -15,7 +15,8 @@ export type Block =
   | { kind: 'table'; rows: string[][] }
   | { kind: 'note'; text: string }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[] };
-export type WsTask = { title: string; instructions?: string; blocks: Block[]; answers: { n: number; text: string }[]; marks: number };
+export type CutCard = { title: string; blocks: Block[] };
+export type WsTask = { title: string; instructions?: string; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 export type Options = { header: boolean; key: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string };
@@ -30,6 +31,7 @@ export function flattenTask(t: ExportTask): WsTask {
   const answers: { n: number; text: string }[] = [];
   let n = 0;
   let marks = 0;
+  const cutouts: NonNullable<WsTask['cutouts']> = [];
   const bank: string[] = [];
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
     const out: Run[] = [];
@@ -214,12 +216,21 @@ export function flattenTask(t: ExportTask): WsTask {
         if (inner.length) cur.push({ kind: 'callout', label: String(a.label ?? (node.type === 'revealBox' ? a.title ?? '' : '')), tone: String(a.tone ?? 'grey'), symbol: String(a.symbol ?? ''), style: String(a.style ?? 'box'), blocks: inner });
         return;
       }
-      case 'randomPick':
+      case 'randomPick': {
+        // cards, wheels and boxes print as cut-out cards on their own sheet
+        const cards: CutCard[] = [];
+        const prev = cur;
         node.content?.forEach((c, i) => {
-          cur.push({ kind: 'p', runs: [{ t: `Card ${i + 1}${c.attrs?.title ? ': ' + c.attrs.title : ''}`, bold: true }] });
+          const inner: Block[] = [];
+          cur = inner;
           c.content?.forEach((x) => walk(x));
+          cards.push({ title: String(c.attrs?.title || `Card ${i + 1}`), blocks: inner });
         });
+        cur = prev;
+        cutouts.push({ mode: String(a.mode ?? 'cards'), symbol: String(a.symbol ?? ''), cards });
+        cur.push({ kind: 'note', text: `${cards.length} ${a.mode === 'wheel' ? 'wheel cards' : 'cards'} to cut out: see the card sheet at the end.` });
         return;
+      }
       case 'survey':
       case 'board':
       case 'drawBoard':
@@ -235,7 +246,7 @@ export function flattenTask(t: ExportTask): WsTask {
     }
   };
   (t.content.content ?? []).forEach((c) => walk(c));
-  return { title: t.title, instructions: t.instructions, blocks, answers, marks };
+  return { title: t.title, instructions: t.instructions, blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
@@ -346,6 +357,31 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       t.answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: 18, color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
     });
   }
+  // Cut-out cards: a two-column table with dashed cut lines, on its own page.
+  const cutCards = items.flatMap((i, k) => (i.kind === 'task' ? (i.task.cutouts ?? []).flatMap((set) => set.cards.map((c) => ({ ...c, ex: items.slice(0, k + 1).filter((x) => x.kind === 'task').length }))) : []));
+  const cardParas: (Paragraph | Table)[] = [];
+  if (cutCards.length) {
+    const dash = { style: BorderStyle.DASHED, size: 6, color: '8D8983' };
+    cardParas.push(new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text: '✂  Cards to cut out', font: SANS, size: 24, bold: true })] }));
+    const rows: TableRow[] = [];
+    for (let i = 0; i < cutCards.length; i += 2) {
+      rows.push(
+        new TableRow({
+          cantSplit: true,
+          height: { value: 3000, rule: 'atLeast' as never },
+          children: [0, 1].map((j) => {
+            const c = cutCards[i + j];
+            return new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              margins: { top: 240, bottom: 240, left: 240, right: 240 },
+              children: c ? [new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: c.title.toUpperCase(), font: SANS, size: 18, bold: true, color: ACC, characterSpacing: 20 }), new TextRun({ text: `\tEx. ${c.ex}`, font: SANS, size: 13, color: '8D8983' })], tabStops: [{ type: 'right' as never, position: 4200 }] }), ...(toParas(c.blocks).filter((x) => x instanceof Paragraph) as Paragraph[])] : [new Paragraph('')],
+            });
+          }),
+        }),
+      );
+    }
+    cardParas.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: dash, bottom: dash, left: dash, right: dash, insideHorizontal: dash, insideVertical: dash }, rows }));
+  }
   const SIZES: Record<string, { width: number; height: number }> = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 }, A5: { width: 8391, height: 11906 } };
   const doc = new Document({
     numbering: { config: [{ reference: 'nums', levels: [{ level: 0, format: 'decimal', text: '%1.', alignment: AlignmentType.LEFT }] }] },
@@ -353,6 +389,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     sections: [
       { properties: { page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children },
       { properties: { type: SectionType.CONTINUOUS, column: { count: opts.columns ?? 2, space: 500 }, page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children: body },
+      ...(cardParas.length ? [{ properties: { type: SectionType.NEXT_PAGE, page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children: cardParas }] : []),
       ...(keyParas.length ? [{ properties: { type: SectionType.NEXT_PAGE, column: { count: 2, space: 500 }, page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children: keyParas }] : []),
     ],
   });
