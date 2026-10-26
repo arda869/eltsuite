@@ -135,7 +135,7 @@ export function TeacherQuiz({ classId, itemId, tasks, taskId, roster, online, ac
   const revealedKey = q?.phase === 'reveal' && key && qid ? { [qid]: key[qid] } : null;
 
   return (
-    <div className="tq-overlay" role="dialog" aria-label="Team quiz">
+    <div className={'tq-overlay' + (q ? '' : ' setup')} role="dialog" aria-label="Team quiz" onKeyDown={(e) => !q && e.key === 'Escape' && onClose()} tabIndex={-1} ref={(el) => el && !q && !el.contains(document.activeElement) && el.focus()}>
       <div className="tq-frame">
         <div className="tq-top">
           <span className="eyebrow accent">Team quiz</span>

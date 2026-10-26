@@ -1,6 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { ClassDoc } from '../lib/classes';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { tasksCol } from '../lib/tasks';
 import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
 import { notify } from '../lib/notices';
 import {
@@ -154,11 +157,53 @@ function Composer({ people, placeholder, onSend, busy, autoFocus, submitLabel = 
 }
 
 // The list of threads.
+// A prompt can be about one task: pick the lesson, then the task. Learners get a link to it.
+function TaskLinkPicker({ classId, value, onChange }: { classId: string; value: Thread['link']; onChange: (l: Thread['link']) => void }) {
+  const [items, setItems] = useState<{ id: string; title: string; type?: string; order?: number }[] | null>(null);
+  const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    getDocs(collection(db, 'classes', classId, 'items'))
+      .then((s) => setItems(s.docs.map((d) => ({ id: d.id, ...(d.data() as { title: string; type?: string; order?: number }) })).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))))
+      .catch(() => setItems([]));
+  }, [classId]);
+  useEffect(() => {
+    if (!value?.itemId) return setTasks([]);
+    getDocs(query(tasksCol(classId, value.itemId), orderBy('order')))
+      .then((s) => setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as { title: string; kind?: string }) })).filter((t) => (t as { kind?: string }).kind !== 'section')))
+      .catch(() => setTasks([]));
+  }, [classId, value?.itemId]);
+  const item = items?.find((i) => i.id === value?.itemId);
+  return (
+    <div className="disc-link">
+      <span className="hint">About a task (optional)</span>
+      <select value={value?.itemId ?? ''} aria-label="Lesson" onChange={(e) => { const it = items?.find((i) => i.id === e.target.value); onChange(it ? { itemId: it.id, title: it.title } : null); }}>
+        <option value="">No lesson</option>
+        {(items ?? []).map((i) => (
+          <option key={i.id} value={i.id}>
+            {i.title}
+          </option>
+        ))}
+      </select>
+      {value?.itemId && (
+        <select value={value.taskId ?? ''} aria-label="Task" onChange={(e) => { const t = tasks.find((x) => x.id === e.target.value); onChange(t ? { itemId: value.itemId, taskId: t.id, title: t.title } : { itemId: value.itemId, title: item?.title ?? value.title }); }}>
+          <option value="">The whole lesson</option>
+          {tasks.map((t, n) => (
+            <option key={t.id} value={t.id}>
+              {n + 1}. {t.title}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
 export function DiscussionBoard({ c, me, people, open, onOpen, threadLink }: { c: ClassDoc; me: Me; people: Person[]; open?: string | null; onOpen: (tid: string | null) => void; threadLink?: (tid: string) => string }) {
   const threads = useThreads(c.id, me);
   const [seen, setSeen] = useState(() => readSeen(c.id));
   const [starting, setStarting] = useState(false);
   const [title, setTitle] = useState('');
+  const [link, setLink] = useState<Thread['link']>(null);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<'all' | 'prompts' | 'mine' | 'review'>('all');
   const s = discussionSettings(c);
@@ -178,12 +223,13 @@ export function DiscussionBoard({ c, me, people, open, onOpen, threadLink }: { c
   const start = async (body: string, mentions: string[]) => {
     setBusy(true);
     try {
-      const tid = await startThread(c.id, c, me, { title: title.trim() || body.trim().slice(0, 60), body, mentions });
+      const tid = await startThread(c.id, c, me, { title: title.trim() || body.trim().slice(0, 60), body, mentions, link });
       for (const uid of mentions) {
         const p = people.find((x) => x.uid === uid);
         notify(c.id, { to: p?.learnerId ?? (p ? 'teacher' : ''), fromName: me.name, fromUid: me.uid, what: 'in a discussion', text: body.slice(0, 120), itemId: 'disc', taskId: tid }).catch(() => {});
       }
       setTitle('');
+      setLink(null);
       setStarting(false);
       onOpen(tid);
     } finally {
@@ -210,12 +256,13 @@ export function DiscussionBoard({ c, me, people, open, onOpen, threadLink }: { c
       {starting && (
         <div className="disc-new">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={me.teacher ? 'Prompt title, for example: Question of the week' : 'Title'} maxLength={140} autoFocus aria-label="Title" />
+          {me.teacher && <TaskLinkPicker classId={c.id} value={link} onChange={setLink} />}
           <Composer people={people} placeholder={me.teacher ? 'What should learners discuss? You can paste a link or a picture address.' : 'What do you want to talk about?'} onSend={start} busy={busy} submitLabel={me.teacher ? 'Post prompt' : 'Start thread'} onCancel={() => setStarting(false)} />
           {!me.teacher && s.approval && <span className="hint">Your teacher will see your thread first and approve it.</span>}
         </div>
       )}
       {!shown.length ? (
-        <p className="hint">{threads.length ? 'Nothing here.' : me.teacher ? 'No discussions yet. Post a prompt, or start one from a task with “Discuss this task”.' : 'No discussions yet.'}</p>
+        <p className="hint">{threads.length ? 'Nothing here.' : me.teacher ? 'No discussions yet. Post a prompt; it can be about a task in one of your lessons.' : 'No discussions yet.'}</p>
       ) : (
         <ul className="disc-list">
           {shown.map((t) => {

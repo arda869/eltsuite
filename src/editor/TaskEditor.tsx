@@ -23,6 +23,8 @@ import OrderedList from '@tiptap/extension-ordered-list';
 import { listLabel, parseListStart } from '../lib/listLabel';
 import { EditorContextMenu } from './ContextMenu';
 import { LineAdder } from './LineAdder';
+import { Picture, PictureDialog, insertPictures } from './Picture';
+import { uploadPicture } from './PackNode';
 import { EditorClassContext } from './context';
 import { Selection } from '@tiptap/pm/state';
 import { Highlight, HighlightTool } from './Highlight';
@@ -69,7 +71,28 @@ const COMMANDS: Cmd[] = [
   { key: 'notgiven', label: 'True, false or not given', hint: 'For reading tasks', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False', 'Not given'])).run() },
   { key: 'match', label: 'Matching', hint: 'Match items on the left to the right', group: 'Questions', run: (e) => e.chain().focus().insertContent([newMatch(), { type: 'paragraph' }]).run() },
   { key: 'drop', label: 'Drag-and-drop gap', hint: 'A gap filled from the word bank', group: 'Questions', run: (e) => insertDropGap(e) },
-  { key: 'bank', label: 'Word bank', hint: 'The words for drag-and-drop gaps', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWordBank(), { type: 'paragraph' }]).run() },
+  {
+    key: 'bank',
+    label: 'Word bank',
+    hint: 'The words for drag-and-drop gaps',
+    group: 'Questions',
+    run: (e) => {
+      // One word bank holds the words of every drag-and-drop gap in the task, so a second one would
+      // only repeat them: go to the one that is there instead.
+      let at = -1;
+      e.state.doc.descendants((n, pos) => {
+        if (at < 0 && n.type.name === 'wordbank') at = pos;
+      });
+      if (at >= 0) {
+        e.chain().focus().setNodeSelection(at).scrollIntoView().run();
+        const dom = e.view.nodeDOM(at) as HTMLElement | null;
+        dom?.classList.add('flash');
+        window.setTimeout(() => dom?.classList.remove('flash'), 1200);
+        return;
+      }
+      e.chain().focus().insertContent([newWordBank(), { type: 'paragraph' }]).run();
+    },
+  },
   { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
   { key: 'reflect', label: 'Self-reflection', hint: 'Learners rate how they did: stars, faces, scales, can-do lists', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('self'), { type: 'paragraph' }]).run() },
@@ -134,12 +157,9 @@ const COMMANDS: Cmd[] = [
   {
     key: 'image',
     label: 'Image',
-    hint: 'From a web address',
+    hint: 'Upload pictures or use a web address; label them 1, 2, 3 or a, b, c',
     group: 'Text',
-    run: (e) => {
-      const src = window.prompt('Image address (https://…)');
-      if (src && /^https:\/\//.test(src)) e.chain().focus().setImage({ src }).run();
-    },
+    run: () => void window.dispatchEvent(new CustomEvent('ll:add-picture')),
   },
   { key: 'table', label: 'Table', hint: '3 × 3, with a header row', group: 'Text', run: (e) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { key: 'quote', label: 'Quote', hint: 'Set a passage apart', group: 'Text', run: (e) => e.chain().focus().toggleBlockquote().run() },
@@ -242,6 +262,27 @@ function ListStart({ editor }: { editor: Editor }) {
   );
 }
 
+// A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
+// rather than inside a bullet point.
+const INLINE_KEYS = ['gap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
+const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard'];
+function placeForBlock(e: Editor, c: { key: string; group: string }) {
+  if (INLINE_KEYS.includes(c.key)) return;
+  const { $from } = e.state.selection;
+  let target = 0;
+  for (let d = 1; d <= $from.depth; d++) {
+    const name = $from.node(d).type.name;
+    if (name === 'bulletList' || name === 'orderedList') {
+      target = d;
+      break;
+    }
+  }
+  if (!target && (TOP_ONLY.includes(c.key) || c.group === 'Blocks') && $from.depth > 1) target = 1;
+  if (!target) return;
+  const after = $from.after(target);
+  e.chain().insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1).run();
+}
+
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
     {text}
@@ -277,6 +318,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       TableHeader.extend({ addAttributes() { return { ...this.parent?.(), ...cellAttrs }; } }),
       TableCell.extend({ addAttributes() { return { ...this.parent?.(), ...cellAttrs }; } }),
       Image,
+      Picture,
       jsonClip(Gap, 'span', 'data-gap'),
       jsonClip(Mcq, 'div', 'data-mcq'),
       jsonClip(Choice, 'span', 'data-choice'),
@@ -312,7 +354,44 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     ],
     content,
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
+    editorProps: {
+      // Paste or drop pictures straight into the task: they are uploaded to the class.
+      handlePaste: (_view, e) => {
+        const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+        if (!files.length || !classRef.current) return false;
+        pastePictures(files);
+        return true;
+      },
+      handleDrop: (_view, e) => {
+        const files = Array.from((e as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
+        if (!files.length || !classRef.current) return false;
+        e.preventDefault();
+        pastePictures(files);
+        return true;
+      },
+    },
   });
+  const classRef = useRef(classId);
+  classRef.current = classId;
+  const editorRef = useRef<Editor | null>(null);
+  editorRef.current = editor;
+  async function pastePictures(files: File[]) {
+    const ed = editorRef.current;
+    if (!ed) return;
+    try {
+      const srcs: string[] = [];
+      for (const f of files) srcs.push(await uploadPicture(classRef.current, f));
+      insertPictures(ed, srcs);
+    } catch {
+      window.alert('The picture could not be uploaded. Try a smaller one.');
+    }
+  }
+  const [picOpen, setPicOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setPicOpen(true);
+    window.addEventListener('ll:add-picture', open);
+    return () => window.removeEventListener('ll:add-picture', open);
+  }, []);
 
   const bankCmds = useMemo<Cmd[]>(
     () => (onPickBank ? [{ key: 'bankpick', label: 'From my question bank…', hint: 'Insert a saved question or task', group: 'Questions', run: (e) => onPickBank((nodes) => e.chain().focus().insertContent(nodes).run()) }] : []),
@@ -437,6 +516,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         <SymbolTool editor={editor} />
         {BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
       </div>
+      {picOpen && editor && <PictureDialog editor={editor} classId={classId} onClose={() => setPicOpen(false)} />}
       {gallery && (
         <InsertGallery
           commands={[...COMMANDS, ...bankCmds]}
@@ -444,7 +524,11 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           onPick={(key) => {
             setGallery(false);
             const c = [...COMMANDS, ...bankCmds].find((x) => x.key === key);
-            if (c) window.setTimeout(() => c.run(editor), 0);
+            if (c)
+              window.setTimeout(() => {
+                placeForBlock(editor, c);
+                c.run(editor);
+              }, 0);
           }}
         />
       )}

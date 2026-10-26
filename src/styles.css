@@ -3210,3 +3210,50 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 
 /* Selected text takes the class colour */
 ::selection { background: color-mix(in srgb, var(--accent, #d98f63) 30%, transparent); color: inherit; }
+
+.disc-link { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-family: var(--sans); }
+.disc-link select { height: 32px; max-width: 280px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 0 8px; background: #fff; font: 13px var(--sans); }
+
+/* Team quiz setup: a normal-sized dialog, not the full quiz stage */
+.tq-overlay.setup { align-items: center; }
+.tq-overlay.setup .tq-frame { width: min(560px, 100%); max-height: min(720px, 100%); }
+.tq-overlay:focus { outline: none; }
+
+.block-node.flash, .flash > .block-node { animation: flash-ring 1.2s ease-out; }
+@keyframes flash-ring { 0%, 40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* Pictures in tasks: side by side in a line, with an optional label in the top-right corner */
+.pic { position: relative; display: inline-block; vertical-align: top; margin: 4px 10px 8px 0; border-radius: 12px; overflow: hidden; line-height: 0; }
+.pic img { display: block; width: 100%; height: auto; }
+.pic-s { width: 180px; max-width: 100%; } .pic-m { width: 300px; max-width: 100%; } .pic-l { width: 460px; max-width: 100%; } .pic-full { width: 100%; margin-right: 0; }
+.pic-node:has(.pic-full) { display: block; }
+.pic-wait { display: block; aspect-ratio: 4 / 3; background: var(--page, #f5f4f1); }
+.pic-label { position: absolute; top: 6px; left: 6px; min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: #fff; font: 700 10.5px/1 var(--sans); letter-spacing: .02em; box-shadow: 0 0 0 1.5px #fff, 0 1px 4px rgba(0, 0, 0, .16); }
+.pic-node { display: inline-block; vertical-align: top; cursor: pointer; }
+.pic-node.is-selected .pic, .pic-node:hover .pic { box-shadow: 0 0 0 2px var(--accent); }
+.pic-pop { width: 320px; gap: 10px; }
+.pic-row { display: flex; flex-direction: column; gap: 4px; }
+.pic-row input { height: 30px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 0 8px; font: 13px var(--sans); }
+.pic-dialog { width: min(560px, calc(100vw - 32px)); gap: 14px; }
+.pic-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 26px 16px; border: 1.5px dashed var(--hair-strong); border-radius: 14px; background: var(--tint); text-align: center; cursor: pointer; font-family: var(--sans); }
+.pic-drop:hover, .pic-drop.over { border-color: var(--accent); }
+.pic-url { display: flex; gap: 8px; } .pic-url input { flex: 1; height: 36px; border: 1px solid var(--hair-strong); border-radius: 10px; padding: 0 10px; font: 14px var(--sans); }
+
+/* Examples: numbered 0, the answer written in pen, not marked */
+.example-q { white-space: nowrap; }
+.example-q .q-n { font: 600 0.62em var(--sans); color: var(--accent-text); margin-right: 2px; }
+.example-q .ex-answer { display: inline-block; min-width: 3em; padding: 0 4px; border-bottom: 1.5px solid var(--hair-strong); font-family: 'Kalam', cursive; color: #2f5fa8; line-height: 1.3; }
+.example-q.radio { display: flex; flex-direction: column; gap: 4px; white-space: normal; margin: 4px 0; }
+.ex-opt { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.ex-opt.on { color: #2f5fa8; font-family: 'Kalam', cursive; }
+.ex-dot { width: 14px; height: 14px; border: 1.5px solid currentColor; border-radius: 50%; flex: none; }
+.ex-opt.on .ex-dot { background: radial-gradient(circle, currentColor 0 4px, transparent 4.5px); }
+.ex-tag { align-self: flex-start; font: 700 10px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+.doc .ProseMirror .gap-node.is-example::before, .doc .ProseMirror .choice-node.is-example::before { content: '0'; counter-increment: none; }
+.doc .ProseMirror .gap-node.is-example .gap-chip, .doc .ProseMirror .choice-node.is-example .choice-chip { border-style: dashed; color: #2f5fa8; font-family: 'Kalam', cursive; }
+.doc .ProseMirror .gap-node.is-example, .doc .ProseMirror .choice-node.is-example { counter-increment: none; }
+/* Block headers: Remove always on the right; hints in normal case */
+.mcq-tools > button:last-child { margin-left: auto; }
+.mcq-tools .hint { text-transform: none; letter-spacing: 0; font-size: 12px; }
+/* Selects inside blocks look like the rest of the app */
+.block-node select, .mcq-node select, .doc .ProseMirror select { height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a847d' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; -webkit-appearance: none; appearance: none; font: 13px var(--sans); color: var(--ink); text-transform: none; letter-spacing: 0; }

@@ -1,4 +1,8 @@
-import type { Block, Options, Run, WsItem, WsTask } from './worksheet';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Icon } from '../editor/Icons';
+import { Sym } from '../editor/Symbols';
+import type { Block, FormItem, Options, Run, WsItem, WsTask } from './worksheet';
 
 // The printed worksheet or test, laid out like a coursebook photocopiable: a grey header band
 // with a Name box, the Lesson Lit logo and a class-colour graphic; section headings;
@@ -11,7 +15,17 @@ const LET = 'abcdefghijklmnop';
 const FLAME = 'M17 2 C25 14 30 22 30 30 C30 39 24 46 17 46 C10 46 4 39 4 30 C4 22 9 14 17 2 Z';
 const SIZES: Record<string, [number, number]> = { A4: [210, 297], Letter: [215.9, 279.4], A5: [148, 210] };
 
-const logo = () => `<span class="logo">Lesson L<span class="li-i">ı<svg viewBox="0 0 34 48"><path d="${FLAME}" fill="var(--accent)"/></svg></span>t</span>`;
+const logo = (accent: string) => `<span class="logo">Lesson L<span class="li-i">ı<svg viewBox="0 0 34 48"><path d="${FLAME}" style="fill:${accent}"/></svg></span>t</span>`;
+
+// Safari (and iPhone printing) paints SVG colours given as var() or color-mix() black, so the cover
+// gets plain colours here.
+const hexMix = (hex: string, t: number) => {
+  const h = hex.replace('#', '');
+  const c = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  return '#' + c.map((v) => Math.round(v * t + 255 * (1 - t)).toString(16).padStart(2, '0')).join('');
+};
+const plainColours = (svg: string, accent: string) =>
+  svg.replace(/color-mix\(in srgb,\s*var\(--accent\)\s*(\d+)%,\s*(?:white|#fff(?:fff)?)\)/g, (_m, p) => hexMix(accent, Number(p) / 100)).replace(/var\(--accent\)/g, accent);
 
 function runs(rs: Run[]) {
   let stack = '';
@@ -24,17 +38,69 @@ function runs(rs: Run[]) {
         stack = `<span class="stack">${r.stack.map((o) => `<span>${esc(o).replace(/^(\w)\s+/, '<b class="ml">$1</b>')}</span>`).join('')}</span>`;
         return '';
       }
+      if (r.ipa) return `<span class="ipa">${r.ipa.show ? `<span class="ipa-acc">${r.ipa.accent === 'GA' ? 'US' : 'UK'}</span>` : ''}/${esc(r.ipa.text)}/</span>`;
+      if (r.stress) return `<span class="stw st-${esc(r.stress.style)}">${r.stress.syl.map((s, i) => `<span class="${i === r.stress!.on ? 'on' : ''}">${esc(s)}</span>`).join('')}</span>`;
+      if (r.icon) return `<span class="emo tone-${esc(r.icon.tone)}">${iconSvg(r.icon.name)}</span>`;
+      if (r.sym) return symHtml(r.sym);
+      if (r.pic) {
+        const src = r.pic.src.startsWith('media:') ? MEDIA[r.pic.src]?.data ?? '' : r.pic.src;
+        return `<span class="pic pic-${esc(r.pic.size)}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}</span>`;
+      }
       let t = esc(r.t ?? '').replace(/\n/g, '<br>');
       if (r.bold) t = `<b>${t}</b>`;
       if (r.italic) t = `<i>${t}</i>`;
+      if (r.u) t = `<u>${t}</u>`;
+      if (r.s) t = `<s>${t}</s>`;
+      const style = [r.color ? `color:${r.color}` : '', r.hl ? `background:${r.hl}` : ''].filter(Boolean).join(';');
+      if (style) t = `<span style="${style}">${t}</span>`;
+      if (r.def) t = `<span class="defw">${t}</span>`;
+      if (r.ex) return `<span class="ex-ans">${esc(r.t ?? '')}</span>`;
       return t;
     })
     .join('');
   return inline + stack;
 }
 
+// Emoji icons and symbols, drawn the same way as in the app.
+const iconSvg = (name: string) => renderToStaticMarkup(createElement(Icon, { name, size: '1.05em' }));
+const symHtml = (y: { text: string; shape: string; tone: string }) => (y.shape === 'mont' ? renderToStaticMarkup(createElement(Sym, { text: y.text, shape: 'mont', tone: y.tone } as never)) : `<span class="sym sym-${esc(y.shape)} tone-${esc(y.tone)}${y.text.length > 2 ? ' wide' : ''}">${esc(y.text)}</span>`);
+
+// Small drawings for paper forms: stars, faces and thumbs to circle or colour in.
+const STAR = '<svg viewBox="0 0 24 24" width="1.25em" height="1.25em" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-2.9-5.4 2.9 1.1-6-4.5-4.2 6.1-.8z"/></svg>';
+const face = (mouth: string) => `<svg viewBox="0 0 24 24" width="1.5em" height="1.5em" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r=".6" fill="currentColor"/><circle cx="15" cy="10" r=".6" fill="currentColor"/><path d="${mouth}"/></svg>`;
+const FACES = [face('M8.5 16.2c2-1.8 5-1.8 7 0'), face('M8.5 15.4h7'), face('M8.5 14.6c2 1.8 5 1.8 7 0')];
+const THUMB = (down: boolean) => `<svg viewBox="0 0 24 24" width="1.4em" height="1.4em" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" ${down ? 'style="transform:scaleY(-1)"' : ''}><path d="M7 10.5v9H4.5v-9zM7 10.5l3.6-6.3c1.4 0 2.2 1 1.9 2.4l-.6 2.9h5.4c1.3 0 2.2 1.2 1.9 2.4l-1.5 6.1c-.3 1.1-1.2 1.5-2.2 1.5H7"/></svg>`;
+function formItem(it: FormItem, i: number): string {
+  const head = `<p class="fi-q"><b class="qn">${i + 1}</b>${esc(it.prompt)}</p>`;
+  const ends = (inner: string) => `<div class="fi-scale">${it.low ? `<span class="fi-end">${esc(it.low)}</span>` : ''}${inner}${it.high ? `<span class="fi-end">${esc(it.high)}</span>` : ''}</div>`;
+  switch (it.type) {
+    case 'stars':
+      return head + ends(`<span class="fi-stars">${STAR.repeat(Math.max(3, Math.min(10, it.points ?? 5)))}</span>`);
+    case 'faces':
+      return head + `<div class="fi-faces">${FACES.join('')}</div>`;
+    case 'thumbs':
+      return head + `<div class="fi-faces">${THUMB(false)}${THUMB(true)}</div>`;
+    case 'scale':
+      return head + ends(`<span class="fi-boxes">${Array.from({ length: Math.max(2, Math.min(10, it.points ?? 5)) }, (_, k) => `<span>${k + 1}</span>`).join('')}</span>`);
+    case 'choice':
+    case 'checklist':
+    case 'rank':
+      return head + `<div class="fi-opts">${(it.options ?? []).filter(Boolean).map((o) => `<span><i class="fi-${it.type}"></i>${esc(o)}</span>`).join('')}</div>`;
+    default:
+      return head + `<div class="lines">${'<span class="line"></span>'.repeat(2)}</div>`;
+  }
+}
+
 function block(b: Block): string {
   switch (b.kind) {
+    case 'form':
+      return `<div class="form">${b.title ? `<p class="form-t">${esc(b.title)}</p>` : ''}${b.peer ? '<p class="form-name">Classmate’s name <span class="line"></span></p>' : ''}${b.items.map(formItem).join('')}</div>`;
+    case 'draw':
+      return `${b.prompt ? `<p>${esc(b.prompt)}</p>` : ''}<div class="draw-box"></div>`;
+    case 'glossary':
+      return `<div class="gloss"><span class="gloss-h">Glossary</span>${b.items
+        .map(({ word, d }) => `<p><b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${d.translation ? ` <span class="gloss-tr">${esc(d.translation)}</span>` : ''}</p>`)
+        .join('')}</div>`;
     case 'p':
       if (b.heading) return `<p class="sub">${runs(b.runs)}</p>`;
       if (b.list === 'number' && b.mark !== undefined) return `<p class="li label"><span class="mk">${esc(b.mark)}</span><span>${runs(b.runs)}</span></p>`;
@@ -70,10 +136,14 @@ const markBox = (n: number) => `<span class="markbox"><span class="mb-blank"></s
 
 function taskUnit(t: WsTask, num: number, marks: boolean) {
   const head = t.instructions?.trim() || t.title;
-  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${esc(head)}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
+  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${t.instrRuns ? runs(t.instrRuns) : esc(head)}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
 }
 
+// Pictures for this print, set at the start of worksheetHtml.
+let MEDIA: NonNullable<Options['media']> = {};
+
 export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
+  MEDIA = opts.media ?? {};
   const accent = opts.accent || '#d98f63';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;
   const small = opts.paper === 'A5';
@@ -105,11 +175,18 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   const grand = tasks.reduce((s, t) => s + t.marks, 0);
   if (marks && grand) units.push(`<div class="unit total grand"><span>Total</span>${markBox(grand)}</div>`);
 
-  const keyUnits = opts.key
-    ? tasks
-        .map((t, i) => (t.answers.length ? `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${t.answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}</div></div>` : ''))
-        .filter(Boolean)
-    : [];
+  // For the teacher: each exercise's answers and, when chosen, its teacher's notes.
+  const keyUnits =
+    opts.key || opts.notes
+      ? tasks
+          .map((t, i) => {
+            const answers = opts.key ? t.answers : [];
+            const notes = opts.notes ? t.notes ?? '' : '';
+            if (!answers.length && !notes) return '';
+            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
+          })
+          .filter(Boolean)
+      : [];
 
   // Cut-out cards (draw a card, spin the wheel, open a box): one set per exercise, laid out by the
   // script so that every card on the sheet is the same size.
@@ -137,17 +214,17 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
         <h1>${esc(heading)}</h1>
       </div>
       <div class="band-right">
-        <div class="band-cover">${opts.cover ?? ''}</div>
-        <div class="brand">${logo()}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
+        <div class="band-cover">${plainColours(opts.cover ?? '', accent)}</div>
+        <div class="brand">${logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
-  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · Lesson Lit · photocopiable for this class</span><span class="pn"></span></footer>`;
+  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · Lesson Lit</span><span class="pn"></span></footer>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>
 @font-face { font-family: Fraunces; src: url('${opts.origin ?? ''}/fonts/Fraunces.ttf') format('truetype'); font-weight: 100 900; font-display: block; }
 @font-face { font-family: Karla; src: url('${opts.origin ?? ''}/fonts/Karla.ttf') format('truetype'); font-weight: 200 800; font-display: block; }
-:root { --accent: ${accent}; --accent-ink: color-mix(in srgb, var(--accent) 72%, black); --tint: color-mix(in srgb, var(--accent) 10%, white); --ink: #262420; --muted: #66615b; --band: #dad8d4; --tint-line: color-mix(in srgb, var(--accent) 35%, white); --pw: ${pw}mm; --ph: ${ph}mm; --side: ${small ? 10 : 13}mm; }
+:root { --accent: ${accent}; --accent-ink: color-mix(in srgb, var(--accent) 72%, black); --accent-text: var(--accent-ink); --tint: color-mix(in srgb, var(--accent) 10%, white); --ink: #262420; --muted: #66615b; --band: #ecebe7; --tint-line: color-mix(in srgb, var(--accent) 35%, white); --pw: ${pw}mm; --ph: ${ph}mm; --side: ${small ? 10 : 13}mm; }
 @page { size: ${opts.paper === 'Letter' ? 'letter' : opts.paper ?? 'A4'}; margin: 0; }
 * { box-sizing: border-box; }
 html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -156,6 +233,9 @@ body { margin: 0; color: var(--ink); font: ${small ? '9pt' : '10.2pt'}/1.5 Fraun
 .page:last-child { break-after: auto; }
 @media screen { body { background: #e6e4e0; padding: 20px 0 40px; } .page { margin: 0 auto 18px; box-shadow: 0 8px 26px rgba(0,0,0,.14); } .toolbar { width: var(--pw); margin: 0 auto 14px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; font: 13px Karla, sans-serif; color: #66615b; } .toolbar button { font: 700 13px Karla, sans-serif; padding: 9px 16px; border-radius: 10px; border: 0; background: var(--accent); color: #fff; cursor: pointer; } }
 @media print { .toolbar { display: none; } body { background: #fff; } }
+/* Safari and every iPhone or iPad browser keep their own page margins and print the address and date in
+   them, so a full-size page spills onto a second sheet. There the pages print a little smaller. */
+@media print { html.wk body { zoom: .85; } .page { break-inside: avoid; } }
 
 /* Header band */
 .band { flex: none; display: grid; grid-template-columns: 1fr 34%; height: ${small ? 24 : 30}mm; margin-top: ${small ? 7 : 10}mm; background: var(--band); }
@@ -165,7 +245,7 @@ body { margin: 0; color: var(--ink); font: ${small ? '9pt' : '10.2pt'}/1.5 Fraun
 h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12 Karla, sans-serif; color: #4b4843; letter-spacing: -.005em; }
 .band-right { position: relative; overflow: hidden; }
 .band-cover { position: absolute; inset: 0; } .band-cover svg, .band-cover img { width: 100%; height: 100%; display: block; }
-.band-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--band) 0%, rgba(218,216,212,0) 28%); }
+.band-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--band) 0%, rgba(236,235,231,0) 28%); }
 .brand { background: rgba(255,255,255,.88); padding: 1.6mm 2.6mm 1.4mm; border-radius: 1.6mm; }
 .brand { position: absolute; right: var(--side); bottom: ${small ? 2.5 : 3.2}mm; display: flex; flex-direction: column; align-items: flex-end; gap: .6mm; }
 .logo { font: 600 ${small ? 14 : 18}pt/1 Fraunces, serif; letter-spacing: -.015em; color: var(--ink); white-space: nowrap; }
@@ -226,13 +306,60 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .cut-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: ${small ? 4 : 6}mm var(--side) 0; }
 .cut-head { flex: none; display: flex; align-items: center; gap: 2.5mm; margin-bottom: 2.5mm; font-size: 1.08em; }
 .cut-ex { font: 400 1em Fraunces, serif; white-space: pre; }
-.scissors { font-size: 12pt; color: #57534d; line-height: 1; }
+.scissors { display: inline-flex; font-size: 12pt; color: var(--accent-ink); line-height: 1; } .scissors svg { display: block; }
 .cut-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; align-content: start; padding: .5pt 0 0 .5pt; }
 .cut-card { position: relative; overflow: hidden; margin: -.5pt 0 0 -.5pt; border: .9pt dashed #6f6a64; padding: 3.6mm 4.4mm 3mm; display: flex; flex-direction: column; gap: 1.4mm; font: ${small ? '8.6pt' : '9.6pt'}/1.4 Karla, sans-serif; }
 .cut-title { font: 700 ${small ? '10.5pt' : '12pt'}/1.25 Karla, sans-serif; color: var(--ink); padding-left: 2.4mm; border-left: 1.6pt solid var(--accent); }
 .cut-body p { margin: 0 0 .8mm; }
 .cut-body .li { gap: 1.4mm; }
 .cut-sym { position: absolute; right: 3mm; bottom: 2.2mm; font-size: 10pt; color: var(--tint-line); }
+
+/* Inline language tools on paper */
+.ipa { font-family: 'Noto Sans', 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Lucida Sans Unicode', 'Segoe UI', 'Arial Unicode MS', sans-serif; color: #6f6a64; font-size: .9em; white-space: nowrap; }
+.ipa-acc { font: 700 .62em Karla, sans-serif; letter-spacing: .06em; color: var(--accent-ink); margin-right: .25em; vertical-align: .15em; }
+.stw { white-space: nowrap; }
+.stw.st-bold .on { font-weight: 700; }
+.stw.st-big .on { font-size: 1.18em; font-weight: 600; }
+.stw.st-box .on { position: relative; display: inline-block; }
+.stw.st-box .on::before { content: ''; position: absolute; left: 50%; top: -.1em; width: .36em; height: .36em; margin-left: -.18em; border: 1pt solid var(--accent-ink); border-radius: .06em; }
+.emo { display: inline-block; vertical-align: -.18em; } .emo svg { display: block; } .emo.tone-accent { color: var(--accent-ink); } .emo.tone-soft { color: #8f8f8c; }
+.sym { display: inline-flex; align-items: center; justify-content: center; vertical-align: .08em; font: 700 .68em/1 Karla, sans-serif; min-width: 1.6em; height: 1.6em; padding: 0 .3em; box-sizing: border-box; margin: 0 .08em; }
+.sym-box { border: 1pt solid currentColor; border-radius: .22em; } .sym-circle { border: 1pt solid currentColor; border-radius: 999px; } .sym-circle:not(.wide) { width: 1.6em; padding: 0; }
+.sym-pill { border-radius: 999px; background: var(--tint); } .sym.tone-accent { color: var(--accent-ink); } .sym.tone-soft { color: #8f8f8c; }
+svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
+.defw { border-bottom: .8pt dotted var(--accent-ink); }
+.gloss { margin-top: 2.2mm; padding: 1.6mm 2.4mm; border-top: .6pt solid var(--tint-line); font-size: .92em; }
+.gloss-h { display: block; font: 700 6.6pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: .6mm; }
+.gloss p { margin: .4mm 0; } .gloss-tr { color: #6f6a64; font-style: italic; }
+
+.tnotes { margin-top: 1.6mm; padding: 1.6mm 2.4mm; border-left: 1.6pt solid var(--accent); background: var(--tint); font: 8.6pt/1.45 Karla, sans-serif; color: #3d3a36; }
+.tnotes-h { display: block; font: 700 6.4pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: .6mm; }
+.tnotes p { margin: .3mm 0; }
+
+/* Self-reflection, peer feedback and surveys on paper */
+.form { margin: 1mm 0 2mm; }
+.form-t { font-weight: 600; margin-bottom: 1.2mm; }
+.form-name { display: flex; align-items: flex-end; gap: 2mm; font: 600 8pt Karla, sans-serif; color: #4b4843; } .form-name .line { flex: 1; margin: 0; }
+.fi-q { margin: 1.8mm 0 .8mm; }
+.fi-scale { display: flex; align-items: center; gap: 2.4mm; padding-left: 5mm; flex-wrap: wrap; }
+.fi-end { font: 500 7.4pt Karla, sans-serif; color: #66615b; }
+.fi-stars { display: inline-flex; gap: 1mm; color: var(--accent-ink); }
+.fi-faces { display: flex; gap: 4mm; padding-left: 5mm; color: #4b4843; }
+.fi-boxes { display: inline-flex; gap: 1.4mm; } .fi-boxes span { width: 6.4mm; height: 6.4mm; display: grid; place-items: center; border: .8pt solid #8a847d; border-radius: 1mm; font: 600 7.6pt Karla, sans-serif; color: #66615b; }
+.fi-opts { display: flex; flex-direction: column; gap: .9mm; padding-left: 5mm; }
+.fi-opts span { display: flex; align-items: center; gap: 2mm; }
+.fi-opts i { flex: none; display: inline-block; width: 3.4mm; height: 3.4mm; border: .8pt solid #6f6a64; }
+.fi-opts i.fi-choice { border-radius: 50%; } .fi-opts i.fi-checklist { border-radius: .6mm; } .fi-opts i.fi-rank { width: 6mm; border-width: 0 0 .8pt; border-radius: 0; }
+.draw-box { height: 46mm; border: .8pt dashed #b8b2aa; border-radius: 2mm; margin: 1.4mm 0 2mm; }
+
+/* Pictures, with their label in the top-right corner */
+.pic { position: relative; display: inline-block; vertical-align: top; margin: .6mm 2.4mm 1.6mm 0; border-radius: 1.6mm; overflow: hidden; line-height: 0; background: #f1efeb; }
+.pic img { display: block; width: 100%; height: auto; }
+.pic-s { width: 28mm; } .pic-m { width: 46mm; } .pic-l { width: 70mm; max-width: 100%; } .pic-full { width: 100%; margin-right: 0; }
+.pic-wait { display: block; aspect-ratio: 4 / 3; }
+.pic-label { position: absolute; top: 1.2mm; left: 1.2mm; min-width: 3.8mm; height: 3.8mm; padding: 0 1mm; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: #fff; font: 700 6.4pt/1 Karla, sans-serif; box-shadow: 0 0 0 .35mm #fff; }
+
+.ex-ans { display: inline-block; min-width: 10mm; padding: 0 1mm; border-bottom: .6pt solid #2f2c29; font-style: italic; color: #2f5fa8; }
 
 /* Class colour, more prominent */
 h1 { color: var(--ink); }
@@ -247,7 +374,7 @@ h1 { color: var(--ink); }
 .mb-max { background: var(--accent); }
 .total .mb-max { background: var(--accent-ink); }
 .markbox, .total > span:first-child { border-color: var(--accent-ink); }
-.cut-title { border-left: 0; padding: 1.2mm 2.6mm; background: var(--accent); color: #fff; border-radius: 1.2mm; align-self: flex-start; }
+.cut-title { border-left: 0; padding: 0; background: none; color: var(--accent-ink); border-radius: 0; align-self: flex-start; }
 .scissors { color: var(--accent-ink); }
 .li.bullet .mk::before { color: var(--accent); }
 .li.label .mk { width: auto; min-width: 4mm; font-weight: 600; color: var(--accent-ink); font-family: Karla, sans-serif; }
@@ -262,15 +389,21 @@ h1 { color: var(--ink); }
 <template id="band-cards">${band(title + ' · Cards to cut out')}</template>
 <template id="u-key">${keyUnits.join('')}</template>
 <template id="band-main">${band(title)}</template>
-<template id="band-key">${band(title + ' · Answer key')}</template>
+<template id="band-key">${band(title + (opts.key && opts.notes ? ' · Answer key and notes' : opts.key ? ' · Answer key' : ' · Teacher’s notes'))}</template>
 <template id="foot">${foot}</template>
 <script>
+(function () {
+  var ua = navigator.userAgent;
+  var ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var safari = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg|OPR|Android/.test(ua);
+  if (ios || safari) document.documentElement.className += ' wk';
+})();
 (function () {
   var COLS = ${cols};
   var pagesEl = document.getElementById('pages');
   function newPage(bandId) {
     var page = document.createElement('div');
-    page.className = 'page';
+    page.className = bandId === 'band-key' ? 'page key-page' : 'page';
     page.innerHTML = document.getElementById(bandId).innerHTML + '<div class="cols"></div>' + document.getElementById('foot').innerHTML;
     var wrap = page.querySelector('.cols');
     var cols = [];
@@ -315,8 +448,8 @@ h1 { color: var(--ink); }
   // fit as many rows as the page takes. Each exercise's cards start on a new sheet.
   function cardPage(head) {
     var page = document.createElement('div');
-    page.className = 'page';
-    page.innerHTML = document.getElementById('band-cards').innerHTML + '<div class="cut-wrap"><div class="cut-head"><span class="scissors">✂</span><span class="cut-ex"></span></div><div class="cut-grid"></div></div>' + document.getElementById('foot').innerHTML;
+    page.className = 'page cut-page';
+    page.innerHTML = document.getElementById('band-cards').innerHTML + '<div class="cut-wrap"><div class="cut-head"><span class="scissors"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.6 7.6 20 18M8.6 16.4 20 6"/></svg></span><span class="cut-ex"></span></div><div class="cut-grid"></div></div>' + document.getElementById('foot').innerHTML;
     page.querySelector('.cut-ex').textContent = head;
     pagesEl.appendChild(page);
     return page.querySelector('.cut-grid');
@@ -346,13 +479,22 @@ h1 { color: var(--ink); }
   }
   function layout() {
     pagesEl.innerHTML = '';
+    // The worksheet, then the answer key, then the cards to cut out: always last, and not numbered.
     flow('u-main', 'band-main');
+    flow('u-key', 'band-key');
     var sets = document.getElementById('cards').content.children;
     for (var si = 0; si < sets.length; si++) layoutCards(sets[si]);
-    flow('u-key', 'band-key');
-    var pages = pagesEl.querySelectorAll('.page');
-    for (var p = 0; p < pages.length; p++) pages[p].querySelector('.pn').textContent = (p + 1) + ' / ' + pages.length;
-    document.getElementById('status').textContent = pages.length + (pages.length === 1 ? ' page' : ' pages');
+    // The worksheet and the teacher's pages are numbered separately; the cut-outs are not numbered.
+    var numbered = pagesEl.querySelectorAll('.page:not(.cut-page):not(.key-page)');
+    for (var p = 0; p < numbered.length; p++) numbered[p].querySelector('.pn').textContent = (p + 1) + ' / ' + numbered.length;
+    var keyPages = pagesEl.querySelectorAll('.key-page');
+    for (var kp = 0; kp < keyPages.length; kp++) keyPages[kp].querySelector('.pn').textContent = 'Teacher ' + (kp + 1) + ' / ' + keyPages.length;
+    var cutPages = pagesEl.querySelectorAll('.cut-page .pn');
+    for (var q = 0; q < cutPages.length; q++) cutPages[q].style.display = 'none';
+    var all = pagesEl.querySelectorAll('.page').length;
+    var cutN = pagesEl.querySelectorAll('.cut-page').length;
+    document.getElementById('status').textContent = numbered.length + (numbered.length === 1 ? ' page' : ' pages') + (keyPages.length ? ' + ' + keyPages.length + ' for the teacher' : '') + (cutN ? ' + ' + cutN + ' to cut out' : '');
+    void all;
     window.__laidOut = true;
     if (window.__autoPrint) setTimeout(function () { window.print(); }, 120);
   }

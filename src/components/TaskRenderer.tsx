@@ -1,3 +1,5 @@
+import { PicFrame } from '../editor/Picture';
+import { listLabel } from '../lib/listLabel';
 import { BankLinkCard } from '../editor/BankLink';
 import { SurveyBlock } from './Survey';
 import { criteriaOf, genreLabel } from '../lib/rubric';
@@ -145,6 +147,7 @@ const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 
 // Reflection blocks are answered but not numbered.
 
 export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
+  const picCount: Record<string, number> = {}; // picture labels count on in reading order
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -188,7 +191,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       for (const i of drawnCards(pickOf(node) as unknown as Response)) if (node.content?.[i]) walk(node.content[i], ol);
       return;
     }
-    if (node.attrs?.id && QTYPES.includes(node.type ?? '') && !(node.type === 'pq' && node.attrs.kind === 'speaking')) {
+    if (node.attrs?.id && !node.attrs.example && QTYPES.includes(node.type ?? '') && !(node.type === 'pq' && node.attrs.kind === 'speaking')) {
       numbers[node.attrs.id] = n + 1;
       n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : node.type === 'pq' && node.attrs.kind === 'matching' ? Math.max(1, (node.attrs.data?.statements ?? []).length) : 1;
       if (ol) listed.add(node.attrs.id);
@@ -254,6 +257,34 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       default:
         return null;
     }
+  };
+  // An example: numbered 0, with its answer written in, like the first line of a coursebook exercise.
+  const exampleOf = (node: JSONContent, key: string) => {
+    const a = node.attrs ?? {};
+    const options: string[] = a.options ?? [];
+    const correct: number[] = Array.isArray(a.correct) ? a.correct : [a.correct];
+    const answer = node.type === 'gap' ? (a.answers ?? [])[0] ?? '' : correct.map((i) => options[i]).filter(Boolean).join(', ');
+    const radio = node.type === 'choice' && (a.display === 'radio' || a.display === 'truefalse' || a.display === 'tfng');
+    if (radio)
+      return (
+        <span key={key} className="example-q radio" data-bk={key}>
+          <sup className="q-n">0</sup>
+          {options.map((o, i) => (
+            <span key={i} className={'ex-opt' + (correct.includes(i) ? ' on' : '')}>
+              <span className="ex-dot" aria-hidden="true" />
+              {o}
+            </span>
+          ))}
+          <span className="ex-tag">Example</span>
+        </span>
+      );
+    return (
+      <span key={key} className="example-q" data-bk={key} title="Example">
+        <sup className="q-n">0</sup>
+        <span className="ex-answer">{answer || '…'}</span>
+        {a.stem && <span className="wf-stem">{a.stem}</span>}
+      </span>
+    );
   };
   const revealChip = (node: JSONContent) => {
     const t = revealOf(node);
@@ -810,6 +841,15 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <br key={key} />;
       case 'horizontalRule':
         return <hr key={key} />;
+      case 'picture': {
+        const mk = String(node.attrs?.mark ?? '');
+        let label = '';
+        if (mk) {
+          picCount[mk] = (picCount[mk] ?? 0) + 1;
+          label = listLabel(picCount[mk], mk);
+        }
+        return <PicFrame key={key} src={String(node.attrs?.src ?? '')} alt={node.attrs?.alt} size={node.attrs?.size} label={label} classId={classId ?? ''} />;
+      }
       case 'image':
         return node.attrs?.src ? <img key={key} data-bk={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;
       case 'text':
@@ -841,9 +881,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       }
       case 'gap':
-        return gap(node, key);
+        return node.attrs?.example ? exampleOf(node, key) : gap(node, key);
       case 'choice':
-        return choice(node, key);
+        return node.attrs?.example ? exampleOf(node, key) : choice(node, key);
       case 'mcq':
         return mcq(node, key);
       case 'match':

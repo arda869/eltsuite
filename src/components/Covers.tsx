@@ -19,11 +19,11 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Waves',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
-        <path d="M0 120 C100 90 200 150 300 120 S500 90 600 120 V200 H0z" fill={G2} />
-        <path d="M0 150 C120 125 220 175 330 148 S520 125 600 150 V200 H0z" fill={AL} />
-        <path d="M0 175 C110 160 240 195 360 172 S530 160 600 178 V200 H0z" fill={A} />
-        <circle cx="500" cy="55" r="24" fill={A} opacity=".85" />
+        <rect width="600" height="200" style={{ fill: G1 }} />
+        <path d="M0 120 C100 90 200 150 300 120 S500 90 600 120 V200 H0z" style={{ fill: G2 }} />
+        <path d="M0 150 C120 125 220 175 330 148 S520 125 600 150 V200 H0z" style={{ fill: AL }} />
+        <path d="M0 175 C110 160 240 195 360 172 S530 160 600 178 V200 H0z" style={{ fill: A }} />
+        <circle cx="500" cy="55" r="24" style={{ fill: A }} opacity=".85" />
       </>
     ),
   },
@@ -32,8 +32,8 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Books',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
-        <rect x="0" y="170" width="600" height="30" fill={G2} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
+        <rect x="0" y="170" width="600" height="30" style={{ fill: G2 }} />
         {[
           [60, 70, 34, G3],
           [98, 50, 28, A],
@@ -45,9 +45,9 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
           [476, 90, 26, G3],
           [506, 62, 32, AL],
         ].map(([x, y, w, f], i) => (
-          <rect key={i} x={x as number} y={y as number} width={w as number} height={170 - (y as number)} rx="3" fill={f as string} />
+          <rect key={i} x={x as number} y={y as number} width={w as number} height={170 - (y as number)} rx="3" style={{ fill: f as string }} />
         ))}
-        <rect x="250" y="118" width="120" height="52" rx="3" transform="rotate(-8 310 144)" fill={A} opacity=".9" />
+        <rect x="250" y="118" width="120" height="52" rx="3" transform="rotate(-8 310 144)" style={{ fill: A }} opacity=".9" />
       </>
     ),
   },
@@ -56,11 +56,11 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Speech bubbles',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         <path d="M90 40h170a22 22 0 0 1 22 22v46a22 22 0 0 1-22 22H150l-30 26v-26h-30a22 22 0 0 1-22-22V62a22 22 0 0 1 22-22z" fill="#fff" />
-        <path d="M320 70h190a22 22 0 0 1 22 22v40a22 22 0 0 1-22 22h-40v26l-30-26H320a22 22 0 0 1-22-22V92a22 22 0 0 1 22-22z" fill={A} />
+        <path d="M320 70h190a22 22 0 0 1 22 22v40a22 22 0 0 1-22 22h-40v26l-30-26H320a22 22 0 0 1-22-22V92a22 22 0 0 1 22-22z" style={{ fill: A }} />
         {[120, 160, 200].map((x) => (
-          <circle key={x} cx={x} cy="85" r="9" fill={G3} />
+          <circle key={x} cx={x} cy="85" r="9" style={{ fill: G3 }} />
         ))}
         <rect x="340" y="102" width="150" height="10" rx="5" fill="#fff" opacity=".9" />
         <rect x="340" y="122" width="100" height="10" rx="5" fill="#fff" opacity=".7" />
@@ -72,12 +72,12 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Dots',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         {Array.from({ length: 13 * 5 }, (_, i) => {
           const x = 30 + (i % 13) * 45;
           const y = 30 + Math.floor(i / 13) * 36;
           const pick = (i * 7) % 11;
-          return <circle key={i} cx={x} cy={y} r={pick === 0 ? 11 : 6} fill={pick === 0 ? A : pick < 4 ? G3 : G2} />;
+          return <circle key={i} cx={x} cy={y} r={pick === 0 ? 11 : 6} style={{ fill: pick === 0 ? A : pick < 4 ? G3 : G2 }} />;
         })}
       </>
     ),
@@ -87,12 +87,12 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Mountains',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
-        <circle cx="450" cy="60" r="30" fill={AL} />
-        <path d="M0 200 L130 80 L230 170 L330 60 L460 200z" fill={G3} />
-        <path d="M200 200 L380 95 L520 180 L600 120 V200z" fill={G2} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
+        <circle cx="450" cy="60" r="30" style={{ fill: AL }} />
+        <path d="M0 200 L130 80 L230 170 L330 60 L460 200z" style={{ fill: G3 }} />
+        <path d="M200 200 L380 95 L520 180 L600 120 V200z" style={{ fill: G2 }} />
         <path d="M330 60 L360 88 L340 84 L320 96 L305 84z" fill="#fff" />
-        <path d="M0 200 C150 170 300 190 600 175 V200z" fill={A} />
+        <path d="M0 200 C150 170 300 190 600 175 V200z" style={{ fill: A }} />
       </>
     ),
   },
@@ -101,7 +101,7 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'City',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         {[
           [20, 90, 50],
           [76, 60, 40],
@@ -115,7 +115,7 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
           [524, 64, 56],
         ].map(([x, y, w], i) => (
           <g key={i}>
-            <rect x={x} y={y} width={w} height={200 - y} fill={i % 3 === 1 ? A : i % 2 ? G3 : G2} />
+            <rect x={x} y={y} width={w} height={200 - y} style={{ fill: i % 3 === 1 ? A : i % 2 ? G3 : G2 }} />
             {Array.from({ length: Math.floor((200 - y) / 26) }, (_, k) => (
               <rect key={k} x={x + 8} y={y + 10 + k * 26} width={w - 16} height="8" rx="2" fill="#fff" opacity={i % 3 === 1 ? 0.6 : 0.5} />
             ))}
@@ -129,7 +129,7 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Leaves',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         {[
           [60, 140, -30, G3],
           [140, 60, 20, A],
@@ -141,7 +141,7 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
           [480, 190, 10, AL],
         ].map(([x, y, r, f], i) => (
           <g key={i} transform={`translate(${x} ${y}) rotate(${r})`}>
-            <path d="M0 -40 C30 -20 30 20 0 40 C-30 20 -30 -20 0 -40z" fill={f as string} />
+            <path d="M0 -40 C30 -20 30 20 0 40 C-30 20 -30 -20 0 -40z" style={{ fill: f as string }} />
             <path d="M0 -36 V36" stroke="#fff" strokeWidth="2" opacity=".6" />
           </g>
         ))}
@@ -153,12 +153,12 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Paper planes',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
-        <path d="M40 160 C160 60 300 170 420 70" fill="none" stroke={G3} strokeWidth="3" strokeDasharray="8 10" />
-        <path d="M420 70 l70 -30 -30 70 -12 -26z" fill={A} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
+        <path d="M40 160 C160 60 300 170 420 70" fill="none" style={{ stroke: G3 }} strokeWidth="3" strokeDasharray="8 10" />
+        <path d="M420 70 l70 -30 -30 70 -12 -26z" style={{ fill: A }} />
         <path d="M448 84 l42 -44" stroke="#fff" strokeWidth="2" />
-        <path d="M90 50 l40 -16 -16 40 -8 -14z" fill={G3} />
-        <path d="M250 150 l34 -14 -14 34 -6 -12z" fill={AL} />
+        <path d="M90 50 l40 -16 -16 40 -8 -14z" style={{ fill: G3 }} />
+        <path d="M250 150 l34 -14 -14 34 -6 -12z" style={{ fill: AL }} />
       </>
     ),
   },
@@ -167,13 +167,13 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Globe',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
-        <circle cx="300" cy="100" r="70" fill={AL} />
-        <path d="M262 52c18 8 10 30 30 30s24 22 6 34-10 30-28 32c-14-12-36-24-30-48s8-34 22-48z" fill={A} />
-        <path d="M330 48c-8 18 12 22 20 34s26 10 22 30" fill="none" stroke={A} strokeWidth="14" strokeLinecap="round" />
-        <ellipse cx="300" cy="100" rx="120" ry="26" fill="none" stroke={G3} strokeWidth="3" />
+        <rect width="600" height="200" style={{ fill: G1 }} />
+        <circle cx="300" cy="100" r="70" style={{ fill: AL }} />
+        <path d="M262 52c18 8 10 30 30 30s24 22 6 34-10 30-28 32c-14-12-36-24-30-48s8-34 22-48z" style={{ fill: A }} />
+        <path d="M330 48c-8 18 12 22 20 34s26 10 22 30" fill="none" style={{ stroke: A }} strokeWidth="14" strokeLinecap="round" />
+        <ellipse cx="300" cy="100" rx="120" ry="26" fill="none" style={{ stroke: G3 }} strokeWidth="3" />
         {[90, 140, 470, 520].map((x, i) => (
-          <circle key={x} cx={x} cy={i % 2 ? 150 : 50} r="5" fill={G3} />
+          <circle key={x} cx={x} cy={i % 2 ? 150 : 50} r="5" style={{ fill: G3 }} />
         ))}
       </>
     ),
@@ -183,9 +183,9 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Letters',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         {['A', 'b', 'C', 'd', 'E', 'f', 'G', 'h'].map((ch, i) => (
-          <text key={i} x={40 + i * 72} y={i % 2 ? 150 : 120} fontFamily="Fraunces, Georgia, serif" fontSize={i % 3 ? 70 : 96} fontWeight="600" fill={i === 2 || i === 5 ? A : i % 2 ? G3 : G2}>
+          <text key={i} x={40 + i * 72} y={i % 2 ? 150 : 120} fontFamily="Fraunces, Georgia, serif" fontSize={i % 3 ? 70 : 96} fontWeight="600" style={{ fill: i === 2 || i === 5 ? A : i % 2 ? G3 : G2 }}>
             {ch}
           </text>
         ))}
@@ -197,9 +197,9 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Stripes',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         {Array.from({ length: 14 }, (_, i) => (
-          <rect key={i} x={-100 + i * 60} y="-40" width="26" height="300" transform="rotate(25 300 100)" fill={i % 4 === 1 ? A : i % 2 ? G3 : G2} />
+          <rect key={i} x={-100 + i * 60} y="-40" width="26" height="300" transform="rotate(25 300 100)" style={{ fill: i % 4 === 1 ? A : i % 2 ? G3 : G2 }} />
         ))}
       </>
     ),
@@ -209,13 +209,13 @@ const PRESETS: { key: string; label: string; art: ReactNode }[] = [
     label: 'Sunrise',
     art: (
       <>
-        <rect width="600" height="200" fill={G1} />
+        <rect width="600" height="200" style={{ fill: G1 }} />
         {[140, 110, 80, 50].map((r, i) => (
-          <circle key={r} cx="300" cy="200" r={r} fill={i === 3 ? A : i === 2 ? AL : i === 1 ? G3 : G2} />
+          <circle key={r} cx="300" cy="200" r={r} style={{ fill: i === 3 ? A : i === 2 ? AL : i === 1 ? G3 : G2 }} />
         ))}
         {Array.from({ length: 9 }, (_, i) => {
           const a = Math.PI * (0.1 + i * 0.1);
-          return <line key={i} x1={300 + Math.cos(a) * 160} y1={200 - Math.sin(a) * 160} x2={300 + Math.cos(a) * 190} y2={200 - Math.sin(a) * 190} stroke={G3} strokeWidth="5" strokeLinecap="round" />;
+          return <line key={i} x1={300 + Math.cos(a) * 160} y1={200 - Math.sin(a) * 160} x2={300 + Math.cos(a) * 190} y2={200 - Math.sin(a) * 190} style={{ stroke: G3 }} strokeWidth="5" strokeLinecap="round" />;
         })}
       </>
     ),

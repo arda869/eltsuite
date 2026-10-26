@@ -18,6 +18,7 @@ import { LearnerRecap, SharedRecap } from './pages/RecapPages';
 import { LearnerDiscussion } from './pages/LearnerDiscussion';
 import { ProxyGate } from './components/ProxyGate';
 import { TooltipLayer } from './components/Tooltip';
+import { EscapeToClose } from './components/EscapeToClose';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
@@ -73,6 +74,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <UpdateBanner />
         <TooltipLayer />
+        <EscapeToClose />
         <ConnectionBanner />
         <ProxyGate>
         <Routes>

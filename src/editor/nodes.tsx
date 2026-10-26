@@ -148,7 +148,7 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
   }
 
   return (
-    <NodeViewWrapper as="span" className={'gap-node' + (selected ? ' is-selected' : '')} ref={ref}>
+    <NodeViewWrapper as="span" className={'gap-node' + (selected ? ' is-selected' : '') + (node.attrs.example ? ' is-example' : '')} ref={ref}>
       <Grip editor={editor} getPos={getPos} />
       <span className={'gap-chip' + (answers.length ? '' : ' empty')} contentEditable={false} onClick={() => setOpen(true)} title="Edit accepted answers">
         {answers.length ? answers.join(' / ') : 'answer'}
@@ -176,6 +176,10 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             <input type="checkbox" checked={!!node.attrs.caseSensitive} onChange={() => updateAttributes({ caseSensitive: !node.attrs.caseSensitive })} />
             Capital letters must match
           </label>
+          <label className="pop-check">
+            <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
+            Example: learners see the answer, and it isn’t marked
+          </label>
           <label className="pop-stem">
             <span>Word formation</span>
             <input value={node.attrs.stem ?? ''} placeholder="Stem word, for example DECIDE" onChange={(e) => updateAttributes({ stem: e.target.value.toUpperCase() })} onKeyDown={(e) => e.stopPropagation()} />
@@ -200,6 +204,7 @@ export const Gap = Node.create({
       answers: { default: [] },
       caseSensitive: { default: false },
       stem: { default: '' }, // word formation: the word in capitals beside the gap
+      example: { default: false }, // an example: the answer is shown and it is not marked
       hint: { default: '' },
       feedback: { default: '' },
     };
@@ -358,7 +363,7 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
   );
 
   return (
-    <NodeViewWrapper as="span" className={'choice-node' + (selected ? ' is-selected' : '') + ' d-' + display} ref={ref}>
+    <NodeViewWrapper as="span" className={'choice-node' + (selected ? ' is-selected' : '') + ' d-' + display + (node.attrs.example ? ' is-example' : '')} ref={ref}>
       <Grip editor={editor} getPos={getPos} />
       <span className="choice-chip" contentEditable={false} onClick={() => setOpen(true)} title="Edit choices">
         {summary}
@@ -437,6 +442,10 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
             />
             More than one correct answer
           </label>
+          <label className="check-row">
+            <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
+            Example: learners see the answer, and it isn’t marked
+          </label>
           <span className="hint">Enter for the next option · click a letter to mark it correct</span>
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
           {correctList.length === 0 && filled.length > 0 && <span className="error small">Mark the correct option.</span>}
@@ -458,6 +467,7 @@ export const Choice = Node.create({
   draggable: true,
   addAttributes() {
     return {
+      example: { default: false },
       id: { default: null },
       options: { default: ['', '', ''] },
       optFeedback: { default: [] },

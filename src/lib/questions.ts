@@ -17,7 +17,7 @@ export type Response = string | number | number[] | JSONContent | null | undefin
 export type Responses = Record<string, Response>;
 
 export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect', 'pq'] as const;
-export const isQuestion = (n: JSONContent) => !!n.attrs?.id && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '') && !(n.type === 'pq' && n.attrs?.kind === 'speaking');
+export const isQuestion = (n: JSONContent) => !!n.attrs?.id && !n.attrs?.example && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '') && !(n.type === 'pq' && n.attrs?.kind === 'speaking');
 
 // Seeded shuffle so a question always appears in the same shuffled order.
 export function shuffle<T>(list: T[], seed: string): T[] {
@@ -50,7 +50,8 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
     const out: JSONContent = { ...n };
     const a = n.attrs ?? {};
     const id = a.id as string | undefined;
-    if (id) {
+    // An example keeps its answer in the task: learners see it straight away.
+    if (id && !a.example) {
       if (n.type === 'gap') {
         key[id] = { kind: 'gap', answers: (a.answers ?? []).filter((x: string) => x.trim()), ...(a.caseSensitive ? { cs: true } : {}) };
         out.attrs = { ...a, answers: [] };

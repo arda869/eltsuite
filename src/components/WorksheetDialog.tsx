@@ -3,7 +3,8 @@ import { gatherLesson } from '../lib/transfer';
 import type { ExportTask } from '../lib/textformat';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { flattenWithSections, lessonDocx, saveBlob, type Paper } from '../lib/worksheet';
+import { collectPictures, flattenWithSections, lessonDocx, saveBlob, type MediaMap, type Paper, type WsItem } from '../lib/worksheet';
+import { audioUrl } from '../lib/media';
 import { worksheetHtml } from '../lib/worksheetHtml';
 import { theme } from '../lib/themes';
 import { coverMarkup } from './Covers';
@@ -26,6 +27,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   const [picked, setPicked] = useState<Set<number> | null>(null);
   const [header, setHeader] = useState(true);
   const [key, setKey] = useState(true);
+  const [notes, setNotes] = useState(false);
   const [busy, setBusy] = useState('');
   const [paper, setPaperState] = useState<Paper>(defaultPaper);
   const setPaper = (p: Paper) => {
@@ -74,7 +76,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     getDoc(doc(db, 'classes', classId, 'items', itemId)).then((d) => d.exists() && setItem({ id: d.id, ...(d.data() as Omit<Item, 'id'>) }), () => {});
   }, [classId, itemId]);
   const isExam = item?.type === 'exam';
-  const look = () => ({ header, key, paper, columns, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
+  const look = () => ({ header, key, notes, paper, columns, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
   const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden);
   const ids = picked ?? new Set(visible.map((x) => x.i));
   const chosen = () => flattenWithSections(lesson!.tasks, ids);
@@ -83,19 +85,40 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   useEffect(() => {
     if (cls) coverMarkup(cls.cover, classId).then(setCover, () => setCover(''));
   }, [cls, classId]);
-  const print = () => {
+  // Uploaded pictures are read from the class first, with their sizes (the Word file needs them).
+  const pictures = async (items: WsItem[]): Promise<MediaMap> => {
+    const map: MediaMap = {};
+    await Promise.all(
+      collectPictures(items).map(async (src) => {
+        const data = await audioUrl(classId, src.slice(6)).catch(() => '');
+        if (!data) return;
+        const dims = await new Promise<{ w: number; h: number }>((res) => {
+          const im = new Image();
+          im.onload = () => res({ w: im.naturalWidth || 400, h: im.naturalHeight || 300 });
+          im.onerror = () => res({ w: 400, h: 300 });
+          im.src = data;
+        });
+        map[src] = { data, ...dims };
+      }),
+    );
+    return map;
+  };
+  const print = async () => {
     const tasks = chosen();
+    // Open the window straight away (inside the click), then fill it once the pictures are read.
     const w = window.open('', '_blank');
     if (!w) return setBusy('Your browser blocked the print window. Allow pop-ups for this site.');
+    const media = await pictures(tasks);
     (w as unknown as { __autoPrint: boolean }).__autoPrint = true; // the page prints itself once it is laid out
-    w.document.write(worksheetHtml(lesson!.title, tasks, { ...look(), cover, origin: location.origin }));
+    w.document.write(worksheetHtml(lesson!.title, tasks, { ...look(), cover, origin: location.origin, media }));
     w.document.close();
     w.focus();
   };
   const docx = async () => {
     setBusy('Making the Word file…');
     try {
-      saveBlob(`${lesson!.title.replace(/[^\w\- ]+/g, '').trim() || 'Worksheet'}.docx`, await lessonDocx(lesson!.title, chosen(), look()));
+      const items = chosen();
+      saveBlob(`${lesson!.title.replace(/[^\w\- ]+/g, '').trim() || 'Worksheet'}.docx`, await lessonDocx(lesson!.title, items, { ...look(), media: await pictures(items) }));
       setBusy('');
     } catch (e) {
       setBusy('The file could not be made: ' + (e as Error).message);
@@ -167,6 +190,10 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
             <label className="pop-check">
               <input type="checkbox" checked={key} onChange={() => setKey((v) => !v)} />
               Answer key on a separate page
+            </label>
+            <label className="pop-check">
+              <input type="checkbox" checked={notes} onChange={() => setNotes((v) => !v)} />
+              Teacher’s notes with each exercise in the answer key (numbered separately, after the worksheet)
             </label>
             {busy && <span className="hint">{busy}</span>}
             <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
