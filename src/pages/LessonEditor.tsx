@@ -890,13 +890,6 @@ export function LessonEditor() {
                   </select>
                 )}
               </span>
-              {qCount > 0 && (
-                <span className="tb-group reveal-ctl" aria-label="Answers">
-                  <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
-                  <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
-                  {(revealN !== 0 || singles.length > 0) && <IconBtn icon="hideAnswers" label="Hide the answers again (H)" onClick={hideAnswers} />}
-                </span>
-              )}
               <span className="tb-group" aria-label="Screen">
                 <IconBtn icon={boardView ? 'task' : 'board'} label={boardView ? 'Back to the task' : 'Board'} active={boardView} onClick={() => showBoard(!boardView)} />
                 <IconBtn icon="pointer" label="Pointer: a dot everyone sees" active={pointerOn} className="hide-phone" onClick={togglePointer} />
@@ -992,6 +985,11 @@ export function LessonEditor() {
             ) : preview || (teachingHere && !editWhileTeaching) ? (
               <div className="frame-inner">
                 <div className="frame-head">
+                  {!preview && (
+                    <button type="button" className="btn small-btn done-edit" onClick={() => setEditWhileTeaching(true)} data-tip="Change this task while the class stays live">
+                      <UiIcon name="edit" size={14} /> Edit
+                    </button>
+                  )}
                   <h1 className="task-title">{draft.title}</h1>
                   <InstrView doc={draft.instrDoc} text={draft.instructions} />
                 </div>
@@ -1045,7 +1043,13 @@ export function LessonEditor() {
                 <div className="frame-foot">
                   <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
-                    {!preview && <IconBtn icon="edit" label="Edit this task" onClick={() => setEditWhileTeaching(true)} />}
+                    {!preview && qCount > 0 && (
+                      <span className="reveal-ctl foot-reveal" aria-label="Answers">
+                        <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
+                        <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
+                        <IconBtn icon="hideAnswers" label="Hide the answers again (H)" disabled={revealN === 0 && singles.length === 0} onClick={hideAnswers} />
+                      </span>
+                    )}
                     <IconBtn icon="prev" label="Previous task (←)" className="nav-arrow" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} />
                     <IconBtn icon="next" label="Next task (→)" className="nav-arrow" disabled={!nextTask} onClick={() => nextTask && select(nextTask.id)} />
                     {!preview ? null : questionIds(previewKey?.content ?? null).every((q) => q.type === 'reflect') ? null : previewChecked ? (

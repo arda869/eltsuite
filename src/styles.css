@@ -3390,7 +3390,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .se-screen { max-width: 420px; align-self: center; }
 
 /* karaoke */
-.kl { max-height: 220px; overflow-y: auto; padding: 4px 2px; position: relative; scrollbar-width: thin; }
+.kl { max-height: 220px; overflow-y: auto; padding: 4px 2px; position: relative; }
 .kl.big { max-height: none; }
 .kl-line { margin: 0; padding: 5px 10px; border-radius: 8px; font: 400 16px/1.5 var(--serif); color: var(--ink); transition: color .3s ease, background .3s ease; }
 .kl.timed .kl-line { color: var(--soft); }
@@ -3712,3 +3712,21 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .example-block { position: relative; margin: 8px 0 14px; padding: 10px 12px 6px; border-radius: 12px; background: color-mix(in srgb, var(--tint) 70%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent); }
 .example-block > .ex-tag { position: absolute; top: -8px; left: 12px; padding: 1px 8px; border-radius: 99px; background: var(--accent); color: #fff; font: 700 9.5px/1.6 var(--sans); letter-spacing: .08em; text-transform: uppercase; }
 .example-block :is(input, textarea, button):disabled { cursor: default; }
+.foot-reveal { display: inline-flex; gap: 4px; padding-right: 10px; margin-right: 4px; border-right: 1px solid var(--hair); }
+.done-edit { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------------------------------------------------------------- scroll bars in the class colour */
+/* Chrome, Edge and Safari: a slim rounded bar that takes on the theme. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 99px; background: color-mix(in srgb, var(--accent, #d98f63) 30%, #cfcbc4) padding-box; min-height: 36px; }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--accent, #d98f63) 70%, #b9b4ac); }
+::-webkit-scrollbar-thumb:active { background-color: var(--accent, #d98f63); }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+/* Firefox has no shapes for the bar, only colours. */
+@supports (-moz-appearance: none) {
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent, #d98f63) 35%, #cfcbc4) transparent; }
+}
+/* Dark surfaces (the picture editor, videos) keep a light bar. */
+.pe-stage::-webkit-scrollbar-thumb, .mp-screen::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, .35); }
