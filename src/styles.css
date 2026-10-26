@@ -3823,3 +3823,14 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .co-acts .btn { display: inline-flex; align-items: center; gap: 6px; }
 .co-choose { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--surface); }
 .gl-collab { display: flex; gap: 3px; } .gl-collab i { width: 12px; height: 12px; border-radius: 99px; box-shadow: 0 0 0 1.5px #fff; }
+.live-who { display: flex; flex-direction: column; gap: 6px; margin: 0 6px 10px; padding: 10px 10px; border-radius: 12px; background: var(--tint); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); font-family: var(--sans); }
+.live-who.compact { margin: 6px 0 0; padding: 0; background: none; box-shadow: none; }
+.live-who.compact .live-who-top { display: none; }
+.live-who-top { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.live-who-top b { color: var(--accent-text); }
+.live-who-people { display: flex; flex-direction: column; gap: 4px; }
+.live-who.compact .live-who-people { flex-direction: row; align-items: center; gap: 8px; }
+.live-who-faces { display: flex; }
+.live-who-faces > * { margin-left: -5px; box-shadow: 0 0 0 2px var(--card, #fff); border-radius: 99px; }
+.live-who-faces > :first-child { margin-left: 0; }
+.live-who .hint { font-size: 11.5px; }

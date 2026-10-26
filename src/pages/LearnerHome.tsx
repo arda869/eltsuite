@@ -22,6 +22,7 @@ import { initials } from '../components/TopBar';
 import { NoticeToasts } from '../components/NoticeToasts';
 import { AnnouncementCards } from '../components/LiveExtras';
 import { Avatar } from '../components/avatars';
+import { LiveWho } from '../components/LiveWho';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { itemResult, STATUS_LABEL, useMyAnswers } from '../lib/reports';
 
@@ -184,6 +185,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                 <span className="eyebrow accent">Live now</span>
                 <span style={{ fontFamily: 'var(--serif)', fontSize: 16 }}>{liveNow.title}</span>
                 <span className="hint">{live?.teacherName ?? 'Your teacher'} is teaching</span>
+                <LiveWho classId={classId} itemId={liveNow.id} teacherName={live?.teacherName} selfId={profile?.role === 'learner' ? profile.learnerId : ''} compact />
               </span>
               {showCall && (
                 <a className="btn" href={c!.meeting!.url} target="_blank" rel="noopener noreferrer">

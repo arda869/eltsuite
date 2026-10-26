@@ -377,7 +377,8 @@ service cloud.firestore {
 
       // Who is online and which task they are on
       match /presence/{uid} {
-        allow read: if viewsClass(classId);
+        // learners see who else is in the class's live lesson
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if isSelf(uid) && memberOf(classId);
         allow delete: if teachesClass(classId);
       }

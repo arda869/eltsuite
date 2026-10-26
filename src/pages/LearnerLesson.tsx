@@ -1,6 +1,7 @@
 import { InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
+import { LiveWho } from '../components/LiveWho';
 import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
@@ -374,6 +375,7 @@ export function LearnerLesson() {
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
             {item?.title}
           </span>
+          {liveHere && <LiveWho classId={classId} itemId={itemId} teacherName={live?.teacherName} selfId={learnerId} />}
           {tasks.map((t) =>
             t.kind === 'section' ? (
               <span key={t.id} className="section-label">
