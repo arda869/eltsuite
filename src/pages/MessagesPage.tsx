@@ -6,7 +6,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { isSelf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -180,7 +180,7 @@ function PeoplePicker({ dir, picked, onToggle, exclude = [] }: { dir: Directory;
   );
 }
 
-function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void; onOpen: (id: string) => void }) {
+export function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void; onOpen: (id: string) => void }) {
   const [picked, setPicked] = useState<Person[]>([]);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
@@ -375,7 +375,8 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
         {(replyTo || editing) && (
           <span className="chat-replying">
             <span>
-              <b>{editing ? 'Editing your message' : `Replying to ${replyTo!.name.split(' ')[0]}`}</b>
+              <b><UiIcon name={editing ? 'edit' : 'reply'} size={13} /> {editing ? 'Editing your message' : `Replying to ${replyTo!.name.split(' ')[0]}`}</b>
+              {editing && <span className="hint"> {editing.text.slice(0, 90)}</span>}
               {replyTo && <span className="hint"> {replyTo.text.slice(0, 90) || (replyTo.blocks ? 'A task element' : '')}</span>}
             </span>
             <button type="button" className="btn link small" onClick={reset}>
@@ -450,8 +451,12 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   const [sel, setSel] = useState(false);
   // Copy the message (its text and task elements, with answers) to paste into a task or another chat.
   const clip = (): Clip => ({ v: 1, space: 'chat:' + c.id, content: (m.content ? mergeKey(m.content, m.key ?? {}) : { type: 'doc', content: [] }).content ?? [] });
+  // The copy button takes only the task in a message, to paste into a lesson or another message.
+  const taskOnly = (): Clip => ({ v: 1, space: 'chat:' + c.id, content: m.content ? taskPartsOf(mergeKey(m.content, m.key ?? {}), (x) => questionIds({ type: 'doc', content: [x] }).length > 0) : [] });
+  const hasTask = !!m.blocks && taskOnly().content.length > 0;
   const copy = async () => {
-    if (await writeClip(clip(), m.text)) setCopied(true), window.setTimeout(() => setCopied(false), 1500);
+    const t = taskOnly();
+    if (await writeClip(t, plainOf({ type: 'doc', content: t.content }))) setCopied(true), window.setTimeout(() => setCopied(false), 1500);
   };
   return (
     <div className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '')} id={'m-' + m.id}>
@@ -548,34 +553,34 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
         )}
         {!m.deleted && (
           <span className="bub-tools">
-            <button type="button" onClick={onReply}>
-              Reply
+            <button type="button" className="bt-i" onClick={onReply} aria-label="Reply" data-tip="Reply">
+              <UiIcon name="reply" size={16} />
             </button>
             <span className="bub-emo">
               {QUICK_REACTS.map((k) => (
-                <button key={k} type="button" className={(m.reactions?.[k] ?? []).includes(me.key) ? 'on' : ''} onClick={() => react(c, m, k, me.key)} aria-label={iconByKey(k)?.label} title={iconByKey(k)?.label}>
+                <button key={k} type="button" className={(m.reactions?.[k] ?? []).includes(me.key) ? 'on' : ''} onClick={() => react(c, m, k, me.key)} aria-label={iconByKey(k)?.label} data-tip={iconByKey(k)?.label}>
                   <Icon name={k} size="17" />
                 </button>
               ))}
               <MoreReacts onPick={(k) => react(c, m, k, me.key)} />
             </span>
-            {!!m.content && (
-              <button type="button" onClick={copy} data-tip="Copy, then paste into a task or another message">
-                {copied ? 'Copied' : 'Copy'}
+            {hasTask && (
+              <button type="button" className={'bt-i' + (copied ? ' on' : '')} onClick={copy} aria-label="Copy the task" data-tip={copied ? 'Copied' : 'Copy the task, to paste into a lesson or another message'}>
+                <UiIcon name={copied ? 'check' : 'copyall'} size={16} />
               </button>
             )}
             {teacher && !!m.blocks && (
-              <button type="button" onClick={onCopy}>
-                Copy to a lesson
+              <button type="button" className="bt-i" onClick={onCopy} aria-label="Copy to a lesson" data-tip="Copy to a lesson">
+                <UiIcon name="import" size={16} />
               </button>
             )}
             {mine && (
               <>
-                <button type="button" onClick={onEdit}>
-                  Edit
+                <button type="button" className="bt-i" onClick={onEdit} aria-label="Edit" data-tip="Edit">
+                  <UiIcon name="edit" size={16} />
                 </button>
-                <button type="button" onClick={() => void ask('Delete this message for everyone?').then((ok) => { if (ok) deleteMsg(c, m.id); })}>
-                  Delete
+                <button type="button" className="bt-i" onClick={() => void ask('Delete this message for everyone?').then((ok) => { if (ok) deleteMsg(c, m.id); })} aria-label="Delete" data-tip="Delete">
+                  <UiIcon name="trash" size={16} />
                 </button>
               </>
             )}

@@ -136,6 +136,8 @@ export function mentionsOf(n?: JSONContent | null, out: string[] = []): string[]
   return out;
 }
 const INLINE_ONLY = new Set(['paragraph', 'text', 'hardBreak', 'mention', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'ipa', 'stress', 'sym', 'icon']);
+// Only the task parts of a message: its task elements and the lines with questions in them.
+export const taskPartsOf = (n: JSONContent, hasQuestion: (x: JSONContent) => boolean): JSONContent[] => (n.content ?? []).filter((c) => !INLINE_ONLY.has(c.type ?? '') || hasQuestion(c));
 export const blocksIn = (n?: JSONContent | null): number => (!n ? 0 : (n.content ?? []).filter((c) => !INLINE_ONLY.has(c.type ?? '')).length);
 export const isEmptyContent = (n?: JSONContent | null) => !plainOf(n).trim() && blocksIn(n) === 0 && !JSON.stringify(n ?? {}).includes('"image"');
 

@@ -4940,3 +4940,58 @@ body.is-dragging-dock, body.is-dragging-dock * { cursor: grabbing !important; us
 .msg-self-row:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--hair)); background: color-mix(in srgb, var(--accent) 5%, var(--paper)); }
 .msg-self-row .sh-pt { display: flex; flex-direction: column; }
 .msg-pick .ma-search { padding: 9px 12px; border-radius: 10px; font-size: 14px; }
+
+/* Settings */
+.menu .menu-link { display: flex; align-items: center; gap: 9px; text-align: left; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--ink); text-decoration: none; font: inherit; }
+.menu .menu-link:hover { background: var(--selected); }
+.menu .menu-link .ui-icon { color: var(--accent); }
+.set-page { width: min(680px, 100% - 32px); margin: 28px auto 80px; display: flex; flex-direction: column; gap: 26px; }
+.set-page .page-title { margin: 0; }
+.set-sec { display: flex; flex-direction: column; gap: 10px; }
+.set-h { display: flex; align-items: center; gap: 8px; margin: 0; font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.set-card { background: var(--paper); border-radius: 16px; box-shadow: 0 0 0 1px var(--hair), 0 6px 20px color-mix(in srgb, var(--shadow) 40%, transparent); overflow: hidden; }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; }
+.set-row + .set-row { border-top: 1px solid var(--hair); }
+.set-row-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.set-row-t b { font-weight: 600; font-size: 14.5px; }
+.set-row-t .hint { font-size: 12.5px; }
+.set-row-c { flex: none; display: flex; align-items: center; }
+.set-row .theme-choice { padding: 0; } .set-row .theme-choice > .hint { display: none; }
+.set-me { display: flex; align-items: center; gap: 16px; padding: 18px; }
+.set-me .set-row-t { flex: 1; }
+.set-name { font-family: var(--serif); font-size: 20px; font-weight: 500 !important; }
+.set-av { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; flex: none; box-shadow: 0 0 0 3px var(--paper), 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent); }
+.set-av-i { width: 100%; height: 100%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, var(--paper)); color: var(--accent); font-family: var(--serif); font-size: 22px; }
+.set-toggle { position: relative; width: 42px; height: 24px; border: 0; border-radius: 99px; background: color-mix(in srgb, var(--ink) 16%, var(--paper)); cursor: pointer; transition: background .18s; padding: 0; }
+.set-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .18s; }
+.set-toggle.on { background: var(--accent); }
+.set-toggle.on::after { transform: translateX(18px); }
+.set-select { padding: 7px 10px; border-radius: 9px; border: 1px solid var(--hair); background: var(--paper); font: inherit; font-size: 13.5px; color: var(--ink); }
+.btn.set-danger { color: var(--ink); }
+.btn.set-danger:hover { border-color: var(--ink); }
+@media (max-width: 640px) { .set-page { margin-top: 16px; } .set-row { padding: 12px 14px; } }
+/* Cards in a chat (questions, shared materials) get room to breathe. */
+.bub:has(.has-blocks, .bub-share) { margin-top: 12px; margin-bottom: 8px; }
+.bub:has(.has-blocks, .bub-share) + .bub:has(.has-blocks, .bub-share) { margin-top: 4px; }
+.bub-tools .bt-i { width: 28px; height: 28px; padding: 0; display: inline-grid; place-items: center; border-radius: 50%; color: var(--muted); }
+.bub-tools .bt-i:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
+.bub-tools .bt-i.on { color: var(--accent); }
+.bub-tools .bub-emo button { height: 28px; }
+.chat-replying b { display: inline-flex; align-items: center; gap: 5px; }
+.chat-replying b .ui-icon { color: var(--accent); }
+.dock-chat .bub-tools { max-width: none; flex-wrap: nowrap; border-radius: 99px; }
+
+/* Minimised messages: a slim tab on the bottom edge */
+.dock-tab { position: fixed; right: 24px; bottom: 0; z-index: 70; display: flex; align-items: center; gap: 8px; height: 34px; min-width: 200px; max-width: 320px; padding: 0 8px 0 10px; border-radius: 12px 12px 0 0; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 -6px 22px var(--shadow); font: 600 13px var(--sans); color: var(--ink); cursor: pointer; user-select: none; touch-action: none; }
+.dock-tab:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, var(--hair)), 0 -8px 26px var(--shadow); }
+.dock-tab .ui-icon { color: var(--accent); flex: none; }
+.dock-tab b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.dock-tab-grip { position: absolute; top: 4px; left: 50%; width: 26px; height: 3px; margin-left: -13px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 14%, transparent); }
+.dock-tab-n { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--accent); color: #fff; font-size: 11px; display: grid; place-items: center; }
+.dock-tab-x { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; flex: none; }
+.dock-tab-x:hover { background: var(--surface); color: var(--ink); }
+/* Message tools float just above the bubble, not over its text */
+@media (hover: hover) { .bub-tools { top: -30px; } }
+.chat-editor .ProseMirror, .chat-editor .ProseMirror p { font-family: var(--sans); font-size: 15px; }
+/* One look for every drop-down: the arrow sits inside, with room to breathe. */
+select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a847d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; background-size: 10px 6px; }

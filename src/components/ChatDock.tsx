@@ -5,14 +5,14 @@ import { isSelf, chatTitle, chime, unreadIn, useChats, useUnread, type Chat } fr
 import { useDirectory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
-import { ChatView } from '../pages/MessagesPage';
+import { ChatView, NewChat } from '../pages/MessagesPage';
 import { IconLink, UiIcon } from './UiIcon';
 
 // Messages on every screen: a small button at the lower right that opens a chat window there,
 // to write without leaving the lesson. A soft chime when a message comes in.
 
 const KEY = 'll.dock';
-type DockState = { open?: boolean; chat?: string };
+type DockState = { open?: boolean; chat?: string; min?: boolean };
 const read = (): DockState => {
   try {
     return JSON.parse(sessionStorage.getItem(KEY) || '{}') as DockState;
@@ -61,10 +61,67 @@ export function ChatDock() {
   // The window goes with you from page to page; it is opened from Messages in the top bar.
   const hidden = !me || isProxyTab() || phone || !st.open || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || document.body.classList.contains('presenting');
   if (hidden) return null;
-  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onClose={() => save({ open: false, chat: st.chat })} />;
+  if (st.min) return <DockTab me={me!} chats={chats ?? []} chatId={st.chat} onOpen={() => save({ open: true, chat: st.chat })} onClose={() => save({ open: false, chat: st.chat })} />;
+  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onMin={() => save({ open: true, chat: st.chat, min: true })} onClose={() => save({ open: false, chat: st.chat })} />;
 }
 
-function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onClose: () => void }) {
+// Minimised: a slim tab on the bottom edge. Slide it left or right so it covers nothing; a
+// click opens the window again.
+function DockTab({ me, chats, chatId, onOpen, onClose }: { me: string; chats: Chat[]; chatId?: string; onOpen: () => void; onClose: () => void }) {
+  const cur = chats.find((c) => c.id === chatId);
+  const unread = chats.filter((c) => unreadIn(c, me)).length;
+  const [x, setX] = useState<number | null>(() => {
+    try {
+      const v = localStorage.getItem('ll.dockTab');
+      return v ? Number(v) : null;
+    } catch {
+      return null;
+    }
+  });
+  const ref = useRef<HTMLDivElement>(null);
+  const moved = useRef(false);
+  const down = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('.dock-tab-x')) return;
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    const dx = e.clientX - r.left;
+    const x0 = e.clientX;
+    moved.current = false;
+    let nx = r.left;
+    const mv = (ev: PointerEvent) => {
+      if (Math.abs(ev.clientX - x0) > 4) moved.current = true;
+      if (!moved.current) return;
+      nx = Math.max(8, Math.min(window.innerWidth - r.width - 8, ev.clientX - dx));
+      setX(nx);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      if (!moved.current) return onOpen();
+      try {
+        localStorage.setItem('ll.dockTab', String(Math.round(nx)));
+      } catch {
+        /* fine */
+      }
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
+  const left = x === null ? undefined : Math.max(8, Math.min(window.innerWidth - 240, x));
+  return (
+    <div ref={ref} className="dock-tab" style={left === undefined ? undefined : { left, right: 'auto' }} onPointerDown={down} role="button" tabIndex={0} aria-label="Open messages" title="Click to open, drag to move" onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}>
+      <span className="dock-tab-grip" aria-hidden="true" />
+      <UiIcon name="message" size={14} />
+      <b>{cur ? chatTitle(cur, me) : 'Messages'}</b>
+      {unread > 0 && <span className="dock-tab-n">{unread}</span>}
+      <button type="button" className="dock-tab-x" aria-label="Close" onClick={onClose}>
+        <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+      </button>
+    </div>
+  );
+}
+
+function DockWindow({ me, chats, chatId, onChat, onMin, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onMin: () => void; onClose: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === chatId);
@@ -80,6 +137,7 @@ function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats:
   const [pos, setPos] = useState<{ x: number; y: number } | null>(saved.pos ?? null);
   const [size, setSize] = useState({ w: saved.w ?? 400, h: saved.h ?? 600 });
   const [near, setNear] = useState(false);
+  const [creating, setCreating] = useState(false);
   const winRef = useRef<HTMLDivElement>(null);
   const keep = (p: { x: number; y: number } | null, sz: { w: number; h: number }) => {
     try {
@@ -88,7 +146,8 @@ function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats:
       /* fine */
     }
   };
-  const clampPos = (x: number, y: number, w: number, h: number) => ({ x: Math.max(8, Math.min(window.innerWidth - w - 8, x)), y: Math.max(8, Math.min(window.innerHeight - h - 8, y)) });
+  // Most of the window may go off screen; its top bar always stays reachable.
+  const clampPos = (x: number, y: number, w: number, _h: number) => ({ x: Math.max(100 - w, Math.min(window.innerWidth - 100, x)), y: Math.max(0, Math.min(window.innerHeight - 52, y)) });
   const nearCorner = (x: number, y: number, w: number, h: number) => window.innerWidth - (x + w) < 90 && window.innerHeight - (y + h) < 90;
   const drag = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button, a, input')) return;
@@ -157,9 +216,17 @@ function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats:
         ) : null}
         <b>{cur ? chatTitle(cur, me) : 'Messages'}</b>
         <span style={{ flex: 1 }} />
+        {dir && (
+          <button type="button" className="icon-btn" onClick={() => setCreating(true)} aria-label="New message" data-tip="New message">
+            <UiIcon name="edit" size={15} />
+          </button>
+        )}
         <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn" aria-label="Open in full" data-tip="Open in full">
           <UiIcon name="fullscreen" size={15} />
         </Link>
+        <button type="button" className="icon-btn" onClick={onMin} aria-label="Minimise" data-tip="Minimise">
+          <span className="dock-min" />
+        </button>
         <button type="button" className="icon-btn" onClick={onClose} aria-label="Close" data-tip="Close">
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
         </button>
@@ -187,12 +254,13 @@ function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats:
               </button>
             );
           })}
-          <Link to="/messages" className="btn small-btn dock-new">
-            New message…
-          </Link>
+          <button type="button" className="btn small-btn dock-new" onClick={() => setCreating(true)}>
+            + New message
+          </button>
         </div>
       )}
     </div>
+    {creating && dir && <NewChat dir={dir} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), onChat(id))} />}
     </>
   );
 }
@@ -216,7 +284,7 @@ export function PhoneMessagesLink() {
       </span>
     );
   return (
-    <button type="button" className={'icon-tool' + (st.open ? ' on' : '')} aria-label={label} data-tip={label} aria-pressed={!!st.open} onClick={() => setDock({ open: !st.open, chat: st.chat })}>
+    <button type="button" className={'icon-tool' + (st.open && !st.min ? ' on' : '')} aria-label={label} data-tip={label} aria-pressed={!!st.open} onClick={() => setDock(st.open && st.min ? { open: true, chat: st.chat } : { open: !st.open, chat: st.chat })}>
       <UiIcon name="message" />
       {badge}
     </button>

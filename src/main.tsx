@@ -6,6 +6,7 @@ import { startTheme } from './lib/theme';
 import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
 import { ColleaguesPage } from './pages/ColleaguesPage';
 import { MessagesPage } from './pages/MessagesPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -122,6 +123,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
+          <Route path="/settings" element={<SignedIn><SettingsPage /></SignedIn>} />
           <Route path="/messages" element={<SignedIn><MessagesPage /></SignedIn>} />
           <Route path="/colleagues" element={<TeacherOnly><ColleaguesPage /></TeacherOnly>} />
           <Route path="/colleague/:token" element={<ColleagueJoin />} />

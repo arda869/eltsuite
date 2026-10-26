@@ -579,7 +579,11 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     const check = () => {
       const r = el.getBoundingClientRect();
       const kids = Array.from(el.children).filter((k) => !(k as HTMLElement).classList.contains('tb-more-tools')) as HTMLElement[];
-      setToolsOver(kids.some((k) => k.getBoundingClientRect().right > r.right - 34 || k.offsetTop > 4));
+      kids.forEach((k) => (k.style.visibility = ''));
+      const over = kids.filter((k) => k.getBoundingClientRect().right > r.right - 34 || k.offsetTop > 4);
+      setToolsOver(over.length > 0);
+      // Closed: a tool that only partly fits is hidden, so the row ends cleanly at the arrow.
+      if (!toolsOpen) over.forEach((k) => (k.style.visibility = 'hidden'));
     };
     check();
     const ro = new ResizeObserver(check);

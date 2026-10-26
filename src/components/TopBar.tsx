@@ -7,9 +7,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Avatar } from './avatars';
 import { AvatarPicker } from './AvatarPicker';
-import { DeleteAccountDialog } from './DeleteAccountDialog';
 import { PhoneMessagesLink } from './ChatDock';
-import { AppSetupDialog } from './AppSetup';
+import { UiIcon } from './UiIcon';
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -21,8 +20,6 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const { user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [appOpen, setAppOpen] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
   const [classIds, setClassIds] = useState<string[]>([]);
   useEffect(() => {
     if (!user || profile?.role !== 'teacher') return;
@@ -64,30 +61,25 @@ export function TopBar({ children }: { children?: ReactNode }) {
               <strong>{name}</strong>
               <span className="hint">{user?.email}</span>
             </div>
-            <button role="menuitem" onClick={() => (setPicking(true), setOpen(false))}>
-              Choose a profile picture
-            </button>
-            <button role="menuitem" onClick={() => (setAppOpen(true), setOpen(false))}>
-              App and notifications
+            <Link role="menuitem" className="menu-link" to="/settings" onClick={() => setOpen(false)}>
+              <UiIcon name="settings" size={15} />
+              Settings
+            </Link>
+            <button role="menuitem" className="menu-link" onClick={() => (setPicking(true), setOpen(false))}>
+              <UiIcon name="person" size={15} />
+              Change picture
             </button>
             <ThemeChoice />
             <button role="menuitem" onClick={signOutNow}>
               Sign out
             </button>
-            {profile?.role === 'teacher' && (
-              <button role="menuitem" className="danger-item" onClick={() => (setDeletingAccount(true), setOpen(false))}>
-                Delete my account…
-              </button>
-            )}
             <span className="menu-legal">
               <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
             </span>
           </div>
         )}
       </div>
-      {deletingAccount && <DeleteAccountDialog onClose={() => setDeletingAccount(false)} />}
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
-      {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
     </header>
   );
 }
