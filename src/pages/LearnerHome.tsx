@@ -1,3 +1,4 @@
+import { ThemeChoice } from '../lib/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
@@ -153,6 +154,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                   Change my PIN or password
                 </button>
               )}
+              <ThemeChoice />
               <button role="menuitem" onClick={signOutNow}>
                 Sign out
               </button>

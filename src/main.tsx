@@ -1,3 +1,4 @@
+import { startTheme } from './lib/theme';
 import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
 import { ColleaguesPage } from './pages/ColleaguesPage';
 import { MessagesPage } from './pages/MessagesPage';
@@ -88,6 +89,8 @@ function LearnerOnly({ children }: { children: JSX.Element }) {
   if (!ready) return <Boot />;
   return user && profile?.role === 'learner' ? children : <Navigate to="/" replace />;
 }
+
+startTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

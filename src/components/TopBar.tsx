@@ -1,3 +1,4 @@
+import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -62,6 +63,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
             <button role="menuitem" onClick={() => (setPicking(true), setOpen(false))}>
               Choose a profile picture
             </button>
+            <ThemeChoice />
             <button role="menuitem" onClick={signOutNow}>
               Sign out
             </button>
