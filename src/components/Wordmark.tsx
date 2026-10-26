@@ -1,17 +1,26 @@
-const FLAME = 'M17 2 C25 14 30 22 30 30 C30 39 24 46 17 46 C10 46 4 39 4 30 C4 22 9 14 17 2 Z';
+// ELT Suite: a rounded tile with an E drawn from lines (like the lines of a lesson),
+// then the name. The suite keeps the app's colours and type.
+export const MARK = (fill = '#d98f63') =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="${fill}"/><rect x="14" y="12" width="5.5" height="24" rx="2.75" fill="#fff"/><rect x="14" y="12" width="21" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="21.25" width="15" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="30.5" width="21" height="5.5" rx="2.75" fill="#fff"/></svg>`;
+
+export function Mark({ size = 26 }: { size?: number }) {
+  return (
+    <svg className="wm-mark" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+      <rect width="48" height="48" rx="12" fill="#d98f63" />
+      <rect x="14" y="12" width="5.5" height="24" rx="2.75" fill="#fff" />
+      <rect x="14" y="12" width="21" height="5.5" rx="2.75" fill="#fff" />
+      <rect x="14" y="21.25" width="15" height="5.5" rx="2.75" fill="#fff" />
+      <rect x="14" y="30.5" width="21" height="5.5" rx="2.75" fill="#fff" />
+    </svg>
+  );
+}
 
 export function Wordmark({ big = false }: { big?: boolean }) {
   return (
-    <span className={'wordmark' + (big ? ' big' : '')} aria-label="Lesson Lit">
-      <span aria-hidden="true">
-        Lesson L
-        <span className="i">
-          ı
-          <svg viewBox="0 0 34 48">
-            <path d={FLAME} fill="#d98f63" />
-          </svg>
-        </span>
-        t
+    <span className={'wordmark' + (big ? ' big' : '')} aria-label="ELT Suite">
+      <Mark size={big ? 64 : 26} />
+      <span aria-hidden="true" className="wm-name">
+        <b>ELT</b> Suite
       </span>
     </span>
   );

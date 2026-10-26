@@ -89,7 +89,7 @@ export function SoundRecordings() {
   return (
     <div className="snd">
       <p className="hint snd-intro">
-        English has many accents, and no single correct way to say each sound. Lesson Lit comes with a recording of every sound, and you can replace any of them with your own: your accent, a colleague, or the variety your learners need. Your learners hear your recordings in your charts and sound cards. Sounds you do not record use the default.
+        English has many accents, and no single correct way to say each sound. ELT Suite comes with a recording of every sound, and you can replace any of them with your own: your accent, a colleague, or the variety your learners need. Your learners hear your recordings in your charts and sound cards. Sounds you do not record use the default.
       </p>
       <div className="snd-bar">
         <span className="seg small-seg" role="radiogroup" aria-label="Accent">

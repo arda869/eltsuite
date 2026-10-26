@@ -93,7 +93,7 @@ export function DocPage() {
 
   if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
-  if (!lesson && (d === null || !role)) return <div className="dp-msg">This document is not shared with you, or it was deleted.<Link to="/">Back to Lesson Lit</Link></div>;
+  if (!lesson && (d === null || !role)) return <div className="dp-msg">This document is not shared with you, or it was deleted.<Link to="/">Back to ELT Suite</Link></div>;
   const docKey = lesson ? key : d!.docKey;
   const cite = ((d as { citeStyle?: CiteStyle } | null | undefined)?.citeStyle ?? 'apa') as CiteStyle;
   const classId = lesson ? qs.get('c') ?? '' : '';
@@ -103,7 +103,7 @@ export function DocPage() {
   return (
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
-        <Link to={profile?.role === 'learner' ? '/' : '/archive?s=docs'} className="dp-home" aria-label="Back to Lesson Lit">
+        <Link to={profile?.role === 'learner' ? '/' : '/archive?s=docs'} className="dp-home" aria-label="Back to ELT Suite">
           <DocIcon kind={kind} />
         </Link>
         <span className="dp-names">

@@ -20,12 +20,12 @@ import { ChainIcon } from './LibraryParts';
 function StudioBar({ app, where, status, children }: { app: string; where: ReactNode; status?: ReactNode; children?: ReactNode }) {
   useEffect(() => {
     const old = document.title;
-    document.title = `${app} · Lesson Lit`;
+    document.title = `${app} · ELT Suite`;
     return () => void (document.title = old);
   }, [app]);
   return (
     <header className="studio-bar">
-      <Link to="/archive" className="studio-brand" aria-label="Lesson Lit">
+      <Link to="/archive" className="studio-brand" aria-label="ELT Suite">
         <Wordmark />
       </Link>
       <span className="studio-app">{app}</span>

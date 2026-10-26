@@ -1,4 +1,5 @@
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
+import { MARK } from '../components/Wordmark';
 import appCss from '../styles.css?raw';
 import extrasCss from './extras.css?raw';
 import { translationsFor } from './langs';
@@ -14,17 +15,16 @@ import { Sym } from '../editor/Symbols';
 import type { Block, FormItem, Options, Run, WsItem, WsTask } from './worksheet';
 
 // The printed worksheet or test, laid out like a coursebook photocopiable: a grey header band
-// with a Name box, the Lesson Lit logo and a class-colour graphic; section headings;
+// with a Name box, the ELT Suite logo and a class-colour graphic; section headings;
 // numbered exercises in normal text size; mark boxes for exams. Pages are laid out in the
 // browser before printing, so an exercise is never split between two columns or two pages
 // (unless it is longer than a whole column).
 
 const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const LET = 'abcdefghijklmnop';
-const FLAME = 'M17 2 C25 14 30 22 30 30 C30 39 24 46 17 46 C10 46 4 39 4 30 C4 22 9 14 17 2 Z';
 const SIZES: Record<string, [number, number]> = { A4: [210, 297], Letter: [215.9, 279.4], A5: [148, 210] };
 
-const logo = (accent: string) => `<span class="logo">Lesson L<span class="li-i">ı<svg viewBox="0 0 34 48"><path d="${FLAME}" style="fill:${accent}"/></svg></span>t</span>`;
+const logo = (accent: string) => `<span class="logo"><span class="logo-mark">${MARK(accent)}</span><b>ELT</b> Suite</span>`;
 
 // Safari (and iPhone printing) paints SVG colours given as var() or color-mix() black, so the cover
 // gets plain colours here.
@@ -255,7 +255,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
         <div class="brand">${logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
-  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · Lesson Lit</span><span class="pn"></span></footer>`;
+  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ELT Suite</span><span class="pn"></span></footer>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
 <style>
@@ -292,7 +292,7 @@ h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12
 .band-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--band) 0%, rgba(236,235,231,0) 28%); }
 .brand { background: rgba(255,255,255,.88); padding: 1.6mm 2.6mm 1.4mm; border-radius: 1.6mm; }
 .brand { position: absolute; right: var(--side); bottom: ${small ? 2.5 : 3.2}mm; display: flex; flex-direction: column; align-items: flex-end; gap: .6mm; }
-.logo { font: 600 ${small ? 14 : 18}pt/1 Fraunces, serif; letter-spacing: -.015em; color: var(--ink); white-space: nowrap; }
+.logo-mark svg { width: 1em; height: 1em; vertical-align: -0.12em; margin-right: .3em; } .logo b { font-weight: 700; } .logo { font: 600 ${small ? 14 : 18}pt/1 Fraunces, serif; letter-spacing: -.015em; color: var(--ink); white-space: nowrap; }
 .li-i { position: relative; display: inline-block; } .li-i svg { position: absolute; left: 50%; top: .08em; transform: translateX(-50%); width: .32em; height: auto; }
 .kicker { font: 700 7.5pt Karla, sans-serif; letter-spacing: .04em; color: #3d3a36; }
 

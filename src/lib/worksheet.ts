@@ -393,13 +393,13 @@ export function flattenTask(t: ExportTask): WsTask {
         cur.push({ kind: 'draw', prompt: String(a.prompt ?? '') });
         return;
       case 'collab':
-        cur.push({ kind: 'note', text: `${a.title ? a.title + ': ' : ''}a shared document, written together in Lesson Lit.` });
+        cur.push({ kind: 'note', text: `${a.title ? a.title + ': ' : ''}a shared document, written together in ELT Suite.` });
         cur.push({ kind: 'lines', n: 0, count: 6 });
         return;
       case 'upload': {
         const kinds = (a.kinds ?? []) as string[];
         const what = kinds.includes('any') || !kinds.length ? 'your file' : kinds.map((k) => ({ documents: 'a document', pictures: 'a photo', sound: 'a recording', video: 'a video' })[k] ?? k).join(' or ');
-        cur.push({ kind: 'note', text: `${a.note ? a.note + ' ' : ''}Hand in ${what} in Lesson Lit.` });
+        cur.push({ kind: 'note', text: `${a.note ? a.note + ' ' : ''}Hand in ${what} in ELT Suite.` });
         return;
       }
       case 'media':
@@ -654,7 +654,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   };
   const children: (Paragraph | Table)[] = [];
   const tasks = items.flatMap((i) => (i.kind === 'task' ? [i.task] : []));
-  children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ________________________________' : ' ', font: SANS, size: S(15), bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: S(26), bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
+  children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ________________________________' : ' ', font: SANS, size: S(15), bold: true, color: '3D3A36' }), new TextRun({ text: '\tELT Suite', font: SERIF, size: S(26), bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
   children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: S(30), bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: S(15), bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 280 } }));
   const body: (Paragraph | Table)[] = [];
   const markRun = (n: number) => new TextRun({ text: `   _____ / ${n}`, font: SANS, size: S(17), bold: true, color: '57534D' });

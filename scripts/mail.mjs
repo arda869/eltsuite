@@ -14,7 +14,7 @@ if (!SMTP) {
   console.log('No SMTP_URL secret: class emails are off until it is added.');
   process.exit(0);
 }
-const FROM = process.env.MAIL_FROM || 'Lesson Lit <no-reply@lesson-lit.web.app>';
+const FROM = process.env.MAIL_FROM || 'ELT Suite <no-reply@lesson-lit.web.app>';
 const REPLY = process.env.MAIL_REPLY || '';
 const IMAP = process.env.IMAP_URL || '';
 const SITE = 'https://lesson-lit.web.app';
@@ -56,8 +56,8 @@ function inline(nodes = []) {
           .map((s, i) => (i === Number(a.stressed) ? (a.style === 'bold' ? `<b>${esc(s)}</b>` : a.style === 'big' ? `<b style="font-size:1.2em">${esc(s.toUpperCase())}</b>` : `<span style="border:1.5px solid #2b2a28;border-radius:3px;padding:0 2px">${esc(s)}</span>`) : esc(s)))
           .join(a.style === 'box' ? '' : '·');
       }
-      if (n.type === 'phonChart') return '<i style="color:#8a847d">[the phonemic chart, in Lesson Lit]</i>';
-      if (n.type === 'phonCard') return '<i style="color:#8a847d">[a sound card, in Lesson Lit]</i>';
+      if (n.type === 'phonChart') return '<i style="color:#8a847d">[the phonemic chart, in ELT Suite]</i>';
+      if (n.type === 'phonCard') return '<i style="color:#8a847d">[a sound card, in ELT Suite]</i>';
       if (n.type === 'plink') return `<span style="color:#b8744e">${a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿'}</span>`;
       if (n.type === 'subst') return `<span style="display:inline-block;vertical-align:middle;border-left:2px solid #b8744e;border-right:2px solid #b8744e;padding:0 8px;line-height:1.3">${(a.options ?? []).map(esc).join('<br>')}</span>`;
       if (n.type === 'mention') return `<b>@${esc(a.label ?? a.id ?? '')}</b>`;
@@ -103,7 +103,7 @@ function block(n) {
   }
 }
 const frame = (title, inner, foot) => `<div style="max-width:600px;margin:0 auto;padding:26px 24px;font-family:Arial,sans-serif;color:#2b2a28;background:#fffdfb">
-  <div style="font:600 14px Georgia,serif;color:#b8744e;margin-bottom:14px">Lesson Lit</div>
+  <div style="font:600 14px Georgia,serif;color:#b8744e;margin-bottom:14px">ELT Suite</div>
   ${title ? `<div style="font:600 20px Georgia,serif;margin:0 0 14px">${esc(title)}</div>` : ''}
   ${inner}
   <div style="margin-top:22px;padding-top:12px;border-top:1px solid #eee6de;font:12px/1.5 Arial,sans-serif;color:#8a847d">${foot}</div>
@@ -142,7 +142,7 @@ for (const o of out.docs) {
         to: x.contactEmail,
         replyTo: replyTo(token),
         subject: `${a.email.subject} [#${token}]`,
-        html: frame(a.email.subject, block(a.email.content ?? { type: 'doc' }), `From ${esc(a.email.byName)} · ${esc(cls.name ?? 'your class')}. ${REPLY ? 'Reply to this email and your teacher gets it in Lesson Lit.' : `Open <a href="${SITE}" style="color:#b8744e">Lesson Lit</a> to reply.`}`),
+        html: frame(a.email.subject, block(a.email.content ?? { type: 'doc' }), `From ${esc(a.email.byName)} · ${esc(cls.name ?? 'your class')}. ${REPLY ? 'Reply to this email and your teacher gets it in ELT Suite.' : `Open <a href="${SITE}" style="color:#b8744e">ELT Suite</a> to reply.`}`),
       });
       sent++;
     }
@@ -230,7 +230,7 @@ for (const c of threads.docs) {
     to: email,
     replyTo: replyTo(token),
     subject: `${name} replied to you [#${token}]`,
-    html: frame(`${name} replied to you`, list.map((m) => (m.content ? block(m.content) : `<p style="font:15px/1.6 Georgia,serif">${esc(m.text)}</p>`)).join(''), `${REPLY ? 'Reply to this email to answer, or open' : 'Open'} <a href="${SITE}/messages?c=${c.id}" style="color:#b8744e">the chat in Lesson Lit</a>.`),
+    html: frame(`${name} replied to you`, list.map((m) => (m.content ? block(m.content) : `<p style="font:15px/1.6 Georgia,serif">${esc(m.text)}</p>`)).join(''), `${REPLY ? 'Reply to this email to answer, or open' : 'Open'} <a href="${SITE}/messages?c=${c.id}" style="color:#b8744e">the chat in ELT Suite</a>.`),
   });
   await c.ref.update({ [`mailed.${learner}`]: Date.now() });
   console.log('Emailed a reply to', d.names?.[learner]);

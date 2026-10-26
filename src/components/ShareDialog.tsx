@@ -74,7 +74,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
             <input type="radio" checked={mode === 'link'} onChange={() => setMode('link')} />
             <span>
               <b>Anyone with the link</b>
-              <span className="hint">Any teacher signed in to Lesson Lit who has the link can open it.</span>
+              <span className="hint">Any teacher signed in to ELT Suite who has the link can open it.</span>
             </span>
           </label>
         </div>

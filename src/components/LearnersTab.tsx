@@ -92,7 +92,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
       .pc{border:1px dashed #bbb;border-radius:10px;padding:14px;break-inside:avoid}
       .n{font:600 16px Georgia,serif;margin-bottom:8px}.k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#868686}
       .v{font-size:18px;font-weight:600;letter-spacing:.12em;margin-bottom:6px}.u{font-size:11px;color:#737373}
-    </style><h1>${c.name.replace(/</g, '&lt;')} · Lesson Lit sign-in</h1><div class="g">${rows}</div><script>window.onload=()=>window.print()</script>`);
+    </style><h1>${c.name.replace(/</g, '&lt;')} · ELT Suite sign-in</h1><div class="g">${rows}</div><script>window.onload=()=>window.print()</script>`);
     w.document.close();
   }
 

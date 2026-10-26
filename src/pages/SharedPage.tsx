@@ -35,7 +35,7 @@ function SignInFirst({ what }: { what: string }) {
     <div className="sp-empty">
       <UiIcon name="lock" size={26} />
       <h1 className="page-title">Sign in to open {what}</h1>
-      <p className="hint">Colleagues share with teachers who use Lesson Lit. Sign in, or make a free account, and you come straight back here.</p>
+      <p className="hint">Colleagues share with teachers who use ELT Suite. Sign in, or make a free account, and you come straight back here.</p>
       <button
         type="button"
         className="btn primary"

@@ -41,7 +41,7 @@ export function saveCsv(r: Report) {
 export async function saveXlsx(r: Report, accent: string) {
   const { default: ExcelJS } = await import('exceljs');
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Lesson Lit';
+  wb.creator = 'ELT Suite';
   const argb = 'FF' + accent.replace('#', '').toUpperCase();
   const tint = 'FF' + mix(accent, 0.12).replace('#', '').toUpperCase();
   for (const t of all(r)) {
@@ -124,7 +124,7 @@ td:first-child { font-weight: 600; } .n { text-align: right; white-space: nowrap
 .note { margin-top: 4mm; font-size: 8pt; color: #8a847d; }
 .next { break-before: page; }
 footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 7.5pt; color: #b0aaa2; }
-</style></head><body>${all(r).map((t, i) => section(t, i === 0)).join('')}<footer>Lesson Lit</footer>
+</style></head><body>${all(r).map((t, i) => section(t, i === 0)).join('')}<footer>ELT Suite</footer>
 <script>document.fonts.ready.then(() => setTimeout(() => print(), 250));</script></body></html>`);
   w.document.close();
 }

@@ -3,7 +3,7 @@ import { newId } from './tasks';
 
 // Copying task elements between messages and lessons. The clipboard carries the elements as
 // JSON (with their answers) and where their pictures and sounds live, so a paste anywhere in
-// Lesson Lit brings everything along.
+// ELT Suite brings everything along.
 
 export type Clip = { v: 1; space: string; content: JSONContent[] };
 const ATTR = 'data-lessonlit';

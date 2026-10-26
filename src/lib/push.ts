@@ -3,7 +3,7 @@ import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { app, db } from './firebase';
 
 // Notifications on phones and computers (web push). On an iPhone or iPad they work once
-// Lesson Lit is on the home screen; elsewhere, in the browser too.
+// ELT Suite is on the home screen; elsewhere, in the browser too.
 // The public key of the project's web push certificate (Firebase console › Cloud Messaging).
 export const VAPID_KEY = '';
 

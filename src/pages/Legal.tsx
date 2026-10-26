@@ -15,7 +15,7 @@ export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
         {kind === 'privacy' ? (
           <>
             <h1 className="page-title">Privacy policy</h1>
-            <p>Lesson Lit is a classroom tool for small online English classes. This page explains what we keep and why. It is a placeholder and will be replaced by a reviewed policy before the app opens to other teachers.</p>
+            <p>ELT Suite is a classroom tool for small online English classes. This page explains what we keep and why. It is a placeholder and will be replaced by a reviewed policy before the app opens to other teachers.</p>
             <h2>What we keep</h2>
             <ul>
               <li>For teachers: name, email address and the classes, lessons and notes you create.</li>
@@ -36,7 +36,7 @@ export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
             <h1 className="page-title">Terms of use</h1>
             <p>These are placeholder terms and will be replaced before the app opens to other teachers.</p>
             <ul>
-              <li>Use Lesson Lit for teaching and learning.</li>
+              <li>Use ELT Suite for teaching and learning.</li>
               <li>Teachers are responsible for the content they add and for the learners they invite.</li>
               <li>Be kind on message boards and in feedback. Teachers can remove posts.</li>
               <li>The app is provided as it is, while it is being built.</li>

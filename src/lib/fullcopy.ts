@@ -122,7 +122,7 @@ export function parseBundle(text: string): LessonBundle | ClassBundle {
   const j = JSON.parse(text);
   if (j?.format === 'lessonlit-lesson' && Array.isArray(j.tasks)) return j as LessonBundle;
   if (j?.format === 'lessonlit-class' && Array.isArray(j.lessons)) return j as ClassBundle;
-  throw new Error('This is not a Lesson Lit copy file.');
+  throw new Error('This is not a ELT Suite copy file.');
 }
 
 // Imports a lesson bundle into a class as a new hidden lesson. Media and board drawings come with it.

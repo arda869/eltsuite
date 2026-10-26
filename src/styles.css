@@ -5831,3 +5831,17 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .cs-term-opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .cs-term-own { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cs-term-own input { padding: 7px 9px; border: 1px solid var(--hair); border-radius: 8px; font: 14px var(--sans); }
+/* ELT Suite wordmark */
+.wordmark { display: inline-flex; align-items: center; gap: 9px; }
+.wordmark .wm-name { font: 400 22px var(--serif); letter-spacing: -0.01em; color: var(--ink); }
+.wordmark .wm-name b { font-weight: 600; }
+.wordmark.big { gap: 16px; }
+.wordmark.big .wm-name { font-size: 56px; }
+.wm-mark { flex: none; display: block; }
+.ld-suite .wm-mark rect:nth-child(n+3) { animation: ld-line 1.2s ease-in-out infinite; transform-origin: 14px center; }
+.ld-suite .wm-mark rect:nth-child(4) { animation-delay: 0.15s; }
+.ld-suite .wm-mark rect:nth-child(5) { animation-delay: 0.3s; }
+@keyframes ld-line { 0%, 100% { transform: scaleX(1); opacity: 1; } 50% { transform: scaleX(0.35); opacity: 0.6; } }
+.ld-suite { width: auto; height: auto; }
+.ld-suite::before, .ld-suite::after { display: none; }
+.suite-mark { flex-direction: row; align-items: center; gap: 9px; } .suite-mark > span { display: flex; flex-direction: column; line-height: 1.05; }

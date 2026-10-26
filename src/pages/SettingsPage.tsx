@@ -17,7 +17,7 @@ import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
 import { SoundRecordings } from '../components/SoundRecordings';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
-// Everything about you and how Lesson Lit behaves for you, in one place.
+// Everything about you and how ELT Suite behaves for you, in one place.
 
 function Section({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
   return (
@@ -134,7 +134,7 @@ export function SettingsPage() {
         </Section>
 
         <Section icon="bell" title="This device">
-          <Row title="App and notifications" hint={push === 'on' ? 'Notifications are on for this device' : 'Add Lesson Lit to your home screen and turn on notifications'}>
+          <Row title="App and notifications" hint={push === 'on' ? 'Notifications are on for this device' : 'Add ELT Suite to your home screen and turn on notifications'}>
             <button type="button" className="btn small-btn" onClick={() => setAppOpen(true)}>
               Set up
             </button>
@@ -249,7 +249,7 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
       setMsg('Linked. Next time you can sign in with Google.');
     } catch (e) {
       const code = (e as { code?: string }).code ?? '';
-      setMsg(code.includes('credential-already-in-use') || code.includes('email-already-in-use') ? 'That Google account is already used by another Lesson Lit account.' : code.includes('popup') ? 'The Google window was closed before it finished.' : 'It could not be linked. Please try again.');
+      setMsg(code.includes('credential-already-in-use') || code.includes('email-already-in-use') ? 'That Google account is already used by another ELT Suite account.' : code.includes('popup') ? 'The Google window was closed before it finished.' : 'It could not be linked. Please try again.');
     }
   };
   const saveEmail = async (v = email) => {

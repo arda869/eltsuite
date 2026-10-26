@@ -15,7 +15,7 @@ if (!SMTP) {
 initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit' });
 const db = getFirestore();
 const mail = nodemailer.createTransport(SMTP);
-const FROM = process.env.MAIL_FROM || 'Lesson Lit <no-reply@lesson-lit.web.app>';
+const FROM = process.env.MAIL_FROM || 'ELT Suite <no-reply@lesson-lit.web.app>';
 const SITE = 'https://lesson-lit.web.app';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const now = Date.now();
@@ -62,7 +62,7 @@ for (const u of users.docs) {
   await mail.sendMail({
     from: FROM,
     to: email,
-    subject: `${n} unread ${n === 1 ? 'message' : 'messages'} on Lesson Lit`,
+    subject: `${n} unread ${n === 1 ? 'message' : 'messages'} on ELT Suite`,
     html: `<div style="max-width:560px;margin:0 auto;padding:24px;font-family:Arial,sans-serif;color:#2b2a28">
       <div style="font:600 22px Georgia,serif;margin-bottom:4px">Messages waiting for you</div>
       <div style="font:13px Arial,sans-serif;color:#8a847d;margin-bottom:18px">You asked for a summary when messages stay unread.</div>

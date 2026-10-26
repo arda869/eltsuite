@@ -45,7 +45,7 @@ export function StudioSession() {
   useEffect(() => watchPeers(id, setPeers), [id]);
   useEffect(() => watchTakes(id, setTakes), [id]);
   useEffect(() => {
-    document.title = 'Recording studio · Lesson Lit';
+    document.title = 'Recording studio · ELT Suite';
   }, []);
 
   // The microphone (echo cancelling helps if someone has no headphones).

@@ -1,4 +1,4 @@
-/* Lesson Lit on the home screen: shows notifications that arrive while the app is closed,
+/* ELT Suite on the home screen: shows notifications that arrive while the app is closed,
    and opens the right page when one is tapped. */
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
@@ -16,7 +16,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   if (payload.notification) return;
   const d = payload.data || {};
-  self.registration.showNotification(d.title || 'Lesson Lit', { body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || undefined, data: { link: d.link || '/' } });
+  self.registration.showNotification(d.title || 'ELT Suite', { body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || undefined, data: { link: d.link || '/' } });
 });
 
 self.addEventListener('notificationclick', (e) => {

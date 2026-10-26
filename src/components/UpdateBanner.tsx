@@ -28,7 +28,7 @@ export function UpdateBanner() {
   if (!fresh) return null;
   return (
     <div className="update-banner" role="status">
-      A new version of Lesson Lit is ready.
+      A new version of ELT Suite is ready.
       <button type="button" className="btn small-btn primary" onClick={() => window.location.reload()}>
         Refresh
       </button>

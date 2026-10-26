@@ -1,4 +1,4 @@
-// Firebase web config for the Lesson Lit project (public client config, not a secret).
+// Firebase web config for the ELT Suite project (public client config, not a secret).
 export const firebaseConfig = {
   apiKey: "AIzaSyA6LrMXl-ND4MGzVjnQs5wQ_50Oa6BywAs",
   authDomain: "lesson-lit.firebaseapp.com",

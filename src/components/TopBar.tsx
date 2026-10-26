@@ -3,7 +3,7 @@ import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { Wordmark } from './Wordmark';
+import { Mark, Wordmark } from './Wordmark';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Avatar } from './avatars';
@@ -84,20 +84,23 @@ export function TopBar({ children }: { children?: ReactNode }) {
   );
 }
 
-// Top left: the app you are in, within ELT Suite. Lesson Lit (classes) keeps its own wordmark.
+// Top left: the app you are in, within ELT Suite.
 function AppMark() {
   const { pathname } = useLocation();
   const app = pathname.startsWith('/archive') || pathname.startsWith('/doc') ? { name: 'Files', to: '/archive', color: '#3667a6' } : pathname.startsWith('/messages') ? { name: 'Messages', to: '/messages', color: '#7a4fa3' } : null;
   if (!app)
     return (
-      <Link to="/" style={{ textDecoration: 'none' }} aria-label="Lesson Lit, in ELT Suite">
+      <Link to="/" style={{ textDecoration: 'none' }} aria-label="ELT Suite">
         <Wordmark />
       </Link>
     );
   return (
     <Link to={app.to} className="suite-mark" style={{ ['--app' as string]: app.color }}>
-      <span className="suite-k">ELT Suite</span>
-      <b>{app.name}</b>
+      <Mark size={26} />
+      <span>
+        <span className="suite-k">ELT Suite</span>
+        <b>{app.name}</b>
+      </span>
     </Link>
   );
 }
