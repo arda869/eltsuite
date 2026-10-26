@@ -39,6 +39,7 @@ export type Run = {
   wrap?: Record<string, string>[]; // pronunciation marks and grammar labels, as on screen
   pl?: { k: string; s: string }; // linking between words, or a pause
   subs?: string[]; // a substitution slot
+  phon?: { type: string; a: Record<string, unknown> }; // the phonemic chart or a sound card
 };
 export type Block =
   | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number'; mark?: string }
@@ -164,6 +165,7 @@ export function flattenTask(t: ExportTask): WsTask {
           else if (node.type === 'ipa') out.push({ ipa: { text: String(a.text ?? ''), accent: String(a.accent ?? 'RP'), show: !!a.showAccent } });
           else if (node.type === 'stress') out.push({ stress: { syl: (a.syllables ?? []) as string[], on: Number(a.stressed ?? 0), style: String(a.style ?? 'box') } });
           else if (node.type === 'plink') out.push({ t: a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿', pl: { k: String(a.k ?? 'link'), s: String(a.s ?? 'under') } });
+          else if (node.type === 'phonChart' || node.type === 'phonCard') out.push({ t: node.type === 'phonCard' ? ` /${String(a.sound ?? '')}/ ` : ' [phonemic chart] ', phon: { type: node.type, a: a as Record<string, unknown> } });
           else if (node.type === 'subst') out.push({ t: ` | ${((a.options ?? []) as string[]).join(' / ')} | `, subs: (a.options ?? []) as string[] });
           else if (node.type === 'icon') out.push({ icon: { name: String(a.name ?? ''), tone: String(a.tone ?? 'ink') } });
           else if (node.type === 'picture') {

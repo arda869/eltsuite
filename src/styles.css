@@ -5574,3 +5574,17 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .cs-tool.on { box-shadow: 0 0 0 1.5px var(--accent); }
 .cs-tool input { accent-color: var(--accent); }
 .cs-tools .hint { grid-column: 1 / -1; }
+/* Sound recordings in settings */
+.snd { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; }
+.snd-intro { line-height: 1.55; margin: 0; max-width: 640px; }
+.snd-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.snd-group { display: flex; flex-direction: column; gap: 4px; }
+.snd-h { font: 700 11px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 8px 0 2px; }
+.snd-row { --ph-mono: #3667a6; --ph-diph: #7a4fa3; --ph-cons: #a8701f; display: grid; grid-template-columns: 52px 110px 90px 1fr; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; }
+.snd-row:hover { background: var(--surface); }
+.snd-sym { width: 42px; height: 38px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--ph) 16%, #fff); color: color-mix(in srgb, var(--ph) 85%, black); font: 20px 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', serif; }
+.snd-state { font: 12.5px var(--sans); color: var(--muted); }
+.snd-state b { color: var(--accent-text); }
+.snd-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.snd-rec { background: var(--accent); color: #fff; }
+@media (max-width: 640px) { .snd-row { grid-template-columns: 48px 1fr; } .snd-state { grid-column: 2; } .snd-acts { grid-column: 1 / -1; justify-content: flex-start; } }

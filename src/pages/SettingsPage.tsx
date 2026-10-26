@@ -14,6 +14,7 @@ import { AFTER, chime, enterSendOn, saveEnterSend, saveMsgPrefs, setSounds, soun
 import { pushState, type PushState } from '../lib/push';
 import { UiIcon } from '../components/UiIcon';
 import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
+import { SoundRecordings } from '../components/SoundRecordings';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
 // Everything about you and how Lesson Lit behaves for you, in one place.
@@ -158,6 +159,12 @@ export function SettingsPage() {
         )}
 
         {teacher && <ToolbarSettings />}
+
+        {teacher && (
+          <Section icon="mic" title="Sound recordings">
+            <SoundRecordings />
+          </Section>
+        )}
 
         {!teacher && user && profile?.role === 'learner' && <LearnerAccount uid={user.uid} classId={profile.classId} />}
 

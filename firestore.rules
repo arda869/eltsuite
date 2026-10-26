@@ -467,6 +467,17 @@ service cloud.firestore {
     // The class decides: no messages; only with teachers (or groups the teacher makes); or freely.
     function msgMode() { return classData(myClass()).get('messaging', {}).get('mode', 'free'); }
     function learnerMayStart(c) { return msgMode() == 'free' || (msgMode() != 'off' && c.roles.values().removeAll(['teacher']).size() <= 1); }
+    // Recordings of the sounds of English. The default set, for everyone, is kept by the app's
+    // owner; each teacher can add their own, which learners hear in that teacher's tasks.
+    match /phonemeAudio/{key} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.token.email == 'ardanurioglu@gmail.com';
+    }
+    match /teacherSounds/{key} {
+      allow read: if signedIn();
+      allow create, update: if isTeacher() && key.matches(request.auth.uid + '_.*') && request.resource.data.by == request.auth.uid && request.resource.data.data is string && request.resource.data.data.size() < 900000;
+      allow delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
     // Emails waiting to go out (scripts/mail.mjs sends them). Teachers add; only the mail job reads.
     match /outbox/{id} {
       allow create: if isTeacher() && teachesClass(request.resource.data.classId) && request.resource.data.state == 'waiting';

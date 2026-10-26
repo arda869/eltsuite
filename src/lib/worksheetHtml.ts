@@ -4,6 +4,7 @@ import extrasCss from './extras.css?raw';
 import { translationsFor } from './langs';
 import { LinkMark } from '../editor/Prosody';
 import { SubstSlot } from '../editor/Subst';
+import { PhonView } from '../editor/Phonemes';
 import { DictCutout } from '../editor/DictCut';
 import { timelineSvgString } from '../editor/Timeline';
 import { createElement } from 'react';
@@ -58,6 +59,7 @@ function runs(rs: Run[]) {
         return `<span class="pic pic-${esc(r.pic.size)}${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>`;
       }
       if (r.pl) return renderToStaticMarkup(createElement(LinkMark, { k: r.pl.k, s: r.pl.s }));
+      if (r.phon) return renderToStaticMarkup(createElement(PhonView, { type: r.phon.type, a: r.phon.a }));
       if (r.subs) return renderToStaticMarkup(createElement(SubstSlot, { options: r.subs }));
       let t = esc(r.t ?? '').replace(/\n/g, '<br>');
       if (r.kw) return `<span class="kw${r.stem ? ' stem' : ''}">${t}</span>`;

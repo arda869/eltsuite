@@ -56,6 +56,8 @@ function inline(nodes = []) {
           .map((s, i) => (i === Number(a.stressed) ? (a.style === 'bold' ? `<b>${esc(s)}</b>` : a.style === 'big' ? `<b style="font-size:1.2em">${esc(s.toUpperCase())}</b>` : `<span style="border:1.5px solid #2b2a28;border-radius:3px;padding:0 2px">${esc(s)}</span>`) : esc(s)))
           .join(a.style === 'box' ? '' : '·');
       }
+      if (n.type === 'phonChart') return '<i style="color:#8a847d">[the phonemic chart, in Lesson Lit]</i>';
+      if (n.type === 'phonCard') return '<i style="color:#8a847d">[a sound card, in Lesson Lit]</i>';
       if (n.type === 'plink') return `<span style="color:#b8744e">${a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿'}</span>`;
       if (n.type === 'subst') return `<span style="display:inline-block;vertical-align:middle;border-left:2px solid #b8744e;border-right:2px solid #b8744e;padding:0 8px;line-height:1.3">${(a.options ?? []).map(esc).join('<br>')}</span>`;
       if (n.type === 'mention') return `<b>@${esc(a.label ?? a.id ?? '')}</b>`;

@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { usePopPos } from './usePopPos';
 import '../lib/extras.css';
+import { newPhonCard, newPhonChart } from './Phonemes';
 
 // Pronunciation in running text, the way teachers mark it on the board: sentence stress (dots,
 // size, capitals, underlining or boxes), intonation arrows, linking with sounds that slip in,
@@ -383,6 +384,20 @@ export function ProsodyTool({ editor }: { editor: Editor }) {
               <input className="pro-to" value={to} placeholder="other" maxLength={4} disabled={empty} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && to.trim() && (e.preventDefault(), mark('speechSound', { k: 'change', s: 'top', to: to.trim() }))} aria-label="Another sound" />
             </span>
             {seg('drop', [{ k: 'cross', label: 'Crossed out' }, { k: 'bracket', label: 'In brackets' }], 'Dropped sounds')}
+          </span>
+          <span className="pro-sec">
+            <span className="pro-h">The sounds of English</span>
+            <span className="pro-row">
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (editor.chain().focus().insertContent(newPhonChart()).run(), setOpen(false))}>
+                <b className="pro-glyph">iː</b>Chart
+              </button>
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (editor.chain().focus().insertContent(newPhonCard('sound')).run(), setOpen(false))}>
+                <b className="pro-glyph">/ʃ/</b>Sound card
+              </button>
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (editor.chain().focus().insertContent(newPhonCard('how')).run(), setOpen(false))}>
+                <b className="pro-glyph">◔</b>How it is made
+              </button>
+            </span>
           </span>
           <span className="hint">Each kind of mark looks the same everywhere in this task, so learners always read it the same way.</span>
         </span>

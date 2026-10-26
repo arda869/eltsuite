@@ -24,8 +24,9 @@ import { FreshIds, jsonClip } from './clipboard';
 import { TableInsert } from './TableInsert';
 import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
-import { Intonation, ProsodyTool, SentenceStress, SpeechLink, SpeechSound } from './Prosody';
-import { Subst } from './Subst';
+import { ProsodyTool } from './Prosody';
+import { LANG_MARKS } from './langMarks';
+import { newPhonCard, newPhonChart } from './Phonemes';
 import { noteSlash, topSlash } from '../lib/slashUse';
 import { useToolGate } from '../lib/toolbarPrefs';
 import { DictCut } from './DictCut';
@@ -51,7 +52,7 @@ import { Selection } from '@tiptap/pm/state';
 import { Highlight, HighlightTool } from './Highlight';
 import { TextColor, TextColorTool } from './TextColor';
 import { IconNode, IconTool } from './Icons';
-import { GrammarLabel, SymNode, SymbolTool } from './Symbols';
+import { SymNode, SymbolTool } from './Symbols';
 import { BoardNode, newBoard } from './BoardNode';
 import { DrawBoardNode, newDrawBoard } from './DrawBoard';
 import { newPack, PackNode } from './PackNode';
@@ -180,6 +181,9 @@ const COMMANDS: Cmd[] = [
     },
   },
   { key: 'dictcut', label: 'Dictionary cutout', hint: 'A word’s entry, as if cut out of a dictionary page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'dictCut', attrs: { word: '', data: {} } }, { type: 'paragraph' }]).run() },
+  { key: 'phonchart', label: 'Phonemic chart', hint: 'The sounds of English, British or American; tap to hear', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonChart()).run() },
+  { key: 'phoncard', label: 'Sound card', hint: 'One sound, in its colour, with an example word', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonCard('sound')).run() },
+  { key: 'phonhow', label: 'How a sound is made', hint: 'Place and manner, or tongue and lips, for one sound', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonCard('how')).run() },
   { key: 'subst', label: 'Substitution slot', hint: 'Words that can go in one place, stacked between two lines', group: 'Text', run: (e) => e.chain().focus().insertContent({ type: 'subst', attrs: { options: [] } }).run() },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
   { key: 'list', label: 'Bulleted list', hint: 'A simple list', group: 'Text', run: (e) => e.chain().focus().toggleBulletList().run() },
@@ -198,7 +202,7 @@ const COMMANDS: Cmd[] = [
 
 // Writing that is not a task (an email): only text tools, no questions or task elements.
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
-const TEXT_ONLY = ['stress', 'ipa', 'subst', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
+const TEXT_ONLY = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
 function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
@@ -316,7 +320,7 @@ function ListStart({ editor }: { editor: Editor }) {
 
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
-const INLINE_KEYS = ['subst', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
+const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
 const TOP_ONLY = ['column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
@@ -435,13 +439,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       CollabBlock,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
-      SentenceStress,
-      Intonation,
-      SpeechSound,
-      SpeechLink,
-      Subst,
+      ...LANG_MARKS,
       DictCut,
-      GrammarLabel,
       Ipa,
       LessonLink,
       jsonClip(Reflect, 'div', 'data-reflect'),

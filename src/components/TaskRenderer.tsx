@@ -14,6 +14,7 @@ import { speakerVars } from '../editor/Dialogue';
 import { StressedWord } from '../editor/Stress';
 import { LinkMark, prosodyAttrs } from '../editor/Prosody';
 import { SubstSlot } from '../editor/Subst';
+import { PhonView } from '../editor/Phonemes';
 import { DictCutout } from '../editor/DictCut';
 import { glabelAttrs } from '../editor/Symbols';
 import { highlightBg } from '../editor/Highlight';
@@ -1124,6 +1125,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <StressedWord key={key} syllables={(node.attrs?.syllables as string[]) ?? []} stressed={Number(node.attrs?.stressed ?? 0)} style={(node.attrs?.style ?? 'box') as 'box' | 'bold' | 'big'} />;
       case 'plink':
         return <LinkMark key={key} k={String(node.attrs?.k ?? 'link')} s={String(node.attrs?.s ?? 'under')} />;
+      case 'phonChart':
+      case 'phonCard':
+        return <PhonView key={key} type={node.type} a={(node.attrs ?? {}) as Record<string, unknown>} />;
       case 'subst':
         return <SubstSlot key={key} options={(node.attrs?.options as string[]) ?? []} />;
       case 'dictCut':
