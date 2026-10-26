@@ -54,17 +54,17 @@ export const Definition = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { class: 'def-word' }), 0],
 });
 
-type FieldDef = { k: keyof DefData; label: string; ph?: string; options?: string[]; long?: boolean };
-const CORE: FieldDef[] = [
+export type FieldDef = { k: keyof DefData; label: string; ph?: string; options?: string[]; long?: boolean };
+export const CORE: FieldDef[] = [
   { k: 'pos', label: 'Part of speech', options: POS },
   { k: 'meaning', label: 'Meaning', ph: 'A simple explanation in English', long: true },
   { k: 'example', label: 'Example sentence', ph: 'She was reluctant to leave.', long: true },
 ];
-const TRANSLATION: FieldDef[] = [
+export const TRANSLATION: FieldDef[] = [
   { k: 'translation', label: 'Translation', ph: 'isteksiz' },
   { k: 'lang', label: 'Language', ph: 'Turkish' },
 ];
-const GROUPS: { title: string; fields: FieldDef[] }[] = [
+export const GROUPS: { title: string; fields: FieldDef[] }[] = [
   {
     title: 'Form',
     fields: [
@@ -156,25 +156,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
     onClose();
   }
 
-  const field = (f: FieldDef) => (
-    <label key={f.k} className={'def-field' + (f.long ? ' long' : '')}>
-      <span>{f.label}</span>
-      {f.options ? (
-        <span className="def-chips" role="radiogroup" aria-label={f.label}>
-          {f.options.map((o) => (
-            <button key={o} type="button" role="radio" aria-checked={data[f.k] === o} className={data[f.k] === o ? 'on' : ''} onClick={() => setData((d) => ({ ...d, [f.k]: d[f.k] === o ? '' : o }))}>
-              {o}
-            </button>
-          ))}
-        </span>
-      ) : f.long ? (
-        <textarea rows={2} value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} />
-      ) : (
-        <input value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} />
-      )}
-    </label>
-  );
-
+  const field = (f: FieldDef) => <DefField key={f.k} f={f} data={data} setData={setData} />;
   return (
     <div ref={ref} className="def-pop" style={{ position: 'fixed', top: pos.top, left: pos.left }} role="dialog" aria-label="Definition">
       <div className="def-pop-head">
@@ -204,6 +186,28 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
         </button>
       </div>
     </div>
+  );
+}
+
+// One vocabulary field: chips, a long text or a short text. Shared with the notebook.
+export function DefField({ f, data, setData }: { f: FieldDef; data: DefData; setData: (fn: (d: DefData) => DefData) => void }) {
+  return (
+    <label className={'def-field' + (f.long ? ' long' : '')}>
+      <span>{f.label}</span>
+      {f.options ? (
+        <span className="def-chips" role="radiogroup" aria-label={f.label}>
+          {f.options.map((o) => (
+            <button key={o} type="button" role="radio" aria-checked={data[f.k] === o} className={data[f.k] === o ? 'on' : ''} onClick={() => setData((d) => ({ ...d, [f.k]: d[f.k] === o ? '' : o }))}>
+              {o}
+            </button>
+          ))}
+        </span>
+      ) : f.long ? (
+        <textarea rows={2} value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
+      ) : (
+        <input value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
+      )}
+    </label>
   );
 }
 

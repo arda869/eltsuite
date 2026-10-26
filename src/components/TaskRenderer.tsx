@@ -1,3 +1,4 @@
+import { BankLinkCard } from '../editor/BankLink';
 import { SurveyBlock } from './Survey';
 import { criteriaOf, genreLabel } from '../lib/rubric';
 import { PackQuestion } from './PackRender';
@@ -50,6 +51,7 @@ type Props = {
   onSharedReset?: (pickId: string) => void;
   teacher?: boolean;
   onOpenTask?: (taskId: string) => void; // links to another task in the lesson
+  onOpenNotebook?: (entryId: string) => void; // links to a notebook page
   taskState?: (taskId: string) => 'open' | 'locked' | 'missing';
   classmates?: { id: string; name: string }[];
   selfId?: string;
@@ -142,7 +144,7 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
@@ -815,6 +817,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const link = node.marks?.find((m) => m.type === 'lessonLink');
         const inner = marks(node.text ?? '', node.marks);
         if (!link) return <span key={key}>{inner}</span>;
+        if (link.attrs?.kind === 'notebook')
+          return (
+            <button key={key} type="button" className="lesson-link nb-ln" disabled={!onOpenNotebook} title="Open in the notebook" onClick={() => onOpenNotebook?.(link.attrs?.entryId)}>
+              {inner}
+              {LINK_ICON}
+            </button>
+          );
         const tid = link.attrs?.taskId as string;
         const st = taskState?.(tid) ?? 'open';
         return (
@@ -940,6 +949,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             taskId={boardMe?.taskId}
           />
         );
+      case 'bankLink':
+        return <BankLinkCard key={key} bank={node.attrs?.bank ?? 'grammar'} title={node.attrs?.title} label={node.attrs?.label} onOpen={onOpenNotebook && node.attrs?.entryId ? () => onOpenNotebook(node.attrs!.entryId) : undefined} />;
       case 'drawBoard':
         return (
           <div key={key} className="drawboard">

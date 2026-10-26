@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { updateClass, type ClassDoc, type Item, type Topic } from '../lib/classes';
@@ -12,8 +12,10 @@ import { AnnounceDialog } from '../components/AnnounceDialog';
 import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
+import { Notebook } from '../components/Notebook';
+import { useAuth } from '../lib/auth';
 
-type Tab = 'lessons' | 'learners';
+type Tab = 'lessons' | 'learners' | 'notebook';
 
 function useCollection<T>(path: string[], ready: boolean) {
   const [rows, setRows] = useState<T[]>([]);
@@ -34,7 +36,10 @@ export function ClassPage() {
   const navigate = useNavigate();
   const [c, setC] = useState<ClassDoc | null | undefined>(undefined);
   const roster = useClassmates(c?.classCode ?? undefined);
-  const [tab, setTab] = useState<Tab>('lessons');
+  const [params] = useSearchParams();
+  const focusEntry = params.get('entry');
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : 'lessons');
+  const { user } = useAuth();
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -165,9 +170,18 @@ export function ClassPage() {
             <button className={tab === 'learners' ? 'on' : ''} onClick={() => setTab('learners')}>
               Learners <span className="count">{learners.length}</span>
             </button>
+            <button className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
+              Notebook
+            </button>
           </nav>
 
-          {tab === 'lessons' ? <LessonsTab c={c} topics={topics} items={items} /> : <LearnersTab c={c} learners={learners} pins={pins} />}
+          {tab === 'lessons' ? (
+            <LessonsTab c={c} topics={topics} items={items} />
+          ) : tab === 'learners' ? (
+            <LearnersTab c={c} learners={learners} pins={pins} />
+          ) : (
+            user && <Notebook classId={c.id} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} items={[...items].sort((a, b) => a.order - b.order)} topics={[...topics].sort((a, b) => a.order - b.order)} roster={roster} focus={focusEntry} />
+          )}
         </>
       )}
 

@@ -55,6 +55,10 @@ import { TaskAudience } from '../components/TaskAudience';
 import { ExamSettings } from '../components/ExamSettings';
 import { PollDialog } from '../components/Poll';
 import { TeacherQuiz } from '../components/TeamQuiz';
+import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
+import type { Prefill } from '../components/Notebook';
+import { collection } from 'firebase/firestore';
+import type { Topic } from '../lib/classes';
 import { examScope, useRuns } from '../lib/exam';
 import { HIGHLIGHTS, INK_COLORS, InkBar, PresentInk, type InkMode } from '../components/PresentInk';
 
@@ -88,6 +92,21 @@ export function LessonEditor() {
   const [boardPageLocal, setBoardPageLocal] = useState('');
   const [inkMode, setInkMode] = useState<InkMode>('off');
   const [pollOpen, setPollOpen] = useState(false);
+  const [nbOpen, setNbOpen] = useState(false);
+  const [nbPrefill, setNbPrefill] = useState<Prefill | null>(null);
+  const [nbFocus, setNbFocus] = useState<string | null>(null);
+  const [nbItems, setNbItems] = useState<Item[]>([]);
+  const [nbTopics, setNbTopics] = useState<Topic[]>([]);
+  useEffect(() => {
+    if (!classId) return;
+    const u1 = onSnapshot(collection(db, 'classes', classId, 'items'), (s) => setNbItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).sort((a, b) => a.order - b.order)), () => {});
+    const u2 = onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setNbTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {});
+    return () => (u1(), u2());
+  }, [classId]);
+  const toNotebook = (p: Prefill) => {
+    setNbPrefill({ ...p, itemId, taskId: selected });
+    setNbOpen(true);
+  };
   const [quizOpen, setQuizOpen] = useState(false);
   const [inkColor, setInkColor] = useState(INK_COLORS[0]);
   const [inkHl, setInkHl] = useState(HIGHLIGHTS[0]);
@@ -511,6 +530,9 @@ export function LessonEditor() {
         >
           Export
         </button>
+        <button type="button" className="btn small-btn" onClick={() => setNbOpen(true)} title="The class notebook: words and notes, grammar and vocabulary banks">
+          Notebook
+        </button>
         <button type="button" className={'btn small-btn' + (boardView ? ' on-accent' : '')} onClick={() => showBoard(!boardView)} title="The lesson board: pages you can prepare and show in class">
           Board
         </button>
@@ -532,6 +554,9 @@ export function LessonEditor() {
       </TopBar>
 
       {quizOpen && <TeacherQuiz classId={classId} itemId={itemId} tasks={tasks} taskId={selected} roster={classmates} online={inLesson.map((p) => p.learnerId)} activeSet={activeSet} onClose={() => setQuizOpen(false)} />}
+      {user && (
+        <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} items={nbItems} topics={nbTopics} roster={classmates} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: selected }} />
+      )}
       {pollOpen && <PollDialog classId={classId} poll={live?.poll} onClose={() => setPollOpen(false)} />}
       {groupsOpen && (
         <GroupsDialog
@@ -826,6 +851,7 @@ export function LessonEditor() {
                     if (q?.dataset.qid) toggleSingle(q.dataset.qid);
                   }}
                 >
+                  {!preview && user && inkMode === 'off' && <SelectionNote container={teachBodyRef} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} onAdd={toNotebook} />}
                   {!preview && <PresentInk container={teachBodyRef} mode={inkMode} color={inkColor} highlight={inkHl} clearKey={task.id + ':' + inkClear} />}
                   {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere && inkMode === 'off'} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
                   <TaskRenderer
@@ -843,6 +869,7 @@ export function LessonEditor() {
                     classId={classId}
                     boardMe={!preview && user ? { classId, taskId: task.id, itemId, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true, people: classmates, penPeople: inLesson.map((p) => ({ uid: p.id, name: p.name })) } : undefined}
                     onOpenTask={(id) => select(id)}
+                    onOpenNotebook={(id) => (setNbFocus(id), setNbOpen(true))}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
                     onSharedReset={(pickId) => drawShared(classId, task.id, pickId, [], [], (sharedPicks[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
@@ -902,6 +929,7 @@ export function LessonEditor() {
                     onChange={(content) => change({ content })}
                     classmates={classmates}
                     classId={classId}
+                    onNotebook={(word, sentence) => toNotebook({ type: 'vocab', word, example: sentence })}
                     places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
                   />
                 </div>

@@ -2339,3 +2339,106 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 @media (prefers-reduced-motion: reduce) { .tq-overlay *, .sv-check { animation: none !important; } }
 .pq-instr-line { display: flex; align-items: baseline; gap: 6px; margin-bottom: 4px; } .pq-instr-line .hint { font-family: var(--sans); font-size: 13px; }
 .sv-thanks .sv-results { align-self: stretch; width: 100%; }
+
+/* ---------------------------------------------------------------- Class notebook (Phase 3) */
+.nb { display: flex; flex-direction: column; gap: 14px; font-family: var(--sans); }
+.nb-page { max-width: 880px; width: 100%; }
+.nb-link { text-decoration: none; }
+.nb-tabs { display: flex; gap: 2px; flex-wrap: wrap; border-bottom: 1px solid var(--hair); }
+.nb-tabs button { position: relative; padding: 8px 12px; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--muted); cursor: pointer; }
+.nb-tabs button.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 -2px 0 var(--accent); }
+.nb-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+.nb-addbtns { display: flex; gap: 6px; }
+.nb-add { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--hair); border-radius: 14px; background: #fcfcfb; }
+.nb-form { display: flex; flex-direction: column; gap: 8px; }
+.nb-form .def-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.nb-form .def-field > span:first-child { font-weight: 600; color: var(--muted); font-size: 12px; }
+.nb-form input, .nb-form textarea { font: inherit; font-size: 14px; border: 1px solid var(--hair); border-radius: 8px; padding: 6px 8px; }
+.nb-form input:focus, .nb-form textarea:focus { outline: none; border-color: var(--accent); }
+.nb-word { font-family: var(--serif) !important; font-size: 18px !important; font-weight: 600; }
+.nb-title { font-family: var(--serif) !important; font-size: 16px !important; font-weight: 600; }
+.nb-form .def-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.nb-form .def-chips button { height: 26px; padding: 0 9px; border: 1px solid var(--hair); border-radius: 999px; background: #fff; font: inherit; font-size: 12px; cursor: pointer; color: var(--muted); }
+.nb-form .def-chips button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
+.nb-form .def-group { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--hair); }
+.nb-form .def-group-title { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+.nb-form-foot { display: flex; gap: 8px; justify-content: flex-end; }
+.nb-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.nb-filters input, .nb-filters select { font: inherit; font-size: 13px; height: 32px; padding: 0 8px; border: 1px solid var(--hair); border-radius: 8px; background: #fff; }
+.nb-search { flex: 1 1 160px; }
+.nb-list { display: flex; flex-direction: column; gap: 10px; }
+.nb-card { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--hair); border-radius: 14px; background: #fff; }
+.nb-card.pending { border-color: rgba(217, 143, 99, 0.6); background: rgba(217, 143, 99, 0.04); }
+.nb-card.hidden { opacity: 0.6; border-style: dashed; }
+.nb-card.mine { background: #fffdf7; }
+.nb-editing { display: flex; flex-direction: column; gap: 10px; }
+.nb-vocab { display: flex; flex-direction: column; gap: 5px; }
+.nb-vocab-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.nb-word-big { font-family: var(--serif); font-size: 20px; font-weight: 600; }
+.nb-pos { color: var(--muted); font-size: 13px; }
+.nb-vocab .dc-meaning { font-family: var(--serif); font-size: 15px; }
+.nb-vocab .dc-example { font-family: var(--serif); font-style: italic; color: var(--muted); }
+.nb-vocab .dc-row { display: flex; gap: 8px; font-size: 13px; }
+.nb-vocab .dc-k { min-width: 110px; color: var(--soft); }
+.nb-more { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border-radius: 10px; background: var(--surface); }
+.nb-mytr { display: block; }
+.nb-mytr-btn { border: 0; background: transparent; padding: 0; font: inherit; font-size: 13px; color: var(--accent-text, #b5683b); cursor: pointer; text-align: left; }
+.nb-mytr-v { font-family: var(--hand); color: var(--pen); font-size: 15px; }
+.nb-mytr input { font: inherit; font-family: var(--hand); color: var(--pen); font-size: 15px; border: 0; border-bottom: 1.5px solid var(--hair-strong); background: transparent; padding: 2px 0; width: min(100%, 320px); }
+.nb-mytr input:focus { outline: none; border-bottom-color: var(--accent); }
+.nb-note { display: flex; flex-direction: column; gap: 6px; }
+.nb-note-title { font-family: var(--serif); font-size: 17px; }
+.nb-note .task-body { padding: 0; }
+.nb-tags-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.nb-tag { padding: 1px 8px; border-radius: 999px; background: var(--surface); font-size: 12px; color: var(--muted); }
+.nb-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 6px; border-top: 1px solid rgba(51, 48, 44, 0.06); font-size: 12px; }
+.nb-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+.nb-review { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px; background: rgba(217, 143, 99, 0.08); }
+.nb-history { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 10px; background: var(--surface); font-size: 13px; }
+.nb-hist-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nb-bank { display: flex; flex-direction: column; gap: 14px; }
+.nb-topic { display: flex; flex-direction: column; gap: 8px; }
+.nb-page-title { margin: 0; font-family: var(--serif); font-size: 20px; }
+.nb-page-body { font-family: var(--serif); }
+.nb-page-body .task-body { padding: 0; }
+.nb-page-editor { border: 1px solid var(--hair); border-radius: 12px; padding: 6px 12px; }
+.nb-page-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
+.nb-page-row select { font: inherit; font-size: 13px; border: 1px solid var(--hair); border-radius: 8px; padding: 3px 6px; }
+.nb-practice { display: flex; align-items: center; gap: 10px; }
+.nb-settings { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
+.nb-settings h3 { margin: 0; font-family: var(--serif); }
+.ne { border: 1px solid var(--hair); border-radius: 8px; }
+.ne-bar { display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid var(--hair); }
+.ne-btn { width: 28px; height: 26px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.ne-btn.on { background: var(--surface); color: var(--ink); }
+.note-editor { min-height: 80px; padding: 8px 10px; font-family: var(--serif); font-size: 15px; line-height: 1.5; outline: none; }
+.note-editor p { margin: 0 0 6px; }
+.note-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: #b8b8b8; float: left; height: 0; pointer-events: none; }
+/* Drawer */
+.nb-drawer-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(32, 30, 28, 0.35); display: flex; justify-content: flex-end; }
+.nb-drawer { width: min(560px, 100%); height: 100%; overflow: auto; padding: 18px 20px 30px; background: #fff; box-shadow: -20px 0 60px rgba(0, 0, 0, 0.2); display: flex; flex-direction: column; gap: 12px; animation: drawer-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes drawer-in { from { transform: translateX(40px); opacity: 0; } }
+.nb-drawer-head { display: flex; align-items: center; justify-content: space-between; }
+.nb-drawer-head h2 { margin: 0; font-family: var(--serif); font-size: 22px; }
+.nb.compact .nb-tabs button { padding: 6px 9px; font-size: 13px; }
+/* Selection button */
+.sel-note { position: fixed; z-index: 75; display: flex; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--hair); border-radius: 10px; background: #fff; box-shadow: 0 10px 28px rgba(51, 48, 44, 0.18); font-family: var(--sans); font-size: 12px; animation: pop-in 0.2s ease both; }
+.sel-note-word { color: var(--muted); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-note button { height: 26px; padding: 0 9px; border: 0; border-radius: 7px; background: var(--ink); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sel-note button + button { background: var(--surface); color: var(--ink); }
+/* Bank link card */
+.bl-edit { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; font-family: var(--sans); font-size: 13px; }
+.bl-edit select, .bl-edit input { font: inherit; font-size: 13px; border: 1px solid var(--hair); border-radius: 8px; padding: 5px 8px; }
+.bl-card { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 520px; margin: 10px 0; padding: 12px 16px; border: 1px solid var(--hair); border-radius: 14px; background: linear-gradient(135deg, #fff, #faf7f3); font: inherit; text-align: left; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+.bl-card:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(51, 48, 44, 0.1); }
+.bl-card:disabled { cursor: default; }
+.bl-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(217, 143, 99, 0.14); color: var(--accent-text, #b5683b); }
+.bl-text { display: flex; flex-direction: column; gap: 2px; flex: 1; font-family: var(--sans); }
+.bl-title { font-family: var(--serif); font-size: 16px; font-weight: 600; }
+.bl-arrow { color: var(--soft); }
+.lesson-link.nb-ln { color: var(--accent-text, #b5683b); }
+@media (max-width: 640px) { .nb-drawer { width: 100%; padding: 14px; } .nb-filters select { flex: 1 1 45%; } }
+.nb-form .def-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.nb-form .def-two input { width: 100%; min-width: 0; }
+.nb-form input, .nb-form textarea { width: 100%; box-sizing: border-box; }
+@media (max-width: 640px) { .nb-form .def-two { grid-template-columns: 1fr; } }

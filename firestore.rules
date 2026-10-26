@@ -129,6 +129,46 @@ service cloud.firestore {
         allow write: if teachesClass(classId);
       }
 
+      // Class notebook. Who may write is set on the class (notebook.level: view | add | all,
+      // notebook.review, notebook.blocked); the rules check it, not just the app.
+      function nb() { return classData(classId).get('notebook', {}); }
+      function nbLevel() { return nb().get('level', 'view'); }
+      function nbReview() { return nb().get('review', false) == true; }
+      function myLearnerId() { return get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId; }
+      function nbCanAdd() { return memberOf(classId) && nbLevel() != 'view' && !(myLearnerId() in nb().get('blocked', [])); }
+      match /notebook/{eid} {
+        // Learners see published, unhidden entries and anything they added themselves.
+        allow read: if teachesClass(classId)
+          || (memberOf(classId) && ((resource.data.status == 'published' && resource.data.get('hidden', false) == false) || resource.data.addedBy == request.auth.uid));
+        allow create: if teachesClass(classId)
+          || (nbCanAdd() && request.resource.data.type != 'page'
+              && request.resource.data.addedBy == request.auth.uid
+              && request.resource.data.status == (nbReview() ? 'pending' : 'published')
+              && request.resource.data.get('hidden', false) == false);
+        // Learners change `data` only (or propose a change under review); never pages, status or hidden.
+        allow update: if teachesClass(classId)
+          || (nbCanAdd() && resource.data.type != 'page'
+              && (nbLevel() == 'all' || resource.data.addedBy == request.auth.uid)
+              && (nbReview()
+                  ? (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pending']) && request.resource.data.pending.by == request.auth.uid)
+                  : (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['data', 'editedBy', 'editedByName', 'updatedAt']) && request.resource.data.editedBy == request.auth.uid)));
+        allow delete: if teachesClass(classId);
+
+        // Earlier versions: anyone who edits writes one; only the teacher reads and restores
+        match /history/{hid} {
+          allow read: if teachesClass(classId);
+          allow create: if teachesClass(classId) || (nbCanAdd() && request.resource.data.by is string);
+          allow delete: if teachesClass(classId);
+        }
+      }
+      // A learner's private notebook: only they can read or write it
+      match /myNotes/{nid} {
+        allow read: if signedIn() && resource.data.uid == request.auth.uid;
+        allow create: if memberOf(classId) && request.resource.data.uid == request.auth.uid;
+        allow update: if signedIn() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+
       // Exam attempts: a learner starts once and can only add the time they submitted
       match /examRuns/{rid} {
         allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);

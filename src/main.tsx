@@ -10,6 +10,7 @@ import { EmailLinkFinish } from './pages/EmailLinkFinish';
 import { TeacherHome } from './pages/TeacherHome';
 import { ClassPage } from './pages/ClassPage';
 import { LessonEditor } from './pages/LessonEditor';
+import { LearnerNotebook } from './pages/LearnerNotebook';
 import { LearnerLesson } from './pages/LearnerLesson';
 import { LearnerJoin } from './pages/LearnerJoin';
 import { LearnerHome } from './pages/LearnerHome';
@@ -72,6 +73,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
+          <Route path="/notebook" element={<LearnerOnly><LearnerNotebook /></LearnerOnly>} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />

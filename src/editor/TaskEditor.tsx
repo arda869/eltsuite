@@ -31,6 +31,7 @@ import { BoardNode, newBoard } from './BoardNode';
 import { DrawBoardNode, newDrawBoard } from './DrawBoard';
 import { newPack, PackNode } from './PackNode';
 import { newSurvey, SurveyNode } from './SurveyNode';
+import { BankLinkNode, newBankLink } from './BankLink';
 import type { PackKind } from '../lib/pack';
 import { Mention, MentionMenu, useMentionMenu } from './Mention';
 import { CELL_COLORS, cellBg } from './tableStyle';
@@ -72,6 +73,8 @@ const COMMANDS: Cmd[] = [
   { key: 'peer', label: 'Peer feedback', hint: 'Learners choose a classmate and rate how they did', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('peer'), { type: 'paragraph' }]).run() },
   { key: 'board', label: 'Message board', hint: 'Learners post messages the whole class sees', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('board'), { type: 'paragraph' }]).run() },
   { key: 'postits', label: 'Post-it wall', hint: 'Learners stick notes on a shared wall', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('postits'), { type: 'paragraph' }]).run() },
+  { key: 'grammarlink', label: 'Grammar bank link', hint: 'A card that opens a grammar page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('grammar'), { type: 'paragraph' }]).run() },
+  { key: 'vocablink', label: 'Vocabulary bank link', hint: 'A card that opens a vocabulary page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('vocab'), { type: 'paragraph' }]).run() },
   { key: 'drawboard', label: 'Board', hint: 'A drawing board: draw, write and add pictures, live in class', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newDrawBoard(), { type: 'paragraph' }]).run() },
   { key: 'pq-fix', label: 'Find and fix the mistake', hint: 'Learners tap the wrong word, then correct it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('fix' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'pq-categorise', label: 'Categorise', hint: 'Sort words into labelled columns', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('categorise' as PackKind), { type: 'paragraph' }]).run() },
@@ -205,7 +208,7 @@ const BTN = (label: string, active: boolean, onClick: () => void, text: React.Re
   </button>
 );
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '' }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -244,6 +247,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       jsonClip(Writing, 'div', 'data-writing'),
       jsonClip(PackNode, 'div', 'data-pq'),
       jsonClip(SurveyNode, 'div', 'data-survey'),
+      BankLinkNode,
       ColumnBreak,
       TextBox,
       RandomPick,
@@ -485,6 +489,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
               });
               editor.chain().focus().insertContent([{ type: 'text', text: ' ' }, newIpa(last ?? 'RP')]).run();
             },
+            notebook: onNotebook,
           }}
         />
         {slash.state && (

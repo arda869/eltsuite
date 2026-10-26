@@ -1,4 +1,8 @@
 import { LearnerQuiz } from '../components/TeamQuiz';
+import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
+import type { Prefill } from '../components/Notebook';
+import { collection } from 'firebase/firestore';
+import type { Topic } from '../lib/classes';
 import { PollCard } from '../components/Poll';
 import { examScope, fmt, startExam, submitExam, timeLeft, useMyRun } from '../lib/exam';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -167,6 +171,22 @@ export function LearnerLesson() {
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
   const classmates = useClassmates(c?.classCode);
+  const [nbOpen, setNbOpen] = useState(false);
+  const [nbPrefill, setNbPrefill] = useState<Prefill | null>(null);
+  const [nbFocus, setNbFocus] = useState<string | null>(null);
+  const [nbItems, setNbItems] = useState<Item[]>([]);
+  const [nbTopics, setNbTopics] = useState<Topic[]>([]);
+  useEffect(() => {
+    if (!classId) return;
+    const u1 = onSnapshot(collection(db, 'classes', classId, 'items'), (s) => setNbItems(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Item).filter((i) => !i.hidden).sort((a, b) => a.order - b.order)), () => {});
+    const u2 = onSnapshot(collection(db, 'classes', classId, 'topics'), (s) => setNbTopics(s.docs.map((d) => ({ id: d.id, ...d.data() }) as Topic).sort((a, b) => a.order - b.order)), () => {});
+    return () => (u1(), u2());
+  }, [classId]);
+  const nbMe = user ? { uid: user.uid, name: profile?.role === 'learner' ? profile.displayName : '', learnerId, teacher: false } : null;
+  const toNotebook = (p: Prefill) => {
+    setNbPrefill({ ...p, itemId, taskId: current });
+    setNbOpen(true);
+  };
   const classAvatars = useLearnerAvatars(classId);
   const received = useReceivedFeedback(classId, current, learnerId);
   const withShared = useMemo(() => ({ ...responses, ...Object.fromEntries(Object.values(shared).map((p) => [p.pickId, { h: p.h, b: p.b }])) }), [responses, shared]);
@@ -313,6 +333,9 @@ export function LearnerLesson() {
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
         <span className="right-push" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button type="button" className="btn small-btn" onClick={() => setNbOpen(true)} title="Class notebook and my notebook">
+            Notebook
+          </button>
           <TextSizeControl />
         {c?.meeting?.url && c.meeting.visibility === 'always' && (
           <a className="btn small-btn right-push" href={c.meeting.url} target="_blank" rel="noopener noreferrer">
@@ -323,6 +346,7 @@ export function LearnerLesson() {
       </header>
 
       <AnnouncementCards classId={classId} learnerId={learnerId} />
+      {nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
       {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}
       {liveHere && live?.poll && user && <PollCard classId={classId} poll={live.poll} me={{ uid: user.uid, learnerId, name: profile?.role === 'learner' ? profile.displayName : '' }} />}
       {liveHere && (
@@ -406,6 +430,7 @@ export function LearnerLesson() {
               {boardOpen && onBoard && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher={false} page={live?.board?.page || firstPage(item)} /></div>}
               <div className="frame-body" ref={bodyRef} hidden={boardOpen && onBoard}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
+                {nbMe && <SelectionNote container={bodyRef} c={c} me={nbMe} onAdd={toNotebook} />}
                 <AnnotationLayer container={bodyRef} annotations={anns} classId={classId} taskId={task.id} canAnnotate={false} me={{ uid: user?.uid ?? '', name: profile?.role === 'learner' ? profile.displayName : '', teacher: false }} />
                 {synced && (
                   <div className="sync-banner" role="status">
@@ -470,6 +495,7 @@ export function LearnerLesson() {
                   received={received}
                   boardMe={user && profile?.role === 'learner' ? { classId, taskId: current, itemId, uid: user.uid, name: profile.displayName, selfId: learnerId, people: classmates } : undefined}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
+                  onOpenNotebook={(id) => (setNbFocus(id), setNbOpen(true))}
                   onOpenTask={(id) => {
                     const t = entryFor(id);
                     if (t && !t.locked) setCurrent(t.id);

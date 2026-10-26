@@ -1,11 +1,13 @@
 import { Mark, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useBankPages } from '../lib/notebookPages';
+import { useEditorClass } from './context';
 
 // A link inside the text that takes learners to another place in the lesson.
 // "kind" leaves room for notebook pages and other places later.
 
-export type LinkTarget = { kind: 'task'; taskId: string };
+export type LinkTarget = { kind: 'task'; taskId: string } | { kind: 'notebook'; entryId: string };
 export type LinkPlace = { id: string; title: string; n: number };
 
 export const LessonLink = Mark.create({
@@ -14,6 +16,7 @@ export const LessonLink = Mark.create({
   addAttributes: () => ({
     kind: { default: 'task', parseHTML: (el: HTMLElement) => el.getAttribute('data-kind') || 'task', renderHTML: (a: { kind: string }) => ({ 'data-kind': a.kind }) },
     taskId: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-task') || '', renderHTML: (a: { taskId: string }) => ({ 'data-task': a.taskId }) },
+    entryId: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-entry') || '', renderHTML: (a: { entryId: string }) => ({ 'data-entry': a.entryId }) },
   }),
   parseHTML: () => [{ tag: 'span[data-lesson-link]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-lesson-link': '', class: 'lesson-link' }), 0],
@@ -29,7 +32,9 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [q, setQ] = useState('');
-  const [tab, setTab] = useState<'task' | 'web'>('task');
+  const [tab, setTab] = useState<'task' | 'web' | 'notebook'>('task');
+  const { classId } = useEditorClass();
+  const pages = useBankPages(classId, open);
   const [url, setUrl] = useState('');
   const current = editor.getAttributes('lessonLink').taskId as string | undefined;
   const existing = editor.isActive('lessonLink');
@@ -39,7 +44,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
     const web = editor.getAttributes('link').href as string | undefined;
     if (open && web) editor.chain().extendMarkRange('link').run();
     setUrl(web ?? '');
-    setTab(web ? 'web' : 'task');
+    setTab(web ? 'web' : editor.getAttributes('lessonLink').kind === 'notebook' ? 'notebook' : 'task');
     setQ('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -80,7 +85,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
         <button type="button" role="tab" aria-selected={tab === 'web'} className={tab === 'web' ? 'on' : ''} onClick={() => setTab('web')}>
           A web page
         </button>
-        <button type="button" role="tab" aria-selected={false} disabled title="Coming with the class notebook">
+        <button type="button" role="tab" aria-selected={tab === 'notebook'} className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
           Notebook
         </button>
       </div>
@@ -119,6 +124,17 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
           </button>
         ))}
       </div>}
+      {tab === 'notebook' && (
+        <div className="link-list">
+          {pages.length === 0 && <span className="hint">No grammar or vocabulary pages yet. Add them in the class Notebook.</span>}
+          {pages.map((p) => (
+            <button key={p.id} type="button" className={'link-item' + (editor.getAttributes('lessonLink').entryId === p.id ? ' on' : '')} onClick={() => (editor.chain().focus().extendMarkRange('lessonLink').setMark('lessonLink', { kind: 'notebook', entryId: p.id, taskId: '' }).run(), onClose())}>
+              <span className="n">{p.bank === 'vocab' ? 'V' : 'G'}</span>
+              <span>{p.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
       {tab === 'task' && existing && (
         <button
           type="button"

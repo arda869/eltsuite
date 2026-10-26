@@ -55,6 +55,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       <header className="topbar">
         <Wordmark />
         <span className="sub">{c?.name ?? ''}</span>
+        <Link className="btn small-btn nb-link" to="/notebook">
+          Notebook
+        </Link>
         <div className="right">
           <button className="avatar" style={{ background: '#eef4ef', color: '#4e6b55' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : initials(name)}
