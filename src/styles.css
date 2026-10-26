@@ -1495,17 +1495,20 @@ body.is-dragging-inline, body.is-dragging-inline * { cursor: grabbing !important
 .teach-view input, .teach-view textarea, .teach-view select, .teach-view .opt, .teach-view [data-qid] button { pointer-events: none; }
 .teach-view .pk button, .teach-view .bd button, .teach-view .bd textarea, .teach-view .bd input, .teach-view .lesson-link, .teach-view .ipa-play, .teach-view .def-trigger { pointer-events: auto; }
 /* Collapsible side panels */
-.panel-toggles { display: flex; justify-content: space-between; height: 0; position: relative; z-index: 3; }
-.panel-toggle { position: relative; top: -2px; width: 28px; height: 26px; border: 0; border-radius: 7px; background: transparent; color: var(--soft); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
-.panel-toggle:hover { background: #f0f0ef; color: var(--ink); }
-.panel-toggle.left { left: -6px; }
-.panel-toggle.right { right: -6px; }
+.center-col { position: relative; }
+.panel-toggles { position: absolute; inset: 0; pointer-events: none; z-index: 6; }
+/* Arrow tabs on the dividers, halfway down */
+.panel-toggle { position: absolute; top: 50%; transform: translateY(-50%); pointer-events: auto; width: 16px; height: 44px; padding: 0; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--card, #fff); color: var(--soft); display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(51, 48, 44, 0.08); transition: color .12s, border-color .12s, background .12s; }
+.panel-toggle:hover { color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: var(--tint); }
+.panel-toggle.left { left: -19px; }
+.panel-toggle.right { right: -19px; }
+.no-left .panel-toggle.left { left: -20px; }
+.no-right .panel-toggle.right { right: -20px; }
 .panel-toggle:not(.is-open) { color: var(--accent-text); }
 .lesson-layout.no-left > .task-list { display: none; }
 .lesson-layout.no-right > .task-side { display: none; }
 .lesson-layout.learner .center-col { flex: 1; min-width: 0; }
-.panel-toggles + .notes-drawer, .panel-toggles + .session-strip { margin-top: 18px; }
-.center-col > .panel-toggles + main, .center-col > .panel-toggles + .session-strip { margin-top: 22px; }
+
 .update-banner { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 95; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; background: var(--ink); color: #fff; border-radius: 999px; font: 13px var(--sans); box-shadow: 0 16px 30px -12px rgba(0,0,0,0.4); }
 
 /* Profile pictures */
@@ -2855,7 +2858,9 @@ a.icon-tool { text-decoration: none; }
 /* ======================================================================
    Softer look: light grey page, white cards, class colour accents
    ====================================================================== */
-:root { --page: #f5f4f1; --card: #ffffff; --tint: color-mix(in srgb, var(--accent) 8%, white); --tint-strong: color-mix(in srgb, var(--accent) 16%, white); }
+:root { --page: #f5f4f1; --card: #ffffff; }
+/* Worked out wherever the class colour is set, so the pale tints follow the theme */
+:root, [style*="--accent"] { --tint: color-mix(in srgb, var(--accent) 8%, white); --tint-strong: color-mix(in srgb, var(--accent) 16%, white); }
 html, body { background: var(--page); }
 .shell { background: var(--page); }
 .topbar { background: transparent; border-bottom-color: rgba(51, 48, 44, 0.1); }

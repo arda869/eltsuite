@@ -27,17 +27,17 @@ export function usePanels(key: string) {
   };
 }
 
+// An arrow pointing the way the panel will move: in to hide it, out to show it.
 const CHEV = (dir: 'l' | 'r') => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
-    <path d={dir === 'l' ? 'M9 4.5v15' : 'M15 4.5v15'} />
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={dir === 'l' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'} />
   </svg>
 );
 
 export function PanelToggle({ side, open, onClick, label }: { side: 'left' | 'right'; open: boolean; onClick: () => void; label: string }) {
   return (
     <button type="button" className={'panel-toggle ' + side + (open ? ' is-open' : '')} onClick={onClick} title={(open ? 'Hide ' : 'Show ') + label} aria-label={(open ? 'Hide ' : 'Show ') + label} aria-pressed={open}>
-      {CHEV(side === 'left' ? 'l' : 'r')}
+      {CHEV((side === 'left') === open ? 'l' : 'r')}
     </button>
   );
 }
