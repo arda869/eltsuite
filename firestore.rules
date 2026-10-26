@@ -472,7 +472,7 @@ service cloud.firestore {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
       allow create: if isTeacher() && request.resource.data.owner == request.auth.uid;
       allow update: if signedIn() && (resource.data.owner == request.auth.uid
-        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size'])));
+        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle'])));
       allow delete: if signedIn() && resource.data.owner == request.auth.uid;
       // Flashcards and reading notes inside a file: everyone it is shared with reads; editors write.
       function fileData() { return get(/databases/$(database)/documents/sharedDocs/$(id)).data; }

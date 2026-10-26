@@ -1,6 +1,6 @@
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../../editor/TextColor';
-import { blockHtml } from '../export';
+import { textHtml as blockHtml } from '../export';
 import { BGS, H, PT, W, textJSON, type El, type Slide } from './model';
 
 // Slides as files: PowerPoint (.pptx), or pages to print or save as PDF.

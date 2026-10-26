@@ -6,6 +6,11 @@ import { CollabDoc } from '../collab/CollabDoc';
 import { SlidesDoc } from '../collab/slides/SlidesDoc';
 import type { CollabMode } from '../collab/suggest';
 import { FlashSet } from '../flash/FlashSet';
+import { PdReading } from '../pd/PdReading';
+import { CiteStyleContext } from '../editor/Cite';
+import { CITE_STYLES, type CiteStyle } from '../lib/cite';
+import { doc as fsDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { ROLES, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
 import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
@@ -84,6 +89,7 @@ export function DocPage() {
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
   if (!lesson && (d === null || !role)) return <div className="dp-msg">This document is not shared with you, or it was deleted.<Link to="/">Back to Lesson Lit</Link></div>;
   const docKey = lesson ? key : d!.docKey;
+  const cite = ((d as { citeStyle?: CiteStyle } | null | undefined)?.citeStyle ?? 'apa') as CiteStyle;
   const classId = lesson ? qs.get('c') ?? '' : '';
   const canRename = !lesson && role === 'edit';
   const others = d ? Object.keys(d.members ?? {}).length : 0;
@@ -106,6 +112,18 @@ export function DocPage() {
           </span>
         </span>
         <span className="dp-acts">
+          {kind === 'doc' && d && (
+            <label className="dp-cite" data-tip="For citations and the reference list">
+              <span className="hint">Citations</span>
+              <select value={cite} disabled={role !== 'edit'} onChange={(e) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: e.target.value })}>
+                {CITE_STYLES.map((c) => (
+                  <option key={c.k} value={c.k}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {d && teacher && (
             <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
               <UiIcon name="lock" size={15} /> Share
@@ -118,7 +136,9 @@ export function DocPage() {
           )}
         </span>
       </header>
-      <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
+      <CiteStyleContext.Provider value={cite}>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
+      </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
   );

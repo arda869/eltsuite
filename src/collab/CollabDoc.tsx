@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useAuth } from '../lib/auth';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -23,7 +24,15 @@ import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
-import { downloadDocx, printDoc } from './export';
+import { downloadDocx, printDoc, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
+import Image from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
+import { CiteNode, CiteTool, RefListNode, useCiteStyle } from '../editor/Cite';
+import { imageToData } from '../lib/flash';
 import { useCollabSession, type CollabSession } from './session';
 
 // A document the class writes together, live: everyone's cursor and name, editing,
@@ -98,6 +107,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [synced, setSynced] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const [big, setBig] = useState(display === 'full' ? false : false);
+  const imgRef = useRef<HTMLInputElement>(null);
+  const citeStyle = useCiteStyle();
+  const profileTeacher = useAuth().profile?.role === 'teacher';
   const [side, setSide] = useState<'none' | 'notes' | 'people'>('none');
   const [people, setPeople] = useState<{ name: string; color: string }[]>([]);
   const [threads, setThreads] = useState<Record<string, Thread>>({});
@@ -110,7 +122,15 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({ history: false, heading: { levels: [2, 3] }, codeBlock: false }),
+        StarterKit.configure({ history: false, heading: { levels: [1, 2, 3] }, codeBlock: false }),
+        Table.configure({ resizable: false }),
+        TableRow,
+        TableHeader,
+        TableCell,
+        Image.configure({ inline: false, allowBase64: true }),
+        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        CiteNode,
+        RefListNode,
         Underline,
         Highlight,
         TextColor,
@@ -251,7 +271,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
-        {(teacher || canDownload) && <DownloadMenu onWord={() => downloadDocx(editor.getJSON(), title)} onPdf={() => printDoc(editor.getJSON(), title)} />}
+        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }))} />}
+        <span className="cd-words" data-tip="Without the reference list">{wordCount(editor.getJSON())} words</span>
         {display !== 'inline' || big ? (
           <button type="button" className="cd-icon" onClick={() => setBig(!big)} aria-label={big ? 'Back to the task' : 'Full screen'} data-tip={big ? 'Back to the task (Esc)' : 'Full screen'}>
             <UiIcon name={big ? 'fullscreenOff' : 'fullscreen'} size={16} />
@@ -265,9 +286,39 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
           <TextColorTool editor={editor} />
           {B('▮', editor.isActive('highlight'), () => editor.chain().focus().toggleMark('highlight', { color: 'yellow' }).run(), 'Highlight')}
-          {gate('heading') !== 'hide' && B('H', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), 'Heading')}
+          {gate('heading') !== 'hide' && (
+            <select
+              className="ne-style"
+              aria-label="Paragraph style"
+              value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
+              onChange={(e) => {
+                const v = e.target.value;
+                const c = editor.chain().focus();
+                (v === 'p' ? c.setParagraph() : c.setHeading({ level: Number(v.slice(1)) as 1 | 2 | 3 })).run();
+              }}
+            >
+              <option value="p">Normal text</option>
+              <option value="h1">Heading 1</option>
+              <option value="h2">Heading 2</option>
+              <option value="h3">Heading 3</option>
+            </select>
+          )}
           {B('•', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'List')}
           {B('1.', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered list')}
+          {(['left', 'center', 'right', 'justify'] as const).map((a) =>
+            B(
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+                <path d={a === 'left' ? 'M2 3h12M2 6.5h8M2 10h12M2 13.5h8' : a === 'center' ? 'M2 3h12M4 6.5h8M2 10h12M4 13.5h8' : a === 'right' ? 'M2 3h12M6 6.5h8M2 10h12M6 13.5h8' : 'M2 3h12M2 6.5h12M2 10h12M2 13.5h12'} />
+              </svg>,
+              editor.isActive({ textAlign: a }),
+              () => editor.chain().focus().setTextAlign(a).run(),
+              { left: 'Align left', center: 'Centre', right: 'Align right', justify: 'Justify' }[a],
+            ),
+          )}
+          {gate('table') !== 'hide' && B(<UiIcon name="task" size={14} />, editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), 'Insert a table')}
+          {B(<UiIcon name="picture" size={14} />, false, () => imgRef.current?.click(), 'Insert a picture')}
+          <input ref={imgRef} type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) editor.chain().focus().setImage({ src: await imageToData(f, 1400) }).run(); }} />
+          {profileTeacher && <CiteTool editor={editor} />}
           <span className="ne-sep" aria-hidden="true" />
           {gate('definition') !== 'hide' && B(
             <span className="ne-def">Aa</span>,
@@ -465,27 +516,88 @@ export function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: 
   );
 }
 
-function DownloadMenu({ onWord, onPdf }: { onWord: () => void; onPdf: () => void }) {
-  const [open, setOpen] = useState(false);
+function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: ExportOpts) => void }) {
+  const [open, setOpen] = useState<'' | 'menu' | 'word' | 'pdf'>('');
+  const [o, setO] = useState<ExportOpts>(() => {
+    try {
+      return { ...EXPORT_DEFAULT, ...JSON.parse(localStorage.getItem('ll.exportOpts') || '{}') };
+    } catch {
+      return EXPORT_DEFAULT;
+    }
+  });
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen('');
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
+  const go = () => {
+    try {
+      localStorage.setItem('ll.exportOpts', JSON.stringify(o));
+    } catch {
+      /* fine */
+    }
+    onExport(open as 'word' | 'pdf', o);
+    setOpen('');
+  };
   return (
     <span className="cd-dl" ref={ref}>
-      <button type="button" className="cd-icon" onClick={() => setOpen((o) => !o)} aria-label="Download" data-tip="Download">
+      <button type="button" className="cd-icon" onClick={() => setOpen((x) => (x ? '' : 'menu'))} aria-label="Download" data-tip="Download">
         <UiIcon name="import" size={16} />
       </button>
-      {open && (
+      {open === 'menu' && (
         <span className="cd-dl-menu" role="menu">
-          <button type="button" role="menuitem" onClick={() => (setOpen(false), onWord())}>
-            Word document (.docx)
+          <button type="button" role="menuitem" onClick={() => setOpen('word')}>
+            Word document (.docx)…
           </button>
-          <button type="button" role="menuitem" onClick={() => (setOpen(false), onPdf())}>
-            PDF (print or save)
+          <button type="button" role="menuitem" onClick={() => setOpen('pdf')}>
+            PDF (print or save)…
+          </button>
+        </span>
+      )}
+      {(open === 'word' || open === 'pdf') && (
+        <span className="cd-dl-menu cd-export">
+          <b>{open === 'word' ? 'Word document' : 'PDF'}</b>
+          <label>
+            Font
+            <select value={o.font} onChange={(e) => setO({ ...o, font: e.target.value })}>
+              {FONTS.map((f) => (
+                <option key={f}>{f}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Size
+            <select value={o.size} onChange={(e) => setO({ ...o, size: Number(e.target.value) })}>
+              {[10, 11, 12, 14].map((n) => (
+                <option key={n} value={n}>
+                  {n} pt
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Line spacing
+            <select value={o.spacing} onChange={(e) => setO({ ...o, spacing: Number(e.target.value) })}>
+              {[1, 1.15, 1.5, 2].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={o.title} onChange={(e) => setO({ ...o, title: e.target.checked })} /> The title at the top
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={o.pageNumbers} onChange={(e) => setO({ ...o, pageNumbers: e.target.checked })} /> Page numbers
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={o.wordCount} onChange={(e) => setO({ ...o, wordCount: e.target.checked })} /> Word count at the end
+          </label>
+          <button type="button" className="btn primary small-btn" onClick={go}>
+            Download
           </button>
         </span>
       )}

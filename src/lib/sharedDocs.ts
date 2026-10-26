@@ -43,7 +43,7 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
   const r = await addDoc(col, {
     owner: owner.uid,
     ownerName: owner.name,
-    title: title || `Untitled ${KIND_LABEL[kind].toLowerCase()}`,
+    title: title || (kind === 'pd' ? 'PD reading' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind,
     docKey: 'f' + newId() + newId(),
     members: {},
