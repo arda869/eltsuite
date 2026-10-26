@@ -434,7 +434,8 @@ a.btn.primary { color: #ffffff; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .check-row input { accent-color: var(--ink); }
 .slash { max-height: 380px; overflow: auto; }
-.done-edit { align-self: flex-end; margin-bottom: -26px; }
+.done-edit { position: absolute; top: 14px; right: 18px; z-index: 3; margin: 0; }
+.frame-head:has(> .done-edit) > .task-title { padding-right: 120px; }
 
 /* Learner: new question types */
 .letter.square, .radio.square { border-radius: 5px; }
@@ -3143,3 +3144,69 @@ textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hid
 /* The task frame while a task opens: the flame in the middle of the frame */
 .empty:has(> .frame-loading) { flex: 1; align-self: stretch; align-items: stretch; max-width: none; min-height: 0; padding: 0 !important; }
 .frame-loading { flex: 1; display: grid; place-items: center; min-height: 360px; padding: 24px; }
+
+/* Notebook notes: language tools, and the IPA box with its chart */
+.ne-sep { width: 1px; align-self: stretch; margin: 4px 4px; background: var(--hair-strong); }
+.ne-def { font: 600 12px var(--sans); text-decoration: underline dotted; text-underline-offset: 3px; }
+.ne-ipa { font: 13px var(--serif); color: var(--muted); }
+.ne-stress { font: 600 16px var(--serif); }
+.ipa-field { display: flex; flex-direction: column; gap: 8px; }
+.ipa-field-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ipa-field .ipa-input { flex: 1 1 160px; min-width: 0; }
+.ipa-field .btn.on { border-color: var(--accent); color: var(--accent-text); background: var(--tint); }
+.ipa-field-chart { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--hair); border-radius: 12px; background: var(--card, #fff); }
+.ipa-field-chart .seg { align-self: flex-start; }
+.ne-btn { width: auto; min-width: 28px; padding: 0 6px; white-space: nowrap; }
+.ne-stress { font: 600 12px var(--sans); letter-spacing: .02em; }
+.ne-stress::first-letter { font-size: 15px; }
+.nb-form .ipa-field .ipa-input input, .def-pop .ipa-field .ipa-input input { flex: 1; width: auto; min-width: 0; border: 0; border-radius: 0; padding: 4px 2px; background: transparent; font: 16px var(--ipa-font, var(--serif)); }
+.nb-form .ipa-pop input[type="checkbox"], .nb-form .gap-pop input[type="checkbox"] { width: auto; height: auto; padding: 0; }
+.nb-form .ipa-pop .ipa-input input, .nb-form .gap-pop input:not([type="checkbox"]) { width: 100%; }
+.frame-head { position: relative; }
+
+/* Rich-text instruction: the editor looks like the old line, with a floating toolbar while you edit it */
+.instr-wrap { position: relative; }
+.instr-wrap .instr-editor { outline: none; min-height: 1.5em; }
+.instr-wrap .instr-editor p { margin: 0; }
+.instr-wrap .instr-editor p.is-editor-empty:first-child::before { content: attr(data-placeholder); color: var(--faint, #b8b3ad); font-weight: 500; float: left; height: 0; pointer-events: none; }
+.instr-bar { position: absolute; left: -6px; top: calc(100% + 4px); z-index: 20; display: flex; align-items: center; gap: 2px; padding: 3px 4px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--card, #fff); box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.25); opacity: 0; pointer-events: none; transform: translateY(-2px); transition: opacity .12s, transform .12s; font-weight: 400; }
+.instr-wrap:focus-within .instr-bar { opacity: 1; pointer-events: auto; transform: none; }
+.task-instr.rich .task-body, .task-instr.rich .para { padding: 0; margin: 0; font: inherit; color: inherit; }
+.task-instr.rich .task-body > p, .task-instr.rich p { margin: 0; font: inherit; color: inherit; line-height: inherit; }
+
+/* Teacher notes under the task, like the notes pane in PowerPoint */
+.center-col > .pn, .center-col > .pn-closed { flex: none; }
+.pn { position: relative; display: flex; flex-direction: column; min-height: 80px; border: 1px solid var(--hair); border-radius: 14px; background: var(--card, #fff); overflow: hidden; }
+.pn-grip { position: absolute; left: 0; right: 0; top: -6px; height: 12px; cursor: row-resize; z-index: 2; touch-action: none; }
+.pn-grip::after { content: ''; position: absolute; left: 50%; top: 4px; width: 44px; height: 4px; margin-left: -22px; border-radius: 2px; background: var(--hair-strong); transition: background .12s; }
+.pn-grip:hover::after, .pn.dragging .pn-grip::after, .pn-grip:focus-visible::after { background: var(--accent); }
+.pn-grip:focus-visible { outline: none; }
+.pn-head { display: flex; align-items: center; gap: 10px; padding: 8px 14px 4px; font-family: var(--sans); }
+.pn-label { font: 700 10.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--accent-text); }
+.pn-head .hint { font-size: 11.5px; }
+.pn-fold { margin-left: auto; width: 26px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--soft); cursor: pointer; }
+.pn-fold:hover { background: var(--tint); color: var(--ink); }
+.pn-body { flex: 1; min-height: 0; overflow: auto; padding: 0 14px 12px; font: 14px/1.55 var(--sans); color: var(--ink); }
+.pn-body .notes-rich { border: 0; box-shadow: none; background: transparent; padding: 0; }
+.pn-body .notes-tools { position: sticky; top: 0; z-index: 1; background: var(--card, #fff); padding: 2px 0 6px; }
+.pn-body .notes-body .ProseMirror { min-height: 60px; outline: none; font: 14px/1.55 var(--sans); }
+.pn-read { min-height: 100%; cursor: text; border-radius: 8px; }
+.pn-read .notes-view .ProseMirror { font: 14px/1.55 var(--sans); }
+.pn-empty { color: var(--faint, #b8b3ad); }
+.pn-closed { flex: none; align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 6px; height: 28px; border: 1px dashed var(--hair-strong); border-radius: 10px; background: transparent; color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
+.pn-closed:hover { color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: var(--tint); }
+.pn-caret { font-size: 10px; }
+.pn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select: none !important; }
+@media (max-width: 900px) { .pn { height: auto !important; max-height: 50vh; } .pn-grip { display: none; } }
+
+.lb-page-input { height: 28px; width: 140px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 8px; background: #fff; font: 500 12.5px var(--sans); color: var(--ink); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.pn-editing { display: flex; flex-direction: column; gap: 6px; } .pn-editing > .btn { align-self: flex-end; }
+
+/* Only content can be selected (the task, its instruction, notes, notebook entries, posts, recaps,
+   announcements). Menus, buttons, labels and panels can't, so a click never highlights them. */
+.shell { -webkit-user-select: none; user-select: none; }
+.shell :is(.task-body, .frame-head, .task-instr, .ProseMirror, [contenteditable="true"], input, textarea, .pn-body, .nb-vocab, .nb-note, .post-text, .thread-body, .thread-title, .recap, .board-text, .ann-card, .def-card, .dc-meaning, .dc-example, .placeholder), .shell.legal { -webkit-user-select: text; user-select: text; }
+
+/* Selected text takes the class colour */
+::selection { background: color-mix(in srgb, var(--accent, #d98f63) 30%, transparent); color: inherit; }

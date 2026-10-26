@@ -36,6 +36,7 @@ import { TaskRenderer } from './TaskRenderer';
 import { Practise } from './Practise';
 import { createVocabQuiz } from '../lib/vocabquiz';
 import { NoteEditor } from './NoteEditor';
+import { EditorClassContext } from '../editor/context';
 import { TaskEditor } from '../editor/TaskEditor';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey, type Responses } from '../lib/questions';
 
@@ -64,14 +65,22 @@ function VocabForm({ data, setData, withTranslation }: { data: EntryData; setDat
         <input className="nb-word" value={data.word ?? ''} autoFocus placeholder="reluctant" onChange={(e) => setData({ ...data, word: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       </label>
       {CORE.map((f) => (
-        <DefField key={f.k} f={f} data={def} setData={setDef} />
+        <DefField key={f.k} f={f} data={def} setData={setDef} word={data.word} />
+      ))}
+      {/* Pronunciation is always in view: the IPA chart and stress, with Listen. */}
+      {GROUPS.filter((g) => g.title === 'Pronunciation').map((g) => (
+        <div key={g.title} className="def-two">
+          {g.fields.map((f) => (
+            <DefField key={f.k} f={f} data={def} setData={setDef} word={data.word} />
+          ))}
+        </div>
       ))}
       {withTranslation && <div className="def-two">{TRANSLATION.map((f) => <DefField key={f.k} f={f} data={def} setData={setDef} />)}</div>}
       <button type="button" className="btn link small def-more" onClick={() => setMore((m) => !m)}>
-        {more ? 'Fewer details' : 'More details: form, pronunciation, use, learner help'}
+        {more ? 'Fewer details' : 'More details: form, use, learner help'}
       </button>
       {more &&
-        GROUPS.map((g) => (
+        GROUPS.filter((g) => g.title !== 'Pronunciation').map((g) => (
           <div key={g.title} className="def-group">
             <span className="def-group-title">{g.title}</span>
             {g.fields.map((f) => (
@@ -703,6 +712,7 @@ export function Notebook({
   };
 
   return (
+    <EditorClassContext.Provider value={{ classId: me.teacher ? classId : '', classmates: [] }}>
     <div className={'nb' + (compact ? ' compact' : '')}>
       <div className="nb-tabs" role="tablist">
         {tabs.map((t) => (
@@ -795,5 +805,6 @@ export function Notebook({
       )}
       {tab === 'settings' && c && <Settings c={c} roster={roster} />}
     </div>
+    </EditorClassContext.Provider>
   );
 }

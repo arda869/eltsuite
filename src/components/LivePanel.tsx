@@ -132,15 +132,17 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, revea
     <aside className="task-side live-panel" aria-label="Live answers">
       {detail && <LearnerDetail classId={classId} taskId={taskId} learner={detail} answer={byLearner[detail.id]} content={content} answerKey={answerKey} onClose={() => setDetail(null)} onSpotlight={onSpotlight} codes={codes} annotations={annotations} />}
       {people}
-      <div className="lp-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === 'answers'} className={tab === 'answers' ? 'on' : ''} onClick={() => onTab?.('answers')}>
-          Live answers
-        </button>
-        <button type="button" role="tab" aria-selected={tab === 'notes'} className={tab === 'notes' ? 'on' : ''} onClick={() => onTab?.('notes')} title="Shortcut: N">
-          Teacher notes{notes.trim() ? ' •' : ''}
-        </button>
-      </div>
-      {tab === 'notes' ? (
+      {notesEditor !== undefined && (
+        <div className="lp-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'answers'} className={tab === 'answers' ? 'on' : ''} onClick={() => onTab?.('answers')}>
+            Live answers
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'notes'} className={tab === 'notes' ? 'on' : ''} onClick={() => onTab?.('notes')} title="Shortcut: N">
+            Teacher notes{notes.trim() ? ' •' : ''}
+          </button>
+        </div>
+      )}
+      {tab === 'notes' && notesEditor !== undefined ? (
         notesEditor
       ) : (
       <>

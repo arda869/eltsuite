@@ -155,7 +155,7 @@ function Recorder({ classId, audioId, onSaved, accent }: { classId: string; audi
   );
 }
 
-function Chart({ accent, onPick }: { accent: Accent; onPick: (s: string) => void }) {
+export function Chart({ accent, onPick }: { accent: Accent; onPick: (s: string) => void }) {
   const set = accent === 'GA' ? GA : RP;
   const btn = ([s, ex]: Sym, cls = '') => (
     <button key={s} type="button" className={'ipa-key ' + cls} title={`${s} as in “${ex}”`} onMouseDown={(e) => e.preventDefault()} onClick={() => onPick(s)}>
@@ -273,7 +273,7 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
               {([
                 ['off', 'Off'],
                 ['voice', 'Computer voice'],
-                ['audio', 'My recording'],
+                ...(classId ? ([['audio', 'My recording']] as const) : []),
               ] as const).map(([k, l]) => (
                 <button key={k} type="button" role="radio" aria-checked={listen === k} className={listen === k ? 'on' : ''} onClick={() => updateAttributes({ listen: k, ...(k === 'voice' && !say ? { say: wordBefore() } : {}) })}>
                   {l}
@@ -321,3 +321,53 @@ export const Ipa = Node.create({
 });
 
 export const newIpa = (accent: Accent = 'RP') => ({ type: 'ipa', attrs: { text: '', accent, showAccent: false } });
+
+// An IPA box for forms (the notebook, a definition): type, or tap the phonemic chart, British or American.
+export function IpaField({ value, onChange, word }: { value: string; onChange: (v: string) => void; word?: string }) {
+  const [accent, setAccent] = useState<Accent>(() => (/[ɚɝɾ]|oʊ/.test(value) ? 'GA' : 'RP'));
+  const [chart, setChart] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const bare = value.replace(/^\/|\/$/g, '');
+  const set = (v: string) => onChange(v ? `/${v.replace(/^\/|\/$/g, '')}/` : '');
+  const insert = (sym: string) => {
+    const el = inputRef.current;
+    const a = el?.selectionStart ?? bare.length;
+    const b = el?.selectionEnd ?? bare.length;
+    set(bare.slice(0, a) + sym + bare.slice(b));
+    window.setTimeout(() => {
+      el?.focus();
+      el?.setSelectionRange(a + sym.length, a + sym.length);
+    }, 0);
+  };
+  return (
+    <span className="ipa-field">
+      <span className="ipa-field-row">
+        <span className="ipa-input">
+          <span className="ipa-slash">/</span>
+          <input ref={inputRef} value={bare} placeholder="rɪˈlʌktənt" spellCheck={false} onChange={(e) => set(e.target.value)} onKeyDown={(e) => e.stopPropagation()} onFocus={() => setChart(true)} />
+          <span className="ipa-slash">/</span>
+        </span>
+        <button type="button" className={'btn small-btn' + (chart ? ' on' : '')} aria-expanded={chart} onClick={() => setChart((v) => !v)}>
+          Symbols
+        </button>
+        {word?.trim() && (
+          <button type="button" className="btn small-btn" onClick={() => speak(word, accent)} data-tip={`Hear “${word}” (${accentLabel(accent)})`}>
+            ▶ Listen
+          </button>
+        )}
+      </span>
+      {chart && (
+        <span className="ipa-field-chart">
+          <span className="seg small-seg" role="radiogroup" aria-label="Accent">
+            {(['RP', 'GA'] as const).map((a) => (
+              <button key={a} type="button" role="radio" aria-checked={accent === a} className={accent === a ? 'on' : ''} onClick={() => setAccent(a)}>
+                {a === 'RP' ? 'British (RP)' : 'Standard American'}
+              </button>
+            ))}
+          </span>
+          <Chart accent={accent} onPick={insert} />
+        </span>
+      )}
+    </span>
+  );
+}

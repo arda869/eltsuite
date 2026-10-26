@@ -1,6 +1,7 @@
 import { Mark, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { IpaField } from './Ipa';
 
 // An inline definition: a word or phrase in the text that learners tap or hover to see its meaning.
 // Fields follow the vocabulary entry in the brief (core first, the rest under "More details").
@@ -156,7 +157,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
     onClose();
   }
 
-  const field = (f: FieldDef) => <DefField key={f.k} f={f} data={data} setData={setData} />;
+  const field = (f: FieldDef) => <DefField key={f.k} f={f} data={data} setData={setData} word={word} />;
   return (
     <div ref={ref} className="def-pop" style={{ position: 'fixed', top: pos.top, left: pos.left }} role="dialog" aria-label="Definition">
       <div className="def-pop-head">
@@ -190,7 +191,14 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
 }
 
 // One vocabulary field: chips, a long text or a short text. Shared with the notebook.
-export function DefField({ f, data, setData }: { f: FieldDef; data: DefData; setData: (fn: (d: DefData) => DefData) => void }) {
+export function DefField({ f, data, setData, word }: { f: FieldDef; data: DefData; setData: (fn: (d: DefData) => DefData) => void; word?: string }) {
+  if (f.k === 'ipa')
+    return (
+      <span className="def-field">
+        <span>{f.label}</span>
+        <IpaField value={data.ipa ?? ''} word={word} onChange={(v) => setData((d) => ({ ...d, ipa: v }))} />
+      </span>
+    );
   return (
     <label className={'def-field' + (f.long ? ' long' : '')}>
       <span>{f.label}</span>

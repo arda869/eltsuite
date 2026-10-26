@@ -7,7 +7,6 @@ export type Mode = 'edit' | 'teach' | 'present' | 'preview';
 const MODES: { mode: Mode; icon: string; label: string; about: string }[] = [
   { mode: 'edit', icon: 'edit', label: 'Editing', about: 'Change tasks, questions and settings' },
   { mode: 'teach', icon: 'sync', label: 'Teaching', about: 'Live: learners see where you are and you see their answers' },
-  { mode: 'present', icon: 'present', label: 'Presenting', about: 'Teaching, with the side panels hidden for screen sharing (P)' },
   { mode: 'preview', icon: 'revealAll', label: 'Learner view', about: 'Try the lesson as a learner sees it; nothing is saved' },
 ];
 

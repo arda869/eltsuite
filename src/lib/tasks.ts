@@ -22,6 +22,7 @@ export type Task = {
   kind?: 'task' | 'section'; // sections are headings in the task list
   title: string;
   instructions: string;
+  instrDoc?: JSONContent | null; // the instruction as rich text, when it has any formatting
   content: JSONContent | null;
   order: number;
   hidden: boolean;
@@ -70,11 +71,12 @@ export async function addTask(classId: string, itemId: string, order: number, ki
   return ref.id;
 }
 
-export async function saveTask(classId: string, itemId: string, taskId: string, patch: { title?: string; instructions?: string; content?: JSONContent; restricted?: boolean }) {
+export async function saveTask(classId: string, itemId: string, taskId: string, patch: { title?: string; instructions?: string; instrDoc?: JSONContent | null; content?: JSONContent; restricted?: boolean }) {
   const batch = writeBatch(db);
   const data: { [k: string]: any } = { updatedAt: serverTimestamp() }; // eslint-disable-line @typescript-eslint/no-explicit-any
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.instructions !== undefined) data.instructions = patch.instructions;
+  if (patch.instrDoc !== undefined) data.instrDoc = patch.instrDoc;
   if (patch.content) {
     const { content, key } = splitKey(patch.content);
     if (patch.restricted) batch.set(doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'private', 'body'), { content });
@@ -140,10 +142,10 @@ export async function loadNoteDoc(classId: string, itemId: string, taskId: strin
 }
 
 // Version history: a snapshot of the task (with answers) at most every few minutes, last 30 kept.
-export type Version = { id: string; title: string; instructions: string; content: JSONContent; at?: { toMillis: () => number }; by?: string };
+export type Version = { id: string; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; at?: { toMillis: () => number }; by?: string };
 const versionsCol = (classId: string, itemId: string, taskId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'versions');
-export async function addVersion(classId: string, itemId: string, taskId: string, v: { title: string; instructions: string; content: JSONContent; by: string }) {
-  await setDoc(doc(versionsCol(classId, itemId, taskId)), { ...v, at: serverTimestamp() });
+export async function addVersion(classId: string, itemId: string, taskId: string, v: { title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; by: string }) {
+  await setDoc(doc(versionsCol(classId, itemId, taskId)), { ...v, instrDoc: v.instrDoc ?? null, at: serverTimestamp() });
   const all = await getDocs(query(versionsCol(classId, itemId, taskId), orderBy('at', 'desc')));
   await Promise.all(all.docs.slice(30).map((d) => deleteDoc(d.ref)));
 }

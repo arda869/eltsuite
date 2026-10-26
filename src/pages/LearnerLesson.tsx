@@ -1,3 +1,4 @@
+import { InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
 import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
@@ -412,7 +413,7 @@ export function LearnerLesson() {
             <div className="frame-inner">
               <div className="frame-head">
                 <h1 className="task-title">{task.title}</h1>
-                {task.instructions && <p className="task-instr">{task.instructions}</p>}
+                <InstrView doc={task.instrDoc} text={task.instructions} />
                 {discussions.filter((d) => d.link?.taskId === task.id || (!d.link?.taskId && d.link?.itemId === itemId)).map((d) => (
                   <Link key={d.id} className="disc-chip" to={`/discuss/${d.id}`}>
                     Discuss: {d.title} · {d.replyCount} {d.replyCount === 1 ? 'reply' : 'replies'} →

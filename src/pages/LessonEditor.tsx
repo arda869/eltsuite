@@ -1,3 +1,5 @@
+import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
+import { InstrEditor, InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -88,7 +90,7 @@ const COPY = svg(<><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M1
 const PEOPLE = svg(<><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5a3 3 0 0 1 0 6M18 14c2 .6 3 2.8 3 6" /></>);
 const TRASH = svg(<><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>);
 
-type Draft = { title: string; instructions: string; content: JSONContent };
+type Draft = { title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent };
 
 export function LessonEditor() {
   const { classId = '', itemId = '' } = useParams();
@@ -362,7 +364,7 @@ export function LessonEditor() {
   useEffect(() => {
     const on = () => {
       setFullscreen(!!document.fullscreenElement);
-      // leaving full screen (Esc) leaves Presenting too
+      // leaving full screen (Esc) leaves the full-screen teaching view too
       if (!document.fullscreenElement && presentRef.current) setPresent(false);
     };
     document.addEventListener('fullscreenchange', on);
@@ -379,17 +381,13 @@ export function LessonEditor() {
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [activityOpen]);
-  const toggleFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else document.documentElement.requestFullscreen?.().catch(() => {});
-  };
-  const [panelTab, setPanelTab] = useState<'answers' | 'notes'>('answers');
   const [showGrid, setShowGrid] = useState(false);
   // Teacher notes for the selected task (only the teacher can read them).
   const [notes, setNotes] = useState('');
   const [notesDoc, setNotesDoc] = useState<JSONContent | null>(null);
   const [notesFor, setNotesFor] = useState('');
   const [notesEditing, setNotesEditing] = useState(false);
+  const notesPane = usePresenterNotes();
   const notesTimer = useRef<number>();
   useEffect(() => {
     setNotes('');
@@ -424,8 +422,8 @@ export function LessonEditor() {
       if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === '?') return setHelp((h) => !h);
       if (e.key === 'Escape') return (setHelp(false), present && changeMode('teach'), setInkMode('off'));
-      if ((e.key === 'f' || e.key === 'F') && present) return toggleFullscreen();
       if (!teachingHere) return;
+      if ((e.key === 'f' || e.key === 'F') && !editWhileTeaching) return (e.preventDefault(), changeMode(present ? 'teach' : 'present'));
       const list = tasks.filter((x) => x.kind !== 'section');
       const i = list.findIndex((x) => x.id === selected);
       if (e.key === 'ArrowRight' && i < list.length - 1) select(list[i + 1].id);
@@ -437,14 +435,9 @@ export function LessonEditor() {
       else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
       else if (e.key === 'c' || e.key === 'C') panels.toggleRight();
       else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
-      else if (e.key === 'p' || e.key === 'P') changeMode(present ? 'teach' : 'present');
       else if (e.key === 't' || e.key === 'T') (live?.timer && (live.timer.up || live.timer.endsAt > Date.now()) ? stopTimer() : setTimerMenu(true));
       else if (e.key === 'a' || e.key === 'A') setAnnouncing(true);
-      else if (e.key === 'n' || e.key === 'N') {
-        if (!panels.right) panels.toggleRight();
-        if (present) setShowGrid(true);
-        setPanelTab((t) => (t === 'notes' ? 'answers' : 'notes'));
-      }
+      else if (e.key === 'n' || e.key === 'N') notesPane.toggle();
       else return;
       e.preventDefault();
     };
@@ -462,7 +455,7 @@ export function LessonEditor() {
     if (teachingHere) await toggleTeaching();
   }
   async function changeMode(m: Mode) {
-    // Presenting fills the whole screen, like F11. It must be asked for straight away, inside the click.
+    // Full screen while teaching fills the whole screen, like F11. It must be asked for straight away, inside the click.
     if (m === 'present' && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
     await flush();
     if (m === 'edit') {
@@ -511,7 +504,7 @@ export function LessonEditor() {
     loadKey(classId, itemId, task.id).then((key: AnswerKey) => {
       if (cancelled) return;
       const content = mergeKey(task.content ?? { type: 'doc', content: [{ type: 'paragraph' }] }, key);
-      setDraft({ title: task.title, instructions: task.instructions ?? '', content });
+      setDraft({ title: task.title, instructions: task.instructions ?? '', instrDoc: task.instrDoc ?? null, content });
       setEditorKey(task.id + ':' + Date.now());
       setPreview(false);
       setPreviewResponses({});
@@ -547,7 +540,7 @@ export function LessonEditor() {
       if (Date.now() - last > 3 * 60 * 1000 && draftRef.current) {
         lastVersion.current[p.taskId] = Date.now();
         const d = draftRef.current;
-        addVersion(classId, itemId, p.taskId, { title: d.title, instructions: d.instructions, content: d.content, by: user?.displayName || user?.email || '' }).catch(() => {});
+        addVersion(classId, itemId, p.taskId, { title: d.title, instructions: d.instructions, instrDoc: d.instrDoc ?? null, content: d.content, by: user?.displayName || user?.email || '' }).catch(() => {});
       }
     } catch (e) {
       console.error(e);
@@ -659,7 +652,7 @@ export function LessonEditor() {
           <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Board'} active={boardView} className="desktop-only" onClick={() => showBoard(!boardView)} />
         )}
         <div className="menu-anchor" ref={exportRef}>
-          <IconBtn icon="more" label="More: groups, present mode, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
+          <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
           {exportOpen && (
             <div className="menu" role="menu">
               {!viewer && (
@@ -722,7 +715,7 @@ export function LessonEditor() {
           {viewer ? (
             teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
           ) : (
-            <ModeMenu mode={mode} live={teachingHere} onMode={changeMode} onEnd={endTeaching} endLabel={live?.teacherUid && live.teacherUid !== user?.uid ? `End ${live.teacherName}’s live lesson` : undefined}>
+            <ModeMenu mode={mode === 'present' ? 'teach' : mode} live={teachingHere} onMode={changeMode} onEnd={endTeaching} endLabel={live?.teacherUid && live.teacherUid !== user?.uid ? `End ${live.teacherName}’s live lesson` : undefined}>
               {task && <ViewAsLearner inMenu classId={classId} classCode={c?.classCode ?? ''} roster={classmates} path={`/learn/${itemId}?task=${task.id}`} />}
             </ModeMenu>
           )}
@@ -893,11 +886,10 @@ export function LessonEditor() {
                   </select>
                 )}
               </span>
-              {/* Showing answers to the class is for presenting; while teaching, only a way to hide them again. */}
-              {qCount > 0 && (present || revealN !== 0 || singles.length > 0) && (
+              {qCount > 0 && (
                 <span className="tb-group reveal-ctl" aria-label="Answers">
-                  {present && <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />}
-                  {present && <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />}
+                  <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
+                  <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
                   {(revealN !== 0 || singles.length > 0) && <IconBtn icon="hideAnswers" label="Hide the answers again (H)" onClick={hideAnswers} />}
                 </span>
               )}
@@ -936,12 +928,11 @@ export function LessonEditor() {
                   </div>
                 )}
               </span>
-              {present && (
-                <span className="tb-group hide-phone">
-                  <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />
-                  <IconBtn icon="presentOff" label="Stop presenting (Esc)" onClick={() => changeMode('teach')} />
-                </span>
-              )}
+              {/* Full screen: the side panels hide and the task fills the screen, for sharing it with the class. */}
+              <span className="tb-group hide-phone">
+                {present && <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />}
+                <IconBtn icon={present ? 'fullscreenOff' : 'fullscreen'} label={present ? 'Leave full screen (Esc)' : 'Full screen (F)'} active={present} onClick={() => changeMode(present ? 'teach' : 'present')} />
+              </span>
               {(hands.length > 0 || stuckN > 0) && (
                 <span className="tb-signals">
                   {hands.length > 0 && (
@@ -963,7 +954,7 @@ export function LessonEditor() {
               <div className="frame-inner">
                 <div className="frame-head">
                   <h1 className="task-title">Board</h1>
-                  <p className="hint" style={{ margin: 0 }}>Prepare pages before class. When you teach, learners see the page you are on.</p>
+                  <p className="hint" style={{ margin: 0 }}>Prepare pages before class; double-click a page to name it. When you teach, learners see the page you are on.</p>
                 </div>
                 <div className="frame-body">
                   <LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} />
@@ -998,7 +989,7 @@ export function LessonEditor() {
               <div className="frame-inner">
                 <div className="frame-head">
                   <h1 className="task-title">{draft.title}</h1>
-                  {draft.instructions && <p className="task-instr">{draft.instructions}</p>}
+                  <InstrView doc={draft.instrDoc} text={draft.instructions} />
                 </div>
                 {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
@@ -1074,13 +1065,7 @@ export function LessonEditor() {
                     </button>
                   )}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
-                  <input
-                    className="task-instr input"
-                    value={draft.instructions}
-                    placeholder="Instruction, for example: Complete the sentences."
-                    aria-label="Instruction"
-                    onChange={(e) => change({ instructions: e.target.value })}
-                  />
+                  <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
                 <div className="frame-body">
                   <TaskEditor
@@ -1098,6 +1083,24 @@ export function LessonEditor() {
               </div>
             )}
           </main>
+          {task && draft && !viewer && !preview && !present && !boardView && (
+            <PresenterNotes pane={notesPane} hasNotes={!!notes.trim()}>
+              {teachingHere && !editWhileTeaching && !notesEditing ? (
+                <div className="pn-read" onClick={() => setNotesEditing(true)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setNotesEditing(true)} data-tip="Click to edit">
+                  {notes.trim() ? task && notesFor === task.id && <NotesView doc={notesDoc} text={notes} /> : <span className="pn-empty">Click to add notes</span>}
+                </div>
+              ) : teachingHere && !editWhileTeaching ? (
+                <div className="pn-editing">
+                  {notesEditor('pn-editor', 'Click to add notes')}
+                  <button type="button" className="btn small-btn" onClick={() => setNotesEditing(false)}>
+                    Done
+                  </button>
+                </div>
+              ) : (
+                notesEditor('pn-editor', 'Click to add notes')
+              )}
+            </PresenterNotes>
+          )}
           </div>
 
           {panels.right && !present && !preview && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
@@ -1115,8 +1118,6 @@ export function LessonEditor() {
               codes={c?.codes ?? DEFAULT_CODES}
               annotations={teacherAnns}
               onSpotlight={(qid, text) => setLive(classId, { spotlight: { taskId: task.id, qid, text, at: Date.now() } })}
-              tab={panelTab}
-              onTab={setPanelTab}
               people={
                 <div className="lp-people">
                   <span className="session-count">
@@ -1142,24 +1143,6 @@ export function LessonEditor() {
                     </span>
                   )}
                 </div>
-              }
-              notes={notes}
-              notesEditor={
-                notesEditing ? (
-                  <div className="lp-notes-wrap">
-                    {notesEditor('lp-notes', 'Notes for this task. Only you can see them.')}
-                    <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-end' }} onClick={() => setNotesEditing(false)}>
-                      Done
-                    </button>
-                  </div>
-                ) : (
-                  <div className="lp-notes-read">
-                    {notes.trim() ? task && notesFor === task.id && <NotesView doc={notesDoc} text={notes} /> : <span className="hint">No notes for this task.</span>}
-                    <button type="button" className="btn link small" onClick={() => setNotesEditing(true)}>
-                      {notes.trim() ? 'Edit notes' : 'Add notes'}
-                    </button>
-                  </div>
-                )
               }
               rooms={activeSet?.groups}
               only={gridOnly}
@@ -1267,10 +1250,6 @@ export function LessonEditor() {
               <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
                 Version history
               </button>
-              <div className="field" style={{ gap: 6 }}>
-                <span>Teacher notes</span>
-                {notesEditor('notes-input', 'Timing, instructions, answers to check… Only you can see these.')}
-              </div>
               <h2>Tips</h2>
               <p className="hint" style={{ margin: 0 }}>
                 Type <strong>/</strong> in the text for a gap or a multiple-choice question. In a gap, separate other accepted answers with |, for example
@@ -1287,10 +1266,10 @@ export function LessonEditor() {
           taskId={task.id}
           onClose={() => setVersionsOpen(false)}
           onRestore={async (v) => {
-            await addVersion(classId, itemId, task.id, { title: draft.title, instructions: draft.instructions, content: draft.content, by: (user?.displayName || '') + ' (before restoring)' }).catch(() => {});
-            setDraft({ title: v.title, instructions: v.instructions, content: v.content });
+            await addVersion(classId, itemId, task.id, { title: draft.title, instructions: draft.instructions, instrDoc: draft.instrDoc ?? null, content: draft.content, by: (user?.displayName || '') + ' (before restoring)' }).catch(() => {});
+            setDraft({ title: v.title, instructions: v.instructions, instrDoc: v.instrDoc ?? null, content: v.content });
             setEditorKey(task.id + ':' + Date.now());
-            pending.current = { taskId: task.id, patch: { title: v.title, instructions: v.instructions, content: v.content } };
+            pending.current = { taskId: task.id, patch: { title: v.title, instructions: v.instructions, instrDoc: v.instrDoc ?? null, content: v.content } };
             await flush();
             setVersionsOpen(false);
           }}
@@ -1345,11 +1324,10 @@ export function LessonEditor() {
                 ['L', 'Lock or unlock this task'],
                 ['C', 'Show or hide the class panel'],
                 ['N', 'Teacher notes'],
-                ['P', 'Present mode'],
                 ['T', 'Start a 2-minute timer, or stop it'],
                 ['A', 'New announcement'],
-                ['Esc', 'Leave present mode, close this'],
-                ['F', 'Full screen while presenting'],
+                ['F', 'Full screen while teaching, or back'],
+                ['Esc', 'Leave full screen, close this'],
                 ['⌘ + K', 'Editor: link the selected words'],
                 ['Alt + ↑ ↓', 'Editor: move the block up or down'],
                 ['⌘ + Shift + P', 'Preview as learner'],

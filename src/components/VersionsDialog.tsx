@@ -1,3 +1,4 @@
+import { InstrView } from '../editor/InstrEditor';
 import { useEffect, useState } from 'react';
 import { listVersions, splitKey, type Version } from '../lib/tasks';
 import { TaskRenderer } from './TaskRenderer';
@@ -37,7 +38,7 @@ export function VersionsDialog({ classId, itemId, taskId, onClose, onRestore }: 
               {sel && (
                 <>
                   <h3 className="task-title">{sel.title}</h3>
-                  {sel.instructions && <p className="task-instr">{sel.instructions}</p>}
+                  <InstrView doc={sel.instrDoc} text={sel.instructions} />
                   <TaskRenderer content={splitKey(sel.content).content} responses={{}} disabled />
                 </>
               )}

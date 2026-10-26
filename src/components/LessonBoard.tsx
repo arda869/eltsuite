@@ -51,6 +51,14 @@ export function LessonBoard({
     setBorrow(list);
   }
   const label = (p: BoardPage, i: number) => p.title || `Page ${i + 1}`;
+  // Name a page in place: double-click its tab, or choose Rename this page.
+  const [renaming, setRenaming] = useState<number | null>(null);
+  const rename = (i: number, v: string) => {
+    setRenaming(null);
+    const t = v.trim();
+    if ((pages[i]?.title ?? '') === t) return;
+    save(pages.map((p, k) => (k === i ? { ...p, title: t || undefined } : p)).map((p) => JSON.parse(JSON.stringify(p))));
+  };
 
   return (
     <div className="lboard">
@@ -61,11 +69,28 @@ export function LessonBoard({
               ‹
             </button>
             <span className="lb-pages" role="tablist" aria-label="Board pages">
-              {pages.map((p, i) => (
-                <button key={p.id + i} type="button" role="tab" aria-selected={i === at} className={'lb-page' + (i === at ? ' on' : '') + (p.from ? ' borrowed' : '')} onClick={() => onPage?.(p.id)} title={p.from ? 'Borrowed from another lesson' : undefined}>
-                  {label(p, i)}
-                </button>
-              ))}
+              {pages.map((p, i) =>
+                renaming === i ? (
+                  <input
+                    key={p.id + i}
+                    className="lb-page-input"
+                    autoFocus
+                    defaultValue={p.title ?? ''}
+                    placeholder={`Page ${i + 1}`}
+                    aria-label="Page name"
+                    onFocus={(e) => e.target.select()}
+                    onBlur={(e) => rename(i, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                      if (e.key === 'Escape') setRenaming(null);
+                    }}
+                  />
+                ) : (
+                  <button key={p.id + i} type="button" role="tab" aria-selected={i === at} className={'lb-page' + (i === at ? ' on' : '') + (p.from ? ' borrowed' : '')} onClick={() => onPage?.(p.id)} onDoubleClick={() => setRenaming(i)} data-tip={p.from ? 'Borrowed from another lesson · double-click to rename' : 'Double-click to name this page'}>
+                    {label(p, i)}
+                  </button>
+                ),
+              )}
             </span>
             <button type="button" className="lb-arrow" aria-label="Next page" disabled={at >= pages.length - 1} onClick={() => onPage?.(pages[at + 1].id)}>
               ›
@@ -83,8 +108,7 @@ export function LessonBoard({
                     type="button"
                     onClick={() => {
                       setMenu(false);
-                      const t = window.prompt('Page name', cur?.title ?? '');
-                      if (t !== null) save(pages.map((p, i) => (i === at ? { ...p, title: t.trim() || undefined } : p)).map((p) => JSON.parse(JSON.stringify(p))));
+                      setRenaming(at);
                     }}
                   >
                     Rename this page
