@@ -3972,3 +3972,5 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .gl-slides b em { position: absolute; left: 10%; top: 14%; width: 46%; height: 12%; border-radius: 2px; background: var(--ink); opacity: .75; }
 .gl-slides b u { position: absolute; right: 10%; top: 38%; width: 34%; height: 44%; border-radius: 50%; background: var(--accent); opacity: .8; }
 .gl-slides { width: 62%; margin-top: 6px; }
+.rp-dl .btn { display: inline-flex; align-items: center; gap: 6px; }
+.rp-dl .cd-dl-menu { min-width: 180px; }

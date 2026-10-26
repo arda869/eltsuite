@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { ClassDoc, Item } from '../lib/classes';
 import type { Learner } from '../lib/learners';
-import { addAttendance, correctAttendance, csv, download, itemResult, minutesOf, STATUS_LABEL, useAttendance, useClassAnswers, type Status } from '../lib/reports';
+import { addAttendance, correctAttendance, itemResult, minutesOf, STATUS_LABEL, useAttendance, useClassAnswers, type Status } from '../lib/reports';
 import { useMistakes } from '../lib/mistakes';
 import { discussionSettings, participation } from '../lib/discussion';
 import { useEffect } from 'react';
+import { ReportDownload } from './ReportDownload';
+import type { Report } from '../lib/reportFiles';
 
 // Reports for the teacher: the class across every item, one learner across everything,
 // one item across the class, attendance, and the mistake areas. Scores are percentages so
@@ -43,27 +45,93 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
   const attendanceOf = (uid: string) => attendance.filter((a) => a.uid === uid);
   const liveItems = items.filter((i) => attendance.some((a) => a.itemId === i.id)).sort((a, b) => a.order - b.order);
 
-  const exportClass = () => {
-    const rows: (string | number)[][] = [['Learner', 'Average %', ...list.map((i) => `${i.title} (${TYPE_LABEL[i.type]})`), 'Attendance (lessons)', 'Attendance (minutes)']];
-    for (const l of roster) {
+  const classAvg = () => {
+    const v = roster.map((l) => avg(l.authUid)).filter((x): x is number => x !== null);
+    return v.length ? `${Math.round(v.reduce((x, y) => x + y, 0) / v.length)}%` : '–';
+  };
+  const classReport = (): Report => ({
+    title: type ? `${TYPE_LABEL[type]} report` : 'Class report',
+    context: c.name,
+    summary: [
+      ['learners', String(roster.length)],
+      ['items', String(list.length)],
+      ['class average', classAvg()],
+    ],
+    columns: ['Learner', 'Average', ...list.map((i) => `${i.title} (${TYPE_LABEL[i.type]})`), 'Live lessons', 'Minutes'],
+    rows: roster.map((l) => {
       const rs = list.map((i) => itemResult(i, byLearner(l.authUid)));
       const att = attendanceOf(l.authUid);
-      rows.push([l.displayName, avg(l.authUid) ?? '', ...rs.map((r) => (r.pct === null ? STATUS_LABEL[r.status] : `${r.pct}%${r.late ? ' late' : ''}`)), att.length, Math.round(att.reduce((s, a) => s + minutesOf(a), 0))]);
-    }
-    download(`${c.name} report`, csv(rows));
+      const a = avg(l.authUid);
+      return [l.displayName, a === null ? '' : `${a}%`, ...rs.map((r) => (r.pct === null ? STATUS_LABEL[r.status] : `${r.pct}%${r.late ? ' late' : ''}`)), att.length, Math.round(att.reduce((s2, x) => s2 + minutesOf(x), 0))];
+    }),
+    note: 'Scores are percentages, so versions and tasks of different lengths compare.',
+  });
+  const learnerReport = (uid: string): Report => {
+    const l = roster.find((x) => x.authUid === uid);
+    const a = avg(uid);
+    const att = attendanceOf(uid);
+    return {
+      title: l?.displayName ?? 'Learner',
+      context: `${c.name} · learner report`,
+      summary: [
+        ['average', a === null ? '–' : `${a}%`],
+        ['live lessons', String(att.length)],
+        ['minutes live', String(Math.round(att.reduce((s2, x) => s2 + minutesOf(x), 0)))],
+        ['in the review deck', String(mistakes.filter((m) => m.learnerUid === uid && !m.done).length)],
+      ],
+      columns: ['Item', 'Type', 'Status', 'Score', 'Percent', 'Submitted'],
+      rows: list.map((i) => {
+        const r = itemResult(i, byLearner(uid));
+        return [i.title, TYPE_LABEL[i.type], STATUS_LABEL[r.status] + (r.late ? ', late' : ''), r.pct === null ? '' : `${r.score} / ${r.total}`, r.pct === null ? '' : `${r.pct}%`, when(r.submittedAt)];
+      }),
+    };
   };
-  const exportItem = (item: Item) => {
-    const rows: (string | number)[][] = [['Learner', 'Status', 'Score', 'Out of', 'Percent', 'Late', 'Submitted']];
-    for (const l of roster) {
-      const r = itemResult(item, byLearner(l.authUid));
-      rows.push([l.displayName, STATUS_LABEL[r.status], r.score, r.total, r.pct ?? '', r.late ? 'yes' : '', when(r.submittedAt)]);
-    }
-    download(`${item.title} results`, csv(rows));
+  const itemReport = (item: Item): Report => {
+    const rs = roster.map((l) => ({ l, r: itemResult(item, byLearner(l.authUid)) }));
+    const withPct = rs.filter((x) => x.r.pct !== null);
+    const mean = withPct.length ? Math.round(withPct.reduce((s2, x) => s2 + (x.r.pct ?? 0), 0) / withPct.length) : null;
+    return {
+      title: item.title,
+      context: `${c.name} · ${TYPE_LABEL[item.type]}`,
+      summary: [
+        ['submitted', `${rs.filter((x) => x.r.status === 'submitted' || x.r.status === 'marked').length} of ${roster.length}`],
+        ['class average', mean === null ? '–' : `${mean}%`],
+        ...(item.due ? ([['late', String(rs.filter((x) => x.r.late).length)]] as [string, string][]) : []),
+      ],
+      columns: ['Learner', 'Status', 'Tasks done', 'Score', 'Percent', 'Submitted'],
+      rows: rs.map(({ l, r }) => [l.displayName, STATUS_LABEL[r.status] + (r.late ? ', late' : ''), `${r.tasksDone} of ${r.tasksTotal}`, r.pct === null ? '' : `${r.score} / ${r.total}`, r.pct === null ? '' : `${r.pct}%`, when(r.submittedAt)]),
+    };
   };
-  const exportAttendance = () => {
-    const rows: (string | number)[][] = [['Learner', ...liveItems.map((i) => i.title)]];
-    for (const l of roster) rows.push([l.displayName, ...liveItems.map((i) => Math.round(minutesOf(attendanceOf(l.authUid).find((a) => a.itemId === i.id) ?? ({ minutes: 0 } as never))))]);
-    download(`${c.name} attendance`, csv(rows));
+  const attendanceReport = (): Report => ({
+    title: 'Attendance',
+    context: c.name,
+    summary: [
+      ['live lessons', String(liveItems.length)],
+      ['learners', String(roster.length)],
+    ],
+    columns: ['Learner', ...liveItems.map((i) => i.title), 'Total minutes'],
+    rows: roster.map((l) => {
+      const mins = liveItems.map((i) => Math.round(minutesOf(attendanceOf(l.authUid).find((a) => a.itemId === i.id) ?? ({ minutes: 0 } as never))));
+      return [l.displayName, ...mins, mins.reduce((x, y) => x + y, 0)];
+    }),
+    note: 'Minutes each learner was in the lesson while it was live.',
+  });
+  const mistakesReport = (): Report => {
+    const open = mistakes.filter((m) => !m.done);
+    const name = (id: string) => items.find((i) => i.id === id)?.title ?? 'a lesson';
+    return {
+      title: 'Mistake areas',
+      context: c.name,
+      summary: [['questions in review decks', String(open.length)]],
+      columns: ['Learner', 'In the review deck', 'Most often from'],
+      rows: roster.map((l) => {
+        const mine = open.filter((m) => m.learnerUid === l.authUid);
+        const bi = new Map<string, number>();
+        mine.forEach((m) => bi.set(m.itemId, (bi.get(m.itemId) ?? 0) + m.wrongCount));
+        const first = [...bi.entries()].sort((x, y) => y[1] - x[1])[0];
+        return [l.displayName, mine.length, first ? name(first[0]) : ''];
+      }),
+    };
   };
 
   return (
@@ -142,9 +210,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
           </div>
           <span className="rp-foot">
             <span className="hint">Scores are percentages, so versions and tasks of different lengths compare. A dot means not started (grey), in progress (orange) or submitted with nothing to mark automatically.</span>
-            <button type="button" className="btn small-btn" onClick={exportClass}>
-              CSV
-            </button>
+            <ReportDownload make={classReport} />
           </span>
         </>
       )}
@@ -174,6 +240,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
                 <span>
                   <strong>{mistakes.filter((m) => m.learnerUid === learnerId && !m.done).length}</strong> questions in their review deck
                 </span>
+                <ReportDownload make={() => learnerReport(learnerId)} />
               </span>
               <table className="rp-table">
                 <thead>
@@ -238,9 +305,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
                     <span>
                       Class average <strong>{mean === null ? '–' : `${mean}%`}</strong>
                     </span>
-                    <button type="button" className="btn small-btn" onClick={() => exportItem(item)}>
-                      CSV
-                    </button>
+                    <ReportDownload make={() => itemReport(item)} />
                   </span>
                   <table className="rp-table">
                     <thead>
@@ -309,15 +374,19 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
           )}
           <span className="rp-foot">
             <span className="hint">Minutes a learner was in the lesson while it was live. Click a number to correct it.</span>
-            <button type="button" className="btn small-btn" onClick={exportAttendance} disabled={!liveItems.length}>
-              CSV
-            </button>
+            <ReportDownload make={attendanceReport} disabled={!liveItems.length} />
           </span>
         </>
       )}
 
       {view === 'mistakes' && (
-        <MistakeAreas learners={roster} items={items} mistakes={mistakes} />
+        <>
+          <MistakeAreas learners={roster} items={items} mistakes={mistakes} />
+          <span className="rp-foot">
+            <span className="hint">Wrong answers in homework and practice, still in each learner’s review deck.</span>
+            <ReportDownload make={mistakesReport} />
+          </span>
+        </>
       )}
       {view === 'discussion' && <Participation c={c} learners={roster.map((l) => ({ id: l.id, name: l.displayName }))} />}
     </div>
@@ -429,9 +498,7 @@ function Participation({ c, learners }: { c: ClassDoc; learners: { id: string; n
     <div className="rp-section">
       <div className="row-between">
         <span className="hint">Threads started and replies written on the class discussion board.</span>
-        <button type="button" className="btn small-btn" onClick={() => download(`${c.name} discussion`, csv([['Learner', 'Threads', 'Replies', 'Total'], ...rows.map((r) => [r.name, r.threads, r.replies, r.threads + r.replies])]))}>
-          CSV
-        </button>
+        <ReportDownload make={() => ({ title: 'Discussion', context: c.name, summary: [['posts and replies', String(rows.reduce((x, r) => x + r.threads + r.replies, 0))]], columns: ['Learner', 'Threads', 'Replies', 'Total'], rows: rows.map((r) => [r.name, r.threads, r.replies, r.threads + r.replies]) })} />
       </div>
       <table className="rp-table">
         <thead>
