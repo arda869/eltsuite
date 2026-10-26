@@ -1,5 +1,9 @@
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import appCss from '../styles.css?raw';
+import extrasCss from './extras.css?raw';
+import { LinkMark } from '../editor/Prosody';
+import { SubstSlot } from '../editor/Subst';
+import { DictCutout } from '../editor/DictCut';
 import { timelineSvgString } from '../editor/Timeline';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -52,6 +56,8 @@ function runs(rs: Run[]) {
         const tags = (r.pic.tags ?? []).map((t) => `<span class="pic-tag" style="left:${t.x}%;top:${t.y}%">${esc(t.text)}</span>`).join('');
         return `<span class="pic pic-${esc(r.pic.size)}${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>`;
       }
+      if (r.pl) return renderToStaticMarkup(createElement(LinkMark, { k: r.pl.k, s: r.pl.s }));
+      if (r.subs) return renderToStaticMarkup(createElement(SubstSlot, { options: r.subs }));
       let t = esc(r.t ?? '').replace(/\n/g, '<br>');
       if (r.kw) return `<span class="kw${r.stem ? ' stem' : ''}">${t}</span>`;
       if (r.bold) t = `<b>${t}</b>`;
@@ -62,6 +68,7 @@ function runs(rs: Run[]) {
       if (style) t = `<span style="${style}">${t}</span>`;
       if (r.def) t = `<span class="defw">${t}</span>`;
       if (r.ex) return `<span class="ex-ans">${esc(r.t ?? '')}</span>`;
+      for (const w of [...(r.wrap ?? [])].reverse()) t = `<span ${Object.entries(w).map(([k, v]) => `${k === 'className' ? 'class' : k}="${esc(v)}"`).join(' ')}>${t}</span>`;
       return t;
     })
     .join('');
@@ -110,6 +117,8 @@ function block(b: Block): string {
       if (QR_ON && info?.svg) return `<div class="qr-block"><span class="qr-code">${info.svg}</span><span class="qr-text"><span class="qr-kind">${kind}</span><strong>${esc(b.title)}</strong><span class="qr-url">${esc(info.url.replace(/^https?:\/\//, '').split('/')[0])}</span></span></div>`;
       return `<p class="qr-plain"><span class="qr-kind">${b.video ? 'Video' : 'Listening'}</span> <strong>${esc(b.title)}</strong></p>`;
     }
+    case 'dict':
+      return `<div class="dcut-wrap">${renderToStaticMarkup(createElement(DictCutout, { word: b.word, d: b.d }))}</div>`;
     case 'glossary':
       return `<div class="gloss"><span class="gloss-h">Glossary</span>${b.items
         .map(({ word, d }) => `<p><b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${d.translation ? ` <span class="gloss-tr">${esc(d.translation)}</span>` : ''}</p>`)
@@ -248,6 +257,8 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
 <style>
 ${BOX_CSS}
+${extrasCss}
+.dcut { break-inside: avoid; } .dcut-wrap { break-inside: avoid; }
 ${opts.size && opts.size !== 'standard' ? `.cols .unit { zoom: ${opts.size === 'xl' ? 1.4 : 1.2}; }` : ''}
 ${opts.clear ? `.cols, .cols :not(svg, svg *) { font-family: 'Atkinson Hyperlegible', Verdana, sans-serif !important; } .cols { --serif: 'Atkinson Hyperlegible', Verdana, sans-serif; --sans: 'Atkinson Hyperlegible', Verdana, sans-serif; letter-spacing: .02em; } .cols p { line-height: 1.65; }` : ''}
 .tl { margin: 3mm 0 4mm; break-inside: avoid; } .tl-svg { width: 100%; height: auto; display: block; color: #2b2a28; } .tl-title { font-weight: 600; font-size: 10pt; margin-bottom: 1mm; } .tl-sentence { font-style: italic; margin: 1mm 0 0; text-align: center; }

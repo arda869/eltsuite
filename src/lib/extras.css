@@ -1,0 +1,125 @@
+/* Pronunciation marks in text (sentence stress, intonation, linking, sounds) and the dictionary
+   cutout. Shared by the editor, what learners see and the printed worksheet. */
+
+.pr-ss, .pr-it, .pr-sd { position: relative; }
+:is(p, li, td, th, h3, .dlg-line):has(.pr-ss[data-s='dot'], .pr-it, .pr-sd[data-k='change'], .pr-sd[data-k='schwa'], .pr-pl-snd) { line-height: 2.5 !important; }
+
+/* Sentence stress. main = the main stress in a thought group, strong = stressed, weak = weak form. */
+.pr-ss[data-s='dot'][data-l]::before { content: ''; position: absolute; left: 50%; top: -0.42em; transform: translateX(-50%); border-radius: 50%; pointer-events: none; }
+.pr-ss[data-s='dot'][data-l='strong']::before { width: 0.42em; height: 0.42em; background: var(--accent); }
+.pr-ss[data-s='dot'][data-l='main']::before { width: 0.56em; height: 0.56em; top: -0.52em; background: var(--accent); box-shadow: 0 0 0 0.12em var(--paper, #fff), 0 0 0 0.2em var(--accent); }
+.pr-ss[data-s='dot'][data-l='weak']::before { width: 0.24em; height: 0.24em; top: -0.28em; border: 0.06em solid var(--accent); background: transparent; }
+.pr-ss[data-s='size'][data-l='strong'] { font-size: 1.22em; font-weight: 700; }
+.pr-ss[data-s='size'][data-l='main'] { font-size: 1.4em; font-weight: 800; color: var(--accent-text, var(--accent)); }
+.pr-ss[data-s='size'][data-l='weak'] { font-size: 0.8em; opacity: 0.72; }
+.pr-ss[data-s='caps'][data-l='strong'] { text-transform: uppercase; font-weight: 700; letter-spacing: 0.02em; }
+.pr-ss[data-s='caps'][data-l='main'] { text-transform: uppercase; font-weight: 800; text-decoration: underline 0.12em var(--accent); text-underline-offset: 0.18em; }
+.pr-ss[data-s='caps'][data-l='weak'] { font-size: 0.86em; opacity: 0.72; }
+.pr-ss[data-s='underline'][data-l='strong'] { text-decoration: underline 0.1em var(--accent); text-underline-offset: 0.2em; }
+.pr-ss[data-s='underline'][data-l='main'] { text-decoration: underline double 0.1em var(--accent); text-underline-offset: 0.2em; font-weight: 700; }
+.pr-ss[data-s='underline'][data-l='weak'] { text-decoration: underline dotted 0.08em var(--accent); text-underline-offset: 0.22em; opacity: 0.8; }
+.pr-ss[data-s='box'][data-l='strong'] { box-shadow: inset 0 0 0 0.08em var(--accent); border-radius: 0.18em; padding: 0 0.12em; }
+.pr-ss[data-s='box'][data-l='main'] { box-shadow: inset 0 0 0 0.08em var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 0.18em; padding: 0 0.12em; font-weight: 700; }
+.pr-ss[data-s='box'][data-l='weak'] { opacity: 0.7; font-size: 0.88em; }
+
+/* Intonation: a small arrow above the end of the words, or a line over all of them. */
+.pr-it::after { content: ''; position: absolute; pointer-events: none; background: var(--accent); -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
+.pr-it[data-s='arrow']::after { right: -0.2em; top: -0.95em; width: 1.05em; height: 0.75em; }
+.pr-it[data-s='line']::after { left: 0; right: 0; top: -0.82em; height: 0.62em; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.pr-it[data-s='line']::before { content: ''; position: absolute; pointer-events: none; width: 0.42em; height: 0.42em; right: -0.24em; background: var(--accent); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 1.2L9.4 5L1 8.8z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 1.2L9.4 5L1 8.8z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.pr-it[data-s='line'][data-t='rise']::before, .pr-it[data-s='line'][data-t='fallrise']::before { top: -0.98em; transform: rotate(-58deg); }
+.pr-it[data-s='line'][data-t='fall']::before, .pr-it[data-s='line'][data-t='risefall']::before { top: -0.38em; transform: rotate(58deg); }
+.pr-it[data-s='line'][data-t='level']::before { top: -0.72em; }
+.pr-it[data-s='arrow'][data-t='rise'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12.2C9 12.2 13.5 9 17 2.4M12.6 3.2L17.2 2.2L17.9 6.8'/%3E%3C/svg%3E"); }
+.pr-it[data-s='arrow'][data-t='fall'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 1.8C9 1.8 13.5 5 17 11.6M12.6 10.8L17.2 11.8L17.9 7.2'/%3E%3C/svg%3E"); }
+.pr-it[data-s='arrow'][data-t='fallrise'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.6 2.4C4 9 6.5 12 9.5 12S15.5 8 17.6 2.2M13.8 3.6L17.7 2L18.6 6.1'/%3E%3C/svg%3E"); }
+.pr-it[data-s='arrow'][data-t='risefall'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.6 11.6C4 5 6.5 2 9.5 2S15.5 6 17.6 11.8M13.8 10.4L17.7 12L18.6 7.9'/%3E%3C/svg%3E"); }
+.pr-it[data-s='arrow'][data-t='level'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 14' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 7H17.4M13.8 3.6L17.6 7L13.8 10.4'/%3E%3C/svg%3E"); }
+.pr-it[data-s='line'][data-t='rise'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath vector-effect='non-scaling-stroke' d='M1 18C50 18 76 14 99 2'/%3E%3C/svg%3E"); }
+.pr-it[data-s='line'][data-t='fall'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath vector-effect='non-scaling-stroke' d='M1 2C50 2 76 6 99 18'/%3E%3C/svg%3E"); }
+.pr-it[data-s='line'][data-t='fallrise'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath vector-effect='non-scaling-stroke' d='M1 3C30 22 70 22 99 2'/%3E%3C/svg%3E"); }
+.pr-it[data-s='line'][data-t='risefall'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath vector-effect='non-scaling-stroke' d='M1 17C30 -2 70 -2 99 18'/%3E%3C/svg%3E"); }
+.pr-it[data-s='line'][data-t='level'] { --m: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 20' preserveAspectRatio='none' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath vector-effect='non-scaling-stroke' d='M1 10H99'/%3E%3C/svg%3E"); }
+
+/* Sounds: a dropped sound (elision), a sound that changes (assimilation, glottal stop), a weak vowel. */
+.pr-sd[data-k='drop'][data-s='cross'] { text-decoration: line-through 0.1em var(--accent); opacity: 0.62; }
+.pr-sd[data-k='drop'][data-s='bracket']::before { content: '('; color: var(--accent); }
+.pr-sd[data-k='drop'][data-s='bracket']::after { content: ')'; color: var(--accent); }
+.pr-sd[data-k='drop'][data-s='bracket'] { opacity: 0.75; }
+.pr-sd[data-k='change'] { text-decoration: line-through 0.1em var(--accent); }
+.pr-sd[data-k='change']::after, .pr-sd[data-k='schwa']::after { content: '/' attr(data-to) '/'; position: absolute; left: 50%; transform: translateX(-50%); top: -1.12em; font: 600 0.72em/1 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', Arial, sans-serif; color: var(--accent); white-space: nowrap; pointer-events: none; letter-spacing: 0; text-decoration: none; }
+.pr-sd[data-k='schwa']::after { content: 'ə'; top: -1.05em; font-size: 0.8em; }
+
+/* Linking between two words, with a sound that slips in (j, w, r), and pauses between thought groups. */
+.pr-pl { display: inline-block; position: relative; width: 0.62em; height: 1em; vertical-align: baseline; margin: 0 0.02em; }
+.pr-pl-arc { position: absolute; left: -0.18em; right: -0.18em; height: 0.42em; color: var(--accent); }
+.pr-pl-arc svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pr-pl[data-s='under'] .pr-pl-arc { bottom: -0.36em; }
+.pr-pl[data-s='over'] .pr-pl-arc { top: -0.22em; }
+.pr-pl-snd { position: absolute; left: 50%; transform: translateX(-50%); top: -0.95em; font: 600 0.7em/1 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', Arial, sans-serif; color: var(--accent); white-space: nowrap; }
+.pr-pl[data-s='over'] .pr-pl-snd { top: -1.5em; }
+.pr-pl[data-k='pause'], .pr-pl[data-k='stop'] { width: auto; margin: 0 0.28em; color: var(--accent); font-weight: 700; height: auto; }
+.pr-pl[data-k='pause']::before { content: '|'; }
+.pr-pl[data-k='stop']::before { content: '||'; letter-spacing: 0.05em; }
+
+/* A dictionary entry, as if cut out of a printed dictionary page and stuck in. */
+.dcut-wrap { display: flex; margin: 14px 0 18px; }
+.dcut-wrap.at-center { justify-content: center; }
+.dcut { position: relative; max-width: 440px; width: 100%; filter: drop-shadow(0 1px 0.6px rgba(40, 30, 20, 0.22)) drop-shadow(0 6px 10px rgba(40, 30, 20, 0.12)); transform: rotate(var(--tilt, -0.7deg)); }
+.dcut-paper { position: relative; background: #fbf8f0; background-image: radial-gradient(rgba(120, 100, 70, 0.05) 1px, transparent 1.2px), linear-gradient(178deg, rgba(255, 255, 255, 0.6), rgba(235, 225, 205, 0.35)); background-size: 5px 5px, 100% 100%; padding: 18px 22px 18px; clip-path: polygon(0.6% 1.4%, 12% 0.4%, 27% 1.6%, 41% 0.2%, 58% 1.2%, 73% 0.3%, 88% 1.5%, 99.4% 0.6%, 99.7% 22%, 99.1% 47%, 99.8% 73%, 99.3% 98.8%, 86% 99.6%, 70% 98.6%, 52% 99.8%, 36% 98.7%, 19% 99.7%, 0.4% 98.9%, 0.9% 74%, 0.2% 49%, 0.8% 24%); font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif; color: #23211d; font-size: 15px; line-height: 1.5; }
+.dcut-cut { display: block; height: 7px; margin: -4px 0 10px; background: repeating-linear-gradient(90deg, rgba(35, 33, 29, 0.26) 0 34px, transparent 34px 38px, rgba(35, 33, 29, 0.26) 38px 61px, transparent 61px 66px, rgba(35, 33, 29, 0.26) 66px 118px, transparent 118px 123px); -webkit-mask: linear-gradient(transparent 0 45%, #000 45%); mask: linear-gradient(transparent 0 45%, #000 45%); width: 78%; }
+.dcut-cut.bottom { margin: 10px 0 -4px; width: 64%; -webkit-mask: linear-gradient(#000 0 55%, transparent 55%); mask: linear-gradient(#000 0 55%, transparent 55%); }
+.dcut-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.dcut-word { font-weight: 700; font-size: 1.32em; letter-spacing: -0.005em; color: var(--accent-text, #23211d); }
+.dcut-ipa { font-family: 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', Arial, sans-serif; font-size: 0.92em; color: #4a443d; }
+.dcut-pos { font-style: italic; color: #4a443d; }
+.dcut-gram { font-size: 0.82em; letter-spacing: 0.04em; color: #4a443d; }
+.dcut-cefr { margin-left: auto; font: 700 10px/1 var(--sans, Karla, sans-serif); letter-spacing: 0.08em; padding: 3px 5px; border: 1px solid currentColor; border-radius: 3px; color: var(--accent-text, #4a443d); align-self: center; }
+.dcut-tags { font-variant: small-caps; letter-spacing: 0.05em; font-size: 0.86em; color: #4a443d; }
+.dcut-body { margin-top: 4px; }
+.dcut-sense { display: flex; gap: 8px; }
+.dcut-n { font-weight: 700; }
+.dcut-ex { display: block; font-style: italic; color: #3a362f; margin-top: 2px; }
+.dcut-ex::before { content: '▸ '; font-style: normal; color: var(--accent); font-size: 0.8em; }
+.dcut-img { float: right; width: 92px; height: 92px; object-fit: cover; margin: 2px 0 6px 14px; filter: grayscale(1) contrast(1.05); mix-blend-mode: multiply; border: 1px solid rgba(35, 33, 29, 0.25); }
+.dcut-line { display: block; margin-top: 5px; }
+.dcut-k { font-variant: small-caps; font-weight: 700; letter-spacing: 0.06em; font-size: 0.9em; margin-right: 6px; color: var(--accent-text, #23211d); }
+.dcut-note { display: block; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(35, 33, 29, 0.18); font-size: 0.93em; }
+.dcut-note .dcut-k::before { content: '! '; }
+.dcut-trans { display: block; margin-top: 6px; font-style: italic; }
+.dcut-empty { font-style: italic; color: #6b645b; }
+
+/* A substitution slot: options stacked between two vertical lines, in the middle of a sentence. */
+.subs { display: inline-flex; flex-direction: column; vertical-align: middle; margin: 0.15em 0.3em; padding: 0.05em 0.55em; border-left: 0.09em solid var(--accent); border-right: 0.09em solid var(--accent); line-height: 1.3; text-align: left; }
+.subs-o { white-space: nowrap; }
+.subs-o + .subs-o { margin-top: 0.08em; }
+.subs-empty { font-style: italic; opacity: 0.5; }
+.sub-node { cursor: pointer; }
+.sub-node.is-selected .subs { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* A grammar label on words: the symbol above or below, the words softly bracketed. */
+.pr-gl { --gl: var(--accent); position: relative; background: color-mix(in srgb, var(--gl) 10%, transparent); padding: 0 0.1em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.pr-gl[data-tone='ink'] { --gl: var(--ink, #262420); }
+.pr-gl[data-tone='soft'] { --gl: #8f8f8c; }
+.pr-gl[data-at='above'] { border-top: 0.09em solid var(--gl); border-radius: 0.35em 0.35em 0.1em 0.1em; }
+.pr-gl[data-at='below'] { border-bottom: 0.09em solid var(--gl); border-radius: 0.1em 0.1em 0.35em 0.35em; }
+.pr-gl::after { content: attr(data-text); position: absolute; left: 50%; transform: translateX(-50%); font: 700 0.6em/1 var(--sans, Karla, sans-serif); letter-spacing: 0.04em; color: var(--gl); background: var(--paper, #fff); border: 1.5px solid var(--gl); border-radius: 999px; padding: 0.3em 0.55em; min-width: 1.15em; text-align: center; white-space: nowrap; pointer-events: none; font-style: normal; text-decoration: none; text-transform: none; box-shadow: 0 1px 0 color-mix(in srgb, var(--gl) 25%, transparent); }
+.pr-gl::before { content: ''; position: absolute; left: 50%; width: 1.5px; height: 0.26em; margin-left: -0.75px; background: var(--gl); pointer-events: none; }
+.pr-gl[data-at='above']::after { bottom: calc(100% + 0.27em); }
+.pr-gl[data-at='above']::before { bottom: calc(100% + 0.06em); }
+.pr-gl[data-at='below']::after { top: calc(100% + 0.27em); }
+.pr-gl[data-at='below']::before { top: calc(100% + 0.06em); }
+.pr-gl[data-shape='box']::after { border-radius: 0.3em; }
+.pr-gl[data-shape='pill']::after { font: italic 600 0.62em/1 var(--serif, Georgia, serif); }
+.pr-gl[data-shape='plain']::after { border-color: transparent; background: transparent; box-shadow: none; }
+.pr-gl[data-shape='mont']::after { content: ''; width: 1.05em; height: 1.05em; min-width: 0; padding: 0; border: 0; border-radius: 0; background: center / contain no-repeat; box-shadow: none; font-size: 0.8em; }
+:is(p, li, td, th, h3, .dlg-line):has(.pr-gl) { line-height: 2.8 !important; }
+.pr-gl[data-shape='mont'][data-text='noun']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.5L21 20H3z' fill='%232f2e2d'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='verb']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8.5' fill='%23b4483c'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='adjective']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 7l6.5 11h-13z' fill='%232f4e7a'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='adverb']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='5.5' fill='%23d7863e'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='article']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 9l4.5 8h-9z' fill='%237aa5c8'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='pronoun']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5l7.5 13h-15z' fill='%236f4b8b'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='preposition']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.5 17Q12 1 20.5 17Q12 9.5 3.5 17z' fill='%234f7a55'/%3E%3C/svg%3E"); }
+.pr-gl[data-shape='mont'][data-text='conjunction']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='10.5' width='14' height='3.2' rx='0.6' fill='%23c97a95'/%3E%3C/svg%3E"); }
+.dcut { --accent-text: color-mix(in srgb, var(--accent) 70%, black); --paper: #fbf8f0; color-scheme: light; }

@@ -39,6 +39,11 @@ function inline(nodes = []) {
           else if (m.type === 'highlight') t = `<span style="background:${esc(m.attrs?.color || '#fff3a8')}">${t}</span>`;
           else if (m.type === 'textStyle' && m.attrs?.color) t = `<span style="color:${esc(m.attrs.color)}">${t}</span>`;
           else if (m.type === 'link' && /^https?:/.test(m.attrs?.href ?? '')) t = `<a href="${esc(m.attrs.href)}" style="color:#b8744e">${t}</a>`;
+          // Pronunciation marks, as near as email allows.
+          else if (m.type === 'sstress') t = m.attrs?.l === 'weak' ? `<span style="font-size:.85em;opacity:.7">${t}</span>` : m.attrs?.l === 'main' ? `<b style="font-size:1.25em;text-transform:uppercase;color:#b8744e">${t}</b>` : `<b style="text-transform:uppercase">${t}</b>`;
+          else if (m.type === 'inton') t = `${t}<sup style="color:#b8744e">${{ rise: '↗', fall: '↘', fallrise: '↘↗', risefall: '↗↘', level: '→' }[m.attrs?.t] ?? ''}</sup>`;
+          else if (m.type === 'speechSound') t = m.attrs?.k === 'drop' ? `<s style="opacity:.6">${t}</s>` : m.attrs?.k === 'schwa' ? `${t}<sup style="color:#b8744e">ə</sup>` : `<s>${t}</s><sup style="color:#b8744e">/${esc(m.attrs?.to ?? '')}/</sup>`;
+          else if (m.type === 'glabel') t = `<span style="background:#f6ece5;border-radius:3px;padding:0 2px">${t}</span><sup style="color:#b8744e;font-weight:700"> ${esc(m.attrs?.text ?? '')}</sup>`;
         }
         return t;
       }
@@ -51,6 +56,8 @@ function inline(nodes = []) {
           .map((s, i) => (i === Number(a.stressed) ? (a.style === 'bold' ? `<b>${esc(s)}</b>` : a.style === 'big' ? `<b style="font-size:1.2em">${esc(s.toUpperCase())}</b>` : `<span style="border:1.5px solid #2b2a28;border-radius:3px;padding:0 2px">${esc(s)}</span>`) : esc(s)))
           .join(a.style === 'box' ? '' : '·');
       }
+      if (n.type === 'plink') return `<span style="color:#b8744e">${a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿'}</span>`;
+      if (n.type === 'subst') return `<span style="display:inline-block;vertical-align:middle;border-left:2px solid #b8744e;border-right:2px solid #b8744e;padding:0 8px;line-height:1.3">${(a.options ?? []).map(esc).join('<br>')}</span>`;
       if (n.type === 'mention') return `<b>@${esc(a.label ?? a.id ?? '')}</b>`;
       if (n.type === 'icon' || n.type === 'sym') return esc(a.text ?? '');
       return inline(n.content);

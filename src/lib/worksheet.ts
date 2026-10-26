@@ -7,6 +7,8 @@ import { packAnswerText, scorePack, splitPack, type PackKind } from './pack';
 import type { DefData } from '../editor/Definition';
 import { highlightBg } from '../editor/Highlight';
 import { textColor } from '../editor/TextColor';
+import { prosodyAttrs } from '../editor/Prosody';
+import { glabelAttrs } from '../editor/Symbols';
 
 // Printable worksheets. A task becomes a list of blocks: paragraphs made of runs (text or a
 // blank), word boxes, two-column matching, ruled lines, and the answer key.
@@ -33,6 +35,9 @@ export type Run = {
   stem?: boolean; // the word to change, in a small grey tag // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
   letters?: string; // letter gaps: the pattern, "_" for each letter to write
+  wrap?: Record<string, string>[]; // pronunciation marks and grammar labels, as on screen
+  pl?: { k: string; s: string }; // linking between words, or a pause
+  subs?: string[]; // a substitution slot
 };
 export type Block =
   | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number'; mark?: string }
@@ -43,6 +48,7 @@ export type Block =
   | { kind: 'note'; text: string }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[]; box?: Record<string, unknown> }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
+  | { kind: 'dict'; word: string; d: DefData }
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
   | { kind: 'draw'; prompt?: string }
   | { kind: 'timeline'; a: TlAttrs }
@@ -95,6 +101,8 @@ export function flattenTask(t: ExportTask): WsTask {
           const def = mk('definition');
           const d = (def?.attrs?.data ?? {}) as DefData;
           const run: Run = { t: node.text ?? '', bold: !!mk('bold'), italic: !!mk('italic'), u: !!mk('underline'), s: !!mk('strike'), ...(hl ? { hl: highlightBg(hl.attrs?.color) } : {}), ...(tc ? { color: textColor(tc.attrs?.color) } : {}) };
+          const wrap = (node.marks ?? []).map((m) => (m.type === 'glabel' ? glabelAttrs(m.attrs) : prosodyAttrs(m.type, m.attrs))).filter((x): x is Record<string, string> => !!x);
+          if (wrap.length) run.wrap = wrap;
           if (def && Object.values(d).some((v) => typeof v === 'string' && v.trim())) {
             run.def = true;
             const key = JSON.stringify(d);
@@ -154,6 +162,8 @@ export function flattenTask(t: ExportTask): WsTask {
           if (node.content) out.push(...runsOf(node.content));
           else if (node.type === 'ipa') out.push({ ipa: { text: String(a.text ?? ''), accent: String(a.accent ?? 'RP'), show: !!a.showAccent } });
           else if (node.type === 'stress') out.push({ stress: { syl: (a.syllables ?? []) as string[], on: Number(a.stressed ?? 0), style: String(a.style ?? 'box') } });
+          else if (node.type === 'plink') out.push({ t: a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿', pl: { k: String(a.k ?? 'link'), s: String(a.s ?? 'under') } });
+          else if (node.type === 'subst') out.push({ t: ` | ${((a.options ?? []) as string[]).join(' / ')} | `, subs: (a.options ?? []) as string[] });
           else if (node.type === 'icon') out.push({ icon: { name: String(a.name ?? ''), tone: String(a.tone ?? 'ink') } });
           else if (node.type === 'picture') {
             const mk = String(a.mark ?? '');
@@ -395,6 +405,9 @@ export function flattenTask(t: ExportTask): WsTask {
           mediaUsed.push(String(a.media));
         }
         return;
+      case 'dictCut':
+        if (a.word || Object.keys(a.data ?? {}).length) cur.push({ kind: 'dict', word: String(a.word ?? ''), d: (a.data ?? {}) as DefData });
+        return;
       case 'linkCard':
         if (a.url) cur.push({ kind: 'p', runs: [{ t: '▸ ', bold: true }, { t: String(a.title || a.url), bold: true }, ...(a.title ? [{ t: `  ${a.url}`, italic: true }] : []), ...(a.note ? [{ t: ` · ${a.note}` }] : [])] });
         return;
@@ -568,6 +581,32 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SERIF })] }));
         const dash = { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA' };
         out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: dash, bottom: dash, left: dash, right: dash, insideHorizontal: dash, insideVertical: dash }, rows: [new TableRow({ cantSplit: true, height: { value: 2600, rule: 'exact' as never }, children: [new TableCell({ children: [new Paragraph({ text: '' })] })] })] }), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
+      } else if (b.kind === 'dict') {
+        const d = b.d;
+        out.push(
+          new Paragraph({
+            keepNext: kn,
+            keepLines: true,
+            spacing: { before: 120, after: 120 },
+            border: { top: { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA', space: 4 }, bottom: { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA', space: 4 }, left: { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA', space: 4 }, right: { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA', space: 4 } },
+            children: [
+              new TextRun({ text: b.word, bold: true, font: SERIF, size: S(26), color: ACC_INK }),
+              ...(d.ipa ? [new TextRun({ text: '  ' + (d.ipa.startsWith('/') ? d.ipa : `/${d.ipa}/`), font: 'Segoe UI' })] : []),
+              ...(d.pos ? [new TextRun({ text: '  ' + d.pos, italics: true, font: SERIF })] : []),
+              ...(d.meaning ? [new TextRun({ text: d.meaning, font: SERIF, break: 1 })] : []),
+              ...(d.example ? [new TextRun({ text: d.example, italics: true, font: SERIF, break: 1 })] : []),
+              ...(
+                [
+                  ['COLLOCATIONS', d.collocations],
+                  ['SYN', d.synonyms],
+                  ['OPP', d.antonyms],
+                  [(d.lang || 'translation').toUpperCase(), d.translation],
+                  ['COMMON MISTAKE', d.mistakes],
+                ] as [string, string | undefined][]
+              ).filter(([, v]) => v).flatMap(([k, v]) => [new TextRun({ text: k + '  ', bold: true, font: SANS, size: S(14), color: ACC_INK, break: 1 }), new TextRun({ text: v!, font: SERIF })]),
+            ],
+          }),
+        );
       } else if (b.kind === 'glossary')
         out.push(
           new Paragraph({ keepNext: kn, keepLines: true, spacing: { before: 100, after: 40 }, children: [new TextRun({ text: 'GLOSSARY', bold: true, font: SANS, size: S(14), color: ACC_INK, characterSpacing: 30 })] }),

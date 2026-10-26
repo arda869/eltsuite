@@ -1,4 +1,5 @@
-import { mergeAttributes, Node } from '@tiptap/core';
+import { Mark, mergeAttributes, Node } from '@tiptap/core';
+import '../lib/extras.css';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps, type Editor } from '@tiptap/react';
 import { usePopPos } from './usePopPos';
 import { useEffect, useRef, useState } from 'react';
@@ -63,6 +64,38 @@ export const POS_SYSTEMS: { key: string; label: string; hint: string; shape: Sym
   },
 ];
 
+// Verb forms, numbered or named. V2 is the past simple, V3 the past participle.
+export const VERB_FORMS: { key: string; label: string; hint: string; shape: SymShape; items: { text: string; label: string }[] }[] = [
+  {
+    key: 'numbered',
+    label: 'Numbered',
+    hint: 'V1 base form, V2 past simple, V3 past participle',
+    shape: 'circle',
+    items: [
+      { text: 'V1', label: 'base form' },
+      { text: 'V2', label: 'past simple' },
+      { text: 'V3', label: 'past participle' },
+      { text: 'V-ing', label: '-ing form' },
+      { text: 'to V', label: 'to + infinitive' },
+      { text: 'V-s', label: 'third person -s' },
+    ],
+  },
+  {
+    key: 'named',
+    label: 'Named',
+    hint: 'The full names, for learners who know the terms',
+    shape: 'pill',
+    items: [
+      { text: 'base form', label: 'V1' },
+      { text: 'past simple', label: 'V2' },
+      { text: 'past participle', label: 'V3' },
+      { text: '-ing form', label: 'present participle or gerund' },
+      { text: 'to + infinitive', label: 'to V' },
+      { text: 'bare infinitive', label: 'infinitive without to' },
+    ],
+  },
+];
+
 // Montessori grammar symbols, drawn in the app's quiet palette.
 const MONT: Record<string, JSX.Element> = {
   noun: <path d="M12 3.5L21 20H3z" fill="#2f2e2d" />,
@@ -92,8 +125,10 @@ export function Sym({ text, shape, tone = 'ink' }: SymAttrs) {
 }
 
 export function SymbolPicker({ onPick, onClose }: { onPick: (a: SymAttrs) => void; onClose?: () => void }) {
-  const [tab, setTab] = useState<'signs' | 'pos' | 'own'>('signs');
+  const [tab, setTab] = useState<'signs' | 'pos' | 'verbs' | 'own'>('signs');
   const [system, setSystem] = useState(POS_SYSTEMS[0].key);
+  const [vsys, setVsys] = useState(VERB_FORMS[0].key);
+  const vs = VERB_FORMS.find((s) => s.key === vsys)!;
   const [own, setOwn] = useState('');
   const [shape, setShape] = useState<SymShape>('box');
   const [tone, setTone] = useState('ink');
@@ -105,6 +140,7 @@ export function SymbolPicker({ onPick, onClose }: { onPick: (a: SymAttrs) => voi
         {([
           ['signs', 'Signs'],
           ['pos', 'Parts of speech'],
+          ['verbs', 'Verb forms'],
           ['own', 'Your own'],
         ] as const).map(([k, l]) => (
           <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
@@ -143,6 +179,26 @@ export function SymbolPicker({ onPick, onClose }: { onPick: (a: SymAttrs) => voi
             {sys.items.map((i) => (
               <button key={i.text} type="button" className="sym-btn labelled" title={i.label} onMouseDown={(e) => e.preventDefault()} onClick={() => pick({ text: i.text, shape: sys.shape, tone })}>
                 <Sym text={i.text} shape={sys.shape} tone={tone} />
+                <span className="sym-lab">{i.label}</span>
+              </button>
+            ))}
+          </span>
+        </>
+      )}
+      {tab === 'verbs' && (
+        <>
+          <span className="seg small-seg" role="radiogroup" aria-label="How to show verb forms">
+            {VERB_FORMS.map((s) => (
+              <button key={s.key} type="button" role="radio" aria-checked={vsys === s.key} className={vsys === s.key ? 'on' : ''} onClick={() => setVsys(s.key)}>
+                {s.label}
+              </button>
+            ))}
+          </span>
+          <span className="hint">{vs.hint}.</span>
+          <span className="sym-row">
+            {vs.items.map((i) => (
+              <button key={i.text} type="button" className="sym-btn labelled" title={i.label} onMouseDown={(e) => e.preventDefault()} onClick={() => pick({ text: i.text, shape: vs.shape, tone })}>
+                <Sym text={i.text} shape={vs.shape} tone={tone} />
                 <span className="sym-lab">{i.label}</span>
               </button>
             ))}
@@ -208,17 +264,41 @@ function SymView({ node, updateAttributes, selected }: NodeViewProps) {
 
 export function SymbolTool({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
+  const [at, setAt] = useState<'above' | 'below'>(() => {
+    try {
+      return localStorage.getItem('ll.labelAt') === 'below' ? 'below' : 'above';
+    } catch {
+      return 'above';
+    }
+  });
+  const [, tick] = useState(0);
   const ref = useRef<HTMLSpanElement>(null);
   const popStyle = usePopPos(ref, open, 370);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
+    const sel = () => tick((x) => x + 1);
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [open]);
+    editor.on('selectionUpdate', sel);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      editor.off('selectionUpdate', sel);
+    };
+  }, [open, editor]);
+  // With words selected, the symbol labels them (above or below); otherwise it goes in the text.
+  const labelling = !editor.state.selection.empty || editor.isActive('glabel');
+  const pickAt = (v: 'above' | 'below') => {
+    setAt(v);
+    try {
+      localStorage.setItem('ll.labelAt', v);
+    } catch {
+      /* fine */
+    }
+    if (editor.isActive('glabel')) editor.chain().focus().extendMarkRange('glabel').updateAttributes('glabel', { at: v }).run();
+  };
   return (
     <span className="hl-tool" ref={ref}>
-      <button type="button" className="tool" title="Add a symbol" aria-label="Add a symbol" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)}>
+      <button type="button" className={'tool' + (editor.isActive('glabel') ? ' on' : '')} title="Symbols and grammar labels" aria-label="Symbols and grammar labels" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)}>
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
           <rect x="2" y="2" width="12" height="12" rx="2.5" />
           <path d="M8 5.2v5.6M5.2 8h5.6" />
@@ -226,12 +306,56 @@ export function SymbolTool({ editor }: { editor: Editor }) {
       </button>
       {open && (
         <span className="hl-pop sym-pop" style={popStyle}>
-          <SymbolPicker onPick={(a) => editor.chain().focus().insertContent({ type: 'sym', attrs: a }).run()} onClose={() => setOpen(false)} />
+          {labelling ? (
+            <span className="sym-label-head">
+              <span>
+                <b>Label the selected words</b>
+                <span className="hint">The label sits on the words, and they are softly marked</span>
+              </span>
+              <span className="seg small-seg" role="radiogroup" aria-label="Where the label goes">
+                {(['above', 'below'] as const).map((k) => (
+                  <button key={k} type="button" role="radio" aria-checked={at === k} className={at === k ? 'on' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => pickAt(k)}>
+                    {k === 'above' ? 'Above' : 'Below'}
+                  </button>
+                ))}
+              </span>
+              {editor.isActive('glabel') && (
+                <button type="button" className="btn link small" onMouseDown={(e) => e.preventDefault()} onClick={() => (editor.chain().focus().extendMarkRange('glabel').unsetMark('glabel').run(), setOpen(false))}>
+                  Remove the label
+                </button>
+              )}
+            </span>
+          ) : null}
+          <SymbolPicker
+            onPick={(a) =>
+              labelling
+                ? editor.chain().focus().extendMarkRange('glabel').setMark('glabel', { ...a, at }).run()
+                : editor.chain().focus().insertContent({ type: 'sym', attrs: a }).run()
+            }
+            onClose={() => setOpen(false)}
+          />
         </span>
       )}
     </span>
   );
 }
+
+// A grammar label on words: the symbol sits above or below them, and the words get a soft
+// bracket in the class colour.
+export const GrammarLabel = Mark.create({
+  name: 'glabel',
+  inclusive: false,
+  excludes: 'glabel',
+  addAttributes: () => ({
+    text: { default: 'V', parseHTML: (el) => el.getAttribute('data-text') || '', renderHTML: (a) => ({ 'data-text': a.text }) },
+    shape: { default: 'circle', parseHTML: (el) => el.getAttribute('data-shape') || 'circle', renderHTML: (a) => ({ 'data-shape': a.shape }) },
+    tone: { default: 'accent', parseHTML: (el) => el.getAttribute('data-tone') || 'accent', renderHTML: (a) => ({ 'data-tone': a.tone }) },
+    at: { default: 'above', parseHTML: (el) => el.getAttribute('data-at') || 'above', renderHTML: (a) => ({ 'data-at': a.at }) },
+  }),
+  parseHTML: () => [{ tag: 'span.pr-gl' }],
+  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { class: 'pr-gl' }), 0],
+});
+export const glabelAttrs = (a: Record<string, unknown> = {}) => ({ className: 'pr-gl', 'data-text': String(a.text ?? ''), 'data-shape': String(a.shape ?? 'circle'), 'data-tone': String(a.tone ?? 'accent'), 'data-at': String(a.at ?? 'above') });
 
 export const SymNode = Node.create({
   name: 'sym',

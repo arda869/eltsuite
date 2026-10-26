@@ -24,6 +24,10 @@ import { FreshIds, jsonClip } from './clipboard';
 import { TableInsert } from './TableInsert';
 import { Definition, DefinitionPop } from './Definition';
 import { Stress, newStress } from './Stress';
+import { Intonation, ProsodyTool, SentenceStress, SpeechLink, SpeechSound } from './Prosody';
+import { Subst } from './Subst';
+import { noteSlash, topSlash } from '../lib/slashUse';
+import { DictCut } from './DictCut';
 import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
 import { RevealBox, newReveal } from './Reveal';
@@ -46,7 +50,7 @@ import { Selection } from '@tiptap/pm/state';
 import { Highlight, HighlightTool } from './Highlight';
 import { TextColor, TextColorTool } from './TextColor';
 import { IconNode, IconTool } from './Icons';
-import { SymNode, SymbolTool } from './Symbols';
+import { GrammarLabel, SymNode, SymbolTool } from './Symbols';
 import { BoardNode, newBoard } from './BoardNode';
 import { DrawBoardNode, newDrawBoard } from './DrawBoard';
 import { newPack, PackNode } from './PackNode';
@@ -74,7 +78,7 @@ function insertDropGap(e: Editor) {
   }
 }
 
-type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text' | 'Blocks'; run: (e: Editor) => void };
+type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text' | 'Blocks' | 'More'; run: (e: Editor) => void };
 
 const BLOCK_CMDS: Cmd[] = BLOCKS.map((b) => ({ key: 'b-' + b.key, label: b.label, hint: b.hint, group: 'Blocks', run: (e) => e.chain().focus().insertContent([...b.make(), { type: 'paragraph' }]).run() }));
 
@@ -174,6 +178,8 @@ const COMMANDS: Cmd[] = [
       e.chain().focus().insertContent(newIpa(last ?? 'RP')).run();
     },
   },
+  { key: 'dictcut', label: 'Dictionary cutout', hint: 'A word’s entry, as if cut out of a dictionary page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'dictCut', attrs: { word: '', data: {} } }, { type: 'paragraph' }]).run() },
+  { key: 'subst', label: 'Substitution slot', hint: 'Words that can go in one place, stacked between two lines', group: 'Text', run: (e) => e.chain().focus().insertContent({ type: 'subst', attrs: { options: [] } }).run() },
   { key: 'heading', label: 'Heading', hint: 'A small heading inside the task', group: 'Text', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
   { key: 'list', label: 'Bulleted list', hint: 'A simple list', group: 'Text', run: (e) => e.chain().focus().toggleBulletList().run() },
   { key: 'numbered', label: 'Numbered list', hint: 'A list with numbers', group: 'Text', run: (e) => e.chain().focus().toggleOrderedList().run() },
@@ -190,10 +196,13 @@ const COMMANDS: Cmd[] = [
 ];
 
 // Writing that is not a task (an email): only text tools, no questions or task elements.
-const TEXT_ONLY = ['stress', 'ipa', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
+const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
+const TEXT_ONLY = ['stress', 'ipa', 'subst', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
 function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
+  const [all, setAll] = useState(false);
+  const startRef = useRef(-1);
 
   useEffect(() => {
     if (!editor) return;
@@ -208,6 +217,11 @@ function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
       const coords = editor.view.coordsAtPos(from);
       // Screen positions: the menu is drawn on the page itself, so a scrolling chat box or a
       // zoomed task can't cut it off.
+      // A new / starts with the short list again.
+      if (startRef.current !== start) {
+        startRef.current = start;
+        setAll(false);
+      }
       setState({ query: m[1].toLowerCase(), from: start, to: from, top: coords.bottom, left: coords.left, above: coords.top });
       setIndex(0);
     };
@@ -225,13 +239,24 @@ function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      return [...COMMANDS, ...extra].filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+      const fit = [...COMMANDS, ...extra].filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
+      const q = state.query.trim();
+      if (q) return fit.filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(q));
+      // Just "/": the teacher's three most used, then "Show all".
+      if (!all && fit.length > 4) return [...topSlash(fit, 3), MORE];
+      return fit;
     },
-    [state, editor, extra, textOnly],
+    [state, editor, extra, textOnly, all],
   );
 
   const choose = (c: Cmd) => {
     if (!editor || !state) return;
+    if (c.key === MORE.key) {
+      setAll(true);
+      setIndex(3);
+      return;
+    }
+    noteSlash(c.key);
     editor.chain().focus().deleteRange({ from: state.from, to: state.to }).run();
     c.run(editor);
     setState(null);
@@ -290,8 +315,8 @@ function ListStart({ editor }: { editor: Editor }) {
 
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
-const INLINE_KEYS = ['dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
+const INLINE_KEYS = ['subst', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
+const TOP_ONLY = ['column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -409,6 +434,13 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       CollabBlock,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
+      SentenceStress,
+      Intonation,
+      SpeechSound,
+      SpeechLink,
+      Subst,
+      DictCut,
+      GrammarLabel,
       Ipa,
       LessonLink,
       jsonClip(Reflect, 'div', 'data-reflect'),
@@ -637,6 +669,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         {!textOnly && BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
         <IconTool editor={editor} />
         <SymbolTool editor={editor} />
+        <ProsodyTool editor={editor} />
         {textOnly && BTN('Word stress', false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Stress')}
         {textOnly && BTN('IPA transcription', false, () => COMMANDS.find((c) => c.key === 'ipa')?.run(editor), '/ IPA /')}
         {!textOnly && BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
@@ -772,12 +805,12 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         />
         {slash.state && editor && !editor.view.dom.closest('.text-only') && createPortal(
           <div ref={slashRef} className="slash slash-float" role="listbox" aria-label="Insert" style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
-            {(['Questions', 'Text', 'Blocks'] as const).map((g) => {
-              const list = slash.items.filter((c) => c.group === g);
+            {(slash.items.some((c) => c.key === '__more') ? (['Top', 'More'] as const) : (['Questions', 'Text', 'Blocks'] as const)).map((g) => {
+              const list = g === 'Top' ? slash.items.filter((c) => c.key !== '__more') : slash.items.filter((c) => c.group === g);
               if (!list.length) return null;
               return (
                 <div key={g}>
-                  <span className="slash-group">{g === 'Blocks' ? 'Lesson boxes' : g}</span>
+                  {g !== 'More' && <span className="slash-group">{g === 'Blocks' ? 'Lesson boxes' : g === 'Top' ? 'You use these most' : g}</span>}
                   {list.map((c) => {
                     const i = slash.items.indexOf(c);
                     return (
@@ -785,7 +818,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                         key={c.key}
                         role="option"
                         aria-selected={i === slash.index}
-                        className={'slash-item' + (i === slash.index ? ' on' : '')}
+                        className={'slash-item' + (i === slash.index ? ' on' : '') + (c.key === '__more' ? ' slash-more' : '')}
                         onMouseDown={(e) => {
                           e.preventDefault();
                           slash.choose(c);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { favAdds, onFavs, toggleFav } from '../lib/slashUse';
 
 // A window that shows every element you can put in a task, in groups, each with a short
 // explanation and a picture of what learners see. The / menu stays for quick typing.
@@ -12,7 +13,7 @@ const SECTIONS: Section[] = [
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'collab-slides', 'drawboard'] },
-  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'linkcard', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['grammarlink', 'vocablink', 'bankpick'] },
 ];
@@ -62,6 +63,8 @@ const ABOUT: Record<string, string> = {
   reveal: 'Content hidden behind a button until a learner opens it: hints, answers, extra help.',
   media: 'A sound or video: record it in the app, upload a sound, or link to YouTube. Add a script that lights up word by word as it plays. Kept in your resources library, and on worksheets as a QR code.',
   linkcard: 'A card for a YouTube video, an audio file or a web page, played in place.',
+  dictcut: 'A word’s dictionary entry, as if cut out of a printed dictionary page: meaning, examples, pronunciation, collocations, only the fields you fill in.',
+  subst: 'The words that can go in one place of a sentence, stacked between two lines: I want to go to | Lisbon, Istanbul, Hong Kong | this summer.',
   image: 'Pictures from your computer, your resources library or a web address. Crop them, change the colour, or cover them for learners to reveal.',
   table: 'A table with a header row. Cells can be coloured and rows striped.',
   heading: 'A small heading inside the task.',
@@ -444,6 +447,24 @@ const PREVIEW: Record<string, () => ReactNode> = {
       <Chip on>Show the answer ▾</Chip>
     </span>
   ),
+  dictcut: () => (
+    <span className="gl-dcut">
+      <b>re·luc·tant</b> <i>adj.</i>
+      <Line w="80%" faint />
+      <Line w="60%" faint />
+    </span>
+  ),
+  subst: () => (
+    <span className="gl-kara">
+      I want to go to{' '}
+      <span className="subs" style={{ fontSize: 11 }}>
+        <span className="subs-o">Lisbon</span>
+        <span className="subs-o">Istanbul</span>
+        <span className="subs-o">Hong Kong</span>
+      </span>{' '}
+      this summer.
+    </span>
+  ),
   linkcard: () => (
     <span className="gl-link">
       <i>▶</i>
@@ -696,18 +717,28 @@ const PREVIEW: Record<string, () => ReactNode> = {
   ),
 };
 
+const Star = ({ on }: { on?: boolean }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 5.9L12 16.6l-5.3 2.9 1.1-5.9L3.4 9.5l6-.8z" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+  </svg>
+);
+
 export function InsertGallery({ commands, onPick, onClose }: { commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void }) {
   const [q, setQ] = useState('');
-  const [section, setSection] = useState(0);
   const byKey = useMemo(() => Object.fromEntries(commands.map((c) => [c.key, c])), [commands]);
+  const [favs, setFavs] = useState<string[]>(() => favAdds());
+  useEffect(() => onFavs(setFavs), []);
+  // Favourites first, when there are any.
+  const [section, setSection] = useState(() => (favAdds().some((k) => byKey[k]) ? -1 : 0));
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }, [onClose]);
   const query = q.trim().toLowerCase();
-  const sections = SECTIONS.map((s) => ({ ...s, items: s.keys.map((k) => byKey[k]).filter(Boolean).filter((c) => !query || `${c.label} ${c.hint} ${ABOUT[c.key] ?? ''}`.toLowerCase().includes(query)) })).filter((s) => s.items.length);
-  const shown = query ? sections : sections.filter((_, i) => i === section);
+  const favSec: Section = { title: 'Favourites', blurb: 'The elements you starred. Star any element to keep it here.', keys: favs };
+  const sections = [favSec, ...SECTIONS].map((s) => ({ ...s, items: s.keys.map((k) => byKey[k]).filter(Boolean).filter((c) => !query || `${c.label} ${c.hint} ${ABOUT[c.key] ?? ''}`.toLowerCase().includes(query)) })).filter((s) => s.items.length);
+  const shown = query ? sections.filter((s) => s.title !== 'Favourites') : sections.filter((s) => s.title === (section === -1 ? 'Favourites' : SECTIONS[section]?.title));
   return (
     <div className="scrim" onClick={onClose}>
       <div className="dialog wide gallery" role="dialog" aria-label="Add to the task" onClick={(e) => e.stopPropagation()}>
@@ -721,6 +752,11 @@ export function InsertGallery({ commands, onPick, onClose }: { commands: Gallery
         <div className="gallery-body">
           {!query && (
             <nav className="gallery-nav" aria-label="Groups">
+              <button type="button" className={'gallery-fav-nav' + (section === -1 ? ' on' : '')} onClick={() => setSection(-1)}>
+                <Star on />
+                Favourites
+                <span className="hint">{favs.filter((k) => byKey[k]).length}</span>
+              </button>
               {SECTIONS.map((s, i) => (
                 <button key={s.title} type="button" className={section === i ? 'on' : ''} onClick={() => setSection(i)}>
                   {s.title}
@@ -731,20 +767,25 @@ export function InsertGallery({ commands, onPick, onClose }: { commands: Gallery
             </nav>
           )}
           <div className="gallery-main">
-            {!shown.length && <p className="hint">Nothing matches.</p>}
+            {!shown.length && (section === -1 && !query ? <p className="hint gallery-nofav">Star the elements you use most, with the star on each card, and they appear here and first in the / menu.</p> : <p className="hint">Nothing matches.</p>)}
             {shown.map((s) => (
               <section key={s.title} className="gallery-sec">
                 <h3>{s.title}</h3>
                 <p className="hint">{s.blurb}</p>
                 <div className="gallery-grid">
                   {s.items.map((c) => (
-                    <button key={c.key} type="button" className="gallery-card" onClick={() => onPick(c.key)} title="Add this">
-                      <span className="gallery-pic" aria-hidden="true">
-                        {PREVIEW[c.key]?.() ?? <Lines n={3} />}
-                      </span>
-                      <span className="gallery-title">{c.label}</span>
-                      <span className="gallery-about">{ABOUT[c.key] ?? c.hint}</span>
-                    </button>
+                    <span key={c.key} className="gallery-cell">
+                      <button type="button" className="gallery-card" onClick={() => onPick(c.key)} title="Add this">
+                        <span className="gallery-pic" aria-hidden="true">
+                          {PREVIEW[c.key]?.() ?? <Lines n={3} />}
+                        </span>
+                        <span className="gallery-title">{c.label}</span>
+                        <span className="gallery-about">{ABOUT[c.key] ?? c.hint}</span>
+                      </button>
+                      <button type="button" className={'gallery-star' + (favs.includes(c.key) ? ' on' : '')} aria-pressed={favs.includes(c.key)} aria-label={favs.includes(c.key) ? `Remove ${c.label} from favourites` : `Add ${c.label} to favourites`} title={favs.includes(c.key) ? 'In your favourites' : 'Add to favourites'} onClick={() => toggleFav(c.key)}>
+                        <Star on={favs.includes(c.key)} />
+                      </button>
+                    </span>
                   ))}
                 </div>
               </section>

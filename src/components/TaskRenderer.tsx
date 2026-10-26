@@ -12,6 +12,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
 import { speakerVars } from '../editor/Dialogue';
 import { StressedWord } from '../editor/Stress';
+import { LinkMark, prosodyAttrs } from '../editor/Prosody';
+import { SubstSlot } from '../editor/Subst';
+import { DictCutout } from '../editor/DictCut';
+import { glabelAttrs } from '../editor/Symbols';
 import { highlightBg } from '../editor/Highlight';
 import { textColor } from '../editor/TextColor';
 import { cellBg } from '../editor/tableStyle';
@@ -147,6 +151,11 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
     else if (mark.type === 'link' && /^https:\/\//i.test(mark.attrs?.href ?? '')) out = <a href={mark.attrs!.href} target="_blank" rel="noopener noreferrer" className="web-link">{out}</a>;
     else if (mark.type === 'textColor') out = <span style={{ color: textColor(mark.attrs?.color) }}>{out}</span>;
     else if (mark.type === 'highlight') out = <mark className="hl" style={{ backgroundColor: highlightBg(mark.attrs?.color) }}>{out}</mark>;
+    else if (mark.type === 'glabel') out = <span {...glabelAttrs(mark.attrs)}>{out}</span>;
+    else {
+      const p = prosodyAttrs(mark.type, mark.attrs);
+      if (p) out = <span {...p}>{out}</span>;
+    }
   }
   if (def) out = <DefWord word={String(text)} data={(def.attrs?.data ?? {}) as DefData}>{out}</DefWord>;
   return out;
@@ -1113,6 +1122,16 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       case 'stress':
         return <StressedWord key={key} syllables={(node.attrs?.syllables as string[]) ?? []} stressed={Number(node.attrs?.stressed ?? 0)} style={(node.attrs?.style ?? 'box') as 'box' | 'bold' | 'big'} />;
+      case 'plink':
+        return <LinkMark key={key} k={String(node.attrs?.k ?? 'link')} s={String(node.attrs?.s ?? 'under')} />;
+      case 'subst':
+        return <SubstSlot key={key} options={(node.attrs?.options as string[]) ?? []} />;
+      case 'dictCut':
+        return node.attrs?.word || Object.keys(node.attrs?.data ?? {}).length ? (
+          <div key={key} className="dcut-wrap">
+            <DictCutout word={String(node.attrs?.word ?? '')} d={(node.attrs?.data ?? {}) as DefData} />
+          </div>
+        ) : null;
       case 'columnBreak':
         return null;
       default:

@@ -5501,3 +5501,51 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .ann-email { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 3%, var(--paper)); }
 .ann-email-editor { min-height: 140px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--hair); }
 .ann-email-toggle { flex-wrap: wrap; } .ann-email-toggle .hint { flex-basis: 100%; padding-left: 26px; margin-top: -2px; }
+
+/* Favourites in + Add */
+.gallery-cell { position: relative; display: flex; }
+.gallery-cell .gallery-card { flex: 1; }
+.gallery-star { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 8px; background: color-mix(in srgb, var(--paper) 86%, transparent); color: var(--soft); cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s, transform 0.15s; }
+.gallery-cell:hover .gallery-star, .gallery-star:focus-visible, .gallery-star.on { opacity: 1; }
+.gallery-star:hover { color: var(--accent-text); transform: scale(1.08); }
+.gallery-star.on { color: var(--accent); }
+.gallery-nav .gallery-fav-nav { justify-content: flex-start; align-items: center; margin-bottom: 6px; color: var(--accent-text); }
+.gallery-nav .gallery-fav-nav .hint { margin-left: auto; }
+.gallery-nofav { max-width: 420px; line-height: 1.5; }
+.gl-dcut { display: flex; flex-direction: column; gap: 4px; background: #fbf8f0; padding: 8px 10px; transform: rotate(-1.2deg); box-shadow: 0 2px 6px rgba(40, 30, 20, 0.14); font: 12px Georgia, serif; width: 80%; clip-path: polygon(0 3%, 30% 0, 62% 4%, 100% 1%, 99% 97%, 66% 100%, 30% 96%, 1% 100%); }
+.gl-dcut b { font-size: 13px; color: var(--accent-text); }
+
+/* The / menu: "Show all" under the favourites */
+.slash-item.slash-more { border-top: 1px solid var(--hair); margin-top: 4px; padding-top: 9px; }
+.slash-item.slash-more strong { color: var(--accent-text); }
+
+/* Pronunciation tool */
+.pro-pop { width: 340px; display: flex; flex-direction: column; gap: 12px; padding: 14px; max-height: 76vh; overflow-y: auto; }
+.pro-sec { display: flex; flex-direction: column; gap: 7px; padding-bottom: 12px; border-bottom: 1px solid var(--hair); }
+.pro-h { font: 700 11px var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.pro-h .hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.pro-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.pro-b { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid var(--hair); border-radius: 9px; background: var(--paper); font: 13px var(--sans); color: inherit; cursor: pointer; }
+.pro-b.icon { padding: 5px 7px; color: var(--accent-text); }
+.pro-b:hover:not(:disabled) { border-color: var(--accent); }
+.pro-b.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--paper)); }
+.pro-b:disabled, .pro-ipa:disabled { opacity: 0.45; cursor: default; }
+.pro-x { border: 0; background: none; color: var(--muted); font-size: 17px; cursor: pointer; padding: 2px 6px; }
+.pro-dot { display: inline-block; border-radius: 50%; background: var(--accent); }
+.pro-dot.d-main { width: 10px; height: 10px; box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.2px var(--accent); }
+.pro-dot.d-strong { width: 8px; height: 8px; }
+.pro-dot.d-weak { width: 5px; height: 5px; background: none; border: 1.2px solid var(--accent); }
+.pro-glyph { color: var(--accent-text); font-family: 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', sans-serif; font-size: 14px; min-width: 12px; text-align: center; }
+.pro-look { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pro-look-k { font: 12px var(--sans); color: var(--muted); }
+.pro-look .seg button { font-size: 12px; }
+.pro-change { gap: 4px; }
+.pro-ipa { min-width: 28px; height: 28px; border: 1px solid var(--hair); border-radius: 7px; background: var(--paper); font: 14px 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', sans-serif; color: var(--accent-text); cursor: pointer; padding: 0 5px; }
+.pro-ipa:hover:not(:disabled), .pro-ipa.on { border-color: var(--accent); }
+.pro-to { width: 58px; height: 28px; padding: 0 6px; border: 1px solid var(--hair); border-radius: 7px; font: 13px var(--sans); }
+.sym-label-head { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--hair); }
+.sym-label-head > span:first-child { display: flex; flex-direction: column; gap: 2px; font: 13px var(--sans); }
+.dcut-node .dcut-wrap { cursor: pointer; }
+.dcut-edit { display: grid; gap: 10px; padding: 12px; margin: 6px 0 4px; background: var(--surface); border-radius: 12px; max-width: 520px; }
+.sub-pop textarea { width: 100%; font: inherit; }
+.pro-look .seg { flex-wrap: wrap; }
