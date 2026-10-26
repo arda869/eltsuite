@@ -12,7 +12,9 @@ export const EFFECTS: { k: Effect; label: string; dur: number }[] = [
 // Something added to the sound: at a time in the original recording, lasting dur seconds.
 export type Insert = { id: string; at: number; kind: Effect; dur: number };
 export type NoiseLevel = 0 | 1 | 2; // off, light, strong
-export type Edit = { start: number; end: number; gain: number; even: boolean; noise: NoiseLevel; inserts: Insert[] };
+// cuts: stretches taken out of the middle; fades: seconds at each end of the finished sound.
+export type Cut = { id: string; a: number; b: number };
+export type Edit = { start: number; end: number; gain: number; even: boolean; noise: NoiseLevel; inserts: Insert[]; cuts?: Cut[]; fadeIn?: number; fadeOut?: number; echo?: NoiseLevel };
 
 export async function decodeSound(file: Blob): Promise<AudioBuffer> {
   const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -213,71 +215,110 @@ const peakOf = (x: Float32Array, a = 0, b = x.length) => {
   return m;
 };
 
-// Trim, set the volume, then add silence and effects. Times are seconds in the original sound.
-export function assemble(x: Float32Array, rate: number, e: Edit): Float32Array {
-  const a = Math.max(0, Math.round(e.start * rate));
-  const b = Math.min(x.length, Math.round(e.end * rate));
-  let g = e.gain;
-  if (e.even) {
-    const p = peakOf(x, a, b);
-    if (p > 0.001) g *= 0.89 / p; // the loudest moment just below the top
+// The parts of the original that are kept: from start to end, without the cuts.
+export function keptRanges(e: Edit): [number, number][] {
+  const cuts = [...(e.cuts ?? [])].map((c) => [Math.max(e.start, Math.min(c.a, c.b)), Math.min(e.end, Math.max(c.a, c.b))] as [number, number]).filter(([a, b]) => b - a > 0.005).sort((p, q) => p[0] - q[0]);
+  const out: [number, number][] = [];
+  let pos = e.start;
+  for (const [a, b] of cuts) {
+    if (b <= pos) continue;
+    if (a > pos) out.push([pos, a]);
+    pos = Math.max(pos, b);
   }
-  const inserts = [...e.inserts].sort((p, q) => p.at - q.at);
-  const parts: Float32Array[] = [];
-  let pos = a;
-  const body = (to: number) => {
-    if (to <= pos) return;
-    const s = new Float32Array(to - pos);
-    for (let i = 0; i < s.length; i++) {
-      const v = x[pos + i] * g;
-      s[i] = v > 0.95 ? 0.95 + Math.tanh((v - 0.95) * 8) / 20 : v < -0.95 ? -0.95 + Math.tanh((v + 0.95) * 8) / 20 : v; // soft limit, no harsh clipping
-    }
-    parts.push(s);
-    pos = to;
-  };
-  for (const ins of inserts) {
-    const at = Math.max(a, Math.min(b, Math.round(ins.at * rate)));
-    body(at);
-    parts.push(effect(ins.kind, rate, ins.dur));
-  }
-  body(b);
-  const total = parts.reduce((s, p) => s + p.length, 0);
-  const out = new Float32Array(total);
-  let o = 0;
-  for (const p of parts) out.set(p, o), (o += p.length);
+  if (e.end > pos) out.push([pos, e.end]);
   return out;
-}
-
-// Where a moment of the original sound is in the finished one (for script timings).
-export function mapTime(t: number, e: Edit): number | null {
-  if (t < e.start - 0.05 || t > e.end) return null;
-  let out = Math.max(0, t - e.start);
-  for (const ins of e.inserts) if (Math.max(e.start, Math.min(e.end, ins.at)) <= t) out += ins.dur;
-  return +out.toFixed(2);
 }
 
 // The finished sound as pieces: stretches of the original (body) and what was added (ins).
 type Seg = { kind: 'body' | 'ins'; s0: number; s1: number; o0: number; len: number; ins?: Insert };
 export function timeline(e: Edit): Seg[] {
+  const ranges = keptRanges(e);
+  // Something added inside a cut goes where the cut was.
+  const place = (t: number) => {
+    for (const [a, b] of ranges) if (t >= a - 1e-6 && t <= b + 1e-6) return Math.max(a, Math.min(b, t));
+    const next = ranges.find(([a]) => a >= t);
+    return next ? next[0] : ranges.length ? ranges[ranges.length - 1][1] : e.start;
+  };
+  // Each added sound belongs to the first kept part that holds its moment.
+  const ins = [...e.inserts]
+    .map((i) => {
+      const at = place(i.at);
+      const r = Math.max(0, ranges.findIndex(([a, b]) => at >= a - 1e-6 && at <= b + 1e-6));
+      return { i, at, r };
+    })
+    .sort((p, q) => p.r - q.r || p.at - q.at);
   const segs: Seg[] = [];
   let out = 0;
-  let pos = e.start;
-  for (const ins of [...e.inserts].sort((p, q) => p.at - q.at)) {
-    const at = Math.max(e.start, Math.min(e.end, ins.at));
-    if (at > pos) segs.push({ kind: 'body', s0: pos, s1: at, o0: out, len: at - pos }), (out += at - pos), (pos = at);
-    segs.push({ kind: 'ins', s0: at, s1: at, o0: out, len: ins.dur, ins });
-    out += ins.dur;
-  }
-  if (e.end > pos) segs.push({ kind: 'body', s0: pos, s1: e.end, o0: out, len: e.end - pos });
+  const addIns = (x: (typeof ins)[number]) => {
+    segs.push({ kind: 'ins', s0: x.at, s1: x.at, o0: out, len: x.i.dur, ins: x.i });
+    out += x.i.dur;
+  };
+  ranges.forEach(([a, b], r) => {
+    let pos = a;
+    for (const x of ins.filter((y) => y.r === r)) {
+      if (x.at > pos) segs.push({ kind: 'body', s0: pos, s1: x.at, o0: out, len: x.at - pos }), (out += x.at - pos), (pos = x.at);
+      addIns(x);
+    }
+    if (b > pos) segs.push({ kind: 'body', s0: pos, s1: b, o0: out, len: b - pos }), (out += b - pos);
+  });
+  if (!ranges.length) ins.forEach(addIns);
   return segs;
 }
+
+// Trim, cut, set the volume, add silence and effects, then fade the ends.
+export function assemble(x: Float32Array, rate: number, e: Edit): Float32Array {
+  const segs = timeline(e);
+  let g = e.gain;
+  if (e.even) {
+    let p = 0;
+    for (const s of segs) if (s.kind === 'body') p = Math.max(p, peakOf(x, Math.round(s.s0 * rate), Math.min(x.length, Math.round(s.s1 * rate))));
+    if (p > 0.001) g *= 0.89 / p; // the loudest moment just below the top
+  }
+  const parts: Float32Array[] = [];
+  for (const s of segs) {
+    if (s.kind === 'ins') {
+      parts.push(effect(s.ins!.kind, rate, s.ins!.dur));
+      continue;
+    }
+    const a = Math.max(0, Math.round(s.s0 * rate));
+    const b = Math.min(x.length, Math.round(s.s1 * rate));
+    if (b <= a) continue;
+    const part = new Float32Array(b - a);
+    for (let i = 0; i < part.length; i++) {
+      const v = x[a + i] * g;
+      part[i] = v > 0.95 ? 0.95 + Math.tanh((v - 0.95) * 8) / 20 : v < -0.95 ? -0.95 + Math.tanh((v + 0.95) * 8) / 20 : v; // soft limit, no harsh clipping
+    }
+    // A few milliseconds of fade where a cut joins two parts, so there is no click.
+    const f = Math.min(Math.round(0.006 * rate), part.length >> 1);
+    if (parts.length) for (let i = 0; i < f; i++) part[i] *= i / f;
+    if (s !== segs[segs.length - 1]) for (let i = 0; i < f; i++) part[part.length - 1 - i] *= i / f;
+    parts.push(part);
+  }
+  const total = parts.reduce((t, p) => t + p.length, 0);
+  const out = new Float32Array(total);
+  let o = 0;
+  for (const p of parts) out.set(p, o), (o += p.length);
+  const fi = Math.min(total, Math.round((e.fadeIn ?? 0) * rate));
+  const fo = Math.min(total, Math.round((e.fadeOut ?? 0) * rate));
+  for (let i = 0; i < fi; i++) out[i] *= (i / fi) ** 2;
+  for (let i = 0; i < fo; i++) out[total - 1 - i] *= (i / fo) ** 2;
+  return out;
+}
+
 // A moment of the original → the same moment in the finished sound (before anything added there).
 export function toOut(t: number, e: Edit) {
   const segs = timeline(e);
   if (t <= e.start) return 0;
   for (const g of segs) if (g.kind === 'body' && t >= g.s0 && t <= g.s1) return g.o0 + (t - g.s0);
+  const next = segs.find((g) => g.kind === 'body' && g.s0 >= t);
+  if (next) return next.o0;
   const last = segs[segs.length - 1];
   return last ? last.o0 + last.len : 0;
+}
+// Where a moment of the original is in the finished one (for script timings).
+export function mapTime(t: number, e: Edit): number | null {
+  if (t < e.start - 0.05 || t > e.end) return null;
+  return +toOut(Math.max(e.start, t), e).toFixed(2);
 }
 // A moment of the finished sound → where it is in the original, and what added sound is playing.
 export function toSrc(o: number, e: Edit): { t: number; ins?: Insert } {
@@ -285,7 +326,76 @@ export function toSrc(o: number, e: Edit): { t: number; ins?: Insert } {
   return { t: e.end };
 }
 
-export const finishedLength = (e: Edit) => Math.max(0, e.end - e.start) + e.inserts.reduce((s, i) => s + i.dur, 0);
+export const finishedLength = (e: Edit) => timeline(e).reduce((s, g) => s + g.len, 0);
+
+// ------------------------------------------------------------------ room echo
+
+// Room echo is the sound still ringing after each word. A downward expander follows the voice and
+// turns down whatever is much quieter than what was just said, so the tails fade faster.
+export function reduceEcho(x: Float32Array, rate: number, level: NoiseLevel): Float32Array {
+  if (!level) return x;
+  const y = new Float32Array(x.length);
+  const att = Math.exp(-1 / (0.002 * rate));
+  const rel = Math.exp(-1 / (0.05 * rate));
+  const hold = Math.exp(-1 / (0.35 * rate)); // how long "what was just said" is remembered
+  const k = level === 2 ? 0.32 : 0.2; // below this share of the recent voice counts as echo
+  const ratio = level === 2 ? 3 : 2;
+  const floor = level === 2 ? 0.08 : 0.2;
+  const gAtt = Math.exp(-1 / (0.001 * rate));
+  const gRel = Math.exp(-1 / (0.03 * rate));
+  let env = 0;
+  let recent = 0;
+  let gain = 1;
+  for (let i = 0; i < x.length; i++) {
+    const v = Math.abs(x[i]);
+    env = v > env ? att * env + (1 - att) * v : rel * env + (1 - rel) * v;
+    recent = env > recent ? env : hold * recent + (1 - hold) * env;
+    const thr = recent * k;
+    const target = env >= thr || thr < 1e-4 ? 1 : Math.max(floor, (env / thr) ** (ratio - 1));
+    gain = target > gain ? gAtt * gain + (1 - gAtt) * target : gRel * gain + (1 - gRel) * target;
+    y[i] = x[i] * gain;
+  }
+  return y;
+}
+
+// ------------------------------------------------------------------ drawing at any zoom
+
+// Loudest and quietest values in blocks of 128 samples, so a long sound draws quickly at any zoom.
+export type PeakIndex = { block: number; max: Float32Array; min: Float32Array };
+export function peakIndex(x: Float32Array, block = 128): PeakIndex {
+  const n = Math.ceil(x.length / block);
+  const max = new Float32Array(n);
+  const min = new Float32Array(n);
+  for (let b = 0; b < n; b++) {
+    let hi = -1;
+    let lo = 1;
+    const end = Math.min(x.length, (b + 1) * block);
+    for (let i = b * block; i < end; i++) {
+      const v = x[i];
+      if (v > hi) hi = v;
+      if (v < lo) lo = v;
+    }
+    max[b] = hi;
+    min[b] = lo;
+  }
+  return { block, max, min };
+}
+export function rangePeak(x: Float32Array, idx: PeakIndex, a: number, b: number): [number, number] {
+  a = Math.max(0, Math.floor(a));
+  b = Math.min(x.length, Math.ceil(b));
+  let hi = 0;
+  let lo = 0;
+  if (b - a < idx.block * 3) {
+    for (let i = a; i < b; i++) (hi = Math.max(hi, x[i])), (lo = Math.min(lo, x[i]));
+    return [lo, hi];
+  }
+  const ba = Math.ceil(a / idx.block);
+  const bb = Math.floor(b / idx.block);
+  for (let i = a; i < ba * idx.block; i++) (hi = Math.max(hi, x[i])), (lo = Math.min(lo, x[i]));
+  for (let k = ba; k < bb; k++) (hi = Math.max(hi, idx.max[k])), (lo = Math.min(lo, idx.min[k]));
+  for (let i = bb * idx.block; i < b; i++) (hi = Math.max(hi, x[i])), (lo = Math.min(lo, x[i]));
+  return [lo, hi];
+}
 
 // A loudness reading, in decibels below the top (0 is as loud as can be recorded).
 export const dbOf = (rms: number) => (rms > 0 ? 20 * Math.log10(rms) : -100);

@@ -7,7 +7,9 @@ import { UiIcon } from '../components/UiIcon';
 
 // Recording in the app: choose the microphone, check the level and the room, count in, and read
 // the script from a prompter, tapping Space as each line starts so the karaoke is timed as you go.
-// After stopping, any part can be recorded again: pick a point and the new take replaces the rest.
+// Pause stops the take and shows it: go back a little (or click the wave), listen, then carry on
+// from there. The new part replaces what came after, and you hear the last two seconds before
+// recording starts again, so the join is natural.
 
 const MAX = 20 * 60; // seconds
 const fine = (t: number) => `${Math.floor(t / 60)}:${(Math.max(0, t) % 60).toFixed(1).padStart(4, '0')}`;
@@ -40,7 +42,8 @@ const resample = async (x: Float32Array, from: number, to: number) => {
 export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSource, take: Take) => void; onCancel: () => void; initial?: Take | null }) {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [device, setDevice] = useState('');
-  const [cleanup, setCleanup] = useState(true);
+  const [denoise, setDenoise] = useState(true);
+  const [deecho, setDeecho] = useState(true);
   const [autoLevel, setAutoLevel] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState('');
@@ -56,6 +59,9 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
   const [from, setFrom] = useState<number | null>(null); // where the take being recorded starts
   const [pos, setPos] = useState(0); // the chosen point in the review
   const [playing, setPlaying] = useState(false);
+  const [paused, setPaused] = useState(false); // the review after Pause
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   const lines = splitScript(script);
   const latest = useRef({ marks, lines, room: room.db, take, from });
   latest.current = { marks, lines, room: room.db, take, from };
@@ -85,7 +91,7 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
       return;
     }
     navigator.mediaDevices
-      .getUserMedia({ audio: { deviceId: device ? { exact: device } : undefined, noiseSuppression: cleanup, echoCancellation: cleanup, autoGainControl: autoLevel, channelCount: 1 } })
+      .getUserMedia({ audio: { deviceId: device ? { exact: device } : undefined, noiseSuppression: denoise, echoCancellation: deecho, autoGainControl: autoLevel, channelCount: 1 } })
       .then(async (st) => {
         if (!live) return st.getTracks().forEach((t) => t.stop());
         s = st;
@@ -99,7 +105,7 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
       live = false;
       s?.getTracks().forEach((t) => t.stop());
     };
-  }, [device, cleanup, autoLevel]);
+  }, [device, denoise, deecho, autoLevel]);
 
   // The level meter and advice.
   useEffect(() => {
@@ -133,8 +139,11 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
           quiet.current = { since: 0, max: 0 };
         }
       }
-      history.current.push(pk);
-      if (history.current.length > 400) history.current.shift();
+      // The rolling wave moves only while recording.
+      if (phaseRef.current === 'rec') {
+        history.current.push(pk);
+        if (history.current.length > 400) history.current.shift();
+      }
     }, 50);
     return () => {
       window.clearInterval(id);
@@ -144,7 +153,7 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
 
   // The rolling wave while recording.
   useLayoutEffect(() => {
-    if (phase !== 'rec' && phase !== 'paused') return;
+    if (phase !== 'rec') return;
     let raf = 0;
     const paint = () => {
       const c = wave.current;
@@ -199,15 +208,30 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
     if (!stream) return;
     stopPlay();
     setFrom(at);
+    setPaused(false);
     if (at !== null) setMarks((m) => m.filter((t) => t < at - 0.05));
     else setMarks([]);
     setPhase('count');
+    // Carrying on: hear the two seconds before the point, then record. New: count 3, 2, 1.
+    const pre = at !== null && take ? Math.min(2, at) : 0;
+    if (pre > 0.2) {
+      setCount(0);
+      play(at! - pre, at!);
+      window.setTimeout(() => (stopPlay(), go()), pre * 1000);
+      return;
+    }
     setCount(3);
     let n = 3;
     const id = window.setInterval(() => {
       n -= 1;
       if (n > 0) return setCount(n);
       window.clearInterval(id);
+      go();
+    }, 800);
+  };
+  const go = () => {
+    if (!stream) return;
+    {
       const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported?.(t));
       const r = new MediaRecorder(stream, type ? { mimeType: type, audioBitsPerSecond: 128000 } : undefined);
       chunks.current = [];
@@ -224,7 +248,10 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
             const fit = await resample(part, b.sampleRate, l.take.rate);
             setTake({ data: splice(l.take.data, l.from, fit, l.take.rate), rate: l.take.rate });
           }
-          setPos(l.from ?? 0);
+          const end = l.take && l.from !== null ? l.from + part.length / b.sampleRate : part.length / b.sampleRate;
+          setPos(pausing.current ? end : l.from ?? 0);
+          setPaused(pausing.current);
+          pausing.current = false;
           setPhase('review');
         } catch {
           setError('The recording could not be read. Try again.');
@@ -236,12 +263,13 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
       clock.current = { start: performance.now(), pausedAt: 0, paused: 0 };
       history.current = [];
       setPhase('rec');
-    }, 800);
+    }
   };
+  // Pause: the take so far is kept and shown, with the playhead at its end.
+  const pausing = useRef(false);
   const pause = () => {
-    rec.current?.pause();
-    clock.current.pausedAt = performance.now();
-    setPhase('paused');
+    pausing.current = true;
+    rec.current?.stop();
   };
   const resume = () => {
     rec.current?.resume();
@@ -281,7 +309,7 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
     node.current = null;
     setPlaying(false);
   };
-  const play = () => {
+  const play = (fromT = pos, until?: number) => {
     if (!take) return;
     stopPlay();
     const c = (ac.current ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)());
@@ -289,8 +317,9 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
     const src = c.createBufferSource();
     src.buffer = bufferOf(take.data, take.rate);
     src.connect(c.destination);
-    const start = pos >= length - 0.05 ? 0 : pos;
-    src.start(0, start);
+    const start = fromT >= length - 0.05 ? 0 : fromT;
+    if (until !== undefined) src.start(0, start, Math.max(0.05, until - start));
+    else src.start(0, start);
     src.onended = () => node.current?.src === src && stopPlay();
     node.current = { src, at: c.currentTime, from: start };
     setPlaying(true);
@@ -355,8 +384,13 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
           </div>
           <div className="rs-opts">
             <label className="check-row">
-              <input type="checkbox" checked={cleanup} onChange={(e) => setCleanup(e.target.checked)} />
-              Reduce noise and echo while recording
+              <input type="checkbox" checked={denoise} onChange={(e) => setDenoise(e.target.checked)} />
+              Reduce background noise while recording
+            </label>
+            <label className="check-row">
+              <input type="checkbox" checked={deecho} onChange={(e) => setDeecho(e.target.checked)} />
+              Reduce echo while recording
+              <span className="hint"> · room echo can be reduced more after recording</span>
             </label>
             <label className="check-row">
               <input type="checkbox" checked={autoLevel} onChange={(e) => setAutoLevel(e.target.checked)} />
@@ -391,8 +425,8 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
       )}
       {phase === 'count' && (
         <div className="rs-count" aria-live="assertive">
-          <span>{count}</span>
-          {from !== null && <span className="hint">Recording again from {fine(from)}</span>}
+          {count > 0 ? <span>{count}</span> : <span className="rs-pre">Listen…</span>}
+          {from !== null && <span className="hint">{count > 0 ? 'Recording again' : 'Recording starts'} at {fine(from)}</span>}
         </div>
       )}
       {recording && (
@@ -415,15 +449,9 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
               </button>
             )}
             <span style={{ flex: 1 }} />
-            {phase === 'rec' ? (
-              <button type="button" className="btn" onClick={pause}>
-                Pause
-              </button>
-            ) : (
-              <button type="button" className="btn" onClick={resume}>
-                Resume
-              </button>
-            )}
+            <button type="button" className="btn" onClick={pause} disabled={phase !== 'rec'}>
+              Pause
+            </button>
             <button type="button" className="btn primary" onClick={stop}>
               Stop
             </button>
@@ -449,7 +477,7 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
               {fine(pos)}
               <span> / {fmtTime(length)}</span>
             </span>
-            <span className="hint">Listen back. Click the wave just before a mistake, then record again from there.</span>
+            <span className="hint">{paused ? 'Paused. Go back a little or click the wave, then carry on from there. What comes after is replaced.' : 'Listen back. Click the wave just before a mistake, then record again from there.'}</span>
           </div>
           <Wave wave={reviewWave} duration={length} time={pos} lines={marks.map((t, i) => ({ t, text: lines[i] ?? '' }))} onSeek={(t) => (stopPlay(), setPos(t))} height={72} />
           {marks.length > 0 && (
@@ -463,13 +491,30 @@ export function Recorder({ onDone, onCancel, initial }: { onDone: (s: SoundSourc
             </span>
           )}
           {lines.length > 0 && <Prompter lines={lines} cur={lineAt(pos)} small />}
+          <span className="rs-nudge">
+            {[-5, -2, -0.5].map((d) => (
+              <button key={d} type="button" className="btn small-btn" onClick={() => (stopPlay(), setPos((p) => Math.max(0, p + d)))}>
+                ◀ {Math.abs(d)} s
+              </button>
+            ))}
+            <button type="button" className="btn small-btn" onClick={() => play(Math.max(0, pos - 3), pos)} disabled={pos < 0.2}>
+              Hear the 3 s before
+            </button>
+            {pos < length - 0.05 && (
+              <button type="button" className="btn small-btn" onClick={() => (stopPlay(), setPos(length))}>
+                To the end ▶
+              </button>
+            )}
+          </span>
           <span className="pe-actions rs-actions">
             <button type="button" className="btn primary" onClick={() => begin(Math.min(pos, length))} disabled={!stream}>
-              <UiIcon name="mic" size={16} /> Record again from {fine(pos)}
+              <UiIcon name="mic" size={16} /> {pos >= length - 0.05 ? 'Carry on recording' : `Record from ${fine(pos)}`}
             </button>
-            <button type="button" className="btn" onClick={() => begin(length)} disabled={!stream}>
-              Carry on at the end
-            </button>
+            {pos < length - 0.05 && (
+              <button type="button" className="btn" onClick={() => begin(length)} disabled={!stream}>
+                Carry on at the end
+              </button>
+            )}
             <button type="button" className="btn link" onClick={() => begin(null)} disabled={!stream}>
               Start again
             </button>
