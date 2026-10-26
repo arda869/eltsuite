@@ -1,6 +1,7 @@
 import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import type { Accent } from './phonemes';
+import { broadcast, learnerMayPlay } from './liveAudio';
 
 // Recordings of each sound. A teacher's own recording wins in their tasks; otherwise the default
 // set, recorded for everyone, plays.
@@ -25,8 +26,10 @@ export async function soundFor(a: Accent, id: string, by?: string) {
 }
 
 let playing: HTMLAudioElement | null = null;
-// Plays the sound; false when there is no recording yet.
-export async function playSound(a: Accent, id: string, by?: string) {
+// Plays the sound; false when there is no recording yet, 'wait' while the teacher plays them.
+export async function playSound(a: Accent, id: string, by?: string, fromTeacher = false): Promise<boolean | 'wait'> {
+  if (!fromTeacher && !learnerMayPlay()) return 'wait';
+  if (!fromTeacher) broadcast({ k: 'phon', accent: a, id, by });
   const src = await soundFor(a, id, by);
   if (!src) return false;
   playing?.pause();
@@ -60,3 +63,10 @@ export function fileToData(f: Blob): Promise<string> {
     r.readAsDataURL(f);
   });
 }
+
+// Learners in a live lesson: play the sounds the teacher plays.
+if (typeof window !== 'undefined')
+  window.addEventListener('ll:live-play', (e) => {
+    const v = (e as CustomEvent).detail as { k: string; accent: Accent; id: string; by?: string };
+    if (v.k === 'phon') void playSound(v.accent, v.id, v.by, true);
+  });

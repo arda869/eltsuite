@@ -51,6 +51,9 @@
               ".write": "auth != null && auth.uid === $uid"
             }
           }
+        },
+        "play": {
+          ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
         }
       }
     },

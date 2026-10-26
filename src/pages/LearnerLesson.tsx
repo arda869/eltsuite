@@ -34,6 +34,7 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
+import { useLiveAudioSetup } from '../lib/liveAudio';
 import { isLive, isSynced, liveRef, revealedCount, revealedSingles, revealedSubset, type LiveState } from '../lib/live';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { PhoneMessagesLink } from '../components/ChatDock';
@@ -69,6 +70,7 @@ export function LearnerLesson() {
   const [key, setKey] = useState<AnswerKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [live, setLiveState] = useState<LiveState | null>(null);
+  useLiveAudioSetup(classId, isLive(live) && live?.itemId === itemId, false);
   const panels = usePanels('ll.learnerPanels');
   const timer = useRef<number>();
   const dirty = useRef(false);

@@ -5588,3 +5588,9 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .snd-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .snd-rec { background: var(--accent); color: #fff; }
 @media (max-width: 640px) { .snd-row { grid-template-columns: 48px 1fr; } .snd-state { grid-column: 2; } .snd-acts { grid-column: 1 / -1; justify-content: flex-start; } }
+.cs-audio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+@media (max-width: 640px) { .cs-audio { grid-template-columns: 1fr; } }
+.cs-audio-o { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 0; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); font: 13.5px var(--sans); color: inherit; cursor: pointer; }
+.cs-audio-o.on { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--paper)); }
+.cs-audio-o .hint { line-height: 1.4; font-size: 12px; }
+.mp-live-note { display: block; margin: 0 0 6px; color: var(--accent-text); }

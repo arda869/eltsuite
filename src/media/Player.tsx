@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
 import { UiIcon } from '../components/UiIcon';
 import { decodeSound, fmtTime, peaks as peaksOf, toMono } from '../lib/sound';
+import { broadcast, useLiveAudio } from '../lib/liveAudio';
 
 // Playing sound and video: a stored recording, a sound or video file on the web, or YouTube.
 // One engine drives all three, so the karaoke script can follow any of them.
@@ -616,6 +617,35 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [e.time, muted, spans]);
   const used = plays > 0 && !teacher && e.ends >= plays && !e.playing;
+  // Live lessons: the class setting may have the teacher play sounds for everyone.
+  const la = useLiveAudio();
+  const waiting = !teacher && !la.mayPlay;
+  const timeRef = useRef(0);
+  timeRef.current = e.time;
+  useEffect(() => {
+    if (!teaching) return;
+    broadcast({ k: 'media', media: mediaId, t: timeRef.current, playing: e.playing });
+    if (!e.playing) return;
+    const iv = window.setInterval(() => broadcast({ k: 'media', media: mediaId, t: timeRef.current, playing: true }), 4000);
+    return () => window.clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e.playing, teaching, mediaId]);
+  const eRef = useRef(e);
+  eRef.current = e;
+  useEffect(() => {
+    if (teacher) return;
+    const h = (ev: Event) => {
+      const v = (ev as CustomEvent).detail as { k: string; media?: string; t?: number; playing?: boolean; at: number };
+      if (v.k !== 'media' || v.media !== mediaId) return;
+      const en = eRef.current;
+      const target = (v.t ?? 0) + (v.playing ? (Date.now() - v.at) / 1000 : 0);
+      if (Math.abs(timeRef.current - target) > 0.6) en.seek(target);
+      if (v.playing && !en.playing) en.play();
+      if (!v.playing && en.playing) en.pause();
+    };
+    window.addEventListener('ll:live-play', h);
+    return () => window.removeEventListener('ll:live-play', h);
+  }, [mediaId, teacher]);
   const showScript = lines.length > 0 && (editing || scriptMode === 'karaoke' || (teaching && open) || (scriptMode === 'after' && e.ends > 0) || (scriptMode === 'button' && open));
   if (e.m === undefined) return <div className="mp mp-wait" />;
   if (e.m === null) return <div className="mp mp-missing">This sound or video is no longer in this class.</div>;
@@ -631,9 +661,10 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
         {plays > 0 && <span className="mp-plays">{teacher ? `Learners can play it ${plays === 1 ? 'once' : plays + ' times'}` : used ? 'No plays left' : `${plays - e.ends} ${plays - e.ends === 1 ? 'play' : 'plays'} left`}</span>}
         {extra}
       </div>
+      {waiting && <span className="mp-note mp-live-note">{la.mode === 'together' ? 'Your teacher plays this. It plays here when they press play.' : 'Your teacher plays this for the class.'}</span>}
       <Transport
         e={e}
-        locked={used}
+        locked={used || waiting}
         tools={
           <>
           {teacher && cast.length > 1 && (
@@ -669,7 +700,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
           </>
         }
       >
-        <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used} range={teacher ? range : null} onRange={teacher ? setRange : undefined} />
+        <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used || waiting} range={teacher ? range : null} onRange={teacher ? setRange : undefined} />
       </Transport>
       {e.error && <p className="mp-error">{e.error}</p>}
       {showScript && (

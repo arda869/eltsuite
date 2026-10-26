@@ -30,6 +30,7 @@ import {
   type Task,
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
+import { useLiveAudioSetup } from '../lib/liveAudio';
 import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLive, type LiveState } from '../lib/live';
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
@@ -213,6 +214,7 @@ export function LessonEditor() {
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
+  useLiveAudioSetup(classId, teachingHere, true);
   // While this screen teaches, it checks in every minute, so the lesson stays live for the class.
   const mineLive = teachingHere && (!live?.teacherUid || live.teacherUid === user?.uid);
   useEffect(() => {

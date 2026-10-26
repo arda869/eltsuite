@@ -21,9 +21,9 @@ function usePlay(accent: Accent, by?: string) {
     setOn(p.id);
     const ok = await playSound(accent, p.id, by);
     window.setTimeout(() => setOn((x) => (x === p.id ? '' : x)), 650);
-    if (!ok) {
-      setNone(p.id);
-      window.setTimeout(() => setNone((x) => (x === p.id ? '' : x)), 1600);
+    if (ok !== true) {
+      setNone(p.id + (ok === 'wait' ? ':wait' : ''));
+      window.setTimeout(() => setNone((x) => (x.startsWith(p.id) ? '' : x)), 1800);
     }
   };
   return { on, none, play };
@@ -39,12 +39,12 @@ export function Example({ ex }: { ex: string }) {
   );
 }
 
-function Tile({ p, onPlay, playing, none }: { p: Phoneme; onPlay: (p: Phoneme) => void; playing: boolean; none: boolean }) {
+function Tile({ p, onPlay, playing, none }: { p: Phoneme; onPlay: (p: Phoneme) => void; playing: boolean; none: string }) {
   return (
-    <button type="button" className={`ph-tile k-${p.kind}` + (p.kind === 'cons' && !p.voiced ? ' unvoiced' : '') + (playing ? ' playing' : '')} onClick={(e) => (e.preventDefault(), e.stopPropagation(), onPlay(p))} title={none ? 'No recording yet' : `/${p.sym}/ as in ${p.ex.toLowerCase()}`} aria-label={`Sound /${p.sym}/, as in ${p.ex.toLowerCase()}`}>
+    <button type="button" className={`ph-tile k-${p.kind}` + (p.kind === 'cons' && !p.voiced ? ' unvoiced' : '') + (playing ? ' playing' : '')} onClick={(e) => (e.preventDefault(), e.stopPropagation(), onPlay(p))} title={none || `/${p.sym}/ as in ${p.ex.toLowerCase()}`} aria-label={`Sound /${p.sym}/, as in ${p.ex.toLowerCase()}`}>
       <span className="ph-sym">{p.sym}</span>
       <Example ex={p.ex} />
-      {none && <span className="ph-none">no recording yet</span>}
+      {none && <span className="ph-none">{none}</span>}
     </button>
   );
 }
@@ -57,7 +57,7 @@ export function PhonChart({ accent = 'RP', part = 'all', by }: { accent?: Accent
       {rows.map((r, i) => (
         <span key={i} className="ph-row">
           {r.map((p) => (
-            <Tile key={p.id} p={p} onPlay={play} playing={on === p.id} none={none === p.id} />
+            <Tile key={p.id} p={p} onPlay={play} playing={on === p.id} none={none.split(':')[0] === p.id ? (none.endsWith(':wait') ? 'Your teacher plays the sounds' : 'No recording yet') : ''} />
           ))}
         </span>
       ))}
@@ -218,7 +218,7 @@ export function SoundCard({ p, accent, by, kind = 'sound' }: { p: Phoneme; accen
         <Example ex={p.ex} />
         <span className="ph-card-play" aria-hidden="true">
           <svg width="14" height="14" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
-          {none ? 'No recording yet' : 'Listen'}
+          {none ? (none.endsWith(':wait') ? 'Your teacher plays it' : 'No recording yet') : 'Listen'}
         </span>
       </button>
       {kind === 'how' && (

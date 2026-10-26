@@ -8,6 +8,7 @@ import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
 import { LEARNER_TOOLS, learnerToolOn } from '../lib/toolbarPrefs';
+import { LIVE_AUDIO, type LiveAudioMode } from '../lib/liveAudio';
 
 export function meetingProvider(url: string) {
   const u = url.toLowerCase();
@@ -37,6 +38,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(c.accounts?.email ?? 'optional');
   const [tools, setTools] = useState<Record<string, boolean>>(() => Object.fromEntries(LEARNER_TOOLS.map((t) => [t.k, learnerToolOn(t.k, c.learnerTools)])));
   const [showTools, setShowTools] = useState(false);
+  const [liveAudio, setLiveAudio] = useState<LiveAudioMode>(c.liveAudio ?? 'self');
   const [learners, setLearners] = useState<{ id: string; name: string }[] | null>(null);
   useEffect(() => {
     if (names !== 'nick' || learners) return;
@@ -72,6 +74,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         nicknames: Object.fromEntries(Object.entries(nicks).map(([k, v]) => [k, v.trim().slice(0, 30)]).filter(([, v]) => v)),
         accounts: { email: emailLink },
         learnerTools: tools,
+        liveAudio,
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -168,6 +171,18 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
             </span>
             <input type="checkbox" checked={learnerElements} onChange={() => setLearnerElements((v) => !v)} />
           </label>
+        </div>
+        <div className="field">
+          <span>Sounds and videos in live lessons</span>
+          <div className="cs-audio" role="radiogroup" aria-label="Sounds and videos in live lessons">
+            {LIVE_AUDIO.map((o) => (
+              <button key={o.k} type="button" role="radio" aria-checked={liveAudio === o.k} className={'cs-audio-o' + (liveAudio === o.k ? ' on' : '')} onClick={() => setLiveAudio(o.k)}>
+                <b>{o.label}</b>
+                <span className="hint">{o.about}</span>
+              </button>
+            ))}
+          </div>
+          <span className="hint">Outside live lessons, learners always play sounds themselves.</span>
         </div>
         <div className="field cs-learners">
           <span>Learners</span>
