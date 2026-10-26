@@ -606,7 +606,7 @@ export function MediaArchive() {
                   {subFolders.map((f) => (
                     <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => setFolder(f)} onContextMenu={(e) => (sel.has('f:' + f) || setSel(new Set(['f:' + f])), openMenu(e, folderMenu(f)))} {...folderDrop(f)}>
                       <span className="ma-thumb ma-fthumb">
-                        <FolderIcon size={40} open={dropOn === f} />
+                        <FolderIcon size={46} open={dropOn === f} />
                       </span>
                       <span className="ma-name">{leafOf(f)}</span>
                       <span className="ma-meta">{nItems(countIn(f))}</span>
@@ -675,7 +675,7 @@ function Card({ item, on, chosen, shared, onClick, onDragStart, onMenu }: { item
         ) : item.link && item.kind === 'video' && /youtu/.test(item.link) ? (
           <img src={`https://img.youtube.com/vi/${/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(item.link)?.[1] ?? ''}/mqdefault.jpg`} alt="" draggable={false} />
         ) : (
-          <FileIcon kind={item.kind} size={30} />
+          <FileIcon kind={item.kind} size={42} />
         )}
         {item.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
         <span className="ma-badges">
