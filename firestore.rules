@@ -470,7 +470,11 @@ service cloud.firestore {
     // Collaborative documents in a teacher's files, shared person by person.
     match /sharedDocs/{id} {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
-      allow create: if isTeacher() && request.resource.data.owner == request.auth.uid;
+      // In a shared folder, files belong to the folder's owner, whoever makes them.
+      allow create: if isTeacher() && (request.resource.data.owner == request.auth.uid
+        || (request.resource.data.folder is string && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.owner == request.resource.data.owner
+          && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.members[request.auth.uid].role == 'edit'
+          && request.resource.data.createdBy == request.auth.uid));
       allow update: if signedIn() && (resource.data.owner == request.auth.uid
         || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle'])));
       allow delete: if signedIn() && resource.data.owner == request.auth.uid;
@@ -480,6 +484,11 @@ service cloud.firestore {
         allow read: if signedIn() && (fileData().owner == request.auth.uid || request.auth.uid in fileData().memberIds);
         allow write: if signedIn() && (fileData().owner == request.auth.uid || fileData().members[request.auth.uid].role == 'edit');
       }
+    }
+    match /sharedFolders/{id} {
+      allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
+      allow create: if isTeacher() && request.resource.data.owner == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.owner == request.auth.uid;
     }
     // Recordings of the sounds of English. The default set, for everyone, is kept by the app's
     // owner; each teacher can add their own, which learners hear in that teacher's tasks.

@@ -1,12 +1,13 @@
 import { ask } from '../lib/ask';
 import { useAuth } from '../lib/auth';
-import { KIND_LABEL, newSharedDoc, removeSharedDoc, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
-import { DocIcon } from './DocPage';
+import { KIND_LABEL, moveToFolder, newDocInFolder, newFolder, newSharedDoc, removeFolder, removeSharedDoc, renameFolder, sendFolderInChat, shareFolder, unshareFolder, useFolderDocs, useFolders, useMyDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
+import { DocIcon, SharePeople } from './DocPage';
+import { useDirectory } from '../lib/directory';
 import { exportLesson } from '../lib/textformat';
 import { openMenu } from '../components/ContextMenu';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { allTeacherClasses, canEdit } from '../lib/coteach';
@@ -226,19 +227,16 @@ export function ArchiveTasks({ uid }: { uid: string }) {
   );
 }
 
-// Documents and slides in the teacher's own files: written with colleagues or learners, shared
-// person by person. Each opens in its own tab.
-function FileDocs({ uid }: { uid: string }) {
-  const { user } = useAuth();
-  const { mine, withMe } = useMyDocs(uid);
-  const make = async (kind: DocKind) => {
-    const w = window.open('about:blank', '_blank');
-    const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, kind);
-    if (w) w.location.href = `/doc/${id}`;
-    else window.location.href = `/doc/${id}`;
-  };
-  const card = (d: SharedDoc, shared: boolean) => (
-    <a key={d.id} href={`/doc/${d.id}`} target="_blank" rel="noopener" className={'al-doc fd-doc k-' + d.kind} onContextMenu={(e) => !shared && openMenu(e, [{ label: 'Delete', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone it is shared with?`).then((ok) => void (ok && removeSharedDoc(d.id))) }])}>
+// Documents, slides, flashcards and reading in the teacher's own files, and shared folders.
+// Each file opens in its own tab.
+function DocCard({ d, shared, folders }: { d: SharedDoc; shared: boolean; folders?: SharedFolder[] }) {
+  const menu = [
+    ...(!shared && folders?.length ? folders.filter((f) => f.id !== d.folder).map((f) => ({ label: `Move to ${f.name}`, onClick: () => void moveToFolder(d, f) })) : []),
+    ...(!shared && d.folder ? [{ label: 'Move out of the folder', onClick: () => void moveToFolder(d, null) }] : []),
+    ...(!shared ? [{ label: 'Delete', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone it is shared with?`).then((ok) => void (ok && removeSharedDoc(d.id))) }] : []),
+  ];
+  return (
+    <a href={`/doc/${d.id}`} target="_blank" rel="noopener" className={'al-doc fd-doc k-' + d.kind} onContextMenu={(e) => menu.length && openMenu(e, menu)}>
       <span className={'al-doc-art k-' + d.kind}>
         {d.kind === 'flash' || d.kind === 'pd' ? (
           <DocIcon kind={d.kind} />
@@ -266,31 +264,122 @@ function FileDocs({ uid }: { uid: string }) {
       </span>
     </a>
   );
+}
+
+function NewButtons({ make }: { make: (k: DocKind) => void }) {
+  return (
+    <span className="fd-new">
+      {(['doc', 'slides', 'flash', 'pd'] as DocKind[]).map((k) => (
+        <button key={k} type="button" className="btn" onClick={() => make(k)}>
+          + {k === 'doc' ? 'Document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
+        </button>
+      ))}
+    </span>
+  );
+}
+const openNew = async (p: Promise<string>) => {
+  const w = window.open('about:blank', '_blank');
+  const id = await p;
+  if (w) w.location.href = `/doc/${id}`;
+  else window.location.href = `/doc/${id}`;
+};
+
+function FolderView({ f, uid, onBack, folders }: { f: SharedFolder; uid: string; onBack: () => void; folders: SharedFolder[] }) {
+  const { user } = useAuth();
+  const dir = useDirectory();
+  const docs = useFolderDocs(f, uid);
+  const [sharing, setSharing] = useState(false);
+  const [name, setName] = useState(f.name);
+  const own = f.owner === uid;
+  const canAdd = own || f.members?.[uid]?.role === 'edit';
+  const others = Object.keys(f.members ?? {}).length;
+  return (
+    <section className="fd">
+      <div className="fd-head">
+        <span className="fd-crumbs">
+          <button type="button" className="btn link" onClick={onBack}>
+            Your documents
+          </button>
+          <span aria-hidden="true">›</span>
+          {own ? <input className="fd-name" value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name !== f.name && void renameFolder(f, name)} aria-label="Folder name" /> : <b className="fd-name">{f.name}</b>}
+        </span>
+        {own && (
+          <button type="button" className="btn primary" onClick={() => setSharing(true)}>
+            Share the folder
+          </button>
+        )}
+      </div>
+      <span className="hint">
+        {own ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}. ` : 'Only you so far. ') : `${f.ownerName}’s folder. `}
+        Everything in it is shared with everyone in it{own ? ', and uses your space' : `, and uses ${f.ownerName.split(' ')[0]}’s space`}.
+      </span>
+      {canAdd && <NewButtons make={(k) => void openNew(newDocInFolder(f, { uid, name: user?.displayName || 'Teacher' }, k))} />}
+      {docs && docs.length > 0 ? <div className="al-grid">{docs.map((d) => <DocCard key={d.id} d={d} shared={d.owner !== uid} folders={folders} />)}</div> : <span className="hint fd-none">{docs ? 'Nothing in this folder yet.' : ''}</span>}
+      {own && (
+        <button type="button" className="btn link small set-danger fd-del" onClick={() => void ask(`Delete the folder “${f.name}”? The files in it stay in your documents.`).then((ok) => ok && void Promise.all((docs ?? []).map((d) => moveToFolder(d, null))).then(() => removeFolder(f)).then(onBack))}>
+          Delete the folder
+        </button>
+      )}
+      {sharing && (
+        <SharePeople
+          title={`Share the folder “${f.name}”`}
+          ownerName={f.ownerName}
+          members={f.members ?? {}}
+          chatLabel="Send them a message about the folder"
+          onShare={async (people, role, tell, note) => {
+            await shareFolder(f, people, role, docs ?? []);
+            if (tell && dir) await sendFolderInChat(f, dir.me, people, docs ?? [], note);
+          }}
+          onRemove={(k) => void unshareFolder(f, k, docs ?? [])}
+          onClose={() => setSharing(false)}
+        />
+      )}
+    </section>
+  );
+}
+
+function FileDocs({ uid }: { uid: string }) {
+  const { user } = useAuth();
+  const { mine, withMe } = useMyDocs(uid);
+  const folders = useFolders(uid);
+  const [qs, setQs] = useSearchParams();
+  const openId = qs.get('folder') ?? '';
+  const allFolders = [...(folders.mine ?? []), ...(folders.withMe ?? [])];
+  const open = allFolders.find((f) => f.id === openId);
+  const setOpen = (id: string) => setQs((q) => (id ? q.set('folder', id) : q.delete('folder'), q), { replace: true });
+  if (open) return <FolderView f={open} uid={uid} onBack={() => setOpen('')} folders={folders.mine ?? []} />;
+  const loose = (mine ?? []).filter((d) => !d.folder);
+  const sharedLoose = (withMe ?? []).filter((d) => !d.folder);
   return (
     <section className="fd">
       <div className="fd-head">
         <h2 className="fd-h">Your documents</h2>
-        <span className="fd-new">
-          <button type="button" className="btn" onClick={() => void make('doc')}>
-            + New document
-          </button>
-          <button type="button" className="btn" onClick={() => void make('slides')}>
-            + New slides
-          </button>
-          <button type="button" className="btn" onClick={() => void make('flash')}>
-            + New flashcards
-          </button>
-          <button type="button" className="btn" onClick={() => void make('pd')}>
-            + New PD reading
-          </button>
-        </span>
+        <NewButtons make={(k) => void openNew(newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k))} />
       </div>
-      <span className="hint">Documents, slides, flashcard sets and reading notes. Write with colleagues or learners. Share each one with the people you choose, or send it in a chat. Each opens in its own tab.</span>
-      {mine && mine.length > 0 ? <div className="al-grid">{mine.map((d) => card(d, false))}</div> : <span className="hint fd-none">{mine ? 'No documents of your own yet.' : ''}</span>}
-      {withMe && withMe.length > 0 && (
+      <span className="hint">Documents, slides, flashcard sets and reading notes. Share each one with the people you choose, or put them in a shared folder. Each opens in its own tab.</span>
+      <div className="fd-folders">
+        {allFolders.map((f) => (
+          <button key={f.id} type="button" className="fd-folder" onClick={() => setOpen(f.id)}>
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z" fill="currentColor" />
+              <circle cx="15.5" cy="13" r="1.8" fill="#fff" />
+              <path d="M12.6 17c.4-1.6 1.6-2.4 2.9-2.4s2.5.8 2.9 2.4" stroke="#fff" strokeWidth="1.3" fill="none" />
+            </svg>
+            <span>
+              <b>{f.name}</b>
+              <span className="hint">{f.owner === uid ? `${Object.keys(f.members ?? {}).length ? `Shared with ${Object.keys(f.members).length}` : 'Only you'}` : `From ${f.ownerName}`}</span>
+            </span>
+          </button>
+        ))}
+        <button type="button" className="fd-folder fd-folder-new" onClick={async () => setOpen(await newFolder({ uid, name: user?.displayName || 'Teacher' }, 'Shared folder'))}>
+          <span>+ New shared folder</span>
+        </button>
+      </div>
+      {loose.length > 0 ? <div className="al-grid">{loose.map((d) => <DocCard key={d.id} d={d} shared={false} folders={folders.mine ?? []} />)}</div> : <span className="hint fd-none">{mine ? 'No documents of your own yet.' : ''}</span>}
+      {sharedLoose.length > 0 && (
         <>
           <h2 className="fd-h">Shared with you</h2>
-          <div className="al-grid">{withMe.map((d) => card(d, true))}</div>
+          <div className="al-grid">{sharedLoose.map((d) => <DocCard key={d.id} d={d} shared />)}</div>
         </>
       )}
       <h2 className="fd-h">In your classes</h2>

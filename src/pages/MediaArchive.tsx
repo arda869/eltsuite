@@ -576,7 +576,7 @@ export function MediaArchive() {
             <div className="ma-head">
               <div className="ma-head-text">
                 <h1 className="page-title">Collaborative documents</h1>
-                <span className="sub">The documents and slides your classes write together, and where each is used.</span>
+                <span className="sub">Your documents, slides, flashcards and reading notes, your shared folders, and what your classes write together.</span>
               </div>
             </div>
             <ArchiveDocs uid={uid} />

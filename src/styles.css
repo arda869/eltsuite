@@ -5720,3 +5720,25 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .pd-preview .hint { font-family: var(--sans); }
 .pd-form-acts { display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 860px) { .pd { grid-template-columns: 1fr; } .pd-side { position: static; max-height: none; } .pd-grid { grid-template-columns: 1fr 1fr; } .pd-f.wide { grid-column: span 2; } }
+
+/* The apps in the suite */
+.apps { position: relative; }
+.apps-btn { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+.apps-btn:hover, .apps-btn[aria-expanded='true'] { background: var(--surface); color: var(--ink); }
+.apps-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 80; width: 340px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 12px; border-radius: 20px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 24px 50px -20px rgba(0, 0, 0, 0.35); }
+.app-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px 10px; border-radius: 14px; text-align: center; text-decoration: none; color: inherit; }
+.app-tile:hover { background: var(--surface); }
+.app-ico { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; background: color-mix(in srgb, var(--app) 14%, var(--paper)); color: var(--app); }
+.app-tile b { font: 600 13px var(--sans); }
+.app-tile .hint { font-size: 10.5px; line-height: 1.3; }
+.app-tile.soon { opacity: 0.55; }
+.fd-folders { display: flex; flex-wrap: wrap; gap: 10px; }
+.fd-folder { display: flex; align-items: center; gap: 10px; min-width: 200px; padding: 10px 14px; border: 0; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); text-align: left; font: 14px var(--sans); color: inherit; cursor: pointer; }
+.fd-folder svg { color: #3667a6; flex: none; }
+.fd-folder > span { display: flex; flex-direction: column; }
+.fd-folder:hover { box-shadow: 0 0 0 1.5px var(--accent); }
+.fd-folder-new { justify-content: center; color: var(--muted); box-shadow: 0 0 0 1px var(--hair) inset; background: none; border: 1px dashed var(--hair); }
+.fd-crumbs { display: flex; align-items: center; gap: 8px; }
+.fd-name { font: 500 20px var(--serif); border: 0; background: none; color: var(--ink); padding: 2px 6px; border-radius: 6px; }
+input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
+.fd-del { align-self: flex-start; }

@@ -1,3 +1,4 @@
+import { AppGrid } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -52,6 +53,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
       {children}
       <div className="right" ref={ref}>
         <PhoneMessagesLink />
+        <AppGrid />
         <button className="avatar" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : initials(name)}
         </button>

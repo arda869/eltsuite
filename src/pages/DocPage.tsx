@@ -147,6 +147,25 @@ export function DocPage() {
 // Sharing: people and what each can do, with a chat message that carries the link.
 export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void }) {
   const dir = useDirectory();
+  return (
+    <SharePeople
+      title={`Share “${d.title}”`}
+      ownerName={d.ownerName}
+      members={d.members ?? {}}
+      extra={Object.entries(d.classes ?? {}).map(([k, c]) => ({ k, name: c.name, about: `Whole class, in a lesson · ${ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}` }))}
+      onShare={async (people, role, tell, note) => {
+        await shareWith(d, people, role);
+        if (tell && dir) await sendDocInChat(d, dir.me, people, note);
+      }}
+      onRole={(k, r) => void setMemberRole(d, k, r)}
+      onRemove={(k) => void unshare(d, k)}
+      onClose={onClose}
+    />
+  );
+}
+
+export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link' }: { title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+  const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
   const [role, setRole] = useState<DocRole>('edit');
@@ -160,13 +179,12 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
     return [...all.values()];
   }, [dir]);
   const s = q.trim().toLowerCase();
-  const found = people.filter((p) => !d.members?.[p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
+  const found = people.filter((p) => !members?.[p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
   const go = async () => {
-    if (!dir || !picked.length) return;
+    if (!picked.length) return;
     setBusy(true);
     try {
-      await shareWith(d, picked, role);
-      if (tell) await sendDocInChat(d, dir.me, picked, note);
+      await onShare(picked, role, tell, note);
       setDone(`Shared with ${picked.map((p) => p.name.split(' ')[0]).join(', ')}.`);
       setPicked([]);
       setNote('');
@@ -176,11 +194,11 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
     }
     setBusy(false);
   };
-  const members = Object.entries(d.members ?? {});
+  const list = Object.entries(members ?? {});
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog dp-dialog" role="dialog" aria-label={`Share ${d.title}`}>
-        <h2>Share “{d.title}”</h2>
+      <div className="dialog dp-dialog" role="dialog" aria-label={title}>
+        <h2>{title}</h2>
         <div className="dp-add">
           <span className="dp-chips">
             {picked.map((p) => (
@@ -216,7 +234,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
             </span>
             <label className="switch-row">
               <span>
-                Send them a message with the link
+                {chatLabel}
                 <span className="hint">In your chat with each of them</span>
               </span>
               <input type="checkbox" checked={tell} onChange={() => setTell((v) => !v)} />
@@ -230,29 +248,33 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
         {done && <span className="hint dp-done">{done}</span>}
         <div className="dp-members">
           <span className="dp-mem">
-            <b>{d.ownerName || 'You'}</b>
+            <b>{ownerName || 'You'}</b>
             <span className="hint">Owner</span>
           </span>
-          {members.map(([k, m]) => (
+          {list.map(([k, m]) => (
             <span key={k} className="dp-mem">
               <b>{m.name}</b>
               <span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span>
-              <select value={m.role} onChange={(e) => void setMemberRole(d, k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
-                {ROLES.map((r) => (
-                  <option key={r.k} value={r.k}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-              <button type="button" className="btn link small" onClick={() => void unshare(d, k)}>
+              {onRole ? (
+                <select value={m.role} onChange={(e) => onRole(k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
+                  {ROLES.map((r) => (
+                    <option key={r.k} value={r.k}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="hint">{ROLES.find((r) => r.k === m.role)?.label}</span>
+              )}
+              <button type="button" className="btn link small" onClick={() => onRemove(k)}>
                 Remove
               </button>
             </span>
           ))}
-          {Object.entries(d.classes ?? {}).map(([k, c]) => (
-            <span key={k} className="dp-mem">
-              <b>{c.name}</b>
-              <span className="hint">Whole class, in a lesson · {ROLES.find((r) => r.k === c.role)?.label.toLowerCase()}</span>
+          {extra.map((x) => (
+            <span key={x.k} className="dp-mem">
+              <b>{x.name}</b>
+              <span className="hint">{x.about}</span>
             </span>
           ))}
         </div>

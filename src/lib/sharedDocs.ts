@@ -30,6 +30,8 @@ export type SharedDoc = {
   memberIds: string[];
   classes?: Record<string, { role: DocRole; name: string }>;
   size?: number; // bytes the document takes, counted towards the owner's space
+  folder?: string; // a shared folder it is in
+  createdBy?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -119,4 +121,99 @@ export async function measureDoc(d: SharedDoc, extra = 0) {
   const size = (v ? JSON.stringify(v).length : 0) + extra;
   if (Math.abs(size - (d.size ?? 0)) > 512) await updateDoc(doc(col, d.id), { size }).catch(() => {});
   return size;
+}
+
+// ------------------------------------------------------------------ shared folders
+// A folder shared with colleagues or learners: everything in it is shared with everyone in it,
+// and belongs to the folder's owner, whose space it uses.
+
+export type SharedFolder = { id: string; owner: string; ownerName: string; name: string; members: SharedDoc['members']; memberIds: string[] };
+const fcol = collection(db, 'sharedFolders');
+
+export async function newFolder(owner: { uid: string; name: string }, name: string) {
+  const r = await addDoc(fcol, { owner: owner.uid, ownerName: owner.name, name: name.trim() || 'Shared folder', members: {}, memberIds: [], createdAt: serverTimestamp() });
+  return r.id;
+}
+export function useFolders(uid?: string) {
+  const [mine, setMine] = useState<SharedFolder[] | null>(null);
+  const [withMe, setWithMe] = useState<SharedFolder[] | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    const map = (s: { docs: { id: string; data: () => unknown }[] }) => s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SharedFolder, 'id'>) }));
+    const a = onSnapshot(query(fcol, where('owner', '==', uid)), (s) => setMine(map(s)), () => setMine([]));
+    const b = onSnapshot(query(fcol, where('memberIds', 'array-contains', uid)), (s) => setWithMe(map(s)), () => setWithMe([]));
+    return () => (a(), b());
+  }, [uid]);
+  return { mine, withMe };
+}
+// Docs in a folder: the owner's, plus those shared with me.
+export function useFolderDocs(f?: SharedFolder | null, uid?: string) {
+  const [list, setList] = useState<SharedDoc[] | null>(null);
+  const folderId = f?.id;
+  const own = f?.owner === uid;
+  useEffect(() => {
+    if (!folderId || !uid) return;
+    return onSnapshot(
+      own ? query(col, where('owner', '==', uid), where('folder', '==', folderId)) : query(col, where('memberIds', 'array-contains', uid), where('folder', '==', folderId)),
+      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SharedDoc, 'id'>) }))),
+      () => setList([]),
+    );
+  }, [folderId, uid, own]);
+  return list;
+}
+// A new file in a folder belongs to the folder's owner and is shared with everyone in it.
+export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind) {
+  const members = { ...(f.members ?? {}) } as SharedDoc['members'];
+  if (me.uid !== f.owner) members[me.uid] = f.members?.[me.uid] ?? { role: 'edit', name: me.name, kind: 'teacher' };
+  delete members[f.owner];
+  const r = await addDoc(col, {
+    owner: f.owner,
+    ownerName: f.ownerName,
+    createdBy: me.uid,
+    folder: f.id,
+    title: kind === 'pd' ? 'PD reading' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`,
+    kind,
+    docKey: 'f' + newId() + newId(),
+    members,
+    memberIds: Object.keys(members),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return r.id;
+}
+// Sharing a folder shares everything in it.
+export async function shareFolder(f: SharedFolder, people: Person[], role: DocRole, docs: SharedDoc[]) {
+  const add: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner' }> = {};
+  for (const p of people) add[p.key] = { role, name: p.name, kind: p.role };
+  const memberIds = [...new Set([...(f.memberIds ?? []), ...people.map((p) => p.key)])];
+  await updateDoc(doc(fcol, f.id), { members: { ...(f.members ?? {}), ...add }, memberIds });
+  await Promise.all(docs.filter((d) => d.owner === f.owner).map((d) => updateDoc(doc(col, d.id), { members: { ...(d.members ?? {}), ...add }, memberIds: [...new Set([...(d.memberIds ?? []), ...people.map((p) => p.key)])] })));
+}
+export async function unshareFolder(f: SharedFolder, uid: string, docs: SharedDoc[]) {
+  const { [uid]: _, ...rest } = f.members ?? {};
+  void _;
+  await updateDoc(doc(fcol, f.id), { members: rest, memberIds: (f.memberIds ?? []).filter((x) => x !== uid) });
+  await Promise.all(docs.filter((d) => d.memberIds?.includes(uid)).map((d) => unshare(d, uid)));
+}
+export const renameFolder = (f: SharedFolder, name: string) => updateDoc(doc(fcol, f.id), { name: name.trim() || f.name });
+export async function moveToFolder(d: SharedDoc, f: SharedFolder | null) {
+  if (!f) return updateDoc(doc(col, d.id), { folder: deleteField() });
+  const members = { ...(d.members ?? {}), ...(f.members ?? {}) };
+  await updateDoc(doc(col, d.id), { folder: f.id, members, memberIds: Object.keys(members) });
+}
+export const removeFolder = (f: SharedFolder) => deleteDoc(doc(fcol, f.id));
+export async function sendFolderInChat(f: SharedFolder, me: Person, people: Person[], docs: SharedDoc[], note = '') {
+  for (const p of people) {
+    const chatId = await openChat(me, [p]);
+    const c = { id: chatId, ...((await getDoc(doc(db, 'chats', chatId))).data() as Omit<Chat, 'id'>) } as Chat;
+    const text = note.trim() || `I shared the folder “${f.name}” with you.`;
+    // Teachers open the folder in Files; learners get a link to each file.
+    const links = p.role === 'teacher' ? [{ label: `Open ${f.name}`, href: `${window.location.origin}/archive?folder=${f.id}` }] : docs.map((d) => ({ label: d.title, href: docLink(d.id) }));
+    await sendMsg(c, me, {
+      text: `${text} ${links.map((l) => l.href).join(' ')}`,
+      content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }, ...links.map((l) => ({ type: 'paragraph', content: [{ type: 'text', text: l.label, marks: [{ type: 'link', attrs: { href: l.href } }] }] }))] },
+      blocks: 0,
+      mentions: [p.key],
+    });
+  }
 }
