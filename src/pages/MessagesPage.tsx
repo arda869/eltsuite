@@ -1,5 +1,6 @@
 import { ask } from '../lib/ask';
 import { FileIcon, type FileKind } from '../components/FileIcon';
+import { startSessionWith } from './StudioSession';
 import { isProxyTab } from '../lib/proxy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -390,6 +391,11 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
           <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
         </div>
         <span className="chat-actions">
+          {teacher && colleaguesHere.length > 0 && (
+            <button type="button" className="btn small-btn icon-only" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
+              <UiIcon name="mic" size={14} />
+            </button>
+          )}
           {teacher && colleaguesHere.length > 0 && (
             <button type="button" className="btn small-btn" onClick={() => setSharing(true)} data-tip="A lesson, task, document or media, for colleagues to copy">
               <UiIcon name="link" size={14} /> Share material

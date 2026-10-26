@@ -4,6 +4,7 @@ import { ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibra
 import { moveLibTasks, newLibTask, removeLibTask, renameLibTask, useLibTasks, type LibTask } from '../lib/libtasks';
 import { ChainIcon, FolderDetail, TaskDetail, TaskWindow } from './LibraryParts';
 import { useDismiss } from '../lib/useDismiss';
+import { RecordTogether } from './StudioSession';
 import { ShareDialog } from '../components/ShareDialog';
 import { Link, Navigate } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
@@ -115,6 +116,7 @@ export function MediaArchive() {
   const [editing, setEditing] = useState<string | null>(null); // a library task open in its window
   const [renaming, setRenaming] = useState<string | null>(null); // an entry key or 'f:' + path
   const [filterOpen, setFilterOpen] = useState(false);
+  const [together, setTogether] = useState(false);
   const filterRef = useDismiss<HTMLSpanElement>(filterOpen, () => setFilterOpen(false));
   const space = uid ? 'user:' + uid : '';
   const quality = (): PicQuality => {
@@ -604,6 +606,9 @@ export function MediaArchive() {
                 <button type="button" className="btn ma-new-folder" onClick={() => void newFolder()}>
                   <UiIcon name="folder" size={15} /> New folder
                 </button>
+                <button type="button" className="btn ma-new-folder" onClick={() => setTogether(true)} data-tip="Record a dialogue with colleagues, each on their own device">
+                  <UiIcon name="mic" size={15} /> Record together
+                </button>
                 <button type="button" className="btn ma-new-folder" onClick={() => void newTask()}>
                   <UiIcon name="task" size={15} /> New task
                 </button>
@@ -817,6 +822,7 @@ export function MediaArchive() {
         )}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
+        {together && <RecordTogether onClose={() => setTogether(false)} />}
         {editTask && uid && <TaskWindow uid={uid} task={editTask} onClose={() => setEditing(null)} />}
       </div>
     </div>

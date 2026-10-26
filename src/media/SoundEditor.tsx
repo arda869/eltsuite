@@ -14,7 +14,8 @@ import { UiIcon } from '../components/UiIcon';
 // overlap. The script lane holds lines with a start and an end, which never overlap. Bring in
 // more files, or record a new track while the others play. Undo, and the usual shortcuts.
 
-export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File };
+// extra: more tracks to start with (a recording session: one per person), each at its own time.
+export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
 export type Use = { cls: string; lesson: string; task: string };
 export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress: (p: number) => void) => Promise<void> };
@@ -65,7 +66,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 
   // ------------------------------------------------------------ the project, with undo
   const initial = useMemo<Project>(() => {
-    const voice = { ...newTrack(source.recorded ? 'Recording' : 'Voice'), clips: [{ id: newId(), src: 'main', a: 0, b: length0, at: 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
+    const voice = { ...newTrack(source.extra || source.at !== undefined ? source.name : source.recorded ? 'Recording' : 'Voice'), clips: [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
     const marks = source.marks ?? [];
     const texts = source.script ?? [];
     const lines: Line[] = texts.map((text, i) => {
@@ -75,7 +76,13 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       const sp = /^\s*([A-Z][\p{L} .'-]{0,18}?)\s*:\s+(.+)$/u.exec(text);
       return { id: newId(), text: sp ? sp[2] : text, who: sp ? sp[1] : undefined, a, b: Math.max(a + 0.3, b) };
     });
-    return { tracks: [voice, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
+    const extras = (source.extra ?? []).map((x, i) => {
+      const id = 'extra' + i;
+      sources.current[id] = toMono(x.buffer);
+      names.current[id] = x.name;
+      return { ...newTrack(x.name), clips: [{ id: newId(), src: id, a: 0, b: x.buffer.duration, at: x.at, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }] };
+    });
+    return { tracks: [voice, ...extras, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [p, setP] = useState<Project>(initial);
   const past = useRef<Project[]>([]);
