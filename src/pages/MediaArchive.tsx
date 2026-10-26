@@ -1,3 +1,4 @@
+import { usePhone } from '../lib/useMedia';
 import { useMemo, useRef, useState } from 'react';
 import { ArchiveDocs, ArchiveShared, ArchiveTasks } from './ArchiveLibrary';
 import { ShareDialog } from '../components/ShareDialog';
@@ -416,6 +417,7 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
   const [editing, setEditing] = useState<SoundSource | 'loading' | null>(null);
   const [dl, setDl] = useState('');
   const [sharing, setSharing] = useState(false);
+  const phone = usePhone();
   const openEditor = async () => {
     if (!item.home) return;
     setEditing('loading');
@@ -499,7 +501,7 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
         >
           <UiIcon name={item.link ? 'link' : 'import'} size={14} /> {item.link ? 'Open the link' : 'Download'}
         </button>
-        {item.kind === 'audio' && !item.link && item.home && (
+        {item.kind === 'audio' && !item.link && item.home && !phone && (
           <button type="button" className="btn small-btn" onClick={openEditor} disabled={editing === 'loading'}>
             <UiIcon name="edit" size={14} /> {editing === 'loading' ? 'Opening…' : 'Edit the sound'}
           </button>

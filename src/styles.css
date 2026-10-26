@@ -4230,3 +4230,15 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .chat-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
 .msg-side .ma-search { flex: 0 0 auto; height: 36px; }
 .chat-editor.text-only .tool[aria-label="Insert gap"], .chat-editor.text-only .tool[aria-label="Insert multiple choice in line"], .chat-editor.text-only .tool[aria-label="Everything you can add, with pictures"], .chat-editor.text-only .slash { display: none !important; }
+
+/* Phones */
+@media (max-width: 640px) {
+  .topbar nav:not(.crumbs) { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; margin: 0 -4px; }
+  .topbar nav:not(.crumbs)::-webkit-scrollbar { display: none; }
+  .topbar nav:not(.crumbs) a { white-space: nowrap; flex: 0 0 auto; }
+  .mode-noedit { display: block; padding: 8px 12px; font-size: 12px; }
+}
+@media (max-width: 640px) {
+  /* Building and arranging lessons waits for a larger screen */
+  .item-move, .lessons-tools, .lessons .add-link, .lessons .inline-add, .topic-acts .icon-btn[aria-label^="Move topic"] { display: none !important; }
+}

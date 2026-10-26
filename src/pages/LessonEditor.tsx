@@ -1,3 +1,4 @@
+import { usePhone } from '../lib/useMedia';
 import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
@@ -131,6 +132,7 @@ export function LessonEditor() {
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
   const { user, profile } = useAuth();
   const viewer = roleIn(c, user?.uid) === 'viewer'; // read-only access (observer or substitute)
+  const phone = usePhone(); // on a phone, lessons are taught and looked at, not built
   useEffect(() => {
     if (viewer) setPreview(true);
   }, [viewer]);
@@ -439,6 +441,10 @@ export function LessonEditor() {
   });
 
   // The mode menu at the top right.
+  // A phone shows the learner view instead of the editor.
+  useEffect(() => {
+    if (phone && !preview && !(teachingHere && !editWhileTeaching)) (setEditWhileTeaching(false), setPreview(true));
+  }, [phone, preview, teachingHere, editWhileTeaching]);
   const mode: Mode = preview ? 'preview' : teachingHere && !editWhileTeaching ? (present ? 'present' : 'teach') : 'edit';
   async function startTeaching() {
     if (!teachingHere) await toggleTeaching();
@@ -710,6 +716,7 @@ export function LessonEditor() {
           ) : (
             <ModeMenu
               mode={mode === 'present' ? 'teach' : mode}
+              noEdit={phone}
               live={teachingHere}
               online={inLesson.length}
               onMode={changeMode}
@@ -987,7 +994,7 @@ export function LessonEditor() {
             ) : preview || (teachingHere && !editWhileTeaching) ? (
               <div className={'frame-inner' + (!preview && boardView ? ' on-board' : '')}>
                 <div className="frame-head" hidden={!preview && boardView}>
-                  {!preview && (
+                  {!preview && !phone && (
                     <button type="button" className="btn small-btn done-edit" onClick={() => setEditWhileTeaching(true)} data-tip="Change this task while the class stays live">
                       <UiIcon name="edit" size={14} /> Edit
                     </button>

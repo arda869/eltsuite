@@ -1,3 +1,4 @@
+import { usePhone } from '../../lib/useMedia';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
@@ -93,7 +94,8 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
   useEffect(() => watchFlags(docKey, setFlags, classId), [docKey, classId]);
   const locked = !!flags.lock && !teacher;
   const eff: CollabMode = locked ? 'view' : mode;
-  const writing = eff === 'edit';
+  const phone = usePhone();
+  const writing = eff === 'edit' && !phone; // arranging slides needs a larger screen
 
   const [slides, setSlides] = useState<Slide[]>([]);
   const [synced, setSynced] = useState(false);
@@ -525,6 +527,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
           <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && void addPicture(e.target.files[0]), (e.target.value = ''))} />
         </div>
       )}
+      {phone && eff === 'edit' && <div className="cd-lockbar for-teacher">To change the slides, open them on a tablet or a computer. Here you can look, present and comment.</div>}
       {flags.lock && (
         <div className={'cd-lockbar' + (teacher ? ' for-teacher' : '')} role="status">
           <UiIcon name="lock" size={16} />
