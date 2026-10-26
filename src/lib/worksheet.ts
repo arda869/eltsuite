@@ -28,7 +28,9 @@ export type Run = {
   stress?: { syl: string[]; on: number; style: string };
   icon?: { name: string; tone: string };
   sym?: { text: string; shape: string; tone: string };
-  pic?: { src: string; size: string; label: string; alt?: string; key?: string; crop?: string; filter?: string }; // key: the picture as edited (crop, colour)
+  pic?: { src: string; size: string; label: string; alt?: string; key?: string; crop?: string; filter?: string; pts?: { x: number; y: number }[] };
+  kw?: boolean; // a key word in a frame, as on screen
+  stem?: boolean; // the word to change, in a small grey tag // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
   letters?: string; // letter gaps: the pattern, "_" for each letter to write
 };
@@ -37,9 +39,9 @@ export type Block =
   | { kind: 'box'; words: string[]; label: string }
   | { kind: 'match'; left: string[]; right: string[]; n: number }
   | { kind: 'lines'; n: number; count: number; prompt?: string }
-  | { kind: 'table'; rows: string[][] }
+  | { kind: 'table'; rows: string[][]; head?: boolean }
   | { kind: 'note'; text: string }
-  | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[] }
+  | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[]; box?: Record<string, unknown> }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
   | { kind: 'draw'; prompt?: string }
@@ -56,7 +58,7 @@ export type Paper = 'A4' | 'Letter' | 'A5';
 export type MediaMap = Record<string, { data: string; w: number; h: number }>;
 // Sounds and videos: a QR code that opens them, and their script for the answer key.
 export type MediaInfo = { url: string; svg: string; png: string; title: string; video: boolean; script: string[] };
-export type Options = { header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string };
+export type Options = { header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string; size?: 'standard' | 'large' | 'xl'; clear?: boolean };
 
 const LET = 'abcdefghijklmnop';
 const UP = 'ABCDEFGHIJKLMNOP';
@@ -106,7 +108,7 @@ export function flattenTask(t: ExportTask): WsTask {
             const correct: number[] = Array.isArray(a.correct) ? a.correct : [a.correct];
             const ans = node.type === 'gap' ? (a.answers ?? [])[0] ?? '' : correct.map((i) => opts[i]).filter(Boolean).join(', ');
             out.push({ num: 0 }, { t: ans, italic: true, u: true, ex: true });
-            if (a.stem) out.push({ t: ` ${a.stem} `, bold: true });
+            if (a.stem) out.push({ t: ' ' }, { t: String(a.stem), bold: true, kw: true, stem: true }, { t: ' ' });
             break;
           }
           if (node.type === 'choice') {
@@ -125,7 +127,7 @@ export function flattenTask(t: ExportTask): WsTask {
           answers.push({ n, text: (a.answers ?? []).join(' / ') });
           if (a.letters && a.pattern) out.push({ num: n }, { letters: String(a.pattern) });
           else out.push({ num: n }, { blank: Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
-          if (a.stem) out.push({ t: ` ${a.stem} `, bold: true });
+          if (a.stem) out.push({ t: ' ' }, { t: String(a.stem), bold: true, kw: true, stem: true }, { t: ' ' });
           break;
           }
         case 'dropgap': {
@@ -235,6 +237,8 @@ export function flattenTask(t: ExportTask): WsTask {
         const d = a.data ?? {};
         if (kind === 'speaking') {
           cur.push({ kind: 'p', runs: [{ t: 'Speaking: ' + (d.prompt ?? ''), bold: true }] });
+          const imgs = ((d.images ?? []) as unknown[]).map((x) => (typeof x === 'string' ? x : String((x as { src?: string })?.src ?? ''))).filter(Boolean);
+          if (imgs.length) cur.push({ kind: 'p', runs: imgs.map((src) => ({ pic: { src, size: imgs.length > 1 ? 'm' : 'l', label: '' } })) });
           (d.questions ?? []).filter(Boolean).forEach((q: string) => cur.push({ kind: 'p', runs: [{ t: q }], list: 'bullet' }));
           return;
         }
@@ -249,12 +253,13 @@ export function flattenTask(t: ExportTask): WsTask {
             cur.push({ kind: 'lines', n, count: 1 });
             break;
           case 'categorise':
-            cur.push({ kind: 'box', words: pub.items, label: 'Put each word in the right column' });
-            cur.push({ kind: 'table', rows: [pub.cats, pub.cats.map(() => ''), pub.cats.map(() => ''), pub.cats.map(() => '')] });
+            cur.push({ kind: 'p', runs: [pre, { t: 'Put each word in the right column.' }] });
+            cur.push({ kind: 'box', words: pub.items, label: 'Words' });
+            cur.push({ kind: 'table', head: true, rows: [pub.cats, ...Array.from({ length: Math.max(3, Math.ceil(pub.items.length / Math.max(1, pub.cats.length)) + 1) }, () => pub.cats.map(() => ''))] });
             break;
           case 'transform':
             cur.push({ kind: 'p', runs: [pre, { t: d.first ?? '' }] });
-            cur.push({ kind: 'p', runs: [{ t: String(d.keyWord ?? '').toUpperCase(), bold: true }] });
+            cur.push({ kind: 'p', runs: [{ t: String(d.keyWord ?? '').toUpperCase(), bold: true, kw: true }] });
             cur.push({ kind: 'p', runs: [{ t: (d.before ?? '') + ' ' }, { blank: 24 }, { t: ' ' + (d.after ?? '') }] });
             break;
           case 'highlight':
@@ -266,11 +271,14 @@ export function flattenTask(t: ExportTask): WsTask {
             cur.push({ kind: 'lines', n, count: 1 });
             break;
           case 'label':
-            cur.push({ kind: 'p', runs: [pre, { t: `Label the picture (see the screen): ${pub.points.map((_: unknown, i: number) => i + 1).join(', ')}` }] });
+            cur.push({ kind: 'p', runs: [pre, { t: 'Write the right label next to each number.' }] });
+            if (pub.image) cur.push({ kind: 'p', runs: [{ pic: { src: String(pub.image), size: 'full', label: '', pts: pub.points.map((p: { x: number; y: number }) => ({ x: p.x, y: p.y })) } }] });
             cur.push({ kind: 'box', words: pub.labels, label: 'Labels' });
+            cur.push({ kind: 'p', runs: pub.points.flatMap((_: unknown, i: number) => [{ t: `${i ? '    ' : ''}${i + 1} ` }, { blank: 12 }]) });
             break;
           case 'odd':
-            cur.push({ kind: 'p', runs: [pre, { t: 'Circle the odd one out: ' }, { t: pub.words.join('   ') }] });
+            cur.push({ kind: 'p', runs: [pre, { t: 'Circle the odd one out.' }] });
+            cur.push({ kind: 'box', words: pub.words, label: 'Odd one out' });
             break;
           case 'gapped':
             cur.push({ kind: 'p', runs: [pre, { t: String(pub.text ?? '').replace(/\{\{(\d+)\}\}/g, ' [ $1 ] ') }] });
@@ -317,7 +325,7 @@ export function flattenTask(t: ExportTask): WsTask {
         cur = inner;
         node.content?.forEach((c) => walk(c));
         cur = prev;
-        if (inner.length) cur.push({ kind: 'callout', label: String(a.label ?? (node.type === 'revealBox' ? a.title ?? '' : '')), tone: String(a.tone ?? 'grey'), symbol: String(a.symbol ?? ''), style: String(a.style ?? 'box'), blocks: inner });
+        if (inner.length) cur.push({ kind: 'callout', label: String(a.label ?? (node.type === 'revealBox' ? a.title ?? '' : '')), tone: String(a.tone ?? 'grey'), symbol: String(a.symbol ?? ''), style: String(a.style ?? 'box'), blocks: inner, ...(node.type === 'textBox' ? { box: a } : {}) });
         return;
       }
       case 'randomPick': {
@@ -429,8 +437,11 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   };
   // Our fonts, embedded in the file so Word shows them even where they are not installed
   // (Google Docs has both as Google Fonts).
-  const SERIF = 'Fraunces';
-  const SANS = 'Karla';
+  // The clearer (dyslexia-friendly) version uses Verdana throughout, which every computer has.
+  const SERIF = opts.clear ? 'Verdana' : 'Fraunces';
+  const SANS = opts.clear ? 'Verdana' : 'Karla';
+  const K = { standard: 1, large: 1.2, xl: 1.4 }[opts.size ?? 'standard'];
+  const S = (n: number) => Math.round(n * K);
   const fontData = async (f: string) => new Uint8Array(await (await fetch(`/fonts/${f}`)).arrayBuffer()) as unknown as Buffer;
   const embedded = await Promise.all([fontData('Fraunces-Regular.ttf'), fontData('Karla-Regular.ttf')]).then(
     ([fr, ka]) => [
@@ -439,32 +450,32 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     ],
     () => [],
   );
-  const label = (t: string) => new TextRun({ text: t.toUpperCase(), bold: true, font: SANS, size: 15, color: '8A847D', characterSpacing: 30 });
+  const label = (t: string) => new TextRun({ text: t.toUpperCase(), bold: true, font: SANS, size: S(15), color: '8A847D', characterSpacing: 30 });
   const runsToDocx = (runs: Run[]) =>
     runs.flatMap((r) => {
       if (r.letters) return [new TextRun({ text: ' ' + Array.from(r.letters).map((c) => (c === '_' ? '_' : c === ' ' ? '  ' : c)).join(' ') + ' ', font: SANS })];
       if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.max(6, Math.min(18, Math.round(r.blank * 0.6)))), underline: {} })];
-      if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: 20 })];
+      if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: S(20) })];
       if (r.stack) return r.stack.map((o) => new TextRun({ text: '      ' + o, break: 1, font: SERIF }));
       if (r.num !== undefined) return [new TextRun({ text: ` ${r.num} `, bold: true, font: SERIF, color: ACC_INK })];
       const q = /^\s*\((\d+)\)\s*$/.exec(r.t ?? '');
-      if (q) return [new TextRun({ text: ` ${q[1]} `, bold: true, font: SANS, size: 16, color: ACC, superScript: false })];
+      if (q) return [new TextRun({ text: ` ${q[1]} `, bold: true, font: SANS, size: S(16), color: ACC, superScript: false })];
       const IPA_FONT = 'Segoe UI';
-      if (r.ipa) return [...(r.ipa.show ? [new TextRun({ text: (r.ipa.accent === 'GA' ? 'US' : 'UK') + ' ', bold: true, font: SANS, size: 14, color: ACC_INK })] : []), new TextRun({ text: `/${r.ipa.text}/`, font: IPA_FONT, color: '6F6A64' })];
+      if (r.ipa) return [...(r.ipa.show ? [new TextRun({ text: (r.ipa.accent === 'GA' ? 'US' : 'UK') + ' ', bold: true, font: SANS, size: S(14), color: ACC_INK })] : []), new TextRun({ text: `/${r.ipa.text}/`, font: IPA_FONT, color: '6F6A64' })];
       // Word stress: the stressed syllable in bold and underlined (Word has no box above a letter).
       if (r.stress) return r.stress.syl.map((sy, i) => new TextRun({ text: sy, font: SERIF, ...(i === r.stress!.on ? { bold: true, underline: {}, color: ACC_INK } : {}) }));
-      if (r.sym) return [new TextRun({ text: ` ${r.sym.text} `, bold: true, font: SANS, size: 16, border: { style: BorderStyle.SINGLE, size: 4, color: r.sym.tone === 'accent' ? ACC_INK : '3D3A36', space: 1 } })];
+      if (r.sym) return [new TextRun({ text: ` ${r.sym.text} `, bold: true, font: SANS, size: S(16), border: { style: BorderStyle.SINGLE, size: 4, color: r.sym.tone === 'accent' ? ACC_INK : '3D3A36', space: 1 } })];
       if (r.icon) return [];
       if (r.pic) {
         const m = opts.media?.[r.pic.key ?? r.pic.src];
-        if (!m) return [new TextRun({ text: `[picture${r.pic.label ? ' ' + r.pic.label : ''}]`, italics: true, color: '8A847D', font: SANS, size: 16 })];
+        if (!m) return [new TextRun({ text: `[picture${r.pic.label ? ' ' + r.pic.label : ''}]`, italics: true, color: '8A847D', font: SANS, size: S(16) })];
         const maxW = { s: 120, m: 200, l: 300, full: opts.columns === 1 ? 600 : 300 }[r.pic.size as 's' | 'm' | 'l' | 'full'] ?? 200;
         const w = Math.min(maxW, m.w);
         const h = Math.round((m.h / m.w) * w);
         const type = /^data:image\/png/.test(m.data) ? 'png' : /^data:image\/gif/.test(m.data) ? 'gif' : 'jpg';
         const bytes = Uint8Array.from(atob(m.data.split(',')[1] ?? ''), (c) => c.charCodeAt(0));
         return [
-          ...(r.pic.label ? [new TextRun({ text: ` ${r.pic.label} `, bold: true, font: SANS, size: 16, color: 'FFFFFF', shading: { type: 'clear' as never, color: 'auto', fill: ACC } }), new TextRun({ text: ' ' })] : []),
+          ...(r.pic.label ? [new TextRun({ text: ` ${r.pic.label} `, bold: true, font: SANS, size: S(16), color: 'FFFFFF', shading: { type: 'clear' as never, color: 'auto', fill: ACC } }), new TextRun({ text: ' ' })] : []),
           new ImageRun({ type, data: bytes, transformation: { width: w, height: h }, altText: { name: r.pic.label || 'Picture', description: r.pic.alt || '', title: r.pic.label || '' } }),
           new TextRun({ text: '  ' }),
         ];
@@ -495,10 +506,10 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       if (b.kind === 'p') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [...(b.list === 'number' && b.mark ? [new TextRun({ text: b.mark + '\t', bold: true, font: SANS, color: ACC_INK })] : []), ...runsToDocx(b.runs)], ...listParas(b), heading: b.heading ? HeadingLevel.HEADING_3 : undefined, spacing: b.runs.some((r) => r.pic) ? { after: 100 } : { after: 100, line: 320 } }));
       else if (b.kind === 'form') {
         if (b.title) out.push(new Paragraph({ keepNext: kn, keepLines: true, spacing: { after: 60 }, children: [new TextRun({ text: b.title, bold: true, font: SERIF })] }));
-        if (b.peer) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: 'Classmate’s name  ', bold: true, font: SANS, size: 16 }), new TextRun({ text: '\u00A0'.repeat(40), underline: {} })] }));
+        if (b.peer) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: 'Classmate’s name  ', bold: true, font: SANS, size: S(16) }), new TextRun({ text: '\u00A0'.repeat(40), underline: {} })] }));
         b.items.forEach((it, i) => {
           out.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 80, after: 30 }, children: [new TextRun({ text: ` ${i + 1} `, bold: true, font: SERIF, color: ACC_INK }), new TextRun({ text: it.prompt, font: SERIF })] }));
-          const line = (text: string) => out.push(new Paragraph({ keepNext: kn, keepLines: true, indent: { left: 360 }, children: [new TextRun({ text, font: 'Segoe UI Symbol', size: 22 })] }));
+          const line = (text: string) => out.push(new Paragraph({ keepNext: kn, keepLines: true, indent: { left: 360 }, children: [new TextRun({ text, font: 'Segoe UI Symbol', size: S(22) })] }));
           const ends = (mid: string) => line(`${it.low ? it.low + '   ' : ''}${mid}${it.high ? '   ' + it.high : ''}`);
           if (it.type === 'stars') ends('☆  '.repeat(Math.max(3, Math.min(10, it.points ?? 5))).trim());
           else if (it.type === 'faces') line('☹      😐      ☺');
@@ -526,9 +537,9 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
                       verticalAlign: 'center' as never,
                       margins: { top: 60, bottom: 60, left: 120, right: 0 },
                       children: [
-                        new Paragraph({ children: [new TextRun({ text: kind.toUpperCase(), bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 })] }),
-                        new Paragraph({ children: [new TextRun({ text: b.title, bold: true, font: SERIF, size: 22 })] }),
-                        new Paragraph({ children: [new TextRun({ text: info.url.replace(/^https?:\/\//, '').split('/')[0], font: SANS, size: 14, color: '8A847D' })] }),
+                        new Paragraph({ children: [new TextRun({ text: kind.toUpperCase(), bold: true, font: SANS, size: S(14), color: ACC, characterSpacing: 30 })] }),
+                        new Paragraph({ children: [new TextRun({ text: b.title, bold: true, font: SERIF, size: S(22) })] }),
+                        new Paragraph({ children: [new TextRun({ text: info.url.replace(/^https?:\/\//, '').split('/')[0], font: SANS, size: S(14), color: '8A847D' })] }),
                       ],
                     }),
                   ],
@@ -537,14 +548,14 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
             }),
             new Paragraph({ keepNext: kn, text: '' }),
           );
-        } else out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: (b.video ? 'VIDEO  ' : 'LISTENING  '), bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 }), new TextRun({ text: b.title, bold: true, font: SERIF })] }));
+        } else out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: (b.video ? 'VIDEO  ' : 'LISTENING  '), bold: true, font: SANS, size: S(14), color: ACC, characterSpacing: 30 }), new TextRun({ text: b.title, bold: true, font: SERIF })] }));
       } else if (b.kind === 'draw') {
         if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SERIF })] }));
         const dash = { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA' };
         out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: dash, bottom: dash, left: dash, right: dash, insideHorizontal: dash, insideVertical: dash }, rows: [new TableRow({ cantSplit: true, height: { value: 2600, rule: 'exact' as never }, children: [new TableCell({ children: [new Paragraph({ text: '' })] })] })] }), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       } else if (b.kind === 'glossary')
         out.push(
-          new Paragraph({ keepNext: kn, keepLines: true, spacing: { before: 100, after: 40 }, children: [new TextRun({ text: 'GLOSSARY', bold: true, font: SANS, size: 14, color: ACC_INK, characterSpacing: 30 })] }),
+          new Paragraph({ keepNext: kn, keepLines: true, spacing: { before: 100, after: 40 }, children: [new TextRun({ text: 'GLOSSARY', bold: true, font: SANS, size: S(14), color: ACC_INK, characterSpacing: 30 })] }),
           ...b.items.map(
             ({ word, d }) =>
               new Paragraph({
@@ -552,11 +563,11 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
                 keepLines: true,
                 spacing: { after: 30 },
                 children: [
-                  new TextRun({ text: word, bold: true, font: SERIF, size: 20 }),
-                  ...(d.pos ? [new TextRun({ text: ` (${d.pos})`, italics: true, font: SERIF, size: 20 })] : []),
-                  ...(d.ipa ? [new TextRun({ text: ` ${d.ipa}`, font: 'Segoe UI', size: 18, color: '6F6A64' })] : []),
-                  ...(d.meaning ? [new TextRun({ text: ` ${d.meaning}`, font: SERIF, size: 20 })] : []),
-                  ...(d.translation ? [new TextRun({ text: ` ${d.translation}`, italics: true, font: SERIF, size: 20, color: '6F6A64' })] : []),
+                  new TextRun({ text: word, bold: true, font: SERIF, size: S(20) }),
+                  ...(d.pos ? [new TextRun({ text: ` (${d.pos})`, italics: true, font: SERIF, size: S(20) })] : []),
+                  ...(d.ipa ? [new TextRun({ text: ` ${d.ipa}`, font: 'Segoe UI', size: S(18), color: '6F6A64' })] : []),
+                  ...(d.meaning ? [new TextRun({ text: ` ${d.meaning}`, font: SERIF, size: S(20) })] : []),
+                  ...(d.translation ? [new TextRun({ text: ` ${d.translation}`, italics: true, font: SERIF, size: S(20), color: '6F6A64' })] : []),
                 ],
               }),
           ),
@@ -564,11 +575,11 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       else if (b.kind === 'timeline') {
         const t = b.a;
         out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('TIMELINE  '), new TextRun({ text: [t.title, (t.items ?? []).map((i) => i.label).filter(Boolean).join(' · '), t.sentence].filter(Boolean).join(' — '), font: SERIF })], spacing: { after: 100 } }));
-      } else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
+      } else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: S(18) })] }));
       else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'callout') out.push(shaded(ACC_TINT, [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'lines') {
-        if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SANS, size: 16, color: '8A847D' })] }));
+        if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SANS, size: S(16), color: '8A847D' })] }));
         const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
         const rule = { style: BorderStyle.SINGLE, size: 4, color: 'C9C4BD' };
         out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: none, bottom: rule, left: none, right: none, insideHorizontal: rule, insideVertical: none }, rows: Array.from({ length: b.count }, () => new TableRow({ cantSplit: true, height: { value: 480, rule: 'atLeast' as never }, children: [new TableCell({ children: [new Paragraph({ text: '', keepNext: kn })] })] })) }), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
@@ -577,7 +588,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
-            rows: Array.from({ length: Math.max(b.left.length, b.right.length) }, (_, i) => new TableRow({ cantSplit: true, children: [new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.left[i] ? [new TextRun({ text: `${i + 1}  `, bold: true, color: ACC, font: SANS, size: 18 }), new TextRun({ text: b.left[i], font: SERIF }), new TextRun({ text: '   ______', font: SERIF })] : [] })] }), new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.right[i] ? [new TextRun({ text: `${LET[i]}  `, bold: true, color: '8A847D', font: SANS, size: 18 }), new TextRun({ text: b.right[i], font: SERIF })] : [] })] })] })),
+            rows: Array.from({ length: Math.max(b.left.length, b.right.length) }, (_, i) => new TableRow({ cantSplit: true, children: [new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.left[i] ? [new TextRun({ text: `${i + 1}  `, bold: true, color: ACC, font: SANS, size: S(18) }), new TextRun({ text: b.left[i], font: SERIF }), new TextRun({ text: '   ______', font: SERIF })] : [] })] }), new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.right[i] ? [new TextRun({ text: `${LET[i]}  `, bold: true, color: '8A847D', font: SANS, size: S(18) }), new TextRun({ text: b.right[i], font: SERIF })] : [] })] })] })),
           }),
         );
       else if (b.kind === 'table') out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: b.rows.map((r, ri) => new TableRow({ cantSplit: true, children: r.map((c) => new TableCell({ shading: ri === 0 ? { fill: 'F7EFE9', color: 'auto', type: 'clear' as never } : c === '■' ? { fill: 'E6E3DE', color: 'auto', type: 'clear' as never } : undefined, children: [new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: c === '■' ? '' : c, bold: ri === 0, font: ri === 0 ? SANS : SERIF, size: ri === 0 ? 18 : 22 })] })] })) })) }));
@@ -586,56 +597,56 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   };
   const children: (Paragraph | Table)[] = [];
   const tasks = items.flatMap((i) => (i.kind === 'task' ? [i.task] : []));
-  children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ________________________________' : ' ', font: SANS, size: 15, bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: 26, bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
-  children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: 30, bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: 15, bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 280 } }));
+  children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ________________________________' : ' ', font: SANS, size: S(15), bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: S(26), bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
+  children.push(new Paragraph({ shading: { fill: 'ECEBE7', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: S(30), bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: S(15), bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 280 } }));
   const body: (Paragraph | Table)[] = [];
-  const markRun = (n: number) => new TextRun({ text: `   _____ / ${n}`, font: SANS, size: 17, bold: true, color: '57534D' });
+  const markRun = (n: number) => new TextRun({ text: `   _____ / ${n}`, font: SANS, size: S(17), bold: true, color: '57534D' });
   let num = 0;
   let sec = '';
   let secMarks = 0;
   const closeSec = () => {
-    if (opts.marks && sec && secMarks) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 60, after: 200 }, children: [new TextRun({ text: `${sec} total`, font: SANS, size: 16, bold: true }), markRun(secMarks)] }));
+    if (opts.marks && sec && secMarks) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 60, after: 200 }, children: [new TextRun({ text: `${sec} total`, font: SANS, size: S(16), bold: true }), markRun(secMarks)] }));
     secMarks = 0;
   };
   for (const it of items) {
     if (it.kind === 'section') {
       closeSec();
       sec = it.title;
-      body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACC, space: 2 } }, children: [new TextRun({ text: it.title.toUpperCase(), font: SANS, size: 21, bold: true, color: ACC_INK, characterSpacing: 20 })] }));
+      body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACC, space: 2 } }, children: [new TextRun({ text: it.title.toUpperCase(), font: SANS, size: S(21), bold: true, color: ACC_INK, characterSpacing: 20 })] }));
       continue;
     }
     const t = it.task;
     num++;
     secMarks += t.marks;
-    body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: 23, color: ACC_INK }), ...(t.instrRuns ? runsToDocx(t.instrRuns) : [new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: 23 })])] }));
+    body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: S(23), color: ACC_INK }), ...(t.instrRuns ? runsToDocx(t.instrRuns) : [new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: S(23) })])] }));
     body.push(...toParas(t.blocks, true));
     body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 160 }, children: opts.marks && t.marks ? [markRun(t.marks)] : [] }));
   }
   closeSec();
   const grand = tasks.reduce((sum, t) => sum + t.marks, 0);
-  if (opts.marks && grand) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 120 }, children: [new TextRun({ text: 'TOTAL', font: SANS, size: 18, bold: true }), markRun(grand)] }));
+  if (opts.marks && grand) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 120 }, children: [new TextRun({ text: 'TOTAL', font: SANS, size: S(18), bold: true }), markRun(grand)] }));
   const keyParas: (Paragraph | Table)[] = [];
   const withNotes = !!opts.notes;
   if (opts.key || withNotes) {
-    keyParas.push(new Paragraph({ children: [new TextRun({ text: 'FOR THE TEACHER', font: SANS, size: 15, bold: true, color: ACC, characterSpacing: 40 })] }));
-    keyParas.push(new Paragraph({ children: [new TextRun({ text: opts.key && withNotes ? 'Answer key and notes' : opts.key ? 'Answer key' : 'Teacher’s notes', font: SERIF, size: 40, bold: true })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACC, space: 6 } }, spacing: { after: 200 } }));
+    keyParas.push(new Paragraph({ children: [new TextRun({ text: 'FOR THE TEACHER', font: SANS, size: S(15), bold: true, color: ACC, characterSpacing: 40 })] }));
+    keyParas.push(new Paragraph({ children: [new TextRun({ text: opts.key && withNotes ? 'Answer key and notes' : opts.key ? 'Answer key' : 'Teacher’s notes', font: SERIF, size: S(40), bold: true })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACC, space: 6 } }, spacing: { after: 200 } }));
     tasks.forEach((t, ti) => {
       const answers = opts.key ? t.answers : [];
       const notes = withNotes ? t.notes ?? '' : '';
       const scripts = opts.key ? (t.media ?? []).map((id) => opts.sounds?.[id]).filter((m): m is MediaInfo => !!m && m.script.length > 0) : [];
       if (!answers.length && !notes && !scripts.length) return;
       keyParas.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${ti + 1}  `, bold: true, color: ACC, font: SANS }), new TextRun({ text: t.title, bold: true, font: SERIF })] }));
-      answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: 18, color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
+      answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: S(18), color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
       scripts.forEach((m) =>
         keyParas.push(
-          new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: (m.video ? 'VIDEO SCRIPT' : 'AUDIOSCRIPT') + '  ', bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 }), new TextRun({ text: m.title, font: SANS, size: 16, color: '8A847D' })] }),
-          ...m.script.map((l) => new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: l, font: SERIF, size: 20 })] })),
+          new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: (m.video ? 'VIDEO SCRIPT' : 'AUDIOSCRIPT') + '  ', bold: true, font: SANS, size: S(14), color: ACC, characterSpacing: 30 }), new TextRun({ text: m.title, font: SANS, size: S(16), color: '8A847D' })] }),
+          ...m.script.map((l) => new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: l, font: SERIF, size: S(20) })] })),
         ),
       );
       if (notes)
         keyParas.push(
-          new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: 'NOTES', bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 })] }),
-          ...notes.split('\n').filter((l) => l.trim()).map((l) => new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: l, font: SANS, size: 19, color: '3D3A36' })] })),
+          new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: 'NOTES', bold: true, font: SANS, size: S(14), color: ACC, characterSpacing: 30 })] }),
+          ...notes.split('\n').filter((l) => l.trim()).map((l) => new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: l, font: SANS, size: S(19), color: '3D3A36' })] })),
         );
     });
   }
@@ -644,7 +655,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const cardParas: (Paragraph | Table)[] = [];
   if (cutCards.length) {
     const dash = { style: BorderStyle.DASHED, size: 6, color: '8D8983' };
-    cardParas.push(new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text: '\u2702\uFE0E  ', font: 'Segoe UI Symbol', size: 24, color: ACC_INK }), new TextRun({ text: 'Cards to cut out', font: SANS, size: 24, bold: true })] }));
+    cardParas.push(new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text: '\u2702\uFE0E  ', font: 'Segoe UI Symbol', size: S(24), color: ACC_INK }), new TextRun({ text: 'Cards to cut out', font: SANS, size: S(24), bold: true })] }));
     const rows: TableRow[] = [];
     for (let i = 0; i < cutCards.length; i += 2) {
       rows.push(
@@ -656,7 +667,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
             return new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
               margins: { top: 240, bottom: 240, left: 240, right: 240 },
-              children: c ? [new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: c.title.toUpperCase(), font: SANS, size: 18, bold: true, color: ACC, characterSpacing: 20 }), new TextRun({ text: `\tEx. ${c.ex}`, font: SANS, size: 13, color: '8D8983' })], tabStops: [{ type: 'right' as never, position: 4200 }] }), ...(toParas(c.blocks).filter((x) => x instanceof Paragraph) as Paragraph[])] : [new Paragraph('')],
+              children: c ? [new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: c.title.toUpperCase(), font: SANS, size: S(18), bold: true, color: ACC, characterSpacing: 20 }), new TextRun({ text: `\tEx. ${c.ex}`, font: SANS, size: S(13), color: '8D8983' })], tabStops: [{ type: 'right' as never, position: 4200 }] }), ...(toParas(c.blocks).filter((x) => x instanceof Paragraph) as Paragraph[])] : [new Paragraph('')],
             });
           }),
         }),
@@ -667,7 +678,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const SIZES: Record<string, { width: number; height: number }> = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 }, A5: { width: 8391, height: 11906 } };
   const doc = new Document({
     fonts: embedded,
-    styles: { default: { document: { run: { font: SERIF, size: opts.paper === 'A5' ? 20 : 22, color: '2F2C29' } } } },
+    styles: { default: { document: { run: { font: SERIF, size: S(opts.paper === 'A5' ? 20 : 22), color: '2F2C29' } } } },
     sections: [
       { properties: { page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children },
       { properties: { type: SectionType.CONTINUOUS, column: { count: opts.columns ?? 2, space: 500 }, page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children: body },

@@ -73,6 +73,31 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     }
   };
   const [marks, setMarks] = useState(true);
+  // Text size and a clearer (dyslexia-friendly) font for the print and Word file, remembered here.
+  const keep = (k: string, v: string) => {
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      /* ignore */
+    }
+  };
+  const [size, setSizeState] = useState<'standard' | 'large' | 'xl'>(() => {
+    try {
+      const v = localStorage.getItem('ll.wsSize');
+      return v === 'large' || v === 'xl' ? v : 'standard';
+    } catch {
+      return 'standard';
+    }
+  });
+  const setSize = (v: 'standard' | 'large' | 'xl') => (setSizeState(v), keep('ll.wsSize', v));
+  const [clear, setClearState] = useState(() => {
+    try {
+      return localStorage.getItem('ll.wsClear') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setClear = (v: boolean) => (setClearState(v), keep('ll.wsClear', v ? '1' : '0'));
   const [loadError, setLoadError] = useState('');
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -93,7 +118,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     getDoc(doc(db, 'classes', classId, 'items', itemId)).then((d) => d.exists() && setItem({ id: d.id, ...(d.data() as Omit<Item, 'id'>) }), () => {});
   }, [classId, itemId]);
   const isExam = item?.type === 'exam';
-  const look = () => ({ header, key, notes, qr, paper, columns, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
+  const look = () => ({ header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
   const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden);
   const ids = picked ?? new Set(visible.map((x) => x.i));
   const chosen = () => flattenWithSections(lesson!.tasks, ids);
@@ -220,6 +245,20 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
                 ))}
               </span>
             </div>
+            <div className="field" style={{ gap: 6 }}>
+              <span>Text size</span>
+              <span className="seg small-seg" role="radiogroup" aria-label="Text size" style={{ width: 260 }}>
+                {(['standard', 'large', 'xl'] as const).map((v) => (
+                  <button key={v} type="button" role="radio" aria-checked={size === v} className={size === v ? 'on' : ''} onClick={() => setSize(v)}>
+                    {{ standard: 'Standard', large: 'Large', xl: 'Extra large' }[v]}
+                  </button>
+                ))}
+              </span>
+            </div>
+            <label className="pop-check">
+              <input type="checkbox" checked={clear} onChange={() => setClear(!clear)} />
+              Clearer font (dyslexia-friendly): a plain, open typeface with a little more space between letters and lines
+            </label>
             <label className="pop-check">
               <input type="checkbox" checked={header} onChange={() => setHeader((v) => !v)} />
               Name box in the header

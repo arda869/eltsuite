@@ -1,3 +1,5 @@
+import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
+import appCss from '../styles.css?raw';
 import { timelineSvgString } from '../editor/Timeline';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -46,9 +48,11 @@ function runs(rs: Run[]) {
       if (r.sym) return symHtml(r.sym);
       if (r.pic) {
         const src = MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
-        return `<span class="pic pic-${esc(r.pic.size)}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}</span>`;
+        const dots = (r.pic.pts ?? []).map((p, i) => `<span class="pic-pt" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join('');
+        return `<span class="pic pic-${esc(r.pic.size)}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}</span>`;
       }
       let t = esc(r.t ?? '').replace(/\n/g, '<br>');
+      if (r.kw) return `<span class="kw${r.stem ? ' stem' : ''}">${t}</span>`;
       if (r.bold) t = `<b>${t}</b>`;
       if (r.italic) t = `<i>${t}</i>`;
       if (r.u) t = `<u>${t}</u>`;
@@ -128,12 +132,16 @@ function block(b: Block): string {
       return `<div class="match">${Array.from({ length: n }, (_, i) => `<span class="m-l">${b.left[i] ? `<b class="qn">${i + 1}</b>${esc(b.left[i])}<span class="m-ans"></span>` : ''}</span><span class="m-r">${b.right[i] ? `<b class="ml">${LET[i]}</b>${esc(b.right[i])}` : ''}</span>`).join('')}</div>`;
     }
     case 'table': {
+      // Sorting into columns: labelled columns with room to write, as on screen.
+      if (b.head) return `<div class="sortcols">${b.rows[0].map((c) => `<div class="sortcol"><span class="sortcol-h">${esc(c)}</span>${'<span class="line"></span>'.repeat(b.rows.length - 1)}</div>`).join('')}</div>`;
       const puzzle = b.rows.slice(1).every((r) => r.every((c) => c.length <= 2));
       return `<table class="${puzzle ? 'puzzle' : 'grid'}"><tbody>${b.rows
         .map((r, ri) => (ri === 0 && puzzle ? '' : `<tr>${r.map((c) => (ri === 0 ? `<th>${esc(c)}</th>` : c === '■' ? '<td class="blk"></td>' : `<td>${/^\d+$/.test(c) && puzzle ? `<i>${esc(c)}</i>` : esc(c)}</td>`)).join('')}</tr>`))
         .join('')}</tbody></table>`;
     }
     case 'callout': {
+      // Text boxes print exactly as they look on screen: the same drawing and the same styles.
+      if (b.box) return boxHtml(b.box, b.blocks.map(block).join(''));
       // emails, web pages and notes become a framed text in a sans font, like a coursebook "realia" box;
       // rule and tip boxes get a light grey tint with their label
       const realia = ['paper', 'email', 'web', 'letter', 'message', 'note', 'sticky', 'box'].includes(b.style) && !b.label;
@@ -236,8 +244,11 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
     </header>`;
   const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · Lesson Lit</span><span class="pn"></span></footer>`;
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
 <style>
+${BOX_CSS}
+${opts.size && opts.size !== 'standard' ? `.cols .unit { zoom: ${opts.size === 'xl' ? 1.4 : 1.2}; }` : ''}
+${opts.clear ? `.cols, .cols :not(svg, svg *) { font-family: 'Atkinson Hyperlegible', Verdana, sans-serif !important; } .cols { --serif: 'Atkinson Hyperlegible', Verdana, sans-serif; --sans: 'Atkinson Hyperlegible', Verdana, sans-serif; letter-spacing: .02em; } .cols p { line-height: 1.65; }` : ''}
 .tl { margin: 3mm 0 4mm; break-inside: avoid; } .tl-svg { width: 100%; height: auto; display: block; color: #2b2a28; } .tl-title { font-weight: 600; font-size: 10pt; margin-bottom: 1mm; } .tl-sentence { font-style: italic; margin: 1mm 0 0; text-align: center; }
 .tl-line { stroke: #2b2a28; stroke-width: 2.5; color: #2b2a28; } .tl-end { font: 600 11px sans-serif; letter-spacing: .1em; fill: #8a847d; } .tl-now line { stroke: #2b2a28; stroke-width: 3; } .tl-now text { font: 700 13px sans-serif; letter-spacing: .1em; fill: #2b2a28; } .tl-label { font: 15px Georgia, serif; } .tl-q { font: 700 34px Georgia, serif; } .tl-hit { display: none; }
 @font-face { font-family: Fraunces; src: url('${opts.origin ?? ''}/fonts/Fraunces.ttf') format('truetype'); font-weight: 100 900; font-display: block; }
@@ -293,7 +304,15 @@ p { margin: 0 0 1.4mm; }
 .li { display: flex; gap: 2mm; } .li .mk { flex: none; width: 3mm; } .li.bullet .mk::before { content: '•'; color: var(--accent); }
 .ex-body { counter-reset: li; } .li.number { counter-increment: li; } .li.number .mk::before { content: counter(li); font-weight: 600; }
 .note { font: italic .88em Karla, sans-serif; color: var(--muted); }
-.wordbox { display: flex; flex-wrap: wrap; gap: 1mm 4.5mm; margin: .8mm 0 2.6mm; padding: 1.5mm 0 1.6mm; border-top: .7pt solid #8d8983; border-bottom: .7pt solid #8d8983; }
+.wordbox { display: flex; flex-wrap: wrap; gap: 1.2mm 1.6mm; margin: .8mm 0 2.6mm; padding: 1mm 0; border-top: .6pt solid #d6d2cc; border-bottom: .6pt solid #d6d2cc; }
+.wordbox span { padding: .3mm 2.6mm .4mm; border: .7pt solid #cfcac3; border-radius: 999px; background: #fff; }
+.kw { display: inline-block; padding: .5mm 2.6mm; border: .8pt solid var(--ink); border-radius: 1.2mm; font: 700 .82em Karla, sans-serif; letter-spacing: .1em; }
+.kw.stem { padding: .2mm 1.6mm; border: 0; background: #eeece8; color: var(--muted); font-size: .66em; vertical-align: .15em; }
+.sortcols { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3mm; margin: .5mm 0 2.8mm; }
+.sortcol { background: #f6f5f3; border: .6pt solid #e4e1dc; border-radius: 2mm; padding: 2mm 3mm 1.5mm; }
+.sortcol-h { display: block; font: 700 6.8pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.sortcol .line { height: 6.6mm; border-bottom-color: #cfcac3; }
+.pic-pt { position: absolute; transform: translate(-50%, -50%); width: 5mm; height: 5mm; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: #fff; font: 700 7.5pt/1 Karla, sans-serif; box-shadow: 0 0 0 .5mm #fff; }
 .lines { margin: .5mm 0 2mm; } .line { display: block; height: 7.4mm; border-bottom: .55pt solid #a9a49d; }
 .lines-hint { font: 600 7pt Karla, sans-serif; color: var(--muted); }
 .match { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2mm 5mm; margin: .5mm 0 2mm; }
@@ -400,7 +419,7 @@ h1 { color: var(--ink); }
 .section h2::after { height: 1.4pt; opacity: 1; background: var(--accent); }
 .ex-n { color: var(--accent-ink); }
 .qn, .ml { color: var(--accent-ink); }
-.wordbox { border-color: var(--accent); }
+
 .callout { background: var(--tint); border-left-width: 2.4pt; }
 .c-label { color: var(--accent-ink); }
 .pn { background: var(--accent); }
@@ -544,4 +563,39 @@ h1 { color: var(--ink); }
 })();
 </script>
 </body></html>`;
+}
+
+// The screen's text box styles, taken from the app's own style sheet (top-level rules only).
+function rulesFor(css: string, keep: (sel: string) => boolean) {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  let sel = '';
+  for (let i = 0; i < css.length; i++) {
+    const ch = css[i];
+    if (ch === '{') {
+      if (depth === 0) sel = css.slice(start, i).trim();
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        if (!sel.startsWith('@') && !sel.includes('data-theme') && !sel.includes('-node') && keep(sel)) out.push(css.slice(start, i + 1).trim());
+        start = i + 1;
+      }
+    } else if (depth === 0 && ch === ';') start = i + 1;
+  }
+  return out.join('\n');
+}
+const BOX_CSS = `:root { --ink: #33302c; --muted: #696969; --soft: #868686; --faint: #9c9c9c; --hair: rgba(51,48,44,.12); --hair-strong: rgba(51,48,44,.2); --surface: #f4f4f3; --paper: #fff; --paper-soft: #fafaf8; --serif: Fraunces, Georgia, serif; --sans: Karla, Arial, sans-serif; }
+.ws-box { break-inside: avoid; margin: 1.5mm 0 3mm; font-size: 10pt; } .ws-box .tbox { margin: 0; font-size: 10.5pt; line-height: 1.5; } .ws-box .tbox-body p { margin: 0 0 1.6mm; } .ws-box .tbox-body > :last-child { margin-bottom: 0; }
+.ws-box .tbox { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+${rulesFor(appCss, (s) => /\.tbox|paper-wrap/.test(s))}
+.ws-box .tbox.s-info .tbox-body { font-size: 10.5pt; line-height: 1.5; }
+.ws-box .tbox.s-message .bubble { font-family: var(--sans); font-size: 10pt; }
+.ws-box .tbox.s-notebook { line-height: 1.65; } .ws-box .tbox.s-notebook .tbox-title { font-size: 1em; line-height: 1.65; }
+.ws-box .paper-wrap { filter: drop-shadow(0 0 .6px rgba(51,48,44,.45)); } .ws-box .paper-wrap .tbox.s-paper { transform: none; }`;
+function boxHtml(a: Record<string, unknown>, inner: string) {
+  const attrs = { style: 'box', tone: 'grey', label: '', meta: '', side: 'left', symbol: '', numbering: 'none', ...a } as BoxAttrs;
+  const html = renderToStaticMarkup(createElement(BoxFrame, { attrs: { ...attrs, numbering: attrs.numbering === 'lines' ? 'paras' : attrs.numbering }, children: createElement('span', { 'data-ws-slot': '' }) }));
+  return `<div class="ws-box">${html.replace('<span data-ws-slot=""></span>', inner)}</div>`;
 }
