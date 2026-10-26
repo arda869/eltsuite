@@ -1,3 +1,4 @@
+import { ExampleToggle } from './ExampleToggle';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
@@ -244,8 +245,9 @@ function McqView({ node, updateAttributes, selected, deleteNode }: NodeViewProps
 
   return (
     <NodeViewWrapper className={'mcq-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
-      <div className="mcq-tools">
+      <div className={'mcq-tools' + (node.attrs.example ? ' is-example' : '')}>
         <span>Multiple choice</span>
+        <ExampleToggle on={!!node.attrs.example} onChange={(v) => updateAttributes({ example: v })} />
         <button type="button" onClick={deleteNode}>
           Remove
         </button>
@@ -303,6 +305,7 @@ export const Mcq = Node.create({
       prompt: { default: '' },
       options: { default: ['', '', ''] },
       correct: { default: -1 },
+      example: { default: false },
     };
   },
   parseHTML() {

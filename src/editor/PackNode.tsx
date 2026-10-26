@@ -12,6 +12,7 @@ import { useNotebook } from '../lib/notebook';
 import { useEditorClass } from './context';
 import { NoteFields } from './NoteFields';
 import { Grip } from './nodes';
+import { ExampleToggle } from './ExampleToggle';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Data = Record<string, any>;
@@ -582,9 +583,10 @@ function PackView(props: NodeViewProps) {
   const set = (p: Data) => updateAttributes({ data: { ...d, ...p } });
   return (
     <NodeViewWrapper className={'block-node q-block pq-node' + (selected ? ' is-selected' : '')} contentEditable={false} data-kind={kind}>
-      <div className="mcq-tools">
+      <div className={'mcq-tools' + (node.attrs.example ? ' is-example' : '')}>
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">{PACK_LABELS[kind]}</span>
+        {kind !== 'speaking' && <ExampleToggle on={!!node.attrs.example} onChange={(v) => updateAttributes({ example: v })} />}
         <button type="button" onClick={deleteNode}>
           Remove
         </button>
@@ -603,7 +605,7 @@ export const PackNode = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, kind: { default: 'fix' }, data: { default: null }, hint: { default: '' }, feedback: { default: '' } }),
+  addAttributes: () => ({ id: { default: null }, kind: { default: 'fix' }, data: { default: null }, hint: { default: '' }, feedback: { default: '' }, example: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-pq]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-pq': '' })],
   addNodeView: () => ReactNodeViewRenderer(PackView),

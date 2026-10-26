@@ -32,7 +32,7 @@ import { LINK_ICON } from '../editor/LessonLink';
 import type { JSONContent } from '@tiptap/react';
 import { RichAnswer } from './RichAnswer';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
-import { drawnCards, isAnswered, normalise, pickState, scoreQuestion, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
+import { drawnCards, isAnswered, normalise, pickState, scoreQuestion, splitKey, splitWords, textOf, type AnswerKey, type PickState, type Response, type Responses } from '../lib/questions';
 import { PickStage, type PickLook } from './PickStage';
 import type { SharedPick } from '../lib/picks';
 import type { SentFeedback } from '../lib/feedback';
@@ -67,6 +67,7 @@ type Props = {
   teacherMarks?: Record<string, { score: number | null; comment: string; crit?: Record<string, number | null> }>; // teacher's marks on long answers
   writingReview?: { anns: Annotation[]; corrections: Record<string, Correction>; codes: Code[]; onResubmit: (qid: string) => void };
   liveHere?: boolean; // learners: the teacher is teaching this lesson now
+  asExample?: boolean; // an example question, shown answered and numbered 0
 };
 
 const TICK = (
@@ -151,7 +152,7 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
   const picCount: Record<string, number> = {}; // picture labels count on in reading order
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
@@ -213,8 +214,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       return;
     }
     if (node.attrs?.id && !node.attrs.example && QTYPES.includes(node.type ?? '') && !(node.type === 'pq' && node.attrs.kind === 'speaking')) {
-      numbers[node.attrs.id] = n + 1;
-      n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : node.type === 'pq' && node.attrs.kind === 'matching' ? Math.max(1, (node.attrs.data?.statements ?? []).length) : 1;
+      numbers[node.attrs.id] = asExample ? 0 : n + 1;
+      if (!asExample) n += node.type === 'match' ? Math.max(1, (node.attrs.left ?? []).length) : node.type === 'pq' && node.attrs.kind === 'matching' ? Math.max(1, (node.attrs.data?.statements ?? []).length) : 1;
       if (ol) listed.add(node.attrs.id);
     }
     node.content?.forEach((c) => walk(c, ol));
@@ -284,7 +285,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const a = node.attrs ?? {};
     const options: string[] = a.options ?? [];
     const correct: number[] = Array.isArray(a.correct) ? a.correct : [a.correct];
-    const answer = node.type === 'gap' ? (a.answers ?? [])[0] ?? '' : correct.map((i) => options[i]).filter(Boolean).join(', ');
+    const answer = node.type === 'gap' ? (a.answers ?? [])[0] ?? '' : node.type === 'dropgap' ? String(a.answer ?? '') : correct.map((i) => options[i]).filter(Boolean).join(', ');
     const radio = node.type === 'choice' && (a.display === 'radio' || a.display === 'truefalse' || a.display === 'tfng');
     if (radio)
       return (
@@ -305,6 +306,18 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <span className="ex-answer">{answer || '…'}</span>
         {a.stem && <span className="wf-stem">{a.stem}</span>}
       </span>
+    );
+  };
+  // A whole question as an example: the same question, answered in blue pen and not marked.
+  const exampleBlock = (node: JSONContent, key: string) => {
+    const id = String(node.attrs?.id ?? '');
+    const { content: c, key: k } = splitKey({ type: 'doc', content: [{ ...node, attrs: { ...node.attrs, example: false } }] });
+    const writingEx = node.type === 'writing';
+    return (
+      <div key={key} data-bk={key} className="example-block">
+        <span className="ex-tag">Example</span>
+        <TaskRenderer content={c} responses={writingEx ? { [id]: String(node.attrs?.model ?? '') } : {}} revealed={writingEx ? null : k} teacher disabled classId={classId} asExample />
+      </div>
     );
   };
   const revealChip = (node: JSONContent) => {
@@ -915,18 +928,19 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'choice':
         return node.attrs?.example ? exampleOf(node, key) : choice(node, key);
       case 'mcq':
-        return mcq(node, key);
+        return node.attrs?.example ? exampleBlock(node, key) : mcq(node, key);
       case 'match':
-        return match(node, key);
+        return node.attrs?.example ? exampleBlock(node, key) : match(node, key);
       case 'dropgap':
-        return dropgap(node, key);
+        return node.attrs?.example ? exampleOf(node, key) : dropgap(node, key);
       case 'wordbank':
         return wordbank(node, key);
       case 'order':
-        return order(node, key);
+        return node.attrs?.example ? exampleBlock(node, key) : order(node, key);
       case 'writing':
-        return writing(node, key);
+        return node.attrs?.example ? exampleBlock(node, key) : writing(node, key);
       case 'pq': {
+        if (node.attrs?.example && node.attrs?.kind !== 'speaking') return exampleBlock(node, key);
         const id = node.attrs?.id as string;
         const res = results?.[id];
         const rev = revealed?.[id];

@@ -5,6 +5,7 @@ import { newId } from '../lib/tasks';
 import { usePopPos } from './usePopPos';
 import { NoteFields } from './NoteFields';
 import { Grip } from './nodes';
+import { ExampleToggle } from './ExampleToggle';
 import { CAMBRIDGE, criteriaOf, GENRES, genreLabel, maxOf, type Criterion } from '../lib/rubric';
 
 const LETTERS = 'abcdefghijklmnop';
@@ -20,7 +21,7 @@ function useOutside(open: boolean, ref: React.RefObject<HTMLElement>, onClose: (
 
 function BlockHead({ label, onRemove, p }: { label: string; onRemove: () => void; p: NodeViewProps }) {
   return (
-    <div className="mcq-tools">
+    <div className={'mcq-tools' + (p.node.attrs.example ? ' is-example' : '')}>
       <Grip editor={p.editor} getPos={p.getPos} />
       <span
         className="block-label"
@@ -34,6 +35,7 @@ function BlockHead({ label, onRemove, p }: { label: string; onRemove: () => void
       >
         {label}
       </span>
+      {'example' in (p.node.attrs ?? {}) && <ExampleToggle on={!!p.node.attrs.example} onChange={(v) => p.updateAttributes({ example: v })} />}
       <button type="button" onClick={onRemove}>
         Remove
       </button>
@@ -60,7 +62,7 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
   return (
     <NodeViewWrapper as="span" className={'gap-node drop-node' + (selected ? ' is-selected' : '')} ref={ref}>
       <Grip editor={editor} getPos={getPos} />
-      <span className={'drop-chip' + (node.attrs.answer ? '' : ' empty')} contentEditable={false} onClick={() => setOpen(true)} title="Word from the word bank">
+      <span className={'drop-chip' + (node.attrs.answer ? '' : ' empty') + (node.attrs.example ? ' is-example' : '')} contentEditable={false} onClick={() => setOpen(true)} title="Word from the word bank">
         {node.attrs.answer || 'word'}
       </span>
       {open && (
@@ -79,7 +81,11 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
               if (e.key === 'Escape') setOpen(false);
             }}
           />
-          <span className="hint">This word goes into the word bank automatically. Add wrong words to the word bank’s “Extra words”.</span>
+          <span className="hint">{node.attrs.example ? 'An example: the word is shown in the gap and is not in the word bank.' : 'This word goes into the word bank automatically. Add wrong words to the word bank’s “Extra words”.'}</span>
+          <label className="pop-check">
+            <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
+            Example (answer shown, numbered 0, not marked)
+          </label>
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>
       )}
@@ -94,7 +100,7 @@ export const DropGap = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, answer: { default: '' }, hint: { default: '' }, feedback: { default: '' } }),
+  addAttributes: () => ({ id: { default: null }, answer: { default: '' }, hint: { default: '' }, feedback: { default: '' }, example: { default: false } }),
   parseHTML: () => [{ tag: 'span[data-dropgap]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-dropgap': '' })],
   addNodeView: () => ReactNodeViewRenderer(DropGapView),
@@ -228,6 +234,7 @@ export const Match = Node.create({
     extras: { default: [] },
     hint: { default: '' },
     feedback: { default: '' },
+    example: { default: false },
   }),
   parseHTML: () => [{ tag: 'div[data-match]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-match': '' })],
@@ -255,7 +262,7 @@ export const Order = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, sentence: { default: '' }, hint: { default: '' }, feedback: { default: '' } }),
+  addAttributes: () => ({ id: { default: null }, sentence: { default: '' }, hint: { default: '' }, feedback: { default: '' }, example: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-order]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-order': '' })],
   addNodeView: () => ReactNodeViewRenderer(OrderView),
@@ -356,7 +363,7 @@ export const Writing = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false }, points: { default: 5 }, genre: { default: '' }, rubric: { default: 'none' }, criteria: { default: [] } }),
+  addAttributes: () => ({ id: { default: null }, minWords: { default: null }, maxWords: { default: null }, model: { default: '' }, rich: { default: false }, spellcheck: { default: false }, points: { default: 5 }, genre: { default: '' }, rubric: { default: 'none' }, criteria: { default: [] }, example: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-writing]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-writing': '' })],
   addNodeView: () => ReactNodeViewRenderer(WritingView),

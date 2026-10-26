@@ -127,6 +127,10 @@ export function flattenTask(t: ExportTask): WsTask {
           break;
           }
         case 'dropgap': {
+          if (a.example) {
+            out.push({ num: 0 }, { t: String(a.answer ?? ''), italic: true, u: true, ex: true });
+            break;
+          }
           n++;
           marks++;
           answers.push({ n, text: a.answer ?? '' });
@@ -153,6 +157,26 @@ export function flattenTask(t: ExportTask): WsTask {
   };
   const walk = (node: JSONContent, list?: 'bullet' | 'number', mark?: string) => {
     const a = node.attrs ?? {};
+    // A whole question as an example: printed as usual, numbered 0, with its answer written in.
+    if (a.example && ['mcq', 'match', 'order', 'writing', 'pq'].includes(node.type ?? '') && !(node.type === 'pq' && a.kind === 'speaking')) {
+      const n0 = n;
+      const m0 = marks;
+      const al = answers.length;
+      const cl = cur.length;
+      walk({ ...node, attrs: { ...a, example: false } }, list, mark);
+      const got = answers.splice(al);
+      n = n0;
+      marks = m0;
+      const made = cur.splice(cl).filter((b) => b.kind !== 'lines');
+      made.forEach((b) => {
+        if (b.kind === 'p') b.runs = b.runs.map((r) => (r.num !== undefined ? { ...r, num: 0 } : r));
+        if (b.kind === 'match') b.n = 0;
+      });
+      cur.push(...made);
+      const ans = node.type === 'writing' ? String(a.model ?? '') : got.map((x) => x.text.replace(/^Model: /, '')).join('; ');
+      if (ans) cur.push({ kind: 'p', runs: [{ t: 'Example: ', italic: true }, { t: ans, ex: true }] });
+      return;
+    }
     switch (node.type) {
       case 'paragraph': {
         const runs = runsOf(node.content);
