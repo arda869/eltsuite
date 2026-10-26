@@ -45,6 +45,7 @@ export function AppGrid() {
       </button>
       {open && (
         <div className="apps-pop" role="menu" aria-label="Apps">
+          <span className="apps-h">ELT Suite</span>
           {apps.map((a) =>
             a.to ? (
               <Link key={a.k} to={a.to} role="menuitem" className="app-tile" style={{ ['--app' as string]: a.color }} onClick={() => setOpen(false)}>

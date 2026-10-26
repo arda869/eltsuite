@@ -5822,3 +5822,7 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .gl-tt .m { background: #3667a6; } .gl-tt .f { background: #7a4fa3; } .gl-tt .p { background: #a8701f; }
 .gl-tt-rows { display: flex; flex-direction: column; gap: 3px; } .gl-tt-rows i { display: block; height: 8px; border-radius: 3px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--hair); width: 120px; }
 .gl-tt-rate { display: flex; align-items: center; gap: 3px; } .gl-tt-rate b { width: 12px; height: 8px; border-radius: 3px; background: var(--surface); } .gl-tt-rate b.on { background: #7a4fa3; }
+.suite-mark { display: flex; flex-direction: column; line-height: 1.05; text-decoration: none; color: var(--ink); }
+.suite-k { font: 700 9.5px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.suite-mark b { font: 500 22px var(--serif); letter-spacing: -0.01em; color: var(--app); }
+.apps-h { grid-column: 1 / -1; font: 700 10.5px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); padding: 2px 6px 6px; }

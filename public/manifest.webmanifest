@@ -1,6 +1,6 @@
 {
-  "name": "Lesson Lit",
-  "short_name": "Lesson Lit",
+  "name": "ELT Suite",
+  "short_name": "ELT Suite",
   "description": "Lessons, homework and messages for your English class.",
   "start_url": "/?source=app",
   "scope": "/",

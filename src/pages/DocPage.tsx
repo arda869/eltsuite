@@ -72,7 +72,7 @@ export function DocPage() {
   const teacher = lesson ? profile?.role === 'teacher' : d?.owner === uid;
   const modes: CollabMode[] = lesson ? ((qs.get('m') ?? 'edit').split(',').filter(Boolean) as CollabMode[]) : role ? modesFor(role) : ['view'];
   useEffect(() => {
-    document.title = `${title || 'Document'} · Lesson Lit`;
+    document.title = `${title || 'Document'} · ELT Suite`;
   }, [title]);
   useEffect(() => {
     if (d && d.owner === uid) {

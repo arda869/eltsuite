@@ -1,7 +1,7 @@
 import { AppGrid } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Wordmark } from './Wordmark';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -47,9 +47,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
 
   return (
     <header className="topbar">
-      <Link to="/" style={{ textDecoration: 'none' }}>
-        <Wordmark />
-      </Link>
+      <AppMark />
       {children}
       <div className="right" ref={ref}>
         <PhoneMessagesLink />
@@ -83,5 +81,23 @@ export function TopBar({ children }: { children?: ReactNode }) {
       </div>
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
     </header>
+  );
+}
+
+// Top left: the app you are in, within ELT Suite. Lesson Lit (classes) keeps its own wordmark.
+function AppMark() {
+  const { pathname } = useLocation();
+  const app = pathname.startsWith('/archive') || pathname.startsWith('/doc') ? { name: 'Files', to: '/archive', color: '#3667a6' } : pathname.startsWith('/messages') ? { name: 'Messages', to: '/messages', color: '#7a4fa3' } : null;
+  if (!app)
+    return (
+      <Link to="/" style={{ textDecoration: 'none' }} aria-label="Lesson Lit, in ELT Suite">
+        <Wordmark />
+      </Link>
+    );
+  return (
+    <Link to={app.to} className="suite-mark" style={{ ['--app' as string]: app.color }}>
+      <span className="suite-k">ELT Suite</span>
+      <b>{app.name}</b>
+    </Link>
   );
 }
