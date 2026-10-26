@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { CopyDialog } from './CopyDialog';
 import { ImportDialog } from './ImportDialog';
 import { classText, download } from '../lib/transfer';
+import { classBundle, downloadJson } from '../lib/fullcopy';
 import { copyLesson } from '../lib/copy';
 import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, updateTopic, type ClassDoc, type Item, type Topic } from '../lib/classes';
 
@@ -271,7 +272,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
     <div className="lessons">
       <div className="lessons-tools">
         <button type="button" className="btn small-btn" onClick={() => setImporting(true)}>
-          Import a lesson from text
+          Import a lesson
         </button>
         <button
           type="button"
@@ -287,6 +288,22 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
           }}
         >
           {exporting ? 'Exporting…' : 'Export the class as text'}
+        </button>
+        <button
+          type="button"
+          className="btn small-btn"
+          disabled={exporting}
+          title="Every lesson with answer keys, notes, board drawings and pictures, in one file you can import into another class"
+          onClick={async () => {
+            setExporting(true);
+            try {
+              downloadJson(c.name, await classBundle(c.id, c.name));
+            } finally {
+              setExporting(false);
+            }
+          }}
+        >
+          Full copy of the class
         </button>
       </div>
       {importing && <ImportDialog classId={c.id} topics={sortedTopics} onClose={() => setImporting(false)} />}

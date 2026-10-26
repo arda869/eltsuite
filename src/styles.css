@@ -2547,3 +2547,6 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .nb-pick input { width: 18px; height: 18px; }
 @media (prefers-reduced-motion: reduce) { .fc-face { transition: none; } }
 .rd-row .seg button, .rd-opts { font-family: var(--sans); }
+
+/* ---- Worksheet export ---- */
+.ws-tasks { max-height: 220px; overflow: auto; }

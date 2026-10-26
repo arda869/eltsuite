@@ -36,6 +36,8 @@ import { AnnotationLayer } from '../components/AnnotationLayer';
 import { CopyDialog } from '../components/CopyDialog';
 import { VersionsDialog } from '../components/VersionsDialog';
 import { download, lessonText } from '../lib/transfer';
+import { downloadJson, lessonBundle } from '../lib/fullcopy';
+import { WorksheetDialog } from '../components/WorksheetDialog';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
@@ -304,6 +306,15 @@ export function LessonEditor() {
 
   // Teaching shortcuts (not while typing).
   const [help, setHelp] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [worksheet, setWorksheet] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!exportOpen) return;
+    const close = (e: MouseEvent) => exportRef.current && !exportRef.current.contains(e.target as Node) && setExportOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [exportOpen]);
   const [copyTask, setCopyTask] = useState<Task | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
   const panels = usePanels('ll.teacherPanels');
@@ -524,18 +535,48 @@ export function LessonEditor() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
-        <button
-          type="button"
-          className="btn small-btn hide-phone"
-          title="Download this lesson as a text file you can edit and import again"
-          onClick={async () => {
-            await flush();
-            const { title, text } = await lessonText(classId, itemId, window.confirm('Include your teacher notes in the file? Choose Cancel to leave them out, for example when sharing.'));
-            download(title, text);
-          }}
-        >
-          Export
-        </button>
+        <div className="menu-anchor hide-phone" ref={exportRef}>
+          <button type="button" className="btn small-btn" aria-expanded={exportOpen} aria-haspopup="menu" title="Worksheet, text file or full copy" onClick={() => setExportOpen((v) => !v)}>
+            Export
+          </button>
+          {exportOpen && (
+            <div className="menu" role="menu">
+              <button role="menuitem" onClick={() => (setExportOpen(false), setWorksheet(true))}>
+                Worksheet…
+                <span className="hint" style={{ display: 'block' }}>
+                  Print, PDF or Word, with an answer key
+                </span>
+              </button>
+              <button
+                role="menuitem"
+                onClick={async () => {
+                  setExportOpen(false);
+                  await flush();
+                  const { title, text } = await lessonText(classId, itemId, window.confirm('Include your teacher notes in the file? Choose Cancel to leave them out, for example when sharing.'));
+                  download(title, text);
+                }}
+              >
+                Lesson text (.md)
+                <span className="hint" style={{ display: 'block' }}>
+                  Edit in any text editor and import again
+                </span>
+              </button>
+              <button
+                role="menuitem"
+                onClick={async () => {
+                  setExportOpen(false);
+                  await flush();
+                  downloadJson(item?.title ?? 'Lesson', await lessonBundle(classId, itemId));
+                }}
+              >
+                Full copy (.lessonlit.json)
+                <span className="hint" style={{ display: 'block' }}>
+                  Everything, including board drawings and pictures
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
         <button type="button" className="btn small-btn" onClick={() => setNbOpen(true)} title="The class notebook: words and notes, grammar and vocabulary banks">
           Notebook
         </button>
@@ -1098,6 +1139,7 @@ export function LessonEditor() {
         </div>
       )}
       {announcing && <AnnounceDialog classId={classId} roster={classmates} onClose={() => setAnnouncing(false)} />}
+      {worksheet && <WorksheetDialog classId={classId} itemId={itemId} onClose={() => setWorksheet(false)} />}
       {help && (
         <div className="scrim" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelp(false)}>
           <div className="dialog shortcuts" onClick={(e) => e.stopPropagation()}>

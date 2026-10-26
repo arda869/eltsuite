@@ -21,6 +21,7 @@
     "@tiptap/pm": "^2.27.3",
     "@tiptap/react": "^2.27.3",
     "@tiptap/starter-kit": "^2.27.3",
+    "docx": "^9.5.1",
     "firebase": "^11.0.0",
     "perfect-freehand": "^1.2.2",
     "react": "^18.3.1",
