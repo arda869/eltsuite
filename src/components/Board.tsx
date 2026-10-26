@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useMemo, useRef, useState } from 'react';
 import { addPost, boardKey, react, removePost, usePosts, type Post } from '../lib/boards';
 import { Icon } from '../editor/Icons';
@@ -187,7 +188,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         </button>
       )}
       {me && (mine(p) || me.teacher) && !preview && (
-        <button type="button" className="bd-link quiet" onClick={() => window.confirm('Delete this message?') && removePost(me.classId, key, p.id)}>
+        <button type="button" className="bd-link quiet" onClick={() => void ask('Delete this message?').then((ok) => { if (ok) removePost(me.classId, key, p.id); })}>
           Delete
         </button>
       )}

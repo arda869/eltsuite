@@ -1,3 +1,4 @@
+import { askText } from '../lib/ask';
 import { useEffect } from 'react';
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -44,9 +45,9 @@ export function NotesEditor({ doc, text, onChange, placeholder, className = '' }
         {B(
           'Link',
           editor.isActive('link'),
-          () => {
+          async () => {
             if (editor.isActive('link')) return void editor.chain().focus().unsetLink().run();
-            const href = window.prompt('Link address (https://…)');
+            const href = await askText('Link address (https://…)', 'https://', { ok: 'Add link' });
             if (href && /^https?:\/\//.test(href)) editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
           },
           '↗',

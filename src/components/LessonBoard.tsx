@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { collection, getDocs } from 'firebase/firestore';
@@ -128,9 +129,9 @@ export function LessonBoard({
                     type="button"
                     className="danger"
                     disabled={pages.length < 2}
-                    onClick={() => {
+                    onClick={async () => {
                       setMenu(false);
-                      if (!window.confirm(cur?.from ? 'Remove this borrowed page from this lesson? It stays in its own lesson.' : 'Delete this page and everything on it?')) return;
+                      if (!(await ask(cur?.from ? 'Remove this borrowed page from this lesson? It stays in its own lesson.' : 'Delete this page and everything on it?'))) return;
                       save(pages.filter((_, i) => i !== at));
                       onPage?.(pages[at === 0 ? 1 : at - 1].id);
                     }}

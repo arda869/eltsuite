@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { useEffect, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 
@@ -21,13 +22,15 @@ export function TableInsert({ editor, host }: { editor: Editor; host: HTMLElemen
       const tb = table.getBoundingClientRect();
       if (e.clientX - c.left < near || c.right - e.clientX < near) {
         const after = c.right - e.clientX < near;
-        const x = (after ? c.right : c.left) - h.left;
-        return setSpot({ kind: 'col', x, y: tb.top - h.top, len: tb.height, cell, after });
+        const z = zoomOf(host);
+        const x = ((after ? c.right : c.left) - h.left) / z;
+        return setSpot({ kind: 'col', x, y: (tb.top - h.top) / z, len: tb.height / z, cell, after });
       }
       if (e.clientY - c.top < near || c.bottom - e.clientY < near) {
         const after = c.bottom - e.clientY < near;
-        const y = (after ? c.bottom : c.top) - h.top;
-        return setSpot({ kind: 'row', x: tb.left - h.left, y, len: tb.width, cell, after });
+        const z = zoomOf(host);
+        const y = ((after ? c.bottom : c.top) - h.top) / z;
+        return setSpot({ kind: 'row', x: (tb.left - h.left) / z, y, len: tb.width / z, cell, after });
       }
       setSpot(null);
     };

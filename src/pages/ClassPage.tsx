@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { Loader } from '../components/Loader';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -109,7 +110,7 @@ export function ClassPage() {
   async function archive() {
     if (!c) return;
     setMenu(false);
-    if (!window.confirm(`Archive ${c.name}? Everything is kept and you can restore it later.`)) return;
+    if (!(await ask(`Archive ${c.name}? Everything is kept and you can restore it later.`))) return;
     await updateClass(c, { status: 'archived' });
     navigate('/');
   }

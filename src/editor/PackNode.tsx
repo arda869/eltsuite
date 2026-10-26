@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
@@ -113,7 +114,7 @@ function PictureField({ value, onChange, label = 'Picture' }: { value: string; o
           try {
             onChange(await uploadPicture(classId, f));
           } catch {
-            window.alert('The picture could not be added. Try a smaller one.');
+            void tell('The picture could not be added. Try a smaller one.');
           } finally {
             setBusy(false);
           }

@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { usePhone } from '../lib/useMedia';
 import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
@@ -492,6 +493,8 @@ export function LessonEditor() {
   // Load the selected task (with its answer key) into the editor once per selection.
   const [taskErr, setTaskErr] = useState('');
   const [taskTry, setTaskTry] = useState(0);
+  // The task being opened: the editor shows a loading veil until its content is in.
+  const [opening, setOpening] = useState('');
   useEffect(() => {
     setTaskErr('');
     if (!task) {
@@ -500,8 +503,10 @@ export function LessonEditor() {
     }
     if (task.restricted && task.content === null) return setDraft(null);
     let cancelled = false;
+    if (draftRef.current) setOpening(task.id);
     loadKey(classId, itemId, task.id).then((key: AnswerKey) => {
       if (cancelled) return;
+      setOpening('');
       const content = mergeKey(task.content ?? { type: 'doc', content: [{ type: 'paragraph' }] }, key);
       setDraft({ title: task.title, instructions: task.instructions ?? '', instrDoc: task.instrDoc ?? null, content });
       setEditorKey(task.id + ':' + Date.now());
@@ -510,6 +515,7 @@ export function LessonEditor() {
       setPreviewChecked(false);
     }, (e) => {
       console.error(e);
+      if (!cancelled) setOpening('');
       if (!cancelled) setTaskErr((e as { code?: string }).code === 'permission-denied' ? 'This task could not be opened. If a “view as a learner” tab is open, close it, then try again.' : 'This task could not be opened. Check your connection, then try again.');
     });
     return () => {
@@ -613,13 +619,13 @@ export function LessonEditor() {
   async function remove(t: Task) {
     const fam = familyOf(tasks, t);
     if (isVariant(t)) {
-      if (!window.confirm(`Delete version ${t.variant ?? ''} of “${t.title}”?`)) return;
+      if (!(await ask(`Delete version ${t.variant ?? ''} of “${t.title}”?`))) return;
       pending.current = null;
       await unlinkVariant(classId, itemId, tasks, t);
       await deleteTask(classId, itemId, t.id);
       return;
     }
-    if (!window.confirm(fam.length > 1 ? `Delete the task “${t.title}” and its ${fam.length - 1} other ${fam.length === 2 ? 'version' : 'versions'}?` : `Delete the task “${t.title}”?`)) return;
+    if (!(await ask(fam.length > 1 ? `Delete the task “${t.title}” and its ${fam.length - 1} other ${fam.length === 2 ? 'version' : 'versions'}?` : `Delete the task “${t.title}”?`))) return;
     pending.current = null;
     for (const f of fam) await deleteTask(classId, itemId, f.id);
   }
@@ -683,7 +689,7 @@ export function LessonEditor() {
                 onClick={async () => {
                   setExportOpen(false);
                   await flush();
-                  const { title, text } = await lessonText(classId, itemId, window.confirm('Include your teacher notes in the file? Choose Cancel to leave them out, for example when sharing.'));
+                  const { title, text } = await lessonText(classId, itemId, (await ask('Include your teacher notes in the file? Leave them out when you share it, for example.', { ok: 'Include notes', cancel: 'Leave them out' })));
                   download(title, text);
                 }}
               >
@@ -950,7 +956,12 @@ export function LessonEditor() {
               )}
             </div>
           )}
-          <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
+          <main className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
+            {opening && (
+              <div className="frame-veil" role="status">
+                <Loader label="Opening the task" />
+              </div>
+            )}
             {boardView && !(teachingHere && !editWhileTeaching) && item && user ? (
               <div className="frame-inner">
                 <div className="frame-head">

@@ -1,3 +1,4 @@
+import { ask, askText } from '../lib/ask';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { CEFR, CORE, DefField, GROUPS, POS, TRANSLATION, type DefData } from '../editor/Definition';
@@ -308,7 +309,7 @@ function EntryCard({ classId, c, me, e, items, myTranslation, saved, onSaveToMin
                   <button type="button" className="btn link small" onClick={() => setHidden(classId, e.id, !e.hidden)}>
                     {e.hidden ? 'Show' : 'Hide'}
                   </button>
-                  <button type="button" className="btn link small" onClick={() => window.confirm('Delete this entry?') && removeEntry(classId, e.id)}>
+                  <button type="button" className="btn link small" onClick={() => void ask('Delete this entry?').then((ok) => { if (ok) removeEntry(classId, e.id); })}>
                     Delete
                   </button>
                 </>
@@ -356,7 +357,7 @@ function MyNoteCard({ classId, n }: { classId: string; n: MyNote }) {
               <button type="button" className="btn link small" onClick={() => setEditing(true)}>
                 Edit
               </button>
-              <button type="button" className="btn link small" onClick={() => window.confirm('Remove this from your notebook?') && removeMyNote(classId, n.id)}>
+              <button type="button" className="btn link small" onClick={() => void ask('Remove this from your notebook?').then((ok) => { if (ok) removeMyNote(classId, n.id); })}>
                 Remove
               </button>
             </span>
@@ -463,7 +464,7 @@ function PageCard({ classId, c, me, e, topics, places }: { classId: string; c: C
                 <button type="button" className="btn link small" onClick={() => setHidden(classId, e.id, !e.hidden)}>
                   {e.hidden ? 'Show' : 'Hide'}
                 </button>
-                <button type="button" className="btn link small" onClick={() => window.confirm('Delete this page?') && removeEntry(classId, e.id)}>
+                <button type="button" className="btn link small" onClick={() => void ask('Delete this page?').then((ok) => { if (ok) removeEntry(classId, e.id); })}>
                   Delete
                 </button>
               </span>
@@ -740,7 +741,7 @@ export function Notebook({
                     onClick={async () => {
                       setQuizBusy('Making…');
                       try {
-                        const title = window.prompt('Name for the practice', 'Vocabulary practice') ?? 'Vocabulary practice';
+                        const title = (await askText('Name for the practice', 'Vocabulary practice', { ok: 'Make it' })) ?? 'Vocabulary practice';
                         await createVocabQuiz(classId, title, entries.filter((e) => picking.has(e.id)).map((e) => e.data));
                         setQuizBusy('Made. It is under Practice on the class page.');
                         setPicking(null);

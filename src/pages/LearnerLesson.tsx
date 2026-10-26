@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
@@ -326,7 +327,7 @@ export function LearnerLesson() {
   examLockedRef.current = examLocked;
   async function submitNow(auto = false) {
     if (!scope || !user) return;
-    if (!auto && !window.confirm(scope.kind === 'item' ? 'Submit the whole exam? You can’t change your answers after this.' : 'Submit this exam? You can’t change your answers after this.')) return;
+    if (!auto && !(await ask(scope.kind === 'item' ? 'Submit the whole exam? You can’t change your answers after this.' : 'Submit this exam? You can’t change your answers after this.'))) return;
     window.clearTimeout(timer.current);
     if (base) await saveResponses(classId, base, responses).catch(() => {});
     await submitExam(classId, scope.id, user.uid).catch((e) => console.error(e));

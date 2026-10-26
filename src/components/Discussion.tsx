@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
@@ -409,7 +410,7 @@ export function ThreadView({ c, me, people, tid, thread, onBack }: { c: ClassDoc
           </>
         )}
         {(me.teacher || own) && (
-          <button type="button" className="btn link small link-danger" onClick={() => window.confirm(p ? 'Delete this reply?' : 'Delete the whole thread?') && (p ? deletePost(c.id, tid, p.id) : (deleteThread(c.id, tid), onBack()))}>
+          <button type="button" className="btn link small link-danger" onClick={() => void ask(p ? 'Delete this reply?' : 'Delete the whole thread?').then((ok) => { if (ok) (p ? deletePost(c.id, tid, p.id) : (deleteThread(c.id, tid), onBack())); })}>
             Delete
           </button>
         )}

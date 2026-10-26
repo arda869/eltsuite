@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useEffect, useState } from 'react';
 import { addGroupSet, autoGroups, averageScores, deleteGroupSet, groupsByScore, newGroup, saveGroupSet, ROLE_NAMES, type Group, type GroupSet } from '../lib/groups';
 
@@ -226,7 +227,7 @@ function SetEditor({ classId, set, roster, active, onActivate, onDeleted }: { cl
         }}>
           Shuffle
         </button>
-        <button type="button" className="btn link small" onClick={() => window.confirm(`Delete “${set.name}”?`) && deleteGroupSet(classId, set.id).then(onDeleted)}>
+        <button type="button" className="btn link small" onClick={() => void ask(`Delete “${set.name}”?`).then((ok) => { if (ok) deleteGroupSet(classId, set.id).then(onDeleted); })}>
           Delete set
         </button>
       </div>

@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
@@ -454,7 +455,7 @@ export function ArchiveColleagues({ uid, me, inviteOnly }: { uid: string; me: { 
                   {c.at ? ` · since ${when(c.at)}` : ''}
                 </span>
               </span>
-              <button type="button" className="btn link small" onClick={() => window.confirm(`Stop being colleagues with ${c.name}? Things already shared stay shared until you stop sharing them.`) && removeColleague(uid, c.id)}>
+              <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${c.name}? Things already shared stay shared until you stop sharing them.`).then((ok) => { if (ok) removeColleague(uid, c.id); })}>
                 Remove
               </button>
             </div>

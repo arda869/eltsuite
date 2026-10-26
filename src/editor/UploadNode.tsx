@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
@@ -35,7 +36,7 @@ function FileRow({ classId, f, onRemove }: { classId: string; f: SentFile; onRem
       }
     } catch {
       w?.close();
-      window.alert('The file could not be opened.');
+      void tell('The file could not be opened.');
     }
   };
   return (

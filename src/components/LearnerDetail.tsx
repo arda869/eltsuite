@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { ClassDoc, Item } from '../lib/classes';
@@ -118,7 +119,7 @@ export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc;
         </span>
         <span className="ld-acts">
           <ReportDownload make={report} disabled={!timeline} label="Report" />
-          <button type="button" className="btn small-btn" disabled={!pin} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: learner.id, name: learner.displayName, pin: pin ?? '' }) || window.alert('Your browser blocked the new tab. Allow pop-ups for this site.')}>
+          <button type="button" className="btn small-btn" disabled={!pin} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: learner.id, name: learner.displayName, pin: pin ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
             View as {first}
           </button>
         </span>

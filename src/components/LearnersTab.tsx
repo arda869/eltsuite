@@ -1,3 +1,4 @@
+import { ask, tell } from '../lib/ask';
 import { openAsLearner } from '../lib/proxy';
 import { useState, type FormEvent } from 'react';
 import { addLearners, removeLearner, resetPin, type Learner } from '../lib/learners';
@@ -46,7 +47,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
   }
 
   async function reset(l: Learner) {
-    if (!window.confirm(`Give ${l.displayName} a new PIN? The old one will stop working.`)) return;
+    if (!(await ask(`Give ${l.displayName} a new PIN? The old one will stop working.`))) return;
     setBusy(l.id);
     setError('');
     try {
@@ -61,7 +62,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
   }
 
   async function remove(l: Learner) {
-    if (!window.confirm(`Remove ${l.displayName} from ${c.name}? Their sign-in will stop working.`)) return;
+    if (!(await ask(`Remove ${l.displayName} from ${c.name}? Their sign-in will stop working.`))) return;
     setBusy(l.id);
     try {
       await removeLearner(c, l, pins[l.id] ?? '');
@@ -165,7 +166,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                       )}
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button className="btn small-btn" disabled={!pins[l.id]} title="Open a new tab signed in as this learner" onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || window.alert('Your browser blocked the new tab. Allow pop-ups for this site.')}>
+                      <button className="btn small-btn" disabled={!pins[l.id]} title="Open a new tab signed in as this learner" onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
                         View as {l.displayName.split(' ')[0]}
                       </button>{' '}
                       <button className="btn small-btn" disabled={busy === l.id || !!own[l.id]} title={own[l.id] ? 'The learner set their own, so it can only be changed by them' : undefined} onClick={() => reset(l)}>

@@ -3100,6 +3100,11 @@ body.resizing iframe { pointer-events: none; }
 .line-add { position: absolute; left: -24px; z-index: 3; width: 22px; height: 22px; margin-top: -11px; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--soft); cursor: pointer; transition: color .12s, background .12s, border-color .12s; }
 .line-add:hover { color: var(--accent-text); background: var(--paper); border-color: var(--hair-strong); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 .line-add svg { width: 16px; height: 16px; }
+/* While the pointer is on the +, a line shows where the new line will go */
+.line-add-guide { position: absolute; left: 0; right: 0; z-index: 2; height: 2px; margin-top: -1px; border-radius: 2px; background: var(--accent); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.line-add-guide::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.line-add:hover + .line-add-guide { opacity: .85; }
+@media (hover: none), (max-width: 760px) { .line-add-guide { display: none; } }
 @media (hover: none), (max-width: 760px) { .line-add { display: none; } }
 
 /* View as a learner, inside the mode menu */
@@ -4604,3 +4609,32 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .tl-colors { display: inline-flex; gap: 4px; }
 .tl-hint { font-size: 12px; }
 .gl-tl { width: 80%; color: var(--ink); }
+
+/* The app's own confirm, notice and question boxes */
+.ask-scrim { z-index: 200; align-items: center; padding: 16px; background: rgba(38, 36, 32, .36); backdrop-filter: blur(3px) saturate(.9); animation: ask-fade .16s ease-out; }
+.dialog.ask { position: relative; width: 420px; gap: 0; padding: 28px 28px 22px; border-radius: 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #d98f63) 9%, var(--paper)) 0, var(--paper) 120px); box-shadow: 0 0 0 1px var(--hair), 0 2px 6px rgba(38, 36, 32, .06), 0 30px 70px -10px rgba(38, 36, 32, .32); animation: ask-in .2s cubic-bezier(.2, .9, .3, 1.15); overflow: hidden; }
+.ask-ic { width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 15px; background: var(--paper); color: var(--accent-text, #a05e37); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #d98f63) 30%, transparent), 0 6px 14px -6px color-mix(in srgb, var(--accent, #d98f63) 50%, transparent); }
+.ask.danger .ask-ic { color: var(--ink); box-shadow: 0 0 0 1px var(--hair-strong), 0 6px 14px -8px rgba(38, 36, 32, .4); }
+.ask-head { margin: 0; font: 600 20px/1.3 var(--serif); letter-spacing: -.005em; color: var(--ink); text-wrap: balance; }
+.ask-rest { margin: 8px 0 0; font: 14.5px/1.55 var(--sans); color: var(--muted); text-wrap: pretty; }
+.ask-input { margin-top: 16px; height: 44px; padding: 0 14px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--paper); color: var(--ink); font: 15.5px var(--sans); }
+.ask-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.ask-acts { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
+.ask-acts .btn { min-width: 104px; height: 42px; padding: 0 18px; border-radius: 12px; justify-content: center; font-weight: 600; }
+.ask-acts .btn:not(.primary) { background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong); border-color: transparent; }
+.ask-acts .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.ask .btn.primary.danger-btn { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.ask .btn.primary.danger-btn:hover { background: color-mix(in srgb, var(--ink) 86%, var(--paper)); }
+@keyframes ask-in { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes ask-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 640px) { .ask-scrim { align-items: flex-end; padding: 0; } .dialog.ask { width: 100%; border-radius: 22px 22px 0 0; padding: 24px 20px calc(18px + env(safe-area-inset-bottom)); animation-name: ask-up; } .ask-acts { flex-direction: column-reverse; } .ask-acts .btn { width: 100%; height: 48px; } }
+@keyframes ask-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* The formatting bar stays at the top of the task while you scroll through it */
+.frame-body .task-editor > .toolbar { position: sticky; top: -16px; z-index: 6; margin: -16px -24px 6px; padding: 12px 24px 8px; background: var(--paper); border-bottom: 1px solid var(--hair); }
+@media (max-width: 640px) { .frame-body .task-editor > .toolbar { top: -14px; margin: -14px -16px 6px; padding: 10px 16px 6px; } }
+
+/* Opening another task: a soft veil with a loader over the old one */
+.task-frame.is-opening { position: relative; }
+.frame-veil { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; border-radius: inherit; background: color-mix(in srgb, var(--paper) 72%, transparent); backdrop-filter: blur(1.5px); animation: veil-in .18s ease-out .12s both; }
+@keyframes veil-in { from { opacity: 0; } to { opacity: 1; } }

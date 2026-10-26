@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor } from '@tiptap/react';
@@ -62,7 +63,8 @@ export function TableHandles({ editor, host }: { editor: Editor; host: HTMLEleme
       const tr = (cell.parentElement as HTMLElement).getBoundingClientRect();
       const c = cell.getBoundingClientRect();
       const tb = table.getBoundingClientRect();
-      setSpot({ tablePos: info.tablePos, row: info.row, col: info.col, rowTop: tr.top - h.top, rowH: tr.height, colLeft: c.left - h.left, colW: c.width, top: tb.top - h.top, left: tb.left - h.left });
+      const z = zoomOf(host);
+      setSpot({ tablePos: info.tablePos, row: info.row, col: info.col, rowTop: (tr.top - h.top) / z, rowH: tr.height / z, colLeft: (c.left - h.left) / z, colW: c.width / z, top: (tb.top - h.top) / z, left: (tb.left - h.left) / z });
     };
     const lv = () => (window.clearTimeout(hide.current), (hide.current = window.setTimeout(() => setSpot(null), 300)));
     host.addEventListener('mousemove', mv);
@@ -140,14 +142,14 @@ export function TableHandles({ editor, host }: { editor: Editor; host: HTMLEleme
         if (i < 0) i = rows.length;
         to = i > s.row ? i - 1 : i;
         const ref = rows[Math.min(i, rows.length - 1)].getBoundingClientRect();
-        setDrag({ kind, to, line: (i >= rows.length ? ref.bottom : ref.top) - h.top });
+        setDrag({ kind, to, line: ((i >= rows.length ? ref.bottom : ref.top) - h.top) / zoomOf(host) });
       } else {
         const cells = Array.from(table.rows[0]?.cells ?? []);
         let i = cells.findIndex((c) => ev.clientX < c.getBoundingClientRect().left + c.getBoundingClientRect().width / 2);
         if (i < 0) i = cells.length;
         to = i > s.col ? i - 1 : i;
         const ref = cells[Math.min(i, cells.length - 1)].getBoundingClientRect();
-        setDrag({ kind, to, line: (i >= cells.length ? ref.right : ref.left) - h.left });
+        setDrag({ kind, to, line: ((i >= cells.length ? ref.right : ref.left) - h.left) / zoomOf(host) });
       }
     };
     const up = () => {
@@ -181,7 +183,7 @@ export function TableHandles({ editor, host }: { editor: Editor; host: HTMLEleme
       {drag && spot && host && tableBox && (
         <span
           className="tbl-drop"
-          style={drag.kind === 'row' ? { top: drag.line - 1, left: tableBox.left - host.getBoundingClientRect().left, width: tableBox.width, height: 3 } : { left: drag.line - 1, top: tableBox.top - host.getBoundingClientRect().top, height: tableBox.height, width: 3 }}
+          style={drag.kind === 'row' ? { top: drag.line - 1, left: (tableBox.left - host.getBoundingClientRect().left) / zoomOf(host), width: tableBox.width / zoomOf(host), height: 3 } : { left: drag.line - 1, top: (tableBox.top - host.getBoundingClientRect().top) / zoomOf(host), height: tableBox.height / zoomOf(host), width: 3 }}
         />
       )}
       {menu && <TableMenu kind={menu.kind} anchor={menu.anchor} onClose={() => setMenu(null)} s={menu.s} count={(() => { const n = tableNode(menu.s); return menu.kind === 'row' ? n?.childCount ?? 0 : n?.child(0).childCount ?? 0; })()} ops={{

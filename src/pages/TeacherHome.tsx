@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
@@ -296,7 +297,7 @@ export function TeacherHome() {
                       className="btn small-btn danger"
                       disabled={!!purging}
                       onClick={async () => {
-                        if (!window.confirm(`Remove ${c.name} for good now? This can't be undone.`)) return;
+                        if (!(await ask(`Remove ${c.name} for good now? This can't be undone.`))) return;
                         setPurging(c.name);
                         await purgeClass(c).catch((e) => console.error(e));
                         setPurging('');

@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import { useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -50,7 +51,7 @@ export function NoteEditor({ value, onChange, placeholder = 'Write the note', au
           <span className="ne-def">Aa</span>,
           editor.isActive('definition'),
           () => {
-            if (editor.state.selection.empty && !editor.isActive('definition')) return void window.alert('Select a word or phrase first, then add its definition.');
+            if (editor.state.selection.empty && !editor.isActive('definition')) return void tell('Select a word or phrase first, then add its definition.');
             setDefOpen(true);
           },
           editor.isActive('definition') ? 'Edit the definition' : 'Definition: select a word, then add its meaning',

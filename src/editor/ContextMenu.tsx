@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { Swatches } from './Highlight';
@@ -125,7 +126,7 @@ export function EditorContextMenu({
       const text = await navigator.clipboard.readText();
       (editor.view as unknown as { pasteText: (t: string) => void }).pasteText(text);
     } catch {
-      window.alert('Your browser blocked pasting from this menu. Press Ctrl+V (or ⌘V on a Mac) to paste.');
+      void tell('Your browser blocked pasting from this menu. Press Ctrl+V (or ⌘V on a Mac) to paste.');
     }
   };
   const text = editor.state.doc.textBetween(from, to, ' ').trim();

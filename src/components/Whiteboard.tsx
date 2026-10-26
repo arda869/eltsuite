@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getStroke } from 'perfect-freehand';
 import { onDisconnect, onValue, ref, remove, set, update } from 'firebase/database';
@@ -336,7 +337,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
     const last = [...list].reverse().find((s) => s.by === uid);
     if (last) remove(ref(rtdb, `${base}/strokes/${last.id}`)).catch(() => {});
   };
-  const clear = () => window.confirm('Clear the whole board for everyone?') && remove(ref(rtdb, `${base}/strokes`)).catch(() => {});
+  const clear = () => void ask('Clear the whole board for everyone?').then((ok) => { if (ok) remove(ref(rtdb, `${base}/strokes`)).catch(() => {}); });
   const commitText = () => {
     if (textAt) {
       const v = textVal.trim();

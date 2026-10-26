@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor, JSONContent } from '@tiptap/react';
@@ -142,8 +143,10 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
       let t = e.target as HTMLElement | null;
       if (!editor.isEditable) return setHover(null);
       if (t?.closest('.block-handle, .block-menu, .line-add')) return;
-      if (t?.closest('.gap-node, .choice-node, .drop-node, .grip')) return setHover(null);
+      if (t?.closest('.grip')) return;
       while (t && t.parentElement !== pm) t = t.parentElement;
+      // In the margin beside the text: the block level with the pointer.
+      if (!t) t = (Array.from(pm.children) as HTMLElement[]).find((k) => { const r = k.getBoundingClientRect(); return r.height && e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2; }) ?? null;
       if (!t) return;
       let pos = -1;
       // Every top-level part gets a handle, except those with their own (questions, boards…).
@@ -158,7 +161,9 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
       const w = el.getBoundingClientRect();
       const lh = parseFloat(getComputedStyle(t).lineHeight) || 24;
       // A table's handle sits above its top-left corner, clear of the row handles.
-      setHover({ pos, top: isTable ? r.top - w.top - 14 : r.top - w.top + Math.min(lh, r.height) / 2, left: r.left - w.left - 24 });
+      // Screen distances, scaled back to the editor's own size when the task text is enlarged.
+      const z = zoomOf(el);
+      setHover({ pos, top: isTable ? (r.top - w.top) / z - 14 : (r.top - w.top) / z + Math.min(lh, r.height / z) / 2, left: (r.left - w.left) / z - 24 });
     };
     const leave = () => (window.clearTimeout(hide.current), (hide.current = window.setTimeout(() => setHover(null), 350)));
     el.addEventListener('mousemove', move);

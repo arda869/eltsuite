@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useMemo, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { LEVELS, SKILLS, matches, parseTags, removeFromBank, saveToBank, textOf, updateBankItem, useBank, type BankItem } from '../lib/bank';
@@ -143,7 +144,7 @@ export function BankPicker({ uid, onPick, onClose }: { uid: string; onPick: (b: 
                       Tags
                     </button>
                   )}
-                  <button type="button" className="btn link small" onClick={() => window.confirm(`Remove “${b.title}” from your bank?`) && removeFromBank(uid, b.id)}>
+                  <button type="button" className="btn link small" onClick={() => void ask(`Remove “${b.title}” from your bank?`).then((ok) => { if (ok) removeFromBank(uid, b.id); })}>
                     Remove
                   </button>
                 </span>

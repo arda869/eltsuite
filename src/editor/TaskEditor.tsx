@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import { createPortal } from 'react-dom';
 import { newTimeline, TimelineNode } from './Timeline';
 import { TableHandles } from './TableHandles';
@@ -450,7 +451,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       for (const f of files) srcs.push(await uploadPicture(classRef.current, f));
       insertPictures(ed, srcs);
     } catch {
-      window.alert('The picture could not be uploaded. Try a smaller one.');
+      void tell('The picture could not be uploaded. Try a smaller one.');
     }
   }
   const [picOpen, setPicOpen] = useState(false);
@@ -557,7 +558,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           editor.isActive('definition'),
           () => {
             if (editor.state.selection.empty && !editor.isActive('definition')) {
-              window.alert('Select a word or phrase first, then add its definition.');
+              void tell('Select a word or phrase first, then add its definition.');
               return;
             }
             setDefOpen(true);
@@ -569,7 +570,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           editor.isActive('lessonLink') || editor.isActive('link'),
           () => {
             if (editor.state.selection.empty && !editor.isActive('lessonLink') && !editor.isActive('link')) {
-              window.alert('Select the words to link first.');
+              void tell('Select the words to link first.');
               return;
             }
             setLinkOpen(true);

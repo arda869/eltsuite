@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
 import type { ClassDoc } from '../lib/classes';
@@ -48,7 +49,7 @@ export function TeachersPanel({ c }: { c: ClassDoc }) {
                   <option value="co">Co-teacher</option>
                   <option value="viewer">Viewer</option>
                 </select>
-                <button type="button" className="btn link small" onClick={() => window.confirm(`Remove ${t.name} from this class?`) && removeCoTeacher(c, uid)}>
+                <button type="button" className="btn link small" onClick={() => void ask(`Remove ${t.name} from this class?`).then((ok) => { if (ok) removeCoTeacher(c, uid); })}>
                   Remove
                 </button>
               </span>

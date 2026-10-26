@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -89,13 +90,14 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
     e.stopPropagation();
     const pic = (e.currentTarget as HTMLElement).parentElement;
     if (!pic) return;
-    const w0 = pic.getBoundingClientRect().width;
+    const z = zoomOf(pic);
+    const w0 = pic.getBoundingClientRect().width / z;
     const max = (ref.current?.closest('.ProseMirror') as HTMLElement | null)?.clientWidth ?? 900;
     const x0 = e.clientX;
     const dir = corner.endsWith('e') ? 1 : -1;
     let w = w0;
     const mv = (ev: PointerEvent) => {
-      w = Math.round(Math.max(60, Math.min(max, w0 + dir * (ev.clientX - x0))));
+      w = Math.round(Math.max(60, Math.min(max, w0 + (dir * (ev.clientX - x0)) / z)));
       setDragW(w);
     };
     const up = () => {

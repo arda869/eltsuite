@@ -1,3 +1,4 @@
+import { zoomOf } from '../lib/zoom';
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { UiIcon } from '../components/UiIcon';
@@ -5,6 +6,7 @@ import { UiIcon } from '../components/UiIcon';
 // A "+" in the left margin beside the line under the pointer. Click it for a new, empty line below.
 export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement | null }) {
   const [top, setTop] = useState<number | null>(null);
+  const [below, setBelow] = useState(0); // where the new line goes: under the block
   const target = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -18,7 +20,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
       if (!editor.isEditable) return hide();
       if ((e.target as HTMLElement).closest('.line-add')) return;
       // A gap or choice shows its own drag handle at the start of the line; keep out of its way.
-      if ((e.target as HTMLElement).closest('.gap-node, .choice-node, .drop-node, .grip')) return hide();
+      if ((e.target as HTMLElement).closest('.grip')) return;
       // The top-level block level with the pointer, or the nearest one when the pointer is in a gap.
       let best: HTMLElement | null = null;
       let dist = Infinity;
@@ -35,8 +37,12 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
       if (!best || dist > 28) return hide();
       const r = best.getBoundingClientRect();
       const lh = parseFloat(getComputedStyle(best).lineHeight) || 26;
-      const t = r.top - host.getBoundingClientRect().top + Math.min(r.height, lh) / 2;
+      const t = (r.top - host.getBoundingClientRect().top) / zoomOf(host) + Math.min(r.height / zoomOf(best), lh) / 2;
       target.current = best;
+      // Halfway into the space under the block, where the new line will appear.
+      const next = best.nextElementSibling as HTMLElement | null;
+      const gapBelow = next ? Math.max(0, next.getBoundingClientRect().top - r.bottom) / 2 : 4;
+      setBelow((r.bottom + gapBelow - host.getBoundingClientRect().top) / zoomOf(host));
       setTop((old) => (old !== null && Math.abs(old - t) < 0.5 ? old : t));
     };
     const leave = (e: MouseEvent) => {
@@ -63,8 +69,11 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
     setTop(null);
   };
   return (
+    <>
     <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onClick={add}>
       <UiIcon name="plus" />
     </button>
+    <span className="line-add-guide" style={{ top: below }} aria-hidden="true" />
+    </>
   );
 }

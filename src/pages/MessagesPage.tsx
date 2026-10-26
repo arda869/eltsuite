@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { isProxyTab } from '../lib/proxy';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -561,7 +562,7 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
                 <button type="button" onClick={onEdit}>
                   Edit
                 </button>
-                <button type="button" onClick={() => window.confirm('Delete this message for everyone?') && deleteMsg(c, m.id)}>
+                <button type="button" onClick={() => void ask('Delete this message for everyone?').then((ok) => { if (ok) deleteMsg(c, m.id); })}>
                   Delete
                 </button>
               </>
@@ -611,7 +612,7 @@ function GroupSettings({ c, me, dir, onLeave }: { c: Chat; me: Person; dir: Dire
           <button type="button" className="btn small-btn" onClick={() => setAdding([])}>
             + Add people
           </button>
-          <button type="button" className="btn link small" onClick={() => window.confirm('Leave this group?') && onLeave()}>
+          <button type="button" className="btn link small" onClick={() => void ask('Leave this group?').then((ok) => { if (ok) onLeave(); })}>
             Leave the group
           </button>
         </span>

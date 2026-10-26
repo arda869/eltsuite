@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -309,7 +310,7 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
               Share with colleagues…
             </button>
             <span className="menu-sep" aria-hidden="true" />
-            <button role="menuitem" className="danger-item" onClick={() => (setMenu(false), window.confirm(`Delete “${item.title}”?`) && deleteItem(c.id, item.id))}>
+            <button role="menuitem" className="danger-item" onClick={() => (setMenu(false), void ask(`Delete “${item.title}”?`).then((ok) => { if (ok) deleteItem(c.id, item.id); }))}>
               Delete
             </button>
           </div>
@@ -400,7 +401,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
           onClick={async () => {
             setExporting(true);
             try {
-              download(c.name, await classText(c.id, c.name, window.confirm('Include your teacher notes in the file? Choose Cancel to leave them out, for example when sharing.')));
+              download(c.name, await classText(c.id, c.name, (await ask('Include your teacher notes in the file? Leave them out when you share it, for example.', { ok: 'Include notes', cancel: 'Leave them out' }))));
             } finally {
               setExporting(false);
             }
@@ -461,7 +462,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
                   type="button"
                   className="btn link small"
                   style={{ marginLeft: 'auto' }}
-                  onClick={() => window.confirm(`Delete the topic “${t.name}”?`) && deleteTopic(c.id, t.id)}
+                  onClick={() => void ask(`Delete the topic “${t.name}”?`).then((ok) => { if (ok) deleteTopic(c.id, t.id); })}
                 >
                   Delete topic
                 </button>

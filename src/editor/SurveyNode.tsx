@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { newId } from '../lib/tasks';
@@ -18,9 +19,9 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
           className="sv-template"
           value=""
           aria-label="Start from a template"
-          onChange={(e) => {
+          onChange={async (e) => {
             const t = TEMPLATES.find((x) => x.key === e.target.value);
-            if (t && (!qs.some((q) => q.prompt) || window.confirm('Replace the questions with the template?'))) updateAttributes({ title: t.title, questions: t.questions() });
+            if (t && (!qs.some((q) => q.prompt) || (await ask('Replace the questions with the template?')))) updateAttributes({ title: t.title, questions: t.questions() });
           }}
         >
           <option value="">Templates…</option>

@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -128,7 +129,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
                   Update the shared copy
                 </button>
               )}
-              <button type="button" className="btn small-btn danger" disabled={!!busy} onClick={() => window.confirm('Stop sharing? The link stops working, and colleagues no longer see it.') && run('Stopping…', () => stopShare(existing.id))}>
+              <button type="button" className="btn small-btn danger" disabled={!!busy} onClick={() => void ask('Stop sharing? The link stops working, and colleagues no longer see it.').then((ok) => { if (ok) run('Stopping…', () => stopShare(existing.id)); })}>
                 Stop sharing
               </button>
             </span>

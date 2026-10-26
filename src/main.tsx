@@ -1,3 +1,4 @@
+import { AskHost } from './lib/ask';
 import { startTilt } from './lib/tilt';
 import { ChatDock } from './components/ChatDock';
 import { startTheme } from './lib/theme';
@@ -128,6 +129,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <ChatDock />
+        <AskHost />
         </ProxyGate>
       </BrowserRouter>
     </AuthProvider>

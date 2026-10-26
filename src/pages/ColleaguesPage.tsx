@@ -1,3 +1,4 @@
+import { ask } from '../lib/ask';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -129,7 +130,7 @@ export function ColleaguesPage() {
                       {cur.at ? ` · colleagues since ${new Date(cur.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
                     </span>
                   </span>
-                  <button type="button" className="btn link small" onClick={() => window.confirm(`Stop being colleagues with ${cur.name}? What you have shared stays shared until you stop sharing it.`) && (removeColleague(uid, cur.id), setPick(''))}>
+                  <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${cur.name}? What you have shared stays shared until you stop sharing it.`).then((ok) => { if (ok) (removeColleague(uid, cur.id), setPick('')); })}>
                     Remove colleague
                   </button>
                 </header>
