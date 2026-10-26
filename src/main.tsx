@@ -18,6 +18,7 @@ import { LearnerRecap, SharedRecap } from './pages/RecapPages';
 import { LearnerDiscussion } from './pages/LearnerDiscussion';
 import { ProxyGate } from './components/ProxyGate';
 import { TooltipLayer } from './components/Tooltip';
+import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
 
@@ -36,9 +37,11 @@ function NoAccess() {
   );
 }
 
+const Boot = () => <Loader full label="" />;
+
 function Home() {
   const { user, profile, ready } = useAuth();
-  if (!ready) return null;
+  if (!ready) return <Boot />;
   if (!user) return <SignIn />;
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
@@ -48,19 +51,19 @@ function Home() {
 
 function Join() {
   const { user, ready } = useAuth();
-  if (!ready) return null;
+  if (!ready) return <Boot />;
   return user ? <Navigate to="/" replace /> : <LearnerJoin />;
 }
 
 function TeacherOnly({ children }: { children: JSX.Element }) {
   const { user, ready } = useAuth();
-  if (!ready) return null;
+  if (!ready) return <Boot />;
   return user && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
 }
 
 function LearnerOnly({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
-  if (!ready) return null;
+  if (!ready) return <Boot />;
   return user && profile?.role === 'learner' ? children : <Navigate to="/" replace />;
 }
 

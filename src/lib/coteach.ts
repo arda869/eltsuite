@@ -69,18 +69,30 @@ export function useTeacherClasses(uid?: string | null) {
   const [own, setOwn] = useState<ClassDoc[] | null>(null);
   const [shared, setShared] = useState<ClassDoc[] | null>(null);
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!uid) return;
-    const u1 = onSnapshot(query(collection(db, 'classes'), where('teacherId', '==', uid)), (s) => setOwn(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))), (e) => (console.error(e), setError('Your classes could not be loaded. Please refresh the page.')));
+    let timer = 0;
+    const u1 = onSnapshot(
+      query(collection(db, 'classes'), where('teacherId', '==', uid)),
+      (s) => (setOwn(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))), setError('')),
+      (e) => {
+        console.error(e);
+        // Try again on its own a few times (a token refresh or a dropped connection) before saying so.
+        if (attempt < 3) timer = window.setTimeout(() => setAttempt((a) => a + 1), 1200 * (attempt + 1));
+        else setError('Your classes could not be loaded.');
+      },
+    );
     const u2 = onSnapshot(query(collection(db, 'classes'), where('teacherIds', 'array-contains', uid)), (s) => setShared(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))), () => setShared([]));
-    return () => (u1(), u2());
-  }, [uid]);
+    return () => (u1(), u2(), clearTimeout(timer));
+  }, [uid, attempt]);
+  const retry = () => (setError(''), setAttempt(0));
   const classes = useMemo(() => {
     if (!own) return null;
     const seen = new Set(own.map((c) => c.id));
     return [...own, ...(shared ?? []).filter((c) => !seen.has(c.id))];
   }, [own, shared]);
-  return { classes, error, loading: own === null };
+  return { classes, error, loading: own === null, retry };
 }
 
 // Invitations waiting for this teacher.

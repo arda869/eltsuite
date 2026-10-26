@@ -1,3 +1,4 @@
+import { Loader } from '../components/Loader';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
@@ -110,7 +111,7 @@ export function ClassPage() {
       </TopBar>
 
       {c === null && <p className="placeholder">This class could not be found, or you don’t have access to it.</p>}
-      {c === undefined && <span className="sub">Loading…</span>}
+      {c === undefined && <Loader full label="Opening the class" />}
 
       {c && (
         <>

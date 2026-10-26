@@ -16,7 +16,11 @@ const proxyTab = (() => {
 export const auth = proxyTab ? initializeAuth(app, { persistence: browserSessionPersistence, popupRedirectResolver: browserPopupRedirectResolver }) : getAuth(app);
 
 // Answers and edits are kept on the device first and sent when the connection returns.
+// The device cache is shared by all open tabs, and only one tab talks to the server for all of them,
+// using its own sign-in. A view-as-learner tab is signed in as someone else, so it keeps a cache of
+// its own; sharing would send the teacher's requests with the learner's sign-in, and they would fail.
 function makeDb() {
+  if (proxyTab) return initializeFirestore(app, { localCache: memoryLocalCache() });
   try {
     return initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   } catch {

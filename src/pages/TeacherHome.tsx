@@ -9,6 +9,7 @@ import { theme } from '../lib/themes';
 import { DELETE_AFTER_DAYS, purgeClass, restoreClass } from '../lib/deletion';
 import { createDemoClass } from '../lib/demo';
 import { CoverArt } from '../components/Covers';
+import { Loader } from '../components/Loader';
 import { acceptInvite, declineInvite, emailKey, syncLiveTeachers, useInvites, useTeacherClasses } from '../lib/coteach';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
@@ -62,9 +63,6 @@ export function TeacherHome() {
 
   const mine = useTeacherClasses(user?.uid);
   const classes = mine.classes;
-  useEffect(() => {
-    if (mine.error) setError(mine.error);
-  }, [mine.error]);
   const invites = useInvites(user?.email);
   const [inviteMsg, setInviteMsg] = useState('');
   // Keep the live database in step with the co-teacher list for the classes I own.
@@ -164,6 +162,14 @@ export function TeacherHome() {
           </div>
 
           {error && <span className="error">{error}</span>}
+          {mine.error && (
+            <span className="load-error">
+              {mine.error} Check your connection, then
+              <button type="button" className="btn small" onClick={mine.retry}>
+                Try again
+              </button>
+            </span>
+          )}
 
           {invites.length > 0 && user && (
             <section className="invite-card" aria-label="Invitations">
@@ -222,7 +228,7 @@ export function TeacherHome() {
           )}
 
           {classes === null ? (
-            <span className="sub">Loading your classes…</span>
+            <Loader label="Loading your classes" />
           ) : active.length === 0 ? (
             <div className="empty">
               <h2>Create your first class</h2>

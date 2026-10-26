@@ -1,3 +1,4 @@
+import { Loader } from '../components/Loader';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot, orderBy, query } from 'firebase/firestore';
@@ -728,6 +729,7 @@ export function LessonEditor() {
         />
       )}
       <NoticeToasts classId={classId} to="teacher" link={(i, t) => (i === 'disc' ? `/class/${classId}?tab=discussion&thread=${t}` : `/class/${classId}/lesson/${i}?task=${t}`)} />
+      {item === undefined && <Loader full label="Opening the lesson" />}
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
       {item && (
@@ -950,7 +952,7 @@ export function LessonEditor() {
               </div>
             ) : !task || !draft ? (
               <div className="empty" style={{ padding: 28 }}>
-                <h2>{tasks.length ? 'Loading…' : 'Add the first task'}</h2>
+                {tasks.length ? <Loader label="Opening the task" /> : <h2>Add the first task</h2>}
                 {!tasks.length && <p>A lesson is a set of tasks. Each task is like a page: a short title, a bold instruction, then the text and questions.</p>}
                 {!tasks.length && (
                   <button className="btn primary" onClick={newTask}>

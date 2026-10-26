@@ -3111,3 +3111,32 @@ textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hid
   .live-card .lc-text { flex: 1 1 100%; }
   .live-card > .btn { flex: 1 1 0; justify-content: center; }
 }
+
+/* Loading: the Lesson Lit flame flickers above the stem of its "i" */
+.loader { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 56px 16px; color: var(--soft); }
+.loader.full { min-height: 72vh; }
+.ld-mark { position: relative; display: block; width: 30px; height: 70px; }
+.ld-glow { position: absolute; left: 50%; top: 22px; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent, #d98f63) 30%, transparent) 0%, color-mix(in srgb, var(--accent, #d98f63) 10%, transparent) 40%, transparent 68%); animation: ld-glow 2.4s ease-in-out infinite; }
+.ld-flame { position: absolute; left: 50%; top: 0; width: 30px; height: 42px; margin-left: -15px; overflow: visible; transform-origin: 50% 92%; animation: ld-flicker 1.8s ease-in-out infinite; }
+.ld-outer { fill: var(--accent, #d98f63); }
+.ld-core { fill: color-mix(in srgb, var(--accent, #d98f63) 35%, #fff); transform-origin: 50% 90%; animation: ld-core 1.2s ease-in-out infinite; }
+.ld-stem { position: absolute; left: 50%; bottom: 0; width: 6px; height: 24px; margin-left: -3px; border-radius: 3px; background: var(--ink, #262420); opacity: .82; }
+.ld-label { font: 500 13px var(--sans); letter-spacing: .02em; color: var(--muted); }
+.ld-dots i { font-style: normal; animation: ld-dot 1.4s ease-in-out infinite; opacity: .2; }
+.ld-dots i:nth-child(2) { animation-delay: .2s; }
+.ld-dots i:nth-child(3) { animation-delay: .4s; }
+@keyframes ld-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  18% { transform: scale(.95, 1.06) skewX(-2.5deg); }
+  36% { transform: scale(1.03, .96) skewX(1.5deg); }
+  54% { transform: scale(.97, 1.04) skewX(-1deg); }
+  72% { transform: scale(1.02, .97) skewX(2deg); }
+  88% { transform: scale(.98, 1.03) skewX(-.5deg); }
+}
+@keyframes ld-core { 0%, 100% { transform: scale(1, 1); opacity: .95; } 50% { transform: scale(.86, 1.1); opacity: .75; } }
+@keyframes ld-glow { 0%, 100% { opacity: .65; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes ld-dot { 0%, 100% { opacity: .2; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ld-glow, .ld-flame, .ld-core, .ld-dots i { animation: none; } .ld-dots i { opacity: 1; } }
+
+/* Classes could not load: say so calmly, with a way to try again */
+.load-error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: var(--tint); color: var(--ink); font: 13px var(--sans); }

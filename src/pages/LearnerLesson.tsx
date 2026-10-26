@@ -1,3 +1,4 @@
+import { Loader } from '../components/Loader';
 import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
@@ -576,9 +577,13 @@ export function LearnerLesson() {
               </div>
             </div>
           ) : (
-            <p className="placeholder" style={{ padding: 24 }}>
-              {tasks.length === 0 ? 'Your teacher hasn’t added tasks to this lesson yet.' : 'Loading…'}
-            </p>
+            tasks.length === 0 ? (
+              <p className="placeholder" style={{ padding: 24 }}>
+                Your teacher hasn’t added tasks to this lesson yet.
+              </p>
+            ) : (
+              <Loader label="Opening the task" />
+            )
           )}
         </main>
         </div>
