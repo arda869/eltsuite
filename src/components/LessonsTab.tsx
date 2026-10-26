@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyDialog } from './CopyDialog';
 import { ImportDialog } from './ImportDialog';
@@ -28,8 +28,6 @@ const ic = (d: React.ReactNode) => (
 );
 const LOCK = ic(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>);
 const UNLOCK = ic(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></>);
-const DUP = ic(<><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>);
-const COPY_TO = ic(<><path d="M4 12h12M12 6l6 6-6 6" /><path d="M20 4v16" /></>);
 
 function InlineAdd({ placeholder, label, onAdd }: { placeholder: string; label: string; onAdd: (v: string) => Promise<void> }) {
   const [open, setOpen] = useState(false);
@@ -169,6 +167,32 @@ function TopicTitle({ c, t }: { c: ClassDoc; t: Topic }) {
   );
 }
 
+const MORE = ic(<><circle cx="5" cy="12" r="1.3" fill="currentColor" /><circle cx="12" cy="12" r="1.3" fill="currentColor" /><circle cx="19" cy="12" r="1.3" fill="currentColor" /></>);
+const CAL = ic(<><rect x="4" y="5.5" width="16" height="14" rx="2" /><path d="M8 3.5v4M16 3.5v4M4 10h16" /></>);
+
+// When a lesson happens, or when homework or an exam is due: a small chip, or a calendar icon when not set.
+function WhenChip({ item, open, onToggle }: { item: Item; open: boolean; onToggle: () => void }) {
+  if (item.type === 'practice') return null;
+  const at = item.type === 'lesson' ? item.schedule?.at : item.due;
+  const label = item.type === 'lesson' ? 'When' : 'Due';
+  if (!at)
+    return (
+      <button type="button" className={'icon-btn' + (open ? ' on' : '')} aria-label={item.type === 'lesson' ? 'Set when it happens' : 'Set a due date'} data-tip={item.type === 'lesson' ? 'Set when it happens' : 'Set a due date'} onClick={onToggle}>
+        {CAL}
+      </button>
+    );
+  const d = new Date(at);
+  const late = item.type !== 'lesson' && at < Date.now();
+  return (
+    <button type="button" className={'when-chip' + (open ? ' on' : '') + (late ? ' past' : '')} onClick={onToggle} data-tip="Change the date">
+      {CAL}
+      <span>
+        {label} {d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}, {d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+      </span>
+    </button>
+  );
+}
+
 function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item; list: Item[]; topics: Topic[]; onResults?: (item: Item) => void }) {
   const [copying, setCopying] = useState(false);
   const [recap, setRecap] = useState(false);
@@ -181,6 +205,26 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
   };
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [scheduling, setScheduling] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const menuRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: MouseEvent) => menuRef.current && !menuRef.current.contains(e.target as Node) && setMenu(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => (document.removeEventListener('mousedown', close), document.removeEventListener('keydown', esc));
+  }, [menu]);
+  const copyAs = async (type: Item['type'], title: string, done: string) => {
+    setBusy(true);
+    try {
+      await copyLesson(c.id, item.id, c.id, { title, type });
+      setMsg(`${done}. The copy is hidden until you show it.`);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <li className={'item' + (item.hidden ? ' is-hidden' : '')}>
       {copying && <CopyDialog kind="lesson" fromClass={c.id} itemId={item.id} title={item.title} onClose={() => setCopying(false)} onDone={setMsg} />}
@@ -206,121 +250,100 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
               {t.name}
             </option>
           ))}
-          <option value="">Unsorted</option>
+          <option value="">Not in a topic</option>
         </select>
       </span>
       <span className="status">{msg || [item.hidden ? 'Hidden from learners' : '', item.locked ? 'Locked' : ''].filter(Boolean).join(' · ')}</span>
+      <WhenChip item={item} open={scheduling} onToggle={() => setScheduling((v) => !v)} />
       <button
         type="button"
         className={'icon-btn' + (item.locked ? ' on' : '')}
         aria-label={item.locked ? 'Unlock' : 'Lock'}
-        title={item.locked ? 'Unlock' : 'Lock · learners see it but can’t open it'}
+        data-tip={item.locked ? 'Unlock' : 'Lock · learners see it but can’t open it'}
         onClick={() => updateItem(c.id, item.id, { locked: !item.locked })}
       >
         {item.locked ? LOCK : UNLOCK}
       </button>
       <button
         type="button"
-        className="icon-btn"
-        aria-label="Duplicate"
-        title="Duplicate"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await copyLesson(c.id, item.id, c.id, { title: `${item.title} (copy)` });
-            setMsg('Duplicated. The copy is hidden until you show it.');
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {DUP}
-      </button>
-      <button type="button" className="icon-btn" aria-label="Copy to another class" title="Copy to another class" onClick={() => setCopying(true)}>
-        {COPY_TO}
-      </button>
-      <button
-        type="button"
         className={'icon-btn' + (item.hidden ? ' on' : '')}
         aria-label={item.hidden ? 'Show to learners' : 'Hide from learners'}
-        title={item.hidden ? 'Show to learners' : 'Hide from learners'}
+        data-tip={item.hidden ? 'Show to learners' : 'Hide from learners'}
         onClick={() => updateItem(c.id, item.id, { hidden: !item.hidden })}
       >
         {item.hidden ? EYE_OFF : EYE}
       </button>
-      <button
-        type="button"
-        className="icon-btn"
-        aria-label="Delete"
-        title="Delete"
-        onClick={() => window.confirm(`Delete “${item.title}”?`) && deleteItem(c.id, item.id)}
-      >
-        ×
-      </button>
-      <span className="item-extra">
-        {(item.type === 'homework' || item.type === 'exam') && (
-          <label className="item-due">
-            <span className="hint">Due</span>
-            <input type="datetime-local" value={item.due ? toLocal(item.due) : ''} onChange={(e) => updateItem(c.id, item.id, { due: e.target.value ? new Date(e.target.value).getTime() : null })} />
-          </label>
+      <span className="menu-anchor" ref={menuRef}>
+        <button type="button" className={'icon-btn' + (menu ? ' on' : '')} aria-label="More" data-tip="More" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((v) => !v)}>
+          {MORE}
+        </button>
+        {menu && (
+          <div className="menu item-menu" role="menu">
+            {item.type === 'lesson' ? (
+              <button role="menuitem" onClick={() => (setMenu(false), setRecap(true))}>
+                Lesson recap…
+              </button>
+            ) : (
+              <button role="menuitem" onClick={() => (setMenu(false), onResults?.(item))}>
+                Results
+              </button>
+            )}
+            <span className="menu-sep" aria-hidden="true" />
+            <button role="menuitem" disabled={busy} onClick={() => (setMenu(false), copyAs(item.type, `${item.title} (copy)`, 'Duplicated'))}>
+              Duplicate
+            </button>
+            {(['lesson', 'homework', 'exam', 'practice'] as const)
+              .filter((t) => t !== item.type)
+              .map((t) => (
+                <button key={t} role="menuitem" disabled={busy} onClick={() => (setMenu(false), copyAs(t, item.title, `Copied as ${t}`))}>
+                  Copy as {t}
+                </button>
+              ))}
+            <button role="menuitem" onClick={() => (setMenu(false), setCopying(true))}>
+              Copy to another class…
+            </button>
+            <span className="menu-sep" aria-hidden="true" />
+            <button role="menuitem" className="danger-item" onClick={() => (setMenu(false), window.confirm(`Delete “${item.title}”?`) && deleteItem(c.id, item.id))}>
+              Delete
+            </button>
+          </div>
         )}
-        {item.type === 'lesson' && (
-          <label className="item-due" title="When this lesson happens. Learners see the next lesson, in their own time zone, on their home screen.">
-            <span className="hint">When</span>
-            <input type="datetime-local" value={item.schedule?.at ? toLocal(item.schedule.at) : ''} onChange={(e) => updateItem(c.id, item.id, { schedule: e.target.value ? { at: new Date(e.target.value).getTime(), ...(item.schedule?.url ? { url: item.schedule.url } : {}) } : null })} />
-          </label>
-        )}
-        {item.type === 'lesson' && item.schedule?.at && (
-          <input
-            className="item-link"
-            type="url"
-            placeholder={c.meeting?.url ? 'Video link (uses the class link if empty)' : 'Video link, for example Zoom or Meet'}
-            aria-label="Video link for this lesson"
-            defaultValue={item.schedule.url ?? ''}
-            onBlur={(e) => {
-              const url = e.target.value.trim();
-              if (url && !/^https:\/\//i.test(url)) return;
-              if ((item.schedule?.url ?? '') !== url) updateItem(c.id, item.id, { schedule: { at: item.schedule!.at, ...(url ? { url } : {}) } });
-            }}
-          />
-        )}
-        <select
-          className="use-as"
-          value=""
-          aria-label="Use as"
-          title="Copy this into another type"
-          onChange={async (e) => {
-            const t = e.target.value as Item['type'];
-            if (!t) return;
-            setBusy(true);
-            try {
-              await copyLesson(c.id, item.id, c.id, { title: item.title, type: t });
-              setMsg(`Copied as ${t}. The copy is hidden until you show it.`);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          <option value="">Use as…</option>
-          {(['lesson', 'homework', 'exam', 'practice'] as const).filter((t) => t !== item.type).map((t) => (
-            <option key={t} value={t}>
-              Use as {t}
-            </option>
-          ))}
-        </select>
-        {item.type !== 'lesson' && (
-          <button type="button" className="btn link small" onClick={() => onResults?.(item)}>
-            Results
-          </button>
-        )}
-        {item.type === 'lesson' && (
-          <button type="button" className="btn link small" onClick={() => setRecap(true)} title="One page per learner: what we did, scores, new words, your comment and homework">
-            Recap
-          </button>
-        )}
-        {recap && <RecapDialog c={c} item={item} items={list} onClose={() => setRecap(false)} />}
       </span>
+      {scheduling && item.type !== 'practice' && (
+        <span className="item-extra">
+          <label className="item-due">
+            <span className="hint">{item.type === 'lesson' ? 'When' : 'Due'}</span>
+            <input
+              type="datetime-local"
+              autoFocus
+              value={item.type === 'lesson' ? (item.schedule?.at ? toLocal(item.schedule.at) : '') : item.due ? toLocal(item.due) : ''}
+              onChange={(e) => {
+                const at = e.target.value ? new Date(e.target.value).getTime() : null;
+                if (item.type === 'lesson') updateItem(c.id, item.id, { schedule: at ? { at, ...(item.schedule?.url ? { url: item.schedule.url } : {}) } : null });
+                else updateItem(c.id, item.id, { due: at });
+              }}
+            />
+          </label>
+          {item.type === 'lesson' && item.schedule?.at && (
+            <input
+              className="item-link"
+              type="url"
+              placeholder={c.meeting?.url ? 'Video link (uses the class link if empty)' : 'Video link, for example Zoom or Meet'}
+              aria-label="Video link for this lesson"
+              defaultValue={item.schedule.url ?? ''}
+              onBlur={(e) => {
+                const url = e.target.value.trim();
+                if (url && !/^https:\/\//i.test(url)) return;
+                if ((item.schedule?.url ?? '') !== url) updateItem(c.id, item.id, { schedule: { at: item.schedule!.at, ...(url ? { url } : {}) } });
+              }}
+            />
+          )}
+          <button type="button" className="btn small" onClick={() => setScheduling(false)}>
+            Done
+          </button>
+        </span>
+      )}
+      {recap && <RecapDialog c={c} item={item} items={list} onClose={() => setRecap(false)} />}
     </li>
   );
 }
@@ -451,16 +474,18 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
       })}
 
       {unsorted.length > 0 && (
-        <section className="topic" aria-label="Unsorted">
+        <section className="topic" aria-label="Not in a topic">
           <div className="topic-head">
-            <span className="topic-name static">Unsorted</span>
+            <span className="topic-name static">Not in a topic</span>
           </div>
           <ul className="items">
             {unsorted.map((i) => (
               <ItemRow key={i.id} c={c} item={i} list={unsorted} topics={sortedTopics} onResults={onResults} />
             ))}
           </ul>
-          <AddItem onAdd={async (title, type, due) => void (await addItem(c.id, null, title, nextOrder(unsorted), type, due))} />
+          <div className="indent">
+            <AddItem onAdd={async (title, type, due) => void (await addItem(c.id, null, title, nextOrder(unsorted), type, due))} />
+          </div>
         </section>
       )}
 

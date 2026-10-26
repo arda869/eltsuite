@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { UiIcon } from './UiIcon';
 
 // Like the mode switch in Google Docs: one button at the top right says what you are doing,
@@ -11,7 +11,7 @@ const MODES: { mode: Mode; icon: string; label: string; about: string }[] = [
   { mode: 'preview', icon: 'revealAll', label: 'Learner view', about: 'Try the lesson as a learner sees it; nothing is saved' },
 ];
 
-export function ModeMenu({ mode, live, onMode, onEnd, endLabel }: { mode: Mode; live: boolean; onMode: (m: Mode) => void; onEnd: () => void; endLabel?: string }) {
+export function ModeMenu({ mode, live, onMode, onEnd, endLabel, children }: { mode: Mode; live: boolean; onMode: (m: Mode) => void; onEnd: () => void; endLabel?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -43,6 +43,7 @@ export function ModeMenu({ mode, live, onMode, onEnd, endLabel }: { mode: Mode; 
               {mode === m.mode && <UiIcon name="check" />}
             </button>
           ))}
+          {children}
           {live && (
             <>
               <span className="menu-sep" aria-hidden="true" />

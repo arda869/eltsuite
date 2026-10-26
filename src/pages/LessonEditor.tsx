@@ -702,7 +702,9 @@ export function LessonEditor() {
           {viewer ? (
             teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
           ) : (
-            <ModeMenu mode={mode} live={teachingHere} onMode={changeMode} onEnd={endTeaching} endLabel={live?.teacherUid && live.teacherUid !== user?.uid ? `End ${live.teacherName}’s live lesson` : undefined} />
+            <ModeMenu mode={mode} live={teachingHere} onMode={changeMode} onEnd={endTeaching} endLabel={live?.teacherUid && live.teacherUid !== user?.uid ? `End ${live.teacherName}’s live lesson` : undefined}>
+              {task && <ViewAsLearner inMenu classId={classId} classCode={c?.classCode ?? ''} roster={classmates} path={`/learn/${itemId}?task=${task.id}`} />}
+            </ModeMenu>
           )}
           <TextSizeControl />
         </span>
@@ -729,11 +731,18 @@ export function LessonEditor() {
       {item && (
         <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls} style={panes.style}>
           <nav className="task-list" aria-label="Tasks">
-            <input
+            <textarea
               className="lesson-title"
+              rows={1}
               defaultValue={item.title}
               aria-label="Lesson title"
-              onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== item.title && updateItem(classId, itemId, { title: e.target.value.trim() })}
+              readOnly={preview || (teachingHere && !editWhileTeaching)}
+              ref={(el) => {
+                if (el) (el.style.height = '0'), (el.style.height = el.scrollHeight + 'px');
+              }}
+              onInput={(e) => ((e.currentTarget.style.height = '0'), (e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px'))}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.currentTarget.blur())}
+              onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== item.title && updateItem(classId, itemId, { title: e.target.value.replace(/\s+/g, ' ').trim() })}
             />
             {tasks.map((t, i) => (
               <div
@@ -771,12 +780,15 @@ export function LessonEditor() {
                       className="section-input"
                       defaultValue={t.title}
                       aria-label="Section name"
+                      readOnly={preview || teachingHere}
                       onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== t.title && setTaskFlags(classId, itemId, t.id, { title: e.target.value.trim() })}
                       onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                     />
-                    <button type="button" className="icon-btn" aria-label="Delete section" onClick={() => deleteTask(classId, itemId, t.id)}>
-                      ×
-                    </button>
+                    {!preview && !teachingHere && (
+                      <button type="button" className="icon-btn sec-del" aria-label="Remove this heading (its tasks stay)" data-tip="Remove this heading (its tasks stay)" onClick={() => deleteTask(classId, itemId, t.id)}>
+                        ×
+                      </button>
+                    )}
                   </span>
                 ) : (
                 <button type="button" className="task-pick" onClick={() => select(t.id)}>
@@ -801,7 +813,7 @@ export function LessonEditor() {
                   )}
                 </button>
                 )}
-                {t.kind !== 'section' && (
+                {t.kind !== 'section' && !preview && (
                   <span className="row-actions">
                     <button type="button" className={'row-act' + (t.hidden ? ' on' : '')} title={t.hidden ? 'Show to learners' : 'Hide from learners'} aria-label={t.hidden ? 'Show to learners' : 'Hide from learners'} onClick={() => setTaskFlags(classId, itemId, t.id, { hidden: !t.hidden })}>
                       {t.hidden ? EYE_OFF : EYE}
@@ -823,7 +835,7 @@ export function LessonEditor() {
                 )}
               </div>
             ))}
-            {!viewer && !teachingHere && (
+            {!viewer && !teachingHere && !preview && (
               <div className="list-adds">
                 <button type="button" className="btn dashed" onClick={newTask}>
                   + New task
@@ -839,9 +851,9 @@ export function LessonEditor() {
           <div className="center-col">
           <div className="panel-toggles">
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
-            <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />
+            {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
-          {teachingHere && (
+          {teachingHere && !preview && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
               <span className="tb-group" aria-label="The class">
                 <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? 'Learners follow you from task to task. Click to let them move freely (S)' : 'Bring everyone to the task you are on, and keep them with you (S)'}>
@@ -1001,8 +1013,8 @@ export function LessonEditor() {
                   <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
                     {!preview && <IconBtn icon="edit" label="Edit this task" onClick={() => setEditWhileTeaching(true)} />}
-                    {!preview && <IconBtn icon="prev" label="Previous task (←)" className="nav-arrow" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} />}
-                    {!preview && <IconBtn icon="next" label="Next task (→)" className="nav-arrow" disabled={!nextTask} onClick={() => nextTask && select(nextTask.id)} />}
+                    <IconBtn icon="prev" label="Previous task (←)" className="nav-arrow" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} />
+                    <IconBtn icon="next" label="Next task (→)" className="nav-arrow" disabled={!nextTask} onClick={() => nextTask && select(nextTask.id)} />
                     {!preview ? null : questionIds(previewKey?.content ?? null).every((q) => q.type === 'reflect') ? null : previewChecked ? (
                       <button className="btn" onClick={() => setPreviewChecked(false)}>
                         Try again
@@ -1050,7 +1062,7 @@ export function LessonEditor() {
           </main>
           </div>
 
-          {panels.right && !present && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
+          {panels.right && !present && !preview && task && draft && <PaneResizer side="right" width={panes.widths.right} onWidth={(px) => panes.set('right', px)} onReset={() => panes.reset('right')} />}
           {task && draft && teachingHere && !editWhileTeaching && !preview && previewKey && (!present || showGrid) && (
             <LivePanel
               classId={classId}
@@ -1122,9 +1134,8 @@ export function LessonEditor() {
               <span className="hint">You have view-only access to this class, so you see the lesson as learners do. Nothing here is saved.</span>
             </aside>
           )}
-          {task && draft && !viewer && !(teachingHere && !editWhileTeaching && !preview) && (
+          {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
             <aside className="task-side" aria-label="Task settings">
-              <ViewAsLearner classId={classId} classCode={c?.classCode ?? ''} roster={classmates} path={`/learn/${itemId}?task=${task.id}`} />
               <button type="button" className="btn link small" onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
                 Save task to my bank
               </button>

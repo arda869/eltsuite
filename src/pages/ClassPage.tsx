@@ -114,8 +114,8 @@ export function ClassPage() {
 
       {c && (
         <>
-          <CoverArt cover={c.cover} classId={c.id} className="page-cover" />
-          <div className="row-between" style={{ alignItems: 'flex-end' }}>
+          <div className="class-hero">
+          <div className="ch-text">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <h1 className="page-title">{c.name}</h1>
               <div className="class-meta">
@@ -168,6 +168,8 @@ export function ClassPage() {
                 </div>
               )}
             </div>
+          </div>
+          <CoverArt cover={c.cover} classId={c.id} className="ch-cover" />
           </div>
 
           {announcing && <AnnounceDialog classId={c.id} roster={roster} onClose={() => setAnnouncing(false)} />}

@@ -3058,3 +3058,31 @@ body.resizing iframe { pointer-events: none; }
 .line-add:hover { color: var(--accent-text); background: #fff; border-color: var(--hair-strong); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
 .line-add svg { width: 16px; height: 16px; }
 @media (hover: none), (max-width: 760px) { .line-add { display: none; } }
+
+/* View as a learner, inside the mode menu */
+.mode-list .va-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 2px 8px 8px 44px; max-height: 220px; overflow: auto; }
+.mode-list .va-list button { display: block; padding: 6px 8px; border-radius: 7px; font-size: 13px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mode-list .va-list button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Lesson title wraps instead of being cut off */
+textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hidden; line-height: 1.3; font: inherit; font-family: var(--serif); font-size: 16px; font-weight: 500; color: var(--ink); }
+
+/* Remove-heading button only on hover */
+.section-row .sec-del { opacity: 0; transition: opacity .12s; }
+.task-row:hover .sec-del, .sec-del:focus-visible { opacity: 1; }
+
+/* Class page rows: date chip, lock, eye and one menu */
+.item .status { margin-left: auto; }
+.when-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--card, #fff); color: var(--muted); font: 500 12px var(--sans); cursor: pointer; white-space: nowrap; }
+.when-chip svg { width: 13px; height: 13px; color: var(--accent-text); }
+.when-chip:hover, .when-chip.on { border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: var(--tint); color: var(--ink); }
+.when-chip.past { color: var(--soft); }
+.item-menu { right: 0; left: auto; min-width: 210px; }
+.item-extra { padding-left: 84px; gap: 10px; }
+
+/* Class page header: name and code on the left, the cover on the right (like the learner home) */
+.class-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 44%); min-height: 156px; background: var(--card, #fff); border: 1px solid rgba(51, 48, 44, 0.07); border-radius: 18px; overflow: hidden; }
+.ch-text { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; padding: 22px 24px; }
+.ch-text .page-title { margin: 0; }
+.ch-cover { display: block; height: 100%; min-height: 156px; border-radius: 0; }
+@media (max-width: 760px) { .class-hero { grid-template-columns: 1fr; } .ch-cover { order: -1; min-height: 96px; height: 96px; } .ch-text { padding: 16px; } }

@@ -121,7 +121,7 @@ export function TeacherHome() {
   });
 
   return (
-    <div className="shell narrow">
+    <div className="shell">
       <TopBar>
         <nav aria-label="Main">
           <Link to="/" className="on">

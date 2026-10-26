@@ -130,7 +130,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
           <IconLink icon="discuss" label={unreadThreads ? `Discussion · ${unreadThreads} new` : 'Discussion'} to="/discuss" badge={unreadThreads ? <span className="icon-badge">{unreadThreads}</span> : null} />
         </span>
         <div className="right">
-          <button className="avatar" style={{ background: '#eef4ef', color: '#4e6b55' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+          <button className="avatar" style={{ background: 'var(--tint)', color: 'var(--accent-text)' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : initials(name)}
           </button>
           {menu && (
