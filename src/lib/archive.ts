@@ -197,22 +197,39 @@ export function useFolders(uid?: string | null) {
   return folders;
 }
 // Deleting a folder keeps what is in it: everything moves up to the folder it was in.
-export async function removeFolder(uid: string, name: string, items: ArchiveItem[], folders: string[] = []) {
+export async function removeFolder(uid: string, name: string, items: ArchiveItem[], folders: string[] = [], places: Record<string, string> = {}) {
   const up = parentOf(name);
   const b = writeBatch(db);
+  Object.entries(places).filter(([, f]) => inTree(f, name)).forEach(([k]) => b.set(doc(db, 'users', uid, 'libPlaces', k), { folder: up, at: Date.now() }));
   items.filter((i) => inTree(i.folder, name)).forEach((i) => b.update(doc(col(uid), i.id), { folder: up }));
   [name, ...folders.filter((f) => f.startsWith(name + '/'))].forEach((f) => b.delete(doc(db, 'users', uid, 'archiveFolders', folderId(f))));
   if (up) b.set(doc(db, 'users', uid, 'archiveFolders', folderId(up)), { name: up, at: Date.now() });
   await b.commit();
 }
-export async function renameFolder(uid: string, from: string, to: string, items: ArchiveItem[], folders: string[]) {
+export async function renameFolder(uid: string, from: string, to: string, items: ArchiveItem[], folders: string[], places: Record<string, string> = {}) {
   const map = (f: string) => to + f.slice(from.length);
   const b = writeBatch(db);
+  Object.entries(places).filter(([, f]) => inTree(f, from)).forEach(([k, f]) => b.set(doc(db, 'users', uid, 'libPlaces', k), { folder: map(f), at: Date.now() }));
   items.filter((i) => inTree(i.folder, from)).forEach((i) => b.update(doc(col(uid), i.id), { folder: map(i.folder) }));
   [from, ...folders.filter((f) => f.startsWith(from + '/'))].forEach((f) => {
     b.delete(doc(db, 'users', uid, 'archiveFolders', folderId(f)));
     b.set(doc(db, 'users', uid, 'archiveFolders', folderId(map(f))), { name: map(f), at: Date.now() });
   });
+  await b.commit();
+}
+// Tasks live in lessons; the library only remembers which folder each one is shown in.
+export const placeKey = (classId: string, taskId: string) => `${classId}__${taskId}`;
+export function useLibPlaces(uid?: string | null) {
+  const [m, setM] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!uid) return;
+    return onSnapshot(collection(db, 'users', uid, 'libPlaces'), (s) => setM(Object.fromEntries(s.docs.map((d) => [d.id, String(d.data().folder ?? '')]))), () => setM({}));
+  }, [uid]);
+  return m;
+}
+export async function placeTasks(uid: string, keys: string[], folder: string) {
+  const b = writeBatch(db);
+  keys.forEach((k) => b.set(doc(db, 'users', uid, 'libPlaces', k), { folder, at: Date.now() }));
   await b.commit();
 }
 export async function moveItems(uid: string, list: ArchiveItem[], folder: string) {
@@ -325,7 +342,7 @@ export async function downloadItem(item: ArchiveItem) {
   a.click();
 }
 // Several items (or whole folders) as one zip, with the folders inside it. Links go in a text file.
-export async function downloadZip(items: ArchiveItem[], zipName: string, base = '', onProgress?: (done: number, total: number) => void) {
+export async function downloadZip(items: ArchiveItem[], zipName: string, base = '', onProgress?: (done: number, total: number) => void, extra: { folder: string; name: string; text: string }[] = []) {
   const { zipSync, strToU8 } = await import('fflate');
   const files: Record<string, Uint8Array> = {};
   const links: string[] = [];
@@ -347,6 +364,14 @@ export async function downloadZip(items: ArchiveItem[], zipName: string, base = 
     }
     onProgress?.(++done, items.length);
   }
+  for (const x of extra) {
+    const rel = base && x.folder.startsWith(base) ? x.folder.slice(base.length).replace(/^\//, '') : base ? '' : x.folder;
+    const dir = rel ? rel.split('/').map(safeName).join('/') + '/' : '';
+    let p = `${dir}${safeName(x.name) || 'Task'}.md`;
+    for (let k = 2; files[p]; k++) p = `${dir}${safeName(x.name) || 'Task'} (${k}).md`;
+    files[p] = strToU8(x.text);
+  }
+  if (!Object.keys(files).length && !links.length) return;
   if (links.length) files['Links.txt'] = strToU8(links.join('\n') + '\n');
   const zip = zipSync(files, { level: 0 });
   const url = URL.createObjectURL(new Blob([zip], { type: 'application/zip' }));

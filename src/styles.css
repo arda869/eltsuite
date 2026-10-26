@@ -5160,3 +5160,18 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .ma-files .ma-card .ma-shared, .ma-files .ma-card .ma-badge { width: 17px; height: 17px; }
 .ma-files .ma-card.on:not(.chosen) { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .ma-tm-it { flex-basis: 96px; }
+/* The pane on the left runs the full height; usage sits at the very bottom */
+.ma-side { position: sticky; top: 12px; height: calc(100dvh - 150px); min-height: 420px; overflow-y: auto; }
+.ma-side .ma-space.small { margin-top: auto; }
+.ma-space.small .ma-legend { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+.ma-space.small .ma-legend > span { display: flex; align-items: center; gap: 7px; }
+.ma-space.small .ma-legend b { margin-left: auto; font-weight: 500; color: var(--muted); }
+.ma-space.small .hint.small { font-size: 11px; line-height: 1.35; }
+.ma-lsub { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 960px) { .ma-side { position: static; height: auto; min-height: 0; } }
+/* The bar for what is chosen takes the place of the search row, so nothing moves */
+.ma-main > .ma-selbar { position: static; margin: 0; min-height: 38px; box-sizing: border-box; padding: 0 8px 0 14px; }
+.ma-files .ma-card .ma-thumb { overflow: visible; }
+.ma-files .ma-card .ma-thumb img { border-radius: inherit; }
+.ma-files .ma-card .ma-dur { right: 2px; bottom: 2px; }
+.ma-files .ma-card .ma-badges { top: 2px; right: 2px; }
