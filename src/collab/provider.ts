@@ -133,8 +133,16 @@ export async function claimStart(key: string) {
   return !!r?.committed;
 }
 
-// Live flags for a document: locked by the teacher, shared with the group.
-export function watchFlags(key: string, cb: (f: { lock?: boolean; shared?: boolean }) => void) {
-  return onValue(collabRef(key, 'flags'), (s) => cb((s.val() as { lock?: boolean; shared?: boolean }) ?? {}));
+// Live flags for a document: locked by the teacher (only the class's teachers can change it),
+// and shared with the group (by the learner who owns it).
+const lockRef = (classId: string, key: string) => ref(rtdb, `collabLocks/${classId}/${key.replace(/[.#$[\]]/g, '_')}`);
+export function watchFlags(key: string, cb: (f: { lock?: boolean; shared?: boolean }) => void, classId = '') {
+  let lock = false;
+  let shared = false;
+  const fire = () => cb({ lock, shared });
+  const a = onValue(collabRef(key, 'flags/shared'), (s) => ((shared = !!s.val()), fire()));
+  const b = classId ? onValue(lockRef(classId, key), (s) => ((lock = !!s.val()), fire())) : () => {};
+  return () => (a(), b());
 }
-export const setFlag = (key: string, k: 'lock' | 'shared', v: boolean) => set(collabRef(key, `flags/${k}`), v || null);
+export const setShared = (key: string, v: boolean) => set(collabRef(key, 'flags/shared'), v || null);
+export const setLock = (classId: string, key: string, v: boolean) => set(lockRef(classId, key), v || null);

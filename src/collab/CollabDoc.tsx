@@ -18,7 +18,7 @@ import { SymNode, SymbolTool } from '../editor/Symbols';
 import { EditorClassContext } from '../editor/context';
 import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
-import { claimStart, collabRef, RtdbProvider, setFlag, watchFlags } from './provider';
+import { claimStart, collabRef, RtdbProvider, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
 import { downloadDocx, printDoc } from './export';
 
@@ -94,7 +94,7 @@ export function CollabDoc({ docKey, title, template, modes, teacher, me, classId
     if (!allowed.includes(mode)) setMode(allowed[0] ?? 'view');
   }, [allowed.join(), mode]); // eslint-disable-line react-hooks/exhaustive-deps
   const [flags, setFlags] = useState<{ lock?: boolean; shared?: boolean }>({});
-  useEffect(() => watchFlags(docKey, setFlags), [docKey]);
+  useEffect(() => watchFlags(docKey, setFlags, classId), [docKey, classId]);
   const locked = !!flags.lock && !teacher;
   const eff: CollabMode = locked ? 'view' : mode;
   const live = useRef({ mode: eff, author });
@@ -249,7 +249,7 @@ export function CollabDoc({ docKey, title, template, modes, teacher, me, classId
           )}
         </span>
         {teacher && (
-          <button type="button" className={'btn small-btn' + (flags.lock ? ' primary' : '')} onClick={() => setFlag(docKey, 'lock', !flags.lock)} data-tip={flags.lock ? 'Let learners change it again' : 'Stop learners changing it'}>
+          <button type="button" className={'btn small-btn' + (flags.lock ? ' primary' : '')} onClick={() => setLock(classId, docKey, !flags.lock)} data-tip={flags.lock ? 'Let learners change it again' : 'Stop learners changing it'}>
             {flags.lock ? 'Unlock' : 'Lock'}
           </button>
         )}

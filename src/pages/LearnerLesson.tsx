@@ -1,5 +1,6 @@
 import { InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
+import { UiIcon } from '../components/UiIcon';
 import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
@@ -35,8 +36,6 @@ import { isLive, isSynced, liveRef, revealedCount, revealedSingles, revealedSubs
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
 import { AnnouncementCards, PickedBanner, SignalBar, SpotlightCard, TimerChip } from '../components/LiveExtras';
-import { PointerDot } from '../components/PointerDot';
-import { usePointer } from '../lib/session';
 import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
 import { AnnotationLayer } from '../components/AnnotationLayer';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
@@ -124,8 +123,13 @@ export function LearnerLesson() {
   const liveHere = isLive(live) && live?.itemId === itemId;
   const boardOpen = liveHere && !!live?.board?.open;
   const [onBoard, setOnBoard] = useState(false);
-  useEffect(() => setOnBoard(boardOpen), [boardOpen]); // jump to the board when the teacher opens it
-  const pointer = usePointer(liveHere ? classId : '');
+  const [boardNote, setBoardNote] = useState(false);
+  // Following the teacher: the board opens for you. Working on your own: a note says it is open.
+  useEffect(() => {
+    if (!boardOpen) return setOnBoard(false), setBoardNote(false);
+    if (synced) setOnBoard(true);
+    else setBoardNote(true);
+  }, [boardOpen, synced]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? entryFor(live!.taskId)?.id ?? '' : '';
   // When the teacher syncs the class, everyone follows the teacher's task.
@@ -364,7 +368,6 @@ export function LearnerLesson() {
           <SignalBar classId={classId} uid={user?.uid} name={profile?.role === 'learner' ? profile.displayName : ''} learnerId={learnerId} />
         </div>
       )}
-      {liveHere && <PointerDot pointer={pointer} taskId={current} container={bodyRef} />}
       <NoticeToasts classId={classId} to={learnerId} link={(i, t) => (i === 'disc' ? `/discuss/${t}` : `/learn/${i}?task=${t}`)} />
       <div className={'lesson-layout learner' + panels.cls}>
         <nav className="task-list" aria-label="Tasks">
@@ -440,6 +443,21 @@ export function LearnerLesson() {
                 )}
 
               </div>
+              {boardOpen && !onBoard && boardNote && (
+                <div className="board-note" role="status">
+                  <UiIcon name="board" size={18} />
+                  <span>
+                    <strong>{live?.teacherName ?? 'Your teacher'} opened the board.</strong>
+                  </span>
+                  <span style={{ flex: 1 }} />
+                  <button type="button" className="btn small-btn primary" onClick={() => (setOnBoard(true), setBoardNote(false))}>
+                    Open the board
+                  </button>
+                  <button type="button" className="board-note-x" aria-label="Not now" onClick={() => setBoardNote(false)}>
+                    ×
+                  </button>
+                </div>
+              )}
               {boardOpen && onBoard && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher={false} page={live?.board?.page || firstPage(item)} /></div>}
               <div className="frame-body" ref={bodyRef} hidden={boardOpen && onBoard}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}

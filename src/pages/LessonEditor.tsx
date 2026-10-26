@@ -32,7 +32,7 @@ import { NoticeToasts } from '../components/NoticeToasts';
 import { PickedBanner, SpotlightCard, TimerChip, TimerMenu } from '../components/LiveExtras';
 import { ReactionBurst } from '../components/ReactionBurst';
 import { AnnounceDialog } from '../components/AnnounceDialog';
-import { claimClass, clearAllHands, sendPointer, useSignals, useThrottle } from '../lib/session';
+import { claimClass, clearAllHands, useSignals } from '../lib/session';
 import { Icon } from '../editor/Icons';
 import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
 import { AnnotationLayer } from '../components/AnnotationLayer';
@@ -253,7 +253,6 @@ export function LessonEditor() {
   const teachBodyRef = useRef<HTMLDivElement>(null);
   const teacherAnns = useAnnotations(classId, task?.id ?? '', { teacher: true });
   // Classroom tools
-  const [pointerOn, setPointerOn] = useState(false);
   const [timerMenu, setTimerMenu] = useState(false);
   const [picking, setPicking] = useState('');
   const [announcing, setAnnouncing] = useState(false);
@@ -261,26 +260,16 @@ export function LessonEditor() {
   const signalUids = Object.keys(signals);
   const hands = Object.values(signals).filter((x) => x.hand).sort((a, b) => (a.handAt ?? 0) - (b.handAt ?? 0));
   const stuckN = Object.values(signals).filter((x) => x.stuck).length;
-  const movePointer = useThrottle((p: Parameters<typeof sendPointer>[1]) => sendPointer(classId, p), 66);
   useEffect(() => {
     if (user && c && c.teacherId === user.uid) claimClass(classId, user.uid); // boards can be prepared before class
   }, [user, c?.teacherId, classId]);
-  // Editing during a live lesson puts the pointer and pen away.
+  // Editing during a live lesson puts the pen and the tools away.
   useEffect(() => {
     if (!editWhileTeaching) return;
     setInkMode('off');
     setTimerMenu(false);
     setActivityOpen(false);
-    if (pointerOn) {
-      setPointerOn(false);
-      if (task) sendPointer(classId, { taskId: task.id, bk: '', x: 0, y: 0, on: false });
-    }
   }, [editWhileTeaching]); // eslint-disable-line react-hooks/exhaustive-deps
-  const togglePointer = () => {
-    const next = !pointerOn;
-    setPointerOn(next);
-    if (!next && task) sendPointer(classId, { taskId: task.id, bk: '', x: 0, y: 0, on: false });
-  };
   const startTimer = (secs: number) => {
     setTimerMenu(false);
     setLive(classId, { timer: { endsAt: Date.now() + secs * 1000, total: secs } });
@@ -892,7 +881,6 @@ export function LessonEditor() {
               </span>
               <span className="tb-group" aria-label="Screen">
                 <IconBtn icon={boardView ? 'task' : 'board'} label={boardView ? 'Back to the task' : 'Board'} active={boardView} onClick={() => showBoard(!boardView)} />
-                <IconBtn icon="pointer" label="Pointer: a dot everyone sees" active={pointerOn} className="hide-phone" onClick={togglePointer} />
                 <IconBtn icon="annotate" label="Annotate: pen and highlighter on the screen, not saved (D)" active={inkMode !== 'off'} className="hide-phone" onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} />
                 <span className="timer-ctl" ref={timerRef}>
                   <IconBtn icon="timer" label="Timer (T)" active={timerMenu || !!(live?.timer && (live.timer.up || live.timer.endsAt > Date.now()))} onClick={() => setTimerMenu((v) => !v)} />
@@ -983,8 +971,8 @@ export function LessonEditor() {
                 )}
               </div>
             ) : preview || (teachingHere && !editWhileTeaching) ? (
-              <div className="frame-inner">
-                <div className="frame-head">
+              <div className={'frame-inner' + (!preview && boardView ? ' on-board' : '')}>
+                <div className="frame-head" hidden={!preview && boardView}>
                   {!preview && (
                     <button type="button" className="btn small-btn done-edit" onClick={() => setEditWhileTeaching(true)} data-tip="Change this task while the class stays live">
                       <UiIcon name="edit" size={14} /> Edit
@@ -1001,14 +989,7 @@ export function LessonEditor() {
                 <div
                   ref={teachBodyRef}
                   hidden={!preview && boardView}
-                  className={'frame-body' + (!preview ? ' teach-view' : '') + (pointerOn && !preview ? ' pointing' : '')}
-                  onMouseMove={(e) => {
-                    if (!pointerOn || preview || !task) return;
-                    const el = (e.target as HTMLElement).closest('[data-bk]') as HTMLElement | null;
-                    if (!el) return;
-                    const r = el.getBoundingClientRect();
-                    movePointer({ taskId: task.id, bk: el.dataset.bk!, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, on: true });
-                  }}
+                  className={'frame-body' + (!preview ? ' teach-view' : '')}
                   onClick={(e) => {
                     if (preview || !task || inkMode !== 'off') return;
                     const q = (e.target as HTMLElement).closest('[data-qid]') as HTMLElement | null;

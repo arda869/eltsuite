@@ -45,6 +45,49 @@
           }
         }
       }
+    },
+    "collab": {
+      "$doc": {
+        ".read": "auth != null",
+        "u": {
+          "$k": {
+            ".write": "auth != null && (!newData.exists() || newData.child('by').val() === auth.uid || root.child('collab').child($doc).child('snap').exists())"
+          }
+        },
+        "snap": {
+          ".write": "auth != null"
+        },
+        "aw": {
+          "$c": {
+            ".write": "auth != null"
+          }
+        },
+        "who": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid"
+          }
+        },
+        "init": {
+          ".write": "auth != null && !data.exists()"
+        },
+        "c": {
+          "$id": {
+            ".write": "auth != null"
+          }
+        },
+        "flags": {
+          ".write": "auth != null"
+        },
+        ".write": "auth != null && newData.hasChildren(['snap'])"
+      }
+    },
+    "collabLocks": {
+      "$classId": {
+        ".read": "auth != null",
+        "$doc": {
+          ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
+        }
+      }
     }
   }
 }
