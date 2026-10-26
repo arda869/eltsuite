@@ -24,6 +24,8 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [visibility, setVisibility] = useState<Meeting['visibility']>(c.meeting?.visibility ?? 'live');
   const [codes, setCodes] = useState(c.codes ?? DEFAULT_CODES);
   const [cover, setCover] = useState<string>(c.cover ?? 'preset:waves');
+  const [showMarker, setShowMarker] = useState(c.teaching?.showMarker !== false);
+  const [seeLearners, setSeeLearners] = useState(c.teaching?.seeLearners !== false);
   const [showCodes, setShowCodes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -46,6 +48,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         level,
         themeColor,
         cover,
+        teaching: { showMarker, seeLearners },
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -119,6 +122,23 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           </>
         )}
 
+        <div className="field">
+          <span>While teaching</span>
+          <label className="switch-row">
+            <span>
+              Show learners where I am
+              <span className="hint">Learners see which task you are on</span>
+            </span>
+            <input type="checkbox" checked={showMarker} onChange={() => setShowMarker((v) => !v)} />
+          </label>
+          <label className="switch-row">
+            <span>
+              Show me where learners are
+              <span className="hint">See which task each learner is on</span>
+            </span>
+            <input type="checkbox" checked={seeLearners} onChange={() => setSeeLearners((v) => !v)} />
+          </label>
+        </div>
         <TeachersPanel c={c} />
         {error && <span className="error" role="alert">{error}</span>}
         <div className="field">

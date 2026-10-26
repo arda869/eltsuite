@@ -56,3 +56,16 @@ export function NotesEditor({ doc, text, onChange, placeholder, className = '' }
     </div>
   );
 }
+
+// Read-only notes, formatted, for the teaching screen.
+export function NotesView({ doc, text }: { doc?: JSONContent | null; text: string }) {
+  const editor = useEditor({
+    editable: false,
+    extensions: [StarterKit.configure({ heading: { levels: [3, 4] }, codeBlock: false, code: false }), Underline, Highlight, TextColor, Link.configure({ openOnClick: true })],
+    content: doc ?? textToDoc(text),
+  });
+  useEffect(() => {
+    if (editor) editor.commands.setContent(doc ?? textToDoc(text), false);
+  }, [editor, doc, text]);
+  return <EditorContent editor={editor} className="notes-body notes-view" />;
+}

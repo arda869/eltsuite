@@ -16,7 +16,7 @@ export const REACTIONS: { key: Reaction; icon: string; label: string }[] = [
 ];
 
 // Countdown everyone sees.
-export function TimerChip({ timer, onStop }: { timer?: LiveState['timer']; onStop?: () => void }) {
+export function TimerChip({ timer, onStop, onAdd }: { timer?: LiveState['timer']; onStop?: () => void; onAdd?: () => void }) {
   const [now, setNow] = useState(Date.now());
   const rang = useRef(false);
   useEffect(() => {
@@ -33,24 +33,37 @@ export function TimerChip({ timer, onStop }: { timer?: LiveState['timer']; onSto
   }
   if (left === 0 && now - timer.endsAt > 15000) return null;
   const s = Math.ceil(left / 1000);
-  const pct = timer.total ? left / (timer.total * 1000) : 0;
+  const pct = timer.total ? Math.min(1, left / (timer.total * 1000)) : 0;
+  const C = 2 * Math.PI * 20;
   return (
-    <div className={'timer-chip' + (left === 0 ? ' done' : s <= 10 ? ' soon' : '')} role="timer" aria-live="off">
-      <svg width="22" height="22" viewBox="0 0 36 36" aria-hidden="true">
-        <circle cx="18" cy="18" r="15" fill="none" stroke="var(--hair-strong)" strokeWidth="3" />
-        <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray={`${pct * 94.2} 94.2`} transform="rotate(-90 18 18)" strokeLinecap="round" />
+    <div className={'timer-card' + (left === 0 ? ' done' : s <= 10 ? ' soon' : '')} role="timer" aria-live="off" aria-label={left === 0 ? 'Time is up' : `${Math.floor(s / 60)} minutes ${s % 60} seconds left`}>
+      <svg className="timer-ring" width="52" height="52" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="#ece9e4" strokeWidth="5" />
+        <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="5" strokeDasharray={`${pct * C} ${C}`} transform="rotate(-90 24 24)" strokeLinecap="round" style={{ transition: 'stroke-dasharray 0.25s linear' }} />
+        {left === 0 && <path d="M17 24.5l5 5 9-10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
       </svg>
-      <span className="timer-text">{left === 0 ? 'Time’s up' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`}</span>
-      {onStop && (
-        <button type="button" className="timer-stop" onClick={onStop} aria-label="Stop the timer">
-          ×
-        </button>
+      <span className="timer-body">
+        <span className="timer-text">{left === 0 ? 'Time’s up' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`}</span>
+        <span className="timer-sub">{left === 0 ? 'Well done' : `of ${Math.round(timer.total / 60) >= 1 ? `${Math.round(timer.total / 60)} min` : `${timer.total} s`}`}</span>
+      </span>
+      {(onAdd || onStop) && (
+        <span className="timer-acts">
+          {onAdd && left > 0 && (
+            <button type="button" onClick={onAdd} data-tip="Add a minute">
+              +1
+            </button>
+          )}
+          {onStop && (
+            <button type="button" onClick={onStop} data-tip="Stop the timer" aria-label="Stop the timer">
+              ×
+            </button>
+          )}
+        </span>
       )}
     </div>
   );
 }
 
-// "It's your turn" when the teacher picks someone at random.
 export function PickedBanner({ picked, me, onClose }: { picked?: LiveState['picked']; me?: string; onClose?: () => void }) {
   const [now, setNow] = useState(Date.now());
   const [hidden, setHidden] = useState<number | null>(null);

@@ -22,10 +22,10 @@ type Props = {
   content: JSONContent | null; // public content (as learners see it)
   answerKey: AnswerKey;
   presence: Presence[];
-  showMarker: boolean;
-  onShowMarker: (v: boolean) => void;
+  showMarker?: boolean;
+  onShowMarker?: (v: boolean) => void;
   seeLearners: boolean;
-  onSeeLearners: (v: boolean) => void;
+  onSeeLearners?: (v: boolean) => void;
   revealedIds?: string[];
   onRevealQuestion?: (qid: string) => void;
   tab?: 'answers' | 'notes';
@@ -82,7 +82,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, people, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, people, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
   const [room, setRoom] = useState<string>('all');
   const [detail, setDetail] = useState<Learner | null>(null);
   const [allRoster, setRoster] = useState<Learner[]>([]);
@@ -233,21 +233,6 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
 
       </>
       )}
-      <h2>While teaching</h2>
-      <label className="switch-row">
-        <span>
-          Show learners where I am
-          <span className="hint">Learners see which task you are on</span>
-        </span>
-        <input type="checkbox" checked={showMarker} onChange={() => onShowMarker(!showMarker)} />
-      </label>
-      <label className="switch-row">
-        <span>
-          Show me where learners are
-          <span className="hint">See which task each learner is on</span>
-        </span>
-        <input type="checkbox" checked={seeLearners} onChange={() => onSeeLearners(!seeLearners)} />
-      </label>
     </aside>
   );
 }
