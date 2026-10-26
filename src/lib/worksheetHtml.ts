@@ -136,7 +136,7 @@ function block(b: Block): string {
       if (b.head) return `<div class="sortcols">${b.rows[0].map((c) => `<div class="sortcol"><span class="sortcol-h">${esc(c)}</span>${'<span class="line"></span>'.repeat(b.rows.length - 1)}</div>`).join('')}</div>`;
       const puzzle = b.rows.slice(1).every((r) => r.every((c) => c.length <= 2));
       return `<table class="${puzzle ? 'puzzle' : 'grid'}"><tbody>${b.rows
-        .map((r, ri) => (ri === 0 && puzzle ? '' : `<tr>${r.map((c) => (ri === 0 ? `<th>${esc(c)}</th>` : c === '■' ? '<td class="blk"></td>' : `<td>${/^\d+$/.test(c) && puzzle ? `<i>${esc(c)}</i>` : esc(c)}</td>`)).join('')}</tr>`))
+        .map((r, ri) => (ri === 0 && puzzle ? '' : `<tr>${r.map((c, ci) => { const rich = b.cells?.[ri]?.[ci]; const inner = rich && !puzzle ? runs(rich) : esc(c); return ri === 0 ? `<th>${inner}</th>` : c === '■' ? '<td class="blk"></td>' : `<td>${/^\d+$/.test(c) && puzzle ? `<i>${esc(c)}</i>` : inner}</td>`; }).join('')}</tr>`))
         .join('')}</tbody></table>`;
     }
     case 'callout': {
@@ -321,7 +321,7 @@ p { margin: 0 0 1.4mm; }
 .callout { margin: 1mm 0 2.6mm; padding: 2.4mm 3.2mm 1mm; background: #efeeeb; border-left: 1.6pt solid var(--accent); }
 .callout.realia { background: #fff; border: .7pt solid #3d3a36; font: ${small ? '8.2pt' : '9.2pt'}/1.5 Karla, sans-serif; padding: 2.6mm 3.4mm 1.4mm; }
 .c-label { font: 800 7pt Karla, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #4b4843; margin-bottom: 1mm; }
-table.grid { border-collapse: collapse; width: 100%; margin: 1mm 0 2.6mm; font-size: .95em; }
+table.grid { border-collapse: collapse; width: auto; max-width: 100%; margin: 1mm 0 2.6mm; font-size: .95em; }
 table.grid th { text-align: left; font: 700 7.5pt Karla, sans-serif; letter-spacing: .04em; padding: 1.4mm 2mm; border-bottom: .9pt solid var(--ink); }
 table.grid td { padding: 1.4mm 2mm; border-bottom: .5pt solid #bdb8b1; height: 7mm; }
 table.puzzle { border-collapse: collapse; margin: 1mm 0 2.6mm; }
@@ -587,7 +587,7 @@ function rulesFor(css: string, keep: (sel: string) => boolean) {
   return out.join('\n');
 }
 const BOX_CSS = `:root { --ink: #33302c; --muted: #696969; --soft: #868686; --faint: #9c9c9c; --hair: rgba(51,48,44,.12); --hair-strong: rgba(51,48,44,.2); --surface: #f4f4f3; --paper: #fff; --paper-soft: #fafaf8; --serif: Fraunces, Georgia, serif; --sans: Karla, Arial, sans-serif; }
-.ws-box { break-inside: avoid; margin: 1.5mm 0 3mm; font-size: 10pt; } .ws-box .tbox { margin: 0; font-size: 10.5pt; line-height: 1.5; } .ws-box .tbox-body p { margin: 0 0 1.6mm; } .ws-box .tbox-body > :last-child { margin-bottom: 0; }
+.ws-box { break-inside: avoid; margin: 1.5mm 0 3mm; font-size: 10pt; } .ws-box .tbox { margin: 0; font-size: 10.5pt; line-height: 1.5; } .ws-box .tbox-body p { margin: 0 0 .8mm; } .ws-box .tbox { padding-top: 2.6mm; padding-bottom: 2.8mm; } .ws-box .tbox-body > :last-child { margin-bottom: 0; }
 .ws-box .tbox { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 ${rulesFor(appCss, (s) => /\.tbox|paper-wrap/.test(s))}
 .ws-box .tbox.s-info .tbox-body { font-size: 10.5pt; line-height: 1.5; }

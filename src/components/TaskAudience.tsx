@@ -44,7 +44,7 @@ export function TaskAudience({
     <select value={value ?? main.id} aria-label={label} onChange={(e) => onPick(e.target.value)}>
       {fam.map((f) => (
         <option key={f.id} value={f.id}>
-          {levels ? labelOf(f) : `Version ${labelOf(f)}`}
+          {levels || !/^[A-Z]$/.test(labelOf(f)) ? labelOf(f) : `Version ${labelOf(f)}`}
         </option>
       ))}
     </select>
@@ -118,7 +118,7 @@ export function TaskAudience({
           {fam.map((f) => (
             <span key={f.id} className={'aud-version' + (f.id === task.id ? ' on' : '')}>
               <button type="button" className="aud-v-open" onClick={() => onOpen(f.id)} title="Open this version">
-                {levels ? labelOf(f) : `Version ${labelOf(f)}`}
+                {levels || !/^[A-Z]$/.test(labelOf(f)) ? labelOf(f) : `Version ${labelOf(f)}`}
               </button>
             </span>
           ))}

@@ -1,4 +1,4 @@
-import { ask } from '../lib/ask';
+import { ask, askText } from '../lib/ask';
 import { usePhone } from '../lib/useMedia';
 import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
@@ -632,8 +632,23 @@ export function LessonEditor() {
 
   async function newVersion(label: string) {
     if (!task || !draft) return;
+    // Each version has a name the teacher chooses (Version B, Group 1, Fast finishers…), shown on top of the task.
+    const levelNames = ['Easier', 'Standard', 'Challenge'];
+    const asName = (l: string) => (/^[A-Z]$/.test(l) ? `Version ${l}` : l);
+    let firstName = '';
+    if (fam.length === 1 && !levelNames.includes(label)) {
+      const first = await askText('Name the version you have now', vLabel(task), { ok: 'Next' });
+      if (first === null) return;
+      if (first.trim() && first.trim() !== vLabel(task)) firstName = first.trim();
+    }
+    if (!levelNames.includes(label)) {
+      const name = await askText('Name the new version', asName(label), { ok: 'Make it' });
+      if (name === null) return;
+      if (name.trim()) label = name.trim();
+    }
     await flush();
     const id = await makeVariant(classId, itemId, tasks, task, label, splitKey(draft.content).content);
+    if (firstName) await setTaskFlags(classId, itemId, task.id, { variant: firstName });
     setSelected(id);
   }
 
@@ -828,7 +843,7 @@ export function LessonEditor() {
                   ) : (
                     <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
                   )}
-                  {!isVariant(t) && (t.variants?.length ?? 0) > 0 && <span className="variant-count" title={`${(t.variants?.length ?? 0) + 1} versions`}>{t.variant ?? 'A'}</span>}
+                  {!isVariant(t) && (t.variants?.length ?? 0) > 0 && <span className="variant-count" title={`${(t.variants?.length ?? 0) + 1} versions`}>{vLabel(t)}</span>}
                   {!isVariant(t) && t.audience && t.audience.mode !== 'all' && <span className="state-mark aud-mark" title="Only some learners see this">{PEOPLE}</span>}
                   {t.hidden && <span className="state-mark" title="Hidden from learners">{EYE_OFF}</span>}
                   {t.locked && <span className="state-mark" title="Locked">{LOCK}</span>}
@@ -890,7 +905,7 @@ export function LessonEditor() {
                   <UiIcon name="sync" />
                   {live?.sync ? (live.syncRoom ? `${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room'} follows you` : 'Class follows you') : 'Sync class'}
                 </button>
-                {activeSet && (
+                {activeSet && fam.length > 1 && (
                   <select className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
                     <option value="">Whole class</option>
                     {activeSet.groups.map((g) => (
@@ -1010,6 +1025,7 @@ export function LessonEditor() {
                       <UiIcon name="edit" size={14} /> Edit
                     </button>
                   )}
+                  {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   <h1 className="task-title">{draft.title}</h1>
                   <InstrView doc={draft.instrDoc} text={draft.instructions} />
                 </div>
@@ -1085,6 +1101,7 @@ export function LessonEditor() {
                       Done editing
                     </button>
                   )}
+                  {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>

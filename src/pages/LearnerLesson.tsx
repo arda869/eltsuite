@@ -420,6 +420,12 @@ export function LearnerLesson() {
           {task ? (
             <div className="frame-inner">
               <div className="frame-head">
+                {!task.levels && (task.variant || task.family || (task.variants?.length ?? 0) > 0) && (
+                  <span className="ver-badge">
+                    <i aria-hidden="true" />
+                    {task.variant ? (/^[A-Z]$/.test(task.variant) ? `Version ${task.variant}` : task.variant) : 'Version A'}
+                  </span>
+                )}
                 <h1 className="task-title">{task.title}</h1>
                 <InstrView doc={task.instrDoc} text={task.instructions} />
                 {discussions.filter((d) => d.link?.taskId === task.id || (!d.link?.taskId && d.link?.itemId === itemId)).map((d) => (

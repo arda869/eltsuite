@@ -39,7 +39,7 @@ export type Block =
   | { kind: 'box'; words: string[]; label: string }
   | { kind: 'match'; left: string[]; right: string[]; n: number }
   | { kind: 'lines'; n: number; count: number; prompt?: string }
-  | { kind: 'table'; rows: string[][]; head?: boolean }
+  | { kind: 'table'; rows: string[][]; head?: boolean; cells?: Run[][][] }
   | { kind: 'note'; text: string }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[]; box?: Record<string, unknown> }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
@@ -205,7 +205,8 @@ export function flattenTask(t: ExportTask): WsTask {
         return;
       }
       case 'table':
-        cur.push({ kind: 'table', rows: (node.content ?? []).map((r) => (r.content ?? []).map((c) => text(c).trim())) });
+        // Plain text for Word and puzzles; the formatting (bold, colours…) for the print.
+        cur.push({ kind: 'table', rows: (node.content ?? []).map((r) => (r.content ?? []).map((c) => text(c).trim())), cells: (node.content ?? []).map((r) => (r.content ?? []).map((c) => (c.content ?? []).flatMap((pp, k) => [...(k ? [{ t: ' ' }] : []), ...runsOf(pp.content)]))) });
         return;
       case 'match': {
         n++;

@@ -4657,3 +4657,27 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .ws-opts .seg button { padding-left: 4px; padding-right: 4px; white-space: nowrap; }
 @media (max-width: 640px) { .ws-opts { grid-template-columns: 1fr; } }
 :where(input[type=checkbox], input[type=radio]) { accent-color: var(--accent, #d98f63); }
+
+/* Which version of a differentiated task this is: a small tag above the title */
+.ver-badge { display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; width: fit-content; margin: 0 0 8px; padding: 4px 11px 4px 9px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent); color: var(--accent-text); font: 700 11px/1.2 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.ver-badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+.frame-head .ver-badge + .task-title { margin-top: 0; }
+
+/* Text boxes: more compact on screen and on paper */
+.tbox { margin: 10px 0 12px; line-height: 1.55; }
+.tbox.s-box { padding: 10px 16px; border-radius: 12px; }
+.tbox.s-info { padding: 11px 18px 12px; border-radius: 14px; }
+.tbox-ihead { margin-bottom: 4px; gap: 8px; }
+.tbox.s-info .tbox-symbol { width: 20px; height: 20px; font-size: 11px; border-width: 1.3px; }
+.tbox.s-info .tbox-body { font-size: 15.5px; line-height: 1.55; }
+.tbox .tbox-body p, .tbox.s-info .tbox-body p { margin: 0 0 3px; }
+.tbox .tbox-body > .para, .tbox .tbox-body .para { margin: 0 0 3px; }
+.tbox .tbox-body > :last-child, .tbox .tbox-body .para:last-child { margin-bottom: 0; }
+.tbox .tbox-body :is(ul, ol) { margin: 2px 0; }
+.tbox .tbox-body li > p, .tbox .tbox-body li > .para { margin: 0; }
+.tbox-title { margin-bottom: 3px; }
+
+/* Tables are as wide as what is in them (up to the full width) */
+.doc .ProseMirror table, .task-table { width: max-content !important; min-width: 0; max-width: 100%; table-layout: auto; }
+.doc .ProseMirror td, .doc .ProseMirror th { min-width: 3em; }
+.variant-count { max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
