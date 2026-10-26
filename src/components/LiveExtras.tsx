@@ -26,6 +26,31 @@ export function TimerChip({ timer, onStop, onAdd }: { timer?: LiveState['timer']
     return () => window.clearInterval(t);
   }, [timer?.endsAt]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!timer) return null;
+  if (timer.up) {
+    const el = Math.max(0, Math.floor((now - (timer.startedAt ?? now)) / 1000));
+    const C2 = 2 * Math.PI * 20;
+    const h = Math.floor(el / 3600);
+    const mm = Math.floor((el % 3600) / 60);
+    return (
+      <div className="timer-card up" role="timer" aria-live="off" aria-label={`${mm} minutes ${el % 60} seconds so far`}>
+        <svg className="timer-ring" width="52" height="52" viewBox="0 0 48 48" aria-hidden="true">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#ece9e4" strokeWidth="5" />
+          <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" strokeWidth="5" strokeDasharray={`${((el % 60) / 60) * C2} ${C2}`} transform="rotate(-90 24 24)" strokeLinecap="round" />
+        </svg>
+        <span className="timer-body">
+          <span className="timer-text">{h ? `${h}:${String(mm).padStart(2, '0')}` : mm}:{String(el % 60).padStart(2, '0')}</span>
+          <span className="timer-sub">counting up</span>
+        </span>
+        {onStop && (
+          <span className="timer-acts">
+            <button type="button" onClick={onStop} data-tip="Stop" aria-label="Stop">
+              ×
+            </button>
+          </span>
+        )}
+      </div>
+    );
+  }
   const left = Math.max(0, timer.endsAt - now);
   if (left === 0 && !rang.current) {
     rang.current = true;
@@ -58,6 +83,93 @@ export function TimerChip({ timer, onStop, onAdd }: { timer?: LiveState['timer']
               ×
             </button>
           )}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Teacher: choose any length (minutes and seconds) or count up.
+export function TimerMenu({ running, up, onStart, onCountUp, onAdd, onStop }: { running: boolean; up: boolean; onStart: (secs: number) => void; onCountUp: () => void; onAdd: () => void; onStop: () => void }) {
+  const saved = (() => {
+    try {
+      return Number(localStorage.getItem('ll.timerSecs')) || 300;
+    } catch {
+      return 300;
+    }
+  })();
+  const [mode, setMode] = useState<'down' | 'up'>('down');
+  const [min, setMin] = useState(Math.floor(saved / 60));
+  const [sec, setSec] = useState(saved % 60);
+  const total = min * 60 + sec;
+  const clampMin = (v: number) => Math.max(0, Math.min(180, Math.round(v) || 0));
+  const start = () => {
+    if (total <= 0) return;
+    try {
+      localStorage.setItem('ll.timerSecs', String(total));
+    } catch {
+      /* ignore */
+    }
+    onStart(total);
+  };
+  return (
+    <div className="timer-menu" role="dialog" aria-label="Timer">
+      <span className="seg small-seg" role="tablist">
+        <button type="button" role="tab" aria-selected={mode === 'down'} className={mode === 'down' ? 'on' : ''} onClick={() => setMode('down')}>
+          Count down
+        </button>
+        <button type="button" role="tab" aria-selected={mode === 'up'} className={mode === 'up' ? 'on' : ''} onClick={() => setMode('up')}>
+          Count up
+        </button>
+      </span>
+      {mode === 'down' ? (
+        <>
+          <div className="tm-set">
+            <span className="tm-unit">
+              <button type="button" aria-label="One minute less" onClick={() => setMin((m) => clampMin(m - 1))}>
+                −
+              </button>
+              <input aria-label="Minutes" inputMode="numeric" value={String(min)} onChange={(e) => setMin(clampMin(Number(e.target.value.replace(/\D/g, ''))))} onKeyDown={(e) => e.key === 'Enter' && start()} />
+              <button type="button" aria-label="One minute more" onClick={() => setMin((m) => clampMin(m + 1))}>
+                +
+              </button>
+              <span className="tm-lab">min</span>
+            </span>
+            <span className="tm-colon">:</span>
+            <span className="tm-unit">
+              <button type="button" aria-label="Fifteen seconds less" onClick={() => (sec >= 15 ? setSec(sec - 15) : min > 0 ? (setMin(min - 1), setSec(sec + 45)) : setSec(0))}>
+                −
+              </button>
+              <input aria-label="Seconds" inputMode="numeric" value={String(sec).padStart(2, '0')} onChange={(e) => setSec(Math.min(59, Number(e.target.value.replace(/\D/g, '').slice(-2)) || 0))} onKeyDown={(e) => e.key === 'Enter' && start()} />
+              <button type="button" aria-label="Fifteen seconds more" onClick={() => (sec + 15 >= 60 ? (setMin(clampMin(min + 1)), setSec(sec + 15 - 60)) : setSec(sec + 15))}>
+                +
+              </button>
+              <span className="tm-lab">sec</span>
+            </span>
+          </div>
+          <button type="button" className="btn primary block" disabled={total <= 0} onClick={start}>
+            Start {min ? `${min} min` : ''}
+            {sec ? ` ${sec} s` : ''}
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="hint">A stopwatch everyone sees, counting up from 0:00. Good for “how long does it take you?”</span>
+          <button type="button" className="btn primary block" onClick={onCountUp}>
+            Start counting up
+          </button>
+        </>
+      )}
+      {running && (
+        <span className="timer-running">
+          {!up && (
+            <button type="button" className="btn small-btn" onClick={onAdd}>
+              + 1 min
+            </button>
+          )}
+          <button type="button" className="btn small-btn" onClick={onStop}>
+            Stop the {up ? 'stopwatch' : 'timer'}
+          </button>
         </span>
       )}
     </div>

@@ -12,7 +12,7 @@ export type LiveState = {
   sync?: boolean; showMarker?: boolean; // learners follow the teacher's task
   revealed?: Record<string, number>; // taskId -> how many answers are revealed (-1 = all)
   revealedQs?: Record<string, string[]>; // taskId -> single questions the teacher revealed
-  timer?: { endsAt: number; total: number } | null; // countdown everyone sees
+  timer?: { endsAt: number; total: number; up?: boolean; startedAt?: number } | null; // countdown (or count-up stopwatch) everyone sees
   picked?: { name: string; learnerId: string; at: number } | null; // random learner picker
   spotlight?: { taskId: string; qid: string; text: string; at: number } | null; // one answer shown to the class, name hidden
   groupSetId?: string | null; // the group set in use (breakout rooms)

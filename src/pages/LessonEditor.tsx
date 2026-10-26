@@ -26,7 +26,7 @@ import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLiv
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
-import { PickedBanner, SpotlightCard, TimerChip } from '../components/LiveExtras';
+import { PickedBanner, SpotlightCard, TimerChip, TimerMenu } from '../components/LiveExtras';
 import { ReactionBurst } from '../components/ReactionBurst';
 import { AnnounceDialog } from '../components/AnnounceDialog';
 import { claimClass, clearAllHands, sendPointer, useSignals, useThrottle } from '../lib/session';
@@ -273,6 +273,10 @@ export function LessonEditor() {
     setTimerMenu(false);
     setLive(classId, { timer: { endsAt: Date.now() + secs * 1000, total: secs } });
   };
+  const startCountUp = () => {
+    setTimerMenu(false);
+    setLive(classId, { timer: { endsAt: 0, total: 0, up: true, startedAt: Date.now() } });
+  };
   const stopTimer = () => (setTimerMenu(false), setLive(classId, { timer: null }));
   const addTime = (secs: number) => live?.timer && setLive(classId, { timer: { endsAt: Math.max(Date.now(), live.timer.endsAt) + secs * 1000, total: live.timer.total + secs } });
   const timerRef = useRef<HTMLSpanElement>(null);
@@ -416,7 +420,7 @@ export function LessonEditor() {
       else if (e.key === 'c' || e.key === 'C') panels.toggleRight();
       else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
       else if (e.key === 'p' || e.key === 'P') changeMode(present ? 'teach' : 'present');
-      else if (e.key === 't' || e.key === 'T') (live?.timer && live.timer.endsAt > Date.now() ? stopTimer() : startTimer(120));
+      else if (e.key === 't' || e.key === 'T') (live?.timer && (live.timer.up || live.timer.endsAt > Date.now()) ? stopTimer() : setTimerMenu(true));
       else if (e.key === 'a' || e.key === 'A') setAnnouncing(true);
       else if (e.key === 'n' || e.key === 'N') {
         if (!panels.right) panels.toggleRight();
@@ -859,42 +863,8 @@ export function LessonEditor() {
                 <IconBtn icon="pointer" label="Pointer: a dot everyone sees" active={pointerOn} className="hide-phone" onClick={togglePointer} />
                 <IconBtn icon="annotate" label="Annotate: pen and highlighter on the screen, not saved (D)" active={inkMode !== 'off'} className="hide-phone" onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} />
                 <span className="timer-ctl" ref={timerRef}>
-                  <IconBtn icon="timer" label="Timer (T)" active={timerMenu || !!(live?.timer && live.timer.endsAt > Date.now())} onClick={() => setTimerMenu((v) => !v)} />
-                  {timerMenu && (
-                    <div className="timer-menu" role="menu" aria-label="Timer">
-                      <span className="menu-label">Countdown everyone sees</span>
-                      <div className="timer-grid">
-                        {[[30, '30 s'], [60, '1 min'], [120, '2 min'], [180, '3 min'], [300, '5 min'], [600, '10 min'], [900, '15 min'], [1200, '20 min']].map(([sec, l]) => (
-                          <button key={sec} type="button" role="menuitem" onClick={() => startTimer(sec as number)}>
-                            {l}
-                          </button>
-                        ))}
-                      </div>
-                      <form
-                        className="timer-custom"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const m = Number((e.currentTarget.elements.namedItem('m') as HTMLInputElement).value);
-                          if (m > 0 && m <= 120) startTimer(Math.round(m * 60));
-                        }}
-                      >
-                        <input name="m" type="number" min="1" max="120" step="1" placeholder="Minutes" aria-label="Minutes" />
-                        <button type="submit" className="btn small-btn">
-                          Start
-                        </button>
-                      </form>
-                      {live?.timer && live.timer.endsAt > Date.now() && (
-                        <span className="timer-running">
-                          <button type="button" className="btn small-btn" onClick={() => addTime(60)}>
-                            + 1 min
-                          </button>
-                          <button type="button" className="btn small-btn" onClick={() => stopTimer()}>
-                            Stop
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <IconBtn icon="timer" label="Timer (T)" active={timerMenu || !!(live?.timer && (live.timer.up || live.timer.endsAt > Date.now()))} onClick={() => setTimerMenu((v) => !v)} />
+                  {timerMenu && <TimerMenu running={!!live?.timer && (live.timer.up || live.timer.endsAt > Date.now())} onStart={startTimer} onCountUp={startCountUp} onAdd={() => addTime(60)} onStop={stopTimer} up={!!live?.timer?.up} />}
                 </span>
               </span>
               <span className="tb-group menu-anchor" ref={activityRef}>
@@ -974,7 +944,7 @@ export function LessonEditor() {
                 </div>
                 {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
-                {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} onAdd={() => addTime(60)} />}
+                {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} onAdd={live?.timer?.up ? undefined : () => addTime(60)} />}
                 {!preview && <PickedBanner picked={live?.picked} onClose={() => setLive(classId, { picked: null })} />}
                 {!preview && <ReactionBurst signals={signals} />}
                 <div
