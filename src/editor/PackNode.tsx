@@ -67,14 +67,14 @@ export async function uploadPictureFull(classId: string, file: Blob, quality: Pi
 }
 // Every picture a teacher uploads also goes into their media archive, to use again anywhere.
 // Sizes in the archive are the space the picture takes as stored (a third more than the file).
-export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string) {
+export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string, folder = '') {
   const r = await uploadPictureFull(classId, file, quality);
   const u = auth.currentUser;
   if (u && !isLearnerEmail(u.email))
     await archiveAdd(u.uid, {
       kind: 'image',
       name: (name ?? (file instanceof File ? file.name : '')).replace(/\.[a-z0-9]+$/i, '').trim() || 'Picture',
-      folder: '',
+      folder,
       tags: [],
       size: Math.round((r.size * 4) / 3),
       home: { classId, mediaId: r.src.slice(6) },

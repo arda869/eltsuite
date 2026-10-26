@@ -53,15 +53,28 @@ export function ClassPage() {
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(
-    () =>
-      onSnapshot(
-        doc(db, 'classes', classId),
-        (s) => setC(s.exists() ? ({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }) : null),
-        () => setC(null),
-      ),
-    [classId],
-  );
+  // The class, tried again a few times before giving up: right after signing in, or when the
+  // connection drops, the first read can fail even though the class is there.
+  const [why, setWhy] = useState<{ code: string; attempt: number }>({ code: '', attempt: 0 });
+  useEffect(() => {
+    let timer = 0;
+    const stop = onSnapshot(
+      doc(db, 'classes', classId),
+      (s) => {
+        if (s.exists()) return setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }), setWhy((w) => ({ ...w, code: '' }));
+        if (s.metadata.fromCache) return; // wait for the server before saying it is gone
+        setWhy((w) => ({ ...w, code: 'deleted' }));
+        setC(null);
+      },
+      (e: { code?: string }) => {
+        console.error('class', classId, e);
+        if (why.attempt < 3) timer = window.setTimeout(() => setWhy((w) => ({ code: '', attempt: w.attempt + 1 })), 900 * (why.attempt + 1));
+        else setWhy((w) => ({ ...w, code: e.code ?? 'error' })), setC(null);
+      },
+    );
+    return () => (stop(), clearTimeout(timer));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classId, why.attempt]);
 
   const ok = !!c;
   const topics = useCollection<Topic>(['classes', classId, 'topics'], ok);
@@ -110,7 +123,31 @@ export function ClassPage() {
         </nav>
       </TopBar>
 
-      {c === null && <p className="placeholder">This class could not be found, or you don’t have access to it.</p>}
+      {c === null && (
+        <div className="class-missing">
+          <h1 className="page-title">{why.code === 'deleted' ? 'This class has been deleted' : why.code === 'unavailable' ? 'The class could not be reached' : 'This class can’t be opened'}</h1>
+          <p className="hint">
+            {why.code === 'deleted'
+              ? 'It is no longer on the server. If it still shows on your home screen, reload the page.'
+              : why.code === 'permission-denied'
+                ? 'Your account does not have access to it. This happens when a co-teacher removes you, or when the class belongs to another of your accounts.'
+                : why.code === 'unavailable'
+                  ? 'Check your connection and try again.'
+                  : 'Something went wrong while opening it.'}
+          </p>
+          <span className="hint small">
+            Class {classId} · {why.code || 'unknown'}
+          </span>
+          <span style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn" onClick={() => (setC(undefined), setWhy({ code: '', attempt: 0 }))}>
+              Try again
+            </button>
+            <Link to="/" className="btn primary">
+              Back to your classes
+            </Link>
+          </span>
+        </div>
+      )}
       {c === undefined && <Loader full label="Opening the class" />}
 
       {c && (

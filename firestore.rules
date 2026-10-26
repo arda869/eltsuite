@@ -44,11 +44,19 @@ service cloud.firestore {
       match /archiveFolders/{folderId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
       }
+      // Media added straight to the archive (copied into a class when it is first used there)
+      match /media/{mediaId} {
+        allow read, delete: if isSelf(uid) && !learnerAccount();
+        allow create, update: if isSelf(uid) && !learnerAccount()
+          && (!('data' in request.resource.data) || request.resource.data.data.size() < 1000000)
+          && request.resource.data.get('size', 0) < 700000;
+      }
     }
 
     match /classes/{classId} {
       allow read: if signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
         || request.auth.uid in resource.data.get('coTeachers', {})
+        || request.auth.uid in resource.data.get('teacherIds', [])
         || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid

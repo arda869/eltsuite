@@ -95,9 +95,9 @@ function fft(re: Float64Array, im: Float64Array, inverse = false) {
 export async function reduceNoise(x: Float32Array, rate: number, level: NoiseLevel, onProgress?: (p: number) => void): Promise<Float32Array> {
   if (!level) return x;
   const N = rate > 32000 ? 2048 : 1024;
-  const hop = N / 4;
+  const hop = N / 2; // half-overlapping frames with a square-root window: half the work of quarter steps
   const bins = N / 2 + 1;
-  const win = new Float64Array(N).map((_, i) => 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N));
+  const win = new Float64Array(N).map((_, i) => Math.sqrt(0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N)));
   const frames = Math.max(1, Math.ceil((x.length + N) / hop));
   const pad = new Float32Array(frames * hop + N);
   pad.set(x, N / 2);
@@ -149,7 +149,7 @@ export async function reduceNoise(x: Float32Array, rate: number, level: NoiseLev
       out[o + i] += re[i] * win[i];
       norm[o + i] += win[i] * win[i];
     }
-    if (f % 200 === 0) {
+    if (f % 400 === 0) {
       onProgress?.(f / frames);
       await new Promise((r) => setTimeout(r, 0));
     }
@@ -254,6 +254,35 @@ export function mapTime(t: number, e: Edit): number | null {
   let out = Math.max(0, t - e.start);
   for (const ins of e.inserts) if (Math.max(e.start, Math.min(e.end, ins.at)) <= t) out += ins.dur;
   return +out.toFixed(2);
+}
+
+// The finished sound as pieces: stretches of the original (body) and what was added (ins).
+type Seg = { kind: 'body' | 'ins'; s0: number; s1: number; o0: number; len: number; ins?: Insert };
+export function timeline(e: Edit): Seg[] {
+  const segs: Seg[] = [];
+  let out = 0;
+  let pos = e.start;
+  for (const ins of [...e.inserts].sort((p, q) => p.at - q.at)) {
+    const at = Math.max(e.start, Math.min(e.end, ins.at));
+    if (at > pos) segs.push({ kind: 'body', s0: pos, s1: at, o0: out, len: at - pos }), (out += at - pos), (pos = at);
+    segs.push({ kind: 'ins', s0: at, s1: at, o0: out, len: ins.dur, ins });
+    out += ins.dur;
+  }
+  if (e.end > pos) segs.push({ kind: 'body', s0: pos, s1: e.end, o0: out, len: e.end - pos });
+  return segs;
+}
+// A moment of the original → the same moment in the finished sound (before anything added there).
+export function toOut(t: number, e: Edit) {
+  const segs = timeline(e);
+  if (t <= e.start) return 0;
+  for (const g of segs) if (g.kind === 'body' && t >= g.s0 && t <= g.s1) return g.o0 + (t - g.s0);
+  const last = segs[segs.length - 1];
+  return last ? last.o0 + last.len : 0;
+}
+// A moment of the finished sound → where it is in the original, and what added sound is playing.
+export function toSrc(o: number, e: Edit): { t: number; ins?: Insert } {
+  for (const g of timeline(e)) if (o >= g.o0 && o < g.o0 + g.len) return g.kind === 'body' ? { t: g.s0 + (o - g.o0) } : { t: g.s0, ins: g.ins };
+  return { t: e.end };
 }
 
 export const finishedLength = (e: Edit) => Math.max(0, e.end - e.start) + e.inserts.reduce((s, i) => s + i.dur, 0);

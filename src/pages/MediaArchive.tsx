@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { UiIcon } from '../components/UiIcon';
@@ -9,6 +9,8 @@ import { useImageSrc } from '../editor/PackNode';
 import { MediaPlayer } from '../media/Player';
 import { ScriptEditor } from '../media/ScriptEditor';
 import { fmtTime } from '../lib/sound';
+import { MediaDialog, type MediaTab } from '../media/MediaDialog';
+import { PIC_QUALITY, uploadPicture, type PicQuality } from '../editor/PackNode';
 
 // The media archive: every picture, sound and video the teacher has added, to use again in any
 // lesson. Folders and tags to keep it in order, the space it takes, and karaoke scripts that are
@@ -37,6 +39,37 @@ export function MediaArchive() {
   const [sort, setSort] = useState<Sort>('new');
   const [openId, setOpenId] = useState<string | null>(null);
   const [newFolder, setNewFolder] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [dialog, setDialog] = useState<{ tab: MediaTab; file?: File } | null>(null);
+  const [upBusy, setUpBusy] = useState('');
+  const [quality, setQuality] = useState<PicQuality>(() => {
+    try {
+      const q = localStorage.getItem('ll.picQuality');
+      return q === 'high' || q === 'small' ? q : 'standard';
+    } catch {
+      return 'standard';
+    }
+  });
+  const [over, setOver] = useState(false);
+  const picInput = useRef<HTMLInputElement>(null);
+  const space = uid ? 'user:' + uid : '';
+  const into = folder ?? '';
+  // Pictures go straight in; a sound opens the editor first.
+  const addFiles = async (list: FileList | File[]) => {
+    const files = Array.from(list);
+    const pics = files.filter((f) => f.type.startsWith('image/'));
+    const sound = files.find((f) => f.type.startsWith('audio/') || f.type.startsWith('video/'));
+    if (pics.length && space) {
+      setUpBusy(pics.length > 1 ? `Adding ${pics.length} pictures…` : 'Adding the picture…');
+      try {
+        for (const f of pics) await uploadPicture(space, f, quality, undefined, into);
+        setUpBusy('');
+      } catch {
+        setUpBusy('A picture could not be added. Try a smaller one.');
+      }
+    }
+    if (sound) setDialog({ tab: 'upload', file: sound });
+  };
 
   const all = items ?? [];
   const allFolders = useMemo(() => [...new Set([...folders, ...all.map((i) => i.folder).filter(Boolean)])].sort((a, b) => a.localeCompare(b)), [folders, all]);
@@ -68,7 +101,22 @@ export function MediaArchive() {
           </Link>
         </nav>
       </TopBar>
-      <div className="ma">
+      <div
+        className={'ma' + (over ? ' dropping' : '')}
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes('Files')) return;
+          e.preventDefault();
+          setOver(true);
+        }}
+        onDragLeave={(e) => e.currentTarget === e.target && setOver(false)}
+        onDrop={(e) => {
+          if (!e.dataTransfer.files.length) return;
+          e.preventDefault();
+          setOver(false);
+          addFiles(e.dataTransfer.files);
+        }}
+      >
+        {over && <div className="ma-drop">Drop pictures or sounds to add them{folder ? ` to ${folder}` : ''}</div>}
         <aside className="ma-side">
           <div className="ma-space">
             <span className="ma-space-n">{formatBytes(total)}</span>
@@ -156,9 +204,56 @@ export function MediaArchive() {
 
         <main className="ma-main">
           <div className="ma-head">
-            <h1 className="page-title">{folder === null ? 'Media archive' : folder === '' ? 'Not in a folder' : folder}</h1>
-            <span className="sub">Everything you upload, record or link is kept here, ready to use in any lesson.</span>
+            <div className="ma-head-text">
+              <h1 className="page-title">{folder === null ? 'Media archive' : folder === '' ? 'Not in a folder' : folder}</h1>
+              <span className="sub">Everything you upload, record or link is kept here, ready to use in any lesson.</span>
+            </div>
+            <span className="ma-add">
+              <button type="button" className="btn primary" onClick={() => setAdding((a) => !a)} aria-expanded={adding}>
+                + Add media
+              </button>
+              {adding && (
+                <span className="ma-add-menu" role="menu" onMouseLeave={() => setAdding(false)}>
+                  <button type="button" role="menuitem" onClick={() => (setAdding(false), picInput.current?.click())}>
+                    <UiIcon name="picture" size={16} /> Pictures
+                  </button>
+                  <span className="ma-add-q">
+                    <span className="hint">Quality</span>
+                    <span className="seg small-seg">
+                      {PIC_QUALITY.map((q) => (
+                        <button
+                          key={q.k}
+                          type="button"
+                          className={quality === q.k ? 'on' : ''}
+                          onClick={() => {
+                            setQuality(q.k);
+                            try {
+                              localStorage.setItem('ll.picQuality', q.k);
+                            } catch {
+                              /* fine */
+                            }
+                          }}
+                        >
+                          {q.label}
+                        </button>
+                      ))}
+                    </span>
+                  </span>
+                  <button type="button" role="menuitem" onClick={() => (setAdding(false), setDialog({ tab: 'record' }))}>
+                    <UiIcon name="mic" size={16} /> Record a sound
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => (setAdding(false), setDialog({ tab: 'upload' }))}>
+                    <UiIcon name="upload" size={16} /> Upload a sound
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => (setAdding(false), setDialog({ tab: 'link' }))}>
+                    <UiIcon name="link" size={16} /> YouTube or a link
+                  </button>
+                </span>
+              )}
+              <input ref={picInput} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && addFiles(e.target.files), (e.target.value = ''))} />
+            </span>
           </div>
+          {upBusy && <span className="hint">{upBusy}</span>}
           <div className="ma-bar-row">
             <input className="ma-search" type="search" value={q} placeholder="Search names, tags and scripts" onChange={(e) => setQ(e.target.value)} />
             <span className="seg small-seg" role="radiogroup" aria-label="Kind">
@@ -195,13 +290,14 @@ export function MediaArchive() {
         </main>
 
         {open && uid && <Detail key={open.id} uid={uid} item={open} folders={allFolders} onClose={() => setOpenId(null)} />}
+        {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={into} noArchive onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
       </div>
     </div>
   );
 }
 
 function Card({ item, on, onOpen }: { item: ArchiveItem; on: boolean; onOpen: () => void }) {
-  const places = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter(Boolean)).size;
+  const places = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter((c) => c && !c.startsWith('user:'))).size;
   return (
     <button type="button" className={'ma-card' + (on ? ' on' : '')} onClick={onOpen}>
       <span className={'ma-thumb k-' + item.kind}>
@@ -252,7 +348,7 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
     if (t && !item.tags.includes(t)) save({ tags: [...item.tags, t] });
     setTagText('');
   };
-  const classes = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter(Boolean)).size;
+  const classes = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter((c) => c && !c.startsWith('user:'))).size;
   return (
     <aside className="ma-detail" aria-label={item.name}>
       <div className="ma-detail-head">

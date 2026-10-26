@@ -713,9 +713,15 @@ export function LessonEditor() {
           {viewer ? (
             teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
           ) : (
-            <ModeMenu mode={mode === 'present' ? 'teach' : mode} live={teachingHere} onMode={changeMode} onEnd={endTeaching} endLabel={live?.teacherUid && live.teacherUid !== user?.uid ? `End ${live.teacherName}’s live lesson` : undefined}>
-              {task && <ViewAsLearner inMenu classId={classId} classCode={c?.classCode ?? ''} roster={classmates} path={`/learn/${itemId}?task=${task.id}`} />}
-            </ModeMenu>
+            <ModeMenu
+              mode={mode === 'present' ? 'teach' : mode}
+              live={teachingHere}
+              online={inLesson.length}
+              onMode={changeMode}
+              onEnd={endTeaching}
+              endLabel={live?.teacherUid && live.teacherUid !== user?.uid ? `End ${live.teacherName}’s live lesson` : undefined}
+              viewAs={task && classmates.length ? <ViewAsLearner list classId={classId} classCode={c?.classCode ?? ''} roster={classmates} path={`/learn/${itemId}?task=${task.id}`} /> : undefined}
+            />
           )}
           <TextSizeControl />
         </span>

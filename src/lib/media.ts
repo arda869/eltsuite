@@ -4,6 +4,11 @@ import { db } from './firebase';
 // Small audio clips (a word or a sentence) stored as data URLs in Firestore.
 // Kept short so each clip stays well under the 1 MB document limit.
 
+// Where media lives: a class ("classes/<id>/media"), or a teacher's own space for things added
+// straight to the media archive ("user:<uid>" → "users/<uid>/media").
+export const mediaCol = (space: string) => (space.startsWith('user:') ? collection(db, 'users', space.slice(5), 'media') : collection(db, 'classes', space, 'media'));
+export const mediaDoc = (space: string, id: string) => (space.startsWith('user:') ? doc(db, 'users', space.slice(5), 'media', id) : doc(db, 'classes', space, 'media', id));
+
 export const MAX_AUDIO_BYTES = 600 * 1024;
 
 export async function saveAudio(classId: string, blob: Blob): Promise<string> {
@@ -14,7 +19,7 @@ export async function saveAudio(classId: string, blob: Blob): Promise<string> {
     r.onerror = () => rej(r.error);
     r.readAsDataURL(blob);
   });
-  const ref = await addDoc(collection(db, 'classes', classId, 'media'), { data, type: blob.type, size: blob.size, createdAt: serverTimestamp() });
+  const ref = await addDoc(mediaCol(classId), { data, type: blob.type, size: blob.size, createdAt: serverTimestamp() });
   return ref.id;
 }
 
@@ -27,7 +32,7 @@ export async function saveImage(classId: string, blob: Blob): Promise<string> {
 const cache = new Map<string, Promise<string>>();
 export function audioUrl(classId: string, id: string) {
   const k = classId + '/' + id;
-  if (!cache.has(k)) cache.set(k, getDoc(doc(db, 'classes', classId, 'media', id)).then((s) => (s.data()?.data as string) ?? ''));
+  if (!cache.has(k)) cache.set(k, getDoc(mediaDoc(classId, id)).then((s) => (s.data()?.data as string) ?? ''));
   return cache.get(k)!;
 }
 

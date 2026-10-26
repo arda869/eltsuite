@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { archiveAdd, mediaIn, saveLink, youTubeId, type ArchiveItem, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
@@ -16,7 +16,7 @@ export type MediaTab = 'record' | 'upload' | 'archive' | 'link';
 export type Picked = { mediaId: string; archiveId: string; kind: 'audio' | 'video'; title: string };
 const MAX_MIN = 20;
 
-export function MediaDialog({ classId, tab: start = 'record', onPick, onClose }: { classId: string; tab?: MediaTab; onPick: (p: Picked) => void; onClose: () => void }) {
+export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, folder = '', noArchive, file: dropped }: { classId: string; tab?: MediaTab; onPick: (p: Picked) => void; onClose: () => void; folder?: string; noArchive?: boolean; file?: File }) {
   const { user } = useAuth();
   const [tab, setTab] = useState<MediaTab>(start);
   const [source, setSource] = useState<SoundSource | null>(null);
@@ -33,11 +33,15 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose }:
       const buffer = await decodeSound(f);
       if (buffer.duration > MAX_MIN * 60) return setBusy(`That is ${Math.round(buffer.duration / 60)} minutes long. Sounds can be up to ${MAX_MIN} minutes: trim it first, or use a link.`);
       setBusy('');
-      setSource({ buffer, name: f.name.replace(/\.[a-z0-9]+$/i, '') || 'Sound' });
+      setSource({ buffer, name: f.name.replace(/\.[a-z0-9]+$/i, '') || 'Sound', file: f });
     } catch {
       setBusy('That file could not be opened as a sound. Try an MP3, M4A or WAV file.');
     }
   };
+  useEffect(() => {
+    if (dropped) void open(dropped);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dropped]);
   const fromArchive = async ([it]: ArchiveItem[]) => {
     if (!user || !it) return;
     setBusy('Adding…');
@@ -56,7 +60,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose }:
     const name = title.trim() || (youTubeId(u) ? 'YouTube video' : decodeURIComponent(u.split('/').pop()?.split('?')[0] ?? '') || 'Link');
     try {
       const mediaId = await saveLink(classId, u, { title: name, video });
-      const archiveId = await archiveAdd(user.uid, { kind: video ? 'video' : 'audio', name, folder: '', tags: [], size: 0, link: u, home: { classId, mediaId }, script: [] as ScriptLine[] });
+      const archiveId = await archiveAdd(user.uid, { kind: video ? 'video' : 'audio', name, folder, tags: [], size: 0, link: u, home: { classId, mediaId }, script: [] as ScriptLine[] });
       onPick({ mediaId, archiveId, kind: video ? 'video' : 'audio', title: name });
     } catch {
       setBusy('That link could not be added.');
@@ -83,7 +87,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose }:
         </div>
         {!editing && (
           <span className="md-tabs" role="tablist">
-            {TABS.map((t) => (
+            {TABS.filter((t) => !(noArchive && t.k === 'archive')).map((t) => (
               <button key={t.k} type="button" role="tab" aria-selected={tab === t.k} className={tab === t.k ? 'on' : ''} onClick={() => (setTab(t.k), setBusy(''))}>
                 <UiIcon name={t.icon} size={16} />
                 {t.label}
@@ -95,6 +99,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose }:
           <SoundEditor
             source={source}
             classId={classId}
+            folder={folder}
             backLabel={source.recorded ? 'Record again' : 'Choose another file'}
             onBack={() => setSource(null)}
             onSaved={(s) => onPick({ mediaId: s.mediaId, archiveId: s.archiveId, kind: 'audio', title: s.title })}

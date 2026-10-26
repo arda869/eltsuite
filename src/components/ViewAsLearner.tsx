@@ -4,13 +4,13 @@ import { UiIcon } from './UiIcon';
 
 // "View as a learner…": pick a learner and open this task in a tab signed in as them.
 // inMenu: shown inside the mode menu, with the learners listed under it.
-export function ViewAsLearner({ classId, classCode, roster, path, inMenu }: { classId: string; classCode: string; roster: { id: string; name: string }[]; path: string; inMenu?: boolean }) {
+export function ViewAsLearner({ classId, classCode, roster, path, inMenu, list }: { classId: string; classCode: string; roster: { id: string; name: string }[]; path: string; inMenu?: boolean; list?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pins, setPins] = useState<Record<string, string> | null>(null);
   const [msg, setMsg] = useState('');
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!open || pins) return;
+    if ((!open && !list) || pins) return;
     loadPins(classId, roster.map((r) => r.id)).then(setPins, () => setPins({}));
   }, [open, pins, classId, roster]);
   useEffect(() => {
@@ -25,6 +25,22 @@ export function ViewAsLearner({ classId, classCode, roster, path, inMenu }: { cl
     setMsg(ok ? '' : 'Your browser blocked the new tab. Allow pop-ups for this site.');
     setOpen(false);
   };
+  // Just the learners, for the mode menu's "View as" list.
+  if (list)
+    return (
+      <div className="va-list" role="group" aria-label="View as">
+        {!pins ? (
+          <span className="hint">Loading…</span>
+        ) : (
+          roster.map((r) => (
+            <button key={r.id} role="menuitem" disabled={!pins[r.id]} title={pins[r.id] ? 'Opens a new tab signed in as ' + r.name : 'This learner set their own PIN, so you cannot sign in as them'} onClick={() => pick(r)}>
+              {r.name}
+            </button>
+          ))
+        )}
+        {msg && <span className="hint">{msg}</span>}
+      </div>
+    );
   if (inMenu)
     return (
       <>

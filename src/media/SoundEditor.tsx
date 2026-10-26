@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { assemble, bufferOf, EFFECTS, finishedLength, fmtTime, mapTime, peaks, reduceNoise, toMono, type Edit, type Effect, type NoiseLevel } from '../lib/sound';
-import { encodeMp3, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
+import { assemble, bufferOf, EFFECTS, finishedLength, fmtTime, mapTime, peaks, toMono, toOut, toSrc, type Edit, type Effect, type NoiseLevel } from '../lib/sound';
+import { encodeMp3, keepAsIs, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
+import { cleanNoise } from '../lib/soundJobs';
 import { archiveAdd, formatBytes, saveSound, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
@@ -10,7 +11,7 @@ import { UiIcon } from '../components/UiIcon';
 // After recording or choosing a sound: trim it, set the volume, clean up background noise, add
 // silence or a bell, choose the quality, then save it to the class and the media archive.
 
-export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean };
+export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
 
 const savedQ = (): SoundQuality => {
@@ -23,27 +24,30 @@ const savedQ = (): SoundQuality => {
 };
 const EFFECT_ICON: Record<Effect, string> = { silence: 'silence', bell: 'bell', chime: 'music', beep: 'beep', beeps: 'beep' };
 
-export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string }) {
+type Progress = { stage: string; p: number }; // p: 0 to 1 across the whole save
+
+export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folder = '' }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string; folder?: string }) {
   const { user } = useAuth();
   const rate = source.buffer.sampleRate;
   const mono = useMemo(() => toMono(source.buffer), [source.buffer]);
   const length = mono.length / rate;
   const [noise, setNoise] = useState<NoiseLevel>(source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0);
   const cleaned = useRef<Partial<Record<NoiseLevel, Float32Array>>>({ 0: mono });
+  const cleaning = useRef<Partial<Record<NoiseLevel, Promise<Float32Array>>>>({});
   const [clean, setClean] = useState<{ level: NoiseLevel; p: number } | null>(null);
   const [, bump] = useState(0);
   const [edit, setEdit] = useState<Edit>({ start: 0, end: length, gain: 1, even: false, noise: 0, inserts: [] });
   const [head, setHead] = useState(0);
-  const [where, setWhere] = useState<'start' | 'head' | 'end'>('head');
   const [silence, setSilence] = useState(1);
   const [quality, setQualityState] = useState<SoundQuality>(savedQ);
   const [title, setTitle] = useState(source.name);
   const [script, setScript] = useState((source.script ?? []).join('\n'));
-  const [busy, setBusy] = useState('');
-  const [playing, setPlaying] = useState<'' | 'part' | 'all'>('');
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState<Progress | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [hearing, setHearing] = useState(''); // the added sound playing now
   const ctx = useRef<AudioContext | null>(null);
-  const node = useRef<AudioBufferSourceNode | null>(null);
-  const started = useRef<{ at: number; from: number; rate: number } | null>(null);
+  const node = useRef<{ src: AudioBufferSourceNode; at: number; from: number; edit: Edit } | null>(null);
 
   const data = cleaned.current[noise] ?? mono;
   const setQuality = (q: SoundQuality) => {
@@ -55,19 +59,27 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
     }
   };
 
-  // Noise reduction takes a moment, so each strength is worked out once.
+  // Noise reduction takes a moment (in the background), so each strength is worked out once.
+  const cleanFor = (level: NoiseLevel) => {
+    if (cleaned.current[level]) return Promise.resolve(cleaned.current[level]!);
+    if (!cleaning.current[level])
+      cleaning.current[level] = cleanNoise(mono, rate, level, (p) => setClean((c) => (c && c.level === level ? { level, p } : c))).then((y) => {
+        cleaned.current[level] = y;
+        bump((n) => n + 1);
+        return y;
+      });
+    return cleaning.current[level]!;
+  };
   useEffect(() => {
-    if (cleaned.current[noise]) return;
+    if (cleaned.current[noise]) return setClean(null);
     let live = true;
     setClean({ level: noise, p: 0 });
-    reduceNoise(mono, rate, noise, (p) => live && setClean({ level: noise, p })).then((y) => {
-      cleaned.current[noise] = y;
-      if (live) setClean(null), bump((n) => n + 1);
-    });
+    cleanFor(noise).then(() => live && setClean(null));
     return () => {
       live = false;
     };
-  }, [noise, mono, rate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noise]);
   useEffect(() => setEdit((e) => ({ ...e, noise })), [noise]);
 
   const peakIn = useMemo(() => {
@@ -80,64 +92,58 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
   const effGain = edit.even && peakIn > 0.001 ? (edit.gain * 0.89) / peakIn : edit.gain;
   const loud = peakIn * effGain > 1.02;
 
+  // Playing: the finished sound (trimmed, at its volume, with the silence and sounds added),
+  // from the playhead. The playhead follows it on the wave.
+  const finished = useMemo(() => assemble(data, rate, edit), [data, rate, edit]);
   const stop = () => {
     try {
-      node.current?.stop();
+      node.current?.src.stop();
     } catch {
       /* stopped */
     }
     node.current = null;
-    started.current = null;
-    setPlaying('');
+    setPlaying(false);
+    setHearing('');
   };
   useEffect(() => () => (stop(), void ctx.current?.close()), []);
   const ac = () => (ctx.current ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)());
-  const playPart = () => {
-    stop();
-    const c = ac();
-    void c.resume();
-    const from = head >= edit.start && head < edit.end - 0.05 ? head : edit.start;
-    const src = c.createBufferSource();
-    src.buffer = bufferOf(data, rate);
-    const g = c.createGain();
-    g.gain.value = Math.min(effGain, 4);
-    src.connect(g).connect(c.destination);
-    src.start(0, from, Math.max(0.01, edit.end - from));
-    src.onended = () => node.current === src && (setPlaying(''), (node.current = null));
-    node.current = src;
-    started.current = { at: c.currentTime, from, rate: 1 };
-    setPlaying('part');
-  };
-  const playAll = () => {
+  const playFrom = (t: number, e: Edit = edit, buf: Float32Array = finished) => {
     stop();
     const c = ac();
     void c.resume();
     const src = c.createBufferSource();
-    src.buffer = bufferOf(assemble(data, rate, edit), rate);
+    src.buffer = bufferOf(buf, rate);
     src.connect(c.destination);
-    src.start();
-    src.onended = () => node.current === src && (setPlaying(''), (node.current = null));
-    node.current = src;
-    started.current = null;
-    setPlaying('all');
+    const total = buf.length / rate;
+    const from = Math.min(Math.max(0, toOut(t, e)), Math.max(0, total - 0.05));
+    src.start(0, from >= total - 0.06 ? 0 : from);
+    src.onended = () => node.current?.src === src && stop();
+    node.current = { src, at: c.currentTime, from: from >= total - 0.06 ? 0 : from, edit: e };
+    setPlaying(true);
   };
-  // The playhead follows the preview.
   useEffect(() => {
-    if (playing !== 'part') return;
+    if (!playing) return;
     let raf = 0;
     const tick = () => {
-      const s = started.current;
-      if (s && ctx.current) setHead(Math.min(edit.end, s.from + (ctx.current.currentTime - s.at)));
+      const n = node.current;
+      if (n && ctx.current) {
+        const where = toSrc(n.from + (ctx.current.currentTime - n.at), n.edit);
+        setHead(where.t);
+        setHearing(where.ins ? EFFECTS.find((f) => f.k === where.ins!.kind)?.label ?? '' : '');
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, edit.end]);
+  }, [playing]);
 
+  // Added where the playhead is, then played from just before it so you hear it in place.
   const add = (kind: Effect) => {
     const fx = EFFECTS.find((x) => x.k === kind)!;
-    const at = where === 'start' ? edit.start : where === 'end' ? edit.end : Math.max(edit.start, Math.min(edit.end, head));
-    setEdit((e) => ({ ...e, inserts: [...e.inserts, { id: newId(), at, kind, dur: kind === 'silence' ? silence : fx.dur }] }));
+    const at = Math.max(edit.start, Math.min(edit.end, head));
+    const next = { ...edit, inserts: [...edit.inserts, { id: newId(), at, kind, dur: kind === 'silence' ? silence : fx.dur }] };
+    setEdit(next);
+    playFrom(Math.max(edit.start, at - 1.2), next, assemble(data, rate, next));
   };
   // Quiet at the ends of a recording: found from the level, with a little room left.
   const trimQuiet = () => {
@@ -151,38 +157,70 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
   };
 
   const finalLen = finishedLength(edit);
-  const est = (finalLen / 60) * storedPerMinute(quality);
+  const unchanged = edit.start < 0.01 && edit.end > length - 0.01 && edit.gain === 1 && !edit.even && noise === 0 && !edit.inserts.length;
+  const asIs = unchanged && keepAsIs(source.file, length, quality);
+  const est = asIs && source.file ? (source.file.size * 4) / 3 : (finalLen / 60) * storedPerMinute(quality);
   const save = async () => {
-    if (!user) return setBusy('Sign in again to save.');
+    if (!user) return setError('Sign in again to save.');
     stop();
+    setError('');
     try {
-      setBusy('Putting it together…');
-      const out = assemble(data, rate, edit);
-      const blob = await encodeMp3(out, rate, quality, (p) => setBusy(`Making it smaller… ${Math.round(p * 100)}%`));
-      setBusy('Saving…');
+      let d = data;
+      if (!cleaned.current[noise]) {
+        setSaving({ stage: 'Cleaning up the sound', p: 0 });
+        d = await cleanFor(noise);
+      }
+      let blob: Blob;
+      let duration = length;
+      if (asIs && source.file) blob = source.file;
+      else {
+        setSaving({ stage: 'Putting it together', p: 0.05 });
+        const out = assemble(d, rate, edit);
+        duration = out.length / rate;
+        setSaving({ stage: 'Making it smaller', p: 0.08 });
+        blob = await encodeMp3(out, rate, quality, (p) => setSaving({ stage: 'Making it smaller', p: 0.08 + p * 0.52 }));
+      }
+      const base = asIs ? 0 : 0.6;
+      setSaving({ stage: 'Uploading', p: base });
       const lines = script
         .split('\n')
-        .map((s) => s.trim())
+        .map((x) => x.trim())
         .filter(Boolean);
       const marks = source.marks ?? [];
       const sc: ScriptLine[] = lines.map((text, i) => ({ text, t: marks[i] !== undefined ? mapTime(marks[i], edit) : null }));
       const name = title.trim() || 'Recording';
-      const duration = +(out.length / rate).toFixed(2);
-      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration });
-      const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder: '', tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
+      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration: +duration.toFixed(2) }, (p) => setSaving({ stage: 'Uploading', p: base + p * (0.97 - base) }));
+      setSaving({ stage: 'Adding it to your media archive', p: 0.98 });
+      const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder, tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration: +duration.toFixed(2) });
+      setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId, archiveId, title: name, script: sc });
     } catch (e) {
       console.error(e);
-      setBusy('It could not be saved. Check your connection and try again.');
+      setSaving(null);
+      setError('It could not be saved. Check your connection and try again.');
     }
   };
 
+  if (saving)
+    return (
+      <div className="sed-saving" role="status" aria-live="polite">
+        <span className="sed-saving-stage">{saving.stage}…</span>
+        <span className="sed-saving-bar">
+          <span style={{ width: `${Math.round(saving.p * 100)}%` }} />
+        </span>
+        <span className="sed-saving-n">{Math.round(saving.p * 100)}%</span>
+        <span className="hint">
+          {formatBytes(est)} · {fmtTime(finalLen)} long. Keep this window open until it is saved.
+        </span>
+      </div>
+    );
+
   return (
     <div className="sed">
-      <WaveEdit data={data} rate={rate} edit={edit} head={head} onHead={(t) => (setHead(t), playing === 'part' && stop())} onEdit={setEdit} marks={source.marks} />
+      <WaveEdit data={data} rate={rate} edit={edit} head={head} onHead={(t) => (setHead(t), playing && playFrom(t))} onEdit={setEdit} marks={source.marks} />
       <div className="sed-play">
-        <button type="button" className="mp-play" onClick={() => (playing === 'part' ? stop() : playPart())} aria-label={playing === 'part' ? 'Stop' : 'Play'}>
-          {playing === 'part' ? (
+        <button type="button" className="mp-play" onClick={() => (playing ? stop() : playFrom(head >= edit.end - 0.05 ? edit.start : head))} aria-label={playing ? 'Stop' : 'Play'}>
+          {playing ? (
             <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
               <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
             </svg>
@@ -193,22 +231,22 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
           )}
         </button>
         <span className="mp-time">
-          {fmtTime(head)}
-          <span> · kept {fmtTime(edit.end - edit.start)}</span>
+          {fmtTime(Math.max(0, toOut(head, edit)))}
+          <span> / {fmtTime(finalLen)}</span>
         </span>
+        {hearing && <span className="sed-hearing">{hearing}</span>}
         <span style={{ flex: 1 }} />
+        <button type="button" className="btn small-btn" onClick={() => playFrom(edit.start)}>
+          Play from the start
+        </button>
         <button type="button" className="btn small-btn" onClick={trimQuiet}>
           Trim the quiet ends
         </button>
         <button type="button" className="btn small-btn" onClick={() => setEdit((e) => ({ ...e, start: 0, end: length }))} disabled={edit.start < 0.01 && edit.end > length - 0.01}>
           Keep it all
         </button>
-        <button type="button" className={'btn small-btn' + (playing === 'all' ? ' primary' : '')} onClick={() => (playing === 'all' ? stop() : playAll())}>
-          {playing === 'all' ? 'Stop' : 'Listen to the result'}
-        </button>
       </div>
-      <span className="hint">Drag the two handles to trim. Click the wave to move the playhead.</span>
-
+      <span className="hint">Drag the two handles to trim. Click the wave to move the playhead. Play includes everything you change.</span>
       <div className="sed-grid">
         <div className="field" style={{ gap: 6 }}>
           <span>Volume</span>
@@ -238,37 +276,24 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
       </div>
 
       <div className="field" style={{ gap: 6 }}>
-        <span>Add silence or a sound</span>
+        <span>Add at the playhead ({fmtTime(Math.max(0, head - edit.start))})</span>
         <span className="sed-add">
-          <span className="seg small-seg" role="radiogroup" aria-label="Where">
-            {(
-              [
-                ['start', 'At the start'],
-                ['head', 'At the playhead'],
-                ['end', 'At the end'],
-              ] as const
-            ).map(([k, l]) => (
-              <button key={k} type="button" role="radio" aria-checked={where === k} className={where === k ? 'on' : ''} onClick={() => setWhere(k)}>
-                {l}
-              </button>
-            ))}
-          </span>
           <span className="sed-fx">
             <span className="sed-silence">
               <button type="button" className="btn small-btn" onClick={() => add('silence')}>
-                Silence
+                <UiIcon name="silence" size={14} /> Silence
               </button>
               <select value={silence} onChange={(e) => setSilence(Number(e.target.value))} aria-label="Length of silence">
-                {[0.5, 1, 2, 3, 5, 10, 20, 30].map((s) => (
-                  <option key={s} value={s}>
-                    {s} s
+                {[0.5, 1, 2, 3, 5, 10, 20, 30].map((x) => (
+                  <option key={x} value={x}>
+                    {x} s
                   </option>
                 ))}
               </select>
             </span>
             {EFFECTS.filter((f) => f.k !== 'silence').map((f) => (
               <button key={f.k} type="button" className="btn small-btn" onClick={() => add(f.k)}>
-                {f.label}
+                <UiIcon name={EFFECT_ICON[f.k]} size={14} /> {f.label}
               </button>
             ))}
           </span>
@@ -279,9 +304,11 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
               .sort((a, b) => a.at - b.at)
               .map((i) => (
                 <span key={i.id} className="sed-chip">
-                  <UiIcon name={EFFECT_ICON[i.kind]} size={14} />
-                  {EFFECTS.find((f) => f.k === i.kind)?.label}
-                  {i.kind === 'silence' && ` ${i.dur} s`} at {fmtTime(i.at - edit.start)}
+                  <button type="button" className="sed-chip-play" onClick={() => playFrom(Math.max(edit.start, i.at - 1.2))} aria-label="Play it">
+                    <UiIcon name={EFFECT_ICON[i.kind]} size={14} />
+                    {EFFECTS.find((f) => f.k === i.kind)?.label}
+                    {i.kind === 'silence' && ` ${i.dur} s`} at {fmtTime(i.at - edit.start)}
+                  </button>
                   <button type="button" aria-label="Remove" onClick={() => setEdit((e) => ({ ...e, inserts: e.inserts.filter((x) => x.id !== i.id) }))}>
                     ×
                   </button>
@@ -306,7 +333,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
             ))}
           </span>
           <span className="hint">
-            {SOUND_QUALITY.find((q) => q.k === quality)?.about.split(',')[0]}. This one takes about {formatBytes(est)}.
+            {SOUND_QUALITY.find((q) => q.k === quality)?.about.split(',')[0]}. This one takes about {formatBytes(est)}{asIs ? ', kept as it is' : ''}.
           </span>
         </div>
       </div>
@@ -321,13 +348,13 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel }: { s
           </button>
         </span>
       </label>
-      {busy && <span className="hint">{busy}</span>}
+      {error && <span className="hint warn">{error}</span>}
       <span className="pe-actions">
         <button type="button" className="btn link" onClick={onBack}>
           {backLabel}
         </button>
         <span style={{ flex: 1 }} />
-        <button type="button" className="btn primary" onClick={save} disabled={!!busy && !busy.startsWith('It could') || !!clean || finalLen < 0.2}>
+        <button type="button" className="btn primary" onClick={save} disabled={finalLen < 0.2}>
           Save
         </button>
       </span>

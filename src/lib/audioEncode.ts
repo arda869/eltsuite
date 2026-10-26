@@ -1,11 +1,12 @@
 // Make a sound smaller before it is stored: one channel (speech needs only one), resampled, and
 // encoded as MP3 at the chosen quality. Runs in the browser, several times faster than real time.
 import { bufferOf, decodeSound, toMono } from './sound';
+import { mp3InWorker } from './soundJobs';
 
 export type SoundQuality = 'clear' | 'standard' | 'small';
 export const SOUND_QUALITY: { k: SoundQuality; label: string; about: string; kbps: number; rate: number }[] = [
   { k: 'clear', label: 'Clear', about: 'For music and speech, about 0.9 MB a minute', kbps: 96, rate: 44100 },
-  { k: 'standard', label: 'Standard', about: 'For speech, about 0.6 MB a minute', kbps: 64, rate: 44100 },
+  { k: 'standard', label: 'Standard', about: 'For speech, about 0.6 MB a minute', kbps: 64, rate: 32000 },
   { k: 'small', label: 'Small', about: 'For speech only, about 0.3 MB a minute', kbps: 32, rate: 22050 },
 ];
 // Space taken as stored: the file, plus a third.
@@ -22,6 +23,8 @@ export async function encodeMp3(mono: Float32Array, rate: number, quality: Sound
     src.start();
     x = (await off.startRendering()).getChannelData(0);
   }
+  const fast = await mp3InWorker(x, q.rate, q.kbps, onProgress);
+  if (fast) return fast;
   const { Mp3Encoder } = await import('@breezystack/lamejs');
   const enc = new Mp3Encoder(1, q.rate, q.kbps);
   const out: Uint8Array[] = [];
@@ -44,6 +47,15 @@ export async function encodeMp3(mono: Float32Array, rate: number, quality: Sound
   if (end.length) out.push(new Uint8Array(end));
   onProgress?.(1);
   return new Blob(out as BlobPart[], { type: 'audio/mpeg' });
+}
+
+// An MP3 or M4A file that needs no changes is kept as it is, when it is no larger than the
+// chosen quality would make it (re-encoding would only take time and lose quality).
+export function keepAsIs(f: File | undefined, duration: number, quality: SoundQuality): boolean {
+  if (!f || !duration) return false;
+  const compressed = /^audio\/(mpeg|mp3|mp4|x-m4a|aac)$/.test(f.type) || /\.(mp3|m4a|aac)$/i.test(f.name);
+  const target = (((SOUND_QUALITY.find((x) => x.k === quality)?.kbps ?? 64) * 1000) / 8) * duration;
+  return compressed && f.size <= target * 1.25;
 }
 
 export async function encodeSound(file: Blob, quality: SoundQuality, onProgress?: (p: number) => void): Promise<{ blob: Blob; duration: number }> {

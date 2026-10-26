@@ -1,6 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { db } from './firebase';
+import { mediaCol, mediaDoc } from './media';
 
 // The media archive: every picture, sound and video a teacher adds, kept so it can be used again in
 // any lesson or class. The archive entry lives with the teacher; the media itself lives in each class
@@ -26,7 +27,7 @@ export type ArchiveItem = {
 };
 
 const col = (uid: string) => collection(db, 'users', uid, 'archive');
-const mediaRef = (classId: string, id: string) => doc(db, 'classes', classId, 'media', id);
+const mediaRef = (classId: string, id: string) => mediaDoc(classId, id);
 
 const withDefaults = (id: string, d: Record<string, unknown>): ArchiveItem => {
   const x = d as Partial<ArchiveItem>;
@@ -89,21 +90,27 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(s);
 };
 
-export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number }) {
+export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number }, onProgress?: (p: number) => void) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  const ref = doc(collection(db, 'classes', classId, 'media'));
+  const ref = doc(mediaCol(classId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
-  for (let k = 0; k < parts; k++) {
-    const chunk = bytes.subarray(k * PART, (k + 1) * PART);
-    await setDoc(mediaRef(classId, `${ref.id}_p${k}`), { part: k, data: toBase64(chunk), size: chunk.length, public: true });
-  }
+  let done = 0;
+  onProgress?.(0);
+  // All parts at once: the database takes them side by side, which is much faster than one by one.
+  await Promise.all(
+    Array.from({ length: parts }, (_, k) => {
+      const chunk = bytes.subarray(k * PART, (k + 1) * PART);
+      return setDoc(mediaRef(classId, `${ref.id}_p${k}`), { part: k, data: toBase64(chunk), size: chunk.length, public: true }).then(() => onProgress?.(++done / (parts + 1)));
+    }),
+  );
   const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, script: meta.script ?? [], duration: meta.duration ?? 0, public: true };
   await setDoc(ref, m);
+  onProgress?.(1);
   return { mediaId: ref.id, bytes: bytes.length };
 }
 
 export async function saveLink(classId: string, url: string, meta: { title: string; script?: ScriptLine[]; video?: boolean }) {
-  const r = await addDoc(collection(db, 'classes', classId, 'media'), { kind: 'link', url, title: meta.title, size: 0, script: meta.script ?? [], video: !!meta.video, public: true } satisfies Manifest);
+  const r = await addDoc(mediaCol(classId), { kind: 'link', url, title: meta.title, size: 0, script: meta.script ?? [], video: !!meta.video, public: true } satisfies Manifest);
   return r.id;
 }
 
@@ -151,17 +158,19 @@ export async function mediaIn(uid: string, item: ArchiveItem, classId: string): 
   if (item.link) id = await saveLink(classId, item.link, { title: item.name, script: item.script, video: item.kind === 'video' });
   else if (item.home && item.kind === 'image') {
     const s = await getDoc(mediaRef(item.home.classId, item.home.mediaId));
-    const r = await addDoc(collection(db, 'classes', classId, 'media'), { data: s.data()?.data ?? '', type: s.data()?.type ?? 'image/jpeg', size: s.data()?.size ?? 0 });
+    const r = await addDoc(mediaCol(classId), { data: s.data()?.data ?? '', type: s.data()?.type ?? 'image/jpeg', size: s.data()?.size ?? 0 });
     id = r.id;
   } else if (item.home) {
     const from = item.home;
     const m = await loadManifest(from.classId, from.mediaId);
     if (!m) throw new Error('missing');
-    const ref = doc(collection(db, 'classes', classId, 'media'));
-    for (let k = 0; k < (m.parts ?? 1); k++) {
-      const p = await getDoc(mediaRef(from.classId, `${from.mediaId}_p${k}`));
-      await setDoc(mediaRef(classId, `${ref.id}_p${k}`), p.data() ?? {});
-    }
+    const ref = doc(mediaCol(classId));
+    await Promise.all(
+      Array.from({ length: m.parts ?? 1 }, async (_, k) => {
+        const p = await getDoc(mediaRef(from.classId, `${from.mediaId}_p${k}`));
+        await setDoc(mediaRef(classId, `${ref.id}_p${k}`), p.data() ?? {});
+      }),
+    );
     await setDoc(ref, { ...m, title: item.name, script: item.script ?? m.script ?? [] });
     id = ref.id;
   }
