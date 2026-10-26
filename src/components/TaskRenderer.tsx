@@ -1,3 +1,4 @@
+import { LetterGap } from './LetterGap';
 import { PicFrame } from '../editor/Picture';
 import { listLabel } from '../lib/listLabel';
 import { BankLinkCard } from '../editor/BankLink';
@@ -309,6 +310,14 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       const right = scoreQuestion(entry, value).got === 1;
       return resultText(key, id, value, right, entry?.kind === 'gap' ? entry.answers[0] : undefined);
     }
+    if (node.attrs?.letters && node.attrs?.pattern)
+      return (
+        <span key={key} className="gap-wrap lg-wrap" data-qid={id}>
+          {num(id)}
+          <LetterGap key={id + pf(id)} pattern={String(node.attrs.pattern)} value={value} disabled={disabled} label={`Question ${numbers[id]}`} className={pf(id)} onChange={(v) => onChange?.(id, v)} />
+          {revealChip(node)}
+        </span>
+      );
     return (
       <span key={key} className="gap-wrap" data-qid={id}>
         {num(id)}

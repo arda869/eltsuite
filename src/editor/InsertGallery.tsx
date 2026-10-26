@@ -7,7 +7,7 @@ export type GalleryCmd = { key: string; label: string; hint: string };
 type Section = { title: string; blurb: string; keys: string[] };
 
 const SECTIONS: Section[] = [
-  { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
+  { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
   { title: 'Listening and pronunciation', blurb: 'The browser reads text aloud, so these work without recordings.', keys: ['pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
@@ -19,6 +19,7 @@ const SECTIONS: Section[] = [
 // Longer explanations than the / menu hints: what learners do and how it is marked.
 const ABOUT: Record<string, string> = {
   gap: 'A blank inside a sentence. Learners type the missing word. Accept several answers with |; case can matter if you want.',
+  lettergap: 'A gap with one short line for each letter, so learners know how long the word is. Works for a single word or a whole sentence; you can show the first letters.',
   wordform: 'A gap with the stem word in capitals next to it, Cambridge style: "She is a famous ____ (WRITE)".',
   dropdown: 'Options inside the sentence, like go / goes / going. Learners circle one. Can have more than one right answer.',
   radio: 'A question with options listed underneath. Feedback per option and an explanation after checking.',
@@ -150,6 +151,11 @@ const PREVIEW: Record<string, () => ReactNode> = {
   wordform: () => (
     <Sent>
       a famous <Gap pen="writer" /> <b className="gl-stem">WRITE</b>
+    </Sent>
+  ),
+  lettergap: () => (
+    <Sent>
+      I was <span className="gl-letters">r<i /><i /><i /><i /><i /><i /><i /><i /></span> to go.
     </Sent>
   ),
   dropdown: () => (

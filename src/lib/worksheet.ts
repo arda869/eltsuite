@@ -29,6 +29,7 @@ export type Run = {
   sym?: { text: string; shape: string; tone: string };
   pic?: { src: string; size: string; label: string; alt?: string };
   ex?: boolean; // the answer of an example, written in
+  letters?: string; // letter gaps: the pattern, "_" for each letter to write
 };
 export type Block =
   | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number'; mark?: string }
@@ -116,7 +117,8 @@ export function flattenTask(t: ExportTask): WsTask {
           n++;
           marks++;
           answers.push({ n, text: (a.answers ?? []).join(' / ') });
-          out.push({ num: n }, { blank: Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
+          if (a.letters && a.pattern) out.push({ num: n }, { letters: String(a.pattern) });
+          else out.push({ num: n }, { blank: Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
           if (a.stem) out.push({ t: ` ${a.stem} `, bold: true });
           break;
           }
@@ -391,6 +393,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const label = (t: string) => new TextRun({ text: t.toUpperCase(), bold: true, font: SANS, size: 15, color: '8A847D', characterSpacing: 30 });
   const runsToDocx = (runs: Run[]) =>
     runs.flatMap((r) => {
+      if (r.letters) return [new TextRun({ text: ' ' + Array.from(r.letters).map((c) => (c === '_' ? '_' : c === ' ' ? '  ' : c)).join(' ') + ' ', font: SANS })];
       if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.max(6, Math.min(18, Math.round(r.blank * 0.6)))), underline: {} })];
       if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: 20 })];
       if (r.stack) return r.stack.map((o) => new TextRun({ text: '      ' + o, break: 1, font: SERIF }));

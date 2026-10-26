@@ -3,6 +3,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tip
 import { useEffect, useRef, useState } from 'react';
 import { newId } from '../lib/tasks';
 import { usePopPos } from './usePopPos';
+import { makePattern } from '../components/LetterGap';
 import { NoteFields } from './NoteFields';
 
 const LETTERS = 'abcdefghij';
@@ -143,15 +144,16 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
 
   function save() {
     const list = value.split('|').map((s) => s.trim()).filter(Boolean);
-    updateAttributes({ answers: list });
+    updateAttributes({ answers: list, ...(node.attrs.letters ? { pattern: makePattern(list[0] ?? '', !!node.attrs.firstLetter) } : {}) });
     setOpen(false);
   }
+  const first = () => value.split('|').map((s) => s.trim()).filter(Boolean)[0] ?? '';
 
   return (
     <NodeViewWrapper as="span" className={'gap-node' + (selected ? ' is-selected' : '') + (node.attrs.example ? ' is-example' : '')} ref={ref}>
       <Grip editor={editor} getPos={getPos} />
       <span className={'gap-chip' + (answers.length ? '' : ' empty')} contentEditable={false} onClick={() => setOpen(true)} title="Edit accepted answers">
-        {answers.length ? answers.join(' / ') : 'answer'}
+        {node.attrs.letters && node.attrs.pattern ? <span className="lg-preview">{Array.from(String(node.attrs.pattern)).map((c, i) => (c === '_' ? <i key={i} /> : <b key={i}>{c === ' ' ? '\u00a0' : c}</b>))}</span> : answers.length ? answers.join(' / ') : node.attrs.letters ? 'word or sentence' : 'answer'}
       </span>
       {node.attrs.stem && <span className="wf-stem" contentEditable={false}>{node.attrs.stem}</span>}
       {open && (
@@ -176,6 +178,16 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             <input type="checkbox" checked={!!node.attrs.caseSensitive} onChange={() => updateAttributes({ caseSensitive: !node.attrs.caseSensitive })} />
             Capital letters must match
           </label>
+          <label className="pop-check">
+            <input type="checkbox" checked={!!node.attrs.letters} onChange={() => updateAttributes({ letters: !node.attrs.letters, pattern: !node.attrs.letters ? makePattern(first(), !!node.attrs.firstLetter) : '' })} />
+            One line for each letter (shows how long the answer is)
+          </label>
+          {node.attrs.letters && (
+            <label className="pop-check">
+              <input type="checkbox" checked={!!node.attrs.firstLetter} onChange={() => updateAttributes({ firstLetter: !node.attrs.firstLetter, pattern: makePattern(first(), !node.attrs.firstLetter) })} />
+              Show the first letter of each word
+            </label>
+          )}
           <label className="pop-check">
             <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
             Example: learners see the answer, and it isn’t marked
@@ -205,6 +217,9 @@ export const Gap = Node.create({
       caseSensitive: { default: false },
       stem: { default: '' }, // word formation: the word in capitals beside the gap
       example: { default: false }, // an example: the answer is shown and it is not marked
+      letters: { default: false }, // one short line per letter
+      firstLetter: { default: false }, // with letter lines: show the first letter of each word
+      pattern: { default: '' }, // with letter lines: "_" for each hidden letter (learners see it)
       hint: { default: '' },
       feedback: { default: '' },
     };

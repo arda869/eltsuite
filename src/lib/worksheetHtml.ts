@@ -32,6 +32,7 @@ function runs(rs: Run[]) {
   const inline = rs
     .map((r) => {
       if (r.num !== undefined) return `<b class="qn">${r.num}</b>`;
+      if (r.letters) return `<span class="lgp">${r.letters.split(' ').map((w) => `<span class="lgp-w">${Array.from(w).map((c) => (c === '_' ? '<i></i>' : `<b>${esc(c)}</b>`)).join('')}</span>`).join('')}</span>`;
       if (r.blank) return `<span class="blank" style="width:${Math.min(8, Math.max(2.6, r.blank * 0.2)).toFixed(1)}em"></span>`;
       if (r.options) return `<span class="opts">${r.options.map(esc).join(' / ')}</span>`;
       if (r.stack) {
@@ -360,6 +361,10 @@ svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 .pic-label { position: absolute; top: 1.2mm; left: 1.2mm; min-width: 3.8mm; height: 3.8mm; padding: 0 1mm; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: #fff; font: 700 6.4pt/1 Karla, sans-serif; box-shadow: 0 0 0 .35mm #fff; }
 
 .ex-ans { display: inline-block; min-width: 10mm; padding: 0 1mm; border-bottom: .6pt solid #2f2c29; font-style: italic; color: #2f5fa8; }
+
+.lgp { display: inline; } .lgp-w { display: inline-flex; align-items: flex-end; gap: .9mm; margin-right: 2.6mm; white-space: nowrap; vertical-align: -.1em; }
+.lgp-w i { display: inline-block; width: 2.6mm; height: 1em; border-bottom: .7pt solid #2f2c29; }
+.lgp-w b { font-weight: 400; line-height: 1; }
 
 /* Class colour, more prominent */
 h1 { color: var(--ink); }
