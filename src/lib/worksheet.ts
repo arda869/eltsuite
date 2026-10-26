@@ -9,6 +9,7 @@ import { highlightBg } from '../editor/Highlight';
 import { textColor } from '../editor/TextColor';
 import { prosodyAttrs } from '../editor/Prosody';
 import { glabelAttrs } from '../editor/Symbols';
+import { translationsFor } from './langs';
 
 // Printable worksheets. A task becomes a list of blocks: paragraphs made of runs (text or a
 // blank), word boxes, two-column matching, ruled lines, and the answer key.
@@ -600,7 +601,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
                   ['COLLOCATIONS', d.collocations],
                   ['SYN', d.synonyms],
                   ['OPP', d.antonyms],
-                  [(d.lang || 'translation').toUpperCase(), d.translation],
+                  ...translationsFor(d, null).map(([l, v]) => [l.toUpperCase(), v]),
                   ['COMMON MISTAKE', d.mistakes],
                 ] as [string, string | undefined][]
               ).filter(([, v]) => v).flatMap(([k, v]) => [new TextRun({ text: k + '  ', bold: true, font: SANS, size: S(14), color: ACC_INK, break: 1 }), new TextRun({ text: v!, font: SERIF })]),
@@ -621,7 +622,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
                   ...(d.pos ? [new TextRun({ text: ` (${d.pos})`, italics: true, font: SERIF, size: S(20) })] : []),
                   ...(d.ipa ? [new TextRun({ text: ` ${d.ipa}`, font: 'Segoe UI', size: S(18), color: '6F6A64' })] : []),
                   ...(d.meaning ? [new TextRun({ text: ` ${d.meaning}`, font: SERIF, size: S(20) })] : []),
-                  ...(d.translation ? [new TextRun({ text: ` ${d.translation}`, italics: true, font: SERIF, size: S(20), color: '6F6A64' })] : []),
+                  ...translationsFor(d, null).map(([l, v]) => new TextRun({ text: `  ${l}: ${v}`, italics: true, font: SERIF, size: S(20), color: '6F6A64' })),
                 ],
               }),
           ),

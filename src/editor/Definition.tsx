@@ -2,6 +2,8 @@ import { Mark, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { IpaField } from './Ipa';
+import { useEditorClass } from './context';
+import { translationsFor, useClassLangs, useMyLangs } from '../lib/langs';
 
 // An inline definition: a word or phrase in the text that learners tap or hover to see its meaning.
 // Fields follow the vocabulary entry in the brief (core first, the rest under "More details").
@@ -27,6 +29,7 @@ export type DefData = {
   tags?: string;
   translation?: string;
   lang?: string;
+  trans?: Record<string, string>; // a translation in each language the class speaks
 };
 
 export const POS = ['noun', 'verb', 'adjective', 'adverb', 'phrasal verb', 'idiom', 'phrase', 'preposition', 'conjunction', 'pronoun', 'determiner', 'exclamation'];
@@ -55,7 +58,7 @@ export const Definition = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { class: 'def-word' }), 0],
 });
 
-export type FieldDef = { k: keyof DefData; label: string; ph?: string; options?: string[]; long?: boolean };
+export type FieldDef = { k: Exclude<keyof DefData, 'trans'>; label: string; ph?: string; options?: string[]; long?: boolean };
 export const CORE: FieldDef[] = [
   { k: 'pos', label: 'Part of speech', options: POS },
   { k: 'meaning', label: 'Meaning', ph: 'A simple explanation in English', long: true },
@@ -150,6 +153,8 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
 
   function save() {
     const clean = Object.fromEntries(Object.entries(data).filter(([, v]) => typeof v === 'string' && v.trim())) as DefData;
+    const tr = Object.fromEntries(Object.entries(data.trans ?? {}).filter(([, v]) => v.trim()));
+    if (Object.keys(tr).length) clean.trans = tr;
     if (Object.keys(clean).length) editor.chain().focus().extendMarkRange('definition').setMark('definition', { data: clean }).run();
     else if (existing) editor.chain().focus().extendMarkRange('definition').unsetMark('definition').run();
     onClose();
@@ -167,7 +172,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
         <strong className="def-pop-word">{word}</strong>
       </div>
       {CORE.map(field)}
-      <div className="def-two">{TRANSLATION.map(field)}</div>
+      <TransFields data={data} setData={setData} />
       <button type="button" className="btn link small def-more" onClick={() => setMore((m) => !m)}>
         {more ? 'Fewer details' : 'More details: form, pronunciation, use, learner help'}
       </button>
@@ -188,6 +193,28 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
           Done
         </button>
       </div>
+    </div>
+  );
+}
+
+// Translations: one field for each language the class speaks (set on the Learners page), or a
+// single translation when no languages are set.
+export function TransFields({ data, setData }: { data: DefData; setData: (fn: (d: DefData) => DefData) => void }) {
+  const { classId } = useEditorClass();
+  const langs = useClassLangs(classId);
+  const legacy = <div className="def-two">{TRANSLATION.map((f) => <DefField key={f.k} f={f} data={data} setData={setData} />)}</div>;
+  if (!langs.length) return legacy;
+  return (
+    <div className="def-trans">
+      <span className="def-group-title">Translations for this class</span>
+      {langs.map((l) => (
+        <label key={l} className="def-field">
+          <span>{l}</span>
+          <input value={data.trans?.[l] ?? ''} onChange={(e) => setData((d) => ({ ...d, trans: { ...(d.trans ?? {}), [l]: e.target.value } }))} onKeyDown={(e) => e.stopPropagation()} />
+        </label>
+      ))}
+      <span className="hint">Each learner sees the languages they speak.</span>
+      {data.translation ? legacy : null}
     </div>
   );
 }
@@ -223,6 +250,7 @@ export function DefField({ f, data, setData, word }: { f: FieldDef; data: DefDat
 
 // What learners see when they hover or tap a defined word.
 export function DefCard({ word, d }: { word: string; d: DefData }) {
+  const mine = useMyLangs();
   const speak = () => {
     try {
       const u = new SpeechSynthesisUtterance(word);
@@ -267,12 +295,12 @@ export function DefCard({ word, d }: { word: string; d: DefData }) {
       {d.image && <img className="dc-img" src={d.image} alt="" />}
       {d.meaning && <span className="dc-meaning">{d.meaning}</span>}
       {d.example && <span className="dc-example">{d.example}</span>}
-      {d.translation && (
-        <span className="dc-trans">
-          <span className="dc-k">{d.lang || 'Translation'}</span>
-          <span className="dc-v">{d.translation}</span>
+      {translationsFor(d, mine).map(([l, v]) => (
+        <span key={l} className="dc-trans">
+          <span className="dc-k">{l}</span>
+          <span className="dc-v">{v}</span>
         </span>
-      )}
+      ))}
       {form && (
         <span className="dc-sec">
           {row('Word family', d.family)}

@@ -2,7 +2,8 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useState } from 'react';
 import { Grip } from './nodes';
-import { CORE, DefField, GROUPS, TRANSLATION, type DefData } from './Definition';
+import { CORE, DefField, GROUPS, TransFields, type DefData } from './Definition';
+import { translationsFor, useMyLangs } from '../lib/langs';
 import '../lib/extras.css';
 
 // A dictionary entry that looks cut out of a printed dictionary page and stuck into the task.
@@ -12,6 +13,7 @@ const TILTS = [-0.9, 0.6, -0.4, 0.8, -0.6];
 export const tiltOf = (word: string) => TILTS[Array.from(word).reduce((s, c) => s + c.charCodeAt(0), 0) % TILTS.length];
 
 export function DictCutout({ word, d, tilt = true }: { word: string; d: DefData; tilt?: boolean }) {
+  const mine = useMyLangs();
   const has = (v?: string) => !!v && v.trim().length > 0;
   const gram = [d.countable === 'countable' ? '[C]' : d.countable === 'uncountable' ? '[U]' : d.countable === 'both' ? '[C, U]' : '', d.register ? d.register : ''].filter(Boolean).join('  ');
   const meanings = (d.meaning ?? '').split('\n').map((s) => s.trim()).filter(Boolean);
@@ -59,12 +61,12 @@ export function DictCutout({ word, d, tilt = true }: { word: string; d: DefData;
         {line('syn', d.synonyms)}
         {line('opp', d.antonyms)}
         {line('word family', d.family)}
-        {has(d.translation) && (
-          <span className="dcut-trans">
-            <span className="dcut-k">{d.lang || 'translation'}</span>
-            {d.translation}
+        {translationsFor(d, mine).map(([l, v]) => (
+          <span key={l} className="dcut-trans">
+            <span className="dcut-k">{l}</span>
+            {v}
           </span>
-        )}
+        ))}
         {has(d.mistakes) && (
           <span className="dcut-note">
             <span className="dcut-k">common mistake</span>
@@ -105,7 +107,7 @@ function EditView({ node, updateAttributes, deleteNode, editor, getPos, selected
           </label>
           {CORE.map(field)}
           <span className="hint">For more than one meaning, put each meaning and its example on a new line.</span>
-          <div className="def-two">{TRANSLATION.map(field)}</div>
+          <TransFields data={data} setData={setData} />
           <button type="button" className="btn link small def-more" onClick={() => setMore((m) => !m)}>
             {more ? 'Fewer details' : 'More details: form, pronunciation, use, learner help'}
           </button>

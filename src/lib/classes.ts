@@ -40,6 +40,8 @@ export type ClassDoc = {
   nicknames?: Record<string, string>; // learner id → nickname, when names show as nicknames
   accounts?: { email?: 'off' | 'optional' | 'required' }; // learners link an email (Google sign-in, email summaries)
   teaching?: { showMarker?: boolean; seeLearners?: boolean }; // while teaching: show learners where I am, show me where learners are
+  learnerTools?: Record<string, boolean>; // the text tools learners get when they write
+  langs?: string[]; // languages the learners speak, for translations
 };
 
 // Messaging for learners: off; only with teachers; in groups the teacher makes; freely with each other.
@@ -105,7 +107,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('Could not find a free class code. Please try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

@@ -16,6 +16,9 @@ import { Stress, newStress } from '../editor/Stress';
 import { IconNode, IconTool } from '../editor/Icons';
 import { SymNode, SymbolTool } from '../editor/Symbols';
 import { EditorClassContext } from '../editor/context';
+import { LANG_MARKS } from '../editor/langMarks';
+import { ProsodyTool } from '../editor/Prosody';
+import { useToolGate } from '../lib/toolbarPrefs';
 import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
@@ -102,6 +105,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [draft, setDraft] = useState<{ quote: string } | null>(null);
   const [draftText, setDraftText] = useState('');
   const [, tick] = useState(0);
+  const gate = useToolGate();
 
   const editor = useEditor(
     {
@@ -115,6 +119,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         Stress,
         IconNode,
         SymNode,
+        ...LANG_MARKS,
         SuggestIns,
         SuggestDel,
         CommentMark,
@@ -260,11 +265,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
           <TextColorTool editor={editor} />
           {B('▮', editor.isActive('highlight'), () => editor.chain().focus().toggleMark('highlight', { color: 'yellow' }).run(), 'Highlight')}
-          {B('H', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), 'Heading')}
+          {gate('heading') !== 'hide' && B('H', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), 'Heading')}
           {B('•', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'List')}
           {B('1.', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered list')}
           <span className="ne-sep" aria-hidden="true" />
-          {B(
+          {gate('definition') !== 'hide' && B(
             <span className="ne-def">Aa</span>,
             editor.isActive('definition'),
             () => {
@@ -274,10 +279,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             'Definition: select a word, then add its meaning',
             editor.state.selection.empty && !editor.isActive('definition'),
           )}
-          {B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa('RP')).run(), 'IPA: phonemic symbols')}
-          {B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress')}
-          <IconTool editor={editor} />
-          <SymbolTool editor={editor} />
+          {gate('pron') !== 'hide' && B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa('RP')).run(), 'IPA: phonemic symbols')}
+          {gate('pron') !== 'hide' && B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress')}
+          {gate('icons') !== 'hide' && <IconTool editor={editor} />}
+          {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
+          {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
           <span className="ne-sep" aria-hidden="true" />
           {B('↶', false, () => editor.chain().focus().undo().run(), 'Undo')}
           {B('↷', false, () => editor.chain().focus().redo().run(), 'Redo')}

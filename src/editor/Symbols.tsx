@@ -264,9 +264,10 @@ function SymView({ node, updateAttributes, selected }: NodeViewProps) {
 
 export function SymbolTool({ editor }: { editor: Editor }) {
   const [open, setOpen] = useState(false);
-  const [at, setAt] = useState<'above' | 'below'>(() => {
+  const [at, setAt] = useState<'above' | 'below' | 'inline'>(() => {
     try {
-      return localStorage.getItem('ll.labelAt') === 'below' ? 'below' : 'above';
+      const v = localStorage.getItem('ll.labelAt');
+      return v === 'below' || v === 'inline' ? v : 'above';
     } catch {
       return 'above';
     }
@@ -287,7 +288,7 @@ export function SymbolTool({ editor }: { editor: Editor }) {
   }, [open, editor]);
   // With words selected, the symbol labels them (above or below); otherwise it goes in the text.
   const labelling = !editor.state.selection.empty || editor.isActive('glabel');
-  const pickAt = (v: 'above' | 'below') => {
+  const pickAt = (v: 'above' | 'below' | 'inline') => {
     setAt(v);
     try {
       localStorage.setItem('ll.labelAt', v);
@@ -313,9 +314,9 @@ export function SymbolTool({ editor }: { editor: Editor }) {
                 <span className="hint">The label sits on the words, and they are softly marked</span>
               </span>
               <span className="seg small-seg" role="radiogroup" aria-label="Where the label goes">
-                {(['above', 'below'] as const).map((k) => (
+                {(['above', 'below', 'inline'] as const).map((k) => (
                   <button key={k} type="button" role="radio" aria-checked={at === k} className={at === k ? 'on' : ''} onMouseDown={(e) => e.preventDefault()} onClick={() => pickAt(k)}>
-                    {k === 'above' ? 'Above' : 'Below'}
+                    {k === 'above' ? 'Above' : k === 'below' ? 'Below' : 'In the line'}
                   </button>
                 ))}
               </span>

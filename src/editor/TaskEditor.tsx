@@ -27,6 +27,7 @@ import { Stress, newStress } from './Stress';
 import { Intonation, ProsodyTool, SentenceStress, SpeechLink, SpeechSound } from './Prosody';
 import { Subst } from './Subst';
 import { noteSlash, topSlash } from '../lib/slashUse';
+import { useToolGate } from '../lib/toolbarPrefs';
 import { DictCut } from './DictCut';
 import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
@@ -532,6 +533,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     [onPickBank],
   );
   const slash = useSlash(editor, bankCmds, textOnly);
+  const toolPlace = useToolGate();
+  const [moreOpen, setMoreOpen] = useState(false);
   const [gallery, setGallery] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
@@ -630,49 +633,91 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     <EditorClassContext.Provider value={classCtx}>
     <div className={'task-editor' + (handles ? ' with-handles' : '')}>
       <div ref={tbRef} className={'toolbar' + (compact ? ' tb-compact' + (toolsOpen ? ' open' : '') : '')} role="toolbar" aria-label="Formatting">
-        {BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)}
-        {BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)}
-        {BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u className="ti ti-u">U</u>)}
-        {BTN('Strikethrough', editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), <s className="ti ti-s">S</s>)}
-        <TextColorTool editor={editor} />
-        <HighlightTool editor={editor} />
-        {BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <span className="ti ti-h">Heading</span>)}
-        {BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)}
-        {BTN('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), ICON_OL)}
-        {BTN('Insert a table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), <span className="ti-row">{ICON_TABLE}<span>Table</span></span>)}
-        {BTN(
-          editor.isActive('definition') ? 'Edit the definition' : 'Add a definition to the selected word',
-          editor.isActive('definition'),
-          () => {
-            if (editor.state.selection.empty && !editor.isActive('definition')) {
-              void tell('Select a word or phrase first, then add its definition.');
-              return;
-            }
-            setDefOpen(true);
-          },
-          <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
-        )}
-        {BTN(
-          editor.isActive('lessonLink') || editor.isActive('link') ? 'Change the link' : 'Link the selected words to another task or a web page',
-          editor.isActive('lessonLink') || editor.isActive('link'),
-          () => {
-            if (editor.state.selection.empty && !editor.isActive('lessonLink') && !editor.isActive('link')) {
-              void tell('Select the words to link first.');
-              return;
-            }
-            setLinkOpen(true);
-          },
-          <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
-        )}
-        <span className="tool-sep" />
-        {!textOnly && BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
-        {!textOnly && BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
-        <IconTool editor={editor} />
-        <SymbolTool editor={editor} />
-        <ProsodyTool editor={editor} />
-        {textOnly && BTN('Word stress', false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Stress')}
-        {textOnly && BTN('IPA transcription', false, () => COMMANDS.find((c) => c.key === 'ipa')?.run(editor), '/ IPA /')}
-        {!textOnly && BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
+        {(() => {
+          const tools: [string, React.ReactNode][] = [
+            ['bold', BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)],
+            ['italic', BTN('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i className="ti ti-i">I</i>)],
+            ['underline', BTN('Underline', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u className="ti ti-u">U</u>)],
+            ['strike', BTN('Strikethrough', editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), <s className="ti ti-s">S</s>)],
+            ['color', <TextColorTool key="c" editor={editor} />],
+            ['highlight', <HighlightTool key="h" editor={editor} />],
+            ['heading', BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <span className="ti ti-h">Heading</span>)],
+            ['bullets', BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)],
+            ['numbers', BTN('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), ICON_OL)],
+            ['table', BTN('Insert a table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), <span className="ti-row">{ICON_TABLE}<span>Table</span></span>)],
+            [
+              'definition',
+              BTN(
+                editor.isActive('definition') ? 'Edit the definition' : 'Add a definition to the selected word',
+                editor.isActive('definition'),
+                () => {
+                  if (editor.state.selection.empty && !editor.isActive('definition')) {
+                    void tell('Select a word or phrase first, then add its definition.');
+                    return;
+                  }
+                  setDefOpen(true);
+                },
+                <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
+              ),
+            ],
+            [
+              'link',
+              BTN(
+                editor.isActive('lessonLink') || editor.isActive('link') ? 'Change the link' : 'Link the selected words to another task or a web page',
+                editor.isActive('lessonLink') || editor.isActive('link'),
+                () => {
+                  if (editor.state.selection.empty && !editor.isActive('lessonLink') && !editor.isActive('link')) {
+                    void tell('Select the words to link first.');
+                    return;
+                  }
+                  setLinkOpen(true);
+                },
+                <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
+              ),
+            ],
+            ['sep', <span key="sep" className="tool-sep" />],
+            ...(!textOnly
+              ? ([
+                  ['gap', BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')],
+                  ['choice', BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')],
+                ] as [string, React.ReactNode][])
+              : []),
+            ['icons', <IconTool key="i" editor={editor} />],
+            ['symbols', <SymbolTool key="s" editor={editor} />],
+            ['pron', <ProsodyTool key="p" editor={editor} />],
+            ...(textOnly
+              ? ([
+                  ['stress', BTN('Word stress', false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Stress')],
+                  ['ipa', BTN('IPA transcription', false, () => COMMANDS.find((c) => c.key === 'ipa')?.run(editor), '/ IPA /')],
+                ] as [string, React.ReactNode][])
+              : []),
+            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')]] as [string, React.ReactNode][]) : []),
+          ];
+          const shown = tools.filter(([k]) => toolPlace(k) === 'show');
+          const more = tools.filter(([k]) => toolPlace(k) === 'more');
+          return (
+            <>
+              {shown.map(([k, n]) => (
+                <span key={k} className="tb-slot">
+                  {n}
+                </span>
+              ))}
+              {more.length > 0 && (
+                <button type="button" className={'tool tb-more-arrow' + (moreOpen ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} aria-label={moreOpen ? 'Hide the extra tools' : 'More tools'} title={moreOpen ? 'Hide the extra tools' : 'More tools'}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d={moreOpen ? 'M7.5 3l-3 3 3 3' : 'M4.5 3l3 3-3 3'} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
+              {moreOpen &&
+                more.map(([k, n]) => (
+                  <span key={k} className="tb-slot tb-extra">
+                    {n}
+                  </span>
+                ))}
+            </>
+          );
+        })()}
         {compact && (toolsOver || toolsOpen) && (
           <button type="button" className={'tb-more-tools' + (toolsOpen ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setToolsOpen((v) => !v)} aria-expanded={toolsOpen} aria-label={toolsOpen ? 'Fewer tools' : 'All the tools'} data-tip={toolsOpen ? 'Fewer tools' : 'All the tools'}>
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>

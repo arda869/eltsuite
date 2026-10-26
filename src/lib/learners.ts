@@ -26,7 +26,7 @@ import type { ClassDoc } from './classes';
 
 export const LEARNER_DOMAIN = 'learners.lesson-lit.firebaseapp.com';
 
-export type Learner = { id: string; displayName: string; authUid: string };
+export type Learner = { id: string; displayName: string; authUid: string; langs?: string[] };
 
 const ID_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 export const newLearnerId = () => Array.from({ length: 12 }, () => ID_CHARS[Math.floor(Math.random() * ID_CHARS.length)]).join('');

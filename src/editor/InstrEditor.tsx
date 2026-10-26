@@ -11,6 +11,10 @@ import { Definition, DefinitionPop } from './Definition';
 import { Ipa, newIpa, type Accent } from './Ipa';
 import { Stress, newStress } from './Stress';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { LANG_MARKS } from './langMarks';
+import { ProsodyTool } from './Prosody';
+import { SymbolTool } from './Symbols';
+import { useToolGate } from '../lib/toolbarPrefs';
 
 // The task instruction as rich text: bold, colour, highlight, a definition on a word, IPA, word stress.
 // One line (Shift + Enter for a new line). The plain text is kept beside it for exports and search.
@@ -21,6 +25,7 @@ export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, f
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
   const [defOpen, setDefOpen] = useState(false);
+  const gate = useToolGate();
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: false, bulletList: false, orderedList: false, listItem: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false }),
@@ -30,6 +35,7 @@ export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, f
       Definition,
       Ipa,
       Stress,
+      ...LANG_MARKS,
       Link.configure({ openOnClick: false, autolink: true }),
       Placeholder.configure({ placeholder }),
     ],
@@ -81,6 +87,8 @@ export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, f
         )}
         {B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa(lastAccent())).run(), 'IPA: phonemic symbols, British or American')}
         {B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress: mark the stressed syllable')}
+        {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
+        {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
       </div>
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
     </div>

@@ -7,6 +7,7 @@ import { db } from '../lib/firebase';
 import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
+import { LEARNER_TOOLS, learnerToolOn } from '../lib/toolbarPrefs';
 
 export function meetingProvider(url: string) {
   const u = url.toLowerCase();
@@ -34,6 +35,8 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [names, setNames] = useState<NameShow>(c.profile?.names ?? 'full');
   const [nicks, setNicks] = useState<Record<string, string>>(c.nicknames ?? {});
   const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(c.accounts?.email ?? 'optional');
+  const [tools, setTools] = useState<Record<string, boolean>>(() => Object.fromEntries(LEARNER_TOOLS.map((t) => [t.k, learnerToolOn(t.k, c.learnerTools)])));
+  const [showTools, setShowTools] = useState(false);
   const [learners, setLearners] = useState<{ id: string; name: string }[] | null>(null);
   useEffect(() => {
     if (names !== 'nick' || learners) return;
@@ -68,6 +71,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         profile: { photos, names },
         nicknames: Object.fromEntries(Object.entries(nicks).map(([k, v]) => [k, v.trim().slice(0, 30)]).filter(([, v]) => v)),
         accounts: { email: emailLink },
+        learnerTools: tools,
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -229,6 +233,26 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               <option value="required">Every learner must</option>
             </select>
           </label>
+          <div className="cs-row cs-tools-row">
+            <span>
+              Writing tools
+              <span className="hint">The tools learners get when they write messages, notes and shared documents. {LEARNER_TOOLS.filter((t) => tools[t.k]).length} of {LEARNER_TOOLS.length} on.</span>
+            </span>
+            <button type="button" className="btn small-btn" onClick={() => setShowTools((v) => !v)}>
+              {showTools ? 'Done' : 'Choose…'}
+            </button>
+          </div>
+          {showTools && (
+            <div className="cs-tools">
+              {LEARNER_TOOLS.map((t) => (
+                <label key={t.k} className={'cs-tool' + (tools[t.k] ? ' on' : '')}>
+                  <input type="checkbox" checked={!!tools[t.k]} onChange={() => setTools((x) => ({ ...x, [t.k]: !x[t.k] }))} />
+                  <span>{t.label}</span>
+                </label>
+              ))}
+              <span className="hint">Pronunciation, grammar labels and definitions start off, so learners only see them when you want them to.</span>
+            </div>
+          )}
         </div>
         <TeachersPanel c={c} />
         {error && <span className="error" role="alert">{error}</span>}

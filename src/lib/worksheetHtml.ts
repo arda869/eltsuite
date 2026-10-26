@@ -1,6 +1,7 @@
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import appCss from '../styles.css?raw';
 import extrasCss from './extras.css?raw';
+import { translationsFor } from './langs';
 import { LinkMark } from '../editor/Prosody';
 import { SubstSlot } from '../editor/Subst';
 import { DictCutout } from '../editor/DictCut';
@@ -121,7 +122,7 @@ function block(b: Block): string {
       return `<div class="dcut-wrap">${renderToStaticMarkup(createElement(DictCutout, { word: b.word, d: b.d }))}</div>`;
     case 'glossary':
       return `<div class="gloss"><span class="gloss-h">Glossary</span>${b.items
-        .map(({ word, d }) => `<p><b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${d.translation ? ` <span class="gloss-tr">${esc(d.translation)}</span>` : ''}</p>`)
+        .map(({ word, d }) => `<p><b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${translationsFor(d, null).map(([l, v]) => ` <span class="gloss-tr">${esc(l)}: ${esc(v)}</span>`).join('')}</p>`)
         .join('')}</div>`;
     case 'p':
       if (b.heading) return `<p class="sub">${runs(b.runs)}</p>`;

@@ -113,7 +113,7 @@
 .pr-gl[data-shape='pill']::after { font: italic 600 0.62em/1 var(--serif, Georgia, serif); }
 .pr-gl[data-shape='plain']::after { border-color: transparent; background: transparent; box-shadow: none; }
 .pr-gl[data-shape='mont']::after { content: ''; width: 1.05em; height: 1.05em; min-width: 0; padding: 0; border: 0; border-radius: 0; background: center / contain no-repeat; box-shadow: none; font-size: 0.8em; }
-:is(p, li, td, th, h3, .dlg-line):has(.pr-gl) { line-height: 2.8 !important; }
+:is(p, li, td, th, h3, .dlg-line):has(.pr-gl:not([data-at='inline'])) { line-height: 2.8 !important; }
 .pr-gl[data-shape='mont'][data-text='noun']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.5L21 20H3z' fill='%232f2e2d'/%3E%3C/svg%3E"); }
 .pr-gl[data-shape='mont'][data-text='verb']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8.5' fill='%23b4483c'/%3E%3C/svg%3E"); }
 .pr-gl[data-shape='mont'][data-text='adjective']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 7l6.5 11h-13z' fill='%232f4e7a'/%3E%3C/svg%3E"); }
@@ -123,3 +123,6 @@
 .pr-gl[data-shape='mont'][data-text='preposition']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3.5 17Q12 1 20.5 17Q12 9.5 3.5 17z' fill='%234f7a55'/%3E%3C/svg%3E"); }
 .pr-gl[data-shape='mont'][data-text='conjunction']::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='10.5' width='14' height='3.2' rx='0.6' fill='%23c97a95'/%3E%3C/svg%3E"); }
 .dcut { --accent-text: color-mix(in srgb, var(--accent) 70%, black); --paper: #fbf8f0; color-scheme: light; }
+.pr-gl[data-at='inline'] { border-radius: 0.3em; box-shadow: inset 0 -0.09em 0 var(--gl); }
+.pr-gl[data-at='inline']::before { display: none; }
+.pr-gl[data-at='inline']::after { position: static; display: inline-block; transform: none; margin: 0 0.1em 0 0.35em; vertical-align: 0.18em; }

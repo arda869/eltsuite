@@ -14,6 +14,7 @@ import { AFTER, chime, enterSendOn, saveEnterSend, saveMsgPrefs, setSounds, soun
 import { pushState, type PushState } from '../lib/push';
 import { UiIcon } from '../components/UiIcon';
 import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
+import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
 // Everything about you and how Lesson Lit behaves for you, in one place.
 
@@ -156,6 +157,8 @@ export function SettingsPage() {
           </Section>
         )}
 
+        {teacher && <ToolbarSettings />}
+
         {!teacher && user && profile?.role === 'learner' && <LearnerAccount uid={user.uid} classId={profile.classId} />}
 
         <Section icon="lock" title="Account">
@@ -177,6 +180,37 @@ export function SettingsPage() {
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
       {deleting && <DeleteAccountDialog onClose={() => setDeleting(false)} />}
     </div>
+  );
+}
+
+// Which tools the text toolbar shows, which wait behind the › arrow, and which are hidden.
+function ToolbarSettings() {
+  const place = useToolbarPrefs();
+  const PLACES: [ToolPlace, string][] = [
+    ['show', 'Show'],
+    ['more', 'Behind ›'],
+    ['hide', 'Hide'],
+  ];
+  return (
+    <Section icon="settings" title="Text toolbar">
+      <span className="hint set-tb-intro">Choose the tools you see when you write a task. Tools behind › appear when you click the arrow at the end of the toolbar. Everything stays in + Add and the / menu.</span>
+      {TOOLS.map((t) => (
+        <Row key={t.k} title={t.label}>
+          <span className="seg small-seg" role="radiogroup" aria-label={t.label}>
+            {PLACES.map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={place(t.k) === k} className={place(t.k) === k ? 'on' : ''} onClick={() => setToolPlace(t.k, k)}>
+                {l}
+              </button>
+            ))}
+          </span>
+        </Row>
+      ))}
+      <Row title="Start again" hint="Show every tool">
+        <button type="button" className="btn small-btn" onClick={resetTools}>
+          Show all
+        </button>
+      </Row>
+    </Section>
   );
 }
 

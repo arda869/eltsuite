@@ -1,7 +1,8 @@
 import { ask, tell } from '../lib/ask';
 import { openAsLearner } from '../lib/proxy';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { addLearners, removeLearner, resetPin, type Learner } from '../lib/learners';
+import { LANGUAGES, saveLearnerLangs } from '../lib/langs';
 import type { ClassDoc } from '../lib/classes';
 import { initials } from './TopBar';
 import type { Item } from '../lib/classes';
@@ -123,6 +124,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
               <thead>
                 <tr>
                   <th>Learner</th>
+                  <th>Languages</th>
                   <th>PIN</th>
                   <th>
                     <span className="sr">Actions</span>
@@ -150,6 +152,9 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                           </button>
                         );
                       })()}
+                    </td>
+                    <td>
+                      <LangChips classId={c.id} learner={l} all={learners} />
                     </td>
                     <td>
                       {own[l.id] ? (
@@ -208,5 +213,56 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
         )}
       </div>
     </div>
+  );
+}
+
+// The languages a learner speaks, as chips. Used for translations in dictionary entries.
+function LangChips({ classId, learner, all }: { classId: string; learner: Learner; all: Learner[] }) {
+  const langs = learner.langs ?? [];
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  const used = [...new Set(all.flatMap((l) => l.langs ?? []))];
+  const save = (next: string[]) => void saveLearnerLangs(classId, learner.id, next, all).catch(() => tell('The languages could not be saved.'));
+  const add = (v: string) => {
+    const t = v.trim().replace(/^./, (c) => c.toUpperCase());
+    if (t && !langs.includes(t)) save([...langs, t]);
+    setQ('');
+  };
+  const options = [...used.filter((u) => !LANGUAGES.includes(u)), ...LANGUAGES].filter((x) => !langs.includes(x) && x.toLowerCase().startsWith(q.trim().toLowerCase()));
+  const top = [...used.filter((u) => !langs.includes(u)), ...options.filter((o) => !used.includes(o))].filter((x) => x.toLowerCase().startsWith(q.trim().toLowerCase())).slice(0, 8);
+  return (
+    <span className="lang-chips" ref={ref}>
+      {langs.map((x) => (
+        <span key={x} className="lang-chip">
+          {x}
+          <button type="button" aria-label={`Remove ${x}`} onClick={() => save(langs.filter((y) => y !== x))}>
+            ×
+          </button>
+        </span>
+      ))}
+      <button type="button" className="lang-add" onClick={() => setOpen((o) => !o)} aria-label={`Add a language for ${learner.displayName}`} title="Add a language they speak">
+        +
+      </button>
+      {open && (
+        <span className="lang-pop">
+          <input autoFocus value={q} placeholder="Language" onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' && (e.preventDefault(), add(top[0] ?? q)), e.key === 'Escape' && setOpen(false))} aria-label="Language" />
+          <span className="lang-opts">
+            {top.map((o) => (
+              <button key={o} type="button" className={used.includes(o) ? 'in-class' : ''} onClick={() => add(o)}>
+                {o}
+              </button>
+            ))}
+          </span>
+          <span className="hint">Dictionary entries in this class can then have a translation in each language. Learners see their own.</span>
+        </span>
+      )}
+    </span>
   );
 }
