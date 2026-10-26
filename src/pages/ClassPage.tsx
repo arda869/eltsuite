@@ -42,7 +42,8 @@ export function ClassPage() {
   const roster = useClassmates(c?.classCode ?? undefined);
   const [params] = useSearchParams();
   const focusEntry = params.get('entry');
-  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : 'lessons');
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : params.get('tab') === 'learners' || params.get('learner') ? 'learners' : 'lessons');
+  const [learnerOpen, setLearnerOpen] = useState(params.get('learner') ?? '');
   const [thread, setThread] = useState<string | null>(params.get('thread'));
   const { user } = useAuth();
   const [resultsItem, setResultsItem] = useState<Item | null>(null);
@@ -216,7 +217,7 @@ export function ClassPage() {
             <button className={tab === 'lessons' ? 'on' : ''} onClick={() => setTab('lessons')}>
               Lessons and work
             </button>
-            <button className={tab === 'learners' ? 'on' : ''} onClick={() => setTab('learners')}>
+            <button className={tab === 'learners' ? 'on' : ''} onClick={() => (setTab('learners'), setLearnerOpen(''))}>
               Learners <span className="count">{learners.length}</span>
             </button>
             <button className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
@@ -233,7 +234,7 @@ export function ClassPage() {
           {tab === 'lessons' ? (
             <LessonsTab c={c} topics={topics} items={items} onResults={(i) => (setResultsItem(i), setTab('reports'))} />
           ) : tab === 'learners' ? (
-            <LearnersTab c={c} learners={learners} pins={pins} own={ownSecret} />
+            <LearnersTab c={c} learners={learners} pins={pins} own={ownSecret} items={items} openId={learnerOpen} onOpen={setLearnerOpen} />
           ) : tab === 'reports' ? (
             <Reports key={resultsItem?.id ?? 'all'} c={c} items={items} learners={learners} initialItem={resultsItem} />
           ) : tab === 'discussion' ? (

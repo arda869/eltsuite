@@ -13,6 +13,7 @@ import { Loader } from '../components/Loader';
 import { acceptInvite, declineInvite, emailKey, syncLiveTeachers, useInvites, useTeacherClasses } from '../lib/coteach';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
+import { LearnerActivity } from '../components/LearnerActivity';
 
 function greeting() {
   const h = new Date().getHours();
@@ -341,6 +342,7 @@ export function TeacherHome() {
                 </Link>
               ))
             )}
+            <LearnerActivity classes={active} items={items} />
           </aside>
         )}
       </div>

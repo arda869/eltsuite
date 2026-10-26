@@ -3,10 +3,15 @@ import { useState, type FormEvent } from 'react';
 import { addLearners, removeLearner, resetPin, type Learner } from '../lib/learners';
 import type { ClassDoc } from '../lib/classes';
 import { initials } from './TopBar';
+import type { Item } from '../lib/classes';
+import { isOnline, usePresence } from '../lib/presence';
+import { ago } from '../lib/activity';
+import { LearnerDetail } from './LearnerDetail';
 
-export function LearnersTab({ c, learners, pins, own = {} }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string> }) {
+export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = '', onOpen }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string>; items?: Item[]; openId?: string; onOpen?: (id: string) => void }) {
+  const presence = usePresence(c.id);
   const [shown, setShown] = useState<Record<string, boolean>>({});
-  const [adding, setAdding] = useState(learners.length === 0);
+  const [adding, setAdding] = useState(false);
   const [names, setNames] = useState('');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -15,6 +20,9 @@ export function LearnersTab({ c, learners, pins, own = {} }: { c: ClassDoc; lear
   const sorted = [...learners]
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
     .filter((l) => l.displayName.toLowerCase().includes(search.trim().toLowerCase()));
+
+  const opened = learners.find((l) => l.id === openId);
+  if (opened) return <LearnerDetail key={opened.id} c={c} learner={opened} items={items} pin={pins[opened.id]} onBack={() => onOpen?.('')} />;
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -124,12 +132,23 @@ export function LearnersTab({ c, learners, pins, own = {} }: { c: ClassDoc; lear
                 {sorted.map((l) => (
                   <tr key={l.id}>
                     <td>
-                      <span className="who-cell">
-                        <span className="avatar small" aria-hidden="true">
-                          {initials(l.displayName)}
-                        </span>
-                        {l.displayName}
-                      </span>
+                      {(() => {
+                        const p = presence.find((x) => x.id === l.authUid);
+                        const on = p ? isOnline(p) : false;
+                        const at = p?.at?.toMillis?.() ?? 0;
+                        return (
+                          <button type="button" className="who-cell who-open" onClick={() => onOpen?.(l.id)} title={`See ${l.displayName.split(' ')[0]}’s activity`}>
+                            <span className="avatar small" aria-hidden="true">
+                              {initials(l.displayName)}
+                              {on && <i className="who-on" />}
+                            </span>
+                            <span className="who-name">
+                              {l.displayName}
+                              <span className="hint">{on ? 'Online now' : at ? `Active ${ago(at)}` : 'Offline'}</span>
+                            </span>
+                          </button>
+                        );
+                      })()}
                     </td>
                     <td>
                       {own[l.id] ? (
@@ -163,7 +182,7 @@ export function LearnersTab({ c, learners, pins, own = {} }: { c: ClassDoc; lear
           )}
         </div>
 
-        {adding && (
+        {(adding || learners.length === 0) && (
           <form className="side-form" onSubmit={add}>
             <div className="row-between">
               <h2>Add learners</h2>
