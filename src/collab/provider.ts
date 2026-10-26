@@ -156,3 +156,11 @@ export async function readState(key: string): Promise<Uint8Array | null> {
   for (const v of Object.values((list?.val() ?? {}) as Record<string, { u?: string }>)) if (v?.u) parts.push(unb64(v.u));
   return parts.length ? Y.mergeUpdates(parts) : null;
 }
+
+// A new document that begins with everything written in another one so far.
+export async function copyState(from: string, to: string) {
+  const s = await readState(from);
+  if (!s) return false;
+  await update(collabRef(to), { snap: { s: b64(s), at: serverTimestamp(), by: 'copy' }, init: { at: Date.now() } });
+  return true;
+}

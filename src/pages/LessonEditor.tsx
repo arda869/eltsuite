@@ -37,6 +37,7 @@ import { Icon } from '../editor/Icons';
 import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
 import { AnnotationLayer } from '../components/AnnotationLayer';
 import { CopyDialog } from '../components/CopyDialog';
+import { ImportTasksDialog } from '../components/ImportTasksDialog';
 import { VersionsDialog } from '../components/VersionsDialog';
 import { download, lessonText } from '../lib/transfer';
 import { downloadJson, lessonBundle } from '../lib/fullcopy';
@@ -344,6 +345,7 @@ export function LessonEditor() {
   }, [exportOpen]);
   const [copyTask, setCopyTask] = useState<Task | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
+  const [importing, setImporting] = useState(false);
   const panels = usePanels('ll.teacherPanels');
   const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
@@ -854,6 +856,9 @@ export function LessonEditor() {
                 <button type="button" className="btn dashed" onClick={newSection}>
                   + Section
                 </button>
+                <button type="button" className="btn dashed wide-add" onClick={() => setImporting(true)}>
+                  + From another lesson…
+                </button>
               </div>
             )}
           </nav>
@@ -969,9 +974,14 @@ export function LessonEditor() {
                 )}
                 {!tasks.length && <p>A lesson is a set of tasks. Each task is like a page: a short title, a bold instruction, then the text and questions.</p>}
                 {!tasks.length && (
-                  <button className="btn primary" onClick={newTask}>
-                    + New task
-                  </button>
+                  <span style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button className="btn primary" onClick={newTask}>
+                      + New task
+                    </button>
+                    <button className="btn" onClick={() => setImporting(true)}>
+                      Copy tasks from another lesson…
+                    </button>
+                  </span>
                 )}
               </div>
             ) : preview || (teachingHere && !editWhileTeaching) ? (
@@ -1257,6 +1267,7 @@ export function LessonEditor() {
         />
       )}
       {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
+      {importing && <ImportTasksDialog classId={classId} itemId={itemId} onClose={() => setImporting(false)} onDone={(m, id) => (setCopyMsg(m), id && setSelected(id))} />}
       {copyMsg && (
         <div className="toasts">
           <div className="toast">

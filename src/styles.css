@@ -698,7 +698,7 @@ a.btn.primary { color: #ffffff; }
 .section-input:focus { outline: none; background: #fff; box-shadow: inset 0 -1.5px 0 var(--accent); color: var(--ink); }
 .section-label { display: block; padding: 12px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); }
 .section-label:first-of-type { padding-top: 4px; }
-.list-adds { display: flex; gap: 6px; }
+.list-adds { display: flex; gap: 6px; flex-wrap: wrap; }
 .list-adds .btn { flex: 1; }
 
 /* Page style: torn bottom edge with a visible outline and shadow */
@@ -4032,3 +4032,23 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .la-cdot { width: 7px; height: 7px; border-radius: 99px; flex: 0 0 auto; }
 .la-where { color: var(--muted); }
 .la-ev .ld-tag { margin-left: 2px; }
+
+/* Copy tasks in; what copies of shared documents open */
+.it-dialog { width: min(640px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 12px; }
+.it-pick { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+@media (max-width: 560px) { .it-pick { grid-template-columns: 1fr; } }
+.it-list { display: flex; flex-direction: column; gap: 2px; max-height: 340px; overflow-y: auto; padding: 6px; border-radius: 12px; background: var(--surface); }
+.it-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; cursor: pointer; font-size: 13.5px; }
+.it-row:hover { background: var(--card, #fff); }
+.it-row.on { background: var(--card, #fff); box-shadow: 0 0 0 1.5px var(--accent); }
+.it-row input { accent-color: var(--accent); }
+.it-all { font-weight: 600; color: var(--muted); font-size: 12.5px; }
+.it-n { width: 18px; text-align: right; font: 600 12px var(--sans); color: var(--soft); }
+.it-t { flex: 1; min-width: 0; display: flex; flex-direction: column; } .it-t .hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.cc { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--tint); }
+.cc legend { padding: 0; margin-bottom: 4px; font: 600 12.5px var(--sans); color: var(--ink); float: left; width: 100%; }
+.cc-opt { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; border-radius: 9px; cursor: pointer; }
+.cc-opt.on { background: var(--card, #fff); }
+.cc-opt input { margin-top: 3px; accent-color: var(--accent); }
+.cc-opt > span { display: flex; flex-direction: column; font-size: 13px; } .cc-opt .hint { font-size: 12px; }
+.list-adds .wide-add { flex-basis: 100%; }

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { allTeacherClasses, canEdit } from '../lib/coteach';
-import { copyLesson, copyTask } from '../lib/copy';
+import { copyLesson, copyTask, hasCollab, type CollabCopy } from '../lib/copy';
+import { tasksCol } from '../lib/tasks';
+import { CollabChoice } from './CollabChoice';
 
 type Opt = { id: string; name: string };
 
@@ -16,6 +18,13 @@ export function CopyDialog({ kind, fromClass, itemId, taskId, title, onClose, on
   const [toItem, setToItem] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [collab, setCollab] = useState<CollabCopy>('copy');
+  const [hasDocs, setHasDocs] = useState(false);
+  // Does it have shared documents or slides? Then ask what the copy should open.
+  useEffect(() => {
+    if (kind === 'task' && taskId) getDoc(doc(tasksCol(fromClass, itemId), taskId)).then((s) => setHasDocs(hasCollab(s.data()?.content)), () => {});
+    else getDocs(tasksCol(fromClass, itemId)).then((s) => setHasDocs(s.docs.some((d) => hasCollab(d.data().content))), () => {});
+  }, [kind, fromClass, itemId, taskId]);
 
   useEffect(() => {
     if (!user) return;
@@ -35,10 +44,10 @@ export function CopyDialog({ kind, fromClass, itemId, taskId, title, onClose, on
     setErr('');
     try {
       if (kind === 'lesson') {
-        await copyLesson(fromClass, itemId, toClass, { title: toClass === fromClass ? `${title} (copy)` : title });
+        await copyLesson(fromClass, itemId, toClass, { title: toClass === fromClass ? `${title} (copy)` : title, collab: hasDocs ? collab : 'same' });
         onDone?.(`Copied to ${classes.find((c) => c.id === toClass)?.name ?? 'the class'}. The copy is hidden until you show it.`);
       } else if (taskId && toItem) {
-        await copyTask(fromClass, itemId, taskId, toClass, toItem, toClass === fromClass && toItem === itemId ? ' (copy)' : '');
+        await copyTask(fromClass, itemId, taskId, toClass, toItem, toClass === fromClass && toItem === itemId ? ' (copy)' : '', hasDocs ? collab : 'same');
         onDone?.(`Copied to “${lessons.find((l) => l.id === toItem)?.name ?? 'the lesson'}”.`);
       }
       onClose();
@@ -78,6 +87,7 @@ export function CopyDialog({ kind, fromClass, itemId, taskId, title, onClose, on
             </select>
           </label>
         )}
+        {hasDocs && <CollabChoice value={collab} onChange={setCollab} />}
         {err && <span className="error">{err}</span>}
         <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button className="btn" onClick={onClose}>
