@@ -43,7 +43,7 @@ export async function createLessonFromImport(classId: string, topicId: string | 
   const order = items.docs.reduce((m, d) => Math.max(m, (d.data().order as number) ?? 0), -1) + 1;
   const itemRef = doc(collection(db, 'classes', classId, 'items'));
   const b0 = writeBatch(db);
-  b0.set(itemRef, { topicId, type: 'lesson', title: title || 'Imported lesson', order, hidden: true, locked: false, createdAt: serverTimestamp() });
+  b0.set(itemRef, { topicId, type: 'lesson', title: title || 'Imported lesson', order, hidden: true, locked: false, taskCount: tasks.filter((t) => t.kind !== 'section' && !t.hidden).length, createdAt: serverTimestamp() });
   await b0.commit();
   let i = 0;
   for (const t of tasks) {

@@ -169,6 +169,23 @@ service cloud.firestore {
         allow delete: if signedIn() && resource.data.uid == request.auth.uid;
       }
 
+      // Attendance: learners add their own minutes while a lesson is live; the teacher corrects
+      match /attendance/{aid} {
+        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create: if teachesClass(classId)
+          || (memberOf(classId) && request.resource.data.uid == request.auth.uid && aid == request.resource.data.itemId + '_' + request.auth.uid && !('corrected' in request.resource.data));
+        allow update: if teachesClass(classId)
+          || (memberOf(classId) && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid
+              && request.resource.data.get('corrected', null) == resource.data.get('corrected', null));
+        allow delete: if teachesClass(classId);
+      }
+      // Mistake bank: each learner's own review deck; the teacher reads all of it
+      match /mistakes/{mid} {
+        allow read: if teachesClass(classId) || (signedIn() && resource.data.learnerUid == request.auth.uid);
+        allow create, update: if memberOf(classId) && request.resource.data.learnerUid == request.auth.uid;
+        allow delete: if teachesClass(classId) || (signedIn() && resource.data.learnerUid == request.auth.uid);
+      }
+
       // Exam attempts: a learner starts once and can only add the time they submitted
       match /examRuns/{rid} {
         allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);

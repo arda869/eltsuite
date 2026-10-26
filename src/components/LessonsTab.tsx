@@ -103,7 +103,7 @@ function TopicTitle({ c, t }: { c: ClassDoc; t: Topic }) {
   );
 }
 
-function ItemRow({ c, item, list, topics }: { c: ClassDoc; item: Item; list: Item[]; topics: Topic[] }) {
+function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item; list: Item[]; topics: Topic[]; onResults?: (item: Item) => void }) {
   const [copying, setCopying] = useState(false);
   const i = list.findIndex((x) => x.id === item.id);
   // Move up or down within its topic by swapping order with the neighbour.
@@ -191,11 +191,50 @@ function ItemRow({ c, item, list, topics }: { c: ClassDoc; item: Item; list: Ite
       >
         ×
       </button>
+      <span className="item-extra">
+        {(item.type === 'homework' || item.type === 'exam') && (
+          <label className="item-due">
+            <span className="hint">Due</span>
+            <input type="datetime-local" value={item.due ? toLocal(item.due) : ''} onChange={(e) => updateItem(c.id, item.id, { due: e.target.value ? new Date(e.target.value).getTime() : null })} />
+          </label>
+        )}
+        <select
+          className="use-as"
+          value=""
+          aria-label="Use as"
+          title="Copy this into another type"
+          onChange={async (e) => {
+            const t = e.target.value as Item['type'];
+            if (!t) return;
+            setBusy(true);
+            try {
+              await copyLesson(c.id, item.id, c.id, { title: item.title, type: t });
+              setMsg(`Copied as ${t}. The copy is hidden until you show it.`);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <option value="">Use as…</option>
+          {(['lesson', 'homework', 'exam', 'practice'] as const).filter((t) => t !== item.type).map((t) => (
+            <option key={t} value={t}>
+              Use as {t}
+            </option>
+          ))}
+        </select>
+        {item.type !== 'lesson' && (
+          <button type="button" className="btn link small" onClick={() => onResults?.(item)}>
+            Results
+          </button>
+        )}
+      </span>
     </li>
   );
 }
 
-export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[]; items: Item[] }) {
+const toLocal = (ms: number) => { const d = new Date(ms - new Date().getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
+
+export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topics: Topic[]; items: Item[]; onResults?: (item: Item) => void }) {
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
   const [importing, setImporting] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
@@ -299,7 +338,7 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
             </div>
             <ul className="items">
               {list.map((i) => (
-                <ItemRow key={i.id} c={c} item={i} list={list} topics={sortedTopics} />
+                <ItemRow key={i.id} c={c} item={i} list={list} topics={sortedTopics} onResults={onResults} />
               ))}
             </ul>
             <div className="indent">
@@ -316,7 +355,7 @@ export function LessonsTab({ c, topics, items }: { c: ClassDoc; topics: Topic[];
           </div>
           <ul className="items">
             {unsorted.map((i) => (
-              <ItemRow key={i.id} c={c} item={i} list={unsorted} topics={sortedTopics} />
+              <ItemRow key={i.id} c={c} item={i} list={unsorted} topics={sortedTopics} onResults={onResults} />
             ))}
           </ul>
         </section>

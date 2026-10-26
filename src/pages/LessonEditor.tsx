@@ -147,6 +147,12 @@ export function LessonEditor() {
     const mains = withBodies.filter((t) => !isVariant(t) || !withBodies.some((m) => m.id === t.family));
     return mains.flatMap((m) => [m, ...(m.variants ?? []).map((id) => withBodies.find((x) => x.id === id)).filter((x): x is Task => !!x)]);
   }, [withBodies]);
+  // Keep the number of tasks on the lesson, so learner home screens can show progress.
+  useEffect(() => {
+    if (!item || !tasks.length) return;
+    const n = tasks.filter((t) => t.kind !== 'section' && !t.hidden && !isVariant(t)).length;
+    if (item.taskCount !== n) updateItem(classId, itemId, { taskCount: n }).catch(() => {});
+  }, [tasks, item?.taskCount]); // eslint-disable-line react-hooks/exhaustive-deps
   const groupSets = useGroupSets(classId);
   const activeSet = groupSets.find((g) => g.id === live?.groupSetId);
   const task = tasks.find((t) => t.id === selected);

@@ -23,7 +23,7 @@ export async function copyTask(fromClass: string, fromItem: string, taskId: stri
 }
 
 // Copies a whole lesson with all its tasks into a class (the same one for "Duplicate").
-export async function copyLesson(fromClass: string, itemId: string, toClass: string, opts: { title?: string; topicId?: string | null } = {}) {
+export async function copyLesson(fromClass: string, itemId: string, toClass: string, opts: { title?: string; topicId?: string | null; type?: 'lesson' | 'homework' | 'exam' | 'practice' } = {}) {
   const item = await getDoc(doc(db, 'classes', fromClass, 'items', itemId));
   if (!item.exists()) throw new Error('missing');
   const all = await getDocs(collection(db, 'classes', toClass, 'items'));
@@ -35,9 +35,11 @@ export async function copyLesson(fromClass: string, itemId: string, toClass: str
   batch.set(newRef, {
     ...data,
     title: opts.title ?? data.title,
+    ...(opts.type ? { type: opts.type, exam: opts.type === 'exam' ? { minutes: null } : null, examReleased: false, due: null, boardPages: [] } : {}),
     topicId: toClass === fromClass ? (opts.topicId !== undefined ? opts.topicId : data.topicId ?? null) : opts.topicId ?? null,
     order,
     hidden: true, // a copy starts hidden so learners don't see it before it is ready
+    taskCount: tasks.docs.filter((t) => t.data().kind !== 'section' && !t.data().hidden && !(t.data().family && t.data().family !== t.id)).length,
     createdAt: serverTimestamp(),
   });
   await batch.commit();

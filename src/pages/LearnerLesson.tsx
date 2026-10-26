@@ -1,3 +1,4 @@
+import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
 import type { Prefill } from '../components/Notebook';
@@ -109,10 +110,12 @@ export function LearnerLesson() {
     if (!classId) return;
     return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
   }, [classId]);
-  usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current, avatar: profile?.avatar });
+  usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current, avatar: profile?.avatar, live: isLive(live) && live?.itemId === itemId });
   const myRoom = live?.groupSetId ? roomOf(groupSets.find((g) => g.id === live.groupSetId), learnerId) : undefined;
   const roomTarget = isLive(live) && live?.itemId === itemId && myRoom ? live.roomTask?.[myRoom.id] : undefined;
-  const synced = (isSynced(live, itemId) && !live?.syncRoom) || !!roomTarget;
+  // Homework and practice are self-paced: the class never pulls a learner along.
+  const selfPaced = item?.type === 'homework' || item?.type === 'practice';
+  const synced = !selfPaced && ((isSynced(live, itemId) && !live?.syncRoom) || !!roomTarget);
   const syncTo = entryFor(roomTarget ?? live?.taskId)?.id;
   const liveHere = isLive(live) && live?.itemId === itemId;
   const boardOpen = liveHere && !!live?.board?.open;
@@ -146,6 +149,7 @@ export function LearnerLesson() {
     loadKey(classId, itemId, current).then(setRevealKey).catch(() => setRevealKey(null));
   }, [revealN !== 0 || singles.length > 0, classId, itemId, current]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const attemptsRef = useRef(0);
   // Load this learner's saved answers for the current task.
   useEffect(() => {
     if (!classId || !current || !user) return;
@@ -158,6 +162,7 @@ export function LearnerLesson() {
       setPendingSave(s.metadata.hasPendingWrites);
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
       setFlags(d?.flags ?? []);
+      attemptsRef.current = d?.attempts ?? 0;
       setMarks(d?.marks ?? {});
       setCorrections(d?.corrections ?? {});
       if (dirty.current) return;
@@ -263,7 +268,9 @@ export function LearnerLesson() {
       await saveResponses(classId, base, responses, true);
       const k = await loadKey(classId, itemId, base.taskId);
       const r = scoreTask(qs, k, responses);
-      await saveResponses(classId, base, responses, true, { score: r.score, total: r.total });
+      const late = !!item?.due && Date.now() > item.due;
+      await saveResponses(classId, base, responses, true, { score: r.score, total: r.total }, { submittedAt: Date.now(), ...(late ? { late: true } : {}), attempts: (attemptsRef.current ?? 0) + 1 });
+      if (item?.type === 'practice' || item?.type === 'homework') recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, k, responses).catch(() => {});
       setKey(k);
       setChecked(true);
     } catch (e) {
@@ -274,10 +281,10 @@ export function LearnerLesson() {
     }
   }
 
-  async function tryWrongAgain() {
+  async function tryWrongAgain(all = false) {
     if (!base || !key) return;
     const kept: Responses = {};
-    for (const q of qs) if (isCorrect(key[q.id], responses[q.id]) || q.type === 'writing') kept[q.id] = responses[q.id];
+    if (!all) for (const q of qs) if (isCorrect(key[q.id], responses[q.id]) || q.type === 'writing') kept[q.id] = responses[q.id];
     setResponses(kept);
     setChecked(false);
     setKey(null);
@@ -546,10 +553,16 @@ export function LearnerLesson() {
                     <span className="hint saved-auto">{Object.keys(responses).length ? 'Saved. Your teacher can see your answers.' : ''}</span>
                   ) : qs.length > 0 &&
                     (checked ? (
-                      retryMode && score < result.total && (
-                        <button className="btn primary" onClick={tryWrongAgain}>
-                          Try the wrong ones again
+                      item?.type === 'practice' ? (
+                        <button className="btn primary" onClick={() => tryWrongAgain(true)}>
+                          Try again
                         </button>
+                      ) : (
+                        retryMode && score < result.total && (
+                          <button className="btn primary" onClick={() => tryWrongAgain()}>
+                            Try the wrong ones again
+                          </button>
+                        )
                       )
                     ) : (
                       <button className="btn primary" disabled={busy || task.locked || answered === 0 || !!task.needsLevel} onClick={check}>

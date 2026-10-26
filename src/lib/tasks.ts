@@ -102,7 +102,7 @@ export async function loadKey(classId: string, itemId: string, taskId: string): 
 
 export type Mark = { score: number | null; comment: string; crit?: Record<string, number | null> }; // crit: score per rubric criterion
 export type Correction = { status: 'open' | 'resubmitted' | 'approved'; before?: string; at: number };
-export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number; marks?: Record<string, Mark>; corrections?: Record<string, Correction> };
+export type AnswerDoc = { learnerUid: string; learnerId: string; itemId: string; taskId: string; responses: Responses; checked: boolean; score?: number; total?: number; marks?: Record<string, Mark>; corrections?: Record<string, Correction>; submittedAt?: number; late?: boolean; attempts?: number; updatedAt?: { toMillis: () => number } };
 
 export async function setCorrection(classId: string, taskId: string, learnerUid: string, qid: string, c: Correction) {
   await updateDoc(answerRef(classId, taskId, learnerUid), { [`corrections.${qid}`]: c });
@@ -115,10 +115,10 @@ export async function saveMark(classId: string, taskId: string, learnerUid: stri
 
 export const answerRef = (classId: string, taskId: string, uid: string) => doc(db, 'classes', classId, 'answers', `${taskId}_${uid}`);
 
-export async function saveResponses(classId: string, base: Omit<AnswerDoc, 'checked' | 'responses'>, responses: Responses, checked = false, score?: { score: number; total: number }) {
+export async function saveResponses(classId: string, base: Omit<AnswerDoc, 'checked' | 'responses'>, responses: Responses, checked = false, score?: { score: number; total: number }, extra: Partial<AnswerDoc> = {}) {
   await setDoc(
     answerRef(classId, base.taskId, base.learnerUid),
-    { ...base, responses, checked, ...(score ?? {}), updatedAt: serverTimestamp() },
+    { ...base, responses, checked, ...(score ?? {}), ...extra, updatedAt: serverTimestamp() },
     { merge: true },
   );
 }

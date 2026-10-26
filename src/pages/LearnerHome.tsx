@@ -13,6 +13,18 @@ import { NoticeToasts } from '../components/NoticeToasts';
 import { AnnouncementCards } from '../components/LiveExtras';
 import { Avatar } from '../components/avatars';
 import { AvatarPicker } from '../components/AvatarPicker';
+import { itemResult, STATUS_LABEL, useMyAnswers } from '../lib/reports';
+
+const SECTION_LABEL: Record<Item['type'], string> = { lesson: 'Lessons', homework: 'Homework', exam: 'Exams', practice: 'Practice' };
+function dueText(ms: number) {
+  const d = new Date(ms);
+  const days = Math.round((d.setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  const time = new Date(ms).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (days === 0) return `Due today ${time}`;
+  if (days === 1) return `Due tomorrow ${time}`;
+  if (days < 0) return `Was due ${new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+  return `Due ${new Date(ms).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`;
+}
 
 export function LearnerHome({ classId, name }: { classId: string; name: string }) {
   const { signOutNow, user, profile } = useAuth();
@@ -39,11 +51,19 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const t = theme(c?.themeColor);
   const visible = items.filter((i) => !i.hidden && !topics.find((tp) => tp.id === i.topicId)?.hidden);
   const lockedItem = (i: Item) => i.locked || !!topics.find((tp) => tp.id === i.topicId)?.locked;
-  const groups = [...topics]
-    .filter((tp) => !tp.hidden)
-    .sort((a, b) => a.order - b.order)
-    .map((tp) => ({ tp, list: visible.filter((i) => i.topicId === tp.id).sort((a, b) => a.order - b.order) }))
-    .filter((g) => g.list.length > 0);
+  const [section, setSection] = useState<Item['type']>('lesson');
+  const answers = useMyAnswers(classId, user?.uid);
+  const inSection = visible.filter((i) => i.type === section);
+  const groups = [
+    ...[...topics].filter((tp) => !tp.hidden).sort((a, b) => a.order - b.order).map((tp) => ({ tp, list: inSection.filter((i) => i.topicId === tp.id).sort((a, b) => a.order - b.order) })),
+    { tp: { id: '_none', name: 'Other', order: 9999 } as Topic, list: inSection.filter((i) => !i.topicId || !topics.some((tp) => tp.id === i.topicId)).sort((a, b) => a.order - b.order) },
+  ].filter((g) => g.list.length > 0);
+  // Homework and exams that still need doing, soonest first; done ones stay for a week.
+  const todo = visible
+    .filter((i) => i.type === 'homework' || i.type === 'exam')
+    .map((i) => ({ i, r: itemResult(i, answers) }))
+    .filter(({ i, r }) => r.status !== 'marked' && !(r.status === 'submitted' && (!i.due || Date.now() - i.due > 7 * 86400000) && i.type !== 'exam'))
+    .sort((a, b) => (a.i.due ?? Infinity) - (b.i.due ?? Infinity));
   const firstName = name.split(' ')[0];
   const liveNow = isLive(live) ? items.find((i) => i.id === live!.itemId) : undefined;
   const showCall = !!c?.meeting?.url && (c.meeting.visibility === 'always' || !!liveNow);
@@ -121,60 +141,84 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
             </section>
           )}
 
-          {visible.some((i) => i.type === 'exam') && (
-            <section className="exams-home" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <h2 style={{ fontSize: 16 }}>Exams</h2>
-              <ul className="items">
-                {visible
-                  .filter((i) => i.type === 'exam')
-                  .sort((a, b) => a.order - b.order)
-                  .map((i) => (
-                    <li key={i.id} className={'item' + (lockedItem(i) ? ' is-locked' : '')}>
-                      <span className="type">exam</span>
-                      {lockedItem(i) ? (
-                        <span className="title locked-title">{i.title}</span>
-                      ) : (
-                        <Link to={`/learn/${i.id}`} className="title">
-                          {i.title}
-                        </Link>
-                      )}
-                      <span className="hint">{i.examReleased ? 'Results ready' : i.exam?.minutes ? `${i.exam.minutes} minutes` : ''}</span>
-                    </li>
-                  ))}
+          {todo.length > 0 && (
+            <section className="todo">
+              <h2 style={{ fontSize: 16 }}>To do</h2>
+              <ul className="todo-list">
+                {todo.map(({ i, r }) => (
+                  <li key={i.id} className={'todo-item s-' + r.status + (lockedItem(i) ? ' is-locked' : '')}>
+                    <span className="type">{i.type}</span>
+                    {lockedItem(i) ? (
+                      <span className="title locked-title">{i.title}</span>
+                    ) : (
+                      <Link to={`/learn/${i.id}`} className="title">
+                        {i.title}
+                      </Link>
+                    )}
+                    <span className="todo-meta">
+                      {i.due && <span className={'todo-due' + (i.due < Date.now() && r.status !== 'submitted' && r.status !== 'marked' ? ' over' : '')}>{dueText(i.due)}</span>}
+                      {i.type === 'exam' && i.exam?.minutes && !i.due ? <span className="hint">{i.exam.minutes} min</span> : null}
+                      <span className={'rp-status s-' + r.status}>
+                        {i.type === 'exam' && i.examReleased && (r.status === 'submitted' || r.status === 'marked') ? 'Results ready' : STATUS_LABEL[r.status]}
+                        {r.late ? ' · late' : ''}
+                      </span>
+                      {r.status === 'in-progress' && r.tasksTotal > 1 && <span className="hint">{r.tasksDone} of {r.tasksTotal} tasks</span>}
+                    </span>
+                  </li>
+                ))}
               </ul>
             </section>
           )}
+
+          <nav className="tabs home-tabs" aria-label="Sections">
+            {(['lesson', 'homework', 'exam', 'practice'] as const).map((t) => {
+              const n = visible.filter((i) => i.type === t).length;
+              return (
+                <button key={t} className={section === t ? 'on' : ''} onClick={() => setSection(t)}>
+                  {SECTION_LABEL[t]} {n > 0 && <span className="count">{n}</span>}
+                </button>
+              );
+            })}
+          </nav>
           <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h2 style={{ fontSize: 16 }}>Lessons and work</h2>
             {groups.length === 0 ? (
               <p className="sub" style={{ margin: 0 }}>
-                Your teacher hasn’t shared any lessons yet. They will appear here.
+                {section === 'lesson' ? 'Your teacher hasn’t shared any lessons yet. They will appear here.' : `No ${SECTION_LABEL[section].toLowerCase()} yet.`}
               </p>
             ) : (
               groups.map(({ tp, list }) => (
                 <div key={tp.id} className="topic">
-                  <div className="topic-head">
-                    <span className="topic-name static">{tp.name}</span>
-                  </div>
+                  {topics.length > 0 && (
+                    <div className="topic-head">
+                      <span className="topic-name static">{tp.name}</span>
+                    </div>
+                  )}
                   <ul className="items">
-                    {list.map((i) => (
-                      <li key={i.id} className={'item' + (lockedItem(i) ? ' is-locked' : '')}>
-                        <span className="type">{i.type}</span>
-                        {lockedItem(i) ? (
-                          <span className="title locked-title" title="Your teacher will open this soon">
-                            {i.title}
-                            <svg className="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-label="locked">
-                              <rect x="5" y="11" width="14" height="10" rx="2" />
-                              <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                            </svg>
+                    {list.map((i) => {
+                      const r = itemResult(i, answers);
+                      return (
+                        <li key={i.id} className={'item' + (lockedItem(i) ? ' is-locked' : '')}>
+                          <span className="type">{i.type}</span>
+                          {lockedItem(i) ? (
+                            <span className="title locked-title" title="Your teacher will open this soon">
+                              {i.title}
+                              <svg className="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-label="locked">
+                                <rect x="5" y="11" width="14" height="10" rx="2" />
+                                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                              </svg>
+                            </span>
+                          ) : (
+                            <Link to={`/learn/${i.id}`} className="title">
+                              {i.title}
+                            </Link>
+                          )}
+                          <span className="status">
+                            {i.type === 'practice' && r.pct !== null ? `Last: ${r.pct}%` : r.status !== 'not-started' ? STATUS_LABEL[r.status] : ''}
+                            {i.due ? ` · ${dueText(i.due)}` : ''}
                           </span>
-                        ) : (
-                          <Link to={`/learn/${i.id}`} className="title">
-                            {i.title}
-                          </Link>
-                        )}
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))

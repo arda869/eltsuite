@@ -13,9 +13,10 @@ import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
 import { Notebook } from '../components/Notebook';
+import { Reports } from '../components/Reports';
 import { useAuth } from '../lib/auth';
 
-type Tab = 'lessons' | 'learners' | 'notebook';
+type Tab = 'lessons' | 'learners' | 'notebook' | 'reports';
 
 function useCollection<T>(path: string[], ready: boolean) {
   const [rows, setRows] = useState<T[]>([]);
@@ -40,6 +41,7 @@ export function ClassPage() {
   const focusEntry = params.get('entry');
   const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : 'lessons');
   const { user } = useAuth();
+  const [resultsItem, setResultsItem] = useState<Item | null>(null);
   const [menu, setMenu] = useState(false);
   const [settings, setSettings] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -173,12 +175,17 @@ export function ClassPage() {
             <button className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
               Notebook
             </button>
+            <button className={tab === 'reports' ? 'on' : ''} onClick={() => (setResultsItem(null), setTab('reports'))}>
+              Reports
+            </button>
           </nav>
 
           {tab === 'lessons' ? (
-            <LessonsTab c={c} topics={topics} items={items} />
+            <LessonsTab c={c} topics={topics} items={items} onResults={(i) => (setResultsItem(i), setTab('reports'))} />
           ) : tab === 'learners' ? (
             <LearnersTab c={c} learners={learners} pins={pins} />
+          ) : tab === 'reports' ? (
+            <Reports key={resultsItem?.id ?? 'all'} c={c} items={items} learners={learners} initialItem={resultsItem} />
           ) : (
             user && <Notebook classId={c.id} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} items={[...items].sort((a, b) => a.order - b.order)} topics={[...topics].sort((a, b) => a.order - b.order)} roster={roster} focus={focusEntry} />
           )}
