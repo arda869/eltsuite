@@ -1,5 +1,6 @@
 // Slow sound work, off the main thread so the page stays smooth: cleaning up background noise
 // and encoding MP3.
+import { Mp3Encoder } from '@breezystack/lamejs';
 import { reduceNoise, type NoiseLevel } from './sound';
 
 type Job = { id: number; op: 'noise'; x: Float32Array; rate: number; level: NoiseLevel } | { id: number; op: 'mp3'; x: Float32Array; rate: number; kbps: number };
@@ -13,7 +14,6 @@ self.onmessage = async (ev: MessageEvent<Job>) => {
       (self as unknown as Worker).postMessage({ id: job.id, result: y }, [y.buffer]);
       return;
     }
-    const { Mp3Encoder } = await import('@breezystack/lamejs');
     const enc = new Mp3Encoder(1, job.rate, job.kbps);
     const out: Uint8Array[] = [];
     const block = 1152 * 40;
