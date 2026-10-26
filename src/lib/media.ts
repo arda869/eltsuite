@@ -5,7 +5,7 @@ import { db } from './firebase';
 // Kept short so each clip stays well under the 1 MB document limit.
 
 // Where media lives: a class ("classes/<id>/media"), or a teacher's own space for things added
-// straight to the media archive ("user:<uid>" → "users/<uid>/media").
+// straight to the resources library ("user:<uid>" → "users/<uid>/media").
 // A shared copy ("share:<id>") keeps its own media too.
 export const mediaCol = (space: string) => (space.startsWith('user:') ? collection(db, 'users', space.slice(5), 'media') : space.startsWith('share:') ? collection(db, 'shares', space.slice(6), 'media') : space.startsWith('chat:') ? collection(db, 'chats', space.slice(5), 'media') : collection(db, 'classes', space, 'media'));
 export const mediaDoc = (space: string, id: string) => (space.startsWith('user:') ? doc(db, 'users', space.slice(5), 'media', id) : space.startsWith('share:') ? doc(db, 'shares', space.slice(6), 'media', id) : space.startsWith('chat:') ? doc(db, 'chats', space.slice(5), 'media', id) : doc(db, 'classes', space, 'media', id));

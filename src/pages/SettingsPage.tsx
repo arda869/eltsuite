@@ -12,6 +12,7 @@ import { ThemeChoice } from '../lib/theme';
 import { AFTER, chime, enterSendOn, saveEnterSend, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs } from '../lib/chat';
 import { pushState, type PushState } from '../lib/push';
 import { UiIcon } from '../components/UiIcon';
+import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
 
 // Everything about you and how Lesson Lit behaves for you, in one place.
 
@@ -62,6 +63,22 @@ export function SettingsPage() {
     return () => (u1(), u2());
   }, [user, teacher]);
   useEffect(() => void pushState().then(setPush), [appOpen]);
+  const [quality, setQ] = useState<PicQuality>(() => {
+    try {
+      const v = localStorage.getItem('ll.picQuality');
+      return v === 'high' || v === 'small' ? v : 'standard';
+    } catch {
+      return 'standard';
+    }
+  });
+  const pickQ = (v: PicQuality) => {
+    setQ(v);
+    try {
+      localStorage.setItem('ll.picQuality', v);
+    } catch {
+      /* fine */
+    }
+  };
   const name = user?.displayName || user?.email?.split('@')[0] || '';
 
   return (
@@ -120,6 +137,20 @@ export function SettingsPage() {
             <ThemeChoice />
           </Row>
         </Section>
+
+        {teacher && (
+          <Section icon="archive" title="Resources library">
+            <Row title="Picture quality" hint={PIC_QUALITY.find((p) => p.k === quality)?.about}>
+              <span className="seg small-seg">
+                {PIC_QUALITY.map((p) => (
+                  <button key={p.k} type="button" className={quality === p.k ? 'on' : ''} onClick={() => pickQ(p.k)}>
+                    {p.label}
+                  </button>
+                ))}
+              </span>
+            </Row>
+          </Section>
+        )}
 
         <Section icon="lock" title="Account">
           <Row title="Sign out" hint="On this device">

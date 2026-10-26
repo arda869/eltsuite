@@ -337,7 +337,7 @@ export function insertPictures(editor: Editor, srcs: string[], opts: { size?: Pi
     .run();
 }
 
-// "Image" from + Add or /: upload pictures, choose them from the media archive, or use a web address.
+// "Image" from + Add or /: upload pictures, choose them from the resources library, or use a web address.
 const segOf = <K extends string>(list: { k: K; label: string }[], cur: K, set: (k: K) => void, aria: string) => (
   <span className="seg small-seg" role="radiogroup" aria-label={aria}>
     {list.map((o) => (
@@ -430,7 +430,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               Upload
             </button>
             <button type="button" role="tab" aria-selected={tab === 'archive'} className={tab === 'archive' ? 'on' : ''} onClick={() => setTab('archive')}>
-              Media archive
+              Resources library
             </button>
           </span>
         </div>
@@ -450,7 +450,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               tabIndex={0}
             >
               <strong>Choose pictures from your computer</strong>
-              <span className="hint">or drop them here. You can choose several at once; they sit side by side. Each one is kept in your media archive.</span>
+              <span className="hint">or drop them here. You can choose several at once; they sit side by side. Each one is kept in your resources library.</span>
               <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
             </div>
             <div className="field" style={{ gap: 6 }}>
@@ -500,7 +500,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
   );
 }
 
-// Choose from the media archive: search, folders and tags, one or several at once.
+// Choose from the resources library: search, folders and tags, one or several at once.
 export function ArchivePicker({ uid, kind, multiple, onPick, busy }: { uid?: string; kind: ArchiveItem['kind'] | 'sound'; multiple?: boolean; onPick: (items: ArchiveItem[]) => void; busy?: boolean }) {
   const all = useArchive(uid);
   const folders = useFolders(uid);
@@ -516,8 +516,8 @@ export function ArchivePicker({ uid, kind, multiple, onPick, busy }: { uid?: str
     [all, kind, folder, q],
   );
   const used = [...new Set([...(all ?? []).map((i) => i.folder).filter(Boolean), ...folders])].sort();
-  if (!uid) return <p className="hint">Sign in to use your media archive.</p>;
-  if (all === null) return <p className="hint">Opening your media archive…</p>;
+  if (!uid) return <p className="hint">Sign in to use your resources library.</p>;
+  if (all === null) return <p className="hint">Opening your resources library…</p>;
   const toggle = (it: ArchiveItem) => (multiple ? setPicked((p) => (p.includes(it.id) ? p.filter((x) => x !== it.id) : [...p, it.id])) : onPick([it]));
   return (
     <div className="ap">

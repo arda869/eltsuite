@@ -1,4 +1,6 @@
 import { ask } from '../lib/ask';
+import { exportLesson } from '../lib/textformat';
+import { openMenu } from '../components/ContextMenu';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -94,6 +96,17 @@ export function useLibrary(uid?: string) {
   return { lib, reload: () => setN((x) => x + 1) };
 }
 
+// A task as a text file (the same convention lessons import from).
+function downloadTask(t: LibTask) {
+  const text = exportLesson(t.title, [{ title: t.title, instructions: t.instructions, content: (t.content ?? { type: 'doc', content: [] }) as never }], false);
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${t.title.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Task'}.md`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
 const SCOPE: Record<string, string> = { class: 'Whole class', group: 'Each group', solo: 'Each learner' };
 const TYPE: Record<string, string> = { lesson: 'Lesson', homework: 'Homework', exam: 'Exam', practice: 'Practice' };
 const when = (t: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '');
@@ -147,7 +160,19 @@ export function ArchiveTasks({ uid }: { uid: string }) {
       ) : (
         <div className="al-list">
           {shown.slice(0, 300).map((t) => (
-            <div key={t.classId + t.id} className="al-row" style={{ ['--cc' as string]: color(t.classId) }}>
+            <div
+              key={t.classId + t.id}
+              className="al-row"
+              style={{ ['--cc' as string]: color(t.classId) }}
+              onContextMenu={(e) =>
+                openMenu(e, [
+                  { label: 'Open', icon: 'fullscreen', onClick: () => (window.location.href = `/class/${t.classId}/lesson/${t.itemId}?task=${t.id}`) },
+                  ...(editable(t.classId) ? [{ label: 'Copy to…', icon: 'copyall', onClick: () => setCopy(t) }] : []),
+                  { label: 'Share…', icon: 'link', onClick: () => setSharing({ kind: 'task', title: t.title, about: t.instructions, src: { classId: t.classId, itemId: t.itemId, taskId: t.id } }) },
+                  { label: 'Download as a text file', icon: 'import', hint: '.md', onClick: () => downloadTask(t) },
+                ])
+              }
+            >
               <FileIcon kind="task" size={30} label={false} />
               <span className="al-main">
                 <Link to={`/class/${t.classId}/lesson/${t.itemId}?task=${t.id}`} className="al-title">
@@ -181,6 +206,9 @@ export function ArchiveTasks({ uid }: { uid: string }) {
                 )}
                 <button type="button" className="btn small-btn" onClick={() => setSharing({ kind: 'task', title: t.title, about: t.instructions, src: { classId: t.classId, itemId: t.itemId, taskId: t.id } })}>
                   Share…
+                </button>
+                <button type="button" className="btn small-btn icon-only" onClick={() => downloadTask(t)} aria-label="Download as a text file" data-tip="Download as a text file (.md)">
+                  <UiIcon name="import" size={14} />
                 </button>
               </span>
             </div>

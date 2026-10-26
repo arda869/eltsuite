@@ -26,6 +26,7 @@
     "@tiptap/starter-kit": "^2.27.3",
     "docx": "^9.5.1",
     "exceljs": "^4.4.0",
+    "fflate": "^0.8.3",
     "firebase": "^11.0.0",
     "perfect-freehand": "^1.2.2",
     "pptxgenjs": "^4.0.1",

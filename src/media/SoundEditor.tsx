@@ -9,7 +9,7 @@ import { splitScript } from './ScriptEditor';
 import { UiIcon } from '../components/UiIcon';
 
 // After recording or choosing a sound: trim it, set the volume, clean up background noise, add
-// silence or a bell, choose the quality, then save it to the class and the media archive.
+// silence or a bell, choose the quality, then save it to the class and the resources library.
 
 export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
@@ -197,7 +197,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       const { blob, duration, sc, name, base } = await produce();
       setSaving({ stage: 'Uploading', p: base });
       const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration }, (p) => setSaving({ stage: 'Uploading', p: base + p * (0.97 - base) }));
-      setSaving({ stage: 'Adding it to your media archive', p: 0.98 });
+      setSaving({ stage: 'Adding it to your resources library', p: 0.98 });
       const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder, tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
       setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId, archiveId, title: name, script: sc });

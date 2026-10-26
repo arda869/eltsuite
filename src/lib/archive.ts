@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { db } from './firebase';
 import { mediaCol, mediaDoc } from './media';
 
-// The media archive: every picture, sound and video a teacher adds, kept so it can be used again in
+// The resources library: every picture, sound and video a teacher adds, kept so it can be used again in
 // any lesson or class. The archive entry lives with the teacher; the media itself lives in each class
 // that uses it (so that class's learners can open it), copied there the first time it is used.
 
@@ -179,9 +179,14 @@ export async function mediaIn(uid: string, item: ArchiveItem, classId: string): 
   return id;
 }
 
-// Folders are names on the items; an empty folder is kept as a marker document.
+// Folders are paths on the items ("Unit 2/Reading"); '' is the archive itself. An empty folder
+// is kept as a marker document.
+const folderId = (name: string) => name.replace(/\//g, '__');
+export const parentOf = (f: string) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
+export const leafOf = (f: string) => f.slice(f.lastIndexOf('/') + 1);
+export const inTree = (f: string, root: string) => !root || f === root || f.startsWith(root + '/');
 export async function addFolder(uid: string, name: string) {
-  await setDoc(doc(db, 'users', uid, 'archiveFolders', name.replace(/\//g, '-')), { name, at: Date.now() });
+  await setDoc(doc(db, 'users', uid, 'archiveFolders', folderId(name)), { name, at: Date.now() });
 }
 export function useFolders(uid?: string | null) {
   const [folders, setFolders] = useState<string[]>([]);
@@ -191,10 +196,28 @@ export function useFolders(uid?: string | null) {
   }, [uid]);
   return folders;
 }
-export async function removeFolder(uid: string, name: string, items: ArchiveItem[]) {
+// Deleting a folder keeps what is in it: everything moves up to the folder it was in.
+export async function removeFolder(uid: string, name: string, items: ArchiveItem[], folders: string[] = []) {
+  const up = parentOf(name);
   const b = writeBatch(db);
-  items.filter((i) => i.folder === name).forEach((i) => b.update(doc(col(uid), i.id), { folder: '' }));
-  b.delete(doc(db, 'users', uid, 'archiveFolders', name.replace(/\//g, '-')));
+  items.filter((i) => inTree(i.folder, name)).forEach((i) => b.update(doc(col(uid), i.id), { folder: up }));
+  [name, ...folders.filter((f) => f.startsWith(name + '/'))].forEach((f) => b.delete(doc(db, 'users', uid, 'archiveFolders', folderId(f))));
+  if (up) b.set(doc(db, 'users', uid, 'archiveFolders', folderId(up)), { name: up, at: Date.now() });
+  await b.commit();
+}
+export async function renameFolder(uid: string, from: string, to: string, items: ArchiveItem[], folders: string[]) {
+  const map = (f: string) => to + f.slice(from.length);
+  const b = writeBatch(db);
+  items.filter((i) => inTree(i.folder, from)).forEach((i) => b.update(doc(col(uid), i.id), { folder: map(i.folder) }));
+  [from, ...folders.filter((f) => f.startsWith(from + '/'))].forEach((f) => {
+    b.delete(doc(db, 'users', uid, 'archiveFolders', folderId(f)));
+    b.set(doc(db, 'users', uid, 'archiveFolders', folderId(map(f))), { name: map(f), at: Date.now() });
+  });
+  await b.commit();
+}
+export async function moveItems(uid: string, list: ArchiveItem[], folder: string) {
+  const b = writeBatch(db);
+  list.forEach((i) => b.update(doc(col(uid), i.id), { folder, updatedAt: Date.now() }));
   await b.commit();
 }
 
@@ -256,9 +279,9 @@ export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, m
 }
 
 // The file itself, to save on the computer.
-export async function downloadItem(item: ArchiveItem) {
-  if (item.link) return void window.open(item.link, '_blank', 'noopener');
-  if (!item.home) return;
+// The file behind an item, for a download: its address and a file name.
+export async function itemFile(item: ArchiveItem): Promise<{ url: string; name: string } | null> {
+  if (item.link || !item.home) return null;
   const { classId, mediaId } = item.home;
   let url = '';
   let ext = 'bin';
@@ -268,12 +291,68 @@ export async function downloadItem(item: ArchiveItem) {
     ext = /^data:image\/png/.test(url) ? 'png' : 'jpg';
   } else {
     const m = await loadManifest(classId, mediaId);
-    if (!m) return;
+    if (!m) return null;
     url = await soundUrl(classId, mediaId, m);
     ext = /mp4|m4a|aac/.test(m.type ?? '') ? 'm4a' : /wav/.test(m.type ?? '') ? 'wav' : 'mp3';
   }
+  return { url, name: `${safeName(item.name) || 'media'}.${ext}` };
+}
+// The karaoke script as a plain text transcript, with times where the lines are timed.
+export function transcriptOf(item: ArchiveItem): string | null {
+  const lines = (item.script ?? []).filter((l) => l.text.trim());
+  if (!lines.length) return null;
+  const t = (x: number) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
+  return `${item.name}\n\n` + lines.map((l) => (l.t === null || l.t === undefined ? l.text : `[${t(l.t)}] ${l.text}`)).join('\n') + '\n';
+}
+const saveText = (text: string, name: string) => {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${item.name.replace(/[\\/:*?"<>|]+/g, '').trim() || 'media'}.${ext}`;
+  a.download = name;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+};
+export const safeName = (n: string) => n.replace(/[\\/:*?"<>|]+/g, '').trim();
+export async function downloadItem(item: ArchiveItem) {
+  const tr = transcriptOf(item);
+  if (tr) saveText(tr, `${safeName(item.name) || 'media'} transcript.txt`);
+  if (item.link) return void window.open(item.link, '_blank', 'noopener');
+  const f = await itemFile(item);
+  if (!f) return;
+  const a = document.createElement('a');
+  a.href = f.url;
+  a.download = f.name;
+  a.click();
+}
+// Several items (or whole folders) as one zip, with the folders inside it. Links go in a text file.
+export async function downloadZip(items: ArchiveItem[], zipName: string, base = '', onProgress?: (done: number, total: number) => void) {
+  const { zipSync, strToU8 } = await import('fflate');
+  const files: Record<string, Uint8Array> = {};
+  const links: string[] = [];
+  let done = 0;
+  for (const it of items) {
+    const rel = base && it.folder.startsWith(base) ? it.folder.slice(base.length).replace(/^\//, '') : base ? '' : it.folder;
+    const dir = rel ? rel.split('/').map(safeName).join('/') + '/' : '';
+    const tr = transcriptOf(it);
+    if (tr) files[`${dir}${safeName(it.name) || 'media'} transcript.txt`] = strToU8(tr);
+    if (it.link) links.push(`${dir}${it.name}: ${it.link}`);
+    else {
+      const f = await itemFile(it).catch(() => null);
+      if (f) {
+        const bytes = new Uint8Array(await (await fetch(f.url)).arrayBuffer());
+        let p = dir + f.name;
+        for (let k = 2; files[p]; k++) p = dir + f.name.replace(/(\.[a-z0-9]+)$/i, ` (${k})$1`);
+        files[p] = bytes;
+      }
+    }
+    onProgress?.(++done, items.length);
+  }
+  if (links.length) files['Links.txt'] = strToU8(links.join('\n') + '\n');
+  const zip = zipSync(files, { level: 0 });
+  const url = URL.createObjectURL(new Blob([zip], { type: 'application/zip' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${safeName(zipName) || 'Media'}.zip`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }

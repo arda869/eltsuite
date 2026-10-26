@@ -29,7 +29,7 @@ export function useImageSrc(classId: string, src: string) {
   return url;
 }
 
-// Picture quality when uploading: smaller files take less space in the media archive.
+// Picture quality when uploading: smaller files take less space in the resources library.
 export type PicQuality = 'high' | 'standard' | 'small';
 export const PIC_QUALITY: { k: PicQuality; label: string; about: string; max: [number, number]; q: number; limit: number }[] = [
   { k: 'high', label: 'High', about: 'Sharp on a big screen', max: [2000, 1500], q: 0.88, limit: 560 },
@@ -67,7 +67,7 @@ export async function uploadPictureFull(classId: string, file: Blob, quality: Pi
   });
   return { src: 'media:' + (await saveImage(classId, blob)), size: blob.size, thumb: preview };
 }
-// Every picture a teacher uploads also goes into their media archive, to use again anywhere.
+// Every picture a teacher uploads also goes into their resources library, to use again anywhere.
 // Sizes in the archive are the space the picture takes as stored (a third more than the file).
 export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string, folder = '') {
   const r = await uploadPictureFull(classId, file, quality);

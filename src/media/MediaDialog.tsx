@@ -9,14 +9,14 @@ import { Recorder, type Take } from './Recorder';
 import { SoundEditor, type SoundSource } from './SoundEditor';
 import { isVideoUrl } from './Player';
 
-// Adding a sound or video: record it here, upload a sound file, use one from the media archive,
+// Adding a sound or video: record it here, upload a sound file, use one from the resources library,
 // or link to YouTube or a file on the web.
 
 export type MediaTab = 'record' | 'upload' | 'archive' | 'link';
 export type Picked = { mediaId: string; archiveId: string; kind: 'audio' | 'video'; title: string };
 const MAX_MIN = 20;
 
-export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, folder = '', noArchive, file: dropped }: { classId: string; tab?: MediaTab; onPick: (p: Picked) => void; onClose: () => void; folder?: string; noArchive?: boolean; file?: File }) {
+export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, folder = '', noArchive, file: dropped, onPictures }: { classId: string; tab?: MediaTab; onPick: (p: Picked) => void; onClose: () => void; folder?: string; noArchive?: boolean; file?: File; onPictures?: (files: File[]) => void }) {
   const { user } = useAuth();
   const [tab, setTab] = useState<MediaTab>(start);
   const [source, setSource] = useState<SoundSource | null>(null);
@@ -27,6 +27,17 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
   const file = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
 
+  // In the resources library one window adds everything: pictures go straight in, a sound opens the editor.
+  const take2 = (list: FileList | File[]) => {
+    const files = Array.from(list);
+    const pics = files.filter((f) => f.type.startsWith('image/'));
+    if (pics.length && onPictures) {
+      onPictures(pics);
+      if (pics.length === files.length) return onClose();
+    }
+    const snd = files.find((f) => !f.type.startsWith('image/'));
+    if (snd) void open(snd);
+  };
   const open = async (f: File) => {
     setBusy('Opening the sound…');
     try {
@@ -67,10 +78,13 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     }
   };
 
-  const TABS: { k: MediaTab; label: string; icon: string }[] = [
+  const TABS: { k: MediaTab; label: string; icon: string }[] = onPictures ? [
+    { k: 'upload', label: 'Upload', icon: 'upload' },
+    { k: 'record', label: 'Record', icon: 'mic' },
+  ] : [
     { k: 'record', label: 'Record', icon: 'mic' },
     { k: 'upload', label: 'Upload', icon: 'upload' },
-    { k: 'archive', label: 'Media archive', icon: 'archive' },
+    { k: 'archive', label: 'Resources library', icon: 'archive' },
     { k: 'link', label: 'YouTube or link', icon: 'link' },
   ];
   const editing = !!source;
@@ -78,7 +92,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     <div className="scrim" onClick={editing ? undefined : onClose}>
       <div className="dialog md-dialog" role="dialog" aria-label="Add a sound or video" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="pic-dialog-head">
-          <h2 style={{ margin: 0 }}>{editing ? 'Edit the sound' : 'Add a sound or video'}</h2>
+          <h2 style={{ margin: 0 }}>{editing ? 'Edit the sound' : onPictures ? 'Add media' : 'Add a sound or video'}</h2>
           {editing && (
             <button type="button" className="btn link" onClick={onClose}>
               Cancel
@@ -122,16 +136,15 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
               onDrop={(e) => {
                 e.preventDefault();
                 setOver(false);
-                const f = e.dataTransfer.files[0];
-                if (f) open(f);
+                if (e.dataTransfer.files.length) take2(e.dataTransfer.files);
               }}
               onClick={() => file.current?.click()}
               role="button"
               tabIndex={0}
             >
-              <strong>Choose a sound file</strong>
-              <span className="hint">MP3, M4A, WAV or OGG, up to {MAX_MIN} minutes. You can trim it, clean it up and make it smaller next.</span>
-              <input ref={file} type="file" accept="audio/*,video/*" hidden onChange={(e) => e.target.files?.[0] && open(e.target.files[0])} />
+              <strong>{onPictures ? 'Choose pictures or a sound' : 'Choose a sound file'}</strong>
+              <span className="hint">{onPictures ? `Pictures (JPG, PNG) go straight in. Sounds (MP3, M4A, WAV, up to ${MAX_MIN} minutes) open in the editor to trim and clean up. Or drop files here.` : `MP3, M4A, WAV or OGG, up to ${MAX_MIN} minutes. You can trim it, clean it up and make it smaller next.`}</span>
+              <input ref={file} type="file" accept={onPictures ? 'image/*,audio/*,video/*' : 'audio/*,video/*'} multiple={!!onPictures} hidden onChange={(e) => (e.target.files && take2(e.target.files), (e.target.value = ''))} />
             </div>
             <span className="hint">A video file works too: its sound is kept. To show the video itself, put it on YouTube and use a link. Uploading video files needs file storage, which comes with the paid plan.</span>
           </>

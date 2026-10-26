@@ -345,7 +345,7 @@ function CopyOut({ sh, tasks, onClose }: { sh: Share; tasks: SharedTask[]; onClo
     <div className="scrim" onClick={onClose}>
       <div className="dialog" role="dialog" aria-label="Make my own copy" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>Make my own copy</h2>
-        <span className="hint">{sh.kind === 'media' ? 'It goes into your media archive, ready to use in any lesson.' : 'Your copy is yours to change. The shared one stays as it is.'}</span>
+        <span className="hint">{sh.kind === 'media' ? 'It goes into your resources library, ready to use in any lesson.' : 'Your copy is yours to change. The shared one stays as it is.'}</span>
         {sh.kind !== 'media' &&
           (classes.length === 0 ? (
             <span className="hint">You need a class first. Make one on the Classes page.</span>

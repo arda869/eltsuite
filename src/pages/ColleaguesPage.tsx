@@ -33,7 +33,7 @@ export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | 'me
       {tab('/', 'classes', 'classes', 'Classes', 'Classes')}
       {tab('/messages', 'messages', 'message', 'Messages', 'Messages', unread)}
       {tab('/colleagues', 'colleagues', 'groups', 'Colleagues', 'Colleagues')}
-      {tab('/archive', 'archive', 'archive', 'Media archive', 'Media')}
+      {tab('/archive', 'archive', 'archive', 'Resources library', 'Library')}
     </nav>
   );
 }
@@ -165,7 +165,7 @@ export function ColleaguesPage() {
                     {mine === null ? (
                       <span className="hint">Loading…</span>
                     ) : toThem(cur.id).length === 0 ? (
-                      <span className="hint">Nothing yet. Share a lesson from its menu on the class page, or a task, document or media from the media archive.</span>
+                      <span className="hint">Nothing yet. Share a lesson from its menu on the class page, or a task, document or media from the resources library.</span>
                     ) : (
                       toThem(cur.id).map((s) => (
                         <Item
@@ -179,7 +179,7 @@ export function ColleaguesPage() {
                         />
                       ))
                     )}
-                    {byLink.length > 0 && <span className="hint cp-note">{byLink.length} more shared with anyone who has the link. See them in the media archive, under Shared.</span>}
+                    {byLink.length > 0 && <span className="hint cp-note">{byLink.length} more shared with anyone who has the link. See them in the resources library, under Shared.</span>}
                   </div>
                   <div className="cp-col">
                     <span className="eyebrow">{cur.name.split(' ')[0]} shared with you</span>
