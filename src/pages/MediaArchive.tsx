@@ -4,7 +4,10 @@ import { TopBar } from '../components/TopBar';
 import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
 import { useAuth } from '../lib/auth';
-import { addFolder, archiveRemove, archiveUpdate, formatBytes, removeFolder, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
+import { addFolder, archiveRemove, archiveUpdate, downloadItem, findUses, formatBytes, loadManifest, removeFolder, replaceSound, soundUrl, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
+import { SoundEditor, type SoundSource } from '../media/SoundEditor';
+import { decodeSound } from '../lib/sound';
+import { createPortal } from 'react-dom';
 import { useImageSrc } from '../editor/PackNode';
 import { MediaPlayer } from '../media/Player';
 import { ScriptEditor } from '../media/ScriptEditor';
@@ -342,6 +345,23 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
   const [tagText, setTagText] = useState('');
   const [script, setScript] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [editing, setEditing] = useState<SoundSource | 'loading' | null>(null);
+  const [dl, setDl] = useState('');
+  const openEditor = async () => {
+    if (!item.home) return;
+    setEditing('loading');
+    try {
+      const m = await loadManifest(item.home.classId, item.home.mediaId);
+      if (!m) throw new Error('missing');
+      const url = await soundUrl(item.home.classId, item.home.mediaId, m);
+      const buffer = await decodeSound(await (await fetch(url)).blob());
+      const lines = item.script ?? m.script ?? [];
+      setEditing({ buffer, name: item.name, script: lines.map((l) => l.text), marks: lines.map((l) => (l.t === null ? NaN : l.t)) });
+    } catch {
+      setEditing(null);
+      setDl('The sound could not be opened.');
+    }
+  };
   const save = (patch: Parameters<typeof archiveUpdate>[2]) => archiveUpdate(uid, item, patch).catch(() => {});
   const addTag = () => {
     const t = tagText.trim().replace(/^#/, '');
@@ -398,6 +418,25 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
           />
         </span>
       </div>
+      <span className="ma-detail-acts">
+        <button
+          type="button"
+          className="btn small-btn"
+          onClick={async () => {
+            setDl('Getting the file…');
+            await downloadItem(item).catch(() => setDl('It could not be downloaded.'));
+            setDl('');
+          }}
+        >
+          <UiIcon name={item.link ? 'link' : 'import'} size={14} /> {item.link ? 'Open the link' : 'Download'}
+        </button>
+        {item.kind === 'audio' && !item.link && item.home && (
+          <button type="button" className="btn small-btn" onClick={openEditor} disabled={editing === 'loading'}>
+            <UiIcon name="edit" size={14} /> {editing === 'loading' ? 'Opening…' : 'Edit the sound'}
+          </button>
+        )}
+      </span>
+      {dl && <span className="hint">{dl}</span>}
       {item.kind !== 'image' && item.home && (
         <div className="field">
           <span>Karaoke script</span>
@@ -446,6 +485,29 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
           <UiIcon name="trash" size={14} /> Remove from the archive
         </button>
       )}
+      {editing && editing !== 'loading' &&
+        createPortal(
+          <div className="scrim">
+            <div className="dialog md-dialog" role="dialog" aria-label="Edit the sound" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+              <div className="pic-dialog-head">
+                <h2 style={{ margin: 0 }}>Edit “{item.name}”</h2>
+                <button type="button" className="btn link" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+              </div>
+              <SoundEditor
+                source={editing}
+                classId={'user:' + uid}
+                folder={item.folder}
+                backLabel="Close"
+                onBack={() => setEditing(null)}
+                onSaved={() => setEditing(null)}
+                replace={{ name: item.name, uses: () => findUses(item), run: (blob, meta, p) => replaceSound(uid, item, blob, meta, p) }}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
       {script && item.home && <ScriptEditor classId={item.home.classId} mediaId={item.home.mediaId} title={item.name} onClose={() => setScript(false)} onSave={(lines) => archiveUpdate(uid, item, { script: lines })} />}
     </aside>
   );

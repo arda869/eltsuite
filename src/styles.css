@@ -3730,3 +3730,13 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 }
 /* Dark surfaces (the picture editor, videos) keep a light bar. */
 .pe-stage::-webkit-scrollbar-thumb, .mp-screen::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, .35); }
+.mp-wave { flex: 1; min-width: 80px; display: flex; align-items: center; }
+.mp-wave .wv { margin-top: 0 !important; }
+.mp-wave .wv:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.mp-wave .wv-flag { top: -6px; }
+.ma-detail-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.ma-detail-acts .btn { display: inline-flex; align-items: center; gap: 6px; }
+.sed-replace { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--wrong) 30%, transparent), 0 10px 30px rgba(51, 48, 44, .12); }
+.sed-replace strong { font: 500 16px var(--serif); }
+.sed-uses { margin: 0; padding-left: 18px; max-height: 160px; overflow: auto; font-size: 13px; display: flex; flex-direction: column; gap: 3px; }
+.kl.timed .kl-line.now { color: var(--accent-text); }

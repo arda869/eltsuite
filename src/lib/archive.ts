@@ -82,7 +82,7 @@ export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math
 // Sound files are stored in parts (a Firestore document holds up to 1 MB), with a manifest that
 // carries the script. Manifests and parts can be opened without signing in, through the QR code.
 const PART = 450 * 1024;
-export type Manifest = { kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean };
+export type Manifest = { kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
 
 const toBase64 = (bytes: Uint8Array) => {
   let s = '';
@@ -138,7 +138,7 @@ export async function loadManifest(classId: string, id: string): Promise<Manifes
 
 const blobCache = new Map<string, Promise<string>>();
 export function soundUrl(classId: string, id: string, m: Manifest) {
-  const k = classId + '/' + id;
+  const k = classId + '/' + id + '/' + (m.v ?? 0);
   if (!blobCache.has(k))
     blobCache.set(
       k,
@@ -202,4 +202,78 @@ export async function removeFolder(uid: string, name: string, items: ArchiveItem
 export function youTubeId(url: string) {
   const m = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/.exec(url);
   return m ? m[1] : '';
+}
+
+// ------------------------------------------------------------------ editing a sound in the archive
+
+// Every class that has a copy of the item (the teacher's own space is not a class).
+export const placesOf = (item: ArchiveItem) => {
+  const seen = new Map<string, string>();
+  if (item.home) seen.set(item.home.classId, item.home.mediaId);
+  Object.entries(item.copies ?? {}).forEach(([c, m]) => !seen.has(c) && seen.set(c, m));
+  return [...seen].map(([classId, mediaId]) => ({ classId, mediaId }));
+};
+
+// Where an item is used: each lesson and task that has it.
+export async function findUses(item: ArchiveItem): Promise<{ cls: string; lesson: string; task: string; classId: string; itemId: string }[]> {
+  const { collection: col2, getDocs } = await import('firebase/firestore');
+  const out: { cls: string; lesson: string; task: string; classId: string; itemId: string }[] = [];
+  for (const { classId, mediaId } of placesOf(item)) {
+    if (classId.startsWith('user:')) continue;
+    const cls = await getDoc(doc(db, 'classes', classId)).catch(() => null);
+    const items = await getDocs(col2(db, 'classes', classId, 'items')).catch(() => null);
+    for (const it of items?.docs ?? []) {
+      const tasks = await getDocs(col2(db, 'classes', classId, 'items', it.id, 'tasks')).catch(() => null);
+      for (const t of tasks?.docs ?? []) {
+        const json = JSON.stringify(t.data().content ?? '');
+        if (json.includes(`"${mediaId}"`) || json.includes(`media:${mediaId}`)) out.push({ cls: String(cls?.data()?.name ?? 'A class'), lesson: String(it.data().title ?? 'Lesson'), task: String(t.data().title ?? 'Task'), classId, itemId: it.id });
+      }
+    }
+  }
+  return out;
+}
+
+// Put a new version of a sound in every place it is kept; the lessons that use it change too.
+export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress?: (p: number) => void) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const parts = Math.max(1, Math.ceil(bytes.length / PART));
+  const places = placesOf(item);
+  let done = 0;
+  const total = places.length * (parts + 1);
+  for (const { classId, mediaId } of places) {
+    const old = await loadManifest(classId, mediaId).catch(() => null);
+    await Promise.all(
+      Array.from({ length: parts }, (_, k) => {
+        const chunk = bytes.subarray(k * PART, (k + 1) * PART);
+        return setDoc(mediaRef(classId, `${mediaId}_p${k}`), { part: k, data: toBase64(chunk), size: chunk.length, public: true }).then(() => onProgress?.(++done / total));
+      }),
+    );
+    for (let k = parts; k < (old?.parts ?? 0); k++) await deleteDoc(mediaRef(classId, `${mediaId}_p${k}`)).catch(() => {});
+    await setDoc(mediaRef(classId, mediaId), { ...(old ?? {}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, script: meta.script, public: true, v: Date.now() });
+    onProgress?.(++done / total);
+  }
+  await updateDoc(doc(col(uid), item.id), { size: Math.round((bytes.length * 4) / 3), duration: meta.duration, script: meta.script, updatedAt: Date.now() });
+}
+
+// The file itself, to save on the computer.
+export async function downloadItem(item: ArchiveItem) {
+  if (item.link) return void window.open(item.link, '_blank', 'noopener');
+  if (!item.home) return;
+  const { classId, mediaId } = item.home;
+  let url = '';
+  let ext = 'bin';
+  if (item.kind === 'image') {
+    const { audioUrl } = await import('./media');
+    url = await audioUrl(classId, mediaId);
+    ext = /^data:image\/png/.test(url) ? 'png' : 'jpg';
+  } else {
+    const m = await loadManifest(classId, mediaId);
+    if (!m) return;
+    url = await soundUrl(classId, mediaId, m);
+    ext = /mp4|m4a|aac/.test(m.type ?? '') ? 'm4a' : /wav/.test(m.type ?? '') ? 'wav' : 'mp3';
+  }
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${item.name.replace(/[\\/:*?"<>|]+/g, '').trim() || 'media'}.${ext}`;
+  a.click();
 }

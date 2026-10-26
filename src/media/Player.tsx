@@ -124,7 +124,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
       setPlaying(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [m?.kind, m?.parts, url, ytId, video, hostEl, classId, mediaId]);
+  }, [m?.kind, m?.parts, m?.v, url, ytId, video, hostEl, classId, mediaId]);
 
   // YouTube.
   useEffect(() => {
@@ -205,7 +205,7 @@ export function useWave(classId: string, mediaId: string, m: Manifest | null | u
   useEffect(() => {
     if (!m) return setW(null);
     if (yt) return setW(false);
-    const key = m.kind === 'audio' ? `${classId}/${mediaId}/${m.parts}` : url;
+    const key = m.kind === 'audio' ? `${classId}/${mediaId}/${m.parts}/${m.v ?? 0}` : url;
     if (!waveCache.has(key))
       waveCache.set(
         key,
@@ -267,6 +267,7 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 
   const back = useRef<HTMLCanvasElement>(null);
   const front = useRef<HTMLCanvasElement>(null);
   const drag = useRef<number | null>(null);
+  const scrubbing = useRef(false);
   useLayoutEffect(() => {
     if (!wave || !box.current) return;
     const paint = () => {
@@ -288,11 +289,31 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 
     <div
       className={'wv' + (wave ? '' : ' plain') + (wave === null ? ' loading' : '')}
       ref={box}
-      style={{ height: wave ? height : 22 }}
-      onPointerDown={(ev) => duration && onSeek?.(at(ev.clientX))}
-      onPointerMove={(ev) => drag.current !== null && duration && onMove?.(drag.current, +at(ev.clientX).toFixed(2))}
-      onPointerUp={() => (drag.current = null)}
-      onPointerCancel={() => (drag.current = null)}
+      style={{ height: wave ? height : 18 }}
+      role="slider"
+      tabIndex={0}
+      aria-label="Position"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration)}
+      aria-valuenow={Math.round(time)}
+      onKeyDown={(ev) => {
+        const step = ev.key === 'ArrowLeft' ? -5 : ev.key === 'ArrowRight' ? 5 : 0;
+        if (!step || !duration) return;
+        ev.preventDefault();
+        onSeek?.(Math.max(0, Math.min(duration, time + step)));
+      }}
+      onPointerDown={(ev) => {
+        if (!duration || !onSeek) return;
+        scrubbing.current = true;
+        (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+        onSeek(at(ev.clientX));
+      }}
+      onPointerMove={(ev) => {
+        if (drag.current !== null && duration) onMove?.(drag.current, +at(ev.clientX).toFixed(2));
+        else if (scrubbing.current && duration) onSeek?.(at(ev.clientX));
+      }}
+      onPointerUp={() => ((drag.current = null), (scrubbing.current = false))}
+      onPointerCancel={() => ((drag.current = null), (scrubbing.current = false))}
     >
       {wave ? (
         <>
@@ -330,17 +351,13 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 
 
 // ------------------------------------------------------------------ karaoke
 
-// Words light up as they are spoken. Times are known for each line; inside a line the time is
-// shared out by the length of each word.
+// Each line lights up while it is spoken, and the box keeps it in view.
 export function Karaoke({ lines, time, duration, onSeek, big }: { lines: ScriptLine[]; time: number; duration: number; onSeek?: (t: number) => void; big?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const timed = lines.some((l) => l.t !== null);
   let now = -1;
   if (timed) lines.forEach((l, i) => l.t !== null && l.t <= time + 0.05 && (now = i));
-  const nextT = (i: number) => {
-    for (let k = i + 1; k < lines.length; k++) if (lines[k].t !== null) return lines[k].t!;
-    return duration || (lines[i].t ?? 0) + 4;
-  };
+  void duration;
   useLayoutEffect(() => {
     const b = box.current;
     const row = b?.querySelector<HTMLElement>('.kl-line.now');
@@ -352,26 +369,7 @@ export function Karaoke({ lines, time, duration, onSeek, big }: { lines: ScriptL
     <div className={'kl' + (big ? ' big' : '') + (timed ? ' timed' : '')} ref={box}>
       {lines.map((l, i) => {
         const state = !timed ? '' : i === now ? ' now' : i < now ? ' past' : '';
-        let words: ReactNode = l.text;
-        if (i === now && l.t !== null) {
-          const span = Math.max(0.3, nextT(i) - l.t);
-          const p = Math.min(1, (time - l.t) / (span * 0.92));
-          const parts = l.text.split(/(\s+)/);
-          const total = l.text.replace(/\s+/g, '').length || 1;
-          let seen = 0;
-          words = parts.map((w, k) => {
-            if (/^\s+$/.test(w)) return w;
-            const a = seen / total;
-            seen += w.length;
-            const b = seen / total;
-            const cls = p >= b ? 'kw done' : p > a ? 'kw on' : 'kw';
-            return (
-              <span key={k} className={cls} style={p > a && p < b ? { ['--kp' as string]: `${Math.round(((p - a) / (b - a)) * 100)}%` } : undefined}>
-                {w}
-              </span>
-            );
-          });
-        }
+        const words: ReactNode = l.text; // the line lights up as a whole: word timing inside a line is only a guess
         return (
           <p key={i} className={'kl-line' + state + (onSeek && l.t !== null ? ' seekable' : '')} onClick={() => onSeek && l.t !== null && onSeek(l.t)}>
             {words}
@@ -404,26 +402,15 @@ const PlayIcon = ({ playing }: { playing: boolean }) =>
     </svg>
   );
 
-export function Transport({ e, locked, compact }: { e: Engine; locked?: boolean; compact?: boolean }) {
+// Play, the sound wave as the bar (click or drag it to move), the time and the speed.
+export function Transport({ e, locked, compact, children }: { e: Engine; locked?: boolean; compact?: boolean; children?: ReactNode }) {
   const d = e.duration || e.m?.duration || 0;
-  const p = d ? Math.min(1, e.time / d) : 0;
   return (
     <div className={'mp-bar' + (compact ? ' compact' : '')}>
       <button type="button" className="mp-play" onClick={() => (e.playing ? e.pause() : e.play())} disabled={(!e.ready && !e.video) || (locked && !e.playing)} aria-label={e.playing ? 'Pause' : 'Play'}>
         <PlayIcon playing={e.playing} />
       </button>
-      <input
-        className="mp-scrub"
-        type="range"
-        min={0}
-        max={d || 1}
-        step={0.05}
-        value={Math.min(e.time, d || 1)}
-        style={{ ['--p' as string]: `${p * 100}%` }}
-        onChange={(ev) => e.seek(Number(ev.target.value))}
-        aria-label="Position"
-        disabled={!d}
-      />
+      <span className="mp-wave">{children}</span>
       <span className="mp-time">
         {fmtTime(e.time)}
         <span> / {fmtTime(d)}</span>
@@ -473,9 +460,9 @@ function SpeedMenu({ rate, onRate }: { rate: number; onRate: (r: number) => void
   );
 }
 
-function TeacherWave({ e, classId, mediaId, lines }: { e: Engine; classId: string; mediaId: string; lines: ScriptLine[] }) {
+function PlayerWave({ e, classId, mediaId, lines, locked }: { e: Engine; classId: string; mediaId: string; lines?: ScriptLine[]; locked?: boolean }) {
   const wave = useWave(classId, mediaId, e.m);
-  return <Wave wave={wave} duration={e.duration || e.m?.duration || 0} time={e.time} lines={lines} onSeek={e.seek} />;
+  return <Wave wave={wave} duration={e.duration || e.m?.duration || 0} time={e.time} lines={lines} onSeek={locked ? undefined : e.seek} height={40} />;
 }
 
 // teacher: the lesson editor (everything shows). teaching: the teaching screen, which the class may
@@ -501,8 +488,9 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
         {plays > 0 && <span className="mp-plays">{teacher ? `Learners can play it ${plays === 1 ? 'once' : plays + ' times'}` : used ? 'No plays left' : `${plays - e.ends} ${plays - e.ends === 1 ? 'play' : 'plays'} left`}</span>}
         {extra}
       </div>
-      <Transport e={e} locked={used} />
-      {teacher && <TeacherWave e={e} classId={classId} mediaId={mediaId} lines={lines} />}
+      <Transport e={e} locked={used}>
+        <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used} />
+      </Transport>
       {e.error && <p className="mp-error">{e.error}</p>}
       {showScript && (
         <>

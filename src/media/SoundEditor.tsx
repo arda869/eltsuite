@@ -26,7 +26,10 @@ const EFFECT_ICON: Record<Effect, string> = { silence: 'silence', bell: 'bell', 
 
 type Progress = { stage: string; p: number }; // p: 0 to 1 across the whole save
 
-export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folder = '' }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string; folder?: string }) {
+export type Use = { cls: string; lesson: string; task: string };
+export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress: (p: number) => void) => Promise<void> };
+
+export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folder = '', replace }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string; folder?: string; replace?: ReplaceTarget }) {
   const { user } = useAuth();
   const rate = source.buffer.sampleRate;
   const mono = useMemo(() => toMono(source.buffer), [source.buffer]);
@@ -44,6 +47,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const [script, setScript] = useState((source.script ?? []).join('\n'));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState<Progress | null>(null);
+  const [asking, setAsking] = useState<Use[] | null | 'loading'>(null); // replacing: where it is used
   const [playing, setPlaying] = useState(false);
   const [hearing, setHearing] = useState(''); // the added sound playing now
   const ctx = useRef<AudioContext | null>(null);
@@ -160,44 +164,68 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const unchanged = edit.start < 0.01 && edit.end > length - 0.01 && edit.gain === 1 && !edit.even && noise === 0 && !edit.inserts.length;
   const asIs = unchanged && keepAsIs(source.file, length, quality);
   const est = asIs && source.file ? (source.file.size * 4) / 3 : (finalLen / 60) * storedPerMinute(quality);
+  // The finished sound as a file, with its script timed to the new version.
+  const produce = async () => {
+    let d = data;
+    if (!cleaned.current[noise]) {
+      setSaving({ stage: 'Cleaning up the sound', p: 0 });
+      d = await cleanFor(noise);
+    }
+    let blob: Blob;
+    let duration = length;
+    if (asIs && source.file) blob = source.file;
+    else {
+      setSaving({ stage: 'Putting it together', p: 0.05 });
+      const out = assemble(d, rate, edit);
+      duration = out.length / rate;
+      setSaving({ stage: 'Making it smaller', p: 0.08 });
+      blob = await encodeMp3(out, rate, quality, (p) => setSaving({ stage: 'Making it smaller', p: 0.08 + p * 0.52 }));
+    }
+    const lines = script
+      .split('\n')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const marks = source.marks ?? [];
+    const sc: ScriptLine[] = lines.map((text, i) => ({ text, t: marks[i] !== undefined && Number.isFinite(marks[i]) ? mapTime(marks[i], edit) : null }));
+    return { blob, duration: +duration.toFixed(2), sc, name: title.trim() || 'Recording', base: asIs ? 0 : 0.6 };
+  };
   const save = async () => {
     if (!user) return setError('Sign in again to save.');
     stop();
     setError('');
     try {
-      let d = data;
-      if (!cleaned.current[noise]) {
-        setSaving({ stage: 'Cleaning up the sound', p: 0 });
-        d = await cleanFor(noise);
-      }
-      let blob: Blob;
-      let duration = length;
-      if (asIs && source.file) blob = source.file;
-      else {
-        setSaving({ stage: 'Putting it together', p: 0.05 });
-        const out = assemble(d, rate, edit);
-        duration = out.length / rate;
-        setSaving({ stage: 'Making it smaller', p: 0.08 });
-        blob = await encodeMp3(out, rate, quality, (p) => setSaving({ stage: 'Making it smaller', p: 0.08 + p * 0.52 }));
-      }
-      const base = asIs ? 0 : 0.6;
+      const { blob, duration, sc, name, base } = await produce();
       setSaving({ stage: 'Uploading', p: base });
-      const lines = script
-        .split('\n')
-        .map((x) => x.trim())
-        .filter(Boolean);
-      const marks = source.marks ?? [];
-      const sc: ScriptLine[] = lines.map((text, i) => ({ text, t: marks[i] !== undefined ? mapTime(marks[i], edit) : null }));
-      const name = title.trim() || 'Recording';
-      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration: +duration.toFixed(2) }, (p) => setSaving({ stage: 'Uploading', p: base + p * (0.97 - base) }));
+      const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration }, (p) => setSaving({ stage: 'Uploading', p: base + p * (0.97 - base) }));
       setSaving({ stage: 'Adding it to your media archive', p: 0.98 });
-      const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder, tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration: +duration.toFixed(2) });
+      const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder, tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
       setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId, archiveId, title: name, script: sc });
     } catch (e) {
       console.error(e);
       setSaving(null);
       setError('It could not be saved. Check your connection and try again.');
+    }
+  };
+  const askReplace = async () => {
+    if (!replace) return;
+    stop();
+    setAsking('loading');
+    setAsking(await replace.uses().catch(() => []));
+  };
+  const doReplace = async () => {
+    if (!replace) return;
+    setAsking(null);
+    try {
+      const { blob, duration, sc, base } = await produce();
+      setSaving({ stage: 'Replacing it everywhere', p: base });
+      await replace.run(blob, { script: sc, duration }, (p) => setSaving({ stage: 'Replacing it everywhere', p: base + p * (0.99 - base) }));
+      setSaving({ stage: 'Saved', p: 1 });
+      onSaved({ mediaId: '', archiveId: '', title: replace.name, script: sc });
+    } catch (e) {
+      console.error(e);
+      setSaving(null);
+      setError('It could not be replaced. Check your connection and try again.');
     }
   };
 
@@ -341,7 +369,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         <span>Script for karaoke (optional)</span>
         <textarea className="se-bulk short" value={script} onChange={(e) => setScript(e.target.value)} placeholder="One line for each sentence or speaker turn. You can time the lines after saving." />
         <span className="se-tools">
-          {source.marks?.length ? <span className="hint">{source.marks.length} line starts marked while recording.</span> : <span className="hint">Paste the script; time each line after saving, in Script and timing.</span>}
+          {source.marks?.some((m) => Number.isFinite(m)) ? <span className="hint">{source.marks.filter((m) => Number.isFinite(m)).length} lines timed{source.recorded ? ' while recording' : ''}; the times follow your trims.</span> : <span className="hint">Paste the script; time each line after saving, in Script and timing.</span>}
           <span style={{ flex: 1 }} />
           <button type="button" className="btn link" disabled={!script.trim()} onClick={() => setScript(splitScript(script).join('\n'))}>
             One line for each sentence
@@ -354,10 +382,53 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           {backLabel}
         </button>
         <span style={{ flex: 1 }} />
-        <button type="button" className="btn primary" onClick={save} disabled={finalLen < 0.2}>
-          Save
-        </button>
+        {replace ? (
+          <>
+            <button type="button" className="btn" onClick={save} disabled={finalLen < 0.2}>
+              Save as a new sound
+            </button>
+            <button type="button" className="btn primary" onClick={askReplace} disabled={finalLen < 0.2}>
+              Replace this sound…
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn primary" onClick={save} disabled={finalLen < 0.2}>
+            Save
+          </button>
+        )}
       </span>
+      {asking && (
+        <div className="sed-replace" role="alertdialog" aria-label="Replace this sound?" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
+          <strong>Replace “{replace?.name}” everywhere?</strong>
+          {asking === 'loading' ? (
+            <span className="hint">Finding where it is used…</span>
+          ) : asking.length ? (
+            <>
+              <span className="hint">
+                It is used in {asking.length} {asking.length === 1 ? 'task' : 'tasks'}. All of them will play the new version, and their scripts move to the new timing:
+              </span>
+              <ul className="sed-uses">
+                {asking.map((u, i) => (
+                  <li key={i}>
+                    <b>{u.task}</b> · {u.lesson} · <span className="hint">{u.cls}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <span className="hint">It is not used in any lesson yet.</span>
+          )}
+          <span className="hint warn">The old version cannot be brought back. To keep it, save as a new sound instead.</span>
+          <span className="cd-card-btns">
+            <button type="button" className="btn small-btn" onClick={() => setAsking(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn small-btn danger" disabled={asking === 'loading'} onClick={doReplace}>
+              Replace everywhere
+            </button>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

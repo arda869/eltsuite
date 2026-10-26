@@ -110,8 +110,9 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
           <span className="hint">{title || e.m?.title}</span>
         </div>
         {e.video && <div className="mp-screen se-screen" ref={e.host} />}
-        <Transport e={e} />
-        <Wave wave={wave} duration={duration} time={e.time} lines={bulk ? [] : L} onSeek={e.seek} onMove={(i, t) => set(i, { t })} height={64} />
+        <Transport e={e}>
+          <Wave wave={wave} duration={duration} time={e.time} lines={bulk ? [] : L} onSeek={e.seek} onMove={(i, t) => set(i, { t })} height={64} />
+        </Transport>
         {bulk ? (
           <div className="field">
             <span>The script, one line for each sentence or speaker turn</span>
