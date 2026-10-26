@@ -467,6 +467,7 @@ a.btn.primary { color: #ffffff; }
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .check-row input { accent-color: var(--ink); }
 .slash { max-height: 380px; overflow: auto; }
+.slash.slash-float { position: fixed; z-index: 120; max-height: min(380px, 50vh); }
 .done-edit { position: absolute; top: 14px; right: 18px; z-index: 3; margin: 0; }
 .frame-head:has(> .done-edit) > .task-title { padding-right: 120px; }
 
@@ -4272,6 +4273,65 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .chat-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
 .msg-side .ma-search { flex: 0 0 auto; height: 36px; }
 .chat-editor.text-only .tool[aria-label="Insert gap"], .chat-editor.text-only .tool[aria-label="Insert multiple choice in line"], .chat-editor.text-only .tool[aria-label="Everything you can add, with pictures"], .chat-editor.text-only .slash { display: none !important; }
+
+/* Shared material opened from a chat: a large window over the messages */
+.sp-scrim { z-index: 90; }
+.sp-window { width: min(1100px, calc(100vw - 32px)); height: min(88vh, 900px); max-height: none; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.sp-window-bar { flex: none; display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--hair); }
+.sp-in-window { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px 28px; max-width: none; }
+.sp-in-window .sp-tasks { top: 0; }
+.sp-play-foot { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--hair); }
+.sp-play-foot .hint { margin-right: auto; }
+@media (max-width: 640px) { .sp-window { width: 100vw; height: 100dvh; border-radius: 0; } .sp-in-window { padding: 12px; } }
+
+/* Messages: bubbles (a calmer, app-like look) */
+.chat-body { background: var(--page, #f7f6f3); padding: 16px 22px 10px; gap: 2px; }
+.chat-day-h { background: var(--paper); box-shadow: 0 0 0 1px var(--hair); }
+.chat-typing { background: var(--page, #f7f6f3); }
+.bub-av { background: var(--paper); box-shadow: 0 0 0 1px var(--hair); color: var(--accent-text); }
+.bub { max-width: min(620px, 78%); gap: 8px; }
+.bub.first { margin-top: 12px; }
+.bub-col { position: relative; gap: 4px; }
+.bub-who { padding: 0 6px; }
+.bub-box { padding: 9px 14px; border-radius: 20px 20px 20px 6px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 1px 2px rgba(51, 48, 44, .05); gap: 6px; }
+.bub:not(.first) .bub-box { border-top-left-radius: 8px; }
+.bub.mine .bub-box { border-radius: 20px 20px 6px 20px; background: var(--accent); color: #fff; box-shadow: 0 1px 2px rgba(51, 48, 44, .08); }
+.bub.mine:not(.first) .bub-box { border-top-right-radius: 8px; }
+.bub-doc { font: 15px/1.45 var(--sans); }
+.bub-doc:not(.has-blocks) :is(p, li, h1, h2, h3, h4) { font-family: var(--sans); margin: 0; } .bub-doc:not(.has-blocks) p + p { margin-top: .35em; }
+.bub-doc:not(.has-blocks), .bub-doc:not(.has-blocks) > * { padding: 0; min-height: 0; }
+.bub.mine .bub-doc a { color: #fff; }
+.bub.mine .bub-quote { background: rgba(255, 255, 255, .18); border-left-color: rgba(255, 255, 255, .8); color: rgba(255, 255, 255, .85); } .bub.mine .bub-quote b { color: #fff; }
+.bub.mine .bub-edited, .bub.mine .bub-del { color: rgba(255, 255, 255, .75); }
+.bub.tagged:not(.mine) .bub-box { box-shadow: 0 0 0 1.5px var(--accent), 0 1px 2px rgba(51, 48, 44, .05); }
+/* Messages with questions or boxes stay on white paper, so they look like the lesson */
+.bub-box:has(.has-blocks), .bub.mine .bub-box:has(.has-blocks) { background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 2px 10px rgba(51, 48, 44, .06); border-radius: 18px; padding: 12px 16px; }
+.bub.mine .bub-box:has(.has-blocks) { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent), 0 2px 10px rgba(51, 48, 44, .06); }
+.bub-doc.has-blocks { font-family: var(--serif); }
+.bub-reacts { margin: -10px 8px 0; position: relative; z-index: 1; }
+.bub.mine .bub-reacts { justify-content: flex-end; }
+.bub-react { background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 1px 3px rgba(51, 48, 44, .08); }
+@media (hover: hover) and (min-width: 641px) {
+  .bub-tools { position: absolute; top: -14px; right: -6px; z-index: 3; flex-wrap: nowrap; gap: 0; padding: 2px 4px; border-radius: 99px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 6px 18px rgba(51, 48, 44, .12); pointer-events: none; }
+  .bub:hover .bub-tools, .bub:focus-within .bub-tools { pointer-events: auto; }
+  .bub.mine .bub-tools { right: auto; left: -6px; }
+}
+.bub-check { padding-top: 4px; border-top: 1px solid var(--hair); }
+.bub-viewing { display: flex; align-items: center; gap: 8px; font: 600 12px var(--sans); color: var(--accent-text); }
+.bub-answers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px solid var(--hair); font-family: var(--sans); }
+.bub-answers-h { flex-basis: 100%; font: 600 10.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.bub-ans { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 3px; border: 0; border-radius: 99px; background: var(--surface); font: 500 12.5px var(--sans); color: var(--ink); cursor: pointer; }
+.bub-ans b { font-weight: 700; color: var(--accent-text); }
+.bub-ans.on { box-shadow: 0 0 0 1.5px var(--accent); background: var(--paper); }
+.bub-ans-av { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 99px; background: var(--tint-strong); color: var(--accent-text); font: 700 10.5px var(--sans); }
+.bub-answers-note { font-size: 11.5px; }
+.chat-compose { gap: 6px; }
+.chat-editor.big { max-height: 70vh; } .chat-editor.big .ProseMirror { min-height: 40vh; }
+.chat-actions { flex-wrap: wrap; gap: 6px 12px; }
+.chat-actions .hint { margin-right: 0; }
+.chat-opt { display: inline-flex; align-items: center; gap: 6px; font: 12px var(--sans); color: var(--muted); cursor: pointer; } .chat-opt input { accent-color: var(--accent); margin: 0; }
+.chat-spacer { flex: 1; }
+.chat-big { width: 32px; height: 32px; } .chat-big[aria-pressed='true'] { color: var(--accent-text); }
 
 /* Messages on a phone: an open chat fills the screen like a messaging app, the composer stays slim */
 @media (max-width: 640px) {

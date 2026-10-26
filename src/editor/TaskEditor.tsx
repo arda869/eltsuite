@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { newTimeline, TimelineNode } from './Timeline';
 import { TableHandles } from './TableHandles';
 import { BlockHandles } from './BlockMenu';
@@ -183,7 +184,7 @@ const COMMANDS: Cmd[] = [
 ];
 
 function useSlash(editor: Editor | null, extra: Cmd[] = []) {
-  const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number } | null>(null);
+  const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -197,8 +198,9 @@ function useSlash(editor: Editor | null, extra: Cmd[] = []) {
       if (!m) return setState(null);
       const start = from - m[1].length - 1;
       const coords = editor.view.coordsAtPos(from);
-      const host = editor.view.dom.getBoundingClientRect();
-      setState({ query: m[1].toLowerCase(), from: start, to: from, top: coords.bottom - host.top + 6, left: coords.left - host.left });
+      // Screen positions: the menu is drawn on the page itself, so a scrolling chat box or a
+      // zoomed task can't cut it off.
+      setState({ query: m[1].toLowerCase(), from: start, to: from, top: coords.bottom, left: coords.left, above: coords.top });
       setIndex(0);
     };
     editor.on('transaction', update);
@@ -705,8 +707,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             bank: onBank ? () => onBank(((editor.state.selection.content().toJSON() as { content?: JSONContent[] } | null)?.content ?? []) as JSONContent[]) : undefined,
           }}
         />
-        {slash.state && (
-          <div ref={slashRef} className="slash" role="listbox" aria-label="Insert" style={{ top: slash.state.top, left: Math.max(0, slash.state.left - 8) }}>
+        {slash.state && editor && !editor.view.dom.closest('.text-only') && createPortal(
+          <div ref={slashRef} className="slash slash-float" role="listbox" aria-label="Insert" style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
             {(['Questions', 'Text', 'Blocks'] as const).map((g) => {
               const list = slash.items.filter((c) => c.group === g);
               if (!list.length) return null;
@@ -735,7 +737,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                 </div>
               );
             })}
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     </div>

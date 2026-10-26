@@ -5,7 +5,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -21,6 +21,7 @@ import { TopBar } from '../components/TopBar';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { MainNav } from './ColleaguesPage';
+import { SharedWindow } from './SharedPage';
 import { setClip, writeClip, type Clip } from '../lib/clip';
 import { Icon, IconGrid, iconByKey } from '../editor/Icons';
 import { useDismiss } from '../lib/useDismiss';
@@ -225,7 +226,12 @@ function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void
 
 export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void }) {
   const msgs = useMessages(c.id);
-  const navigate = useNavigate();
+  // Enter sends (Shift + Enter for a new line), unless the person turned that off.
+  const [enterSends, setEnterSendsState] = useState(enterSendOn);
+  const setEnterSends = (v: boolean) => (setEnterSendsState(v), saveEnterSend(v));
+  const [big, setBig] = useState(false);
+  const [openShare, setOpenShare] = useState('');
+  const [shareAns, setShareAns] = useState(true);
   const [content, setContent] = useState<JSONContent>(EMPTY);
   const [edKey, setEdKey] = useState(0);
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
@@ -266,7 +272,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
     setBusy(true);
     try {
       const { content: body, key } = splitKey(content);
-      const m = { text: plainOf(content).trim(), content: body, key, blocks: tasky, mentions: [...new Set(mentionsOf(content))] };
+      const m = { text: plainOf(content).trim(), content: body, key, blocks: tasky, mentions: [...new Set(mentionsOf(content))], ...(questionIds(content).length ? { shareAnswers: shareAns } : {}) };
       if (editing) await editMsg(c, editing.id, m);
       else chime('out'), await sendMsg(c, me, { ...m, replyTo: replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null });
       reset();
@@ -323,7 +329,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
                 onReply={() => (setReplyTo(m), setEditing(null))}
                 onEdit={() => startEdit(m)}
                 onCopy={() => setCopying(m)}
-                onOpenShare={(id) => navigate(`/s/${id}`)}
+                onOpenShare={(id) => setOpenShare(id)}
               />
             ))}
           </div>
@@ -342,7 +348,20 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
           </>
         )}
       </div>
-      <div className="chat-compose" onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? (e.preventDefault(), void send()) : undefined)}>
+      <div
+        className="chat-compose"
+        onKeyDownCapture={(e) => {
+          if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
+          const cmd = e.metaKey || e.ctrlKey;
+          // Not while a menu (insert, tagging) is open: Enter picks from it.
+          const menuOpen = !!document.querySelector('.slash-float, .mention-menu');
+          if (cmd || (enterSends && !e.shiftKey && !menuOpen && (e.target as HTMLElement).classList.contains('ProseMirror'))) {
+            e.preventDefault();
+            e.stopPropagation();
+            void send();
+          }
+        }}
+      >
         {(replyTo || editing) && (
           <span className="chat-replying">
             <span>
@@ -355,7 +374,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
           </span>
         )}
         {err && <span className="error">{err}</span>}
-        <div className={'chat-editor' + (elementsOk ? '' : ' text-only')}>
+        <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '')}>
           <TaskEditor handles={false} key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
         </div>
         <span className="chat-actions">
@@ -364,13 +383,27 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
               <UiIcon name="link" size={14} /> Share material
             </button>
           )}
-          <span className="hint chat-keys">Ctrl + Enter to send · @ to tag</span>
+          {questionIds(content).length > 0 && (
+            <label className="chat-opt" data-tip="Each person sees the others’ answers once they have sent their own. You always see everyone’s.">
+              <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
+              Others see answers after answering
+            </label>
+          )}
+          <label className="chat-opt chat-keys">
+            <input type="checkbox" checked={enterSends} onChange={(e) => setEnterSends(e.target.checked)} />
+            Enter to send
+          </label>
+          <span className="chat-spacer" />
+          <button type="button" className="icon-btn chat-big" onClick={() => setBig((b) => !b)} aria-label={big ? 'Smaller writing box' : 'Larger writing box'} data-tip={big ? 'Smaller writing box' : 'Larger writing box'} aria-pressed={big}>
+            <UiIcon name="fullscreen" size={15} />
+          </button>
           <button type="button" className="btn primary" disabled={busy || isEmptyContent(content)} onClick={send}>
             {editing ? 'Save' : 'Send'}
           </button>
         </span>
       </div>
       {sharing && <ShareMaterial c={c} me={me} to={colleaguesHere} onClose={() => setSharing(false)} />}
+      {openShare && <SharedWindow id={openShare} onClose={() => setOpenShare('')} />}
       {copying && <CopyElement c={c} m={copying} onClose={() => setCopying(null)} />}
     </div>
   );
@@ -382,6 +415,25 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
   const [checked, setChecked] = useState<AnswerKey | null>(null);
   const qs = useMemo(() => (m.content ? questionIds(m.content) : []), [m.content]);
   const score = checked ? scoreTask(qs, m.key ?? {}, responses) : null;
+  // Answers are saved: the sender sees everyone's, the others see theirs (and everyone's once
+  // they have answered, if the sender allowed it).
+  const ans = useAnswers(c.id, m, me.key, qs.length > 0 && !m.deleted);
+  const [viewing, setViewing] = useState<ChatAnswer | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (ans.mine && !checked) setResponses(ans.mine.responses as Responses), setChecked(m.key ?? {});
+  }, [ans.mine]); // eslint-disable-line react-hooks/exhaustive-deps
+  const submit = async () => {
+    const sc = scoreTask(qs, m.key ?? {}, responses);
+    setChecked(m.key ?? {});
+    setSaving(true);
+    try {
+      await saveAnswer(c.id, m.id, { by: me.key, name: me.name, at: Date.now(), responses: responses as Record<string, unknown>, score: sc.score, total: sc.total });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const first1 = (n: string) => n.split(' ')[0];
   const tagged = m.mentions?.includes(me.key);
   const [copied, setCopied] = useState(false);
   // On a phone there is no hover: a tap on the message shows Reply, reactions and the rest.
@@ -414,27 +466,47 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
             <>
               {m.content && !isEmptyContent(m.content) && (
                 <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')} onCopy={(e) => setClip(e, clip(), window.getSelection()?.toString() || m.text)}>
-                  <TaskRenderer content={m.content} responses={responses} onChange={(id, r) => setResponses((x) => ({ ...x, [id]: r }))} results={checked} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
+                  <TaskRenderer content={m.content} responses={viewing ? (viewing.responses as Responses) : responses} onChange={(id, r) => !viewing && !mine && setResponses((x) => ({ ...x, [id]: r }))} results={viewing ? m.key ?? {} : checked} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
                 </div>
               )}
-              {qs.length > 0 && !mine && (
+              {viewing && (
+                <span className="bub-viewing">
+                  {viewing.by === me.key ? 'Your answers' : `${first1(viewing.name)}’s answers`}
+                  <button type="button" className="btn link small" onClick={() => setViewing(null)}>
+                    {mine ? 'Hide' : 'Back to mine'}
+                  </button>
+                </span>
+              )}
+              {qs.length > 0 && !mine && !viewing && (
                 <span className="bub-check">
                   {checked ? (
                     <>
-                      <span className="ld-pct">
-                        {score!.score} of {score!.total}
-                      </span>
+                      <span className="ld-pct">{score!.total ? `${score!.score} of ${score!.total}` : 'Sent'}</span>
                       <button type="button" className="btn link small" onClick={() => (setChecked(null), setResponses({}))}>
                         Try again
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn small-btn" onClick={() => setChecked(m.key ?? {})}>
-                      Check
+                    <button type="button" className="btn small-btn primary" disabled={saving || !Object.keys(responses).length} onClick={() => void submit()}>
+                      Send my answers
                     </button>
                   )}
                 </span>
               )}
+              {qs.length > 0 && (ans.all ? (
+                <span className="bub-answers">
+                  <span className="bub-answers-h">{ans.all.length ? `Answers · ${ans.all.length}` : 'No answers yet'}</span>
+                  {ans.all.map((a) => (
+                    <button key={a.by} type="button" className={'bub-ans' + (viewing?.by === a.by ? ' on' : '')} onClick={() => setViewing(viewing?.by === a.by ? null : a)}>
+                      <span className="bub-ans-av">{initial(a.name)}</span>
+                      {a.by === me.key ? 'You' : first1(a.name)}
+                      <b>{a.total ? `${a.score}/${a.total}` : '✓'}</b>
+                    </button>
+                  ))}
+                </span>
+              ) : !mine && (
+                <span className="hint bub-answers-note">{m.shareAnswers ? 'Answer to see everyone’s answers.' : `Only ${first1(m.name)} sees the answers.`}</span>
+              ))}
               {m.share && (
                 <button type="button" className="bub-share" onClick={() => onOpenShare(m.share!.id)}>
                   <span className="sh-ic">

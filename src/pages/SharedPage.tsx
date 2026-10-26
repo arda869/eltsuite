@@ -20,6 +20,8 @@ import { CollabDoc } from '../collab/CollabDoc';
 import { SlidesDoc } from '../collab/slides/SlidesDoc';
 import { MediaPlayer } from '../media/Player';
 import { useImageSrc } from '../editor/PackNode';
+import { questionIds, scoreTask, type AnswerKey } from '../lib/questions';
+import type { Responses } from '../lib/tasks';
 
 // A lesson, task, shared document or piece of media a colleague shared: read-only, with
 // "Make my own copy". Opening a link signs you in first, then comes back here.
@@ -97,16 +99,28 @@ export function SharedPage() {
         </div>
       </Shell>
     );
+  return (
+    <Shell>
+      <SharedContent sh={sh} tasks={tasks} cur={cur} setCur={setCur} onCopy={() => setCopying(true)} />
+      {copying && <CopyOut sh={sh} tasks={tasks} onClose={() => setCopying(false)} />}
+    </Shell>
+  );
+}
+
+// What was shared, on its page or in a window over a chat. In "play" the tasks work as they do
+// for learners: spin the wheel, fill the gaps, then check.
+function SharedContent({ sh, tasks, cur, setCur, onCopy, play }: { sh: Share; tasks: SharedTask[]; cur: number; setCur: (i: number) => void; onCopy: () => void; play?: boolean }) {
+  const { user } = useAuth();
   const shown = tasks.filter((t) => t.data.kind !== 'section');
   const t = shown[cur];
   const mine = sh.owner === user!.uid;
   return (
-    <Shell>
+    <>
       <header className="sp-head">
         <span className="sp-kind">
           {KIND[sh.kind]}
           <span className="sp-ro">
-            <UiIcon name="lock" size={12} /> Read-only
+            <UiIcon name={play ? 'pointer' : 'lock'} size={12} /> {play ? 'Try it out' : 'Read-only'}
           </span>
         </span>
         <h1 className="page-title">{sh.title}</h1>
@@ -115,7 +129,7 @@ export function SharedPage() {
           {sh.kind === 'lesson' && ` · ${sh.count ?? shown.length} ${(sh.count ?? shown.length) === 1 ? 'task' : 'tasks'}`}
         </span>
         <span className="sp-acts">
-          <button type="button" className="btn primary" onClick={() => setCopying(true)}>
+          <button type="button" className="btn primary" onClick={onCopy}>
             Make my own copy
           </button>
         </span>
@@ -134,9 +148,7 @@ export function SharedPage() {
             </nav>
           )}
           <article className="sp-task">
-            {!t ? (
-              <Loader label="Reading the tasks" />
-            ) : (
+            {!t ? <Loader label="Reading the tasks" /> : play ? <PlayTask key={t.id} t={t} space={'share:' + sh.id} /> : (
               <>
                 <h2 className="sp-task-t">{String(t.data.title || 'Untitled task')}</h2>
                 {t.data.instructions && <p className="sp-task-i">{String(t.data.instructions)}</p>}
@@ -164,8 +176,95 @@ export function SharedPage() {
         </div>
       )}
       {sh.kind === 'media' && <SharedMedia sh={sh} />}
-      {copying && <CopyOut sh={sh} tasks={tasks} onClose={() => setCopying(false)} />}
-    </Shell>
+    </>
+  );
+}
+
+// One task to try: answer it like a learner, check, try again. Nothing is saved.
+function PlayTask({ t, space }: { t: SharedTask; space: string }) {
+  const [responses, setResponses] = useState<Responses>({});
+  const [checked, setChecked] = useState<AnswerKey | null>(null);
+  const qs = questionIds(t.data.content ?? null);
+  const key = (t.key ?? {}) as AnswerKey;
+  const score = checked ? scoreTask(qs, key, responses) : null;
+  return (
+    <>
+      <h2 className="sp-task-t">{String(t.data.title || 'Untitled task')}</h2>
+      {t.data.instructions && <p className="sp-task-i">{String(t.data.instructions)}</p>}
+      <div className="doc sp-doc">
+        <TaskRenderer content={t.data.content ?? null} responses={responses} onChange={(id, r) => !checked && setResponses((x) => ({ ...x, [id]: r }))} results={checked} classId={space} />
+      </div>
+      {qs.length > 0 && (
+        <div className="sp-play-foot">
+          {checked ? (
+            <>
+              <span className="ld-pct">{score!.total ? `${score!.score} of ${score!.total} correct` : 'Done'}</span>
+              <button type="button" className="btn" onClick={() => (setChecked(null), setResponses({}))}>
+                Try again
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="hint">Just for you: nothing is saved</span>
+              <button type="button" className="btn primary" disabled={!Object.keys(responses).length} onClick={() => setChecked(key)}>
+                Check answers
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+// A shared lesson or task in a window over the chat, to try out without leaving the messages.
+export function SharedWindow({ id, onClose }: { id: string; onClose: () => void }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [sh, setSh] = useState<Share | 'denied' | null | undefined>(undefined);
+  const [tasks, setTasks] = useState<SharedTask[]>([]);
+  const [cur, setCur] = useState(0);
+  const [copying, setCopying] = useState(false);
+  useEffect(() => {
+    readShare(id).then((s) => {
+      setSh(s);
+      if (s && s !== 'denied') {
+        if (user && s.owner !== user.uid) rememberShare(user.uid, s);
+        if (s.kind === 'lesson' || s.kind === 'task') shareTasks(id).then(setTasks, () => setTasks([]));
+      }
+    });
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && !copying && onClose();
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [onClose, copying]);
+  return (
+    <div className="scrim sp-scrim" onClick={onClose}>
+      <div className="dialog sp-window" role="dialog" aria-label="Shared material" onClick={(e) => e.stopPropagation()}>
+        <div className="sp-window-bar">
+          <button type="button" className="btn link small" onClick={() => navigate(`/s/${id}`)}>
+            Open as a page
+          </button>
+          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>×</span>
+          </button>
+        </div>
+        <div className="sp sp-in-window">
+          {sh === undefined ? (
+            <Loader label="Opening what was shared" />
+          ) : sh === null || sh === 'denied' ? (
+            <div className="sp-empty">
+              <UiIcon name="lock" size={26} />
+              <h1 className="page-title">{sh === null ? 'This is no longer shared' : 'This was not shared with you'}</h1>
+            </div>
+          ) : (
+            <SharedContent sh={sh} tasks={tasks} cur={cur} setCur={setCur} onCopy={() => setCopying(true)} play />
+          )}
+        </div>
+        {copying && sh && sh !== 'denied' && <CopyOut sh={sh} tasks={tasks} onClose={() => setCopying(false)} />}
+      </div>
+    </div>
   );
 }
 

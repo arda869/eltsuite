@@ -44,7 +44,10 @@ export type Msg = {
   reactions?: Record<string, string[]>;
   edited?: number;
   deleted?: boolean;
+  shareAnswers?: boolean; // the others see everyone's answers once they have answered
 };
+// One person's answers to the questions in a message.
+export type ChatAnswer = { by: string; name: string; at: number; responses: Record<string, unknown>; score: number; total: number };
 
 const col = collection(db, 'chats');
 export const msgsCol = (chatId: string) => collection(db, 'chats', chatId, 'msgs');
@@ -227,3 +230,41 @@ export function useMsgPrefs(uid?: string) {
   return p;
 }
 export const saveMsgPrefs = (uid: string, p: MsgPrefs) => updateDoc(doc(db, 'users', uid), { msgPrefs: p });
+
+// Answers to a message's questions. The sender gets all of them; anyone else gets their own, and
+// everyone's once they have answered, if the sender allowed that.
+const answersCol = (chatId: string, msgId: string) => collection(db, 'chats', chatId, 'msgs', msgId, 'answers');
+export const saveAnswer = (chatId: string, msgId: string, a: ChatAnswer) => setDoc(doc(answersCol(chatId, msgId), a.by), JSON.parse(JSON.stringify(a)));
+export function useAnswers(chatId: string, m: Msg, me: string, on: boolean) {
+  const [mine, setMine] = useState<ChatAnswer | null | undefined>(undefined);
+  const [all, setAll] = useState<ChatAnswer[] | null>(null);
+  const sender = m.by === me;
+  useEffect(() => {
+    if (!on || sender) return;
+    return onSnapshot(doc(answersCol(chatId, m.id), me), (s) => setMine(s.exists() ? (s.data() as ChatAnswer) : null), () => setMine(null));
+  }, [chatId, m.id, me, on, sender]);
+  const canList = on && (sender || (!!m.shareAnswers && !!mine));
+  useEffect(() => {
+    if (!canList) return setAll(null);
+    return onSnapshot(answersCol(chatId, m.id), (s) => setAll(s.docs.map((d) => d.data() as ChatAnswer).sort((a, b) => a.at - b.at)), () => setAll(null));
+  }, [chatId, m.id, canList]);
+  return { mine, all };
+}
+
+// Enter to send: on unless turned off (kept on this device).
+export function enterSendOn() {
+  try {
+    const v = localStorage.getItem('ll.enterSend');
+    // On a phone the Return key makes a new line unless chosen otherwise.
+    return v === null ? !window.matchMedia('(max-width: 640px)').matches : v === '1';
+  } catch {
+    return true;
+  }
+}
+export function saveEnterSend(v: boolean) {
+  try {
+    localStorage.setItem('ll.enterSend', v ? '1' : '0');
+  } catch {
+    /* fine */
+  }
+}

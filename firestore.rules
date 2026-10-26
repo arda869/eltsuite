@@ -470,6 +470,16 @@ service cloud.firestore {
             || classData(myClass()).get('messaging', {}).get('learnerElements', true) == true);
         allow update: if inChat(chatOf(id)) && (resource.data.by == chatKey() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));
         allow delete: if signedIn() && resource.data.by == chatKey();
+        // Answers to the questions in a message. The sender sees them all as they come in;
+        // the others see their own, and everyone's once they have answered, when the sender allows it.
+        match /answers/{who} {
+          allow read: if inChat(chatOf(id)) && (who == chatKey()
+            || get(/databases/$(database)/documents/chats/$(id)/msgs/$(mid)).data.by == chatKey()
+            || (get(/databases/$(database)/documents/chats/$(id)/msgs/$(mid)).data.get('shareAnswers', false) == true
+              && exists(/databases/$(database)/documents/chats/$(id)/msgs/$(mid)/answers/$(chatKey()))));
+          allow create, update: if who == chatKey() && inChat(chatOf(id)) && request.resource.data.by == chatKey();
+          allow delete: if who == chatKey();
+        }
       }
       match /media/{mediaId} {
         allow read: if inChat(chatOf(id));
