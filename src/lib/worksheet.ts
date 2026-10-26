@@ -351,6 +351,10 @@ export function flattenTask(t: ExportTask): WsTask {
       case 'drawBoard':
         cur.push({ kind: 'draw', prompt: String(a.prompt ?? '') });
         return;
+      case 'collab':
+        cur.push({ kind: 'note', text: `${a.title ? a.title + ': ' : ''}a shared document, written together in Lesson Lit.` });
+        cur.push({ kind: 'lines', n: 0, count: 6 });
+        return;
       case 'upload': {
         const kinds = (a.kinds ?? []) as string[];
         const what = kinds.includes('any') || !kinds.length ? 'your file' : kinds.map((k) => ({ documents: 'a document', pictures: 'a photo', sound: 'a recording', video: 'a video' })[k] ?? k).join(' or ');

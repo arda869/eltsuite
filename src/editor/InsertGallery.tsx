@@ -10,7 +10,7 @@ const SECTIONS: Section[] = [
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
   { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
-  { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
+  { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'collab', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['textbox', 'info', 'reveal', 'image', 'linkcard', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Board, notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['drawboard', 'grammarlink', 'vocablink', 'bankpick'] },
@@ -48,6 +48,7 @@ const ABOUT: Record<string, string> = {
   wheel: 'The same cards on a wheel learners spin.',
   boxes: 'The same cards hidden behind boxes learners open.',
   writing: 'A long answer with a word count and an optional model answer. You mark it, with a Cambridge-style or custom rubric if you like, and correction codes.',
+  collab: 'A shared document, written live like Google Docs: the whole class together, each group, or each learner and then their group. Learners edit, suggest changes or comment; you lock, accept and see who wrote what.',
   upload: 'Learners hand in files: a photo of their work, a Word or PowerPoint file, a recording or a short video. You choose which kinds, how large and how many, and open each one when you mark.',
   'pq-speaking': 'A speaking card with photos, questions and a timer, for pairs or solo.',
   survey: 'Ratings, faces, choices, ranking or open answers. Anonymous if you want. Results as live charts you can share.',
@@ -449,6 +450,18 @@ const PREVIEW: Record<string, () => ReactNode> = {
     </span>
   ),
   image: () => <span className="gl-photo wide" />,
+  collab: () => (
+    <span className="gl-col">
+      <span className="gl-collab">
+        <i style={{ background: '#3d6fb6' }} />
+        <i style={{ background: '#b8508f' }} />
+        <i style={{ background: '#c7772f' }} />
+      </span>
+      <span className="gl-kara">
+        We went <b>to the beach</b> and <s>swam</s> swam.
+      </span>
+    </span>
+  ),
   upload: () => (
     <span className="gl-col">
       <span className="gl-upload">

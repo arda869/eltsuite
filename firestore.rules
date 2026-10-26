@@ -252,6 +252,12 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Shared documents (Collaborate), listed so they can be found and continued
+      match /collabs/{docId} {
+        allow read: if viewsClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId);
+      }
+
       // Files learners hand in ("File upload" questions): a record and the file in parts.
       // Only the learner who sent it and the class's teachers can open it.
       match /files/{fileId} {

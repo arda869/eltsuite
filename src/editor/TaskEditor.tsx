@@ -19,6 +19,7 @@ import { RevealBox, newReveal } from './Reveal';
 import { LinkCard } from './LinkCard';
 import { MediaBlock, newMedia } from './MediaNode';
 import { UploadBlock, newUpload } from './UploadNode';
+import { CollabBlock, newCollab } from './CollabNode';
 import { BLOCKS } from './coursebook';
 import Link from '@tiptap/extension-link';
 import OrderedList from '@tiptap/extension-ordered-list';
@@ -97,6 +98,7 @@ const COMMANDS: Cmd[] = [
     },
   },
   { key: 'order', label: 'Word order', hint: 'Put the words in the right order', group: 'Questions', run: (e) => e.chain().focus().insertContent([newOrder(), { type: 'paragraph' }]).run() },
+  { key: 'collab', label: 'Collaborate', hint: 'A document the class writes together, live: edit, suggest, comment', group: 'Questions', run: (e) => e.chain().focus().insertContent([newCollab(), { type: 'paragraph' }]).run() },
   { key: 'upload', label: 'File upload', hint: 'Learners hand in files: documents, photos, sound or video', group: 'Questions', run: (e) => e.chain().focus().insertContent([newUpload(), { type: 'paragraph' }]).run() },
   { key: 'writing', label: 'Long answer', hint: 'Writing with a word count; you mark it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newWriting(), { type: 'paragraph' }]).run() },
   { key: 'reflect', label: 'Self-reflection', hint: 'Learners rate how they did: stars, faces, scales, can-do lists', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('self'), { type: 'paragraph' }]).run() },
@@ -270,7 +272,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload'];
+const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -351,6 +353,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       LinkCard,
       MediaBlock,
       UploadBlock,
+      CollabBlock,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
       Ipa,

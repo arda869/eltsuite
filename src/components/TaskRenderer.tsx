@@ -24,6 +24,7 @@ import { RevealBlock } from '../editor/Reveal';
 import type { CoverMode, CoverProps } from '../editor/PicEdit';
 import { MediaPlayer } from '../media/Player';
 import { UploadBox, type UploadAnswer, type UploadAttrs } from '../editor/UploadNode';
+import { CollabTask, type CollabAttrs } from '../collab/CollabTask';
 import { LinkCardView } from '../editor/LinkCard';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
@@ -1017,6 +1018,12 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             {kids()}
           </RevealBlock>
         );
+      case 'collab':
+        return node.attrs?.docKey ? (
+          <div key={key} data-bk={key} className="task-collab">
+            <CollabTask a={node.attrs as CollabAttrs} classId={classId ?? ''} teacher={teacher} selfId={selfId} classmates={classmates} />
+          </div>
+        ) : null;
       case 'upload': {
         const id = String(node.attrs?.id ?? '');
         return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -73,21 +73,26 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
 }
 
 export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head }: CollabProps) {
-  const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
-  const session = useMemo(() => {
+  // The shared document and its connection, made when the component mounts (and remade if it
+  // opens another document). React may mount twice in development, so it lives in an effect.
+  const [session, setSession] = useState<{ doc: Y.Doc; provider: RtdbProvider; pud: Y.PermanentUserData } | null>(null);
+  useEffect(() => {
     const doc = new Y.Doc();
     const provider = new RtdbProvider(docKey, doc, me.uid);
     const pud = new Y.PermanentUserData(doc);
     pud.setUserMapping(doc, doc.clientID, me.uid);
-    return { doc, provider, pud };
+    setSession({ doc, provider, pud });
+    return () => {
+      provider.destroy();
+      doc.destroy();
+    };
   }, [docKey, me.uid]);
-  useEffect(
-    () => () => {
-      session.provider.destroy();
-      session.doc.destroy();
-    },
-    [session],
-  );
+  if (!session) return <div className="cd cd-wait" />;
+  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head }} session={session} />;
+}
+
+function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, session }: CollabProps & { session: { doc: Y.Doc; provider: RtdbProvider; pud: Y.PermanentUserData } }) {
+  const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   const allowed = (teacher ? (['edit', 'suggest', 'comment'] as CollabMode[]) : modes).filter(Boolean);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
   useEffect(() => {
@@ -464,7 +469,7 @@ function DownloadMenu({ onWord, onPdf }: { onWord: () => void; onPdf: () => void
   return (
     <span className="cd-dl" ref={ref}>
       <button type="button" className="cd-icon" onClick={() => setOpen((o) => !o)} aria-label="Download" data-tip="Download">
-        <UiIcon name="export" size={16} />
+        <UiIcon name="import" size={16} />
       </button>
       {open && (
         <span className="cd-dl-menu" role="menu">
