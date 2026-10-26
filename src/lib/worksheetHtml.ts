@@ -37,6 +37,8 @@ function block(b: Block): string {
   switch (b.kind) {
     case 'p':
       if (b.heading) return `<p class="sub">${runs(b.runs)}</p>`;
+      if (b.list === 'number' && b.mark !== undefined) return `<p class="li label"><span class="mk">${esc(b.mark)}</span><span>${runs(b.runs)}</span></p>`;
+      if (b.list === 'bullet' && b.mark === '') return `<p class="li"><span class="mk"></span><span>${runs(b.runs)}</span></p>`;
       if (b.list) return `<p class="li ${b.list}"><span class="mk"></span><span>${runs(b.runs)}</span></p>`;
       return `<p>${runs(b.runs)}</p>`;
     case 'note':
@@ -248,6 +250,7 @@ h1 { color: var(--ink); }
 .cut-title { border-left: 0; padding: 1.2mm 2.6mm; background: var(--accent); color: #fff; border-radius: 1.2mm; align-self: flex-start; }
 .scissors { color: var(--accent-ink); }
 .li.bullet .mk::before { color: var(--accent); }
+.li.label .mk { width: auto; min-width: 4mm; font-weight: 600; color: var(--accent-ink); font-family: Karla, sans-serif; }
 
 /* Answer key */
 .key .ex-body p { margin-bottom: .6mm; }

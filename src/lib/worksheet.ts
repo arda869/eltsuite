@@ -1,3 +1,4 @@
+import { listLabel } from './listLabel';
 import type { JSONContent } from '@tiptap/react';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType } from 'docx';
 import type { ExportTask } from './textformat';
@@ -8,7 +9,7 @@ import { packAnswerText, scorePack, splitPack, type PackKind } from './pack';
 
 export type Run = { t?: string; blank?: number; options?: string[]; stack?: string[]; num?: number; bold?: boolean; italic?: boolean };
 export type Block =
-  | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number' }
+  | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number'; mark?: string }
   | { kind: 'box'; words: string[]; label: string }
   | { kind: 'match'; left: string[]; right: string[]; n: number }
   | { kind: 'lines'; n: number; count: number; prompt?: string }
@@ -78,21 +79,26 @@ export function flattenTask(t: ExportTask): WsTask {
     }
     return out;
   };
-  const walk = (node: JSONContent, list?: 'bullet' | 'number') => {
+  const walk = (node: JSONContent, list?: 'bullet' | 'number', mark?: string) => {
     const a = node.attrs ?? {};
     switch (node.type) {
       case 'paragraph': {
         const runs = runsOf(node.content);
-        if (runs.length) cur.push({ kind: 'p', runs, list });
+        if (runs.length) cur.push({ kind: 'p', runs, list, mark });
         return;
       }
       case 'heading':
         cur.push({ kind: 'p', runs: [{ t: text(node), bold: true }], heading: true });
         return;
       case 'bulletList':
-      case 'orderedList':
-        node.content?.forEach((li) => li.content?.forEach((c) => walk(c, node.type === 'bulletList' ? 'bullet' : 'number')));
+        node.content?.forEach((li) => li.content?.forEach((c, k) => walk(c, 'bullet', k ? '' : undefined)));
         return;
+      case 'orderedList': {
+        // Keep the teacher's start and style: 4, 5, 6 · d, e, f · iv, v, vi
+        const start = typeof a.start === 'number' ? a.start : 1;
+        node.content?.forEach((li, i) => li.content?.forEach((c, k) => walk(c, 'number', k ? '' : listLabel(start + i, String(a.listType ?? '1')) + '.')));
+        return;
+      }
       case 'table':
         cur.push({ kind: 'table', rows: (node.content ?? []).map((r) => (r.content ?? []).map((c) => text(c).trim())) });
         return;
@@ -277,6 +283,12 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const mix = (hex: string, other: number, t: number) => [0, 2, 4].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - t) + other * t).toString(16).padStart(2, '0')).join('').toUpperCase();
   const ACC_INK = mix(ACC, 0, 0.28);
   const ACC_TINT = mix(ACC, 255, 0.9);
+  // List items: bullets as Word bullets; numbered items keep the teacher's own labels (4. · d. · iv.).
+  const listParas = (b: Extract<Block, { kind: 'p' }>) => {
+    if (b.list === 'bullet' && b.mark === undefined) return { bullet: { level: 0 } };
+    if (!b.list) return {};
+    return { indent: { left: 400, hanging: b.mark ? 400 : 0 }, tabStops: [{ type: 'left' as never, position: 400 }] };
+  };
   // Our fonts, embedded in the file so Word shows them even where they are not installed
   // (Google Docs has both as Google Fonts).
   const SERIF = 'Fraunces';
@@ -309,7 +321,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const toParas = (list: Block[], kn = false): (Paragraph | Table)[] => {
     const out: (Paragraph | Table)[] = [];
     for (const b of list) {
-      if (b.kind === 'p') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: runsToDocx(b.runs), bullet: b.list === 'bullet' ? { level: 0 } : undefined, numbering: b.list === 'number' ? { reference: 'nums', level: 0 } : undefined, heading: b.heading ? HeadingLevel.HEADING_3 : undefined, spacing: { after: 100, line: 320 } }));
+      if (b.kind === 'p') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [...(b.list === 'number' && b.mark ? [new TextRun({ text: b.mark + '\t', bold: true, font: SANS, color: ACC_INK })] : []), ...runsToDocx(b.runs)], ...listParas(b), heading: b.heading ? HeadingLevel.HEADING_3 : undefined, spacing: { after: 100, line: 320 } }));
       else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
       else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'callout') out.push(shaded(ACC_TINT, [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
@@ -398,7 +410,6 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const SIZES: Record<string, { width: number; height: number }> = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 }, A5: { width: 8391, height: 11906 } };
   const doc = new Document({
     fonts: embedded,
-    numbering: { config: [{ reference: 'nums', levels: [{ level: 0, format: 'decimal', text: '%1.', alignment: AlignmentType.LEFT }] }] },
     styles: { default: { document: { run: { font: SERIF, size: opts.paper === 'A5' ? 20 : 22, color: '2F2C29' } } } },
     sections: [
       { properties: { page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children },

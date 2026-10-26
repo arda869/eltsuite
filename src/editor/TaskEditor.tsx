@@ -20,7 +20,9 @@ import { LinkCard } from './LinkCard';
 import { BLOCKS } from './coursebook';
 import Link from '@tiptap/extension-link';
 import OrderedList from '@tiptap/extension-ordered-list';
+import { listLabel, parseListStart } from '../lib/listLabel';
 import { EditorContextMenu } from './ContextMenu';
+import { LineAdder } from './LineAdder';
 import { EditorClassContext } from './context';
 import { Selection } from '@tiptap/pm/state';
 import { Highlight, HighlightTool } from './Highlight';
@@ -206,6 +208,39 @@ const cellAttrs = {
   bg: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-bg') || '', renderHTML: (a: { bg: string }) => (a.bg ? { 'data-bg': a.bg, style: `background-color: ${cellBg(a.bg)}` } : {}) },
   align: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-align') || '', renderHTML: (a: { align: string }) => (a.align ? { 'data-align': a.align, style: `text-align: ${a.align}` } : {}) },
 };
+
+// "Start at" for a numbered list: type 4, d, D, iv or IV.
+function ListStart({ editor }: { editor: Editor }) {
+  const a = editor.getAttributes('orderedList');
+  const type = (a.listType as string) ?? '1';
+  const cur = listLabel((a.start as number) ?? 1, type);
+  const [v, setV] = useState(cur);
+  useEffect(() => setV(cur), [cur]);
+  const apply = (refocus: boolean) => {
+    const p = parseListStart(v, type);
+    if (!p) return setV(cur);
+    const chain = refocus ? editor.chain().focus() : editor.chain();
+    chain.updateAttributes('orderedList', p).run();
+  };
+  return (
+    <input
+      className="tb-start"
+      aria-label="Start numbering at"
+      data-tip="Type a number or letter: 4, d, D, iv or IV"
+      value={v}
+      size={4}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => apply(false)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          apply(true);
+        }
+        if (e.key === 'Escape') setV(cur);
+      }}
+    />
+  );
+}
 
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
@@ -427,6 +462,10 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
               ] as const
             ).map(([k, l]) => BTN('Numbering ' + l, (editor.getAttributes('orderedList').listType ?? '1') === k, () => editor.chain().focus().updateAttributes('orderedList', { listType: k }).run(), l))}
           </span>
+          <span className="tb-group">
+            <span className="tb-label">Start at</span>
+            <ListStart editor={editor} />
+          </span>
         </div>
       )}
       {editor.isActive('table') && (
@@ -479,6 +518,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       <div className="editor-host" ref={setHost}>
         <EditorContent editor={editor} className="doc" />
         <TableInsert editor={editor} host={host} />
+        <LineAdder editor={editor} host={host} />
         <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
         <MentionMenu menu={mention} />
         <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={places} />

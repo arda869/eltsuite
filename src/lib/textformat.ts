@@ -1,3 +1,4 @@
+import { listLabel } from './listLabel';
 // Text convention for exporting and importing lessons (see the brief, section 7).
 // Export works from the editor content (answers included). Import builds editor content
 // and reports problems with line numbers. Anything the convention has no words for is kept
@@ -48,7 +49,7 @@ function block(n: JSONContent, out: string[], listPrefix = '') {
       return;
     case 'bulletList':
     case 'orderedList':
-      (n.content ?? []).forEach((li, i) => (li.content ?? []).forEach((c, k) => block(c, out, k === 0 ? (n.type === 'orderedList' ? `${i + 1}. ` : '- ') : '   ')));
+      (n.content ?? []).forEach((li, i) => (li.content ?? []).forEach((c, k) => block(c, out, k === 0 ? (n.type === 'orderedList' ? `${listLabel((typeof a.start === 'number' ? a.start : 1) + i, String(a.listType ?? '1'))}. ` : '- ') : '   ')));
       out.push('');
       return;
     case 'image':
