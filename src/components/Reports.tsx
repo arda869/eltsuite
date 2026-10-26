@@ -3,6 +3,8 @@ import type { ClassDoc, Item } from '../lib/classes';
 import type { Learner } from '../lib/learners';
 import { addAttendance, correctAttendance, csv, download, itemResult, minutesOf, STATUS_LABEL, useAttendance, useClassAnswers, type Status } from '../lib/reports';
 import { useMistakes } from '../lib/mistakes';
+import { discussionSettings, participation } from '../lib/discussion';
+import { useEffect } from 'react';
 
 // Reports for the teacher: the class across every item, one learner across everything,
 // one item across the class, attendance, and the mistake areas. Scores are percentages so
@@ -27,7 +29,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
   const answers = useClassAnswers(c.id);
   const attendance = useAttendance(c.id);
   const mistakes = useMistakes(c.id, undefined, true);
-  const [view, setView] = useState<'class' | 'learner' | 'item' | 'attendance' | 'mistakes'>(initialItem ? 'item' : 'class');
+  const [view, setView] = useState<'class' | 'learner' | 'item' | 'attendance' | 'mistakes' | 'discussion'>(initialItem ? 'item' : 'class');
   const [learnerId, setLearnerId] = useState('');
   const [itemId, setItemId] = useState(initialItem?.id ?? '');
   const [type, setType] = useState<'' | Item['type']>('');
@@ -75,6 +77,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
               ['item', 'One item'],
               ['attendance', 'Attendance'],
               ['mistakes', 'Mistake areas'],
+              ...(discussionSettings(c).track ? [['discussion', 'Discussion'] as const] : []),
             ] as const
           ).map(([k, label]) => (
             <button key={k} type="button" role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>
@@ -316,6 +319,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
       {view === 'mistakes' && (
         <MistakeAreas learners={roster} items={items} mistakes={mistakes} />
       )}
+      {view === 'discussion' && <Participation c={c} learners={roster.map((l) => ({ id: l.id, name: l.displayName }))} />}
     </div>
   );
 }
@@ -412,3 +416,43 @@ function MistakeAreas({ learners, items, mistakes }: { learners: Learner[]; item
   );
 }
 
+
+// Posts and replies per learner on the discussion board.
+function Participation({ c, learners }: { c: ClassDoc; learners: { id: string; name: string }[] }) {
+  const [counts, setCounts] = useState<Record<string, { threads: number; replies: number; name: string }> | null>(null);
+  useEffect(() => {
+    participation(c.id).then(setCounts, () => setCounts({}));
+  }, [c.id]);
+  if (!counts) return <p className="hint">Counting…</p>;
+  const rows = learners.map((l) => ({ name: l.name, threads: counts[l.id]?.threads ?? 0, replies: counts[l.id]?.replies ?? 0 })).sort((a, b) => b.threads + b.replies - (a.threads + a.replies));
+  return (
+    <div className="rp-section">
+      <div className="row-between">
+        <span className="hint">Threads started and replies written on the class discussion board.</span>
+        <button type="button" className="btn small-btn" onClick={() => download(`${c.name} discussion`, csv([['Learner', 'Threads', 'Replies', 'Total'], ...rows.map((r) => [r.name, r.threads, r.replies, r.threads + r.replies])]))}>
+          CSV
+        </button>
+      </div>
+      <table className="rp-table">
+        <thead>
+          <tr>
+            <th>Learner</th>
+            <th>Threads</th>
+            <th>Replies</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.name}>
+              <td>{r.name}</td>
+              <td>{r.threads}</td>
+              <td>{r.replies}</td>
+              <td>{r.threads + r.replies}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

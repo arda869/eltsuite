@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { addAnnotation, removeAnnotation, replyTo, type AnnColor, type Annotation } from '../lib/annotations';
+import { addAnnotation, removeAnnotation, replyTo, type AnnColor, type Annotation, type Code } from '../lib/annotations';
 
 // Highlights, underlines and comments drawn over the task text. They are stored as a block
 // key plus character offsets, so they land on the same words at any text size or width.
@@ -68,6 +68,9 @@ export function AnnotationLayer({
   taskId,
   canAnnotate,
   me,
+  forceVisibility,
+  learnerUidFor,
+  codes,
 }: {
   container: RefObject<HTMLElement>;
   annotations: Annotation[];
@@ -75,10 +78,13 @@ export function AnnotationLayer({
   taskId: string;
   canAnnotate: boolean;
   me: { uid: string; name: string; teacher: boolean };
+  forceVisibility?: 'private'; // discussion feedback: always private to one learner
+  learnerUidFor?: (bk: string) => string | undefined; // which learner a block belongs to
+  codes?: Code[]; // correction codes offered in the toolbar
 }) {
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [sel, setSel] = useState<{ bk: string; start: number; end: number; quote: string; x: number; y: number } | null>(null);
-  const [vis, setVis] = useState<'class' | 'private'>('class');
+  const [vis, setVis] = useState<'class' | 'private'>(forceVisibility ?? 'class');
   const [commenting, setCommenting] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [reply, setReply] = useState('');
@@ -150,7 +156,7 @@ export function AnnotationLayer({
     return () => root.removeEventListener('mouseup', up);
   }, [canAnnotate, container]);
 
-  async function make(kind: Annotation['kind'], color?: AnnColor, comment?: string) {
+  async function make(kind: Annotation['kind'], color?: AnnColor, comment?: string, code?: string) {
     if (!sel) return;
     await addAnnotation(classId, {
       taskId,
@@ -161,7 +167,9 @@ export function AnnotationLayer({
       quote: sel.quote,
       kind,
       ...(color ? { color } : {}),
-      visibility: vis,
+      ...(code ? { code } : {}),
+      visibility: forceVisibility ?? vis,
+      ...(learnerUidFor?.(sel.bk) ? { learnerUid: learnerUidFor(sel.bk) } : {}),
       replies: comment ? [{ by: me.uid, name: me.name, text: comment, at: Date.now(), teacher: true }] : [],
     });
     setSel(null);
@@ -180,6 +188,13 @@ export function AnnotationLayer({
           />
         )),
       )}
+      {boxes
+        .filter((b) => b.a.kind === 'code' && b.a.code)
+        .map((b) => (
+          <i key={'k' + b.id} className="ann-code-tag" style={{ left: b.rects[b.rects.length - 1].x + b.rects[b.rects.length - 1].w, top: b.rects[b.rects.length - 1].y - 10 }} title={b.a.replies[0]?.text}>
+            {b.a.code}
+          </i>
+        ))}
       {boxes
         .filter((b) => b.a.kind === 'comment' || b.a.replies.length > 0)
         .map((b) => (
@@ -235,8 +250,13 @@ export function AnnotationLayer({
           <button type="button" className="ann-btn" title="Comment" onClick={() => setCommenting(' ')}>
             Comment
           </button>
-          <button type="button" className={'ann-btn vis'} title="Who sees it" onClick={() => setVis((v) => (v === 'class' ? 'private' : 'class'))}>
-            {vis === 'class' ? 'Class' : 'Only me'}
+          {codes?.map((c) => (
+            <button key={c.code} type="button" className="ann-btn ann-code-btn" title={c.meaning} onClick={() => make('code', undefined, c.meaning, c.code)}>
+              {c.code}
+            </button>
+          ))}
+          <button type="button" className={'ann-btn vis'} title="Who sees it" disabled={!!forceVisibility} onClick={() => setVis((v) => (v === 'class' ? 'private' : 'class'))}>
+            {forceVisibility ? 'Private' : vis === 'class' ? 'Class' : 'Only me'}
           </button>
           {commenting !== '' && (
             <form

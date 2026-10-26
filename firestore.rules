@@ -304,6 +304,37 @@ service cloud.firestore {
         allow write: if teachesClass(classId);
       }
 
+      // Discussion board. Learners see approved, visible threads and posts plus their own;
+      // they may post when not muted, and only touch reactions and reports on others' posts.
+      function disc() { return classData(classId).get('discussion', {}); }
+      function myLearner() { return get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId; }
+      function discCanPost() { return memberOf(classId) && !(myLearner() in disc().get('muted', [])); }
+      function discApproved(d) { return d.approved == (disc().get('approval', false) == false); }
+      function ownPost(d) { return d.by == request.auth.uid && d.teacher == false && d.learnerId == myLearner(); }
+      match /threads/{tid} {
+        allow read: if viewsClass(classId)
+          || (memberOf(classId) && ((resource.data.approved == true && resource.data.hidden == false) || resource.data.by == request.auth.uid));
+        allow create: if teachesClass(classId)
+          || (discCanPost() && disc().get('learnersStart', true) == true && ownPost(request.resource.data) && discApproved(request.resource.data)
+              && request.resource.data.pinned == false && request.resource.data.locked == false && request.resource.data.hidden == false);
+        allow update: if teachesClass(classId)
+          || (memberOf(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'reported', 'lastAt', 'replyCount']))
+          || (discCanPost() && resource.data.by == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'body', 'mentions', 'reactions', 'reported', 'lastAt', 'replyCount']));
+        allow delete: if teachesClass(classId) || (signedIn() && resource.data.by == request.auth.uid);
+
+        match /posts/{pid} {
+          allow read: if viewsClass(classId)
+            || (memberOf(classId) && ((resource.data.approved == true && resource.data.hidden == false) || resource.data.by == request.auth.uid));
+          allow create: if teachesClass(classId)
+            || (discCanPost() && ownPost(request.resource.data) && discApproved(request.resource.data) && request.resource.data.hidden == false
+                && get(/databases/$(database)/documents/classes/$(classId)/threads/$(tid)).data.locked == false);
+          allow update: if teachesClass(classId)
+            || (memberOf(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'reported']))
+            || (discCanPost() && resource.data.by == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'edited', 'mentions', 'reactions', 'reported']));
+          allow delete: if teachesClass(classId) || (signedIn() && resource.data.by == request.auth.uid);
+        }
+      }
+
       // Lesson recaps: the teacher writes them; a learner reads their own once shared
       match /recaps/{recapId} {
         allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid && resource.data.status == 'shared');

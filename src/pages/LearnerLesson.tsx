@@ -42,6 +42,7 @@ import { PanelToggle, usePanels } from '../components/PanelToggles';
 import { TEXT_SCALE } from '../lib/auth';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
+import { useThreads } from '../lib/discussion';
 import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
@@ -204,6 +205,8 @@ export function LearnerLesson() {
   const [pendingSave, setPendingSave] = useState(false);
   const [corrections, setCorrections] = useState<Record<string, Correction>>({});
   const anns = useAnnotations(classId, current, { teacher: false, uid: user?.uid });
+  const allThreads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
+  const discussions = allThreads.filter((t) => t.approved && !t.hidden && t.link?.itemId === itemId);
   const resubmit = async (qid: string) => {
     if (!base || !user) return;
     window.clearTimeout(timer.current);
@@ -364,7 +367,7 @@ export function LearnerLesson() {
         </div>
       )}
       {liveHere && <PointerDot pointer={pointer} taskId={current} container={bodyRef} />}
-      <NoticeToasts classId={classId} to={learnerId} link={(i, t) => `/learn/${i}?task=${t}`} />
+      <NoticeToasts classId={classId} to={learnerId} link={(i, t) => (i === 'disc' ? `/discuss/${t}` : `/learn/${i}?task=${t}`)} />
       <div className={'lesson-layout learner' + panels.cls}>
         <nav className="task-list" aria-label="Tasks">
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
@@ -413,6 +416,11 @@ export function LearnerLesson() {
               <div className="frame-head">
                 <h1 className="task-title">{task.title}</h1>
                 {task.instructions && <p className="task-instr">{task.instructions}</p>}
+                {discussions.filter((d) => d.link?.taskId === task.id || (!d.link?.taskId && d.link?.itemId === itemId)).map((d) => (
+                  <Link key={d.id} className="disc-chip" to={`/discuss/${d.id}`}>
+                    Discuss: {d.title} · {d.replyCount} {d.replyCount === 1 ? 'reply' : 'replies'} →
+                  </Link>
+                ))}
                 {task.levels && !task.needsLevel && rawTasks.find((t) => t.id === (task.family ?? task.id))?.dist?.canChange !== false && (
                   <span className="seg small-seg level-tabs" role="radiogroup" aria-label="Level">
                     {task.levels.map((l) => (

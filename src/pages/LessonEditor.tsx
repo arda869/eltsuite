@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
@@ -42,6 +42,7 @@ import { WorksheetDialog } from '../components/WorksheetDialog';
 import { RecapDialog } from '../components/Recap';
 import { BankPicker, SaveToBankDialog } from '../components/QuestionBank';
 import { withFreshIds } from '../lib/bank';
+import { startThread } from '../lib/discussion';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
@@ -121,6 +122,7 @@ export function LessonEditor() {
   const [previewChecked, setPreviewChecked] = useState(false);
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const viewer = roleIn(c, user?.uid) === 'viewer'; // read-only access (observer or substitute)
   useEffect(() => {
     if (viewer) setPreview(true);
@@ -649,7 +651,7 @@ export function LessonEditor() {
           onClose={() => setGroupsOpen(false)}
         />
       )}
-      <NoticeToasts classId={classId} to="teacher" link={(i, t) => `/class/${classId}/lesson/${i}?task=${t}`} />
+      <NoticeToasts classId={classId} to="teacher" link={(i, t) => (i === 'disc' ? `/class/${classId}?tab=discussion&thread=${t}` : `/class/${classId}/lesson/${i}?task=${t}`)} />
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
       {item && (
@@ -1062,6 +1064,18 @@ export function LessonEditor() {
               </button>
               <button type="button" className="btn link small" onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
                 Save task to my bank
+              </button>
+              <button
+                type="button"
+                className="btn link small"
+                title="Start a thread on the class discussion board about this task"
+                onClick={async () => {
+                  if (!user || !c) return;
+                  const tid = await startThread(classId, c, { uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }, { title: `Discuss: ${draft.title}`, body: draft.instructions || 'What did you think of this task? Share your answers and ideas.', link: { itemId, taskId: task.id, title: draft.title } });
+                  navigate(`/class/${classId}?tab=discussion&thread=${tid}`);
+                }}
+              >
+                Discuss this task
               </button>
               <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
               {(() => {

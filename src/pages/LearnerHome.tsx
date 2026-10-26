@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
 import { useMyRecaps } from '../lib/recap';
+import { isUnread, readSeen, useThreads } from '../lib/discussion';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
@@ -68,6 +69,11 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [section, setSection] = useState<Item['type']>('lesson');
   const answers = useMyAnswers(classId, user?.uid);
   const recaps = useMyRecaps(classId, user?.uid);
+  const threads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
+  const unreadThreads = useMemo(() => {
+    const seen = readSeen(classId);
+    return threads.filter((t) => t.approved && !t.hidden && t.by !== user?.uid && isUnread(t, seen)).length;
+  }, [threads, classId, user?.uid]);
   const inSection = visible.filter((i) => i.type === section);
   const groups = [
     ...[...topics].filter((tp) => !tp.hidden).sort((a, b) => a.order - b.order).map((tp) => ({ tp, list: inSection.filter((i) => i.topicId === tp.id).sort((a, b) => a.order - b.order) })),
@@ -95,12 +101,15 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   return (
     <div className="shell" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
       <AnnouncementCards classId={classId} learnerId={profile?.role === 'learner' ? profile.learnerId : ''} />
-      <NoticeToasts classId={classId} to={profile?.role === 'learner' ? profile.learnerId : ''} link={(i, tk) => `/learn/${i}?task=${tk}`} />
+      <NoticeToasts classId={classId} to={profile?.role === 'learner' ? profile.learnerId : ''} link={(i, tk) => (i === 'disc' ? `/discuss/${tk}` : `/learn/${i}?task=${tk}`)} />
       <header className="topbar">
         <Wordmark />
         <span className="sub">{c?.name ?? ''}</span>
         <Link className="btn small-btn nb-link" to="/notebook">
           Notebook
+        </Link>
+        <Link className="btn small-btn nb-link" to="/discuss">
+          Discussion{unreadThreads ? <span className="board-badge" style={{ marginLeft: 6 }}>{unreadThreads}</span> : null}
         </Link>
         <div className="right">
           <button className="avatar" style={{ background: '#eef4ef', color: '#4e6b55' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>

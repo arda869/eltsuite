@@ -12,11 +12,12 @@ import { AnnounceDialog } from '../components/AnnounceDialog';
 import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
+import { DiscussionBoard, DiscussionSettingsPanel } from '../components/Discussion';
 import { Notebook } from '../components/Notebook';
 import { Reports } from '../components/Reports';
 import { useAuth } from '../lib/auth';
 
-type Tab = 'lessons' | 'learners' | 'notebook' | 'reports';
+type Tab = 'lessons' | 'learners' | 'notebook' | 'reports' | 'discussion';
 
 function useCollection<T>(path: string[], ready: boolean) {
   const [rows, setRows] = useState<T[]>([]);
@@ -39,7 +40,8 @@ export function ClassPage() {
   const roster = useClassmates(c?.classCode ?? undefined);
   const [params] = useSearchParams();
   const focusEntry = params.get('entry');
-  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : 'lessons');
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : 'lessons');
+  const [thread, setThread] = useState<string | null>(params.get('thread'));
   const { user } = useAuth();
   const [resultsItem, setResultsItem] = useState<Item | null>(null);
   const [menu, setMenu] = useState(false);
@@ -177,6 +179,9 @@ export function ClassPage() {
             <button className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
               Notebook
             </button>
+            <button className={tab === 'discussion' ? 'on' : ''} onClick={() => setTab('discussion')}>
+              Discussion
+            </button>
             <button className={tab === 'reports' ? 'on' : ''} onClick={() => (setResultsItem(null), setTab('reports'))}>
               Reports
             </button>
@@ -188,6 +193,18 @@ export function ClassPage() {
             <LearnersTab c={c} learners={learners} pins={pins} />
           ) : tab === 'reports' ? (
             <Reports key={resultsItem?.id ?? 'all'} c={c} items={items} learners={learners} initialItem={resultsItem} />
+          ) : tab === 'discussion' ? (
+            user && (
+              <div className="disc-tab">
+                <DiscussionBoard c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} people={[...learners.map((l) => ({ uid: l.authUid, name: l.displayName, learnerId: l.id })), { uid: user.uid, name: 'teacher' }]} open={thread} onOpen={setThread} />
+                {!thread && (
+                  <details className="disc-settings-wrap">
+                    <summary>Board settings</summary>
+                    <DiscussionSettingsPanel c={c} people={learners.map((l) => ({ uid: l.authUid, name: l.displayName, learnerId: l.id }))} />
+                  </details>
+                )}
+              </div>
+            )
           ) : (
             user && <Notebook classId={c.id} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} items={[...items].sort((a, b) => a.order - b.order)} topics={[...topics].sort((a, b) => a.order - b.order)} roster={roster} focus={focusEntry} />
           )}
