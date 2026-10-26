@@ -267,13 +267,13 @@ body { margin: 0; color: var(--ink); font: ${small ? '9pt' : '10.2pt'}/1.5 Fraun
 @media print { html.wk body { zoom: .85; } .page { break-inside: avoid; } }
 
 /* Header band */
-.band { flex: none; display: grid; grid-template-columns: 1fr 34%; height: ${small ? 31 : 40}mm; margin-top: 0; background: var(--band); }
-.band-left { padding: ${small ? 7 : 10}mm 0 0 var(--side); display: flex; flex-direction: column; justify-content: space-between; }
+.band { flex: none; display: grid; grid-template-columns: 1fr 34%; height: ${small ? 24 : 30}mm; margin-top: 0; background: var(--band); }
+.band-left { padding: 0 0 0 var(--side); display: flex; flex-direction: column; justify-content: space-between; }
 .namebox { display: block; width: 78%; height: ${small ? 8 : 10}mm; background: #fff; padding: 1.2mm 3mm 0; font: 600 7pt Karla, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #3d3a36; }
 .namebox.empty { background: transparent; }
 h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12 Karla, sans-serif; color: #4b4843; letter-spacing: -.005em; }
 .band-right { position: relative; overflow: hidden; }
-.band-cover { position: absolute; left: 0; right: 0; bottom: 0; height: ${small ? 24 : 30}mm; } .band-cover svg, .band-cover img { width: 100%; height: 100%; display: block; }
+.band-cover { position: absolute; inset: 0; } .band-cover svg, .band-cover img { width: 100%; height: 100%; display: block; }
 .band-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--band) 0%, rgba(236,235,231,0) 28%); }
 .brand { background: rgba(255,255,255,.88); padding: 1.6mm 2.6mm 1.4mm; border-radius: 1.6mm; }
 .brand { position: absolute; right: var(--side); bottom: ${small ? 2.5 : 3.2}mm; display: flex; flex-direction: column; align-items: flex-end; gap: .6mm; }
