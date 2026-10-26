@@ -8,15 +8,21 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
   const [top, setTop] = useState<number | null>(null);
   const [below, setBelow] = useState(0); // where the new line goes: under the block
   const target = useRef<HTMLElement | null>(null);
+  // The + sits in the margin outside the editor, so leaving the editor waits a moment: long enough
+  // to reach the + without it vanishing.
+  const later = useRef(0);
+  const keep = () => window.clearTimeout(later.current);
 
   useEffect(() => {
     if (!host) return;
     const dom = editor.view.dom as HTMLElement;
     const hide = () => {
+      keep();
       target.current = null;
       setTop(null);
     };
     const move = (e: MouseEvent) => {
+      keep();
       if (!editor.isEditable) return hide();
       if ((e.target as HTMLElement).closest('.line-add')) return;
       // A gap or choice shows its own drag handle at the start of the line; keep out of its way.
@@ -46,13 +52,16 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
       setTop((old) => (old !== null && Math.abs(old - t) < 0.5 ? old : t));
     };
     const leave = (e: MouseEvent) => {
-      if (!host.contains(e.relatedTarget as Node)) hide();
+      if (host.contains(e.relatedTarget as Node)) return;
+      keep();
+      later.current = window.setTimeout(hide, 450);
     };
     host.addEventListener('mousemove', move);
     host.addEventListener('mouseleave', leave);
     return () => {
       host.removeEventListener('mousemove', move);
       host.removeEventListener('mouseleave', leave);
+      keep();
     };
   }, [editor, host]);
 
@@ -70,7 +79,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
   };
   return (
     <>
-    <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onClick={add}>
+    <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 300))} onClick={add}>
       <UiIcon name="plus" />
     </button>
     <span className="line-add-guide" style={{ top: below }} aria-hidden="true" />
