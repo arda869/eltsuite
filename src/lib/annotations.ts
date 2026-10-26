@@ -30,6 +30,7 @@ const col = (classId: string) => collection(db, 'classes', classId, 'annotations
 export function addAnnotation(classId: string, a: Omit<Annotation, 'id' | 'at' | 'replies'> & { replies?: Reply[] }) {
   return addDoc(col(classId), { replies: [], ...a, at: serverTimestamp() });
 }
+export const updateAnnotation = (classId: string, id: string, patch: Partial<Pick<Annotation, 'color' | 'visibility' | 'kind'>>) => updateDoc(doc(col(classId), id), patch);
 export const removeAnnotation = (classId: string, id: string) => deleteDoc(doc(col(classId), id));
 export const replyTo = (classId: string, id: string, r: Reply) => updateDoc(doc(col(classId), id), { replies: arrayUnion(r) });
 

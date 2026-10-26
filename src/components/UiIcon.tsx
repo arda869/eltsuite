@@ -44,7 +44,7 @@ const P: Record<string, ReactNode> = {
   hand: <><path d="M8 12.5V6.8a1.3 1.3 0 0 1 2.6 0V11M10.6 10.5V5.3a1.3 1.3 0 0 1 2.6 0v5.2M13.2 10.5V6.3a1.3 1.3 0 0 1 2.6 0v6" /><path d="M15.8 9.5a1.3 1.3 0 0 1 2.6 0V14a6.5 6.5 0 0 1-6.5 6.5h-.4a6 6 0 0 1-4.6-2.2L4.3 15a1.4 1.4 0 0 1 2.1-1.8L8 14.8" strokeLinejoin="round" /></>,
   stuck: <><circle cx="12" cy="12" r="8.5" /><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6.9c0 1.6-2.3 2-2.3 3.6" /><circle cx="12" cy="16.8" r=".6" fill="currentColor" /></>,
   react: <><circle cx="12" cy="12" r="8.5" /><path d="M8.5 13.5c.9 1.4 2.1 2.1 3.5 2.1s2.6-.7 3.5-2.1" /><circle cx="9.2" cy="9.8" r=".7" fill="currentColor" /><circle cx="14.8" cy="9.8" r=".7" fill="currentColor" /></>,
-  sync: <><circle cx="12" cy="7" r="2.6" /><path d="M7 19.5a5 5 0 0 1 10 0" /><path d="M3.5 13.5l2 2 2-2M20.5 13.5l-2 2-2-2" /><path d="M5.5 15.5V13a3 3 0 0 1 3-3M18.5 15.5V13a3 3 0 0 0-3-3" /></>,
+  sync: <><path d="M19.2 13.2A7.5 7.5 0 0 1 6.4 17.3" /><path d="M4.8 10.8A7.5 7.5 0 0 1 17.6 6.7" /><path d="M18 3.6v3.6h-3.6" /><path d="M6 20.4v-3.6h3.6" /><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none" /></>,
   mic: <><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" /></>,
   music: <><path d="M9 17.5V6l10-2v11.5" strokeLinejoin="round" /><circle cx="6.8" cy="17.5" r="2.2" /><circle cx="16.8" cy="15.5" r="2.2" /></>,
   video: <><rect x="3.5" y="6" width="12.5" height="12" rx="2" /><path d="M16 10.5l4.5-3v9l-4.5-3" strokeLinejoin="round" /></>,

@@ -4849,3 +4849,23 @@ body:has(.scrim) .main-nav, body:has(.msg.has-chat) .main-nav, body:has(.sp-wind
 .task-editor .ProseMirror > .ProseMirror-selectednode:is(p, h3, ul, ol, blockquote, hr, .tableWrapper, table),
 .task-editor .ProseMirror .ProseMirror-selectednode:is(p, h3, ul, ol, blockquote) { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, transparent); }
 .task-editor .ProseMirror > .ProseMirror-selectednode:not(p, h3, ul, ol, blockquote, hr, table, .tableWrapper) { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+
+/* Annotations: a marker look, a menu on hover, and the selection menu kept on screen */
+.ann-tools { z-index: 150; gap: 5px; padding: 6px; border-radius: 12px; max-width: 300px; }
+.ann-sw { width: 20px; height: 20px; border-width: 2px; }
+.ann-comment-form { display: flex; gap: 6px; }
+.ann-comment-form input { flex: 1; background: rgba(255,255,255,0.95); }
+.ann-mark { mix-blend-mode: multiply; }
+.ann-mark.k-highlight { border-radius: 4px 9px 5px 10px / 7px 5px 9px 6px; transition: filter .12s; }
+.ann-mark.k-highlight.hov { filter: saturate(1.4) brightness(.97); }
+.ann-mark.private { outline: 0; }
+.ann-mark.k-underline.shared { border-bottom-width: 3px; }
+.ann-mark.k-underline.private { border-bottom-style: dashed; }
+.ann-x { display: none; }
+.ann-hov { position: absolute; z-index: 8; pointer-events: auto; display: inline-flex; align-items: center; gap: 4px; padding: 4px 5px; border-radius: 10px; background: var(--ink); box-shadow: 0 10px 22px -10px rgba(0,0,0,.45); animation: ask-fade .12s ease-out; white-space: nowrap; }
+.ann-hov .ann-sw.sm { width: 16px; height: 16px; border: 1.5px solid rgba(255,255,255,.55); }
+.ann-hov .ann-sw.on { box-shadow: 0 0 0 2px var(--ink), 0 0 0 3.5px #fff; }
+.ann-hov .ann-btn { padding: 2px 8px; font-size: 11.5px; }
+.ann-hov .ann-btn.vis.on { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.55); }
+.ann-hov .ann-btn.del { padding: 2px 7px; font-size: 13px; line-height: 1; }
+.ann-done { margin-right: auto; font: 600 13px var(--sans); color: var(--accent-text); }

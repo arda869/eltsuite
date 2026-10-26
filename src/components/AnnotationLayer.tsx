@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { addAnnotation, removeAnnotation, replyTo, type AnnColor, type Annotation, type Code } from '../lib/annotations';
+import { createPortal } from 'react-dom';
+import { addAnnotation, removeAnnotation, replyTo, updateAnnotation, type AnnColor, type Annotation, type Code } from '../lib/annotations';
 
 // Highlights, underlines and comments drawn over the task text. They are stored as a block
 // key plus character offsets, so they land on the same words at any text size or width.
 
 const SKIP = '[data-qid], .q-num, .reveal-ans, .flag-icon, .grip, .ann-layer';
-const COLORS: { key: AnnColor; bg: string }[] = [
-  { key: 'yellow', bg: 'rgba(250, 221, 90, 0.45)' },
-  { key: 'green', bg: 'rgba(140, 205, 140, 0.4)' },
-  { key: 'pink', bg: 'rgba(240, 150, 180, 0.4)' },
+// Marker colours, and a deeper line of the same colour for highlights the class can see too.
+const COLORS: { key: AnnColor; bg: string; line: string }[] = [
+  { key: 'yellow', bg: 'rgba(250, 216, 80, 0.5)', line: '#d9a514' },
+  { key: 'green', bg: 'rgba(140, 205, 140, 0.45)', line: '#4f9a5a' },
+  { key: 'pink', bg: 'rgba(240, 150, 180, 0.45)', line: '#c9557d' },
 ];
-const bgOf = (c?: AnnColor) => COLORS.find((x) => x.key === c)?.bg ?? COLORS[0].bg;
+const colorOf = (c?: AnnColor) => COLORS.find((x) => x.key === c) ?? COLORS[0];
 
 function textNodes(el: HTMLElement) {
   const out: Text[] = [];
@@ -83,7 +85,10 @@ export function AnnotationLayer({
   codes?: Code[]; // correction codes offered in the toolbar
 }) {
   const [boxes, setBoxes] = useState<Box[]>([]);
-  const [sel, setSel] = useState<{ bk: string; start: number; end: number; quote: string; x: number; y: number } | null>(null);
+  const [sel, setSel] = useState<{ bk: string; start: number; end: number; quote: string; x: number; y: number; sx: number; sy: number } | null>(null);
+  // The highlight under the pointer: its small menu (colour, who sees it, remove).
+  const [hover, setHover] = useState<string | null>(null);
+  const hoverOff = useRef(0);
   const [vis, setVis] = useState<'class' | 'private'>(forceVisibility ?? 'class');
   const [commenting, setCommenting] = useState('');
   const [open, setOpen] = useState<string | null>(null);
@@ -135,7 +140,9 @@ export function AnnotationLayer({
     if (!canAnnotate) return;
     const root = container.current;
     if (!root) return;
-    const up = () => {
+    const up = (e: MouseEvent) => {
+      // Clicks in the annotation menus are not new selections.
+      if ((e.target as HTMLElement).closest?.('.ann-tools, .ann-thread, .ann-hov')) return;
       window.setTimeout(() => {
         const s = window.getSelection();
         if (!s || s.isCollapsed || !s.rangeCount) return setSel(null);
@@ -148,13 +155,32 @@ export function AnnotationLayer({
         if (end <= start) return setSel(null);
         const rect = r.getBoundingClientRect();
         const base = root.getBoundingClientRect();
-        setSel({ bk: a.dataset.bk!, start, end, quote: r.toString().slice(0, 200), x: rect.left - base.left + root.scrollLeft + rect.width / 2, y: rect.top - base.top + root.scrollTop });
+        setSel({ bk: a.dataset.bk!, start, end, quote: r.toString().slice(0, 200), x: rect.left - base.left + root.scrollLeft + rect.width / 2, y: rect.top - base.top + root.scrollTop, sx: rect.left + rect.width / 2, sy: rect.top });
         setCommenting('');
       }, 0);
     };
     root.addEventListener('mouseup', up);
     return () => root.removeEventListener('mouseup', up);
   }, [canAnnotate, container]);
+
+  // Which highlight the pointer is on (the layer itself lets clicks through to the text).
+  useEffect(() => {
+    if (!canAnnotate) return;
+    const root = container.current;
+    if (!root) return;
+    const mv = (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest?.('.ann-hov')) return window.clearTimeout(hoverOff.current);
+      const base = root.getBoundingClientRect();
+      const x = e.clientX - base.left + root.scrollLeft;
+      const y = e.clientY - base.top + root.scrollTop;
+      const hit = boxes.find((b) => b.a.kind !== 'comment' && b.rects.some((r) => x >= r.x - 2 && x <= r.x + r.w + 2 && y >= r.y - 2 && y <= r.y + r.h + 2));
+      window.clearTimeout(hoverOff.current);
+      if (hit) setHover(hit.id);
+      else hoverOff.current = window.setTimeout(() => setHover(null), 350);
+    };
+    root.addEventListener('mousemove', mv);
+    return () => root.removeEventListener('mousemove', mv);
+  }, [canAnnotate, container, boxes]);
 
   async function make(kind: Annotation['kind'], color?: AnnColor, comment?: string, code?: string) {
     if (!sel) return;
@@ -180,13 +206,13 @@ export function AnnotationLayer({
   return (
     <div className="ann-layer" ref={layer} aria-hidden={false}>
       {boxes.map((b) =>
-        b.rects.map((r, i) => (
-          <span
-            key={b.id + i}
-            className={'ann-mark k-' + b.a.kind + (b.a.visibility === 'private' ? ' private' : '')}
-            style={{ left: r.x, top: r.y, width: r.w, height: r.h, ...(b.a.kind === 'highlight' || b.a.kind === 'comment' ? { background: b.a.kind === 'comment' ? 'rgba(217, 143, 99, 0.16)' : bgOf(b.a.color) } : {}) }}
-          />
-        )),
+        b.rects.map((r, i) => {
+          const c = colorOf(b.a.color);
+          const marker = b.a.kind === 'highlight';
+          // Marker style: a little lower and shorter than the line, with soft uneven ends.
+          const st = marker ? { left: r.x - 1.5, top: r.y + r.h * 0.3, width: r.w + 3, height: r.h * 0.62, background: c.bg, ...(b.a.visibility !== 'private' ? { boxShadow: `inset 0 -2px 0 ${c.line}` } : {}) } : b.a.kind === 'comment' ? { left: r.x, top: r.y, width: r.w, height: r.h, background: 'rgba(217, 143, 99, 0.16)' } : { left: r.x, top: r.y, width: r.w, height: r.h };
+          return <span key={b.id + i} className={'ann-mark k-' + b.a.kind + (b.a.visibility === 'private' ? ' private' : ' shared') + (hover === b.id ? ' hov' : '')} style={st} />;
+        }),
       )}
       {boxes
         .filter((b) => b.a.kind === 'code' && b.a.code)
@@ -203,13 +229,28 @@ export function AnnotationLayer({
           </button>
         ))}
       {canAnnotate &&
-        boxes
-          .filter((b) => b.a.kind !== 'comment' && b.a.replies.length === 0)
-          .map((b) => (
-            <button key={'x' + b.id} type="button" className="ann-x" style={{ left: b.rects[b.rects.length - 1].x + b.rects[b.rects.length - 1].w, top: b.rects[b.rects.length - 1].y - 8 }} onClick={() => removeAnnotation(classId, b.id)} title="Remove">
-              ×
-            </button>
-          ))}
+        (() => {
+          const b = boxes.find((x) => x.id === hover);
+          if (!b) return null;
+          const last = b.rects[b.rects.length - 1];
+          const shared = b.a.visibility !== 'private';
+          return (
+            <span className="ann-hov" style={{ left: last.x + last.w + 4, top: last.y - 30 }} onMouseEnter={() => window.clearTimeout(hoverOff.current)} onMouseLeave={() => (hoverOff.current = window.setTimeout(() => setHover(null), 300))} onMouseDown={(e) => e.preventDefault()}>
+              {b.a.kind === 'highlight' &&
+                COLORS.map((c) => (
+                  <button key={c.key} type="button" className={'ann-sw sm' + ((b.a.color ?? 'yellow') === c.key ? ' on' : '')} style={{ background: c.bg }} aria-label={'Colour ' + c.key} onClick={() => updateAnnotation(classId, b.id, { color: c.key })} />
+                ))}
+              {!forceVisibility && (
+                <button type="button" className={'ann-btn vis' + (shared ? ' on' : '')} title={shared ? 'The class sees this. Click to keep it to yourself.' : 'Only you see this. Click to show the class.'} onClick={() => updateAnnotation(classId, b.id, { visibility: shared ? 'private' : 'class' })}>
+                  {shared ? 'Class sees it' : 'Only me'}
+                </button>
+              )}
+              <button type="button" className="ann-btn del" aria-label="Remove" title="Remove" onClick={() => (removeAnnotation(classId, b.id), setHover(null))}>
+                ×
+              </button>
+            </span>
+          );
+        })()}
       {openAnn && (
         <div className="ann-thread" style={{ top: openAnn.rects[0].y }}>
           <span className="eyebrow">
@@ -239,7 +280,8 @@ export function AnnotationLayer({
         </div>
       )}
       {sel && canAnnotate && (
-        <div className="ann-tools" style={{ left: sel.x, top: sel.y }} onMouseDown={(e) => e.preventDefault()}>
+        createPortal(
+        <div className="ann-tools" style={{ position: 'fixed', left: Math.max(150, Math.min(window.innerWidth - 150, sel.sx)), top: Math.max(56, sel.sy) }} onMouseDown={(e) => (e.target as HTMLElement).tagName !== 'INPUT' && e.preventDefault()}>
           {commenting !== '' || false ? null : null}
           {COLORS.map((c) => (
             <button key={c.key} type="button" className="ann-sw" style={{ background: c.bg }} title={'Highlight ' + c.key} onClick={() => make('highlight', c.key)} />
@@ -256,7 +298,7 @@ export function AnnotationLayer({
             </button>
           ))}
           <button type="button" className={'ann-btn vis'} title="Who sees it" disabled={!!forceVisibility} onClick={() => setVis((v) => (v === 'class' ? 'private' : 'class'))}>
-            {forceVisibility ? 'Private' : vis === 'class' ? 'Class' : 'Only me'}
+            {forceVisibility ? 'Private' : vis === 'class' ? 'Class sees it' : 'Only me'}
           </button>
           {commenting !== '' && (
             <form
@@ -266,10 +308,15 @@ export function AnnotationLayer({
                 if (commenting.trim()) make('comment', undefined, commenting.trim());
               }}
             >
-              <input autoFocus value={commenting.trimStart()} placeholder="Write a comment" onChange={(e) => setCommenting(e.target.value || ' ')} />
+              <input autoFocus value={commenting.trimStart()} placeholder="Write a comment, then press Enter" onChange={(e) => setCommenting(e.target.value || ' ')} />
+              <button type="submit" className="ann-btn">
+                Add
+              </button>
             </form>
           )}
-        </div>
+        </div>,
+        document.body,
+        )
       )}
     </div>
   );

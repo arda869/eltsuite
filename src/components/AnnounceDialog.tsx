@@ -12,6 +12,8 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
   const [pinned, setPinned] = useState(false);
   const [later, setLater] = useState('');
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [done, setDone] = useState('');
   const { user } = useAuth();
   const list = useAnnouncements(classId).filter((a) => a.to === 'all' || (Array.isArray(a.to) && a.to.length));
   const laterAt = later ? new Date(later).getTime() : 0;
@@ -23,11 +25,17 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
     if (!text.trim() || !okLink) return;
     setBusy(true);
     try {
-      await postAnnouncement(classId, { text: text.trim(), link: link.trim() || undefined, to: all ? 'all' : picked, chime: withChime, pinned, ...(laterAt > Date.now() ? { sendAt: laterAt } : {}), byName: (user?.displayName || 'Teacher').split(' ')[0] });
+      setErr('');
+      await postAnnouncement(classId, { text: text.trim(), ...(link.trim() ? { link: link.trim() } : {}), to: all ? 'all' : picked, chime: withChime, pinned, ...(laterAt > Date.now() ? { sendAt: laterAt } : {}), byName: (user?.displayName || 'Teacher').split(' ')[0] });
       setText('');
       setLink('');
       setLater('');
       setPinned(false);
+      setDone(laterAt > Date.now() ? 'Scheduled. It will go out at ' + toLocal(laterAt) + '.' : 'Sent to ' + (all ? 'the whole class' : picked.length + (picked.length === 1 ? ' learner' : ' learners')) + '.');
+      window.setTimeout(() => setDone(''), 4000);
+    } catch (e) {
+      console.error(e);
+      setErr('The announcement could not be sent. Check your connection, then try again.');
     } finally {
       setBusy(false);
     }
@@ -74,7 +82,9 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
             ))}
           </div>
         )}
-        <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        {err && <span className="error">{err}</span>}
+        <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+          {done && <span className="ann-done" role="status">{done}</span>}
           <button className="btn" onClick={onClose}>
             Close
           </button>
