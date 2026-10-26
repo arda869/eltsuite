@@ -130,8 +130,13 @@ export async function loadNotes(classId: string, itemId: string, taskId: string)
   const s = await getDoc(notesRef(classId, itemId, taskId));
   return (s.data()?.text as string) ?? '';
 }
-export async function saveNotes(classId: string, itemId: string, taskId: string, text: string) {
-  await setDoc(notesRef(classId, itemId, taskId), { text, updatedAt: serverTimestamp() });
+export async function saveNotes(classId: string, itemId: string, taskId: string, text: string, doc?: JSONContent | null) {
+  await setDoc(notesRef(classId, itemId, taskId), { text, ...(doc ? { doc } : { doc: null }), updatedAt: serverTimestamp() });
+}
+// Rich notes: the formatted document plus plain text (used for export and the "has notes" dot).
+export async function loadNoteDoc(classId: string, itemId: string, taskId: string): Promise<{ text: string; doc: JSONContent | null }> {
+  const s = await getDoc(notesRef(classId, itemId, taskId));
+  return { text: (s.data()?.text as string) ?? '', doc: (s.data()?.doc as JSONContent) ?? null };
 }
 
 // Version history: a snapshot of the task (with answers) at most every few minutes, last 30 kept.

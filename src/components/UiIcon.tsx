@@ -1,0 +1,46 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+
+// Interface icons for the lesson toolbars: thin strokes, rounded ends, in the text colour.
+const P: Record<string, ReactNode> = {
+  export: <><path d="M12 4v11" /><path d="M7.5 8.5 12 4l4.5 4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
+  notebook: <><path d="M6.5 3.5h11a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z" /><path d="M9 3.5v17" /><path d="M12 8h4M12 11.5h4" /></>,
+  board: <><rect x="3.5" y="4.5" width="17" height="11.5" rx="1.5" /><path d="M8.5 20l3.5-4 3.5 4" /><path d="M7 12.5c1.4-2.6 2.6-3.6 3.6-2.3s1.8 1.4 3.4-1.6 2.5-1.8 3 .2" /></>,
+  task: <><rect x="5" y="3.5" width="14" height="17" rx="1.5" /><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" /></>,
+  groups: <><circle cx="9" cy="8" r="2.7" /><circle cx="16.5" cy="9" r="2.2" /><path d="M3.8 18.5a5.2 5.2 0 0 1 10.4 0" /><path d="M14 13.6a4.4 4.4 0 0 1 6.2 4.4" /></>,
+  present: <><rect x="3.5" y="4.5" width="17" height="12" rx="1.5" /><path d="M12 16.5V20M8.5 20h7" /><path d="M10.5 8.3v4.4l3.8-2.2z" strokeLinejoin="round" /></>,
+  presentOff: <><rect x="3.5" y="4.5" width="17" height="12" rx="1.5" /><path d="M12 16.5V20M8.5 20h7" /><path d="M9.5 8l5 5M14.5 8l-5 5" /></>,
+  help: <><circle cx="12" cy="12" r="8.5" /><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6.9c0 1.6-2.3 2-2.3 3.6" /><circle cx="12" cy="16.8" r=".6" fill="currentColor" /></>,
+  pointer: <><path d="M5.5 4l13 6.2-5.6 1.7-1.8 5.7z" strokeLinejoin="round" /><circle cx="17.5" cy="17.5" r="2" fill="currentColor" stroke="none" /></>,
+  timer: <><circle cx="12" cy="13.5" r="7" /><path d="M12 13.5V10M10 3.5h4M18.3 7.2l1.4-1.4" /></>,
+  pick: <><rect x="4" y="4" width="16" height="16" rx="3" /><circle cx="8.5" cy="8.5" r="1" fill="currentColor" /><circle cx="15.5" cy="15.5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="15.5" cy="8.5" r="1" fill="currentColor" /><circle cx="8.5" cy="15.5" r="1" fill="currentColor" /></>,
+  poll: <><path d="M5 20V13M10 20V8M15 20v-5M20 20V5" /></>,
+  quiz: <><path d="M8 4h8v5a4 4 0 0 1-8 0z" /><path d="M8 6H5a3 3 0 0 0 3 3.5M16 6h3a3 3 0 0 1-3 3.5M12 13v3.5M8.5 20h7l-1-3.5h-5z" strokeLinejoin="round" /></>,
+  annotate: <><path d="M15 4.5l4 4L9.5 18l-4.5 1 1-4.5z" strokeLinejoin="round" /><path d="M13 6.5l4 4" /><path d="M13.5 20h6" /></>,
+  pen: <><path d="M15 4.5l4 4L8.5 19l-4.5 1 1-4.5z" strokeLinejoin="round" /><path d="M13 6.5l4 4" /></>,
+  highlight: <><path d="M14 4l5 5-7.5 7.5h-5v-5z" strokeLinejoin="round" /><path d="M6.5 16.5 4 19h5l1-1" strokeLinejoin="round" /><path d="M11 20.5h9" strokeWidth="2.6" opacity=".45" /></>,
+  eraser: <><path d="M9 19.5h10" /><path d="M4.8 14.6l8.8-8.8a1.6 1.6 0 0 1 2.3 0l2.6 2.6a1.6 1.6 0 0 1 0 2.3L11 18.2a2 2 0 0 1-1.4.6H8.4a2 2 0 0 1-1.4-.6l-2.2-2.2a1 1 0 0 1 0-1.4z" strokeLinejoin="round" /><path d="M9.5 9.9l4.4 4.4" /></>,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  announce: <><path d="M4 10v4a1 1 0 0 0 1 1h2.5l6 4.5v-15l-6 4.5H5a1 1 0 0 0-1 1z" strokeLinejoin="round" /><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a7.5 7.5 0 0 1 0 11" /></>,
+  answers: <><rect x="4" y="4" width="6.5" height="6.5" rx="1.2" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2" /></>,
+  fullscreen: <path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4" />,
+  fullscreenOff: <path d="M9 4v4a1 1 0 0 1-1 1H4M20 9h-4a1 1 0 0 1-1-1V4M15 20v-4a1 1 0 0 1 1-1h4M4 15h4a1 1 0 0 1 1 1v4" />,
+  sync: <><circle cx="12" cy="7" r="2.6" /><path d="M7 19.5a5 5 0 0 1 10 0" /><path d="M3.5 13.5l2 2 2-2M20.5 13.5l-2 2-2-2" /><path d="M5.5 15.5V13a3 3 0 0 1 3-3M18.5 15.5V13a3 3 0 0 0-3-3" /></>,
+};
+
+export function UiIcon({ name, size = 18 }: { name: string; size?: number }) {
+  return (
+    <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+      {P[name]}
+    </svg>
+  );
+}
+
+// An icon-only button with a quick tooltip. The label is also read by screen readers.
+export function IconBtn({ icon, label, active, className = '', badge, ...rest }: { icon: string; label: string; active?: boolean; badge?: ReactNode } & ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button type="button" {...rest} aria-label={label} data-tip={label} aria-pressed={active ?? undefined} className={'icon-tool' + (active ? ' on' : '') + (className ? ' ' + className : '')}>
+      <UiIcon name={icon} />
+      {badge}
+    </button>
+  );
+}

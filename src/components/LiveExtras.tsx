@@ -50,19 +50,23 @@ export function TimerChip({ timer, onStop }: { timer?: LiveState['timer']; onSto
 }
 
 // "It's your turn" when the teacher picks someone at random.
-export function PickedBanner({ picked, me }: { picked?: LiveState['picked']; me?: string }) {
+export function PickedBanner({ picked, me, onClose }: { picked?: LiveState['picked']; me?: string; onClose?: () => void }) {
   const [now, setNow] = useState(Date.now());
+  const [hidden, setHidden] = useState<number | null>(null);
   useEffect(() => {
     if (!picked) return;
     const t = window.setInterval(() => setNow(Date.now()), 500);
     return () => window.clearInterval(t);
   }, [picked?.at]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!picked || now - picked.at > 8000) return null;
+  if (!picked || now - picked.at > 8000 || hidden === picked.at) return null;
   const mine = picked.learnerId === me;
   return (
     <div className={'picked-banner' + (mine ? ' mine' : '')} role="status">
       <span className="picked-name">{picked.name.split(' ')[0]}</span>
       <span>{mine ? 'It’s your turn!' : 'is next'}</span>
+      <button type="button" className="picked-x" aria-label={onClose ? 'Close for everyone' : 'Close'} title={onClose ? 'Close for everyone' : 'Close'} onClick={() => (setHidden(picked.at), onClose?.())}>
+        ×
+      </button>
     </div>
   );
 }

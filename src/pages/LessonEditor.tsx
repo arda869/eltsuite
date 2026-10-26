@@ -14,7 +14,7 @@ import {
   splitKey,
   questionIds,
   tasksCol,
-  loadNotes,
+  loadNoteDoc,
   saveNotes,
   addVersion,
   type AnswerKey,
@@ -40,6 +40,8 @@ import { downloadJson, lessonBundle } from '../lib/fullcopy';
 import { roleIn } from '../lib/coteach';
 import { WorksheetDialog } from '../components/WorksheetDialog';
 import { RecapDialog } from '../components/Recap';
+import { IconBtn } from '../components/UiIcon';
+import { NotesEditor } from '../editor/NotesEditor';
 import { BankPicker, SaveToBankDialog } from '../components/QuestionBank';
 import { withFreshIds } from '../lib/bank';
 import { startThread } from '../lib/discussion';
@@ -349,18 +351,29 @@ export function LessonEditor() {
   const [showGrid, setShowGrid] = useState(false);
   // Teacher notes for the selected task (only the teacher can read them).
   const [notes, setNotes] = useState('');
+  const [notesDoc, setNotesDoc] = useState<JSONContent | null>(null);
+  const [notesFor, setNotesFor] = useState('');
   const notesTimer = useRef<number>();
   useEffect(() => {
     setNotes('');
-    if (task) loadNotes(classId, itemId, task.id).then(setNotes).catch(() => {});
+    setNotesDoc(null);
+    setNotesFor('');
+    const id = task?.id;
+    if (id)
+      loadNoteDoc(classId, itemId, id)
+        .then((n) => (setNotes(n.text), setNotesDoc(n.doc), setNotesFor(id)))
+        .catch(() => setNotesFor(id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id]);
-  const changeNotes = (v: string) => {
-    setNotes(v);
+  const changeNotes = (doc: JSONContent, text: string) => {
+    setNotes(text);
+    setNotesDoc(doc);
     window.clearTimeout(notesTimer.current);
     const id = task?.id;
-    notesTimer.current = window.setTimeout(() => id && saveNotes(classId, itemId, id, v).catch(() => {}), 700);
+    notesTimer.current = window.setTimeout(() => id && saveNotes(classId, itemId, id, text, doc).catch(() => {}), 700);
   };
+  const notesEditor = (cls: string, placeholder: string) =>
+    task && notesFor === task.id ? <NotesEditor key={task.id} className={cls} doc={notesDoc} text={notes} onChange={changeNotes} placeholder={placeholder} /> : <span className="hint">Loading…</span>;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
@@ -570,9 +583,7 @@ export function LessonEditor() {
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
         <div className="menu-anchor hide-phone" ref={exportRef}>
-          <button type="button" className="btn small-btn" aria-expanded={exportOpen} aria-haspopup="menu" title="Worksheet, text file or full copy" onClick={() => setExportOpen((v) => !v)}>
-            Export
-          </button>
+          <IconBtn icon="export" label="Export: worksheet, recap, text or full copy" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
           {exportOpen && (
             <div className="menu" role="menu">
               {item?.type === 'lesson' && c && (
@@ -619,25 +630,15 @@ export function LessonEditor() {
             </div>
           )}
         </div>
-        <button type="button" className="btn small-btn" onClick={() => setNbOpen(true)} title="The class notebook: words and notes, grammar and vocabulary banks">
-          Notebook
-        </button>
+        <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
         {!viewer && (
-          <button type="button" className={'btn small-btn' + (boardView ? ' on-accent' : '')} onClick={() => showBoard(!boardView)} title="The lesson board: pages you can prepare and show in class">
-            Board
-          </button>
+          <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Lesson board'} active={boardView} onClick={() => showBoard(!boardView)} />
         )}
         {!viewer && (
-          <button type="button" className={'btn small-btn' + (teachingHere && live?.groupSetId ? ' on-accent' : '')} onClick={() => setGroupsOpen(true)} title="Group sets and breakout rooms">
-            Groups
-          </button>
+          <IconBtn icon="groups" label="Groups and breakout rooms" active={!!(teachingHere && live?.groupSetId)} onClick={() => setGroupsOpen(true)} />
         )}
-        <button type="button" className="btn small-btn hide-phone" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
-          {present ? 'Exit present mode' : 'Present'}
-        </button>
-        <button type="button" className="btn small-btn icon-help hide-phone" onClick={() => setHelp(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
-          ?
-        </button>
+        <IconBtn icon={present ? 'presentOff' : 'present'} label={present ? 'Leave present mode (P)' : 'Present: hide the side panels (P)'} active={present} className="hide-phone" onClick={() => setPresent((v) => !v)} />
+        <IconBtn icon="help" label="Keyboard shortcuts (?)" className="hide-phone" onClick={() => setHelp(true)} />
         {viewer ? (
           teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
         ) : (
@@ -800,13 +801,10 @@ export function LessonEditor() {
               </span>
               <span className="live-ctl">
                 <span className="tool-group" aria-label="Classroom tools">
-                  <button type="button" className={'btn small-btn' + (pointerOn ? ' on-accent' : '')} onClick={togglePointer} title="A red dot everyone sees where you point">
-                    Pointer
-                  </button>
+                  <IconBtn icon={boardView ? 'task' : 'board'} label={boardView ? 'Back to the task' : 'Show the lesson board'} active={boardView} onClick={() => showBoard(!boardView)} />
+                  <IconBtn icon="pointer" label="Pointer: a dot everyone sees" active={pointerOn} onClick={togglePointer} />
                   <span className="timer-ctl">
-                    <button type="button" className={'btn small-btn' + (live?.timer && live.timer.endsAt > Date.now() ? ' on-accent' : '')} onClick={() => setTimerMenu((v) => !v)} title="Shortcut: T">
-                      Timer
-                    </button>
+                    <IconBtn icon="timer" label="Timer (T)" active={!!(live?.timer && live.timer.endsAt > Date.now())} onClick={() => setTimerMenu((v) => !v)} />
                     {timerMenu && (
                       <span className="timer-menu">
                         {[1, 2, 3, 5, 10].map((m) => (
@@ -825,21 +823,11 @@ export function LessonEditor() {
                       </span>
                     )}
                   </span>
-                  <button type="button" className="btn small-btn" onClick={pickLearner} disabled={!!picking} title="Choose a learner at random">
-                    {picking || 'Pick a learner'}
-                  </button>
-                  <button type="button" className={'btn small-btn' + (live?.poll?.open ? ' on-accent' : '')} onClick={() => setPollOpen(true)} title="Ask the class a quick question">
-                    Poll
-                  </button>
-                  <button type="button" className={'btn small-btn' + (live?.quiz ? ' on-accent' : '')} onClick={() => setQuizOpen(true)} title="Turn this task’s questions into a team race">
-                    Team quiz
-                  </button>
-                  <button type="button" className={'btn small-btn' + (inkMode !== 'off' ? ' on-accent' : '')} onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} title="Draw or highlight on the task while you present. Not saved. Shortcut: D">
-                    Draw
-                  </button>
-                  <button type="button" className="btn small-btn" onClick={() => setAnnouncing(true)} title="Shortcut: A">
-                    Announce
-                  </button>
+                  {picking ? <span className="picking-name">{picking}</span> : <IconBtn icon="pick" label="Pick a learner at random" onClick={pickLearner} />}
+                  <IconBtn icon="poll" label="Quick poll" active={!!live?.poll?.open} onClick={() => setPollOpen(true)} />
+                  <IconBtn icon="quiz" label="Team quiz from this task" active={!!live?.quiz} onClick={() => setQuizOpen(true)} />
+                  <IconBtn icon="annotate" label="Annotate: pen and highlighter on the screen, not saved (D)" active={inkMode !== 'off'} onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} />
+                  <IconBtn icon="announce" label="Announcement (A)" onClick={() => setAnnouncing(true)} />
                 </span>
                 {hands.length > 0 && (
                   <span className="hands" title={hands.map((h) => h.name).join(', ')}>
@@ -854,19 +842,16 @@ export function LessonEditor() {
                     <Icon name="question" size="15" /> {stuckN} stuck
                   </span>
                 )}
-                {present && (
-                  <button type="button" className={'btn small-btn' + (showGrid ? ' on-accent' : '')} onClick={() => setShowGrid((v) => !v)}>
-                    Live answers
-                  </button>
-                )}
-                {present && document.fullscreenEnabled && (
-                  <button type="button" className={'btn small-btn' + (fullscreen ? ' on-accent' : '')} onClick={toggleFullscreen} title="Use the whole screen, without the browser bars (F)">
-                    {fullscreen ? 'Exit full screen' : 'Full screen'}
-                  </button>
-                )}
-                <button type="button" className={'btn small-btn' + (live?.sync ? ' on-accent' : '')} onClick={toggleSync} title="Shortcut: S">
-                  {live?.sync ? `${live.syncRoom ? activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room' : 'Class'} follows me · stop` : live?.syncRoom ? `Sync ${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'room'} to me` : 'Sync class to me'}
-                </button>
+                <span className="tool-group">
+                  {present && <IconBtn icon="answers" label="Live answers" active={showGrid} onClick={() => setShowGrid((v) => !v)} />}
+                  {present && document.fullscreenEnabled && <IconBtn icon={fullscreen ? 'fullscreenOff' : 'fullscreen'} label={fullscreen ? 'Leave full screen (F)' : 'Full screen (F)'} active={fullscreen} onClick={toggleFullscreen} />}
+                  <IconBtn
+                    icon="sync"
+                    label={live?.sync ? `${live.syncRoom ? activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room' : 'The class'} follows you · click to stop (S)` : live?.syncRoom ? `Sync ${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'room'} to me (S)` : 'Sync the class to me (S)'}
+                    active={!!live?.sync}
+                    onClick={toggleSync}
+                  />
+                </span>
                 {activeSet && (
                   <select className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
                     <option value="">Whole class</option>
@@ -922,21 +907,11 @@ export function LessonEditor() {
                 <div className="frame-head">
                   <h1 className="task-title">{draft.title}</h1>
                   {draft.instructions && <p className="task-instr">{draft.instructions}</p>}
-                  {!preview && (
-                    <span className="seg small-seg board-tabs" role="tablist" aria-label="Task or board">
-                      <button type="button" role="tab" aria-selected={!boardView} className={!boardView ? 'on' : ''} onClick={() => showBoard(false)}>
-                        Task
-                      </button>
-                      <button type="button" role="tab" aria-selected={boardView} className={boardView ? 'on' : ''} onClick={() => showBoard(true)}>
-                        Board
-                      </button>
-                    </span>
-                  )}
                 </div>
                 {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
                 {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} />}
-                {!preview && <PickedBanner picked={live?.picked} />}
+                {!preview && <PickedBanner picked={live?.picked} onClose={() => setLive(classId, { picked: null })} />}
                 {!preview && <ReactionBurst signals={signals} />}
                 <div
                   ref={teachBodyRef}
@@ -1064,7 +1039,7 @@ export function LessonEditor() {
               tab={panelTab}
               onTab={setPanelTab}
               notes={notes}
-              onNotes={changeNotes}
+              notesEditor={notesEditor('lp-notes', 'Notes for this task. Only you can see them.')}
               rooms={activeSet?.groups}
               only={gridOnly}
               tagOf={tagOf}
@@ -1176,7 +1151,7 @@ export function LessonEditor() {
               </button>
               <div className="field" style={{ gap: 6 }}>
                 <span>Teacher notes</span>
-                <textarea className="notes-input" value={notes} placeholder="Timing, instructions, answers to check… Only you can see these." onChange={(e) => changeNotes(e.target.value)} />
+                {notesEditor('notes-input', 'Timing, instructions, answers to check… Only you can see these.')}
               </div>
               <h2>Tips</h2>
               <p className="hint" style={{ margin: 0 }}>

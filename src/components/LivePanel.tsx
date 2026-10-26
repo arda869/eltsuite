@@ -31,6 +31,7 @@ type Props = {
   tab?: 'answers' | 'notes';
   onTab?: (t: 'answers' | 'notes') => void;
   notes?: string;
+  notesEditor?: React.ReactNode;
   onNotes?: (v: string) => void;
   signals?: Record<string, Signal>;
   onSpotlight?: (qid: string, text: string) => void;
@@ -80,7 +81,7 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', notesEditor, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
   const [room, setRoom] = useState<string>('all');
   const [detail, setDetail] = useState<Learner | null>(null);
   const [allRoster, setRoster] = useState<Learner[]>([]);
@@ -138,7 +139,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
         </button>
       </div>
       {tab === 'notes' ? (
-        <textarea className="lp-notes" value={notes} placeholder="Notes for this task. Only you can see them." onChange={(e) => onNotes?.(e.target.value)} />
+        notesEditor
       ) : (
       <>
       {rooms && rooms.length > 0 && (

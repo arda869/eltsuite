@@ -1,3 +1,4 @@
+import { IconBtn } from './UiIcon';
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { getStroke } from 'perfect-freehand';
 
@@ -121,25 +122,19 @@ export function PresentInk({ container, mode, color, highlight, clearKey }: { co
 export function InkBar({ mode, setMode, color, setColor, highlight, setHighlight, onClear }: { mode: InkMode; setMode: (m: InkMode) => void; color: string; setColor: (c: string) => void; highlight: string; setHighlight: (c: string) => void; onClear: () => void }) {
   if (mode === 'off') return null;
   return (
-    <div className="ink-bar" role="toolbar" aria-label="Draw on the screen">
-      <span className="seg small-seg">
-        <button type="button" className={mode === 'pen' ? 'on' : ''} onClick={() => setMode('pen')}>
-          Pen
-        </button>
-        <button type="button" className={mode === 'highlight' ? 'on' : ''} onClick={() => setMode('highlight')}>
-          Highlight
-        </button>
+    <div className="ink-bar" role="toolbar" aria-label="Annotate the screen">
+      <span className="tool-group">
+        <IconBtn icon="pen" label="Pen" active={mode === 'pen'} onClick={() => setMode('pen')} />
+        <IconBtn icon="highlight" label="Highlighter: select text to highlight it" active={mode === 'highlight'} onClick={() => setMode('highlight')} />
       </span>
       {(mode === 'pen' ? INK_COLORS : HIGHLIGHTS).map((c) => (
         <button key={c} type="button" className={'wb-color' + ((mode === 'pen' ? color : highlight) === c ? ' on' : '')} style={{ background: c }} aria-label="Colour" onClick={() => (mode === 'pen' ? setColor(c) : setHighlight(c))} />
       ))}
-      <button type="button" className="btn link small" onClick={onClear}>
-        Clear
-      </button>
-      <button type="button" className="btn small-btn" onClick={() => setMode('off')}>
-        Done
-      </button>
-      <span className="hint">{mode === 'pen' ? 'Draw on the task. Not saved.' : 'Select text to highlight it. Not saved.'}</span>
+      <span className="tool-group">
+        <IconBtn icon="eraser" label="Clear the annotations" onClick={onClear} />
+        <IconBtn icon="check" label="Done annotating" onClick={() => setMode('off')} />
+      </span>
+      <span className="hint">Not saved.</span>
     </div>
   );
 }
