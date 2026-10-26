@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { packAnswerText, scorePack, type PackKey, type PackKind } from '../lib/pack';
+import { diffWords, packAnswerText, scorePack, type PackKey, type PackKind, type Placed } from '../lib/pack';
+import { speak } from '../lib/media';
 import { useImageSrc } from '../editor/PackNode';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -57,6 +58,14 @@ export function PackQuestion(p: Props) {
         return <Matching {...p} />;
       case 'speaking':
         return <Speaking {...p} />;
+      case 'dictation':
+        return <Dictation {...p} />;
+      case 'pairs':
+        return <Pairs {...p} />;
+      case 'crossword':
+        return <Crossword {...p} />;
+      case 'wordsearch':
+        return <WordSearch {...p} />;
     }
   })();
   return (
@@ -534,4 +543,293 @@ function Speaking({ data, classId = '' }: Props) {
 function Photo({ classId, src }: { classId: string; src: string }) {
   const url = useImageSrc(classId, src);
   return url ? <img src={url} alt="" /> : <div className="pq-noimg" />;
+}
+
+// ---- Question pack 2 ---------------------------------------------------------------------
+
+const SPEAKER = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 9v6h4l5 4V5L8 9H4z" />
+    <path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" />
+  </svg>
+);
+
+// Dictation: hear the sentence (limited replays), type it, marked word by word.
+function Dictation({ id, data, value, onChange, result, locked, num, hideAnswers }: Props) {
+  const v = typeof value === 'string' ? value : '';
+  const key = 'dict-' + id;
+  const [plays, setPlays] = useState(() => {
+    try {
+      return Number(sessionStorage.getItem(key) ?? 0);
+    } catch {
+      return 0;
+    }
+  });
+  const limit = Number(data.replays) || 2;
+  const left = limit >= 99 ? Infinity : Math.max(0, limit - plays);
+  const play = () => {
+    if (left <= 0 || result) return;
+    speak(data.say ?? '', data.accent === 'GA' ? 'GA' : 'RP');
+    setPlays((n) => {
+      try {
+        sessionStorage.setItem(key, String(n + 1));
+      } catch {
+        /* ignore */
+      }
+      return n + 1;
+    });
+  };
+  const diff = result ? diffWords(result.k.sentence ?? '', v) : null;
+  return (
+    <div className="pq-dict">
+      <span className="pq-dict-head">
+        {num(id)}
+        <button type="button" className="btn small-btn pq-play" disabled={locked || !!result || left <= 0} onClick={play}>
+          {SPEAKER} {plays === 0 ? 'Listen' : 'Listen again'}
+        </button>
+        <span className="hint">{result ? '' : left === Infinity ? 'Replay as often as you like' : left > 0 ? `${left} ${left === 1 ? 'play' : 'plays'} left` : 'No plays left'} · {data.count ?? '?'} words</span>
+      </span>
+      {!result ? (
+        <input className="gap-input pq-dict-input" value={v} disabled={locked} placeholder="Type what you hear" autoComplete="off" spellCheck={false} onChange={(e) => onChange?.(e.target.value)} />
+      ) : (
+        <div className="pq-dict-result">
+          <span className="pq-dict-typed">
+            {diff!.typed.length ? diff!.typed.map((w, i) => <span key={i} className={'ans ' + (w.ok ? 'right' : 'wrong')}>{w.w} </span>) : <span className="ans wrong">—</span>}
+          </span>
+          {!hideAnswers && (
+            <span className="pq-dict-exp">
+              {diff!.expected.map((w, i) => (
+                <span key={i} className={w.ok ? '' : 'missed-word'}>
+                  {w.w}{' '}
+                </span>
+              ))}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Minimal pairs: hear a word, pick it from similar-sounding options.
+function Pairs({ id, data, value, onChange, result, locked, num, hideAnswers }: Props) {
+  const items: { say: string; options: string[] }[] = data.items ?? [];
+  const v = arr(value, items.length);
+  return (
+    <div className="pq-pairs">
+      {items.map((it, i) => (
+        <span key={i} className="pq-pair-row">
+          {num(id, i)}
+          <button type="button" className="icon-btn pq-say" aria-label="Listen" disabled={locked} onClick={() => speak(it.say, data.accent === 'GA' ? 'GA' : 'RP')}>
+            {SPEAKER}
+          </button>
+          {it.options.map((o, oi) => {
+            const on = v[i] === oi;
+            const st = !result ? (on ? ' on' : '') : on ? (result.k.map?.[i] === oi ? ' right' : ' wrong') : !hideAnswers && result.k.map?.[i] === oi ? ' missed' : '';
+            return (
+              <button key={oi} type="button" className={'pq-odd-chip' + st} disabled={locked || !!result} aria-pressed={on} onClick={() => onChange?.(v.map((x, k) => (k === i ? (on ? -1 : oi) : x)))}>
+                {o}
+              </button>
+            );
+          })}
+          {result && v[i] === result.k.map?.[i] && TICK}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Crossword: the clues, and a grid to type letters into.
+function Crossword({ id, data, value, onChange, result, locked, num, hideAnswers }: Props) {
+  const rows: number = data.rows ?? 0;
+  const cols: number = data.cols ?? 0;
+  const clues: { n: number; dir: string; row: number; col: number; len: number; clue: string }[] = data.clues ?? [];
+  const cells: Record<string, string> = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const [active, setActive] = useState<number | null>(null);
+  const inGrid = new Map<string, { n?: number; clues: number[] }>();
+  clues.forEach((c, ci) => {
+    for (let i = 0; i < c.len; i++) {
+      const k = (c.dir === 'across' ? c.row : c.row + i) + ',' + (c.dir === 'across' ? c.col + i : c.col);
+      const cur = inGrid.get(k) ?? { clues: [] };
+      cur.clues.push(ci);
+      if (i === 0) cur.n = cur.n ?? c.n;
+      inGrid.set(k, cur);
+    }
+  });
+  const answerCells = result ? (Object.fromEntries((result.k.layout ?? []).flatMap((p: Placed) => Array.from({ length: p.word.length }, (_, i) => [(p.dir === 'across' ? p.row : p.row + i) + ',' + (p.dir === 'across' ? p.col + i : p.col), p.word[i]]))) as Record<string, string>) : {};
+  const ok = (k: string) => (cells[k] ?? '').toUpperCase() === (answerCells[k] ?? '').toUpperCase();
+  const move = (r: number, c: number, dir: string, step: number) => {
+    const nr = dir === 'across' ? r : r + step;
+    const nc = dir === 'across' ? c + step : c;
+    const next = document.querySelector<HTMLInputElement>(`[data-cw="${id}"] input[data-rc="${nr},${nc}"]`);
+    next?.focus();
+    next?.select();
+  };
+  return (
+    <div className="pq-cw" data-cw={id}>
+      <span className="pq-cw-head">{num(id)}</span>
+      <div className="pq-cw-wrap">
+        <div className="pq-cw-grid" style={{ gridTemplateColumns: `repeat(${cols}, var(--cw-cell, 32px))` }}>
+          {Array.from({ length: rows * cols }, (_, i) => {
+            const r = Math.floor(i / cols);
+            const c = i % cols;
+            const k = r + ',' + c;
+            const g = inGrid.get(k);
+            if (!g) return <span key={k} className="pq-cw-black" />;
+            const dir = active !== null && g.clues.includes(active) ? clues[active].dir : clues[g.clues[0]].dir;
+            return (
+              <span key={k} className={'pq-cw-cell' + (active !== null && g.clues.includes(active) ? ' lit' : '') + (result ? (ok(k) ? ' right' : ' wrong') : '')}>
+                {g.n && <i className="pq-cw-n">{g.n}</i>}
+                {result ? (
+                  <b className={ok(k) ? '' : 'pen'}>{cells[k] ?? ''}</b>
+                ) : (
+                  <input
+                    data-rc={k}
+                    value={cells[k] ?? ''}
+                    maxLength={1}
+                    disabled={locked}
+                    aria-label={`Row ${r + 1}, column ${c + 1}`}
+                    onFocus={() => setActive(g.clues.includes(active ?? -1) ? active : g.clues[0])}
+                    onChange={(e) => {
+                      const ch = e.target.value.slice(-1).toUpperCase();
+                      onChange?.({ ...cells, [k]: ch });
+                      if (ch) move(r, c, dir, 1);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !cells[k]) move(r, c, dir, -1);
+                      if (e.key === 'ArrowRight') move(r, c, 'across', 1);
+                      if (e.key === 'ArrowLeft') move(r, c, 'across', -1);
+                      if (e.key === 'ArrowDown') move(r, c, 'down', 1);
+                      if (e.key === 'ArrowUp') move(r, c, 'down', -1);
+                    }}
+                  />
+                )}
+                {result && !ok(k) && !hideAnswers && <em className="pq-cw-fix">{answerCells[k]}</em>}
+              </span>
+            );
+          })}
+        </div>
+        <div className="pq-cw-clues">
+          {(['across', 'down'] as const).map((dir) => {
+            const list = clues.map((c, i) => ({ c, i })).filter((x) => x.c.dir === dir).sort((a, b) => a.c.n - b.c.n);
+            if (!list.length) return null;
+            return (
+              <div key={dir}>
+                <span className="eyebrow">{dir}</span>
+                <ol className="pq-cw-list">
+                  {list.map(({ c, i }) => (
+                    <li key={i} className={active === i ? 'on' : ''}>
+                      <button type="button" onClick={() => (setActive(i), document.querySelector<HTMLInputElement>(`[data-cw="${id}"] input[data-rc="${c.row},${c.col}"]`)?.focus())}>
+                        <b>{c.n}</b> {c.clue || '…'} <span className="hint">({c.len})</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Word search: read a clue, then drag across the word in the grid.
+function WordSearch({ id, data, value, onChange, result, locked, num, hideAnswers }: Props) {
+  const grid: string[] = data.grid ?? [];
+  const size: number = data.size ?? 0;
+  const clues: { clue: string; len: number }[] = data.clues ?? [];
+  const found: string[] = Array.isArray(value) ? value.map(String) : [];
+  const [start, setStart] = useState<number | null>(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const rc = (i: number) => [Math.floor(i / size), i % size] as const;
+  const lineOf = (a: number, b: number): number[] | null => {
+    const [r1, c1] = rc(a);
+    const [r2, c2] = rc(b);
+    const dr = Math.sign(r2 - r1);
+    const dc = Math.sign(c2 - c1);
+    if (!(dr === 0 || dc === 0 || Math.abs(r2 - r1) === Math.abs(c2 - c1))) return null;
+    const n = Math.max(Math.abs(r2 - r1), Math.abs(c2 - c1)) + 1;
+    return Array.from({ length: n }, (_, i) => (r1 + dr * i) * size + c1 + dc * i);
+  };
+  const keyOf = (a: number, b: number) => {
+    const [r1, c1] = rc(a);
+    const [r2, c2] = rc(b);
+    return `${r1},${c1},${Math.sign(r2 - r1)},${Math.sign(c2 - c1)}`;
+  };
+  // the cells of every marked word (both ends are accepted, so try the reverse too)
+  const marked = new Set<number>();
+  const wordCells = (k: string, len: number) => {
+    const [r, c, dr, dc] = k.split(',').map(Number);
+    return Array.from({ length: len }, (_, i) => (r + dr * i) * size + c + dc * i);
+  };
+  found.forEach((k) => {
+    const len = Number(k.split(',')[4] ?? 0);
+    wordCells(k, len).forEach((i) => marked.add(i));
+  });
+  const answerCells = new Set<number>();
+  if (result && !hideAnswers) (result.k.placed ?? []).forEach((p: { row: number; col: number; dir: string; word: string }) => wordCells(`${p.row},${p.col},${p.dir}`, p.word.length).forEach((i) => answerCells.add(i)));
+  const finish = (end: number) => {
+    if (start === null) return;
+    const line = lineOf(start, end);
+    setStart(null);
+    setHover(null);
+    if (!line || line.length < 2) return;
+    // a word may be marked from either end, so both directions are stored, each with the length
+    const fwd = keyOf(start, end);
+    const bwd = keyOf(end, start);
+    if (found.some((f) => f.startsWith(fwd + ',') || f.startsWith(bwd + ','))) return;
+    onChange?.([...found, `${fwd},${line.length}`, `${bwd},${line.length}`]);
+  };
+  const path = start !== null && hover !== null ? lineOf(start, hover) : null;
+  const okKeys = new Set<string>((result?.k.placed ?? []).map((p: { row: number; col: number; dir: string }) => `${p.row},${p.col},${p.dir}`));
+  const foundWords = found.filter((k) => okKeys.has(k.split(',').slice(0, 4).join(','))).length;
+  return (
+    <div className="pq-ws" data-ws={id}>
+      <span className="pq-cw-head">
+        {num(id)}
+        <span className="hint">
+          {result ? `${foundWords} of ${clues.length} found` : `${Math.floor(found.length / 2)} marked · ${clues.length} to find`}
+        </span>
+      </span>
+      <div className="pq-cw-wrap">
+        <div
+          className="pq-ws-grid"
+          style={{ gridTemplateColumns: `repeat(${size}, var(--cw-cell, 30px))` }}
+          onPointerLeave={() => start !== null && (setStart(null), setHover(null))}
+        >
+          {grid.map((ch, i) => {
+            const inPath = path?.includes(i);
+            const isMarked = marked.has(i);
+            const isAns = answerCells.has(i);
+            return (
+              <button
+                key={i}
+                type="button"
+                className={'pq-ws-cell' + (inPath ? ' lit' : '') + (isMarked ? (result ? (isAns || hideAnswers ? ' right' : ' wrong') : ' marked') : '') + (result && isAns && !isMarked ? ' missed' : '')}
+                disabled={locked || !!result}
+                onPointerDown={(e) => (e.preventDefault(), setStart(i), setHover(i))}
+                onPointerEnter={() => start !== null && setHover(i)}
+                onPointerUp={() => finish(i)}
+              >
+                {ch}
+              </button>
+            );
+          })}
+        </div>
+        <ol className="pq-cw-list pq-ws-clues">
+          {clues.map((c, i) => (
+            <li key={i}>
+              {c.clue || '…'} <span className="hint">({c.len})</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      {found.length > 0 && !result && (
+        <button type="button" className="btn link small" onClick={() => onChange?.([])}>
+          Clear marks
+        </button>
+      )}
+    </div>
+  );
 }

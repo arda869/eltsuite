@@ -154,6 +154,16 @@ function packExport(kind: string, d: Record<string, any>, out: string[]) {
     case 'speaking':
       out.push(`[[speaking timer=${d.timer ?? 60}${d.pairs === false ? ' pairs=no' : ''}]]`, d.prompt ?? '', ...list(d.images).map((x: string) => 'image: ' + x), ...list(d.questions).map((q: string) => '- ' + q), '[[/speaking]]', '');
       return;
+    case 'dictation':
+      out.push(`[[dictation replays=${d.replays ?? 2}${d.accent === 'GA' ? ' accent=GA' : ''}]]`, d.sentence ?? '', '[[/dictation]]', '');
+      return;
+    case 'pairs':
+      out.push(`[[pairs${d.accent === 'GA' ? ' accent=GA' : ''}]]`, ...(d.items ?? []).map((it: any) => list(it.options).map((o: string) => (o === it.say ? '*' + o : o)).join(' | ')), '[[/pairs]]', '');
+      return;
+    case 'crossword':
+    case 'wordsearch':
+      out.push(`[[${kind}${d.from === 'notebook' ? ' from=notebook' : ''}]]`, ...(d.words ?? []).filter((w: any) => w.word).map((w: any) => `${w.word} = ${w.clue ?? ''}`), `[[/${kind}]]`, '');
+      return;
   }
 }
 
@@ -341,6 +351,28 @@ function packImport(kind: string, a: Record<string, string>, content: string[], 
         statements.push({ text: m[1].trim(), answer: options.indexOf(m[2]) });
       });
       return [node('matching', { options, names, statements })];
+    }
+    case 'dictation':
+      if (!content.filter(Boolean).length) errors.push({ line: start + 1, message: '[[dictation]] needs the sentence inside it' });
+      return [node('dictation', { sentence: content.filter(Boolean).join(' '), replays: Number(a.replays) || 2, accent: a.accent === 'GA' ? 'GA' : 'RP' })];
+    case 'pairs': {
+      const items = lines.map(({ x, k }) => {
+        const opts = x.split('|').map((o) => o.trim()).filter(Boolean);
+        const star = opts.findIndex((o) => o.startsWith('*'));
+        if (opts.length < 2 || star < 0) errors.push({ line: at(k), message: 'Write the words separated by | and mark the one learners hear with *, for example “*ship | sheep”' });
+        return { say: (opts[Math.max(0, star)] ?? '').replace(/^\*/, ''), options: opts.map((o) => o.replace(/^\*/, '')) };
+      });
+      return [node('pairs', { items, accent: a.accent === 'GA' ? 'GA' : 'RP' })];
+    }
+    case 'crossword':
+    case 'wordsearch': {
+      const words = lines.map(({ x, k }) => {
+        const m = /^(.+?)\s*=\s*(.*)$/.exec(x);
+        if (!m) errors.push({ line: at(k), message: 'Write each line as “word = clue”' });
+        return { word: (m?.[1] ?? x).trim(), clue: (m?.[2] ?? '').trim() };
+      });
+      if (words.length < 2) errors.push({ line: start + 1, message: `[[${kind}]] needs at least two words` });
+      return [node(kind, { words, from: a.from === 'notebook' ? 'notebook' : '' })];
     }
     case 'speaking': {
       const images = lines.filter((l) => /^image:/i.test(l.x)).map((l) => l.x.replace(/^image:\s*/i, ''));
@@ -551,6 +583,10 @@ export function importLesson(text: string): ImportResult {
         case 'gapped':
         case 'matching':
         case 'speaking':
+        case 'dictation':
+        case 'pairs':
+        case 'crossword':
+        case 'wordsearch':
           packImport(kind, a, content, start, at, errors).forEach((n) => body.push(n));
           break;
         case 'box': {

@@ -2,8 +2,10 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { newId } from '../lib/tasks';
-import { newPackData, PACK_LABELS, tokenise, type PackKind } from '../lib/pack';
-import { audioUrl as mediaUrl, saveImage } from '../lib/media';
+import { layoutCrossword, newPackData, PACK_LABELS, tokenise, type PackKind } from '../lib/pack';
+import { audioUrl as mediaUrl, saveImage, speak } from '../lib/media';
+import { useAuth } from '../lib/auth';
+import { useNotebook } from '../lib/notebook';
 import { useEditorClass } from './context';
 import { NoteFields } from './NoteFields';
 import { Grip } from './nodes';
@@ -384,7 +386,154 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
         </>
       );
     }
+    case 'dictation':
+      return (
+        <>
+          <textarea className="pq-text" rows={2} value={d.sentence ?? ''} placeholder="The sentence learners will hear and type." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ sentence: e.target.value })} />
+          <div className="pq-row">
+            <label className="inline-field small-field">
+              Replays
+              <select value={d.replays ?? 2} onChange={(e) => set({ replays: Number(e.target.value) })}>
+                {[1, 2, 3, 5, 99].map((n) => (
+                  <option key={n} value={n}>
+                    {n === 99 ? 'Unlimited' : n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="inline-field small-field">
+              Accent
+              <select value={d.accent ?? 'RP'} onChange={(e) => set({ accent: e.target.value })}>
+                <option value="RP">British</option>
+                <option value="GA">American</option>
+              </select>
+            </label>
+            <button type="button" className="btn small-btn" onClick={() => speak(d.sentence ?? '', d.accent ?? 'RP')} disabled={!String(d.sentence ?? '').trim()}>
+              Listen
+            </button>
+          </div>
+          <span className="hint">Read aloud by the browser. Marked word by word; 1 point per word. Learners see the sentence only after they check.</span>
+        </>
+      );
+    case 'pairs': {
+      const items: { say: string; options: string[] }[] = d.items ?? [];
+      return (
+        <>
+          <div className="pq-lines">
+            {items.map((it, i) => (
+              <span key={i} className="pq-line pq-pair">
+                <span className="pq-n">{i + 1}</span>
+                <PipeField value={it.options ?? []} placeholder="ship | sheep" onChange={(v) => set({ items: items.map((x, k) => (k === i ? { ...x, options: v, say: v.includes(x.say) ? x.say : v[0] ?? '' } : x)) })} />
+                <select value={it.say} aria-label="The word learners hear" onChange={(e) => set({ items: items.map((x, k) => (k === i ? { ...x, say: e.target.value } : x)) })}>
+                  {(it.options ?? []).map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
+                </select>
+                <button type="button" className="icon-btn" aria-label="Listen" onClick={() => speak(it.say, d.accent ?? 'RP')}>
+                  ♪
+                </button>
+                <button type="button" className="icon-btn" aria-label="Remove" disabled={items.length <= 1} onClick={() => set({ items: items.filter((_, k) => k !== i) })}>
+                  ×
+                </button>
+              </span>
+            ))}
+            <button type="button" className="btn link small" style={{ alignSelf: 'flex-start' }} onClick={() => set({ items: [...items, { say: '', options: [] }] })}>
+              + Add a pair
+            </button>
+          </div>
+          <div className="pq-row">
+            <label className="inline-field small-field">
+              Accent
+              <select value={d.accent ?? 'RP'} onChange={(e) => set({ accent: e.target.value })}>
+                <option value="RP">British</option>
+                <option value="GA">American</option>
+              </select>
+            </label>
+          </div>
+          <span className="hint">Write the similar-sounding words separated by |, then choose the one learners hear. 1 point each.</span>
+        </>
+      );
+    }
+    case 'crossword':
+    case 'wordsearch':
+      return <WordGridEditor kind={kind} d={d} set={set} classId={classId} />;
   }
+}
+
+// Words and clues for a crossword or word search, typed or taken from the class notebook.
+function WordGridEditor({ kind, d, set, classId }: { kind: 'crossword' | 'wordsearch'; d: Data; set: (p: Data) => void; classId: string }) {
+  const words: { word: string; clue: string }[] = d.words ?? [];
+  const [picking, setPicking] = useState(false);
+  const preview = kind === 'crossword' ? layoutCrossword(words) : null;
+  return (
+    <>
+      <div className="pq-lines">
+        {words.map((w, i) => (
+          <span key={i} className="pq-line pq-wordclue">
+            <input value={w.word} placeholder="word" aria-label="Word" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ words: words.map((x, k) => (k === i ? { ...x, word: e.target.value } : x)) })} />
+            <input value={w.clue} placeholder="clue (the meaning)" aria-label="Clue" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ words: words.map((x, k) => (k === i ? { ...x, clue: e.target.value } : x)) })} />
+            <button type="button" className="icon-btn" aria-label="Remove" disabled={words.length <= 1} onClick={() => set({ words: words.filter((_, k) => k !== i) })}>
+              ×
+            </button>
+          </span>
+        ))}
+        <span style={{ display: 'flex', gap: 10 }}>
+          <button type="button" className="btn link small" onClick={() => set({ words: [...words, { word: '', clue: '' }] })}>
+            + Add a word
+          </button>
+          {classId && (
+            <button type="button" className="btn link small" onClick={() => setPicking(true)}>
+              From the class notebook…
+            </button>
+          )}
+        </span>
+      </div>
+      <span className="hint">
+        {kind === 'crossword' ? `${preview?.placed.length ?? 0} words placed on a ${preview?.rows ?? 0} × ${preview?.cols ?? 0} grid. Learners see the clues and type the letters; 1 point per word.` : 'Learners read each clue, then find and mark the word in the grid. Words go in any direction; 1 point per word.'}
+        {' '}Only letters are used; spaces and hyphens are removed.
+      </span>
+      {picking && <NotebookWordPicker classId={classId} onClose={() => setPicking(false)} onPick={(list) => (set({ words: [...words.filter((w) => w.word.trim()), ...list], from: 'notebook' }), setPicking(false))} />}
+    </>
+  );
+}
+
+function NotebookWordPicker({ classId, onPick, onClose }: { classId: string; onPick: (list: { word: string; clue: string }[]) => void; onClose: () => void }) {
+  const { user } = useAuth();
+  const me = user ? { uid: user.uid, name: 'Teacher', teacher: true } : null;
+  const entries = useNotebook(classId, me);
+  const vocab = entries.filter((e) => e.type === 'vocab' && e.data.word && e.status === 'published');
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [q, setQ] = useState('');
+  const shown = vocab.filter((e) => !q || `${e.data.word} ${e.data.def?.meaning ?? ''}`.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog" role="dialog" aria-label="Words from the class notebook" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: 0 }}>Words from the class notebook</h2>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search" onKeyDown={(e) => e.stopPropagation()} />
+        {!vocab.length ? (
+          <span className="hint">No words in the class notebook yet.</span>
+        ) : (
+          <div className="aud-pick ws-tasks">
+            {shown.map((e) => (
+              <label key={e.id} className="pop-check">
+                <input type="checkbox" checked={sel.has(e.id)} onChange={() => setSel((s) => { const n = new Set(s); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; })} />
+                <strong>{e.data.word}</strong>
+                {e.data.def?.meaning && <span className="hint"> · {e.data.def.meaning}</span>}
+              </label>
+            ))}
+          </div>
+        )}
+        <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn primary" disabled={!sel.size} onClick={() => onPick(vocab.filter((e) => sel.has(e.id)).map((e) => ({ word: e.data.word!, clue: e.data.def?.meaning ?? '' })))}>
+            Add {sel.size || ''} {sel.size === 1 ? 'word' : 'words'}
+          </button>
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function PackView(props: NodeViewProps) {

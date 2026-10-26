@@ -162,6 +162,33 @@ export function flattenTask(t: ExportTask): WsTask {
             blocks.push({ kind: 'p', runs: [pre, { t: `Options: ${pub.options.join(', ')}`, bold: true }] });
             pub.statements.forEach((s: string, i: number) => blocks.push({ kind: 'p', runs: [{ t: `${i + 1}. ${s}  ` }, { blank: 4 }] }));
             break;
+          case 'dictation':
+            blocks.push({ kind: 'p', runs: [pre, { t: `Dictation (${pub.count} words): your teacher reads the sentence.` }] });
+            blocks.push({ kind: 'lines', n, count: 2 });
+            break;
+          case 'pairs':
+            pub.items.forEach((it: { options: string[] }, i: number) => blocks.push({ kind: 'p', runs: [i === 0 ? pre : { t: '' }, { t: `${i + 1}. Circle the word you hear: ` }, { t: it.options.join(' / ') }] }));
+            break;
+          case 'crossword': {
+            const rows: string[][] = Array.from({ length: pub.rows }, () => Array(pub.cols).fill('■'));
+            pub.clues.forEach((c: { n: number; dir: string; row: number; col: number; len: number }) => {
+              for (let i = 0; i < c.len; i++) rows[c.dir === 'across' ? c.row : c.row + i][c.dir === 'across' ? c.col + i : c.col] = i === 0 ? String(c.n) : ' ';
+            });
+            blocks.push({ kind: 'p', runs: [pre, { t: 'Crossword', bold: true }] });
+            blocks.push({ kind: 'table', rows: [rows[0].map(() => ''), ...rows] });
+            (['across', 'down'] as const).forEach((dir) => {
+              const list = pub.clues.filter((c: { dir: string }) => c.dir === dir).sort((a: { n: number }, b: { n: number }) => a.n - b.n);
+              if (list.length) blocks.push({ kind: 'p', runs: [{ t: dir[0].toUpperCase() + dir.slice(1) + ': ', bold: true }, { t: list.map((c: { n: number; clue: string; len: number }) => `${c.n} ${c.clue} (${c.len})`).join('  ·  ') }] });
+            });
+            break;
+          }
+          case 'wordsearch': {
+            const rows: string[][] = Array.from({ length: pub.size }, (_, r) => (pub.grid as string[]).slice(r * pub.size, (r + 1) * pub.size));
+            blocks.push({ kind: 'p', runs: [pre, { t: 'Word search', bold: true }] });
+            blocks.push({ kind: 'table', rows: [rows[0].map(() => ''), ...rows] });
+            blocks.push({ kind: 'p', runs: [{ t: 'Find: ', bold: true }, { t: pub.clues.map((c: { clue: string; len: number }) => `${c.clue} (${c.len})`).join('  ·  ') }] });
+            break;
+          }
         }
         return;
       }
