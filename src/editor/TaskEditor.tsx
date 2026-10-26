@@ -189,7 +189,9 @@ const COMMANDS: Cmd[] = [
   ...BLOCK_CMDS,
 ];
 
-function useSlash(editor: Editor | null, extra: Cmd[] = []) {
+// Writing that is not a task (an email): only text tools, no questions or task elements.
+const TEXT_ONLY = ['stress', 'ipa', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
+function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
 
@@ -223,9 +225,9 @@ function useSlash(editor: Editor | null, extra: Cmd[] = []) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      return [...COMMANDS, ...extra].filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+      return [...COMMANDS, ...extra].filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
     },
-    [state, editor, extra],
+    [state, editor, extra, textOnly],
   );
 
   const choose = (c: Cmd) => {
@@ -341,7 +343,7 @@ const TrailingLine = Extension.create({
   },
 });
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false }: { compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false }: { textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -497,7 +499,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     () => (onPickBank ? [{ key: 'bankpick', label: 'From my question bank…', hint: 'Insert a saved question or task', group: 'Questions', run: (e) => onPickBank((nodes) => e.chain().focus().insertContent(nodes).run()) }] : []),
     [onPickBank],
   );
-  const slash = useSlash(editor, bankCmds);
+  const slash = useSlash(editor, bankCmds, textOnly);
   const [gallery, setGallery] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
@@ -631,11 +633,13 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
           <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
         )}
         <span className="tool-sep" />
-        {BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
-        {BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
+        {!textOnly && BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')}
+        {!textOnly && BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')}
         <IconTool editor={editor} />
         <SymbolTool editor={editor} />
-        {BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
+        {textOnly && BTN('Word stress', false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Stress')}
+        {textOnly && BTN('IPA transcription', false, () => COMMANDS.find((c) => c.key === 'ipa')?.run(editor), '/ IPA /')}
+        {!textOnly && BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')}
         {compact && (toolsOver || toolsOpen) && (
           <button type="button" className={'tb-more-tools' + (toolsOpen ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setToolsOpen((v) => !v)} aria-expanded={toolsOpen} aria-label={toolsOpen ? 'Fewer tools' : 'All the tools'} data-tip={toolsOpen ? 'Fewer tools' : 'All the tools'}>
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>

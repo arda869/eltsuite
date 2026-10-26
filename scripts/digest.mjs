@@ -30,6 +30,7 @@ for (const u of users.docs) {
   const chats = await db.collection('chats').where('members', 'array-contains', uid).get();
   const waiting = chats.docs.filter((c) => {
     const d = c.data();
+    if (learner && d.emailThread) return false; // the mail job sends these right away
     return d.last && d.last.by !== uid && (d.seen?.[uid] ?? 0) < d.lastAt && now - d.lastAt >= after && (d.digested?.[uid] ?? 0) < d.lastAt;
   });
   if (!waiting.length) continue;

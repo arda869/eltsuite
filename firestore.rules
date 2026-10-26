@@ -467,6 +467,10 @@ service cloud.firestore {
     // The class decides: no messages; only with teachers (or groups the teacher makes); or freely.
     function msgMode() { return classData(myClass()).get('messaging', {}).get('mode', 'free'); }
     function learnerMayStart(c) { return msgMode() == 'free' || (msgMode() != 'off' && c.roles.values().removeAll(['teacher']).size() <= 1); }
+    // Emails waiting to go out (scripts/mail.mjs sends them). Teachers add; only the mail job reads.
+    match /outbox/{id} {
+      allow create: if isTeacher() && teachesClass(request.resource.data.classId) && request.resource.data.state == 'waiting';
+    }
     // Profile photos: small pictures anyone signed in may see; only the owner changes theirs.
     match /photos/{uid} {
       allow read: if signedIn();

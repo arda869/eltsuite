@@ -5497,3 +5497,7 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .lh-nudge > span:nth-child(2) { display: flex; flex-direction: column; flex: 1; gap: 2px; }
 .lh-nudge-go { font: 600 13px var(--sans); color: var(--accent-text, var(--accent)); white-space: nowrap; }
 .msg-off { margin: 40px auto; max-width: 460px; }
+.ann-email-toggle .hint { font-weight: 400; }
+.ann-email { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 3%, var(--paper)); }
+.ann-email-editor { min-height: 140px; background: var(--paper); border-radius: 10px; box-shadow: 0 0 0 1px var(--hair); }
+.ann-email-toggle { flex-wrap: wrap; } .ann-email-toggle .hint { flex-basis: 100%; padding-left: 26px; margin-top: -2px; }

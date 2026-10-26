@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import type { JSONContent } from '@tiptap/react';
+import { db } from '../lib/firebase';
+import { TaskEditor } from '../editor/TaskEditor';
+import { plainOf } from '../lib/chat';
 import { cancelScheduled, pinAnnouncement, postAnnouncement, remind, retract, useAnnouncements } from '../lib/announce';
 import { useAuth } from '../lib/auth';
 
@@ -15,6 +20,22 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
   const [err, setErr] = useState('');
   const [done, setDone] = useState('');
   const { user } = useAuth();
+  // By email too, when the class collects learners' emails.
+  const [emailOk, setEmailOk] = useState(false);
+  const [byEmail, setByEmail] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState<JSONContent | null>(null);
+  const [bodyKey, setBodyKey] = useState(0);
+  useEffect(() => {
+    getDoc(doc(db, 'classes', classId)).then((s) => setEmailOk((s.data()?.accounts?.email ?? 'optional') !== 'off'), () => {});
+  }, [classId]);
+  const startEmail = (on: boolean) => {
+    setByEmail(on);
+    if (on && !body) {
+      setBody({ type: 'doc', content: [{ type: 'paragraph', content: text.trim() ? [{ type: 'text', text: text.trim() }] : [] }] });
+      setBodyKey((k) => k + 1);
+    }
+  };
   const list = useAnnouncements(classId).filter((a) => a.to === 'all' || (Array.isArray(a.to) && a.to.length));
   const laterAt = later ? new Date(later).getTime() : 0;
   const toLocal = (ms: number) => new Date(ms).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -26,9 +47,13 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
     setBusy(true);
     try {
       setErr('');
-      await postAnnouncement(classId, { text: text.trim(), ...(link.trim() ? { link: link.trim() } : {}), to: all ? 'all' : picked, chime: withChime, pinned, ...(laterAt > Date.now() ? { sendAt: laterAt } : {}), byName: (user?.displayName || 'Teacher').split(' ')[0] });
+      const mail = byEmail && body ? { email: { subject: subject.trim() || text.trim().slice(0, 70) || 'A message from your teacher', content: body, byUid: user?.uid ?? '', byName: user?.displayName || 'Your teacher' } } : {};
+      await postAnnouncement(classId, { ...mail, text: text.trim() || plainOf(body).slice(0, 400), ...(link.trim() ? { link: link.trim() } : {}), to: all ? 'all' : picked, chime: withChime, pinned, ...(laterAt > Date.now() ? { sendAt: laterAt } : {}), byName: (user?.displayName || 'Teacher').split(' ')[0] });
       setText('');
       setLink('');
+      setByEmail(false);
+      setBody(null);
+      setSubject('');
       setLater('');
       setPinned(false);
       setDone(laterAt > Date.now() ? 'Scheduled. It will go out at ' + toLocal(laterAt) + '.' : 'Sent to ' + (all ? 'the whole class' : picked.length + (picked.length === 1 ? ' learner' : ' learners')) + '.');
@@ -72,6 +97,21 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
             <input type="datetime-local" value={later} onChange={(e) => setLater(e.target.value)} aria-label="Send at" style={{ fontSize: 13 }} />
           </label>
         </div>
+        {emailOk && (
+          <label className="pop-check ann-email-toggle">
+            <input type="checkbox" checked={byEmail} onChange={(e) => startEmail(e.target.checked)} />
+            Also send it by email
+            <span className="hint"> · to learners who added an email. Their replies come to you in Messages.</span>
+          </label>
+        )}
+        {byEmail && body && (
+          <div className="ann-email">
+            <input className="ann-link-input" value={subject} placeholder={'Subject: ' + (text.trim().slice(0, 50) || 'A message from your teacher')} onChange={(e) => setSubject(e.target.value)} aria-label="Email subject" />
+            <div className="chat-editor ann-email-editor">
+              <TaskEditor key={bodyKey} content={body} onChange={setBody} handles={false} compact textOnly classId={classId} placeholder="The email. Use the tools for bold, lists, word stress, IPA and more." />
+            </div>
+          </div>
+        )}
         {!all && (
           <div className="ann-people">
             {roster.map((r) => (
@@ -88,7 +128,7 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
           <button className="btn" onClick={onClose}>
             Close
           </button>
-          <button className="btn primary" disabled={!text.trim() || !okLink || busy || (!all && !picked.length)} onClick={send}>
+          <button className="btn primary" disabled={(!text.trim() && !(byEmail && body && plainOf(body).trim())) || !okLink || busy || (!all && !picked.length)} onClick={send}>
             {laterAt > Date.now() ? `Send ${toLocal(laterAt)}` : 'Send'}
           </button>
         </span>
