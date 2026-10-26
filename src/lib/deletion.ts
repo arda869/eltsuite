@@ -41,7 +41,11 @@ export async function purgeClass(c: ClassDoc, onStep?: (s: string) => void) {
   onStep?.('Removing answers and activity');
   const boards = await getDocs(collection(db, 'classes', id, 'boards'));
   for (const b of boards.docs) await deleteAll(await docsOf('classes', id, 'boards', b.id, 'posts'));
-  for (const sub of ['answers', 'feedback', 'notices', 'picks', 'presence', 'live', 'avatars', 'media', 'topics', 'secrets', 'members', 'boards']) await deleteAll(await docsOf('classes', id, sub));
+  const threads = await getDocs(collection(db, 'classes', id, 'threads'));
+  for (const t of threads.docs) await deleteAll(await docsOf('classes', id, 'threads', t.id, 'posts'));
+  const nb = await getDocs(collection(db, 'classes', id, 'notebook'));
+  for (const e of nb.docs) await deleteAll(await docsOf('classes', id, 'notebook', e.id, 'history'));
+  for (const sub of ['answers', 'feedback', 'notices', 'picks', 'presence', 'live', 'avatars', 'media', 'topics', 'secrets', 'members', 'boards', 'threads', 'annotations', 'announcements', 'groupSets', 'levelChoices', 'examRuns', 'surveyResponses', 'surveyDone', 'surveyResults', 'notebook', 'myNotes', 'attendance', 'mistakes', 'recaps']) await deleteAll(await docsOf('classes', id, sub));
   await deleteDoc(doc(db, 'classCodes', c.classCode)).catch(() => {});
   await deleteDoc(doc(db, 'classes', id));
 }
