@@ -61,10 +61,17 @@ service cloud.firestore {
             allow read, write: if teachesClass(classId);
           }
 
-          // Answer key: learners can read it only after they have checked their answers
+          // Answer key: learners can read it only after they have checked their answers.
+          // Body: the content of a task only some learners may open (groups and versions).
           match /private/{docId} {
             allow read: if teachesClass(classId)
+              || (docId == 'body' && memberOf(classId)
+                  && get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
+                     in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
               || (docId == 'key' && memberOf(classId)
+                  && (get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('restricted', false) == false
+                      || get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
+                         in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
                   && (get(/databases/$(database)/documents/classes/$(classId)/answers/$(taskId + '_' + request.auth.uid)).data.checked == true
                       || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealed', {}).get(taskId, 0) != 0
                       || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealedQs', {}).get(taskId, []).size() > 0));
@@ -87,6 +94,21 @@ service cloud.firestore {
           && request.resource.data.get('marks', {}) == resource.data.get('marks', {});
         // The teacher only adds marks and comments.
         allow update: if teachesClass(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'corrections']);
+        allow delete: if teachesClass(classId);
+      }
+
+      // Group sets (breakout rooms): the teacher makes them; learners can see their room
+      match /groupSets/{sid} {
+        allow read: if teachesClass(classId) || memberOf(classId);
+        allow write: if teachesClass(classId);
+      }
+
+      // The level a learner chose for a task with level versions
+      match /levelChoices/{cid} {
+        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow create, update: if memberOf(classId) && request.resource.data.uid == request.auth.uid
+          && cid == request.resource.data.family + '_' + request.auth.uid
+          && request.resource.data.learnerId == get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId;
         allow delete: if teachesClass(classId);
       }
 

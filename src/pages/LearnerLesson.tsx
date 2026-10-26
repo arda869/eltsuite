@@ -38,6 +38,7 @@ import { sendFeedback, useReceivedFeedback } from '../lib/feedback';
 import { usePresenceBeat } from '../lib/presence';
 import { Wordmark } from '../components/Wordmark';
 import { Whiteboard } from '../components/Whiteboard';
+import { chooseLevel, familyOf, isVariant, roomOf, useGroupSets, useMyLevels, useTaskBodies } from '../lib/groups';
 import { TaskRenderer } from '../components/TaskRenderer';
 
 export function LearnerLesson() {
@@ -47,7 +48,7 @@ export function LearnerLesson() {
   const learnerId = profile?.role === 'learner' ? profile.learnerId : '';
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [rawTasks, setTasks] = useState<Task[]>([]);
   const [current, setCurrent] = useState('');
   const [responses, setResponses] = useState<Responses>({});
   const [checked, setChecked] = useState(false);
@@ -63,30 +64,60 @@ export function LearnerLesson() {
     const u1 = onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }));
     const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => s.exists() && setItem({ id: s.id, ...(s.data() as Omit<Item, 'id'>) }));
     const u3 = onSnapshot(query(tasksCol(classId, itemId), orderBy('order')), (s) => {
-      const list = s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) })).filter((t) => !t.hidden);
-      setTasks(list);
-      setCurrent((cur) => (cur && list.some((t) => t.id === cur && !t.locked && t.kind !== 'section') ? cur : list.find((t) => !t.locked && t.kind !== 'section')?.id ?? ''));
+      setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) })).filter((t) => !t.hidden));
     });
     return () => (u1(), u2(), u3());
   }, [classId, itemId]);
+
+  // Groups and versions: each learner sees one version of a task, in the main task's place.
+  const myLevels = useMyLevels(classId, user?.uid);
+  const canOpen = (t: Task) => !t.restricted || !!t.allowed?.includes(learnerId);
+  const withBodies = useTaskBodies(classId, itemId, rawTasks, canOpen);
+  const tasks = useMemo(() => {
+    const out: (Task & { needsLevel?: boolean; levels?: Task[] })[] = [];
+    for (const m of withBodies) {
+      if (isVariant(m) && withBodies.some((x) => x.id === m.family)) continue;
+      const fam = familyOf(withBodies, m).filter(canOpen);
+      if (!fam.length) continue;
+      if (fam.length > 1 && m.dist?.mode === 'choose') {
+        const pick = fam.find((f) => f.id === myLevels[m.id]);
+        out.push({ ...(pick ?? fam[0]), title: m.title, needsLevel: !pick, levels: fam, order: m.order });
+      } else out.push({ ...fam[0], title: m.title, order: m.order });
+    }
+    return out;
+  }, [withBodies, myLevels, learnerId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The entry in the list for a task id (the teacher may be on another version of it).
+  const entryFor = (id?: string) => {
+    if (!id) return undefined;
+    const t = rawTasks.find((x) => x.id === id);
+    const fam = t?.family ?? id;
+    return tasks.find((x) => x.id === id || (x.family ?? x.id) === fam);
+  };
+  useEffect(() => {
+    setCurrent((cur) => (cur && tasks.some((t) => t.id === cur && !t.locked && t.kind !== 'section') ? cur : (entryFor(cur)?.id && !entryFor(cur)!.locked ? entryFor(cur)!.id : tasks.find((t) => !t.locked && t.kind !== 'section')?.id ?? '')));
+  }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+  const groupSets = useGroupSets(classId);
 
   useEffect(() => {
     if (!classId) return;
     return onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {});
   }, [classId]);
   usePresenceBeat(classId, user?.uid, { name: profile?.role === 'learner' ? profile.displayName : '', learnerId, itemId, taskId: current, avatar: profile?.avatar });
-  const synced = isSynced(live, itemId);
+  const myRoom = live?.groupSetId ? roomOf(groupSets.find((g) => g.id === live.groupSetId), learnerId) : undefined;
+  const roomTarget = isLive(live) && live?.itemId === itemId && myRoom ? live.roomTask?.[myRoom.id] : undefined;
+  const synced = (isSynced(live, itemId) && !live?.syncRoom) || !!roomTarget;
+  const syncTo = entryFor(roomTarget ?? live?.taskId)?.id;
   const liveHere = isLive(live) && live?.itemId === itemId;
-  const boardOpen = liveHere && !!live?.boardTask && live.boardTask === current;
+  const boardOpen = liveHere && !!live?.boardTask && entryFor(live.boardTask)?.id === current;
   const [onBoard, setOnBoard] = useState(false);
   useEffect(() => setOnBoard(boardOpen), [boardOpen]); // jump to the board when the teacher opens it
   const pointer = usePointer(liveHere ? classId : '');
   const bodyRef = useRef<HTMLDivElement>(null);
-  const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? live!.taskId : '';
+  const teacherAt = (isLive(live) && live?.itemId === itemId && live?.showMarker !== false) || synced ? entryFor(live!.taskId)?.id ?? '' : '';
   // When the teacher syncs the class, everyone follows the teacher's task.
   useEffect(() => {
-    if (synced && live?.taskId && tasks.some((t) => t.id === live.taskId)) setCurrent(live.taskId);
-  }, [synced, live?.taskId, tasks]);
+    if (synced && syncTo) setCurrent(syncTo);
+  }, [synced, syncTo]);
   const go = (id: string) => !synced && setCurrent(id);
   // Arriving from a notification or link: open that task.
   const [params, setParams] = useSearchParams();
@@ -317,6 +348,15 @@ export function LearnerLesson() {
               <div className="frame-head">
                 <h1 className="task-title">{task.title}</h1>
                 {task.instructions && <p className="task-instr">{task.instructions}</p>}
+                {task.levels && !task.needsLevel && rawTasks.find((t) => t.id === (task.family ?? task.id))?.dist?.canChange !== false && (
+                  <span className="seg small-seg level-tabs" role="radiogroup" aria-label="Level">
+                    {task.levels.map((l) => (
+                      <button key={l.id} type="button" role="radio" aria-checked={l.id === task.id} className={l.id === task.id ? 'on' : ''} onClick={() => user && chooseLevel(classId, task.family ?? task.id, user.uid, learnerId, l.id).then(() => setCurrent(l.id))}>
+                        {l.variant ?? 'Standard'}
+                      </button>
+                    ))}
+                  </span>
+                )}
                 {boardOpen && (
                   <span className="seg small-seg board-tabs" role="tablist" aria-label="Task or board">
                     <button type="button" role="tab" aria-selected={!onBoard} className={!onBoard ? 'on' : ''} onClick={() => setOnBoard(false)}>
@@ -329,7 +369,7 @@ export function LearnerLesson() {
                 )}
 
               </div>
-              {boardOpen && onBoard && user && <Whiteboard classId={classId} taskId={task.id} uid={user.uid} teacher={false} />}
+              {boardOpen && onBoard && user && <Whiteboard classId={classId} boardId={task.id} uid={user.uid} teacher={false} />}
               <div className="frame-body" ref={bodyRef} hidden={boardOpen && onBoard}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
                 <AnnotationLayer container={bodyRef} annotations={anns} classId={classId} taskId={task.id} canAnnotate={false} me={{ uid: user?.uid ?? '', name: profile?.role === 'learner' ? profile.displayName : '', teacher: false }} />
@@ -345,6 +385,24 @@ export function LearnerLesson() {
                     {live?.teacherName ?? 'Your teacher'} is on “{tasks.find((t) => t.id === teacherAt)?.title ?? 'another task'}”. Go there
                   </button>
                 )}
+                {task.needsLevel && task.levels ? (
+                  <div className="level-pick">
+                    <span className="eyebrow">Choose your level</span>
+                    <p>Pick the one that feels right for you today.</p>
+                    <span className="level-pick-row">
+                      {task.levels.map((l) => (
+                        <button key={l.id} type="button" className="level-card" onClick={() => user && chooseLevel(classId, task.family ?? task.id, user.uid, learnerId, l.id).then(() => setCurrent(l.id))}>
+                          <span className="level-bars" aria-hidden="true">
+                            {[0, 1, 2].map((b) => (
+                              <span key={b} className={b <= Math.max(0, ['Easier', 'Standard', 'Challenge'].indexOf(l.variant ?? 'Standard')) ? 'on' : ''} />
+                            ))}
+                          </span>
+                          {l.variant ?? 'Standard'}
+                        </button>
+                      ))}
+                    </span>
+                  </div>
+                ) : (
                 <TaskRenderer
                   content={task.content}
                   responses={responses}
@@ -366,16 +424,17 @@ export function LearnerLesson() {
                   boardMe={user && profile?.role === 'learner' ? { classId, taskId: current, itemId, uid: user.uid, name: profile.displayName, selfId: learnerId, people: classmates } : undefined}
                   onSharedReset={(pickId) => drawShared(classId, current, pickId, [], [], (shared[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   onOpenTask={(id) => {
-                    const t = tasks.find((x) => x.id === id);
-                    if (t && !t.locked) setCurrent(id);
+                    const t = entryFor(id);
+                    if (t && !t.locked) setCurrent(t.id);
                   }}
                   taskState={(id) => {
-                    const t = tasks.find((x) => x.id === id);
+                    const t = entryFor(id);
                     return !t ? 'missing' : t.locked ? 'locked' : 'open';
                   }}
                   onSharedDraw={(pickId, next, seq) => drawShared(classId, current, pickId, next.h, next.b, seq, (profile?.role === 'learner' ? profile.displayName : '').split(' ')[0] || 'A learner').catch((e) => console.error(e))}
                   onToggleFlag={task.locked ? undefined : toggleFlag}
                 />
+                )}
               </div>
               <div className="frame-foot">
                 {checked && key && showScore ? (

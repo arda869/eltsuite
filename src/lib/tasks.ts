@@ -14,6 +14,7 @@ import {
 import type { JSONContent } from '@tiptap/react';
 import { db } from './firebase';
 import { splitKey, type AnswerKey, type Responses } from './questions';
+import type { Audience, Dist } from './groups';
 export * from './questions';
 
 export type Task = {
@@ -29,6 +30,14 @@ export type Task = {
   layout?: 'single' | 'two' | 'two-wide' | 'media';
   showScore?: boolean; // show learners their score after checking (default on) // column widths when the task has a column break
   colScroll?: 'separate' | 'together';
+  // Groups and versions (see lib/groups.ts)
+  audience?: Audience;
+  family?: string | null; // id of the main task when this task has versions
+  variant?: string | null; // version label: A, B, C or Easier, Standard, Challenge
+  variants?: string[]; // on the main task: its other versions, in order
+  dist?: Dist | null; // on the main task: how versions are given out
+  allowed?: string[] | null; // learner ids who may open it (null = everyone)
+  restricted?: boolean; // content lives in private/body
 };
 
 export const tasksCol = (classId: string, itemId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks');
@@ -58,25 +67,27 @@ export async function addTask(classId: string, itemId: string, order: number, ki
   return ref.id;
 }
 
-export async function saveTask(classId: string, itemId: string, taskId: string, patch: { title?: string; instructions?: string; content?: JSONContent }) {
+export async function saveTask(classId: string, itemId: string, taskId: string, patch: { title?: string; instructions?: string; content?: JSONContent; restricted?: boolean }) {
   const batch = writeBatch(db);
   const data: { [k: string]: any } = { updatedAt: serverTimestamp() }; // eslint-disable-line @typescript-eslint/no-explicit-any
   if (patch.title !== undefined) data.title = patch.title;
   if (patch.instructions !== undefined) data.instructions = patch.instructions;
   if (patch.content) {
     const { content, key } = splitKey(patch.content);
-    data.content = content;
+    if (patch.restricted) batch.set(doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'private', 'body'), { content });
+    else data.content = content;
     batch.set(keyRef(classId, itemId, taskId), key);
   }
   batch.update(taskRef(classId, itemId, taskId), data);
   await batch.commit();
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {
   await deleteDoc(keyRef(classId, itemId, taskId)).catch(() => {});
+  await deleteDoc(doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId, 'private', 'body')).catch(() => {});
   await deleteDoc(taskRef(classId, itemId, taskId));
 }
 

@@ -25,7 +25,8 @@
             "strokes": {
               "$sid": {
                 ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || ((root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === 'all' || root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === auth.uid) && (!data.exists() || data.child('by').val() === auth.uid) && (!newData.exists() || newData.child('by').val() === auth.uid)))"
-              }
+              },
+              ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
             }
           }
         },

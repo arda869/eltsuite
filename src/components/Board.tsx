@@ -65,7 +65,7 @@ function TagList({ items, onPick }: { items: Person[]; onPick: (p: Person) => vo
 // A live message board, or a wall of post-it notes, shared by the whole class.
 
 export type BoardAttrs = { id: string; mode: 'board' | 'postits'; prompt: string; replies: boolean; reactions: boolean; anonymous: boolean; tagging?: boolean };
-export type BoardMe = { classId: string; taskId: string; itemId?: string; uid: string; name: string; teacher?: boolean; selfId?: string; people?: Person[] };
+export type BoardMe = { classId: string; taskId: string; itemId?: string; uid: string; name: string; teacher?: boolean; selfId?: string; people?: Person[]; penPeople?: { uid: string; name: string }[] };
 
 export const NOTE_COLORS = [
   { key: 'yellow', bg: '#fdf0a6', edge: '#f1dd76' },

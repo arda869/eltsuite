@@ -7,6 +7,7 @@ import { cellBg } from '../editor/tableStyle';
 import { Icon } from '../editor/Icons';
 import { Sym } from '../editor/Symbols';
 import { Board, type BoardAttrs, type BoardMe } from './Board';
+import { Whiteboard } from './Whiteboard';
 import { MentionTag } from '../editor/Mention';
 import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
@@ -879,6 +880,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <LinkCardView key={key} url={node.attrs?.url ?? ''} title={node.attrs?.title ?? ''} note={node.attrs?.note} />;
       case 'mention':
         return <MentionTag key={key} label={node.attrs?.label ?? ''} me={(teacher && node.attrs?.id === 'teacher') || (!!selfId && node.attrs?.id === selfId)} />;
+      case 'drawBoard':
+        return (
+          <div key={key} className="drawboard">
+            {node.attrs?.prompt && <p className="drawboard-title">{node.attrs.prompt}</p>}
+            {boardMe && node.attrs?.id ? <Whiteboard classId={boardMe.classId} boardId={node.attrs.id} uid={boardMe.uid} teacher={!!boardMe.teacher} people={boardMe.penPeople} compact /> : <div className="drawboard-empty hint">The board opens during the lesson.</div>}
+          </div>
+        );
       case 'board':
         return <Board key={key} attrs={node.attrs as BoardAttrs} me={boardMe} preview={!boardMe} />;
       case 'icon':

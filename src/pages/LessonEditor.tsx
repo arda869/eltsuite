@@ -49,6 +49,10 @@ import { Whiteboard } from '../components/Whiteboard';
 import { LivePanel } from '../components/LivePanel';
 import { drawShared, useSharedPicks } from '../lib/picks';
 import { useClassmates } from '../lib/learners';
+import { applyAccess, familyOf, isVariant, makeVariant, roleOf, ROLE_NAMES, unlinkVariant, useClassLevels, useGroupSets, useTaskBodies } from '../lib/groups';
+import { GroupsDialog } from '../components/GroupsDialog';
+import { TaskAudience } from '../components/TaskAudience';
+import { HIGHLIGHTS, INK_COLORS, InkBar, PresentInk, type InkMode } from '../components/PresentInk';
 
 const svg = (d: React.ReactNode) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -60,6 +64,7 @@ const EYE_OFF = svg(<><path d="M9.9 5.2A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0
 const LOCK = svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></>);
 const UNLOCK = svg(<><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 7.5-2" /></>);
 const COPY = svg(<><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>);
+const PEOPLE = svg(<><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5a3 3 0 0 1 0 6M18 14c2 .6 3 2.8 3 6" /></>);
 const TRASH = svg(<><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></>);
 
 type Draft = { title: string; instructions: string; content: JSONContent };
@@ -68,13 +73,18 @@ export function LessonEditor() {
   const { classId = '', itemId = '' } = useParams();
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null | undefined>(undefined);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [rawTasks, setTasks] = useState<Task[]>([]);
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [selected, setSelected] = useState<string>('');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editorKey, setEditorKey] = useState('');
   const [status, setStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [preview, setPreview] = useState(false);
   const [boardView, setBoardView] = useState(false);
+  const [inkMode, setInkMode] = useState<InkMode>('off');
+  const [inkColor, setInkColor] = useState(INK_COLORS[0]);
+  const [inkHl, setInkHl] = useState(HIGHLIGHTS[0]);
+  const [inkClear, setInkClear] = useState(0);
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const [previewChecked, setPreviewChecked] = useState(false);
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
@@ -103,9 +113,45 @@ export function LessonEditor() {
     [classId, itemId],
   );
 
+  // Versions sit under their main task; restricted tasks get their content from private/body.
+  const withBodies = useTaskBodies(classId, itemId, rawTasks, () => true);
+  const withBodiesRef = useRef(withBodies);
+  withBodiesRef.current = withBodies;
+  const tasks = useMemo(() => {
+    const mains = withBodies.filter((t) => !isVariant(t) || !withBodies.some((m) => m.id === t.family));
+    return mains.flatMap((m) => [m, ...(m.variants ?? []).map((id) => withBodies.find((x) => x.id === id)).filter((x): x is Task => !!x)]);
+  }, [withBodies]);
+  const groupSets = useGroupSets(classId);
+  const activeSet = groupSets.find((g) => g.id === live?.groupSetId);
   const task = tasks.find((t) => t.id === selected);
+  // Live grid with versions: only the learners on this version, each with their room, role or level.
+  const fam = familyOf(tasks, task);
+  const famMain = fam[0];
+  const choices = useClassLevels(classId, famMain?.dist?.mode === 'choose' && fam.length > 1 ? famMain.id : undefined);
+  const vLabel = (t?: Task) => (!t ? '' : t.variant && /^[A-Z]$/.test(t.variant) ? `Version ${t.variant}` : t.variant ?? 'Version A');
+  const gridOnly: string[] | null = !task || task.kind === 'section' ? null : fam.length > 1 && famMain?.dist?.mode === 'choose' ? Object.entries(choices).filter(([, tid]) => tid === task.id).map(([lid]) => lid) : task.allowed ?? null;
+  const tagOf = (lid: string) => {
+    const parts: string[] = [];
+    if (fam.length > 1) {
+      const d = famMain.dist;
+      if (d?.mode === 'role') {
+        const set = groupSets.find((g) => g.id === d.groupSetId);
+        const r = roleOf(set, lid, d.roleMap?.length ?? fam.length);
+        if (r >= 0) parts.push(`Learner ${ROLE_NAMES[r]}`);
+      } else if (d?.mode === 'choose') parts.push(vLabel(fam.find((f) => f.id === choices[lid])) || 'not chosen');
+      else parts.push(vLabel(fam.find((f) => !f.restricted || f.allowed?.includes(lid))));
+    }
+    return parts.join(' · ');
+  };
   const sharedPicks = useSharedPicks(classId, selected);
   const classmates = useClassmates(c?.classCode);
+  // Work out who may open each task whenever audiences, versions, groups or the class list change.
+  const accessSig = JSON.stringify([rawTasks.map((t) => [t.id, t.kind, t.audience, t.family, t.variants, t.dist, t.restricted, t.allowed]), groupSets.map((g) => [g.id, g.groups]), classmates.map((m) => m.id)]);
+  useEffect(() => {
+    if (!classmates.length && !rawTasks.some((t) => t.restricted)) return;
+    const t = window.setTimeout(() => applyAccess(classId, itemId, withBodiesRef.current, groupSets, classmates.map((m) => m.id)).catch((e) => console.error(e)), 400);
+    return () => window.clearTimeout(t);
+  }, [accessSig]); // eslint-disable-line react-hooks/exhaustive-deps
   const classAvatars = useLearnerAvatars(classId);
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
@@ -132,7 +178,7 @@ export function LessonEditor() {
 
   // While teaching, tell learners which task the teacher is on.
   useEffect(() => {
-    if (teachingHere && selected && live?.taskId !== selected) setLive(classId, { taskId: selected }).catch(() => {});
+    if (teachingHere && selected && live?.taskId !== selected) setLive(classId, { taskId: selected, ...(live?.sync && live.syncRoom ? { roomTask: { ...(live.roomTask ?? {}), [live.syncRoom]: selected } } : {}) }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teachingHere, selected]);
 
@@ -172,8 +218,8 @@ export function LessonEditor() {
   const stuckN = Object.values(signals).filter((x) => x.stuck).length;
   const movePointer = useThrottle((p: Parameters<typeof sendPointer>[1]) => sendPointer(classId, p), 66);
   useEffect(() => {
-    if (user && teachingHere) claimClass(classId, user.uid);
-  }, [user, teachingHere, classId]);
+    if (user && c && c.teacherId === user.uid) claimClass(classId, user.uid); // boards can be prepared before class
+  }, [user, c?.teacherId, classId]);
   const togglePointer = () => {
     const next = !pointerOn;
     setPointerOn(next);
@@ -207,7 +253,9 @@ export function LessonEditor() {
   const ti = taskList.findIndex((x) => x.id === selected);
   const prevTask = ti > 0 ? taskList[ti - 1] : undefined;
   const nextTask = ti >= 0 && ti < taskList.length - 1 ? taskList[ti + 1] : undefined;
-  const toggleSync = () => setLive(classId, { sync: !live?.sync, taskId: selected });
+  const toggleSync = () => setLive(classId, live?.sync ? { sync: false, syncRoom: null, roomTask: null } : { sync: true, taskId: selected, ...(live?.syncRoom ? { roomTask: { [live.syncRoom]: selected } } : {}) });
+  // With breakout rooms, sync can move one room with the teacher; other rooms stay where they are.
+  const syncWho = (room: string | null) => setLive(classId, room ? { syncRoom: room, ...(live?.sync ? { roomTask: { ...(live?.roomTask ?? {}), [room]: selected } } : {}) } : { syncRoom: null, roomTask: null });
 
   // Teaching shortcuts (not while typing).
   const [help, setHelp] = useState(false);
@@ -242,13 +290,14 @@ export function LessonEditor() {
       }
       if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === '?') return setHelp((h) => !h);
-      if (e.key === 'Escape') return (setHelp(false), setPresent(false));
+      if (e.key === 'Escape') return (setHelp(false), setPresent(false), setInkMode('off'));
       if (!teachingHere) return;
       const list = tasks.filter((x) => x.kind !== 'section');
       const i = list.findIndex((x) => x.id === selected);
       if (e.key === 'ArrowRight' && i < list.length - 1) select(list[i + 1].id);
       else if (e.key === 'ArrowLeft' && i > 0) select(list[i - 1].id);
       else if (e.key === 's' || e.key === 'S') toggleSync();
+      else if (e.key === 'd' || e.key === 'D') setInkMode((m) => (m === 'off' ? 'pen' : 'off'));
       else if (e.key === 'R') (revealN < 0 ? hideAnswers() : revealAll());
       else if (e.key === 'r') (revealN < 0 || revealN >= qCount ? hideAnswers() : revealNext());
       else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
@@ -292,6 +341,7 @@ export function LessonEditor() {
       setDraft(null);
       return;
     }
+    if (task.restricted && task.content === null) return setDraft(null);
     let cancelled = false;
     loadKey(classId, itemId, task.id).then((key: AnswerKey) => {
       if (cancelled) return;
@@ -306,8 +356,9 @@ export function LessonEditor() {
       cancelled = true;
     };
     // Only when the selection changes, not on every remote update of the same task.
+    // (A task whose content is kept apart waits until that content has arrived.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, !!task]);
+  }, [selected, !!task && (!task.restricted || task.content !== null)]);
 
   const lastVersion = useRef<Record<string, number>>({});
   const draftRef = useRef<Draft | null>(null);
@@ -321,7 +372,7 @@ export function LessonEditor() {
     pending.current = null;
     setStatus('saving');
     try {
-      await saveTask(classId, itemId, p.taskId, p.patch);
+      await saveTask(classId, itemId, p.taskId, { ...p.patch, restricted: !!rawTasks.find((t) => t.id === p.taskId)?.restricted });
       setStatus(pending.current ? 'saving' : 'saved');
       // Keep a version at most every 3 minutes of editing.
       const last = lastVersion.current[p.taskId] ?? 0;
@@ -380,19 +431,41 @@ export function LessonEditor() {
 
   // Drop a task at a new position and renumber the order of every task.
   async function reorder(fromId: string, to: number) {
+    // A task moves together with its versions; versions can't be dropped between other tasks' versions.
     const list = [...tasks];
     const from = list.findIndex((t) => t.id === fromId);
     if (from < 0) return;
-    const [moved] = list.splice(from, 1);
-    list.splice(to > from ? to - 1 : to, 0, moved);
-    setTasks(list);
-    await Promise.all(list.map((t, i) => (t.order !== i ? setTaskFlags(classId, itemId, t.id, { order: i }) : null)));
+    const block = familyOf(tasks, list[from]).filter((t) => list.includes(t));
+    const start = list.indexOf(block[0]);
+    list.splice(start, block.length);
+    let at = to > start ? to - block.length : to;
+    while (at > 0 && at < list.length && isVariant(list[at])) at++;
+    list.splice(Math.max(0, at), 0, ...block);
+    const mains = list.filter((t) => !isVariant(t) || !list.some((m) => m.id === t.family));
+    const orderOf = (t: Task) => mains.indexOf(isVariant(t) ? mains.find((m) => m.id === t.family) ?? t : t);
+    setTasks(list.map((t) => ({ ...t, order: orderOf(t) })));
+    await Promise.all(list.map((t) => (t.order !== orderOf(t) ? setTaskFlags(classId, itemId, t.id, { order: orderOf(t) }) : null)));
   }
 
   async function remove(t: Task) {
-    if (!window.confirm(`Delete the task “${t.title}”?`)) return;
+    const fam = familyOf(tasks, t);
+    if (isVariant(t)) {
+      if (!window.confirm(`Delete version ${t.variant ?? ''} of “${t.title}”?`)) return;
+      pending.current = null;
+      await unlinkVariant(classId, itemId, tasks, t);
+      await deleteTask(classId, itemId, t.id);
+      return;
+    }
+    if (!window.confirm(fam.length > 1 ? `Delete the task “${t.title}” and its ${fam.length - 1} other ${fam.length === 2 ? 'version' : 'versions'}?` : `Delete the task “${t.title}”?`)) return;
     pending.current = null;
-    await deleteTask(classId, itemId, t.id);
+    for (const f of fam) await deleteTask(classId, itemId, f.id);
+  }
+
+  async function newVersion(label: string) {
+    if (!task || !draft) return;
+    await flush();
+    const id = await makeVariant(classId, itemId, tasks, task, label, splitKey(draft.content).content);
+    setSelected(id);
   }
 
   const previewKey = useMemo(() => (draft ? splitKey(draft.content) : null), [draft, previewChecked]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -421,6 +494,9 @@ export function LessonEditor() {
         >
           Export
         </button>
+        <button type="button" className={'btn small-btn' + (teachingHere && live?.groupSetId ? ' on-accent' : '')} onClick={() => setGroupsOpen(true)} title="Group sets and breakout rooms">
+          Groups
+        </button>
         <button type="button" className="btn small-btn" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
           {present ? 'Exit present mode' : 'Present'}
         </button>
@@ -435,6 +511,16 @@ export function LessonEditor() {
         <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
       </TopBar>
 
+      {groupsOpen && (
+        <GroupsDialog
+          classId={classId}
+          roster={classmates}
+          sets={groupSets}
+          activeId={teachingHere ? live?.groupSetId ?? null : null}
+          onActivate={teachingHere ? (id) => setLive(classId, { groupSetId: id, syncRoom: null, roomTask: null }) : undefined}
+          onClose={() => setGroupsOpen(false)}
+        />
+      )}
       <NoticeToasts classId={classId} to="teacher" link={(i, t) => `/class/${classId}/lesson/${i}?task=${t}`} />
       {item === null && <p className="placeholder">This lesson could not be found.</p>}
 
@@ -450,8 +536,8 @@ export function LessonEditor() {
             {tasks.map((t, i) => (
               <div
                 key={t.id}
-                className={'task-row' + (t.id === selected ? ' on' : '') + (dragId === t.id ? ' dragging' : '') + (dropAt === i ? ' drop-before' : '') + (dropAt === tasks.length && i === tasks.length - 1 ? ' drop-after' : '')}
-                draggable
+                className={'task-row' + (isVariant(t) ? ' variant-row' : '') + (t.id === selected ? ' on' : '') + (dragId === t.id ? ' dragging' : '') + (dropAt === i ? ' drop-before' : '') + (dropAt === tasks.length && i === tasks.length - 1 ? ' drop-after' : '')}
+                draggable={!isVariant(t)}
                 onDragStart={(e) => {
                   setDragId(t.id);
                   e.dataTransfer.effectAllowed = 'move';
@@ -492,8 +578,18 @@ export function LessonEditor() {
                   </span>
                 ) : (
                 <button type="button" className="task-pick" onClick={() => select(t.id)}>
-                  <span className="n">{tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1}</span>
-                  <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
+                  {isVariant(t) ? (
+                    <span className="n variant-n" aria-hidden="true">↳</span>
+                  ) : (
+                    <span className="n">{tasks.filter((x) => x.kind !== 'section' && !isVariant(x)).findIndex((x) => x.id === t.id) + 1}</span>
+                  )}
+                  {isVariant(t) ? (
+                    <span className="variant-label">{t.variant && /^[A-Z]$/.test(t.variant) ? `Version ${t.variant}` : t.variant}</span>
+                  ) : (
+                    <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
+                  )}
+                  {!isVariant(t) && (t.variants?.length ?? 0) > 0 && <span className="variant-count" title={`${(t.variants?.length ?? 0) + 1} versions`}>{t.variant ?? 'A'}</span>}
+                  {!isVariant(t) && t.audience && t.audience.mode !== 'all' && <span className="state-mark aud-mark" title="Only some learners see this">{PEOPLE}</span>}
                   {t.hidden && <span className="state-mark" title="Hidden from learners">{EYE_OFF}</span>}
                   {t.locked && <span className="state-mark" title="Locked">{LOCK}</span>}
                   {teachingHere && seeLearners && onTask(t.id) > 0 && (
@@ -511,7 +607,7 @@ export function LessonEditor() {
                     <button type="button" className={'row-act' + (t.locked ? ' on' : '')} title={t.locked ? 'Unlock' : 'Lock · learners see it but can’t open it'} aria-label={t.locked ? 'Unlock' : 'Lock'} onClick={() => setTaskFlags(classId, itemId, t.id, { locked: !t.locked })}>
                       {t.locked ? LOCK : UNLOCK}
                     </button>
-                    {!teachingHere && (
+                    {!teachingHere && !isVariant(t) && (
                       <button type="button" className="row-act" title="Duplicate or copy to another lesson" aria-label="Copy task" onClick={() => setCopyTask(t)}>
                         {COPY}
                       </button>
@@ -586,6 +682,9 @@ export function LessonEditor() {
                   <button type="button" className="btn small-btn" onClick={pickLearner} disabled={!!picking} title="Choose a learner at random">
                     {picking || 'Pick a learner'}
                   </button>
+                  <button type="button" className={'btn small-btn' + (inkMode !== 'off' ? ' on-accent' : '')} onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} title="Draw or highlight on the task while you present. Not saved. Shortcut: D">
+                    Draw
+                  </button>
                   <button type="button" className="btn small-btn" onClick={() => setAnnouncing(true)} title="Shortcut: A">
                     Announce
                   </button>
@@ -609,8 +708,18 @@ export function LessonEditor() {
                   </button>
                 )}
                 <button type="button" className={'btn small-btn' + (live?.sync ? ' on-accent' : '')} onClick={toggleSync} title="Shortcut: S">
-                  {live?.sync ? 'Class follows me · stop' : 'Sync class to me'}
+                  {live?.sync ? `${live.syncRoom ? activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room' : 'Class'} follows me · stop` : live?.syncRoom ? `Sync ${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'room'} to me` : 'Sync class to me'}
                 </button>
+                {activeSet && (
+                  <select className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
+                    <option value="">Whole class</option>
+                    {activeSet.groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {qCount > 0 && (
                   <span className="reveal-ctl" aria-label="Reveal answers">
                     <span className="hint">{revealN === 0 ? 'Answers hidden' : revealN < 0 || revealN >= qCount ? 'All answers shown' : `${revealN} of ${qCount} shown`}</span>
@@ -657,7 +766,7 @@ export function LessonEditor() {
                     </span>
                   )}
                 </div>
-                {!preview && boardView && user && <Whiteboard classId={classId} taskId={task.id} uid={user.uid} teacher people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} />}
+                {!preview && boardView && user && <Whiteboard classId={classId} boardId={task.id} uid={user.uid} teacher people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} />}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
                 {!preview && <TimerChip timer={live?.timer} onStop={stopTimer} />}
                 {!preview && <PickedBanner picked={live?.picked} />}
@@ -674,12 +783,13 @@ export function LessonEditor() {
                     movePointer({ taskId: task.id, bk: el.dataset.bk!, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, on: true });
                   }}
                   onClick={(e) => {
-                    if (preview || !task) return;
+                    if (preview || !task || inkMode !== 'off') return;
                     const q = (e.target as HTMLElement).closest('[data-qid]') as HTMLElement | null;
                     if (q?.dataset.qid) toggleSingle(q.dataset.qid);
                   }}
                 >
-                  {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
+                  {!preview && <PresentInk container={teachBodyRef} mode={inkMode} color={inkColor} highlight={inkHl} clearKey={task.id + ':' + inkClear} />}
+                  {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere && inkMode === 'off'} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
                   <TaskRenderer
                     content={previewKey?.content ?? null}
                     responses={previewResponses}
@@ -693,13 +803,14 @@ export function LessonEditor() {
                     revealed={!preview && previewKey ? revealedSubset(previewKey.key, questionIds(previewKey.content), revealN, singles) : null}
                     classmates={classmates}
                     classId={classId}
-                    boardMe={!preview && user ? { classId, taskId: task.id, itemId, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true, people: classmates } : undefined}
+                    boardMe={!preview && user ? { classId, taskId: task.id, itemId, uid: user.uid, name: (user.displayName || user.email?.split('@')[0] || 'Teacher').split(' ')[0], teacher: true, people: classmates, penPeople: inLesson.map((p) => ({ uid: p.id, name: p.name })) } : undefined}
                     onOpenTask={(id) => select(id)}
                     shared={preview ? undefined : sharedPicks}
                     onSharedDraw={(pickId, next, seq) => drawShared(classId, task.id, pickId, next.h, next.b, seq, live?.teacherName || 'Teacher').catch((e) => console.error(e))}
                     onSharedReset={(pickId) => drawShared(classId, task.id, pickId, [], [], (sharedPicks[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   />
                 </div>
+                {!preview && <InkBar mode={inkMode} setMode={setInkMode} color={inkColor} setColor={setInkColor} highlight={inkHl} setHighlight={setInkHl} onClear={() => setInkClear((n) => n + 1)} />}
                 <div className="frame-foot">
                   <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
@@ -782,6 +893,9 @@ export function LessonEditor() {
               onTab={setPanelTab}
               notes={notes}
               onNotes={changeNotes}
+              rooms={activeSet?.groups}
+              only={gridOnly}
+              tagOf={tagOf}
             />
           )}
           {task && draft && !(teachingHere && !editWhileTeaching && !preview) && (
@@ -789,6 +903,7 @@ export function LessonEditor() {
               <button className={'btn block' + (preview ? ' primary' : '')} onClick={() => (flush(), setPreview((p) => !p))}>
                 {preview ? 'Back to editing' : 'Preview as learner'}
               </button>
+              <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
               {(() => {
                 const hasCols = JSON.stringify(draft.content).includes('"columnBreak"');
                 return (
@@ -919,6 +1034,7 @@ export function LessonEditor() {
               {[
                 ['← →', 'Previous or next task (moves the class when synced)'],
                 ['S', 'Sync the class to you, or stop'],
+                ['D', 'Draw or highlight on the screen (not saved)'],
                 ['R', 'Reveal the next answer (again at the end to hide)'],
                 ['Shift + R', 'Reveal all answers, or hide them'],
                 ['H', 'Hide or show this task'],

@@ -34,6 +34,9 @@ type Props = {
   onSpotlight?: (qid: string, text: string) => void;
   codes?: Code[];
   annotations?: Annotation[];
+  rooms?: { id: string; name: string; members: string[] }[]; // breakout rooms in use
+  only?: string[] | null; // learners who have this version (null = everyone)
+  tagOf?: (learnerId: string) => string; // their role, level or version
 };
 
 // Find every question node by id, so answers can be shown as words rather than option numbers.
@@ -73,10 +76,13 @@ function label(node: JSONContent | undefined, r: Response): string {
   }
 }
 
-export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [] }: Props) {
+export function LivePanel({ classId, taskId, content, answerKey, presence, showMarker, onShowMarker, seeLearners, onSeeLearners, revealedIds = [], onRevealQuestion, tab = 'answers', onTab, notes = '', onNotes, signals = {}, onSpotlight, codes = DEFAULT_CODES, annotations = [], rooms, only, tagOf }: Props) {
+  const [room, setRoom] = useState<string>('all');
   const [detail, setDetail] = useState<Learner | null>(null);
-  const [roster, setRoster] = useState<Learner[]>([]);
-  const [answers, setAnswers] = useState<AnswerDoc[]>([]);
+  const [allRoster, setRoster] = useState<Learner[]>([]);
+  const roomNow = rooms?.find((r) => r.id === room);
+  const roster = allRoster.filter((l) => (!only || only.includes(l.id)) && (!roomNow || roomNow.members.includes(l.id)));
+  const [allAnswers, setAnswers] = useState<AnswerDoc[]>([]);
   const [focus, setFocus] = useState<string | null>(null);
   const avatars = useClassAvatars();
 
@@ -86,6 +92,8 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
     return onSnapshot(query(collection(db, 'classes', classId, 'answers'), where('taskId', '==', taskId)), (s) => setAnswers(s.docs.map((d) => d.data() as AnswerDoc)), () => {});
   }, [classId, taskId]);
 
+  const ids = new Set(roster.map((l) => l.id));
+  const answers = allAnswers.filter((a) => ids.has(a.learnerId));
   const qs = useMemo(() => questionIds(content), [content]);
   const nodes = useMemo(() => nodesById(content), [content]);
   const byLearner = useMemo(() => Object.fromEntries(answers.map((a) => [a.learnerId, a])), [answers]);
@@ -129,8 +137,20 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
         <textarea className="lp-notes" value={notes} placeholder="Notes for this task. Only you can see them." onChange={(e) => onNotes?.(e.target.value)} />
       ) : (
       <>
+      {rooms && rooms.length > 0 && (
+        <div className="lp-rooms" role="tablist" aria-label="Rooms">
+          <button type="button" role="tab" aria-selected={room === 'all'} className={room === 'all' ? 'on' : ''} onClick={() => setRoom('all')}>
+            All
+          </button>
+          {rooms.map((r) => (
+            <button key={r.id} type="button" role="tab" aria-selected={room === r.id} className={room === r.id ? 'on' : ''} onClick={() => setRoom(r.id)}>
+              {r.name}
+            </button>
+          ))}
+        </div>
+      )}
       <span className="hint">
-        {started} of {roster.length} started · {done} checked
+        {started} of {roster.length} started · {done} checked{only ? ' · learners with this version' : ''}
       </span>
 
       {qs.length === 0 ? (
@@ -157,6 +177,7 @@ export function LivePanel({ classId, taskId, content, answerKey, presence, showM
                   <span className="lg-dot" aria-hidden="true" />
                   <Avatar k={avatars.byLearner[l.id]} name={l.displayName} size={20} />
                   {l.displayName.split(' ')[0]}
+                  {tagOf?.(l.id) && <span className="lg-tag">{tagOf(l.id)}</span>}
                   {signals[l.authUid]?.hand && <span className="lg-sig" title="Hand up"><Icon name="wave" size="13" /></span>}
                   {signals[l.authUid]?.stuck && <span className="lg-sig stuck" title="Stuck"><Icon name="question" size="13" /></span>}
                   {a?.checked && <span className="lg-checked">checked</span>}

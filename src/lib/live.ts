@@ -14,6 +14,9 @@ export type LiveState = {
   timer?: { endsAt: number; total: number } | null; // countdown everyone sees
   picked?: { name: string; learnerId: string; at: number } | null; // random learner picker
   spotlight?: { taskId: string; qid: string; text: string; at: number } | null; // one answer shown to the class, name hidden
+  groupSetId?: string | null; // the group set in use (breakout rooms)
+  syncRoom?: string | null; // when set, "Sync" moves only this room with the teacher
+  roomTask?: Record<string, string> | null; // room -> task the room is synced to
   boardTask?: string | null; // the task whose board the teacher has opened for the class
   startedAt?: Timestamp;
   updatedAt?: Timestamp;

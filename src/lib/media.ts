@@ -18,6 +18,12 @@ export async function saveAudio(classId: string, blob: Blob): Promise<string> {
   return ref.id;
 }
 
+// Pictures for boards, already shrunk by the caller.
+export async function saveImage(classId: string, blob: Blob): Promise<string> {
+  if (blob.size > MAX_AUDIO_BYTES) throw new Error('too-big');
+  return saveAudio(classId, blob);
+}
+
 const cache = new Map<string, Promise<string>>();
 export function audioUrl(classId: string, id: string) {
   const k = classId + '/' + id;
