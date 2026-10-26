@@ -44,6 +44,7 @@ export type ClassDoc = {
   langs?: string[]; // languages the learners speak, for translations
   liveAudio?: 'self' | 'together' | 'teacher'; // who plays sounds and videos in live lessons
   kind?: ClassKind; // a language class, or a teacher training course
+  terms?: { learner?: string; learners?: string; teacher?: string; teachers?: string }; // what the class calls its people
 };
 
 // Messaging for learners: off; only with teachers; in groups the teacher makes; freely with each other.
@@ -111,7 +112,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('Could not find a free class code. Please try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

@@ -1,3 +1,4 @@
+import { tr } from '../lib/terms';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useState } from 'react';
@@ -17,19 +18,19 @@ type Data = Record<string, string>;
 export type Fields = { fields: Data };
 
 export const TT_KINDS: { k: TTKind; label: string; about: string }[] = [
-  { k: 'analysis', label: 'Language analysis', about: 'Meaning, form and pronunciation, concept-checking questions, and problems learners may have with solutions' },
+  { k: 'analysis', label: 'Language analysis', about: tr('Meaning, form and pronunciation, concept-checking questions, and problems learners may have with solutions') },
   { k: 'plan', label: 'Lesson plan', about: 'Aims, assumptions and the stages with aims, procedure, interaction and timing' },
-  { k: 'observe', label: 'Observation form', about: 'Strengths and action points against criteria for planning, language, teaching and learners' },
+  { k: 'observe', label: 'Observation form', about: tr('Strengths and action points against criteria for planning, language, teaching and learners') },
   { k: 'loop', label: 'Loop input: step back', about: 'After you model a technique, trainees open this to see what you did and why' },
 ];
 
 // Lesson frameworks: the stages each starts with.
 export const FRAMEWORKS: { k: string; label: string; stages: [string, string][] }[] = [
-  { k: 'ppp', label: 'PPP', stages: [['Lead-in', 'To engage learners and set the context'], ['Presentation', 'To clarify the meaning, form and pronunciation of the target language'], ['Controlled practice', 'To give accurate practice of the form'], ['Freer practice', 'To use the language in a communicative task'], ['Feedback', 'To praise good use and correct errors']] },
-  { k: 'ttt', label: 'Test-teach-test', stages: [['Lead-in', 'To engage learners and set the context'], ['Test 1', 'To see what learners already know'], ['Teach', 'To clarify the language learners needed'], ['Test 2', 'To give further practice and check progress'], ['Feedback', 'To review and correct']] },
+  { k: 'ppp', label: 'PPP', stages: [['Lead-in', tr('To engage learners and set the context')], ['Presentation', 'To clarify the meaning, form and pronunciation of the target language'], ['Controlled practice', 'To give accurate practice of the form'], ['Freer practice', 'To use the language in a communicative task'], ['Feedback', 'To praise good use and correct errors']] },
+  { k: 'ttt', label: 'Test-teach-test', stages: [['Lead-in', tr('To engage learners and set the context')], ['Test 1', tr('To see what learners already know')], ['Teach', tr('To clarify the language learners needed')], ['Test 2', 'To give further practice and check progress'], ['Feedback', 'To review and correct']] },
   { k: 'tbl', label: 'Task-based (TBL)', stages: [['Pre-task', 'To introduce the topic and the task'], ['Task', 'To complete a meaningful task'], ['Planning', 'To prepare a report on the task'], ['Report', 'To present to the class'], ['Language focus', 'To analyse and practise language from the task']] },
-  { k: 'esa', label: 'ESA', stages: [['Engage', 'To arouse interest and get learners talking'], ['Study', 'To focus on language and how it works'], ['Activate', 'To use the language freely']] },
-  { k: 'receptive', label: 'Reading or listening', stages: [['Lead-in', 'To engage learners and activate what they know'], ['Pre-teach vocabulary', 'To remove blocking vocabulary'], ['Gist task', 'To understand the main idea'], ['Detail task', 'To understand specific information'], ['Follow-up', 'To respond to the text in speaking or writing']] },
+  { k: 'esa', label: 'ESA', stages: [['Engage', tr('To arouse interest and get learners talking')], ['Study', 'To focus on language and how it works'], ['Activate', 'To use the language freely']] },
+  { k: 'receptive', label: 'Reading or listening', stages: [['Lead-in', tr('To engage learners and activate what they know')], ['Pre-teach vocabulary', 'To remove blocking vocabulary'], ['Gist task', 'To understand the main idea'], ['Detail task', 'To understand specific information'], ['Follow-up', 'To respond to the text in speaking or writing']] },
 ];
 export const INTERACTION = ['T–Ss', 'S–S', 'Ss–Ss', 'S', 'Ss–T', 'Groups'];
 
@@ -37,7 +38,7 @@ export const CRITERIA: { g: string; items: { id: string; t: string }[] }[] = [
   { g: 'Planning', items: [{ id: 'p1', t: 'Clear, achievable aims' }, { id: 'p2', t: 'Stages that build towards the aim' }, { id: 'p3', t: 'Realistic timing' }] },
   { g: 'Language', items: [{ id: 'l1', t: 'Accurate analysis of the target language' }, { id: 'l2', t: 'Meaning checked clearly (concept questions, timelines)' }, { id: 'l3', t: 'Pronunciation modelled and drilled' }] },
   { g: 'Teaching', items: [{ id: 't1', t: 'Clear instructions, checked' }, { id: 't2', t: 'Monitoring and support during tasks' }, { id: 't3', t: 'Useful feedback and error correction' }] },
-  { g: 'Learners', items: [{ id: 's1', t: 'Learners speak more than the teacher' }, { id: 's2', t: 'Varied interaction: pairs and groups' }, { id: 's3', t: 'Rapport, and every learner included' }] },
+  { g: 'Learners', items: [{ id: 's1', t: tr('Learners speak more than the teacher') }, { id: 's2', t: 'Varied interaction: pairs and groups' }, { id: 's3', t: tr('Rapport, and every learner included') }] },
 ];
 const RATINGS = ['Not yet', 'Achieved', 'Strong'];
 
@@ -104,7 +105,7 @@ function Analysis({ v, set, ro }: { v: Data; set: (k: string, x: string) => void
             </tbody>
           </table>
         ) : (
-          <Area v={v.problems ?? ''} set={(x) => set('problems', x)} ph={'Learners say "I have been to Paris last year" | Timeline: finished time needs the past simple'} rows={3} />
+          <Area v={v.problems ?? ''} set={(x) => set('problems', x)} ph={tr('Learners say "I have been to Paris last year" | Timeline: finished time needs the past simple')} rows={3} />
         )}
         {!ro && <span className="hint">One per line: the problem, then | and the solution.</span>}
       </div>
@@ -206,7 +207,7 @@ function Observe({ v, set, ro }: { v: Data; set: (k: string, x: string) => void;
     <div className="tt-obs">
       <div className="tt-grid">
         <label className="tt-f">
-          <span>Teacher</span>
+          <span>{tr('Teacher')}</span>
           <Area v={v.who ?? ''} set={(x) => set('who', x)} rows={1} ro={ro} />
         </label>
         <label className="tt-f">

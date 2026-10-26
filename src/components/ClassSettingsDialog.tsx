@@ -1,3 +1,4 @@
+import { tr } from '../lib/terms';
 import { useEffect, useState, type FormEvent } from 'react';
 import { LevelPicker } from './LevelPicker';
 import { DEFAULT_CODES } from '../lib/annotations';
@@ -8,6 +9,7 @@ import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
 import { ClassKindPicker } from './NewClassDialog';
+import { LEARNER_WORDS, TEACHER_WORDS, termsOf, type Terms } from '../lib/terms';
 import { LEARNER_TOOLS, learnerToolOn } from '../lib/toolbarPrefs';
 import { LIVE_AUDIO, type LiveAudioMode } from '../lib/liveAudio';
 
@@ -40,6 +42,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [tools, setTools] = useState<Record<string, boolean>>(() => Object.fromEntries(LEARNER_TOOLS.map((t) => [t.k, learnerToolOn(t.k, c.learnerTools)])));
   const [showTools, setShowTools] = useState(false);
   const [kind, setKind] = useState<'language' | 'training'>(c.kind ?? 'language');
+  const [terms, setTerms] = useState<Terms>(() => termsOf(c));
   const [liveAudio, setLiveAudio] = useState<LiveAudioMode>(c.liveAudio ?? 'self');
   const [learners, setLearners] = useState<{ id: string; name: string }[] | null>(null);
   useEffect(() => {
@@ -78,6 +81,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         learnerTools: tools,
         liveAudio,
         kind,
+        terms,
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -131,7 +135,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
 
         <div className="field">
           <span>Online meeting</span>
-          <span className="hint">Zoom, Google Meet, Microsoft Teams or any other link. Learners get a Join call button.</span>
+          <span className="hint">{tr('Zoom, Google Meet, Microsoft Teams or any other link. Learners get a Join call button.')}</span>
           <span style={{ position: 'relative', display: 'block' }}>
             <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" style={{ width: '100%', paddingRight: 70 }} aria-label="Meeting link" />
             {url.trim() && <span className="provider">{meetingProvider(url).toUpperCase()}</span>}
@@ -169,24 +173,30 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           <label className="switch-row">
             <span>
               Show learners where I am
-              <span className="hint">Learners see which task you are on</span>
+              <span className="hint">{tr('Learners see which task you are on')}</span>
             </span>
             <input type="checkbox" checked={showMarker} onChange={() => setShowMarker((v) => !v)} />
           </label>
           <label className="switch-row">
             <span>
               Show me where learners are
-              <span className="hint">See which task each learner is on</span>
+              <span className="hint">{tr('See which task each learner is on')}</span>
             </span>
             <input type="checkbox" checked={seeLearners} onChange={() => setSeeLearners((v) => !v)} />
           </label>
           <label className="switch-row">
             <span>
               Learners can send task elements in messages
-              <span className="hint">Questions, vocabulary boxes and other elements from + Add. When off, learners send text and pictures.</span>
+              <span className="hint">{tr('Questions, vocabulary boxes and other elements from + Add. When off, learners send text and pictures.')}</span>
             </span>
             <input type="checkbox" checked={learnerElements} onChange={() => setLearnerElements((v) => !v)} />
           </label>
+        </div>
+        <div className="field">
+          <span>What to call people in this class</span>
+          <span className="hint">The app uses these words in this class, for you and for them.</span>
+          <TermRow label="The people who learn" words={LEARNER_WORDS} one={terms.learner} many={terms.learners} onChange={(a, b) => setTerms({ ...terms, learner: a, learners: b })} />
+          <TermRow label="The people who teach" words={TEACHER_WORDS} one={terms.teacher} many={terms.teachers} onChange={(a, b) => setTerms({ ...terms, teacher: a, teachers: b })} />
         </div>
         <div className="field">
           <span>Sounds and videos in live lessons</span>
@@ -198,19 +208,19 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               </button>
             ))}
           </div>
-          <span className="hint">Outside live lessons, learners always play sounds themselves.</span>
+          <span className="hint">{tr('Outside live lessons, learners always play sounds themselves.')}</span>
         </div>
         <div className="field cs-learners">
-          <span>Learners</span>
+          <span>{tr('Learners')}</span>
           <label className="cs-row">
             <span>
               Messages
-              <span className="hint">Who learners in this class can write to</span>
+              <span className="hint">{tr('Who learners in this class can write to')}</span>
             </span>
             <select value={msgMode} onChange={(e) => setMsgMode(e.target.value as MessagingMode)}>
               <option value="off">No messages</option>
-              <option value="teacher">Only with their teachers</option>
-              <option value="groups">Teachers, and groups I set up</option>
+              <option value="teacher">{tr('Only with their teachers')}</option>
+              <option value="groups">{tr('Teachers, and groups I set up')}</option>
               <option value="free">Each other freely</option>
             </select>
           </label>
@@ -233,15 +243,15 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               <option value="first">First name only (Anna)</option>
               <option value="initial">First name and initial (Anna S.)</option>
               <option value="full">Full name (Anna Silva)</option>
-              <option value="nick">A nickname I give each learner</option>
+              <option value="nick">{tr('A nickname I give each learner')}</option>
             </select>
           </label>
           {names === 'nick' && (
             <div className="cs-nicks">
               {learners === null ? (
-                <span className="hint">Opening the learners…</span>
+                <span className="hint">{tr('Opening the learners…')}</span>
               ) : learners.length === 0 ? (
-                <span className="hint">No learners in this class yet.</span>
+                <span className="hint">{tr('No learners in this class yet.')}</span>
               ) : (
                 learners.map((l) => (
                   <label key={l.id} className="cs-nick">
@@ -250,18 +260,18 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
                   </label>
                 ))
               )}
-              <span className="hint">Learners without a nickname show their first name.</span>
+              <span className="hint">{tr('Learners without a nickname show their first name.')}</span>
             </div>
           )}
           <label className="cs-row">
             <span>
               Email and Google sign-in
-              <span className="hint">Learners can link their account to sign in with Google, and add an email for message summaries</span>
+              <span className="hint">{tr('Learners can link their account to sign in with Google, and add an email for message summaries')}</span>
             </span>
             <select value={emailLink} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
               <option value="off">Not for this class</option>
-              <option value="optional">Learners can if they want</option>
-              <option value="required">Every learner must</option>
+              <option value="optional">{tr('Learners can if they want')}</option>
+              <option value="required">{tr('Every learner must')}</option>
             </select>
           </label>
           <div className="cs-row cs-tools-row">
@@ -281,7 +291,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
                   <span>{t.label}</span>
                 </label>
               ))}
-              <span className="hint">Pronunciation, grammar labels and definitions start off, so learners only see them when you want them to.</span>
+              <span className="hint">{tr('Pronunciation, grammar labels and definitions start off, so learners only see them when you want them to.')}</span>
             </div>
           )}
         </div>
@@ -327,6 +337,33 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function TermRow({ label, words, one, many, onChange }: { label: string; words: [string, string][]; one: string; many: string; onChange: (one: string, many: string) => void }) {
+  const preset = words.some(([a]) => a === one);
+  const [own, setOwn] = useState(!preset);
+  const cap = (x: string) => x.slice(0, 1).toUpperCase() + x.slice(1);
+  return (
+    <div className="cs-term">
+      <span className="cs-term-l">{label}</span>
+      <span className="cs-term-opts" role="radiogroup" aria-label={label}>
+        {words.map(([a, b]) => (
+          <button key={a} type="button" role="radio" aria-checked={!own && one === a} className={'ap-chip' + (!own && one === a ? ' on' : '')} onClick={() => (setOwn(false), onChange(a, b))}>
+            {cap(b)}
+          </button>
+        ))}
+        <button type="button" role="radio" aria-checked={own} className={'ap-chip' + (own ? ' on' : '')} onClick={() => setOwn(true)}>
+          Your own…
+        </button>
+      </span>
+      {own && (
+        <span className="cs-term-own">
+          <input value={one} placeholder="One: apprentice" maxLength={24} onChange={(e) => onChange(e.target.value.toLowerCase(), many)} aria-label="One person" />
+          <input value={many} placeholder="More than one: apprentices" maxLength={26} onChange={(e) => onChange(one, e.target.value.toLowerCase())} aria-label="More than one" />
+        </span>
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { tr } from '../lib/terms';
 import { ask, tell } from '../lib/ask';
 import { openAsLearner } from '../lib/proxy';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -32,7 +33,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
     const existing = new Set(learners.map((l) => l.displayName.toLowerCase()));
     const dupes = list.filter((n) => existing.has(n.toLowerCase()));
     if (dupes.length) return setError(`Already in the class: ${dupes.join(', ')}. Use a surname initial to tell them apart.`);
-    if (list.length > 40) return setError('Please add up to 40 learners at a time.');
+    if (list.length > 40) return setError(tr('Please add up to 40 learners at a time.'));
     setBusy('add');
     setError('');
     try {
@@ -41,7 +42,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
       setAdding(false);
     } catch (err) {
       console.error(err);
-      setError('Some learners could not be added. Please check the list and try again.');
+      setError(tr('Some learners could not be added. Please check the list and try again.'));
     } finally {
       setBusy('');
     }
@@ -98,7 +99,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
   return (
     <div className="learners">
       <div className="row-between">
-        <input className="search" type="search" placeholder="Search learners" aria-label="Search learners" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <input className="search" type="search" placeholder={tr('Search learners')} aria-label={tr('Search learners')} value={search} onChange={(e) => setSearch(e.target.value)} />
         <div style={{ display: 'flex', gap: 8 }}>
           {learners.length > 0 && (
             <button className="btn" onClick={printCards}>
@@ -123,7 +124,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
             <table>
               <thead>
                 <tr>
-                  <th>Learner</th>
+                  <th>{tr('Learner')}</th>
                   <th>Languages</th>
                   <th>PIN</th>
                   <th>
@@ -158,7 +159,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                     </td>
                     <td>
                       {own[l.id] ? (
-                        <span className="hint" title="The learner chose their own, so you cannot see or reset it. If they forget it, resetting needs the Phase 5 server; removing and re-adding them starts a new account without their work.">
+                        <span className="hint" title={tr('The learner chose their own, so you cannot see or reset it. If they forget it, resetting needs the Phase 5 server; removing and re-adding them starts a new account without their work.')}>
                           Own {own[l.id]}, private
                         </span>
                       ) : (
@@ -171,10 +172,10 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                       )}
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button className="btn small-btn" disabled={!pins[l.id]} title="Open a new tab signed in as this learner" onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
+                      <button className="btn small-btn" disabled={!pins[l.id]} title={tr('Open a new tab signed in as this learner')} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
                         View as {l.displayName.split(' ')[0]}
                       </button>{' '}
-                      <button className="btn small-btn" disabled={busy === l.id || !!own[l.id]} title={own[l.id] ? 'The learner set their own, so it can only be changed by them' : undefined} onClick={() => reset(l)}>
+                      <button className="btn small-btn" disabled={busy === l.id || !!own[l.id]} title={own[l.id] ? tr('The learner set their own, so it can only be changed by them') : undefined} onClick={() => reset(l)}>
                         {busy === l.id ? 'Working…' : 'Reset PIN'}
                       </button>{' '}
                       <button className="btn link small" disabled={busy === l.id} onClick={() => remove(l)}>
@@ -191,7 +192,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
         {(adding || learners.length === 0) && (
           <form className="side-form" onSubmit={add}>
             <div className="row-between">
-              <h2>Add learners</h2>
+              <h2>{tr('Add learners')}</h2>
               <button type="button" className="icon-btn" aria-label="Close" onClick={() => setAdding(false)}>
                 ×
               </button>
@@ -200,13 +201,13 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
               One name per line
               <textarea rows={6} value={names} onChange={(e) => setNames(e.target.value)} placeholder={'Sofia Rossi\nTariq Aziz'} />
             </label>
-            <span className="hint">Each learner gets a 4-digit PIN. They sign in with the class code, their name and the PIN. No email needed.</span>
+            <span className="hint">{tr('Each learner gets a 4-digit PIN. They sign in with the class code, their name and the PIN. No email needed.')}</span>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="btn" onClick={() => setAdding(false)}>
                 Cancel
               </button>
               <button className="btn primary" disabled={busy === 'add' || !names.trim()}>
-                {busy === 'add' ? 'Adding…' : `Add ${names.split('\n').filter((n) => n.trim()).length || ''} learners`.replace('  ', ' ')}
+                {busy === 'add' ? 'Adding…' : tr(`Add ${names.split('\n').filter((n) => n.trim()).length || ''} learners`).replace('  ', ' ')}
               </button>
             </div>
           </form>
@@ -260,7 +261,7 @@ function LangChips({ classId, learner, all }: { classId: string; learner: Learne
               </button>
             ))}
           </span>
-          <span className="hint">Dictionary entries in this class can then have a translation in each language. Learners see their own.</span>
+          <span className="hint">{tr('Dictionary entries in this class can then have a translation in each language. Learners see their own.')}</span>
         </span>
       )}
     </span>

@@ -1,3 +1,4 @@
+import { tr } from '../lib/terms';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
 import { UiIcon } from '../components/UiIcon';
@@ -442,9 +443,9 @@ export function Karaoke({ lines, time, duration, onSeek, big }: { lines: ScriptL
 export type ScriptMode = 'karaoke' | 'after' | 'button' | 'none';
 export const SCRIPT_MODES: { k: ScriptMode; label: string; about: string }[] = [
   { k: 'karaoke', label: 'While it plays', about: 'Words light up as they are spoken' },
-  { k: 'after', label: 'After listening', about: 'Learners see the script once they have listened to the end' },
-  { k: 'button', label: 'On a button', about: 'Learners open the script when they want it' },
-  { k: 'none', label: 'Hidden', about: 'Learners never see the script' },
+  { k: 'after', label: 'After listening', about: tr('Learners see the script once they have listened to the end') },
+  { k: 'button', label: 'On a button', about: tr('Learners open the script when they want it') },
+  { k: 'none', label: 'Hidden', about: tr('Learners never see the script') },
 ];
 
 const PlayIcon = ({ playing }: { playing: boolean }) =>
@@ -658,10 +659,10 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
           <UiIcon name={e.video ? 'video' : 'music'} size={16} />
         </span>
         <span className="mp-title">{name}</span>
-        {plays > 0 && <span className="mp-plays">{teacher ? `Learners can play it ${plays === 1 ? 'once' : plays + ' times'}` : used ? 'No plays left' : `${plays - e.ends} ${plays - e.ends === 1 ? 'play' : 'plays'} left`}</span>}
+        {plays > 0 && <span className="mp-plays">{teacher ? tr(`Learners can play it ${plays === 1 ? 'once' : plays + ' times'}`) : used ? 'No plays left' : `${plays - e.ends} ${plays - e.ends === 1 ? 'play' : 'plays'} left`}</span>}
         {extra}
       </div>
-      {waiting && <span className="mp-note mp-live-note">{la.mode === 'together' ? 'Your teacher plays this. It plays here when they press play.' : 'Your teacher plays this for the class.'}</span>}
+      {waiting && <span className="mp-note mp-live-note">{la.mode === 'together' ? tr('Your teacher plays this. It plays here when they press play.') : tr('Your teacher plays this for the class.')}</span>}
       <Transport
         e={e}
         locked={used || waiting}
@@ -672,7 +673,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
               {cast.map((w) => {
                 const on = !muted.includes(w);
                 return (
-                  <button key={w} type="button" className={'mp-spk' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMuted(on ? [...muted, w] : muted.filter((x) => x !== w))} data-tip={on ? `${w} is heard. Click to leave ${w} silent, so learners can say the lines.` : `${w} is silent. Click to hear ${w}.`}>
+                  <button key={w} type="button" className={'mp-spk' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMuted(on ? [...muted, w] : muted.filter((x) => x !== w))} data-tip={on ? tr(`${w} is heard. Click to leave ${w} silent, so learners can say the lines.`) : `${w} is silent. Click to hear ${w}.`}>
                     {w}
                   </button>
                 );
@@ -705,7 +706,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
       {e.error && <p className="mp-error">{e.error}</p>}
       {showScript && (
         <>
-          {editing && scriptMode !== 'karaoke' && <span className="mp-note">{scriptMode === 'none' ? 'Script: only you see it' : scriptMode === 'after' ? 'Script: learners see it after listening' : 'Script: learners open it with a button'}</span>}
+          {editing && scriptMode !== 'karaoke' && <span className="mp-note">{scriptMode === 'none' ? 'Script: only you see it' : scriptMode === 'after' ? tr('Script: learners see it after listening') : tr('Script: learners open it with a button')}</span>}
           <Karaoke lines={lines} time={e.time} duration={e.duration || e.m.duration || 0} onSeek={(t) => (e.seek(t), !e.playing && !used && e.play())} />
         </>
       )}

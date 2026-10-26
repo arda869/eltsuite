@@ -1,3 +1,4 @@
+import { tr, useClassTerms } from '../lib/terms';
 import { LIVE_BEAT } from '../lib/live';
 import { ask, askText, tell } from '../lib/ask';
 import { addToLesson, breakLink, lessonTaskBody, saveToLibrary, updateLibTask } from '../lib/libtasks';
@@ -101,6 +102,7 @@ type Draft = { title: string; instructions: string; instrDoc?: JSONContent | nul
 
 export function LessonEditor() {
   const { classId = '', itemId = '' } = useParams();
+  useClassTerms(classId);
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null | undefined>(undefined);
   const [rawTasks, setTasks] = useState<Task[]>([]);
@@ -196,7 +198,7 @@ export function LessonEditor() {
       if (d?.mode === 'role') {
         const set = groupSets.find((g) => g.id === d.groupSetId);
         const r = roleOf(set, lid, d.roleMap?.length ?? fam.length);
-        if (r >= 0) parts.push(`Learner ${ROLE_NAMES[r]}`);
+        if (r >= 0) parts.push(tr(`Learner ${ROLE_NAMES[r]}`));
       } else if (d?.mode === 'choose') parts.push(vLabel(fam.find((f) => f.id === choices[lid])) || 'not chosen');
       else parts.push(vLabel(fam.find((f) => !f.restricted || f.allowed?.includes(lid))));
     }
@@ -497,7 +499,7 @@ export function LessonEditor() {
         teaching: true,
         itemId,
         taskId: selected,
-        teacherName: (user?.displayName || user?.email?.split('@')[0] || 'Your teacher').split(' ')[0],
+        teacherName: (user?.displayName || user?.email?.split('@')[0] || tr('Your teacher')).split(' ')[0],
         teacherUid: user?.uid ?? '',
       });
   }
@@ -528,7 +530,7 @@ export function LessonEditor() {
     }, (e) => {
       console.error(e);
       if (!cancelled) setOpening('');
-      if (!cancelled) setTaskErr((e as { code?: string }).code === 'permission-denied' ? 'This task could not be opened. If a “view as a learner” tab is open, close it, then try again.' : 'This task could not be opened. Check your connection, then try again.');
+      if (!cancelled) setTaskErr((e as { code?: string }).code === 'permission-denied' ? tr('This task could not be opened. If a “view as a learner” tab is open, close it, then try again.') : 'This task could not be opened. Check your connection, then try again.');
     });
     return () => {
       cancelled = true;
@@ -736,7 +738,7 @@ export function LessonEditor() {
                 onClick={async () => {
                   setExportOpen(false);
                   await flush();
-                  const { title, text } = await lessonText(classId, itemId, (await ask('Include your teacher notes in the file? Leave them out when you share it, for example.', { ok: 'Include notes', cancel: 'Leave them out' })));
+                  const { title, text } = await lessonText(classId, itemId, (await ask(tr('Include your teacher notes in the file? Leave them out when you share it, for example.'), { ok: 'Include notes', cancel: 'Leave them out' })));
                   download(title, text);
                 }}
               >
@@ -876,8 +878,8 @@ export function LessonEditor() {
                     <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
                   )}
                   {!isVariant(t) && (t.variants?.length ?? 0) > 0 && <span className="variant-count" title={`${(t.variants?.length ?? 0) + 1} versions`}>{vLabel(t)}</span>}
-                  {!isVariant(t) && t.audience && t.audience.mode !== 'all' && <span className="state-mark aud-mark" title="Only some learners see this">{PEOPLE}</span>}
-                  {t.hidden && <span className="state-mark" title="Hidden from learners">{EYE_OFF}</span>}
+                  {!isVariant(t) && t.audience && t.audience.mode !== 'all' && <span className="state-mark aud-mark" title={tr('Only some learners see this')}>{PEOPLE}</span>}
+                  {t.hidden && <span className="state-mark" title={tr('Hidden from learners')}>{EYE_OFF}</span>}
                   {t.locked && <span className="state-mark" title="Locked">{LOCK}</span>}
                   {teachingHere && seeLearners && onTask(t.id) > 0 && (
                     <span className="on-task" title={`${onTask(t.id)} on this task`}>
@@ -888,10 +890,10 @@ export function LessonEditor() {
                 )}
                 {t.kind !== 'section' && !preview && (
                   <span className="row-actions">
-                    <button type="button" className={'row-act' + (t.hidden ? ' on' : '')} title={t.hidden ? 'Show to learners' : 'Hide from learners'} aria-label={t.hidden ? 'Show to learners' : 'Hide from learners'} onClick={() => setTaskFlags(classId, itemId, t.id, { hidden: !t.hidden })}>
+                    <button type="button" className={'row-act' + (t.hidden ? ' on' : '')} title={t.hidden ? tr('Show to learners') : tr('Hide from learners')} aria-label={t.hidden ? tr('Show to learners') : tr('Hide from learners')} onClick={() => setTaskFlags(classId, itemId, t.id, { hidden: !t.hidden })}>
                       {t.hidden ? EYE_OFF : EYE}
                     </button>
-                    <button type="button" className={'row-act' + (t.locked ? ' on' : '')} title={t.locked ? 'Unlock' : 'Lock · learners see it but can’t open it'} aria-label={t.locked ? 'Unlock' : 'Lock'} onClick={() => setTaskFlags(classId, itemId, t.id, { locked: !t.locked })}>
+                    <button type="button" className={'row-act' + (t.locked ? ' on' : '')} title={t.locked ? 'Unlock' : tr('Lock · learners see it but can’t open it')} aria-label={t.locked ? 'Unlock' : 'Lock'} onClick={() => setTaskFlags(classId, itemId, t.id, { locked: !t.locked })}>
                       {t.locked ? LOCK : UNLOCK}
                     </button>
                     {!teachingHere && !isVariant(t) && (
@@ -936,7 +938,7 @@ export function LessonEditor() {
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
               <span className="tb-group" aria-label="The class">
-                <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? 'Learners follow you from task to task. Click to let them move freely (S)' : 'Bring everyone to the task you are on, and keep them with you (S)'}>
+                <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? tr('Learners follow you from task to task. Click to let them move freely (S)') : 'Bring everyone to the task you are on, and keep them with you (S)'}>
                   <UiIcon name="sync" />
                   {live?.sync ? (live.syncRoom ? `${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room'} follows you` : 'Class follows you') : 'Sync class'}
                 </button>
@@ -961,7 +963,7 @@ export function LessonEditor() {
                 {picking ? (
                   <span className="picking-name">{picking}</span>
                 ) : (
-                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.quiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip="Pick a learner, poll, team quiz, announcement">
+                  <button type="button" className={'tb-more' + (activityOpen || live?.poll?.open || live?.quiz ? ' on' : '')} aria-haspopup="menu" aria-expanded={activityOpen} onClick={() => setActivityOpen((v) => !v)} data-tip={tr('Pick a learner, poll, team quiz, announcement')}>
                     Activities
                     <span aria-hidden="true">▾</span>
                   </button>
@@ -1014,7 +1016,7 @@ export function LessonEditor() {
               <div className="frame-inner">
                 <div className="frame-head">
                   <h1 className="task-title">Board</h1>
-                  <p className="hint" style={{ margin: 0 }}>Prepare pages before class; double-click a page to name it. When you teach, learners see the page you are on.</p>
+                  <p className="hint" style={{ margin: 0 }}>{tr('Prepare pages before class; double-click a page to name it. When you teach, learners see the page you are on.')}</p>
                 </div>
                 <div className="frame-body">
                   <LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} />
@@ -1222,7 +1224,7 @@ export function LessonEditor() {
           {task && draft && viewer && (
             <aside className="task-side" aria-label="Viewing">
               <span className="eyebrow">Viewing</span>
-              <span className="hint">You have view-only access to this class, so you see the lesson as learners do. Nothing here is saved.</span>
+              <span className="hint">{tr('You have view-only access to this class, so you see the lesson as learners do. Nothing here is saved.')}</span>
             </aside>
           )}
           {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
@@ -1294,13 +1296,13 @@ export function LessonEditor() {
                   </button>
                 </span>
                 <span className="hint">
-                  {task.afterCheck === 'retry' ? 'Learners only see which answers are right or wrong, then try the wrong ones again.' : 'Learners see the correct answers after they check.'}
+                  {task.afterCheck === 'retry' ? tr('Learners only see which answers are right or wrong, then try the wrong ones again.') : tr('Learners see the correct answers after they check.')}
                 </span>
               </div>
               <label className="switch-row">
                 <span>
                   Show the score after checking
-                  <span className="hint">Learners see how many they got right</span>
+                  <span className="hint">{tr('Learners see how many they got right')}</span>
                 </span>
                 <input type="checkbox" checked={task.showScore !== false} onChange={() => setTaskFlags(classId, itemId, task.id, { showScore: task.showScore === false })} />
               </label>
@@ -1393,14 +1395,14 @@ export function LessonEditor() {
                 ['H', 'Hide or show this task'],
                 ['L', 'Lock or unlock this task'],
                 ['C', 'Show or hide the class panel'],
-                ['N', 'Teacher notes'],
+                ['N', tr('Teacher notes')],
                 ['T', 'Start a 2-minute timer, or stop it'],
                 ['A', 'New announcement'],
                 ['F', 'Full screen while teaching, or back'],
                 ['Esc', 'Leave full screen, close this'],
                 ['⌘ + K', 'Editor: link the selected words'],
                 ['Alt + ↑ ↓', 'Editor: move the block up or down'],
-                ['⌘ + Shift + P', 'Preview as learner'],
+                ['⌘ + Shift + P', tr('Preview as learner')],
                 ['?', 'Show these shortcuts'],
               ].map(([k, d]) => (
                 <div key={k} className="sc-row">

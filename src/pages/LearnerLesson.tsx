@@ -1,3 +1,4 @@
+import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
 import { InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
@@ -60,6 +61,7 @@ export function LearnerLesson() {
   const { itemId = '' } = useParams();
   const { user, profile } = useAuth();
   const classId = profile?.role === 'learner' ? profile.classId : '';
+  useClassTerms(classId);
   const learnerId = profile?.role === 'learner' ? profile.learnerId : '';
   const [c, setC] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null>(null);
@@ -388,7 +390,7 @@ export function LearnerLesson() {
               </span>
             ) : (
             <div key={t.id} className={'task-row' + (t.id === current ? ' on' : '')}>
-              <button type="button" className={'task-pick' + (t.locked ? ' is-locked' : '')} disabled={t.locked || (synced && t.id !== current)} title={t.locked ? 'Your teacher will open this task soon' : synced ? 'Your teacher is leading the class' : undefined} onClick={() => go(t.id)}>
+              <button type="button" className={'task-pick' + (t.locked ? ' is-locked' : '')} disabled={t.locked || (synced && t.id !== current)} title={t.locked ? tr('Your teacher will open this task soon') : synced ? tr('Your teacher is leading the class') : undefined} onClick={() => go(t.id)}>
                 <span>{t.title}</span>
                 {t.locked && (
                   <svg className="lock-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-label="locked">
@@ -397,7 +399,7 @@ export function LearnerLesson() {
                   </svg>
                 )}
                 {teacherAt === t.id && (
-                  <span className="teacher-here" title={`${live?.teacherName ?? 'Your teacher'} is on this task`}>
+                  <span className="teacher-here" title={`${live?.teacherName ?? tr('Your teacher')} is on this task`}>
                     <span className="live-dot" aria-hidden="true" />
                     {live?.teacherName ?? 'Teacher'}
                   </span>
@@ -460,7 +462,7 @@ export function LearnerLesson() {
                 <div className="board-note" role="status">
                   <UiIcon name="board" size={18} />
                   <span>
-                    <strong>{live?.teacherName ?? 'Your teacher'} opened the board.</strong>
+                    <strong>{live?.teacherName ?? tr('Your teacher')} opened the board.</strong>
                   </span>
                   <span style={{ flex: 1 }} />
                   <button type="button" className="btn small-btn primary" onClick={() => (setOnBoard(true), setBoardNote(false))}>
@@ -479,13 +481,13 @@ export function LearnerLesson() {
                 {synced && (
                   <div className="sync-banner" role="status">
                     <span className="live-dot" aria-hidden="true" />
-                    Following {live?.teacherName ?? 'your teacher'}. Your screen moves with the class.
+                    Following {live?.teacherName ?? tr('your teacher')}. Your screen moves with the class.
                   </div>
                 )}
                 {!synced && teacherAt && teacherAt !== task.id && (
                   <button type="button" className="teacher-banner" onClick={() => go(teacherAt)}>
                     <span className="live-dot" aria-hidden="true" />
-                    {live?.teacherName ?? 'Your teacher'} is on “{tasks.find((t) => t.id === teacherAt)?.title ?? 'another task'}”. Go there
+                    {live?.teacherName ?? tr('Your teacher')} is on “{tasks.find((t) => t.id === teacherAt)?.title ?? 'another task'}”. Go there
                   </button>
                 )}
                 {scope && (examState === 'before' || examState === 'loading') ? (
@@ -494,7 +496,7 @@ export function LearnerLesson() {
                     <h2>{scope.title}</h2>
                     <ul>
                       <li>{scope.minutes ? `You have ${scope.minutes} minutes from when you start.` : 'There is no time limit.'}</li>
-                      <li>You won’t see the answers until your teacher releases the results.</li>
+                      <li>{tr('You won’t see the answers until your teacher releases the results.')}</li>
                       <li>When you submit{scope.minutes ? ' or the time is up' : ''}, your answers are locked.</li>
                     </ul>
                     <button type="button" className="btn primary tall" disabled={examState === 'loading'} onClick={() => user && startExam(classId, scope.id, user.uid, learnerId, profile?.role === 'learner' ? profile.displayName : '')}>
@@ -548,7 +550,7 @@ export function LearnerLesson() {
                     const t = entryFor(id);
                     return !t ? 'missing' : t.locked ? 'locked' : 'open';
                   }}
-                  onSharedDraw={(pickId, next, seq) => drawShared(classId, current, pickId, next.h, next.b, seq, (profile?.role === 'learner' ? profile.displayName : '').split(' ')[0] || 'A learner').catch((e) => console.error(e))}
+                  onSharedDraw={(pickId, next, seq) => drawShared(classId, current, pickId, next.h, next.b, seq, (profile?.role === 'learner' ? profile.displayName : '').split(' ')[0] || tr('A learner')).catch((e) => console.error(e))}
                   liveHere={liveHere}
                   onToggleFlag={task.locked ? undefined : toggleFlag}
                 />
@@ -560,7 +562,7 @@ export function LearnerLesson() {
                     {left !== null ? `${fmt(left)} left` : 'Exam'} · {answered} of {qs.length} answered
                   </span>
                 ) : scope && examState === 'submitted' ? (
-                  <span className="hint">Submitted. Your teacher will release the results.</span>
+                  <span className="hint">{tr('Submitted. Your teacher will release the results.')}</span>
                 ) : checked && key && showScore ? (
                   <span className="score">
                     {result.total > 0 ? (
@@ -579,7 +581,7 @@ export function LearnerLesson() {
                   </span>
                 )}
                 <span className="foot-acts">
-                  <IconBtn icon="prev" label={synced ? 'Your teacher is moving the class' : 'Previous task'} className="nav-arrow foot-prev" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)} />
+                  <IconBtn icon="prev" label={synced ? tr('Your teacher is moving the class') : 'Previous task'} className="nav-arrow foot-prev" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)} />
                   {scope ? (
                     examState === 'running' ? (
                       <button className="btn primary" onClick={() => submitNow()}>
@@ -587,7 +589,7 @@ export function LearnerLesson() {
                       </button>
                     ) : null
                   ) : qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
-                    <span className="hint saved-auto">{Object.keys(responses).length ? 'Saved. Your teacher can see your answers.' : ''}</span>
+                    <span className="hint saved-auto">{Object.keys(responses).length ? tr('Saved. Your teacher can see your answers.') : ''}</span>
                   ) : qs.length > 0 &&
                     (checked ? (
                       item?.type === 'practice' ? (
@@ -606,7 +608,7 @@ export function LearnerLesson() {
                         {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : (<>Check<span className="foot-long"> answers</span></>)}
                       </button>
                     ))}
-                  <IconBtn icon="next" label={synced ? 'Your teacher is moving the class' : 'Next task'} className={'nav-arrow foot-next' + (checked || qs.length === 0 ? ' pulse' : '')} disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)} />
+                  <IconBtn icon="next" label={synced ? tr('Your teacher is moving the class') : 'Next task'} className={'nav-arrow foot-next' + (checked || qs.length === 0 ? ' pulse' : '')} disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)} />
                 </span>
               </div>
             </div>

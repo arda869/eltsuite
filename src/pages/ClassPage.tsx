@@ -1,3 +1,4 @@
+import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
 import { Loader } from '../components/Loader';
 import { useEffect, useRef, useState } from 'react';
@@ -38,6 +39,7 @@ function useCollection<T>(path: string[], ready: boolean) {
 
 export function ClassPage() {
   const { classId = '' } = useParams();
+  useClassTerms(classId);
   const navigate = useNavigate();
   const [c, setC] = useState<ClassDoc | null | undefined>(undefined);
   const roster = useClassmates(c?.classCode ?? undefined);
@@ -132,7 +134,7 @@ export function ClassPage() {
             {why.code === 'deleted'
               ? 'It is no longer on the server. If it still shows on your home screen, reload the page.'
               : why.code === 'permission-denied'
-                ? 'Your account does not have access to it. This happens when a co-teacher removes you, or when the class belongs to another of your accounts.'
+                ? tr('Your account does not have access to it. This happens when a co-teacher removes you, or when the class belongs to another of your accounts.')
                 : why.code === 'unavailable'
                   ? 'Check your connection and try again.'
                   : 'Something went wrong while opening it.'}
@@ -160,7 +162,7 @@ export function ClassPage() {
               <h1 className="page-title">{c.name}</h1>
               <div className="class-meta">
                 <span>
-                  {c.level} · {learners.length} {learners.length === 1 ? 'learner' : 'learners'}
+                  {c.level} · {learners.length} {tr(learners.length === 1 ? 'learner' : 'learners')}
                   {c.status === 'archived' ? ' · archived' : ''}
                 </span>
                 <span className="code-chip">
@@ -219,7 +221,7 @@ export function ClassPage() {
               Lessons and work
             </button>
             <button className={tab === 'learners' ? 'on' : ''} onClick={() => (setTab('learners'), setLearnerOpen(''))}>
-              Learners <span className="count">{learners.length}</span>
+              {tr('Learners')} <span className="count">{learners.length}</span>
             </button>
             <button className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
               Notebook
