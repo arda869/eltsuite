@@ -4132,3 +4132,26 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .sp-notes { margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--surface); } .sp-notes p { margin: 4px 0 0; white-space: pre-wrap; font-size: 13.5px; }
 .sp-media { display: grid; place-items: center; padding: 20px; border-radius: 18px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
 .sp-media img { max-width: 100%; max-height: 70vh; border-radius: 10px; } .sp-media.wide { display: block; }
+
+/* Colleagues page */
+.ma-nav-link { display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 10px; border-radius: 9px; font: 13.5px var(--sans); color: var(--ink); text-decoration: none; }
+.ma-nav-link:hover { background: var(--surface); } .ma-nav-link .ui-icon { color: var(--soft); }
+.cp { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; width: 100%; margin: 0 auto; padding: 18px 0 40px; }
+.cp-invite { max-width: 720px; }
+.cp-body { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .cp-body { grid-template-columns: 1fr; } }
+.cp-list { display: flex; flex-direction: column; gap: 4px; }
+.cp-person { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 12px; background: none; text-align: left; cursor: pointer; font-family: var(--sans); color: var(--ink); }
+.cp-person:hover { background: var(--surface); } .cp-person.on { background: var(--card, #fff); box-shadow: 0 0 0 1.5px var(--accent); }
+.cp-detail { display: flex; flex-direction: column; gap: 16px; padding: 20px 22px; border-radius: 18px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
+.cp-head { display: flex; align-items: center; gap: 14px; } .cp-head h2 { margin: 0; font: 600 21px var(--serif); }
+.cp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .cp-cols { grid-template-columns: 1fr; } }
+.cp-col { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: var(--page, #f5f4f1); }
+.cp-col .eyebrow { margin-bottom: 4px; }
+.cp-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
+.cp-item .al-ic { width: 30px; height: 30px; }
+.cp-item-t { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13.5px; line-height: 1.3; }
+.cp-item-t a { font: 600 14px var(--serif); color: var(--ink); text-decoration: none; } .cp-item-t a:hover { color: var(--accent-text); }
+.cp-item-t .hint { font-size: 11.5px; }
+.cp-note { margin-top: 4px; font-size: 12px; }

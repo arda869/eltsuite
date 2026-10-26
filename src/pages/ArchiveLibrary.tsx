@@ -392,7 +392,7 @@ export function ArchiveShared({ uid }: { uid: string }) {
   );
 }
 
-export function ArchiveColleagues({ uid, me }: { uid: string; me: { name: string; email: string } }) {
+export function ArchiveColleagues({ uid, me, inviteOnly }: { uid: string; me: { name: string; email: string }; inviteOnly?: boolean }) {
   const colleagues = useColleagues(uid);
   const links = useMyLinks(uid);
   const [busy, setBusy] = useState(false);
@@ -436,6 +436,7 @@ export function ArchiveColleagues({ uid, me }: { uid: string; me: { name: string
           </button>
         )}
       </section>
+      {!inviteOnly && (<>
       <span className="eyebrow">Your colleagues {colleagues?.length ? `· ${colleagues.length}` : ''}</span>
       {colleagues === null ? (
         <Loader label="Opening" />
@@ -460,6 +461,7 @@ export function ArchiveColleagues({ uid, me }: { uid: string; me: { name: string
           ))}
         </div>
       )}
+      </>)}
       {links.length > 1 && (
         <span className="hint">
           {links.length} invitation links are open.{' '}

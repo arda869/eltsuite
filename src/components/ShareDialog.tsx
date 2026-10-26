@@ -86,7 +86,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
               <span className="hint">Loading your colleagues…</span>
             ) : colleagues.length === 0 ? (
               <span className="hint">
-                No colleagues yet. <Link to="/archive?show=colleagues">Invite a colleague</Link> with a link first, or share with anyone who has the link.
+                No colleagues yet. <Link to="/colleagues">Invite a colleague</Link> with a link first, or share with anyone who has the link.
               </span>
             ) : (
               colleagues.map((c) => (

@@ -12,6 +12,7 @@ import { CoverArt } from '../components/Covers';
 import { Loader } from '../components/Loader';
 import { acceptInvite, declineInvite, emailKey, syncLiveTeachers, useInvites, useTeacherClasses } from '../lib/coteach';
 import { TopBar } from '../components/TopBar';
+import { MainNav } from './ColleaguesPage';
 import { NewClassDialog } from '../components/NewClassDialog';
 import { LearnerActivity } from '../components/LearnerActivity';
 
@@ -122,12 +123,7 @@ export function TeacherHome() {
   return (
     <div className="shell">
       <TopBar>
-        <nav aria-label="Main">
-          <Link to="/" className="on">
-            Classes
-          </Link>
-          <Link to="/archive">Media archive</Link>
-        </nav>
+        <MainNav on="classes" />
       </TopBar>
 
       <div className="home">

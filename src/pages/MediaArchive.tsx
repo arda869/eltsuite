@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArchiveColleagues, ArchiveDocs, ArchiveShared, ArchiveTasks } from './ArchiveLibrary';
+import { ArchiveDocs, ArchiveShared, ArchiveTasks } from './ArchiveLibrary';
 import { ShareDialog } from '../components/ShareDialog';
 import { useDismiss } from '../lib/useDismiss';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
+import { MainNav } from './ColleaguesPage';
 import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
 import { useAuth } from '../lib/auth';
@@ -108,12 +109,7 @@ export function MediaArchive() {
   return (
     <div className="shell">
       <TopBar>
-        <nav aria-label="Main">
-          <Link to="/">Classes</Link>
-          <Link to="/archive" className="on">
-            Media archive
-          </Link>
-        </nav>
+        <MainNav on="archive" />
       </TopBar>
       <div
         className={'ma' + (over ? ' dropping' : '')}
@@ -150,10 +146,10 @@ export function MediaArchive() {
               <UiIcon name="link" size={16} />
               Shared
             </button>
-            <button type="button" className={section === 'colleagues' ? 'on' : ''} onClick={() => pick('colleagues')}>
+            <Link to="/colleagues" className="ma-nav-link">
               <UiIcon name="groups" size={16} />
               Colleagues
-            </button>
+            </Link>
           </nav>
           {section === 'media' && (<>
           <div className="ma-space">
@@ -274,17 +270,7 @@ export function MediaArchive() {
             <ArchiveShared uid={uid} />
           </main>
         )}
-        {section === 'colleagues' && uid && user && (
-          <main className="ma-main">
-            <div className="ma-head">
-              <div className="ma-head-text">
-                <h1 className="page-title">Colleagues</h1>
-                <span className="sub">Teachers you share with. You connect through a link you send them.</span>
-              </div>
-            </div>
-            <ArchiveColleagues uid={uid} me={{ name: user.displayName || user.email?.split('@')[0] || 'A colleague', email: user.email ?? '' }} />
-          </main>
-        )}
+        {section === 'colleagues' && <Navigate to="/colleagues" replace />}
         {section === 'media' && (
         <main className="ma-main">
           <div className="ma-head">

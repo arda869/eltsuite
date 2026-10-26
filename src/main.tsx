@@ -1,4 +1,5 @@
 import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
+import { ColleaguesPage } from './pages/ColleaguesPage';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -106,6 +107,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
+          <Route path="/colleagues" element={<TeacherOnly><ColleaguesPage /></TeacherOnly>} />
           <Route path="/colleague/:token" element={<ColleagueJoin />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />

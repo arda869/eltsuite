@@ -168,7 +168,7 @@ export function useSharedWithMe(uid?: string) {
   const seen = new Set(direct.map((d) => d.id));
   return [...direct, ...opened.filter((o) => !seen.has(o.id))].sort((x, y) => (y.updated ?? y.at ?? 0) - (x.updated ?? x.at ?? 0));
 }
-export const rememberShare = (uid: string, s: Share) => setDoc(doc(db, 'users', uid, 'received', s.id), { title: s.title, kind: s.kind, ownerName: s.ownerName, about: s.about ?? '', at: Date.now(), updated: s.updated ?? 0 }).catch(() => {});
+export const rememberShare = (uid: string, s: Share) => setDoc(doc(db, 'users', uid, 'received', s.id), { owner: s.owner, title: s.title, kind: s.kind, ownerName: s.ownerName, about: s.about ?? '', at: Date.now(), updated: s.updated ?? 0 }).catch(() => {});
 export const forgetShare = (uid: string, id: string) => deleteDoc(doc(db, 'users', uid, 'received', id)).catch(() => {});
 
 export async function readShare(id: string): Promise<Share | 'denied' | null> {

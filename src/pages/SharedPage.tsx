@@ -12,6 +12,7 @@ import { newCollab } from '../editor/CollabNode';
 import { copyState } from '../collab/provider';
 import { newId } from '../lib/tasks';
 import { TopBar } from '../components/TopBar';
+import { MainNav } from './ColleaguesPage';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -55,10 +56,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
       <TopBar>
-        <nav aria-label="Main">
-          <Link to="/">Classes</Link>
-          <Link to="/archive">Media archive</Link>
-        </nav>
+        <MainNav on="" />
       </TopBar>
       <div className="sp">{children}</div>
     </div>
@@ -332,7 +330,7 @@ export function ColleagueJoin() {
           <>
             <h1 className="page-title">You and {from.name.split(' ')[0]} are now colleagues</h1>
             <p className="hint">You can share lessons, tasks, documents and media with each other. Find what they share in your archive, under Shared with me.</p>
-            <Link className="btn primary" to="/archive?show=colleagues">
+            <Link className="btn primary" to="/colleagues">
               See my colleagues
             </Link>
           </>
