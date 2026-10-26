@@ -192,6 +192,15 @@ export function flattenTask(t: ExportTask): WsTask {
         if (runs.length) cur.push({ kind: 'p', runs, list, mark });
         return;
       }
+      case 'dialogue': {
+        // On paper: one line under the other, each with its speaker in bold.
+        const sp: string[] = Array.isArray(a.speakers) && a.speakers.length ? a.speakers : ['A', 'B'];
+        (node.content ?? []).forEach((ln, k) => {
+          const who = sp[Number(ln.attrs?.who) || 0] ?? '';
+          cur.push({ kind: 'p', runs: [{ t: who + '   ', bold: true }, ...runsOf(ln.content)], list, mark: k === 0 ? mark : list ? '' : undefined });
+        });
+        return;
+      }
       case 'heading':
         cur.push({ kind: 'p', runs: [{ t: text(node), bold: true }], heading: true });
         return;

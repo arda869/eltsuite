@@ -4697,3 +4697,51 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .pic-tag-x:hover { background: var(--surface); color: var(--ink); }
 .pic-placing .pic { cursor: crosshair; box-shadow: 0 0 0 2px var(--accent); }
 .pic-placing .pic::after { content: 'Click where the label goes'; position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 5; padding: 5px 11px; border-radius: 99px; background: rgba(38, 36, 32, .82); color: #fff; font: 600 12px var(--sans); white-space: nowrap; pointer-events: none; line-height: 1.4; }
+
+/* Dialogue: A and B (or names), lined up; side by side puts each speaker in a column */
+.dialogue { margin: 8px 0 14px; }
+.dialogue :is(.dlg-lines, .dlg-lines > div):has(> .dl) { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 7px; }
+.dialogue.layout-side.n2 :is(.dlg-lines, .dlg-lines > div):has(> .dl) { grid-template-columns: repeat(2, minmax(0, auto)); justify-content: start; column-gap: 44px; }
+.dialogue.layout-side.n3 :is(.dlg-lines, .dlg-lines > div):has(> .dl) { grid-template-columns: repeat(3, minmax(0, auto)); justify-content: start; column-gap: 36px; }
+.dialogue.layout-side.n4 :is(.dlg-lines, .dlg-lines > div):has(> .dl) { grid-template-columns: repeat(4, minmax(0, auto)); justify-content: start; column-gap: 30px; }
+.dialogue.layout-side .dl[data-who='0'] { grid-column: 1; } .dialogue.layout-side .dl[data-who='1'] { grid-column: 2; } .dialogue.layout-side .dl[data-who='2'] { grid-column: 3; } .dialogue.layout-side .dl[data-who='3'] { grid-column: 4; }
+.dl { display: grid; grid-template-columns: var(--dw, 26px) minmax(0, 1fr); column-gap: 10px; align-items: start; }
+.dl-text { min-width: 0; min-height: 1.6em; line-height: 1.65; }
+.dl-text > p { margin: 0; }
+.dl-who { justify-self: start; display: inline-grid; place-items: center; min-width: 24px; height: 24px; margin-top: .2em; padding: 0 8px; border-radius: 99px; font: 700 12px/1 var(--sans); letter-spacing: .04em; white-space: nowrap; user-select: none; background: var(--accent); color: #fff; box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+.dl[data-who='1'] .dl-who { background: #4b4843; box-shadow: 0 1px 2px rgba(51, 48, 44, .3); }
+.dl[data-who='2'] .dl-who { background: color-mix(in srgb, var(--accent) 55%, #4b4843); }
+.dl[data-who='3'] .dl-who { background: #8d8983; }
+:root[data-theme='dark'] .dl[data-who='1'] .dl-who { background: #d8d4cd; color: #262420; }
+.dl[data-who='0'] .dl-who::before { content: var(--s0, 'A'); } .dl[data-who='1'] .dl-who::before { content: var(--s1, 'B'); } .dl[data-who='2'] .dl-who::before { content: var(--s2, 'C'); } .dl[data-who='3'] .dl-who::before { content: var(--s3, 'D'); }
+.ProseMirror .dl-who { cursor: pointer; }
+.ProseMirror .dl-who:hover { filter: brightness(.96); box-shadow: inset 0 0 0 1.5px var(--accent); }
+li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
+.dialogue-node { position: relative; }
+.dlg-tools { position: absolute; left: auto; right: 0; bottom: calc(100% + 2px); z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: 100%; padding: 4px 8px 4px 4px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 6px 18px rgba(51, 48, 44, .12); font: 12px var(--sans); color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.dialogue-node:hover .dlg-tools, .dialogue-node:focus-within .dlg-tools { opacity: 1; pointer-events: auto; }
+.dlg-tools .remove { margin-left: 4px; border: 0; background: none; font: 600 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--soft); cursor: pointer; }
+.dlg-names { display: inline-flex; align-items: center; gap: 4px; }
+.dlg-name { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 2px; border-radius: 99px; background: var(--surface); }
+.dlg-name input { width: auto; height: 24px; padding: 0 6px; border: 0; background: transparent; font: 700 12.5px var(--sans); color: var(--ink); text-align: center; outline: none; }
+.dlg-name input:focus { box-shadow: 0 0 0 1.5px var(--accent); border-radius: 99px; }
+.dlg-name button { width: 16px; height: 16px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--soft); cursor: pointer; font: 600 12px/1 var(--sans); }
+.dlg-add { height: 24px; padding: 0 9px; border: 1px dashed var(--hair-strong); border-radius: 99px; background: none; font: 600 11.5px var(--sans); color: var(--muted); cursor: pointer; }
+@media (max-width: 640px) { .dialogue.layout-side :is(.dlg-lines, .dlg-lines > div):has(> .dl) { grid-template-columns: minmax(0, 1fr) !important; } .dialogue.layout-side .dl { grid-column: 1 !important; } }
+.gl-dlg { display: flex; flex-direction: column; gap: 6px; font: 12px var(--serif); text-align: left; }
+.gl-dlg b { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 6px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 15%, var(--paper)); color: var(--accent-text); font: 700 10px var(--sans); }
+.gl-dlg span:nth-child(2) b { background: var(--ink); color: var(--paper); }
+.gl-dlg i { display: inline-block; width: 34px; border-bottom: 1.5px solid var(--ink); vertical-align: -2px; }
+
+/* Shared material in a chat: a clean card, not a card inside a coloured bubble */
+.bub-box:has(> .bub-share) { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.bub-share { width: 100%; max-width: 340px; min-width: 0; gap: 12px; padding: 12px 14px; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 4px 14px -6px rgba(51, 48, 44, .18); }
+.bub.mine .bub-share { box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent), 0 4px 14px -6px rgba(51, 48, 44, .18); }
+.bub-share b { color: var(--ink); font: 600 14px/1.3 var(--sans); }
+.bub-share .hint { color: var(--muted); font-size: 12px; }
+.bub-share .sh-ic { width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 11px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--accent-text); }
+.bub-share .sh-pt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* The small messages window: no sideways scrolling */
+.dock-chat .chat-body { overflow-x: hidden; }
+.dock-chat .bub-doc.has-blocks { min-width: 0; width: auto; }
+.dock-chat .bub { max-width: 88%; }

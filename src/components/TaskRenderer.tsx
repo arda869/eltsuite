@@ -10,6 +10,7 @@ import { PackQuestion } from './PackRender';
 import { answerFromKey } from '../lib/pack';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { DefCard, type DefData } from '../editor/Definition';
+import { speakerVars } from '../editor/Dialogue';
 import { StressedWord } from '../editor/Stress';
 import { highlightBg } from '../editor/Highlight';
 import { textColor } from '../editor/TextColor';
@@ -892,6 +893,21 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           <BoxFrame key={key} attrs={node.attrs as BoxAttrs}>
             {kids()}
           </BoxFrame>
+        );
+      case 'dialogue': {
+        const sp: string[] = Array.isArray(node.attrs?.speakers) && node.attrs.speakers.length ? node.attrs.speakers : ['A', 'B'];
+        return (
+          <div key={key} data-bk={key} className={'dialogue layout-' + (node.attrs?.layout === 'side' ? 'side' : 'stacked') + ' n' + sp.length} style={speakerVars(sp)}>
+            <div className="dlg-lines">{kids()}</div>
+          </div>
+        );
+      }
+      case 'dialogueLine':
+        return (
+          <div key={key} className="dl" data-who={Number(node.attrs?.who) || 0}>
+            <span className="dl-who" />
+            <div className="dl-text">{kids()}</div>
+          </div>
         );
       case 'blockquote':
         return <blockquote key={key}>{kids()}</blockquote>;

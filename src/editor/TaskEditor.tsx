@@ -32,6 +32,8 @@ import { CollabBlock, newCollab } from './CollabNode';
 import { BLOCKS } from './coursebook';
 import Link from '@tiptap/extension-link';
 import OrderedList from '@tiptap/extension-ordered-list';
+import ListItem from '@tiptap/extension-list-item';
+import { DialogueLine, DialogueNode, insertDialogue } from './Dialogue';
 import { listLabel, parseListStart } from '../lib/listLabel';
 import { EditorContextMenu } from './ContextMenu';
 import { LineAdder } from './LineAdder';
@@ -117,6 +119,7 @@ const COMMANDS: Cmd[] = [
   { key: 'postits', label: 'Post-it wall', hint: 'Learners stick notes on a shared wall', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('postits'), { type: 'paragraph' }]).run() },
   { key: 'grammarlink', label: 'Grammar bank link', hint: 'A card that opens a grammar page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('grammar'), { type: 'paragraph' }]).run() },
   { key: 'vocablink', label: 'Vocabulary bank link', hint: 'A card that opens a vocabulary page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('vocab'), { type: 'paragraph' }]).run() },
+  { key: 'dialogue', label: 'Dialogue', hint: 'A and B (or names), one line under the other or side by side; gaps and choices work inside', group: 'Text', run: (e) => insertDialogue(e) },
   { key: 'timeline', label: 'Timeline', hint: 'A tense timeline: events, actions in progress, periods, arrows and labels', group: 'Text', run: (e) => e.chain().focus().insertContent([newTimeline(), { type: 'paragraph' }]).run() },
   { key: 'drawboard', label: 'Board', hint: 'A drawing board: draw, write and add pictures, live in class', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newDrawBoard(), { type: 'paragraph' }]).run() },
   { key: 'pq-fix', label: 'Find and fix the mistake', hint: 'Learners tap the wrong word, then correct it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('fix' as PackKind), { type: 'paragraph' }]).run() },
@@ -283,7 +286,7 @@ function ListStart({ editor }: { editor: Editor }) {
 
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
-const INLINE_KEYS = ['gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
+const INLINE_KEYS = ['dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
 const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
@@ -320,7 +323,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [3] }, orderedList: false }),
+      StarterKit.configure({ heading: { levels: [3] }, orderedList: false, listItem: false }),
+      // A list item may start with a dialogue (1. A: … B: …) as well as a paragraph.
+      ListItem.extend({ content: '(paragraph | dialogue) block*' }),
       OrderedList.extend({
         addAttributes() {
           return {
@@ -367,6 +372,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       BoardNode,
       DrawBoardNode,
       jsonClip(TimelineNode, 'div', 'data-timeline'),
+      DialogueNode,
+      DialogueLine,
       Mention,
       RevealBox,
       LinkCard,
