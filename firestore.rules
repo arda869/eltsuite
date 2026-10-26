@@ -244,6 +244,17 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
 
+      // Files learners hand in ("File upload" questions): a record and the file in parts.
+      // Only the learner who sent it and the class's teachers can open it.
+      match /files/{fileId} {
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.owner == request.auth.uid);
+        allow create: if (memberOf(classId) || teachesClass(classId))
+          && request.resource.data.owner == request.auth.uid
+          && (!('data' in request.resource.data) || request.resource.data.data.size() < 700000)
+          && request.resource.data.get('size', 0) <= 10485760;
+        allow delete: if teachesClass(classId) || (signedIn() && resource.data.owner == request.auth.uid);
+      }
+
       // Short audio clips (recorded or uploaded by the teacher)
       match /media/{mediaId} {
         // Sounds and videos (and their scripts) open from a QR code without signing in.

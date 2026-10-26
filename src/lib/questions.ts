@@ -16,7 +16,7 @@ export type AnswerKey = Record<string, KeyEntry>;
 export type Response = string | number | number[] | JSONContent | null | undefined;
 export type Responses = Record<string, Response>;
 
-export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect', 'pq'] as const;
+export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect', 'upload', 'pq'] as const;
 export const isQuestion = (n: JSONContent) => !!n.attrs?.id && !n.attrs?.example && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '') && !(n.type === 'pq' && n.attrs?.kind === 'speaking');
 
 // Seeded shuffle so a question always appears in the same shuffled order.
@@ -239,6 +239,7 @@ const reflectAnswered = (r: Response) => {
   return !!v.ratings && Object.values(v.ratings).some((x) => (typeof x === 'number' ? x > 0 || x === 0 : Array.isArray(x) ? x.length > 0 : typeof x === 'string' && !!x.trim()));
 };
 export const isAnswered = (r: Response): boolean =>
+  !!r && typeof r === 'object' && !Array.isArray(r) && 'files' in (r as object) ? ((r as { files: unknown[] }).files?.length ?? 0) > 0 :
   !!r && typeof r === 'object' && !Array.isArray(r) && 'pick' in (r as object) ? (Array.isArray((r as { pick: unknown }).pick) ? ((r as { pick: unknown[] }).pick.length > 0) : typeof (r as { pick: unknown }).pick === 'number') :
   !!r && typeof r === 'object' && !Array.isArray(r) && 'ratings' in (r as object) ? reflectAnswered(r) : !!(
   r !== undefined && !(r && typeof r === 'object' && !Array.isArray(r) && !textOf(r)) &&
@@ -287,5 +288,5 @@ export function scoreTask(qs: QRef[], key: AnswerKey, responses: Responses) {
     got += s.got;
     max += s.max;
   }
-  return { score: got, total: max, hasWriting: qs.some((q) => q.type === 'writing' || q.type === 'reflect') };
+  return { score: got, total: max, hasWriting: qs.some((q) => q.type === 'writing' || q.type === 'reflect' || q.type === 'upload') };
 }

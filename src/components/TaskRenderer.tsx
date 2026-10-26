@@ -23,6 +23,7 @@ import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
 import type { CoverMode, CoverProps } from '../editor/PicEdit';
 import { MediaPlayer } from '../media/Player';
+import { UploadBox, type UploadAnswer, type UploadAttrs } from '../editor/UploadNode';
 import { LinkCardView } from '../editor/LinkCard';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
@@ -1002,6 +1003,14 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             {kids()}
           </RevealBlock>
         );
+      case 'upload': {
+        const id = String(node.attrs?.id ?? '');
+        return (
+          <div key={key} data-bk={key} className="task-upload">
+            <UploadBox classId={classId ?? ''} a={node.attrs as UploadAttrs} value={responses[id] as unknown as UploadAnswer | undefined} onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={locked} />
+          </div>
+        );
+      }
       case 'media':
         return node.attrs?.media ? (
           <div key={key} data-bk={key} className="task-media">
