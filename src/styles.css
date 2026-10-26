@@ -4745,3 +4745,20 @@ li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
 .dock-chat .chat-body { overflow-x: hidden; }
 .dock-chat .bub-doc.has-blocks { min-width: 0; width: auto; }
 .dock-chat .bub { max-width: 88%; }
+.dock-win.lift { bottom: 84px; height: min(560px, calc(100vh - 160px)); }
+@media (max-width: 640px) {
+  /* The top bar's buttons stay on one line beside the name */
+  .topbar { flex-wrap: wrap; }
+  .topbar > :not(nav) { flex-shrink: 0; }
+  .topbar .icon-tool, .topbar .icon-btn, .topbar .topbar-right > button, .topbar .right > button:not(.avatar) { width: 36px; height: 36px; min-width: 36px; padding: 0; }
+  .topbar .right { gap: 6px; }
+  .topbar-right, .topbar .tb-tools { gap: 5px; }
+  .topbar .wordmark { font-size: 18px; }
+}
+@media (max-width: 380px) {
+  .topbar { column-gap: 4px; }
+  .topbar .icon-tool, .topbar .icon-btn, .topbar .topbar-right > button, .topbar .right > button:not(.avatar) { width: 32px; height: 32px; min-width: 32px; }
+  .topbar .right, .topbar-right, .topbar .tb-tools { gap: 4px; }
+  .topbar .wordmark { font-size: 17px; }
+  .topbar .mode-btn { padding: 0 8px; }
+}

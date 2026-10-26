@@ -23,6 +23,7 @@ import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { MainNav } from './ColleaguesPage';
 import { SharedWindow } from './SharedPage';
+import { setDock } from '../components/ChatDock';
 import { setClip, writeClip, type Clip } from '../lib/clip';
 import { Icon, IconGrid, iconByKey } from '../editor/Icons';
 import { useDismiss } from '../lib/useDismiss';
@@ -56,6 +57,10 @@ export function MessagesPage() {
   // A teacher looking at the app as a learner does not see that learner's messages.
   if (isProxyTab()) return <PrivateMessages />;
   const cur = chats?.find((c) => c.id === open);
+  // Leaving this page with a chat open (on a computer): the chat comes along in the small window.
+  const openRef = useRef(open);
+  openRef.current = open;
+  useEffect(() => () => void (openRef.current && !window.matchMedia('(max-width: 640px)').matches && setDock({ open: true, chat: openRef.current })), []);
   const shown = (chats ?? []).filter((c) => !q.trim() || chatTitle(c, me?.key ?? '').toLowerCase().includes(q.trim().toLowerCase()) || Object.values(c.names).some((n) => n.toLowerCase().includes(q.trim().toLowerCase())));
   const pick = (id: string) => setParams(id ? { c: id } : {});
 

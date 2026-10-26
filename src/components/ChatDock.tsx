@@ -12,13 +12,32 @@ import { IconLink, UiIcon } from './UiIcon';
 // to write without leaving the lesson. A soft chime when a message comes in.
 
 const KEY = 'll.dock';
-const read = () => {
+type DockState = { open?: boolean; chat?: string };
+const read = (): DockState => {
   try {
-    return JSON.parse(sessionStorage.getItem(KEY) || '{}') as { open?: boolean; chat?: string };
+    return JSON.parse(sessionStorage.getItem(KEY) || '{}') as DockState;
   } catch {
     return {};
   }
 };
+// One state for the window, shared by the top-bar button and the window itself.
+export function setDock(v: DockState) {
+  try {
+    sessionStorage.setItem(KEY, JSON.stringify(v));
+  } catch {
+    /* fine */
+  }
+  window.dispatchEvent(new Event('ll-dock'));
+}
+function useDock() {
+  const [st, setSt] = useState(read);
+  useEffect(() => {
+    const on = () => setSt(read());
+    window.addEventListener('ll-dock', on);
+    return () => window.removeEventListener('ll-dock', on);
+  }, []);
+  return st;
+}
 
 export function ChatDock() {
   const { user, profile } = useAuth();
@@ -26,15 +45,8 @@ export function ChatDock() {
   const phone = usePhone();
   const me = profile?.role === 'learner' ? profile.learnerId : profile?.role === 'teacher' ? user?.uid : undefined;
   const chats = useChats(isProxyTab() ? undefined : me);
-  const [st, setSt] = useState(read);
-  const save = (v: { open?: boolean; chat?: string }) => {
-    setSt(v);
-    try {
-      sessionStorage.setItem(KEY, JSON.stringify(v));
-    } catch {
-      /* fine */
-    }
-  };
+  const st = useDock();
+  const save = setDock;
 
   // A chime for each new message from someone else (not for the ones already there).
   const seen = useRef<Record<string, number> | null>(null);
@@ -46,29 +58,20 @@ export function ChatDock() {
     if (chats.some((c) => c.last && c.last.by !== me && c.lastAt > (prev[c.id] ?? 0))) chime('in');
   }, [chats, me]);
 
-  const hidden = !me || isProxyTab() || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/s/') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || document.body.classList.contains('presenting');
+  // The window goes with you from page to page; it is opened from Messages in the top bar.
+  const hidden = !me || isProxyTab() || phone || !st.open || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || document.body.classList.contains('presenting');
   if (hidden) return null;
-  const unread = (chats ?? []).filter((c) => unreadIn(c, me!)).length;
-  // Lessons have their own buttons at the bottom right; the messages button sits above them.
-  const lift = /\/lesson\/|^\/learn\/|^\/recap\//.test(loc.pathname) ? ' lift' : '';
-  // On a phone a floating button covers buttons and text: Messages is in the top bar there instead.
-  if (phone) return null;
-  if (!st.open)
-    return (
-      <button type="button" className={'dock-btn' + lift} onClick={() => save({ open: true, chat: st.chat })} aria-label={unread ? `Messages, ${unread} unread` : 'Messages'} data-tip="Messages">
-        <UiIcon name="message" size={20} />
-        {unread > 0 && <span className="dock-badge">{unread}</span>}
-      </button>
-    );
-  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onClose={() => save({ open: false, chat: st.chat })} />;
+  // On lesson screens the window sits above the buttons that move between tasks.
+  const lift = /\/lesson\/|^\/learn\/|^\/recap\//.test(loc.pathname);
+  return <DockWindow lift={lift} me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onClose={() => save({ open: false, chat: st.chat })} />;
 }
 
-function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onClose: () => void }) {
+function DockWindow({ lift, me, chats, chatId, onChat, onClose }: { lift?: boolean; me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onClose: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === chatId);
   return (
-    <div className="dock-win" role="dialog" aria-label="Messages">
+    <div className={'dock-win' + (lift ? ' lift' : '')} role="dialog" aria-label="Messages">
       <div className="dock-head">
         {cur ? (
           <button type="button" className="icon-btn" onClick={() => onChat(undefined)} aria-label="All chats">
@@ -116,13 +119,23 @@ function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats:
   );
 }
 
-// The Messages icon for the top bar on a phone, with the number of unread chats.
+// Messages in the top bar, with the number of unread chats. On a computer it opens the small
+// messages window (lower right) over the page you are on; on a phone, the messages page.
 export function PhoneMessagesLink() {
   const { user, profile } = useAuth();
   const phone = usePhone();
   const loc = useLocation();
+  const st = useDock();
   const me = profile?.role === 'learner' ? profile.learnerId : profile?.role === 'teacher' ? user?.uid : undefined;
-  const unread = useUnread(phone && !isProxyTab() ? me : undefined);
-  if (!phone || !me || isProxyTab() || loc.pathname.startsWith('/messages')) return null;
-  return <IconLink icon="message" label={unread ? `Messages · ${unread} new` : 'Messages'} to="/messages" badge={unread ? <span className="icon-badge">{unread}</span> : null} />;
+  const unread = useUnread(!isProxyTab() ? me : undefined);
+  if (!me || isProxyTab() || loc.pathname.startsWith('/messages')) return null;
+  const label = unread ? `Messages · ${unread} new` : 'Messages';
+  const badge = unread ? <span className="icon-badge">{unread}</span> : null;
+  if (phone) return <IconLink icon="message" label={label} to="/messages" badge={badge} />;
+  return (
+    <button type="button" className={'icon-tool' + (st.open ? ' on' : '')} aria-label={label} data-tip={label} aria-pressed={!!st.open} onClick={() => setDock({ open: !st.open, chat: st.chat })}>
+      <UiIcon name="message" />
+      {badge}
+    </button>
+  );
 }

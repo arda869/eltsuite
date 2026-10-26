@@ -10,7 +10,7 @@ import { IconLink } from '../components/UiIcon';
 import { useMyRecaps } from '../lib/recap';
 import { useMistakes } from '../lib/mistakes';
 import { useNotebook } from '../lib/notebook';
-import { useUnread } from '../lib/chat';
+import { PhoneMessagesLink } from '../components/ChatDock';
 import { CoverArt } from '../components/Covers';
 import { isProxyTab } from '../lib/proxy';
 import { MySecretDialog } from '../components/MySecretDialog';
@@ -85,7 +85,6 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const dueMistakes = mistakes.filter((m) => !m.done && m.nextAt <= Date.now()).length;
   const nbMe = useMemo(() => (user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null), [user, profile]);
   const entries = useNotebook(classId, nbMe);
-  const unreadMsgs = useUnread(profile?.role === 'learner' ? profile.learnerId : undefined);
   const words = entries.filter((e) => e.type === 'vocab' && e.status === 'published').length;
   const threads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
   const unreadThreads = useMemo(() => {
@@ -133,7 +132,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
         <span className="sub">{c?.name ?? ''}</span>
         <span className="nb-link icon-row">
           <IconLink icon="notebook" label="Notebook" to="/notebook" />
-          <IconLink icon="message" label={unreadMsgs ? `Messages · ${unreadMsgs} new` : 'Messages'} to="/messages" badge={unreadMsgs ? <span className="icon-badge">{unreadMsgs}</span> : null} />
+          <PhoneMessagesLink />
           <IconLink icon="discuss" label={unreadThreads ? `Discussion · ${unreadThreads} new` : 'Discussion'} to="/discuss" badge={unreadThreads ? <span className="icon-badge">{unreadThreads}</span> : null} />
         </span>
         <div className="right" ref={menuRef}>
