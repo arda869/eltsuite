@@ -39,6 +39,7 @@ import { download, lessonText } from '../lib/transfer';
 import { downloadJson, lessonBundle } from '../lib/fullcopy';
 import { roleIn } from '../lib/coteach';
 import { WorksheetDialog } from '../components/WorksheetDialog';
+import { RecapDialog } from '../components/Recap';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
@@ -313,6 +314,7 @@ export function LessonEditor() {
   const [help, setHelp] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
+  const [recapOpen, setRecapOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!exportOpen) return;
@@ -547,6 +549,14 @@ export function LessonEditor() {
           </button>
           {exportOpen && (
             <div className="menu" role="menu">
+              {item?.type === 'lesson' && c && (
+                <button role="menuitem" onClick={() => (setExportOpen(false), setRecapOpen(true))}>
+                  Lesson recap…
+                  <span className="hint" style={{ display: 'block' }}>
+                    One page per learner to share after class
+                  </span>
+                </button>
+              )}
               <button role="menuitem" onClick={() => (setExportOpen(false), setWorksheet(true))}>
                 Worksheet…
                 <span className="hint" style={{ display: 'block' }}>
@@ -1162,6 +1172,7 @@ export function LessonEditor() {
       )}
       {announcing && <AnnounceDialog classId={classId} roster={classmates} onClose={() => setAnnouncing(false)} />}
       {worksheet && <WorksheetDialog classId={classId} itemId={itemId} onClose={() => setWorksheet(false)} />}
+      {recapOpen && c && item && <RecapDialog c={c} item={item} items={nbItems} onClose={() => setRecapOpen(false)} />}
       {help && (
         <div className="scrim" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelp(false)}>
           <div className="dialog shortcuts" onClick={(e) => e.stopPropagation()}>

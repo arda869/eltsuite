@@ -14,6 +14,7 @@ import { LearnerNotebook } from './pages/LearnerNotebook';
 import { LearnerLesson } from './pages/LearnerLesson';
 import { LearnerJoin } from './pages/LearnerJoin';
 import { LearnerHome } from './pages/LearnerHome';
+import { LearnerRecap, SharedRecap } from './pages/RecapPages';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
 
@@ -74,6 +75,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
           <Route path="/notebook" element={<LearnerOnly><LearnerNotebook /></LearnerOnly>} />
+          <Route path="/recap/:itemId" element={<LearnerOnly><LearnerRecap /></LearnerOnly>} />
+          <Route path="/r/:token" element={<SharedRecap />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />

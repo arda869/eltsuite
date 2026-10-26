@@ -299,6 +299,12 @@ service cloud.firestore {
         allow write: if teachesClass(classId);
       }
 
+      // Lesson recaps: the teacher writes them; a learner reads their own once shared
+      match /recaps/{recapId} {
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid && resource.data.status == 'shared');
+        allow write: if teachesClass(classId);
+      }
+
       // Who is online and which task they are on
       match /presence/{uid} {
         allow read: if viewsClass(classId);
@@ -319,6 +325,13 @@ service cloud.firestore {
         allow read: if viewsClass(classId) || isSelf(memberUid);
         allow write: if teachesClass(classId);
       }
+    }
+
+    // Recaps shared with a parent through a private link: read one at a time, no sign-in needed
+    match /recapShares/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow write: if teachesClass(request.resource.data.classId) && (resource == null || resource.data.classId == request.resource.data.classId);
     }
 
     // Class codes: looked up one at a time when learners join

@@ -4,6 +4,7 @@ import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
+import { useMyRecaps } from '../lib/recap';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
@@ -66,6 +67,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const lockedItem = (i: Item) => i.locked || !!topics.find((tp) => tp.id === i.topicId)?.locked;
   const [section, setSection] = useState<Item['type']>('lesson');
   const answers = useMyAnswers(classId, user?.uid);
+  const recaps = useMyRecaps(classId, user?.uid);
   const inSection = visible.filter((i) => i.type === section);
   const groups = [
     ...[...topics].filter((tp) => !tp.hidden).sort((a, b) => a.order - b.order).map((tp) => ({ tp, list: inSection.filter((i) => i.topicId === tp.id).sort((a, b) => a.order - b.order) })),
@@ -181,6 +183,25 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
           )}
 
           {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}
+
+          {recaps.length > 0 && (
+            <section className="recaps">
+              <h2 style={{ fontSize: 16 }}>Lesson recaps</h2>
+              <ul className="recap-list">
+                {recaps.slice(0, 5).map((r) => (
+                  <li key={r.id}>
+                    <Link to={`/recap/${r.itemId}`}>
+                      <span className="recap-list-title">{r.lessonTitle}</span>
+                      <span className="hint">
+                        {new Date(r.date).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                        {r.comment ? ' · with a comment from your teacher' : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           {todo.length > 0 && (
             <section className="todo">

@@ -4,6 +4,7 @@ import { CopyDialog } from './CopyDialog';
 import { ImportDialog } from './ImportDialog';
 import { classText, download } from '../lib/transfer';
 import { classBundle, downloadJson } from '../lib/fullcopy';
+import { RecapDialog } from './Recap';
 import { copyLesson } from '../lib/copy';
 import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, updateTopic, type ClassDoc, type Item, type Topic } from '../lib/classes';
 
@@ -106,6 +107,7 @@ function TopicTitle({ c, t }: { c: ClassDoc; t: Topic }) {
 
 function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item; list: Item[]; topics: Topic[]; onResults?: (item: Item) => void }) {
   const [copying, setCopying] = useState(false);
+  const [recap, setRecap] = useState(false);
   const i = list.findIndex((x) => x.id === item.id);
   // Move up or down within its topic by swapping order with the neighbour.
   const move = async (d: number) => {
@@ -248,6 +250,12 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
             Results
           </button>
         )}
+        {item.type === 'lesson' && (
+          <button type="button" className="btn link small" onClick={() => setRecap(true)} title="One page per learner: what we did, scores, new words, your comment and homework">
+            Recap
+          </button>
+        )}
+        {recap && <RecapDialog c={c} item={item} items={list} onClose={() => setRecap(false)} />}
       </span>
     </li>
   );
