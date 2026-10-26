@@ -1,4 +1,5 @@
 import { IconBtn } from './UiIcon';
+import { useDismiss } from '../lib/useDismiss';
 import { useEffect, useRef, useState } from 'react';
 import { acknowledge, chime, useAnnouncements } from '../lib/announce';
 import { setSignal, useMySignal, type Reaction } from '../lib/session';
@@ -217,13 +218,14 @@ export function SpotlightCard({ spotlight, taskId, onClose }: { spotlight?: Live
 export function SignalBar({ classId, uid, name, learnerId }: { classId: string; uid?: string; name: string; learnerId: string }) {
   const me = useMySignal(classId, uid);
   const [open, setOpen] = useState(false);
+  const reactRef = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
   if (!uid) return null;
   const send = (p: Parameters<typeof setSignal>[2]) => setSignal(classId, uid, { name, learnerId, ...p });
   return (
     <div className="signal-bar" role="group" aria-label="Tell your teacher">
       <IconBtn icon="hand" label={me?.hand ? 'Your hand is up · lower it' : 'Raise your hand'} active={!!me?.hand} onClick={() => send({ hand: !me?.hand, handAt: Date.now() })} />
       <IconBtn icon="stuck" label={me?.stuck ? 'Your teacher knows you need help · click when you are fine' : 'I’m stuck: tell your teacher'} active={!!me?.stuck} onClick={() => send({ stuck: !me?.stuck })} />
-      <span className="sig-react">
+      <span className="sig-react" ref={reactRef}>
         <IconBtn icon="react" label="Send a reaction" aria-expanded={open} active={open} onClick={() => setOpen((o) => !o)} />
         {open && (
           <span className="sig-pop">

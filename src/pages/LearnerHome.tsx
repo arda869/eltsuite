@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -54,6 +55,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [topics, setTopics] = useState<Topic[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [menu, setMenu] = useState(false);
+  const menuRef = useDismiss<HTMLDivElement>(menu, () => setMenu(false));
   const [picking, setPicking] = useState(false);
   const [secretOpen, setSecretOpen] = useState(false);
   // First visit: invite the learner to choose a picture.
@@ -129,7 +131,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
           <IconLink icon="notebook" label="Notebook" to="/notebook" />
           <IconLink icon="discuss" label={unreadThreads ? `Discussion · ${unreadThreads} new` : 'Discussion'} to="/discuss" badge={unreadThreads ? <span className="icon-badge">{unreadThreads}</span> : null} />
         </span>
-        <div className="right">
+        <div className="right" ref={menuRef}>
           <button className="avatar" style={{ background: 'var(--tint)', color: 'var(--accent-text)' }} aria-label="Account" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
             {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : initials(name)}
           </button>

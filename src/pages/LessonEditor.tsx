@@ -337,8 +337,10 @@ export function LessonEditor() {
   useEffect(() => {
     if (!exportOpen) return;
     const close = (e: MouseEvent) => exportRef.current && !exportRef.current.contains(e.target as Node) && setExportOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setExportOpen(false);
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => (document.removeEventListener('mousedown', close), document.removeEventListener('keydown', esc));
   }, [exportOpen]);
   const [copyTask, setCopyTask] = useState<Task | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
@@ -365,8 +367,10 @@ export function LessonEditor() {
   useEffect(() => {
     if (!activityOpen) return;
     const close = (e: MouseEvent) => activityRef.current && !activityRef.current.contains(e.target as Node) && setActivityOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setActivityOpen(false);
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => (document.removeEventListener('mousedown', close), document.removeEventListener('keydown', esc));
   }, [activityOpen]);
   const [showGrid, setShowGrid] = useState(false);
   // Teacher notes for the selected task (only the teacher can read them).

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { UiIcon } from '../components/UiIcon';
@@ -43,6 +44,7 @@ export function MediaArchive() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [newFolder, setNewFolder] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const addRef = useDismiss<HTMLSpanElement>(adding, () => setAdding(false));
   const [dialog, setDialog] = useState<{ tab: MediaTab; file?: File } | null>(null);
   const [upBusy, setUpBusy] = useState('');
   const [quality, setQuality] = useState<PicQuality>(() => {
@@ -211,12 +213,12 @@ export function MediaArchive() {
               <h1 className="page-title">{folder === null ? 'Media archive' : folder === '' ? 'Not in a folder' : folder}</h1>
               <span className="sub">Everything you upload, record or link is kept here, ready to use in any lesson.</span>
             </div>
-            <span className="ma-add">
+            <span className="ma-add" ref={addRef}>
               <button type="button" className="btn primary" onClick={() => setAdding((a) => !a)} aria-expanded={adding}>
                 + Add media
               </button>
               {adding && (
-                <span className="ma-add-menu" role="menu" onMouseLeave={() => setAdding(false)}>
+                <span className="ma-add-menu" role="menu">
                   <button type="button" role="menuitem" onClick={() => (setAdding(false), picInput.current?.click())}>
                     <UiIcon name="picture" size={16} /> Pictures
                   </button>

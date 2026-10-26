@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDismiss } from '../lib/useDismiss';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { newId } from '../lib/tasks';
@@ -33,6 +34,7 @@ export function LessonBoard({
   const at = Math.max(0, pages.findIndex((p) => p.id === page));
   const cur = pages[at];
   const [menu, setMenu] = useState(false);
+  const menuRef = useDismiss<HTMLSpanElement>(menu, () => setMenu(false));
   const [borrow, setBorrow] = useState<{ item: Item; pages: BoardPage[] }[] | null>(null);
   const save = (next: BoardPage[]) => updateItem(classId, item.id, { boardPages: next });
   const add = async () => {
@@ -98,7 +100,7 @@ export function LessonBoard({
             <button type="button" className="btn small-btn" onClick={add} title="Add a page after this one">
               + Page
             </button>
-            <span className="lb-menu-wrap">
+            <span className="lb-menu-wrap" ref={menuRef}>
               <button type="button" className="btn small-btn" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
                 ⋯
               </button>

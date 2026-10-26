@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
 import type { ClassDoc } from '../lib/classes';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
@@ -79,6 +80,7 @@ export function PostBody({ text, people, me }: { text: string; people: Person[];
 
 function ReactionBar({ reactions = {}, me, onToggle, small }: { reactions?: Reactions; me: string; onToggle: (emoji: string, on: boolean) => void; small?: boolean }) {
   const [open, setOpen] = useState(false);
+  const addRef = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
   const used = Object.entries(reactions).filter(([, u]) => u.length);
   return (
     <span className={'rx' + (small ? ' small' : '')}>
@@ -87,12 +89,12 @@ function ReactionBar({ reactions = {}, me, onToggle, small }: { reactions?: Reac
           {e} {u.length}
         </button>
       ))}
-      <span className="rx-add">
+      <span className="rx-add" ref={addRef}>
         <button type="button" className="rx-chip rx-plus" aria-label="Add a reaction" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           +
         </button>
         {open && (
-          <span className="rx-pick" onMouseLeave={() => setOpen(false)}>
+          <span className="rx-pick">
             {REACTIONS.map((e) => (
               <button key={e} type="button" onClick={() => (onToggle(e, !(reactions[e] ?? []).includes(me)), setOpen(false))}>
                 {e}
