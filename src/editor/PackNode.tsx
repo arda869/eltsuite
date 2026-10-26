@@ -5,6 +5,9 @@ import { newId } from '../lib/tasks';
 import { layoutCrossword, newPackData, PACK_LABELS, tokenise, type PackKind } from '../lib/pack';
 import { audioUrl as mediaUrl, saveImage, speak } from '../lib/media';
 import { useAuth } from '../lib/auth';
+import { auth } from '../lib/firebase';
+import { archiveAdd } from '../lib/archive';
+import { isLearnerEmail } from '../lib/learners';
 import { useNotebook } from '../lib/notebook';
 import { useEditorClass } from './context';
 import { NoteFields } from './NoteFields';
@@ -24,24 +27,60 @@ export function useImageSrc(classId: string, src: string) {
   return url;
 }
 
-// Shrinks a picture and stores it with the class, returning "media:<id>".
-export async function uploadPicture(classId: string, file: File) {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1400 / bmp.width, 1000 / bmp.height);
+// Picture quality when uploading: smaller files take less space in the media archive.
+export type PicQuality = 'high' | 'standard' | 'small';
+export const PIC_QUALITY: { k: PicQuality; label: string; about: string; max: [number, number]; q: number; limit: number }[] = [
+  { k: 'high', label: 'High', about: 'Sharp on a big screen', max: [2000, 1500], q: 0.88, limit: 560 },
+  { k: 'standard', label: 'Standard', about: 'Good for most tasks', max: [1400, 1000], q: 0.82, limit: 500 },
+  { k: 'small', label: 'Small', about: 'Saves the most space', max: [900, 700], q: 0.7, limit: 220 },
+];
+const shrink = async (bmp: ImageBitmap, maxW: number, maxH: number, q0: number, limitKB: number) => {
+  const scale = Math.min(1, maxW / bmp.width, maxH / bmp.height);
   const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * scale);
-  c.height = Math.round(bmp.height * scale);
+  c.width = Math.max(1, Math.round(bmp.width * scale));
+  c.height = Math.max(1, Math.round(bmp.height * scale));
   const g = c.getContext('2d')!;
   g.fillStyle = '#fff';
   g.fillRect(0, 0, c.width, c.height);
   g.drawImage(bmp, 0, 0, c.width, c.height);
-  let q = 0.85;
+  let q = q0;
   let blob = await new Promise<Blob>((res) => c.toBlob((b) => res(b!), 'image/jpeg', q));
-  while (blob.size > 500 * 1024 && q > 0.4) {
-    q -= 0.15;
+  while (blob.size > limitKB * 1024 && q > 0.4) {
+    q -= 0.12;
     blob = await new Promise<Blob>((res) => c.toBlob((b) => res(b!), 'image/jpeg', q));
   }
-  return 'media:' + (await saveImage(classId, blob));
+  return { blob, canvas: c };
+};
+
+// Shrinks a picture and stores it with the class: "media:<id>", its size and a small preview.
+export async function uploadPictureFull(classId: string, file: Blob, quality: PicQuality = 'standard') {
+  const bmp = await createImageBitmap(file);
+  const p = PIC_QUALITY.find((x) => x.k === quality) ?? PIC_QUALITY[1];
+  const { blob } = await shrink(bmp, p.max[0], p.max[1], p.q, p.limit);
+  const thumb = await shrink(bmp, 240, 180, 0.7, 24);
+  const preview = await new Promise<string>((res) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.readAsDataURL(thumb.blob);
+  });
+  return { src: 'media:' + (await saveImage(classId, blob)), size: blob.size, thumb: preview };
+}
+// Every picture a teacher uploads also goes into their media archive, to use again anywhere.
+// Sizes in the archive are the space the picture takes as stored (a third more than the file).
+export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string) {
+  const r = await uploadPictureFull(classId, file, quality);
+  const u = auth.currentUser;
+  if (u && !isLearnerEmail(u.email))
+    await archiveAdd(u.uid, {
+      kind: 'image',
+      name: (name ?? (file instanceof File ? file.name : '')).replace(/\.[a-z0-9]+$/i, '').trim() || 'Picture',
+      folder: '',
+      tags: [],
+      size: Math.round((r.size * 4) / 3),
+      home: { classId, mediaId: r.src.slice(6) },
+      thumb: r.thumb,
+    }).catch(() => {});
+  return r.src;
 }
 
 function PictureField({ value, onChange, label = 'Picture' }: { value: string; onChange: (v: string) => void; label?: string }) {

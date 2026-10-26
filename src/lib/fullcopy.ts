@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, writeBatch, type DocumentData } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, writeBatch, type DocumentData } from 'firebase/firestore';
 import { get, ref, set } from 'firebase/database';
 import { db, rtdb } from './firebase';
 import { keyRef, notesRef, tasksCol } from './tasks';
@@ -16,7 +16,7 @@ export type LessonBundle = {
   item: DocumentData;
   tasks: { id: string; data: DocumentData; key: DocumentData; notes?: DocumentData }[];
   boards: Record<string, Record<string, unknown>>;
-  media: Record<string, { data: string; type: string; size: number }>;
+  media: Record<string, DocumentData>; // pictures and short clips: { data, type, size }; sounds: a manifest and its parts
 };
 export type ClassBundle = { format: 'lessonlit-class'; version: 1; exportedAt: string; name: string; topics: { id: string; title: string }[]; lessons: LessonBundle[] };
 
@@ -41,7 +41,28 @@ function mediaIds(value: unknown, into: Set<string>) {
   }
 }
 
-function remap(value: unknown, map: Record<string, string>): unknown {
+// Media a task uses, copied into another class (sounds with all their parts). Gives old id → new id.
+export async function carryMedia(fromClass: string, toClass: string, values: unknown[]): Promise<Record<string, string>> {
+  const map: Record<string, string> = {};
+  if (fromClass === toClass) return map;
+  const ids = new Set<string>();
+  values.forEach((v) => mediaIds(v, ids));
+  for (const id of ids) {
+    const m = await getDoc(doc(db, 'classes', fromClass, 'media', id)).catch(() => null);
+    if (!m?.exists()) continue;
+    const d = m.data();
+    const r = doc(collection(db, 'classes', toClass, 'media'));
+    for (let k = 0; k < (d.kind === 'audio' ? d.parts ?? 0 : 0); k++) {
+      const p = await getDoc(doc(db, 'classes', fromClass, 'media', `${id}_p${k}`)).catch(() => null);
+      if (p?.exists()) await setDoc(doc(db, 'classes', toClass, 'media', `${r.id}_p${k}`), p.data());
+    }
+    await setDoc(r, d);
+    map[id] = r.id;
+  }
+  return map;
+}
+
+export function remap(value: unknown, map: Record<string, string>): unknown {
   if (typeof value === 'string') return value.startsWith('media:') && map[value.slice(6)] ? 'media:' + map[value.slice(6)] : value;
   if (Array.isArray(value)) return value.map((v) => remap(v, map));
   if (value && typeof value === 'object') {
@@ -76,7 +97,15 @@ export async function lessonBundle(classId: string, itemId: string): Promise<Les
   const media: LessonBundle['media'] = {};
   for (const id of ids) {
     const m = await getDoc(doc(db, 'classes', classId, 'media', id)).catch(() => null);
-    if (m?.exists()) media[id] = { data: m.data().data, type: m.data().type, size: m.data().size };
+    if (!m?.exists()) continue;
+    const d = m.data();
+    if (d.kind === 'audio' || d.kind === 'link') {
+      media[id] = strip(d);
+      for (let k = 0; k < (d.parts ?? 0); k++) {
+        const p = await getDoc(doc(db, 'classes', classId, 'media', `${id}_p${k}`)).catch(() => null);
+        if (p?.exists()) media[`${id}_p${k}`] = p.data();
+      }
+    } else media[id] = { data: d.data, type: d.type, size: d.size };
   }
   return { format: 'lessonlit-lesson', version: 1, exportedAt: new Date().toISOString(), item, tasks, boards, media };
 }
@@ -101,7 +130,16 @@ export async function importBundle(classId: string, b: LessonBundle, opts: { top
   const order = items.docs.reduce((m, d) => Math.max(m, (d.data().order as number) ?? 0), -1) + 1;
   // media first, so ids can be rewritten
   const mediaMap: Record<string, string> = {};
-  for (const [id, m] of Object.entries(b.media ?? {})) {
+  const all = b.media ?? {};
+  for (const [id, m] of Object.entries(all)) {
+    if (/_p\d+$/.test(id) && all[id.replace(/_p\d+$/, '')]) continue; // a part of a sound, copied with it
+    if (m.kind === 'audio' || m.kind === 'link') {
+      const r = doc(collection(db, 'classes', classId, 'media'));
+      for (let k = 0; k < (m.parts ?? 0); k++) if (all[`${id}_p${k}`]) await setDoc(doc(db, 'classes', classId, 'media', `${r.id}_p${k}`), all[`${id}_p${k}`]);
+      await setDoc(r, m);
+      mediaMap[id] = r.id;
+      continue;
+    }
     const r = await addDoc(collection(db, 'classes', classId, 'media'), { ...m, createdAt: serverTimestamp() });
     mediaMap[id] = r.id;
   }

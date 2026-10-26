@@ -27,7 +27,7 @@ export type Run = {
   stress?: { syl: string[]; on: number; style: string };
   icon?: { name: string; tone: string };
   sym?: { text: string; shape: string; tone: string };
-  pic?: { src: string; size: string; label: string; alt?: string };
+  pic?: { src: string; size: string; label: string; alt?: string; key?: string; crop?: string; filter?: string }; // key: the picture as edited (crop, colour)
   ex?: boolean; // the answer of an example, written in
   letters?: string; // letter gaps: the pattern, "_" for each letter to write
 };
@@ -41,17 +41,20 @@ export type Block =
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[] }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
-  | { kind: 'draw'; prompt?: string };
+  | { kind: 'draw'; prompt?: string }
+  | { kind: 'media'; id: string; title: string; video: boolean; mode: string };
 
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { title: string; instructions?: string; instrRuns?: Run[]; notes?: string; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
 export type MediaMap = Record<string, { data: string; w: number; h: number }>;
-export type Options = { header: boolean; key: boolean; notes?: boolean; media?: MediaMap; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string };
+// Sounds and videos: a QR code that opens them, and their script for the answer key.
+export type MediaInfo = { url: string; svg: string; png: string; title: string; video: boolean; script: string[] };
+export type Options = { header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string };
 
 const LET = 'abcdefghijklmnop';
 const UP = 'ABCDEFGHIJKLMNOP';
@@ -68,6 +71,7 @@ export function flattenTask(t: ExportTask): WsTask {
   // Words with a definition: listed under the exercise, since paper can't be tapped.
   const glossary: { word: string; d: DefData; key: string }[] = [];
   const picCount: Record<string, number> = {};
+  const mediaUsed: string[] = [];
   let lastDef = '';
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
     const out: Run[] = [];
@@ -141,7 +145,7 @@ export function flattenTask(t: ExportTask): WsTask {
           else if (node.type === 'picture') {
             const mk = String(a.mark ?? '');
             if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
-            if (a.src) out.push({ pic: { src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? '') } });
+            if (a.src) out.push({ pic: { src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined } });
           } else if (node.type === 'sym') out.push({ sym: { text: String(a.text ?? ''), shape: String(a.shape ?? 'box'), tone: String(a.tone ?? 'ink') } });
       }
     }
@@ -323,6 +327,12 @@ export function flattenTask(t: ExportTask): WsTask {
       case 'drawBoard':
         cur.push({ kind: 'draw', prompt: String(a.prompt ?? '') });
         return;
+      case 'media':
+        if (a.media) {
+          cur.push({ kind: 'media', id: String(a.media), title: String(a.title || (a.kind === 'video' ? 'Video' : 'Listening')), video: a.kind === 'video', mode: String(a.scriptMode || 'karaoke') });
+          mediaUsed.push(String(a.media));
+        }
+        return;
       case 'linkCard':
         if (a.url) cur.push({ kind: 'p', runs: [{ t: '▸ ', bold: true }, { t: String(a.title || a.url), bold: true }, ...(a.title ? [{ t: `  ${a.url}`, italic: true }] : []), ...(a.note ? [{ t: ` · ${a.note}` }] : [])] });
         return;
@@ -341,7 +351,7 @@ export function flattenTask(t: ExportTask): WsTask {
   const instrRuns = t.instrDoc ? (t.instrDoc.content ?? []).flatMap((p, i) => [...(i ? [{ t: ' ' }] : []), ...runsOf(p.content)]) : undefined;
   (t.content.content ?? []).forEach((c) => walk(c));
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
-  return { title: t.title, instructions: t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  return { title: t.title, instructions: t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
@@ -407,7 +417,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       if (r.sym) return [new TextRun({ text: ` ${r.sym.text} `, bold: true, font: SANS, size: 16, border: { style: BorderStyle.SINGLE, size: 4, color: r.sym.tone === 'accent' ? ACC_INK : '3D3A36', space: 1 } })];
       if (r.icon) return [];
       if (r.pic) {
-        const m = opts.media?.[r.pic.src];
+        const m = opts.media?.[r.pic.key ?? r.pic.src];
         if (!m) return [new TextRun({ text: `[picture${r.pic.label ? ' ' + r.pic.label : ''}]`, italics: true, color: '8A847D', font: SANS, size: 16 })];
         const maxW = { s: 120, m: 200, l: 300, full: opts.columns === 1 ? 600 : 300 }[r.pic.size as 's' | 'm' | 'l' | 'full'] ?? 200;
         const w = Math.min(maxW, m.w);
@@ -458,6 +468,37 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
           else if (it.type === 'choice' || it.type === 'checklist' || it.type === 'rank') (it.options ?? []).filter(Boolean).forEach((o) => line(`${it.type === 'choice' ? '○' : it.type === 'checklist' ? '☐' : '____'}  ${o}`));
           else out.push(new Paragraph({ keepNext: kn, keepLines: true, indent: { left: 360 }, children: [new TextRun({ text: '\u00A0'.repeat(80), underline: {} })] }), new Paragraph({ keepNext: kn, keepLines: true, indent: { left: 360 }, children: [new TextRun({ text: '\u00A0'.repeat(80), underline: {} })] }));
         });
+      } else if (b.kind === 'media') {
+        const info = opts.sounds?.[b.id];
+        const kind = b.video ? 'Scan to watch' : 'Scan to listen';
+        if (opts.qr !== false && info?.png) {
+          const bytes = Uint8Array.from(atob(info.png.split(',')[1] ?? ''), (c) => c.charCodeAt(0));
+          const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+          out.push(
+            new Table({
+              width: { size: 70, type: WidthType.PERCENTAGE },
+              borders: { top: none, bottom: none, left: none, right: none, insideHorizontal: none, insideVertical: none },
+              rows: [
+                new TableRow({
+                  cantSplit: true,
+                  children: [
+                    new TableCell({ width: { size: 1500, type: WidthType.DXA }, margins: { top: 60, bottom: 60, left: 0, right: 120 }, children: [new Paragraph({ children: [new ImageRun({ type: 'png', data: bytes, transformation: { width: 76, height: 76 }, altText: { name: 'QR code', description: `${kind}: ${b.title}`, title: b.title } })] })] }),
+                    new TableCell({
+                      verticalAlign: 'center' as never,
+                      margins: { top: 60, bottom: 60, left: 120, right: 0 },
+                      children: [
+                        new Paragraph({ children: [new TextRun({ text: kind.toUpperCase(), bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 })] }),
+                        new Paragraph({ children: [new TextRun({ text: b.title, bold: true, font: SERIF, size: 22 })] }),
+                        new Paragraph({ children: [new TextRun({ text: info.url.replace(/^https?:\/\//, '').split('/')[0], font: SANS, size: 14, color: '8A847D' })] }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            new Paragraph({ keepNext: kn, text: '' }),
+          );
+        } else out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: (b.video ? 'VIDEO  ' : 'LISTENING  '), bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 }), new TextRun({ text: b.title, bold: true, font: SERIF })] }));
       } else if (b.kind === 'draw') {
         if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SERIF })] }));
         const dash = { style: BorderStyle.DASHED, size: 4, color: 'B8B2AA' };
@@ -539,9 +580,16 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     tasks.forEach((t, ti) => {
       const answers = opts.key ? t.answers : [];
       const notes = withNotes ? t.notes ?? '' : '';
-      if (!answers.length && !notes) return;
+      const scripts = opts.key ? (t.media ?? []).map((id) => opts.sounds?.[id]).filter((m): m is MediaInfo => !!m && m.script.length > 0) : [];
+      if (!answers.length && !notes && !scripts.length) return;
       keyParas.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${ti + 1}  `, bold: true, color: ACC, font: SANS }), new TextRun({ text: t.title, bold: true, font: SERIF })] }));
       answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: 18, color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
+      scripts.forEach((m) =>
+        keyParas.push(
+          new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: (m.video ? 'VIDEO SCRIPT' : 'AUDIOSCRIPT') + '  ', bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 }), new TextRun({ text: m.title, font: SANS, size: 16, color: '8A847D' })] }),
+          ...m.script.map((l) => new Paragraph({ spacing: { after: 20 }, children: [new TextRun({ text: l, font: SERIF, size: 20 })] })),
+        ),
+      );
       if (notes)
         keyParas.push(
           new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: 'NOTES', bold: true, font: SANS, size: 14, color: ACC, characterSpacing: 30 })] }),
@@ -598,12 +646,27 @@ export function saveBlob(name: string, blob: Blob) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-// Every uploaded picture the worksheet uses ("media:<id>"), so they can be read before printing.
-export function collectPictures(items: WsItem[]): string[] {
-  const out = new Set<string>();
+// Every sound and video the worksheet uses.
+export function collectMedia(items: WsItem[]): { id: string; mode: string }[] {
+  const out = new Map<string, string>();
+  const walk = (bs: Block[]) =>
+    bs.forEach((b) => {
+      if (b.kind === 'media' && !out.has(b.id)) out.set(b.id, b.mode);
+      if (b.kind === 'callout') walk(b.blocks);
+    });
+  items.forEach((it) => it.kind === 'task' && walk(it.task.blocks));
+  return [...out].map(([id, mode]) => ({ id, mode }));
+}
+
+// A picture with its crop and colour, as one key.
+export const picKey = (src: string, crop?: string, filter?: string) => (crop || filter ? `${src}#${crop ?? ''}|${filter ?? ''}` : src);
+
+// Every picture the worksheet uses, so they can be read (and edited copies made) before printing.
+export function collectPictures(items: WsItem[]): { key: string; src: string; crop?: string; filter?: string }[] {
+  const out = new Map<string, { key: string; src: string; crop?: string; filter?: string }>();
   const blocks = (bs: Block[]) =>
     bs.forEach((b) => {
-      if (b.kind === 'p') b.runs.forEach((r) => r.pic?.src.startsWith('media:') && out.add(r.pic.src));
+      if (b.kind === 'p') b.runs.forEach((r) => r.pic && out.set(r.pic.key ?? r.pic.src, { key: r.pic.key ?? r.pic.src, src: r.pic.src, crop: r.pic.crop, filter: r.pic.filter }));
       if (b.kind === 'callout') blocks(b.blocks);
     });
   items.forEach((it) => {
@@ -611,5 +674,5 @@ export function collectPictures(items: WsItem[]): string[] {
     blocks(it.task.blocks);
     it.task.cutouts?.forEach((set) => set.cards.forEach((c) => blocks(c.blocks)));
   });
-  return [...out];
+  return [...out.values()];
 }

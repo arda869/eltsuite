@@ -125,6 +125,7 @@ export function TeacherHome() {
           <Link to="/" className="on">
             Classes
           </Link>
+          <Link to="/archive">Media archive</Link>
         </nav>
       </TopBar>
 

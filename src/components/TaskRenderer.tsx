@@ -21,6 +21,8 @@ import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
 import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
+import type { CoverMode, CoverProps } from '../editor/PicEdit';
+import { MediaPlayer } from '../media/Player';
 import { LinkCardView } from '../editor/LinkCard';
 import { IpaText } from '../editor/Ipa';
 import { ReflectBlock } from './ReflectBlock';
@@ -63,6 +65,7 @@ type Props = {
   boardMe?: BoardMe; // who is posting on message boards
   teacherMarks?: Record<string, { score: number | null; comment: string; crit?: Record<string, number | null> }>; // teacher's marks on long answers
   writingReview?: { anns: Annotation[]; corrections: Record<string, Correction>; codes: Code[]; onResubmit: (qid: string) => void };
+  liveHere?: boolean; // learners: the teacher is teaching this lesson now
 };
 
 const TICK = (
@@ -147,13 +150,29 @@ const questionsIn = (n: JSONContent): string[] => [...(n.attrs?.id && QTYPES.inc
 const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'pq'];
 // Reflection blocks are answered but not numbered.
 
-export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview }: Props) {
+export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere }: Props) {
   const picCount: Record<string, number> = {}; // picture labels count on in reading order
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
   const locked = disabled || !!results;
   const narrow = useNarrow();
   const [tab, setTab] = useState(0);
+  // Covered pictures: boxes opened here. On the teaching screen the teacher's boxes open for the
+  // whole class; learners then see what the teacher has opened.
+  const [covers, setCovers] = useState<Record<string, number[]>>({});
+  const coverOf = (a: Record<string, unknown>): CoverProps | undefined => {
+    const mode = String(a.cover ?? '') as CoverMode;
+    if (!mode) return undefined;
+    const pid = String(a.pid ?? '');
+    const grid = Number(a.grid) || 3;
+    const key = 'cov_' + pid;
+    const byTeacher = String(a.coverBy ?? 'teacher') !== 'learner';
+    const live = byTeacher && !!shared && !!pid && (teacher || !!liveHere);
+    if (live && teacher)
+      return { mode, grid, opened: shared?.[key]?.b ?? covers[pid] ?? [], canOpen: true, teacherTools: true, onChange: (b) => (setCovers((c) => ({ ...c, [pid]: b })), onSharedDraw?.(key, { h: [], b }, (shared?.[key]?.seq ?? 0) + 1)) };
+    if (live) return { mode, grid, opened: shared?.[key]?.b ?? [], canOpen: false, onChange: () => {} };
+    return { mode, grid, opened: covers[pid] ?? [], canOpen: true, teacherTools: !!teacher, onChange: (b) => setCovers((c) => ({ ...c, [pid]: b })) };
+  };
 
   // Teaching screen: revealed answers are written into the questions, the way a learner's
   // answer looks (blue pen), instead of a chip next to an empty question.
@@ -857,7 +876,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           picCount[mk] = (picCount[mk] ?? 0) + 1;
           label = listLabel(picCount[mk], mk);
         }
-        return <PicFrame key={key} src={String(node.attrs?.src ?? '')} alt={node.attrs?.alt} size={node.attrs?.size} label={label} classId={classId ?? ''} />;
+        const pa = node.attrs ?? {};
+        return <PicFrame key={key} src={String(pa.src ?? '')} alt={pa.alt} size={pa.size} label={label} classId={classId ?? ''} crop={pa.crop} ar={Number(pa.ar) || 0} filter={pa.filter} cover={coverOf(pa)} />;
       }
       case 'image':
         return node.attrs?.src ? <img key={key} data-bk={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;
@@ -982,6 +1002,12 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             {kids()}
           </RevealBlock>
         );
+      case 'media':
+        return node.attrs?.media ? (
+          <div key={key} data-bk={key} className="task-media">
+            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} />
+          </div>
+        ) : null;
       case 'linkCard':
         return <LinkCardView key={key} url={node.attrs?.url ?? ''} title={node.attrs?.title ?? ''} note={node.attrs?.note} />;
       case 'mention':

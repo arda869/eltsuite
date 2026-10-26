@@ -1,0 +1,356 @@
+import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { TopBar } from '../components/TopBar';
+import { UiIcon } from '../components/UiIcon';
+import { Loader } from '../components/Loader';
+import { useAuth } from '../lib/auth';
+import { addFolder, archiveRemove, archiveUpdate, formatBytes, removeFolder, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
+import { useImageSrc } from '../editor/PackNode';
+import { MediaPlayer } from '../media/Player';
+import { ScriptEditor } from '../media/ScriptEditor';
+import { fmtTime } from '../lib/sound';
+
+// The media archive: every picture, sound and video the teacher has added, to use again in any
+// lesson. Folders and tags to keep it in order, the space it takes, and karaoke scripts that are
+// edited once here and change in every lesson that uses them.
+
+const FREE = 1024 * 1024 * 1024;
+const KINDS = [
+  { k: 'image', label: 'Pictures', icon: 'picture' },
+  { k: 'audio', label: 'Sounds', icon: 'music' },
+  { k: 'video', label: 'Videos', icon: 'video' },
+] as const;
+type Sort = 'new' | 'name' | 'size';
+
+// The space an item takes: its size in each class that has a copy.
+const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
+
+export function MediaArchive() {
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const items = useArchive(uid);
+  const folders = useFolders(uid);
+  const [folder, setFolder] = useState<string | null>(null); // null: all, '': not in a folder
+  const [kind, setKind] = useState<string | null>(null);
+  const [tag, setTag] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState<Sort>('new');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [newFolder, setNewFolder] = useState<string | null>(null);
+
+  const all = items ?? [];
+  const allFolders = useMemo(() => [...new Set([...folders, ...all.map((i) => i.folder).filter(Boolean)])].sort((a, b) => a.localeCompare(b)), [folders, all]);
+  const tags = useMemo(() => {
+    const m = new Map<string, number>();
+    all.forEach((i) => i.tags.forEach((t) => m.set(t, (m.get(t) ?? 0) + 1)));
+    return [...m].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [all]);
+  const shown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    const list = all
+      .filter((i) => folder === null || i.folder === folder)
+      .filter((i) => !kind || i.kind === kind)
+      .filter((i) => !tag || i.tags.includes(tag))
+      .filter((i) => !s || `${i.name} ${i.tags.join(' ')} ${(i.script ?? []).map((l) => l.text).join(' ')}`.toLowerCase().includes(s));
+    return sort === 'name' ? [...list].sort((a, b) => a.name.localeCompare(b.name)) : sort === 'size' ? [...list].sort((a, b) => spaceOf(b) - spaceOf(a)) : list;
+  }, [all, folder, kind, tag, q, sort]);
+  const total = all.reduce((s, i) => s + spaceOf(i), 0);
+  const byKind = KINDS.map((k) => ({ ...k, n: all.filter((i) => i.kind === k.k).length, bytes: all.filter((i) => i.kind === k.k).reduce((s, i) => s + spaceOf(i), 0) }));
+  const open = all.find((i) => i.id === openId) ?? null;
+
+  return (
+    <div className="shell">
+      <TopBar>
+        <nav aria-label="Main">
+          <Link to="/">Classes</Link>
+          <Link to="/archive" className="on">
+            Media archive
+          </Link>
+        </nav>
+      </TopBar>
+      <div className="ma">
+        <aside className="ma-side">
+          <div className="ma-space">
+            <span className="ma-space-n">{formatBytes(total)}</span>
+            <span className="hint">used by your media</span>
+            <span className="ma-bar" aria-hidden="true">
+              {byKind.map((k) => (
+                <span key={k.k} className={'k-' + k.k} style={{ width: `${Math.max(k.bytes ? 0.6 : 0, (k.bytes / FREE) * 100)}%` }} />
+              ))}
+            </span>
+            <span className="ma-legend">
+              {byKind.map((k) => (
+                <span key={k.k}>
+                  <i className={'k-' + k.k} />
+                  {k.label} {k.n ? formatBytes(k.bytes) : '0'}
+                </span>
+              ))}
+            </span>
+            <span className="hint small">The free plan has 1 GB for the whole app. Links to YouTube take no space.</span>
+          </div>
+
+          <nav className="ma-nav" aria-label="Folders">
+            <span className="ma-h">Folders</span>
+            <button type="button" className={folder === null ? 'on' : ''} onClick={() => setFolder(null)}>
+              <UiIcon name="archive" size={16} />
+              All media <b>{all.length}</b>
+            </button>
+            <button type="button" className={folder === '' ? 'on' : ''} onClick={() => setFolder('')}>
+              <UiIcon name="folder" size={16} />
+              Not in a folder <b>{all.filter((i) => !i.folder).length}</b>
+            </button>
+            {allFolders.map((f) => (
+              <span key={f} className="ma-folder">
+                <button type="button" className={folder === f ? 'on' : ''} onClick={() => setFolder(f)}>
+                  <UiIcon name="folder" size={16} />
+                  {f} <b>{all.filter((i) => i.folder === f).length}</b>
+                </button>
+                <button
+                  type="button"
+                  className="ma-x"
+                  aria-label={`Delete the folder ${f}`}
+                  data-tip="Delete the folder (its media stays)"
+                  onClick={() => {
+                    if (!uid) return;
+                    removeFolder(uid, f, all).catch(() => {});
+                    if (folder === f) setFolder(null);
+                  }}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {newFolder === null ? (
+              <button type="button" className="ma-new" onClick={() => setNewFolder('')}>
+                + New folder
+              </button>
+            ) : (
+              <form
+                className="ma-new-form"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const n = newFolder.trim();
+                  if (n && uid) addFolder(uid, n).catch(() => {});
+                  setNewFolder(null);
+                  if (n) setFolder(n);
+                }}
+              >
+                <input autoFocus value={newFolder} placeholder="Folder name" onChange={(e) => setNewFolder(e.target.value)} onBlur={(e) => !e.target.value.trim() && setNewFolder(null)} />
+              </form>
+            )}
+          </nav>
+
+          {tags.length > 0 && (
+            <div className="ma-tags">
+              <span className="ma-h">Tags</span>
+              <span className="ma-tag-list">
+                {tags.map(([t, n]) => (
+                  <button key={t} type="button" className={'ap-chip' + (tag === t ? ' on' : '')} onClick={() => setTag(tag === t ? null : t)}>
+                    {t} <span className="hint">{n}</span>
+                  </button>
+                ))}
+              </span>
+            </div>
+          )}
+        </aside>
+
+        <main className="ma-main">
+          <div className="ma-head">
+            <h1 className="page-title">{folder === null ? 'Media archive' : folder === '' ? 'Not in a folder' : folder}</h1>
+            <span className="sub">Everything you upload, record or link is kept here, ready to use in any lesson.</span>
+          </div>
+          <div className="ma-bar-row">
+            <input className="ma-search" type="search" value={q} placeholder="Search names, tags and scripts" onChange={(e) => setQ(e.target.value)} />
+            <span className="seg small-seg" role="radiogroup" aria-label="Kind">
+              <button type="button" role="radio" aria-checked={!kind} className={!kind ? 'on' : ''} onClick={() => setKind(null)}>
+                All
+              </button>
+              {KINDS.map((k) => (
+                <button key={k.k} type="button" role="radio" aria-checked={kind === k.k} className={kind === k.k ? 'on' : ''} onClick={() => setKind(k.k)}>
+                  {k.label}
+                </button>
+              ))}
+            </span>
+            <select className="ma-sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort">
+              <option value="new">Newest first</option>
+              <option value="name">By name</option>
+              <option value="size">Largest first</option>
+            </select>
+          </div>
+          {items === null ? (
+            <Loader label="Opening your media archive" />
+          ) : shown.length === 0 ? (
+            <div className="ma-empty">
+              <UiIcon name="archive" size={28} />
+              <strong>{all.length ? 'Nothing here' : 'Your media archive is empty'}</strong>
+              <span className="hint">{all.length ? 'Try another folder, tag or search.' : 'Pictures, recordings and videos you add to a task appear here, so you can use them again without uploading them twice.'}</span>
+            </div>
+          ) : (
+            <div className="ma-grid">
+              {shown.map((i) => (
+                <Card key={i.id} item={i} on={openId === i.id} onOpen={() => setOpenId(i.id)} />
+              ))}
+            </div>
+          )}
+        </main>
+
+        {open && uid && <Detail key={open.id} uid={uid} item={open} folders={allFolders} onClose={() => setOpenId(null)} />}
+      </div>
+    </div>
+  );
+}
+
+function Card({ item, on, onOpen }: { item: ArchiveItem; on: boolean; onOpen: () => void }) {
+  const places = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter(Boolean)).size;
+  return (
+    <button type="button" className={'ma-card' + (on ? ' on' : '')} onClick={onOpen}>
+      <span className={'ma-thumb k-' + item.kind}>
+        {item.kind === 'image' && (item.thumb || item.link) ? (
+          <img src={item.thumb || item.link} alt="" />
+        ) : item.link && item.kind === 'video' && /youtu/.test(item.link) ? (
+          <img src={`https://img.youtube.com/vi/${/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(item.link)?.[1] ?? ''}/mqdefault.jpg`} alt="" />
+        ) : (
+          <UiIcon name={item.kind === 'video' ? 'video' : 'music'} size={26} />
+        )}
+        {item.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
+        {(item.script?.length ?? 0) > 0 && (
+          <span className="ma-badge" data-tip="Has a karaoke script">
+            <UiIcon name="script" size={12} />
+          </span>
+        )}
+      </span>
+      <span className="ma-name">{item.name}</span>
+      <span className="ma-meta">
+        {item.link ? 'Link' : formatBytes(spaceOf(item))}
+        {places > 1 ? ` · ${places} classes` : ''}
+        {item.folder ? ` · ${item.folder}` : ''}
+      </span>
+      {item.tags.length > 0 && (
+        <span className="ma-card-tags">
+          {item.tags.slice(0, 3).map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function BigPicture({ item }: { item: ArchiveItem }) {
+  const url = useImageSrc(item.home?.classId ?? '', item.home ? 'media:' + item.home.mediaId : item.link ?? '');
+  return url ? <img className="ma-big" src={url} alt="" /> : <span className="pic-wait" />;
+}
+
+function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveItem; folders: string[]; onClose: () => void }) {
+  const [name, setName] = useState(item.name);
+  const [tagText, setTagText] = useState('');
+  const [script, setScript] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const save = (patch: Parameters<typeof archiveUpdate>[2]) => archiveUpdate(uid, item, patch).catch(() => {});
+  const addTag = () => {
+    const t = tagText.trim().replace(/^#/, '');
+    if (t && !item.tags.includes(t)) save({ tags: [...item.tags, t] });
+    setTagText('');
+  };
+  const classes = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter(Boolean)).size;
+  return (
+    <aside className="ma-detail" aria-label={item.name}>
+      <div className="ma-detail-head">
+        <span className="pop-type">{item.kind === 'image' ? 'Picture' : item.kind === 'video' ? 'Video' : 'Sound'}</span>
+        <button type="button" className="ma-x big" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div className="ma-preview">{item.kind === 'image' ? <BigPicture item={item} /> : item.home ? <MediaPlayer classId={item.home.classId} mediaId={item.home.mediaId} title={item.name} teacher /> : null}</div>
+      <label className="field">
+        <span>Name</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => name.trim() && name !== item.name && save({ name: name.trim() })} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />
+      </label>
+      <label className="field">
+        <span>Folder</span>
+        <select value={item.folder} onChange={(e) => save({ folder: e.target.value })}>
+          <option value="">Not in a folder</option>
+          {folders.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="field">
+        <span>Tags</span>
+        <span className="ma-tag-edit">
+          {item.tags.map((t) => (
+            <span key={t} className="sed-chip">
+              {t}
+              <button type="button" aria-label={`Remove the tag ${t}`} onClick={() => save({ tags: item.tags.filter((x) => x !== t) })}>
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            value={tagText}
+            placeholder={item.tags.length ? 'Add a tag' : 'Add tags: unit 4, food, B1…'}
+            onChange={(e) => setTagText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addTag();
+              } else if (e.key === 'Backspace' && !tagText && item.tags.length) save({ tags: item.tags.slice(0, -1) });
+            }}
+            onBlur={addTag}
+          />
+        </span>
+      </div>
+      {item.kind !== 'image' && item.home && (
+        <div className="field">
+          <span>Karaoke script</span>
+          <span className="hint">{item.script?.length ? `${item.script.length} lines${item.script.some((l) => l.t !== null) ? ', timed' : ', not timed yet'}. Changes reach every lesson that uses it.` : 'No script yet.'}</span>
+          <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setScript(true)}>
+            <UiIcon name="script" size={14} /> {item.script?.length ? 'Edit the script and timing' : 'Add a script'}
+          </button>
+        </div>
+      )}
+      <dl className="ma-facts">
+        <dt>Space</dt>
+        <dd>{item.link ? 'None (a link)' : formatBytes(spaceOf(item))}</dd>
+        {item.duration ? (
+          <>
+            <dt>Length</dt>
+            <dd>{fmtTime(item.duration)}</dd>
+          </>
+        ) : null}
+        <dt>Used in</dt>
+        <dd>{classes ? `${classes} ${classes === 1 ? 'class' : 'classes'}` : 'No class yet'}</dd>
+        <dt>Added</dt>
+        <dd>{new Date(item.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</dd>
+        {item.link && (
+          <>
+            <dt>Address</dt>
+            <dd className="ma-link">
+              <a href={item.link} target="_blank" rel="noopener noreferrer">
+                {item.link.replace(/^https?:\/\//, '')}
+              </a>
+            </dd>
+          </>
+        )}
+      </dl>
+      {confirm ? (
+        <span className="ma-confirm">
+          <span className="hint">Remove it from the archive? Lessons that use it keep it.</span>
+          <button type="button" className="btn small-btn" onClick={() => setConfirm(false)}>
+            Keep
+          </button>
+          <button type="button" className="btn small-btn danger" onClick={() => (archiveRemove(uid, item.id).catch(() => {}), onClose())}>
+            Remove
+          </button>
+        </span>
+      ) : (
+        <button type="button" className="btn link ma-remove" onClick={() => setConfirm(true)}>
+          <UiIcon name="trash" size={14} /> Remove from the archive
+        </button>
+      )}
+      {script && item.home && <ScriptEditor classId={item.home.classId} mediaId={item.home.mediaId} title={item.name} onClose={() => setScript(false)} onSave={(lines) => archiveUpdate(uid, item, { script: lines })} />}
+    </aside>
+  );
+}

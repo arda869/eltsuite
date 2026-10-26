@@ -42,6 +42,20 @@ const P: Record<string, ReactNode> = {
   stuck: <><circle cx="12" cy="12" r="8.5" /><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6.9c0 1.6-2.3 2-2.3 3.6" /><circle cx="12" cy="16.8" r=".6" fill="currentColor" /></>,
   react: <><circle cx="12" cy="12" r="8.5" /><path d="M8.5 13.5c.9 1.4 2.1 2.1 3.5 2.1s2.6-.7 3.5-2.1" /><circle cx="9.2" cy="9.8" r=".7" fill="currentColor" /><circle cx="14.8" cy="9.8" r=".7" fill="currentColor" /></>,
   sync: <><circle cx="12" cy="7" r="2.6" /><path d="M7 19.5a5 5 0 0 1 10 0" /><path d="M3.5 13.5l2 2 2-2M20.5 13.5l-2 2-2-2" /><path d="M5.5 15.5V13a3 3 0 0 1 3-3M18.5 15.5V13a3 3 0 0 0-3-3" /></>,
+  mic: <><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" /></>,
+  music: <><path d="M9 17.5V6l10-2v11.5" strokeLinejoin="round" /><circle cx="6.8" cy="17.5" r="2.2" /><circle cx="16.8" cy="15.5" r="2.2" /></>,
+  video: <><rect x="3.5" y="6" width="12.5" height="12" rx="2" /><path d="M16 10.5l4.5-3v9l-4.5-3" strokeLinejoin="round" /></>,
+  bell: <><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z" strokeLinejoin="round" /><path d="M10 20.5h4" /></>,
+  beep: <><circle cx="12" cy="12" r="2" /><path d="M8 8.5a5 5 0 0 0 0 7M16 8.5a5 5 0 0 1 0 7" /></>,
+  silence: <path d="M9.5 7v10M14.5 7v10" />,
+  upload: <><path d="M12 16V5" /><path d="M7.5 9.5 12 5l4.5 4.5" /><path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15" /></>,
+  archive: <><rect x="3.5" y="4.5" width="17" height="4.5" rx="1" /><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4" /></>,
+  link: <><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>,
+  script: <path d="M6 5.5h12M6 10h12M6 14.5h8M6 19h5" />,
+  folder: <path d="M3.5 7a1.5 1.5 0 0 1 1.5-1.5h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z" strokeLinejoin="round" />,
+  tag: <><path d="M4 11.5V5a1 1 0 0 1 1-1h6.5l8.5 8.5-7.5 7.5z" strokeLinejoin="round" /><circle cx="8.5" cy="8.5" r="1.3" /></>,
+  trash: <path d="M5 7h14M10 7V4.5h4V7M6.5 7l1 12.5h9l1-12.5" strokeLinejoin="round" />,
+  picture: <><rect x="3.5" y="5" width="17" height="14" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5" strokeLinejoin="round" /></>,
 };
 
 export function UiIcon({ name, size = 18 }: { name: string; size?: number }) {

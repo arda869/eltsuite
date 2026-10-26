@@ -37,6 +37,13 @@ service cloud.firestore {
       match /bank/{bankId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
       }
+      // A teacher's media archive and its folders
+      match /archive/{itemId} {
+        allow read, write: if isSelf(uid) && !learnerAccount();
+      }
+      match /archiveFolders/{folderId} {
+        allow read, write: if isSelf(uid) && !learnerAccount();
+      }
     }
 
     match /classes/{classId} {
@@ -239,8 +246,10 @@ service cloud.firestore {
 
       // Short audio clips (recorded or uploaded by the teacher)
       match /media/{mediaId} {
-        allow read: if viewsClass(classId) || memberOf(classId);
+        // Sounds and videos (and their scripts) open from a QR code without signing in.
+        allow read: if resource.data.get('public', false) == true || viewsClass(classId) || memberOf(classId);
         allow create: if teachesClass(classId) && request.resource.data.size < 700000;
+        allow update: if teachesClass(classId) && request.resource.data.get('size', 0) < 700000;
         allow delete: if teachesClass(classId);
       }
 

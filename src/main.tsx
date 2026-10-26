@@ -16,6 +16,8 @@ import { LearnerJoin } from './pages/LearnerJoin';
 import { LearnerHome } from './pages/LearnerHome';
 import { LearnerRecap, SharedRecap } from './pages/RecapPages';
 import { LearnerDiscussion } from './pages/LearnerDiscussion';
+import { PlayPage } from './pages/PlayPage';
+import { MediaArchive } from './pages/MediaArchive';
 import { ProxyGate } from './components/ProxyGate';
 import { TooltipLayer } from './components/Tooltip';
 import { EscapeToClose } from './components/EscapeToClose';
@@ -89,6 +91,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/discuss" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />
           <Route path="/discuss/:tid" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />
           <Route path="/r/:token" element={<SharedRecap />} />
+          <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
+          <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />

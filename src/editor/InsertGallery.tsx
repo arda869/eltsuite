@@ -8,10 +8,10 @@ type Section = { title: string; blurb: string; keys: string[] };
 
 const SECTIONS: Section[] = [
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
-  { title: 'Listening and pronunciation', blurb: 'The browser reads text aloud, so these work without recordings.', keys: ['pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
+  { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
-  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['textbox', 'info', 'reveal', 'linkcard', 'image', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['textbox', 'info', 'reveal', 'image', 'linkcard', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Board, notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['drawboard', 'grammarlink', 'vocablink', 'bankpick'] },
 ];
@@ -57,8 +57,9 @@ const ABOUT: Record<string, string> = {
   textbox: 'A styled box for a reading text, an email, a web page, a note, a speech bubble or paper.',
   info: 'An information box with a label and a symbol: grammar rules, tips, useful language.',
   reveal: 'Content hidden behind a button until a learner opens it: hints, answers, extra help.',
+  media: 'A sound or video: record it in the app, upload a sound, or link to YouTube. Add a script that lights up word by word as it plays. Kept in your media archive, and on worksheets as a QR code.',
   linkcard: 'A card for a YouTube video, an audio file or a web page, played in place.',
-  image: 'A picture from a web address.',
+  image: 'Pictures from your computer, your media archive or a web address. Crop them, change the colour, or cover them for learners to reveal.',
   table: 'A table with a header row. Cells can be coloured and rows striped.',
   heading: 'A small heading inside the task.',
   list: 'A bulleted list.',
@@ -447,6 +448,19 @@ const PREVIEW: Record<string, () => ReactNode> = {
     </span>
   ),
   image: () => <span className="gl-photo wide" />,
+  media: () => (
+    <span className="gl-col">
+      <span className="gl-media">
+        <i />
+        <span className="gl-media-track">
+          <span />
+        </span>
+      </span>
+      <span className="gl-kara">
+        <b>She has never</b> been to Japan.
+      </span>
+    </span>
+  ),
   table: () => (
     <span className="gl-table">
       {Array.from({ length: 9 }, (_, i) => (

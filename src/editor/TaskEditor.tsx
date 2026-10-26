@@ -17,6 +17,7 @@ import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
 import { RevealBox, newReveal } from './Reveal';
 import { LinkCard } from './LinkCard';
+import { MediaBlock, newMedia } from './MediaNode';
 import { BLOCKS } from './coursebook';
 import Link from '@tiptap/extension-link';
 import OrderedList from '@tiptap/extension-ordered-list';
@@ -122,6 +123,7 @@ const COMMANDS: Cmd[] = [
   { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
+  { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
@@ -266,7 +268,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard'];
+const TOP_ONLY = ['column', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media'];
 function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -345,6 +347,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       Mention,
       RevealBox,
       LinkCard,
+      MediaBlock,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
       Ipa,

@@ -44,7 +44,7 @@ function runs(rs: Run[]) {
       if (r.icon) return `<span class="emo tone-${esc(r.icon.tone)}">${iconSvg(r.icon.name)}</span>`;
       if (r.sym) return symHtml(r.sym);
       if (r.pic) {
-        const src = r.pic.src.startsWith('media:') ? MEDIA[r.pic.src]?.data ?? '' : r.pic.src;
+        const src = MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
         return `<span class="pic pic-${esc(r.pic.size)}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}</span>`;
       }
       let t = esc(r.t ?? '').replace(/\n/g, '<br>');
@@ -98,6 +98,12 @@ function block(b: Block): string {
       return `<div class="form">${b.title ? `<p class="form-t">${esc(b.title)}</p>` : ''}${b.peer ? '<p class="form-name">Classmate’s name <span class="line"></span></p>' : ''}${b.items.map(formItem).join('')}</div>`;
     case 'draw':
       return `${b.prompt ? `<p>${esc(b.prompt)}</p>` : ''}<div class="draw-box"></div>`;
+    case 'media': {
+      const info = SOUNDS[b.id];
+      const kind = b.video ? 'Scan to watch' : 'Scan to listen';
+      if (QR_ON && info?.svg) return `<div class="qr-block"><span class="qr-code">${info.svg}</span><span class="qr-text"><span class="qr-kind">${kind}</span><strong>${esc(b.title)}</strong><span class="qr-url">${esc(info.url.replace(/^https?:\/\//, '').split('/')[0])}</span></span></div>`;
+      return `<p class="qr-plain"><span class="qr-kind">${b.video ? 'Video' : 'Listening'}</span> <strong>${esc(b.title)}</strong></p>`;
+    }
     case 'glossary':
       return `<div class="gloss"><span class="gloss-h">Glossary</span>${b.items
         .map(({ word, d }) => `<p><b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${d.translation ? ` <span class="gloss-tr">${esc(d.translation)}</span>` : ''}</p>`)
@@ -142,9 +148,13 @@ function taskUnit(t: WsTask, num: number, marks: boolean) {
 
 // Pictures for this print, set at the start of worksheetHtml.
 let MEDIA: NonNullable<Options['media']> = {};
+let SOUNDS: NonNullable<Options['sounds']> = {};
+let QR_ON = true;
 
 export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
+  SOUNDS = opts.sounds ?? {};
+  QR_ON = opts.qr !== false;
   const accent = opts.accent || '#d98f63';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;
   const small = opts.paper === 'A5';
@@ -183,8 +193,10 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
           .map((t, i) => {
             const answers = opts.key ? t.answers : [];
             const notes = opts.notes ? t.notes ?? '' : '';
-            if (!answers.length && !notes) return '';
-            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
+            const scripts = opts.key ? (t.media ?? []).map((id) => SOUNDS[id]).filter((m) => m && m.script.length) : [];
+            if (!answers.length && !notes && !scripts.length) return '';
+            const sc = scripts.map((m) => `<div class="tscript"><span class="tnotes-h">${m.video ? 'Video script' : 'Audioscript'} <i>${esc(m.title)}</i></span>${m.script.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`).join('');
+            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}${sc}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
           })
           .filter(Boolean)
       : [];
@@ -336,6 +348,17 @@ svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 .tnotes { margin-top: 1.6mm; padding: 1.6mm 2.4mm; border-left: 1.6pt solid var(--accent); background: var(--tint); font: 8.6pt/1.45 Karla, sans-serif; color: #3d3a36; }
 .tnotes-h { display: block; font: 700 6.4pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: .6mm; }
 .tnotes p { margin: .3mm 0; }
+.tscript { margin-top: 1.6mm; padding: 1.6mm 2.4mm; border-left: 1.6pt solid var(--hair, #d8d4cd); font: 9pt/1.5 Fraunces, Georgia, serif; color: #2b2a28; }
+.tscript .tnotes-h i { font-style: normal; font-weight: 600; letter-spacing: 0; text-transform: none; color: #8a847d; margin-left: 1mm; }
+.tscript p { margin: .3mm 0; }
+.qr-block { display: flex; align-items: center; gap: 3.2mm; margin: 1.6mm 0 2.4mm; break-inside: avoid; }
+.qr-code { flex: 0 0 auto; width: 20mm; height: 20mm; padding: 1.2mm; border-radius: 1.6mm; box-shadow: 0 0 0 .3mm #d8d4cd; background: #fff; }
+.qr-code svg { display: block; width: 100%; height: 100%; }
+.qr-text { display: flex; flex-direction: column; gap: .5mm; }
+.qr-kind { font: 700 6.4pt Karla, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent-ink); }
+.qr-text strong { font: 600 10.5pt/1.25 Fraunces, Georgia, serif; color: #2b2a28; }
+.qr-url { font: 7pt Karla, sans-serif; color: #8a847d; }
+.qr-plain { margin: 1mm 0 2mm; } .qr-plain strong { font-family: Fraunces, Georgia, serif; }
 
 /* Self-reflection, peer feedback and surveys on paper */
 .form { margin: 1mm 0 2mm; }
