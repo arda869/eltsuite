@@ -32,6 +32,11 @@ service cloud.firestore {
       allow update: if isSelf(uid) && request.resource.data.role == resource.data.role
         && request.resource.data.get('classId', null) == resource.data.get('classId', null);
       allow delete: if signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId);
+
+      // A teacher's personal question bank
+      match /bank/{bankId} {
+        allow read, write: if isSelf(uid) && !learnerAccount();
+      }
     }
 
     match /classes/{classId} {

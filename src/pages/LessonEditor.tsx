@@ -40,6 +40,8 @@ import { downloadJson, lessonBundle } from '../lib/fullcopy';
 import { roleIn } from '../lib/coteach';
 import { WorksheetDialog } from '../components/WorksheetDialog';
 import { RecapDialog } from '../components/Recap';
+import { BankPicker, SaveToBankDialog } from '../components/QuestionBank';
+import { withFreshIds } from '../lib/bank';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
 import { PanelToggle, usePanels } from '../components/PanelToggles';
@@ -315,6 +317,8 @@ export function LessonEditor() {
   const [exportOpen, setExportOpen] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
   const [recapOpen, setRecapOpen] = useState(false);
+  const [bankSave, setBankSave] = useState<{ kind: 'question' | 'task'; content: JSONContent[]; title?: string; instructions?: string } | null>(null);
+  const [bankPick, setBankPick] = useState<((nodes: JSONContent[]) => void) | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!exportOpen) return;
@@ -480,6 +484,12 @@ export function LessonEditor() {
   async function newTask() {
     await flush();
     const id = await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0);
+    setSelected(id);
+  }
+
+  async function newTaskFrom(init: { title: string; instructions: string; content: JSONContent }) {
+    await flush();
+    const id = await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'task', init);
     setSelected(id);
   }
 
@@ -1003,6 +1013,8 @@ export function LessonEditor() {
                     classmates={classmates}
                     classId={classId}
                     onNotebook={(word, sentence) => toNotebook({ type: 'vocab', word, example: sentence })}
+                    onBank={(nodes) => nodes.length && setBankSave({ kind: 'question', content: nodes })}
+                    onPickBank={(insert) => setBankPick(() => insert)}
                     places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
                   />
                 </div>
@@ -1047,6 +1059,9 @@ export function LessonEditor() {
             <aside className="task-side" aria-label="Task settings">
               <button className={'btn block' + (preview ? ' primary' : '')} onClick={() => (flush(), setPreview((p) => !p))}>
                 {preview ? 'Back to editing' : 'Preview as learner'}
+              </button>
+              <button type="button" className="btn link small" onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
+                Save task to my bank
               </button>
               <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
               {(() => {
@@ -1172,6 +1187,21 @@ export function LessonEditor() {
       )}
       {announcing && <AnnounceDialog classId={classId} roster={classmates} onClose={() => setAnnouncing(false)} />}
       {worksheet && <WorksheetDialog classId={classId} itemId={itemId} onClose={() => setWorksheet(false)} />}
+      {bankSave && user && <SaveToBankDialog uid={user.uid} kind={bankSave.kind} content={bankSave.content} title={bankSave.title} instructions={bankSave.instructions} onClose={() => setBankSave(null)} />}
+      {bankPick && user && (
+        <BankPicker
+          uid={user.uid}
+          onClose={() => setBankPick(null)}
+          onPick={(b) => {
+            const nodes = withFreshIds(b.content);
+            if (b.kind === 'task') {
+              // a whole task becomes a new task after this one
+              newTaskFrom({ title: b.title, instructions: b.instructions ?? '', content: { type: 'doc', content: nodes } });
+            } else bankPick([...nodes, { type: 'paragraph' }]);
+            setBankPick(null);
+          }}
+        />
+      )}
       {recapOpen && c && item && <RecapDialog c={c} item={item} items={nbItems} onClose={() => setRecapOpen(false)} />}
       {help && (
         <div className="scrim" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelp(false)}>

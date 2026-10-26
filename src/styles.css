@@ -2597,3 +2597,17 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .recap-list a { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border: 1px solid var(--hair); border-radius: 12px; text-decoration: none; color: inherit; }
 .recap-list-title { font: 16px var(--serif); }
 @media (max-width: 640px) { .recap-grid { grid-template-columns: 1fr; } .recap-people { flex-direction: row; flex-wrap: wrap; max-height: none; } .recap-people li { flex: 0 0 auto; } }
+
+/* ---- Question bank ---- */
+.bank-preview { font-family: var(--serif); font-size: 14px; color: var(--ink); padding: 8px 12px; border-left: 3px solid var(--hair); }
+.bank-dialog { max-width: 820px; width: min(820px, 96vw); }
+.bank-filters { display: flex; gap: 8px; flex-wrap: wrap; } .bank-filters input { flex: 1; min-width: 160px; }
+.bank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 56vh; overflow: auto; }
+.bank-row { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--hair); border-radius: 12px; padding: 8px 12px; }
+.bank-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.bank-main:hover .bank-title { color: var(--accent-text); }
+.bank-title { font: 15px var(--serif); display: flex; gap: 8px; align-items: center; }
+.bank-prev { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.bank-acts { display: flex; gap: 8px; align-items: center; flex-shrink: 0; } .bank-acts input { width: 160px; font-size: 13px; }
+.tag-pill { font: 600 10px var(--sans); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 999px; background: var(--soft); color: var(--muted); }
+.tag-pill.task { background: color-mix(in srgb, var(--accent) 14%, white); color: var(--accent-text); }

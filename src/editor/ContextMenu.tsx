@@ -38,7 +38,7 @@ export function EditorContextMenu({
   host: HTMLElement | null;
   onDefinition: () => void;
   onLink: () => void;
-  actions: { gap: (t: string) => void; drop: (t: string) => void; choice: (t: string) => void; stress: (t: string) => void; ipa: () => void; notebook?: (t: string, sentence: string) => void };
+  actions: { gap: (t: string) => void; drop: (t: string) => void; choice: (t: string) => void; stress: (t: string) => void; ipa: () => void; notebook?: (t: string, sentence: string) => void; bank?: () => void };
 }) {
   const [at, setAt] = useState<{ x: number; y: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -140,6 +140,7 @@ export function EditorContextMenu({
     { label: editor.isActive('definition') ? 'Edit definition' : 'Add a definition', hint: short, run: run(onDefinition), show: has || editor.isActive('definition') },
     { label: editor.isActive('lessonLink') ? 'Change link' : 'Link to another task', run: run(onLink), show: has || editor.isActive('lessonLink') },
     { label: 'Add to the class notebook', hint: short, run: run(() => actions.notebook?.(text, editor.state.doc.textBetween(editor.state.selection.$from.start(), editor.state.selection.$from.end(), ' '))), show: has && !!actions.notebook },
+    { label: 'Save to my question bank', hint: 'with its answers', run: run(() => actions.bank?.()), show: anything && !!actions.bank },
     { label: 'Add IPA after this', run: run(() => (editor.chain().focus().setTextSelection(to).run(), actions.ipa())), show: has },
     { label: 'Mark word stress', run: run(() => actions.stress(text)), show: has && !/\s/.test(text) },
     'sep',

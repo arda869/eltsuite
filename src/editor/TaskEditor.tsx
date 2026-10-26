@@ -139,7 +139,7 @@ const COMMANDS: Cmd[] = [
   ...BLOCK_CMDS,
 ];
 
-function useSlash(editor: Editor | null) {
+function useSlash(editor: Editor | null, extra: Cmd[] = []) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number } | null>(null);
   const [index, setIndex] = useState(0);
 
@@ -172,9 +172,9 @@ function useSlash(editor: Editor | null) {
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      return COMMANDS.filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
+      return [...COMMANDS, ...extra].filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested)).filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(state.query.trim()));
     },
-    [state, editor],
+    [state, editor, extra],
   );
 
   const choose = (c: Cmd) => {
@@ -208,7 +208,7 @@ const BTN = (label: string, active: boolean, onClick: () => void, text: React.Re
   </button>
 );
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -274,7 +274,11 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
   });
 
-  const slash = useSlash(editor);
+  const bankCmds = useMemo<Cmd[]>(
+    () => (onPickBank ? [{ key: 'bankpick', label: 'From my question bank…', hint: 'Insert a saved question or task', group: 'Questions', run: (e) => onPickBank((nodes) => e.chain().focus().insertContent(nodes).run()) }] : []),
+    [onPickBank],
+  );
+  const slash = useSlash(editor, bankCmds);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -490,6 +494,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
               editor.chain().focus().insertContent([{ type: 'text', text: ' ' }, newIpa(last ?? 'RP')]).run();
             },
             notebook: onNotebook,
+            bank: onBank ? () => onBank(((editor.state.selection.content().toJSON() as { content?: JSONContent[] } | null)?.content ?? []) as JSONContent[]) : undefined,
           }}
         />
         {slash.state && (

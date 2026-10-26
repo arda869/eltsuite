@@ -51,20 +51,21 @@ export const newId = () => Math.random().toString(36).slice(2, 10);
 
 // Saving ---------------------------------------------------------------------
 
-export async function addTask(classId: string, itemId: string, order: number, kind: 'task' | 'section' = 'task') {
+export async function addTask(classId: string, itemId: string, order: number, kind: 'task' | 'section' = 'task', init?: { title: string; instructions: string; content: JSONContent }) {
   const ref = doc(tasksCol(classId, itemId));
   const batch = writeBatch(db);
+  const { content, key } = init ? splitKey(init.content) : { content: { type: 'doc', content: [{ type: 'paragraph' }] } as JSONContent, key: {} };
   batch.set(ref, {
     kind,
-    title: kind === 'section' ? 'New section' : 'New task',
-    instructions: '',
-    content: { type: 'doc', content: [{ type: 'paragraph' }] },
+    title: init?.title ?? (kind === 'section' ? 'New section' : 'New task'),
+    instructions: init?.instructions ?? '',
+    content,
     order,
     hidden: false,
     locked: false,
     createdAt: serverTimestamp(),
   });
-  batch.set(keyRef(classId, itemId, ref.id), {});
+  batch.set(keyRef(classId, itemId, ref.id), key);
   await batch.commit();
   return ref.id;
 }
