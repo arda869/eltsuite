@@ -8,11 +8,14 @@ export type TextSize = 'S' | 'M' | 'L' | 'XL';
 export type Profile = (
   | { role: 'teacher'; displayName?: string }
   | { role: 'learner'; classId: string; learnerId: string; displayName: string }
-) & { textSize?: TextSize; avatar?: string };
+) & { textSize?: TextSize; avatar?: string; reading?: Reading };
 
-type AuthState = { user: User | null; profile: Profile | null; ready: boolean; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setAvatarLocal: (k: string) => void };
+// Reading comfort settings: a clearer font, line focus, spacing and high contrast.
+export type Reading = { font?: 'default' | 'clear'; focus?: boolean; letter?: 0 | 1 | 2; line?: 0 | 1 | 2; contrast?: boolean };
 
-const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, signOutNow: async () => {}, setTextSize: () => {}, setAvatarLocal: () => {} });
+type AuthState = { user: User | null; profile: Profile | null; ready: boolean; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setAvatarLocal: (k: string) => void };
+
+const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setAvatarLocal: () => {} });
 export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
 async function loadProfile(user: User): Promise<Profile | null> {
@@ -53,7 +56,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile((p) => (p ? { ...p, textSize: t } : p));
     if (user) updateDoc(doc(db, 'users', user.uid), { textSize: t }).catch(() => {});
   };
-  return <Ctx.Provider value={{ user, profile, ready, signOutNow: () => signOut(auth), setTextSize, setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
+  const setReading = (r: Reading) => {
+    setProfile((p) => (p ? { ...p, reading: { ...(p.reading ?? {}), ...r } } : p));
+    if (user) updateDoc(doc(db, 'users', user.uid), { reading: { ...(profile?.reading ?? {}), ...r } }).catch(() => {});
+  };
+  // Reading settings apply to the whole app through classes on <html>.
+  useEffect(() => {
+    const r = profile?.reading ?? {};
+    const h = document.documentElement;
+    h.classList.toggle('rd-clear', r.font === 'clear');
+    h.classList.toggle('rd-focus', !!r.focus);
+    h.classList.toggle('rd-contrast', !!r.contrast);
+    h.style.setProperty('--rd-letter', ['0', '0.04em', '0.09em'][r.letter ?? 0]);
+    h.style.setProperty('--rd-line', ['1', '1.25', '1.5'][r.line ?? 0]);
+  }, [profile?.reading]);
+  return <Ctx.Provider value={{ user, profile, ready, signOutNow: () => signOut(auth), setTextSize, setReading, setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

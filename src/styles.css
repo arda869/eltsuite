@@ -2495,3 +2495,55 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .item .title { flex: 1 1 260px; }
 .item .status { flex: 0 1 auto; max-width: 38%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-extra .use-as { max-width: 110px; }
+
+/* Reading comfort */
+:root { --rd-letter: 0; --rd-line: 1; }
+.ts-pop { min-width: 300px; }
+.rd-opts { display: flex; flex-direction: column; gap: 8px; width: 100%; padding-top: 8px; border-top: 1px solid var(--hair); font-family: var(--sans); font-size: 12px; }
+.rd-title { font-weight: 700; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; font-size: 10px; }
+.rd-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.rd-row .seg { width: 170px; }
+.rd-row .seg button { height: 24px; font-size: 11px; }
+.task-frame .frame-body, .nb-page-body, .nb-card, .tq-question { letter-spacing: var(--rd-letter); }
+.task-frame .frame-body p, .task-frame .frame-body li, .nb-card p { line-height: calc(1.6 * var(--rd-line)); }
+.rd-clear .task-frame .frame-body, .rd-clear .nb-card, .rd-clear .tq-question, .rd-clear .task-body, .rd-clear .gap-input, .rd-clear .writing-q textarea { font-family: 'Atkinson Hyperlegible', 'Karla', system-ui, sans-serif !important; }
+.rd-contrast { --ink: #000; --muted: #222; --soft: #333; --hair: rgba(0, 0, 0, 0.4); --hair-strong: rgba(0, 0, 0, 0.6); }
+.rd-contrast body { background: #fff; }
+.rd-contrast .task-frame, .rd-contrast .nb-card, .rd-contrast .btn { border-color: #000; }
+.rd-contrast .gap-input { border-bottom-color: #000; }
+.rd-focus .frame-body.teach-view > *, .rd-focus .learner-body .task-body > * { transition: opacity 0.15s; }
+.rd-focus .task-body > *:not(:hover) { opacity: 0.35; }
+.rd-focus .task-body > *:hover { opacity: 1; }
+.rd-focus .task-body:not(:hover) > * { opacity: 1; }
+.sel-listen { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer; } .sel-note button + button { background: var(--surface); color: var(--ink); } .sel-note .sel-listen + button { background: var(--ink); color: #fff; }
+
+/* Flashcards and review */
+.pr { display: flex; flex-direction: column; gap: 14px; }
+.fc { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.fc-bar { display: flex; align-items: center; gap: 12px; align-self: stretch; }
+.fc-bar select { font: inherit; font-size: 13px; height: 32px; padding: 0 8px; border: 1px solid var(--hair); border-radius: 8px; background: #fff; }
+.fc-card { position: relative; width: min(420px, 100%); height: 240px; border: 0; background: transparent; perspective: 1200px; cursor: pointer; font: inherit; }
+.fc-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 22px; border: 1px solid var(--hair); border-radius: 20px; background: #fff; box-shadow: 0 14px 40px rgba(51, 48, 44, 0.1); backface-visibility: hidden; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.fc-face.back { transform: rotateY(180deg); background: #fbfaf8; }
+.fc-card.flipped .front { transform: rotateY(180deg); }
+.fc-card.flipped .back { transform: rotateY(360deg); }
+.fc-word { font-family: var(--serif); font-size: 32px; font-weight: 600; }
+.fc-pos { color: var(--muted); font-family: var(--sans); font-size: 13px; }
+.fc-meaning { font-family: var(--serif); font-size: 19px; text-align: center; }
+.fc-example { font-family: var(--serif); font-style: italic; color: var(--muted); text-align: center; }
+.fc-tr { font-family: var(--hand); color: var(--pen); font-size: 18px; }
+.fc-acts { display: flex; align-items: center; gap: 10px; }
+.fc-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px; text-align: center; }
+.fc-big { font-family: var(--serif); font-size: 22px; }
+.rv-card { display: flex; flex-direction: column; gap: 10px; width: min(560px, 100%); padding: 20px 22px; border: 1px solid var(--hair); border-radius: 18px; background: #fff; box-shadow: 0 14px 40px rgba(51, 48, 44, 0.08); }
+.rv-prompt { font-family: var(--serif); font-size: 18px; }
+.rv-answer, .rv-wrong { display: flex; gap: 8px; align-items: baseline; font-family: var(--sans); font-size: 14px; }
+.rv-answer strong { font-family: var(--hand); color: var(--pen); font-size: 18px; }
+.rv-wrong span:last-child { color: var(--wrong); text-decoration: line-through; }
+.nb-quizbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.nb-row { display: flex; gap: 8px; align-items: flex-start; }
+.nb-row > article { flex: 1; min-width: 0; }
+.nb-pick { padding-top: 16px; }
+.nb-pick input { width: 18px; height: 18px; }
+@media (prefers-reduced-motion: reduce) { .fc-face { transition: none; } }
+.rd-row .seg button, .rd-opts { font-family: var(--sans); }

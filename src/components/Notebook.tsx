@@ -33,13 +33,15 @@ import {
   type NotebookLevel,
 } from '../lib/notebook';
 import { TaskRenderer } from './TaskRenderer';
+import { Practise } from './Practise';
+import { createVocabQuiz } from '../lib/vocabquiz';
 import { NoteEditor } from './NoteEditor';
 import { TaskEditor } from '../editor/TaskEditor';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey, type Responses } from '../lib/questions';
 
 export type Me = { uid: string; name: string; learnerId?: string; teacher: boolean };
 export type Prefill = { type: 'vocab' | 'note'; word?: string; example?: string; text?: string; itemId?: string | null; taskId?: string | null; mine?: boolean };
-type Tab = 'class' | 'mine' | 'grammar' | 'vocab' | 'pending' | 'settings';
+type Tab = 'class' | 'mine' | 'grammar' | 'vocab' | 'pending' | 'settings' | 'practise';
 
 const SPEAK = (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -550,6 +552,8 @@ export function Notebook({
   const [fPos, setFPos] = useState('');
   const [fType, setFType] = useState<'' | 'vocab' | 'note'>('');
   const [adding, setAdding] = useState<Prefill | null>(null);
+  const [picking, setPicking] = useState<Set<string> | null>(null);
+  const [quizBusy, setQuizBusy] = useState('');
   const s = notebookSettings(c);
   const mayAdd = me.teacher || canLearnerAdd(c, me.learnerId);
   const pending = entries.filter((e) => e.status === 'pending' || e.pending);
@@ -587,7 +591,7 @@ export function Notebook({
 
   const tabs: { k: Tab; label: string; badge?: number }[] = [
     { k: 'class', label: 'Class notebook' },
-    ...(!me.teacher ? [{ k: 'mine' as Tab, label: 'My notebook' }] : []),
+    ...(!me.teacher ? [{ k: 'mine' as Tab, label: 'My notebook' }, { k: 'practise' as Tab, label: 'Practise' }] : []),
     { k: 'grammar', label: 'Grammar bank' },
     { k: 'vocab', label: 'Vocabulary bank' },
     ...(me.teacher ? [{ k: 'pending' as Tab, label: 'Pending', badge: pending.length }, { k: 'settings' as Tab, label: 'Settings' }] : []),
@@ -711,11 +715,57 @@ export function Notebook({
       {tab === 'class' && (
         <>
           {mayAdd ? addBar(false) : !me.teacher && <span className="hint">Only your teacher writes here. Save entries to your own notebook with “Save to my notebook”.</span>}
+          {me.teacher && !adding && (
+            <span className="nb-quizbar">
+              {picking ? (
+                <>
+                  <span className="hint">{picking.size} chosen. Tick words with a meaning, then make the quiz.</span>
+                  <button type="button" className="btn link small" onClick={() => setPicking(new Set(classList.filter((e) => e.type === 'vocab' && e.data.def?.meaning).map((e) => e.id)))}>
+                    All words
+                  </button>
+                  <button
+                    type="button"
+                    className="btn small-btn primary"
+                    disabled={picking.size < 2 || !!quizBusy}
+                    onClick={async () => {
+                      setQuizBusy('Making…');
+                      try {
+                        const title = window.prompt('Name for the practice', 'Vocabulary practice') ?? 'Vocabulary practice';
+                        await createVocabQuiz(classId, title, entries.filter((e) => picking.has(e.id)).map((e) => e.data));
+                        setQuizBusy('Made. It is under Practice on the class page.');
+                        setPicking(null);
+                        window.setTimeout(() => setQuizBusy(''), 3000);
+                      } catch (e) {
+                        setQuizBusy(String((e as Error).message));
+                      }
+                    }}
+                  >
+                    Make a practice from these words
+                  </button>
+                  <button type="button" className="btn link small" onClick={() => setPicking(null)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn link small" onClick={() => setPicking(new Set())}>
+                  Make a quiz from words…
+                </button>
+              )}
+              {quizBusy && !picking && <span className="hint">{quizBusy}</span>}
+            </span>
+          )}
           {filters}
           {classList.length === 0 && <p className="hint">{entries.some((e) => e.type !== 'page') ? 'Nothing matches.' : 'Nothing here yet. Words and notes added in class appear here straight away.'}</p>}
           <div className="nb-list">
             {classList.map((e) => (
-              <EntryCard key={e.id} classId={classId} c={c} me={me} e={e} items={items} myTranslation={translations[e.id]} saved={savedFrom.has(e.id)} onSaveToMine={() => addMyNote(classId, me.uid, { type: e.type, data: e.data, from: e.id })} />
+              <div key={e.id} className={'nb-row' + (picking ? ' picking' : '')}>
+                {picking && e.type === 'vocab' && (
+                  <label className="nb-pick">
+                    <input type="checkbox" checked={picking.has(e.id)} disabled={!e.data.def?.meaning} onChange={() => setPicking((p) => { const n = new Set(p); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; })} />
+                  </label>
+                )}
+                <EntryCard classId={classId} c={c} me={me} e={e} items={items} myTranslation={translations[e.id]} saved={savedFrom.has(e.id)} onSaveToMine={() => addMyNote(classId, me.uid, { type: e.type, data: e.data, from: e.id })} />
+              </div>
             ))}
           </div>
         </>
@@ -732,6 +782,7 @@ export function Notebook({
           </div>
         </>
       )}
+      {tab === 'practise' && !me.teacher && <Practise classId={classId} uid={me.uid} entries={entries} mine={mine} />}
       {tab === 'grammar' && bankTab('grammar')}
       {tab === 'vocab' && bankTab('vocab')}
       {tab === 'pending' && (

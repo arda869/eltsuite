@@ -75,7 +75,7 @@ function textFor(content: JSONContent | null, qid: string, key: AnswerKey, r: Re
       answer = packAnswerText(e, a.data ?? {});
       break;
   }
-  const wrong = Array.isArray(r) ? r.map((i) => (typeof i === 'number' && a.options ? a.options[i] : i)).join(', ') : typeof r === 'object' && r ? JSON.stringify(r).slice(0, 80) : String(r ?? '');
+  const wrong = Array.isArray(r) ? r.map((i) => (typeof i === 'number' && a.options ? a.options[i] : i)).join(', ') : typeof r === 'number' && a.options ? String(a.options[r] ?? r) : typeof r === 'object' && r ? '' : String(r ?? '');
   return { prompt: prompt.slice(0, 240), answer: answer.slice(0, 240), wrong: wrong.slice(0, 120) };
 }
 
