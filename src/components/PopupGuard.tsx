@@ -34,53 +34,88 @@ const POPUPS = [
 ].join(',');
 const M = 8; // keep this far from the edges
 
+// Last offset applied to each pop-up, so measuring never needs a reset (no layout thrash, no loop).
+const applied = new WeakMap<Element, { dx: number; dy: number; mh: number }>();
+const fits = new WeakMap<Element, number>();
+
 function fit(el: HTMLElement) {
   if (!el.isConnected) return;
-  el.style.translate = '';
-  const r = el.getBoundingClientRect();
-  if (!r.width || !r.height) return;
+  // A pop-up re-fitted over and over (its own code moving it each frame) is left alone.
+  const n = (fits.get(el) ?? 0) + 1;
+  fits.set(el, n);
+  if (n > 60) return;
+  const prev = applied.get(el) ?? { dx: 0, dy: 0, mh: 0 };
+  const r0 = el.getBoundingClientRect();
+  if (!r0.width || !r0.height) return;
+  // Where it would be without our nudge.
+  const r = { left: r0.left - prev.dx, right: r0.right - prev.dx, top: r0.top - prev.dy, height: r0.height };
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  // The banner of a "view as a learner" tab covers the top of the screen.
   const top = M + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--proxy-h')) || 0);
-  if (r.height > vh - top - M) {
-    el.style.maxHeight = `${vh - top - M}px`;
-    el.style.overflowY = 'auto';
-  }
-  const h = Math.min(r.height, vh - top - M);
+  const room = Math.round(vh - top - M);
+  let mh = prev.mh;
+  if (!mh && r.height > room) mh = room;
+  const h = Math.min(r.height, room);
   let dx = 0;
   let dy = 0;
   if (r.right > vw - M) dx = vw - M - r.right;
   if (r.left + dx < M) dx = M - r.left;
   if (r.top + h > vh - M) dy = vh - M - (r.top + h);
   if (r.top + dy < top) dy = top - r.top;
-  if (dx || dy) el.style.translate = `${Math.round(dx)}px ${Math.round(dy)}px`;
+  dx = Math.round(dx);
+  dy = Math.round(dy);
+  if (dx === prev.dx && dy === prev.dy && mh === prev.mh) return;
+  applied.set(el, { dx, dy, mh });
+  if (mh !== prev.mh) {
+    el.style.maxHeight = `${mh}px`;
+    el.style.overflowY = 'auto';
+  }
+  el.style.translate = dx || dy ? `${dx}px ${dy}px` : '';
 }
 
 export function PopupGuard() {
   useEffect(() => {
     const watched = new WeakSet<Element>();
-    const ro = new ResizeObserver((entries) => entries.forEach((e) => fit(e.target as HTMLElement)));
+    // All work waits for the next frame and is done once per pop-up per frame.
+    const queue = new Set<HTMLElement>();
+    const added: Node[] = [];
+    let raf = 0;
+    const run = () => {
+      raf = 0;
+      const nodes = added.splice(0);
+      for (const n of nodes) {
+        if (!(n instanceof Element) || !n.isConnected) continue;
+        if (n.matches(POPUPS)) take(n);
+        if (n.firstElementChild) n.querySelectorAll(POPUPS).forEach(take);
+      }
+      const els = [...queue];
+      queue.clear();
+      els.forEach(fit);
+    };
+    const later = () => (raf ||= requestAnimationFrame(run));
+    const ro = new ResizeObserver((entries) => {
+      entries.forEach((e) => queue.add(e.target as HTMLElement));
+      later();
+    });
     const take = (el: Element) => {
       if (watched.has(el)) return;
       watched.add(el);
-      requestAnimationFrame(() => {
-        fit(el as HTMLElement);
-        requestAnimationFrame(() => fit(el as HTMLElement)); // again, once its position settles
-      });
+      fits.delete(el);
+      queue.add(el as HTMLElement);
       ro.observe(el);
+      window.setTimeout(() => (fits.delete(el), queue.add(el as HTMLElement), later()), 120); // once its position settles
     };
-    const scan = (n: Node) => {
-      if (!(n instanceof Element)) return;
-      if (n.matches(POPUPS)) take(n);
-      n.querySelectorAll(POPUPS).forEach(take);
-    };
-    const mo = new MutationObserver((list) => list.forEach((m) => m.addedNodes.forEach(scan)));
+    const mo = new MutationObserver((list) => {
+      for (const m of list) m.addedNodes.forEach((n) => n.nodeType === 1 && added.push(n));
+      if (added.length) later();
+    });
     mo.observe(document.body, { childList: true, subtree: true });
-    scan(document.body);
-    const again = () => document.querySelectorAll<HTMLElement>(POPUPS).forEach(fit);
+    added.push(document.body);
+    later();
+    const again = () => document.querySelectorAll<HTMLElement>(POPUPS).forEach((el) => (fits.delete(el), queue.add(el), later()));
     window.addEventListener('resize', again);
     return () => {
+      cancelAnimationFrame(raf);
       mo.disconnect();
       ro.disconnect();
       window.removeEventListener('resize', again);
