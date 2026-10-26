@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -11,6 +11,21 @@ export function ProxyGate({ children }: { children: ReactNode }) {
   const [error, setError] = useState('');
   const { user, ready } = useAuth();
   const navigate = useNavigate();
+  // The bar takes room at the top, so lesson screens shrink by its height and still fit the window.
+  const bar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty('--proxy-h', el.offsetHeight + 'px');
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty('--proxy-h');
+    };
+  });
   useEffect(() => {
     if (!info || info.signedIn || !ready) return;
     if (!info.email || !info.password) return setError('The sign-in details are missing. Close this tab and try again.');
@@ -46,7 +61,7 @@ export function ProxyGate({ children }: { children: ReactNode }) {
     );
   return (
     <>
-      <div className="proxy-bar" role="status">
+      <div className="proxy-bar" role="status" ref={bar}>
         <span>
           Viewing as <strong>{info.name}</strong>. Anything you do here counts as {info.name.split(' ')[0]}’s: answers, posts and attendance.
         </span>

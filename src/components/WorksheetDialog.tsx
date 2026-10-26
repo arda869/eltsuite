@@ -7,6 +7,7 @@ import { flattenWithSections, lessonDocx, saveBlob, type Paper } from '../lib/wo
 import { worksheetHtml } from '../lib/worksheetHtml';
 import { theme } from '../lib/themes';
 import { coverMarkup } from './Covers';
+import { Loader } from './Loader';
 import type { ClassDoc, Item } from '../lib/classes';
 
 const defaultPaper = (): Paper => {
@@ -53,8 +54,22 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     }
   };
   const [marks, setMarks] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    gatherLesson(classId, itemId).then(setLesson).catch(() => setLesson({ title: 'Lesson', tasks: [] }));
+    setLoadError('');
+    gatherLesson(classId, itemId)
+      .then(setLesson)
+      .catch((e) => {
+        console.error(e);
+        setLoadError(
+          (e as { code?: string }).code === 'permission-denied'
+            ? 'The tasks could not be read. If a “view as a learner” tab is open, close it, then try again.'
+            : 'The tasks could not be loaded. Check your connection, then try again.',
+        );
+      });
+  }, [classId, itemId, attempt]);
+  useEffect(() => {
     getDoc(doc(db, 'classes', classId)).then((d) => d.exists() && setCls({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }), () => {});
     getDoc(doc(db, 'classes', classId, 'items', itemId)).then((d) => d.exists() && setItem({ id: d.id, ...(d.data() as Omit<Item, 'id'>) }), () => {});
   }, [classId, itemId]);
@@ -90,11 +105,24 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     <div className="scrim" onClick={onClose}>
       <div className="dialog" role="dialog" aria-label="Worksheet" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>Worksheet</h2>
-        {!lesson ? (
-          <span className="hint">Loading…</span>
+        {loadError ? (
+          <>
+            <span className="load-error">{loadError}</span>
+            <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="btn" onClick={onClose}>
+                Close
+              </button>
+              <button type="button" className="btn primary" onClick={() => setAttempt((a) => a + 1)}>
+                Try again
+              </button>
+            </span>
+          </>
+        ) : !lesson ? (
+          <Loader label="Getting the tasks ready" />
         ) : (
           <>
             <span className="hint">Laid out like a coursebook page: your sections as headings, each task as a numbered exercise (its instruction is the heading), and no exercise split across columns or pages. Hidden tasks are left out.</span>
+            {visible.length === 0 && <span className="load-error">{lesson.tasks.some((t) => t.kind !== 'section') ? 'Every task here is hidden from learners, so there is nothing to print. Show a task first.' : 'This lesson has no tasks yet.'}</span>}
             <div className="field" style={{ gap: 6 }}>
               <span>Tasks</span>
               <div className="aud-pick ws-tasks">

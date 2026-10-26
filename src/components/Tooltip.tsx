@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 // One tooltip for every element with data-tip. It floats above everything (so boxes with
 // hidden overflow never cut it off), appears after a short pause, and stays on screen.
@@ -51,9 +51,17 @@ export function TooltipLayer() {
       document.removeEventListener('focusout', hide);
     };
   }, []);
+  // Keep the whole tooltip on screen: a button at the edge of the window gets its tooltip moved inwards.
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || !tip) return;
+    const half = el.offsetWidth / 2;
+    el.style.left = Math.min(Math.max(tip.x, half + 8), window.innerWidth - half - 8) + 'px';
+  }, [tip]);
   if (!tip) return null;
   return (
-    <div className={'tip-float' + (tip.below ? ' below' : '')} role="tooltip" style={{ left: tip.x, top: tip.y }}>
+    <div ref={box} className={'tip-float' + (tip.below ? ' below' : '')} role="tooltip" style={{ left: tip.x, top: tip.y }}>
       {tip.text}
     </div>
   );

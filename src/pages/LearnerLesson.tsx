@@ -582,7 +582,9 @@ export function LearnerLesson() {
                 Your teacher hasn’t added tasks to this lesson yet.
               </p>
             ) : (
-              <Loader label="Opening the task" />
+              <div className="frame-loading">
+                <Loader label="Opening the task" />
+              </div>
             )
           )}
         </main>

@@ -666,7 +666,7 @@ a.btn.primary { color: #ffffff; }
 .drop-slot.ready { border-style: dashed; border-color: var(--accent); }
 
 /* Lesson pages fill the screen; the task frame uses the full height */
-.shell.wide { height: 100vh; min-height: 0; overflow: hidden; }
+.shell.wide { height: calc(100vh - var(--proxy-h, 0px)); height: calc(100dvh - var(--proxy-h, 0px)); min-height: 0; overflow: hidden; }
 .shell.wide .lesson-layout { flex: 1; min-height: 0; align-items: stretch; }
 .shell.wide .task-list, .shell.wide .task-side { overflow: auto; min-height: 0; }
 .shell.wide .center-col { min-height: 0; }
@@ -3140,3 +3140,6 @@ textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hid
 
 /* Classes could not load: say so calmly, with a way to try again */
 .load-error { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; background: var(--tint); color: var(--ink); font: 13px var(--sans); }
+/* The task frame while a task opens: the flame in the middle of the frame */
+.empty:has(> .frame-loading) { flex: 1; align-self: stretch; align-items: stretch; max-width: none; min-height: 0; padding: 0 !important; }
+.frame-loading { flex: 1; display: grid; place-items: center; min-height: 360px; padding: 24px; }

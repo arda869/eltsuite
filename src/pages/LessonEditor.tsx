@@ -265,6 +265,17 @@ export function LessonEditor() {
   useEffect(() => {
     if (user && c && c.teacherId === user.uid) claimClass(classId, user.uid); // boards can be prepared before class
   }, [user, c?.teacherId, classId]);
+  // Editing during a live lesson puts the pointer and pen away.
+  useEffect(() => {
+    if (!editWhileTeaching) return;
+    setInkMode('off');
+    setTimerMenu(false);
+    setActivityOpen(false);
+    if (pointerOn) {
+      setPointerOn(false);
+      if (task) sendPointer(classId, { taskId: task.id, bk: '', x: 0, y: 0, on: false });
+    }
+  }, [editWhileTeaching]); // eslint-disable-line react-hooks/exhaustive-deps
   const togglePointer = () => {
     const next = !pointerOn;
     setPointerOn(next);
@@ -487,7 +498,10 @@ export function LessonEditor() {
   }
 
   // Load the selected task (with its answer key) into the editor once per selection.
+  const [taskErr, setTaskErr] = useState('');
+  const [taskTry, setTaskTry] = useState(0);
   useEffect(() => {
+    setTaskErr('');
     if (!task) {
       setDraft(null);
       return;
@@ -502,6 +516,9 @@ export function LessonEditor() {
       setPreview(false);
       setPreviewResponses({});
       setPreviewChecked(false);
+    }, (e) => {
+      console.error(e);
+      if (!cancelled) setTaskErr((e as { code?: string }).code === 'permission-denied' ? 'This task could not be opened. If a “view as a learner” tab is open, close it, then try again.' : 'This task could not be opened. Check your connection, then try again.');
     });
     return () => {
       cancelled = true;
@@ -509,7 +526,7 @@ export function LessonEditor() {
     // Only when the selection changes, not on every remote update of the same task.
     // (A task whose content is kept apart waits until that content has arrived.)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, !!task && (!task.restricted || task.content !== null)]);
+  }, [selected, !!task && (!task.restricted || task.content !== null), taskTry]);
 
   const lastVersion = useRef<Record<string, number>>({});
   const draftRef = useRef<Draft | null>(null);
@@ -857,7 +874,8 @@ export function LessonEditor() {
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
-          {teachingHere && !preview && (
+          {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
+          {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
               <span className="tb-group" aria-label="The class">
                 <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? 'Learners follow you from task to task. Click to let them move freely (S)' : 'Bring everyone to the task you are on, and keep them with you (S)'}>
@@ -875,10 +893,11 @@ export function LessonEditor() {
                   </select>
                 )}
               </span>
-              {qCount > 0 && (
+              {/* Showing answers to the class is for presenting; while teaching, only a way to hide them again. */}
+              {qCount > 0 && (present || revealN !== 0 || singles.length > 0) && (
                 <span className="tb-group reveal-ctl" aria-label="Answers">
-                  <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
-                  <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
+                  {present && <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />}
+                  {present && <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />}
                   {(revealN !== 0 || singles.length > 0) && <IconBtn icon="hideAnswers" label="Hide the answers again (H)" onClick={hideAnswers} />}
                 </span>
               )}
@@ -952,7 +971,22 @@ export function LessonEditor() {
               </div>
             ) : !task || !draft ? (
               <div className="empty" style={{ padding: 28 }}>
-                {tasks.length ? <Loader label="Opening the task" /> : <h2>Add the first task</h2>}
+                {taskErr ? (
+                  <div className="frame-loading">
+                    <span className="load-error">
+                      {taskErr}
+                      <button type="button" className="btn small" onClick={() => setTaskTry((n) => n + 1)}>
+                        Try again
+                      </button>
+                    </span>
+                  </div>
+                ) : tasks.length ? (
+                  <div className="frame-loading">
+                    <Loader label="Opening the task" />
+                  </div>
+                ) : (
+                  <h2>Add the first task</h2>
+                )}
                 {!tasks.length && <p>A lesson is a set of tasks. Each task is like a page: a short title, a bold instruction, then the text and questions.</p>}
                 {!tasks.length && (
                   <button className="btn primary" onClick={newTask}>

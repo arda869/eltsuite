@@ -17,6 +17,8 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
     const move = (e: MouseEvent) => {
       if (!editor.isEditable) return hide();
       if ((e.target as HTMLElement).closest('.line-add')) return;
+      // A gap or choice shows its own drag handle at the start of the line; keep out of its way.
+      if ((e.target as HTMLElement).closest('.gap-node, .choice-node, .drop-node, .grip')) return hide();
       // The top-level block level with the pointer, or the nearest one when the pointer is in a gap.
       let best: HTMLElement | null = null;
       let dist = Infinity;
