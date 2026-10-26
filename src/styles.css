@@ -5235,3 +5235,15 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .daw-keys { font-size: 11px; }
 @media (max-width: 760px) { .daw-keys { display: none; } }
 .md-dialog:has(.daw) { width: min(1120px, calc(100vw - 32px)); max-width: none; }
+/* Speakers in listening scripts */
+.se-speakers { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.se-sp-l { font-size: 13px; font-weight: 600; }
+.se-cast { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.se-castname { height: 28px; padding: 0 10px; border: 1px solid var(--hair); border-radius: 99px; font: 600 12.5px var(--sans); background: var(--sp-bg); color: var(--sp-ink); }
+.se-who { height: 28px; padding: 0 26px 0 10px !important; border: 0; border-radius: 99px; font: 700 12px var(--sans); background-color: var(--sp-bg); color: var(--sp-ink); background-position: right 9px center !important; flex: none; max-width: 120px; }
+.sp0 { --sp-bg: color-mix(in srgb, var(--accent) 16%, var(--paper)); --sp-ink: var(--accent-text, var(--accent)); }
+.sp1 { --sp-bg: color-mix(in srgb, #4f7192 16%, var(--paper)); --sp-ink: #3f5f80; }
+.sp2 { --sp-bg: color-mix(in srgb, #7c6aa6 16%, var(--paper)); --sp-ink: #65558f; }
+.sp3 { --sp-bg: color-mix(in srgb, #8b6f4e 16%, var(--paper)); --sp-ink: #72593d; }
+.kl-line.has-who { display: flex; gap: 10px; align-items: baseline; }
+.kl-who { flex: none; min-width: 22px; padding: 1px 8px; border-radius: 99px; background: var(--sp-bg); color: var(--sp-ink); font: 700 11.5px/1.6 var(--sans); text-align: center; }

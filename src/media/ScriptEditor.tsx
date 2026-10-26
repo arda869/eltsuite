@@ -19,6 +19,14 @@ const parseT = (s: string): number | null => {
   return m ? Number(m[1] ?? 0) * 60 + Number(m[2]) : null;
 };
 
+// "Anna: Hello there" → speaker Anna. Short labels only, so "Note: …" in a sentence is unlikely.
+const SPEAKER = /^\s*([A-Z][\p{L}0-9 .'-]{0,18}?)\s*:\s+(.+)$/u;
+export function parseLine(raw: string): { who?: string; text: string } {
+  const m = SPEAKER.exec(raw);
+  return m ? { who: m[1].trim(), text: m[2].trim() } : { text: raw.trim() };
+}
+export const speakersOf = (lines: ScriptLine[]) => [...new Set(lines.map((l) => l.who).filter(Boolean) as string[])];
+
 export function spreadEvenly(lines: ScriptLine[], duration: number, from = 0): ScriptLine[] {
   const total = lines.reduce((s, l) => s + Math.max(4, l.text.length), 0) || 1;
   let acc = 0;
@@ -49,10 +57,36 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
   const duration = e.duration || e.m?.duration || 0;
   const set = (i: number, patch: Partial<ScriptLine>) => setLines(L.map((l, k) => (k === i ? { ...l, ...patch } : l)));
 
+  const fromText = (): ScriptLine[] =>
+    text
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((p, i) => {
+        const { who, text: body } = parseLine(p);
+        return { text: body, t: L[i]?.t ?? null, ...(who ? { who } : {}) };
+      });
   const applyBulk = () => {
-    const parts = text.split('\n').map((s) => s.trim()).filter(Boolean);
-    setLines(parts.map((p, i) => ({ text: p, t: L[i]?.t ?? null })));
+    setLines(fromText());
     setBulk(false);
+  };
+  // Speakers: one (no labels), A and B, or names. Each line can be given to any of them.
+  const speakers = speakersOf(L);
+  const mode: 'one' | 'ab' | 'names' = !speakers.length ? 'one' : speakers.every((x) => /^[A-D]$/.test(x)) ? 'ab' : 'names';
+  const [names, setNames] = useState<string[]>([]);
+  const cast = mode === 'names' ? [...new Set([...speakers, ...names])] : mode === 'ab' ? [...new Set(['A', 'B', ...speakers])] : [];
+  const setMode = (m: 'one' | 'ab' | 'names') => {
+    if (m === 'one') return setLines(L.map(({ who: _w, ...l }) => l));
+    if (m === 'ab') return setLines(L.map((l, i) => ({ ...l, who: speakers.length ? 'AB'[Math.max(0, speakers.indexOf(l.who ?? ''))] ?? 'A' : i % 2 ? 'B' : 'A' })));
+    const list = names.length >= 2 ? names : ['Speaker 1', 'Speaker 2'];
+    setNames(list);
+    setLines(L.map((l, i) => ({ ...l, who: list[speakers.length ? Math.max(0, speakers.indexOf(l.who ?? '')) % list.length : i % list.length] })));
+  };
+  const renameSpeaker = (from: string, to: string) => {
+    const n = to.trim();
+    if (!n || n === from) return;
+    setNames(cast.map((x) => (x === from ? n : x)));
+    setLines(L.map((l) => (l.who === from ? { ...l, who: n } : l)));
   };
   const startTap = () => {
     if (!L.length) return;
@@ -92,7 +126,7 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
 
   const save = async () => {
     if (bulk) applyBulk();
-    const parts = bulk ? text.split('\n').map((s) => s.trim()).filter(Boolean).map((p, i) => ({ text: p, t: L[i]?.t ?? null })) : L.filter((l) => l.text.trim());
+    const parts = bulk ? fromText() : L.filter((l) => l.text.trim());
     setSaving(true);
     try {
       await onSave(parts);
@@ -117,6 +151,7 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
           <div className="field">
             <span>The script, one line for each sentence or speaker turn</span>
             <textarea className="se-bulk" value={text} autoFocus placeholder={'Paste or type the script here.\nEach line lights up as it is spoken.'} onChange={(ev) => setText(ev.target.value)} />
+            <span className="hint">More than one speaker? Start lines with a name or a letter, like “A: Hello” or “Anna: Hello”.</span>
             <span className="se-tools">
               <button type="button" className="btn small-btn" disabled={!text.trim()} onClick={() => setText(splitScript(text).join('\n'))}>
                 One line for each sentence
@@ -146,7 +181,7 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
                 type="button"
                 className="btn small-btn"
                 onClick={() => {
-                  setText(L.map((l) => l.text).join('\n'));
+                  setText(L.map((l) => (l.who ? `${l.who}: ${l.text}` : l.text)).join('\n'));
                   setBulk(true);
                   setTap(null);
                 }}
@@ -158,6 +193,34 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
                 Clear times
               </button>
             </span>
+            <div className="se-speakers">
+              <span className="se-sp-l">Speakers</span>
+              <span className="seg small-seg" role="radiogroup" aria-label="Speakers">
+                {(
+                  [
+                    ['one', 'One speaker'],
+                    ['ab', 'A and B'],
+                    ['names', 'Names'],
+                  ] as const
+                ).map(([k, l]) => (
+                  <button key={k} type="button" role="radio" aria-checked={mode === k} className={mode === k ? 'on' : ''} onClick={() => setMode(k)}>
+                    {l}
+                  </button>
+                ))}
+              </span>
+              {mode === 'names' && (
+                <span className="se-cast">
+                  {cast.map((n, i) => (
+                    <input key={n + i} className={'se-castname sp' + (i % 4)} defaultValue={n} aria-label={`Speaker ${i + 1}`} onBlur={(ev) => renameSpeaker(n, ev.target.value)} onKeyDown={(ev) => ev.key === 'Enter' && (ev.currentTarget as HTMLInputElement).blur()} size={Math.max(4, n.length)} />
+                  ))}
+                  {cast.length < 6 && (
+                    <button type="button" className="btn link small" onClick={() => setNames([...cast, `Speaker ${cast.length + 1}`])}>
+                      + Speaker
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
             <span className="hint">{tap !== null ? 'Press Space (or the button) as each line begins. Escape stops.' : 'Click a time to set it to now. Click a line number to play from there.'}</span>
             <div className="se-rows" ref={rows}>
               {L.map((l, i) => (
@@ -166,6 +229,15 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
                     {i + 1}
                   </button>
                   <TimeField value={l.t} onSet={(t) => set(i, { t })} now={e.time} />
+                  {cast.length > 0 && (
+                    <select className={'se-who sp' + Math.max(0, cast.indexOf(l.who ?? '')) % 4} value={l.who ?? ''} onChange={(ev) => set(i, { who: ev.target.value || undefined })} aria-label={`Speaker of line ${i + 1}`}>
+                      {cast.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <input className="se-text" value={l.text} onChange={(ev) => set(i, { text: ev.target.value })} aria-label={`Line ${i + 1}`} />
                   <button type="button" className="se-x" aria-label={`Remove line ${i + 1}`} onClick={() => setLines(L.filter((_, k) => k !== i))}>
                     ×

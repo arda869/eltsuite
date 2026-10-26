@@ -7,7 +7,7 @@ import { mediaCol, mediaDoc } from './media';
 // any lesson or class. The archive entry lives with the teacher; the media itself lives in each class
 // that uses it (so that class's learners can open it), copied there the first time it is used.
 
-export type ScriptLine = { t: number | null; text: string };
+export type ScriptLine = { t: number | null; text: string; who?: string }; // who: the speaker, when there is more than one
 export type ArchiveKind = 'image' | 'audio' | 'video';
 export type ArchiveItem = {
   id: string;
@@ -319,7 +319,7 @@ export function transcriptOf(item: ArchiveItem): string | null {
   const lines = (item.script ?? []).filter((l) => l.text.trim());
   if (!lines.length) return null;
   const t = (x: number) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`;
-  return `${item.name}\n\n` + lines.map((l) => (l.t === null || l.t === undefined ? l.text : `[${t(l.t)}] ${l.text}`)).join('\n') + '\n';
+  return `${item.name}\n\n` + lines.map((l) => { const body = l.who ? `${l.who}: ${l.text}` : l.text; return l.t === null || l.t === undefined ? body : `[${t(l.t)}] ${body}`; }).join('\n') + '\n';
 }
 const saveText = (text: string, name: string) => {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));

@@ -355,6 +355,7 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 
 export function Karaoke({ lines, time, duration, onSeek, big }: { lines: ScriptLine[]; time: number; duration: number; onSeek?: (t: number) => void; big?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const timed = lines.some((l) => l.t !== null);
+  const cast = [...new Set(lines.map((l) => l.who).filter(Boolean) as string[])];
   let now = -1;
   if (timed) lines.forEach((l, i) => l.t !== null && l.t <= time + 0.05 && (now = i));
   void duration;
@@ -371,7 +372,8 @@ export function Karaoke({ lines, time, duration, onSeek, big }: { lines: ScriptL
         const state = !timed ? '' : i === now ? ' now' : i < now ? ' past' : '';
         const words: ReactNode = l.text; // the line lights up as a whole: word timing inside a line is only a guess
         return (
-          <p key={i} className={'kl-line' + state + (onSeek && l.t !== null ? ' seekable' : '')} onClick={() => onSeek && l.t !== null && onSeek(l.t)}>
+          <p key={i} className={'kl-line' + state + (onSeek && l.t !== null ? ' seekable' : '') + (l.who ? ' has-who' : '')} onClick={() => onSeek && l.t !== null && onSeek(l.t)}>
+            {l.who && <b className={'kl-who sp' + (cast.indexOf(l.who) % 4)}>{l.who}</b>}
             {words}
           </p>
         );
