@@ -8,6 +8,7 @@ export type LiveState = {
   itemId: string;
   taskId: string;
   teacherName: string;
+  teacherUid?: string; // which teacher is presenting (co-teachers)
   sync?: boolean; showMarker?: boolean; // learners follow the teacher's task
   revealed?: Record<string, number>; // taskId -> how many answers are revealed (-1 = all)
   revealedQs?: Record<string, string[]>; // taskId -> single questions the teacher revealed

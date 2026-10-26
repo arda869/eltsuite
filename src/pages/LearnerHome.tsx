@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
+import { AnnouncementBoard } from '../components/AnnouncementBoard';
 import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
@@ -24,6 +25,18 @@ function dueText(ms: number) {
   if (days === 1) return `Due tomorrow ${time}`;
   if (days < 0) return `Was due ${new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
   return `Due ${new Date(ms).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}`;
+}
+
+function whenText(at: number) {
+  const d = new Date(at);
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (at < Date.now()) return `Started at ${time}`;
+  if (same(d, today)) return `Today at ${time}`;
+  if (same(d, tomorrow)) return `Tomorrow at ${time}`;
+  return `${d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })} at ${time}`;
 }
 
 export function LearnerHome({ classId, name }: { classId: string; name: string }) {
@@ -66,7 +79,16 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
     .sort((a, b) => (a.i.due ?? Infinity) - (b.i.due ?? Infinity));
   const firstName = name.split(' ')[0];
   const liveNow = isLive(live) ? items.find((i) => i.id === live!.itemId) : undefined;
-  const showCall = !!c?.meeting?.url && (c.meeting.visibility === 'always' || !!liveNow);
+  // The next scheduled lesson (within the last hour counts as now). Times are shown in the learner's own time zone.
+  const nextLesson = useMemo(() => {
+    const now = Date.now();
+    return items
+      .filter((i) => i.type === 'lesson' && i.schedule?.at && i.schedule.at > now - 3600000 && (!i.hidden || visible.some((v) => v.id === i.id)))
+      .sort((a, b) => a.schedule!.at - b.schedule!.at)[0];
+  }, [items, visible]);
+  const soon = !!nextLesson && nextLesson.schedule!.at - Date.now() < 15 * 60000;
+  const showCall = !!c?.meeting?.url && (c.meeting.visibility === 'always' || !!liveNow || (c.meeting.visibility === 'before15' && soon));
+  const nextLink = nextLesson?.schedule?.url || (c?.meeting?.url && (c.meeting.visibility === 'always' || soon) ? c.meeting.url : '');
 
   return (
     <div className="shell" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
@@ -128,7 +150,24 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
             </section>
           )}
 
-          {showCall && !liveNow && (
+          {nextLesson && !liveNow && (
+            <section className="live-card next-card">
+              <span style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <span className="eyebrow accent">Next lesson</span>
+                <span style={{ fontFamily: 'var(--serif)', fontSize: 16 }}>{nextLesson.title}</span>
+                <span className="hint">
+                  {whenText(nextLesson.schedule!.at)} · {Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ')}
+                </span>
+              </span>
+              {nextLink && (
+                <a className={'btn' + (soon ? ' primary' : '')} href={nextLink} target="_blank" rel="noopener noreferrer">
+                  Join call
+                </a>
+              )}
+            </section>
+          )}
+
+          {showCall && !liveNow && !(nextLesson && nextLink) && (
             <section className="live-card">
               <span className="live-dot" aria-hidden="true" />
               <span style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -140,6 +179,8 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               </a>
             </section>
           )}
+
+          {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}
 
           {todo.length > 0 && (
             <section className="todo">

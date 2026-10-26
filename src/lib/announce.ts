@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
-import { addDoc, collection, deleteField, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, type Timestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, deleteField, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Short announcements from the teacher. `to` is 'all' or a list of learnerIds.
-export type Announcement = { id: string; text: string; link?: string; to: 'all' | string[]; chime: boolean; at?: Timestamp; remindAt?: number; acks?: Record<string, number> };
+// sendAt: when learners may see it (a scheduled announcement has a sendAt in the future).
+// pinned: stays at the top of the class home screen until unpinned.
+export type Announcement = { id: string; text: string; link?: string; to: 'all' | string[]; chime: boolean; at?: Timestamp; sendAt: number; pinned?: boolean; remindAt?: number; acks?: Record<string, number>; byName?: string };
 
 const col = (classId: string) => collection(db, 'classes', classId, 'announcements');
 
-export function postAnnouncement(classId: string, a: Omit<Announcement, 'id' | 'at' | 'acks'>) {
-  return addDoc(col(classId), { ...a, acks: {}, at: serverTimestamp() });
+export function postAnnouncement(classId: string, a: Omit<Announcement, 'id' | 'at' | 'acks' | 'sendAt'> & { sendAt?: number }) {
+  return addDoc(col(classId), { ...a, sendAt: a.sendAt ?? Date.now(), acks: {}, at: serverTimestamp() });
 }
+export const pinAnnouncement = (classId: string, id: string, pinned: boolean) => updateDoc(doc(col(classId), id), { pinned });
+export const cancelScheduled = (classId: string, id: string) => deleteDoc(doc(col(classId), id));
+export const SKEW = 60000; // learners ask for announcements due up to a minute ago, so clock differences never block the query
 export function acknowledge(classId: string, id: string, learnerId: string) {
   return updateDoc(doc(col(classId), id), { [`acks.${learnerId}`]: Date.now() });
 }
@@ -20,12 +25,20 @@ export function retract(classId: string, id: string) {
   return updateDoc(doc(col(classId), id), { to: [], remindAt: deleteField() });
 }
 
-export function useAnnouncements(classId: string) {
+// Teachers see everything (including scheduled ones). Learners only what is due; the query is renewed every minute.
+export function useAnnouncements(classId: string, learner = false) {
   const [list, setList] = useState<Announcement[]>([]);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!learner) return;
+    const t = window.setInterval(() => setTick((n) => n + 1), 60000);
+    return () => window.clearInterval(t);
+  }, [learner]);
   useEffect(() => {
     if (!classId) return;
-    return onSnapshot(query(col(classId), orderBy('at', 'desc')), (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Announcement, 'id'>) }))), () => {});
-  }, [classId]);
+    const q = learner ? query(col(classId), where('sendAt', '<=', Date.now() - SKEW), orderBy('sendAt', 'desc')) : query(col(classId), orderBy('sendAt', 'desc'));
+    return onSnapshot(q, (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Announcement, 'id'>) }))), () => {});
+  }, [classId, learner, tick]);
   return list;
 }
 

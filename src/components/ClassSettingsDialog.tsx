@@ -3,6 +3,7 @@ import { LevelPicker } from './LevelPicker';
 import { DEFAULT_CODES } from '../lib/annotations';
 import { updateClass, type ClassDoc, type Meeting } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
+import { TeachersPanel } from './TeachersPanel';
 
 export function meetingProvider(url: string) {
   const u = url.toLowerCase();
@@ -112,6 +113,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           </>
         )}
 
+        <TeachersPanel c={c} />
         {error && <span className="error" role="alert">{error}</span>}
         <div className="field">
           <span className="row-between">

@@ -155,9 +155,11 @@ export function ClassPage() {
                       Restore class
                     </button>
                   )}
+                  {c.teacherId === user?.uid && (
                   <button role="menuitem" className="danger-item" onClick={() => (setMenu(false), setDeleting(true))}>
                     Delete class…
                   </button>
+                  )}
                 </div>
               )}
             </div>

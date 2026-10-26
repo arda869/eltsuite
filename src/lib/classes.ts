@@ -29,6 +29,11 @@ export type ClassDoc = {
   deletedAt?: Timestamp | null;
   codes?: { code: string; meaning: string }[];
   notebook?: { level: 'view' | 'add' | 'all'; review?: boolean; blocked?: string[] }; // who may add to the class notebook
+  coTeachers?: Record<string, { role: 'co' | 'viewer'; email: string; name: string }>; // other teachers with access
+  teacherIds?: string[]; // co-teacher uids, for queries
+  invites?: Record<string, { role: 'co' | 'viewer'; by: string; at: number }>; // keyed by email with . replaced by ,
+  inviteEmails?: string[];
+  discussion?: { learnersStart?: boolean; approval?: boolean; muted?: string[]; track?: boolean };
 };
 
 export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };

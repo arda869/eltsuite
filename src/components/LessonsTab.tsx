@@ -199,6 +199,26 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
             <input type="datetime-local" value={item.due ? toLocal(item.due) : ''} onChange={(e) => updateItem(c.id, item.id, { due: e.target.value ? new Date(e.target.value).getTime() : null })} />
           </label>
         )}
+        {item.type === 'lesson' && (
+          <label className="item-due" title="When this lesson happens. Learners see the next lesson, in their own time zone, on their home screen.">
+            <span className="hint">When</span>
+            <input type="datetime-local" value={item.schedule?.at ? toLocal(item.schedule.at) : ''} onChange={(e) => updateItem(c.id, item.id, { schedule: e.target.value ? { at: new Date(e.target.value).getTime(), ...(item.schedule?.url ? { url: item.schedule.url } : {}) } : null })} />
+          </label>
+        )}
+        {item.type === 'lesson' && item.schedule?.at && (
+          <input
+            className="item-link"
+            type="url"
+            placeholder={c.meeting?.url ? 'Video link (uses the class link if empty)' : 'Video link, for example Zoom or Meet'}
+            aria-label="Video link for this lesson"
+            defaultValue={item.schedule.url ?? ''}
+            onBlur={(e) => {
+              const url = e.target.value.trim();
+              if (url && !/^https:\/\//i.test(url)) return;
+              if ((item.schedule?.url ?? '') !== url) updateItem(c.id, item.id, { schedule: { at: item.schedule!.at, ...(url ? { url } : {}) } });
+            }}
+          />
+        )}
         <select
           className="use-as"
           value=""

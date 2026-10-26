@@ -119,7 +119,7 @@ export function SignalBar({ classId, uid, name, learnerId }: { classId: string; 
 
 // Learner: announcement cards, top right, until "Got it".
 export function AnnouncementCards({ classId, learnerId }: { classId: string; learnerId: string }) {
-  const list = useAnnouncements(classId);
+  const list = useAnnouncements(classId, true);
   const seen = useRef<Set<string>>(new Set());
   const first = useRef(true);
   const mine = list.filter((a) => (a.to === 'all' || (Array.isArray(a.to) && a.to.includes(learnerId))) && (!a.acks?.[learnerId] || (a.remindAt ?? 0) > (a.acks?.[learnerId] ?? 0)));

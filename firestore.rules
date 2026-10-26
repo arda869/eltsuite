@@ -14,7 +14,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
     function classData(classId) { return get(/databases/$(database)/documents/classes/$(classId)).data; }
-    function teachesClass(classId) { return signedIn() && classData(classId).teacherId == request.auth.uid; }
+    function coRole(c) { return c.get('coTeachers', {}).get(request.auth.uid, {}).get('role', ''); }
+    function teachesClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) == 'co'); }
+    function viewsClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) in ['co', 'viewer']); }
+    function ownsClass(classId) { return signedIn() && classData(classId).teacherId == request.auth.uid; }
+    function myEmailKey() { return request.auth.token.get('email', '').lower().replace('[.]', ','); }
     function memberOf(classId) {
       return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
@@ -31,40 +35,53 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId));
+      allow read: if signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
+        || request.auth.uid in resource.data.get('coTeachers', {})
+        || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 80;
       allow update: if signedIn()
-        && resource.data.teacherId == request.auth.uid
         && request.resource.data.teacherId == resource.data.teacherId
-        && request.resource.data.classCode == resource.data.classCode;
+        && request.resource.data.classCode == resource.data.classCode
+        && (
+          resource.data.teacherId == request.auth.uid
+          // a co-teacher may change anything except who has access
+          || (coRole(resource.data) == 'co' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coTeachers', 'teacherIds', 'invites', 'inviteEmails']))
+          // an invited teacher accepts (or declines) their own invitation
+          || (myEmailKey() in resource.data.get('invites', {})
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coTeachers', 'teacherIds', 'invites', 'inviteEmails'])
+            && !(myEmailKey() in request.resource.data.get('invites', {}))
+            && (!(request.auth.uid in request.resource.data.get('coTeachers', {}))
+              || request.resource.data.coTeachers[request.auth.uid].role == resource.data.invites[myEmailKey()].role))
+        );
       allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
 
       // Content learners can see
       match /topics/{topicId} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
       }
       match /items/{itemId} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
 
         match /tasks/{taskId} {
-          allow read: if teachesClass(classId) || memberOf(classId);
+          allow read: if viewsClass(classId) || memberOf(classId);
           allow write: if teachesClass(classId);
 
           // Earlier versions of the task (with answers): teacher only
           match /versions/{versionId} {
-            allow read, write: if teachesClass(classId);
+            allow read: if viewsClass(classId);
+            allow write: if teachesClass(classId);
           }
 
           // Answer key: learners can read it only after they have checked their answers.
           // Body: the content of a task only some learners may open (groups and versions).
           match /private/{docId} {
-            allow read: if teachesClass(classId)
+            allow read: if viewsClass(classId)
               || (docId == 'body' && memberOf(classId)
                   && get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
                      in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
@@ -87,7 +104,7 @@ service cloud.firestore {
 
       // Learner answers: one document per task per learner
       match /answers/{answerId} {
-        allow read: if teachesClass(classId)
+        allow read: if viewsClass(classId)
           || (signedIn() && answerId.split('_')[1] == request.auth.uid);
         allow create: if memberOf(classId)
           && request.resource.data.learnerUid == request.auth.uid
@@ -104,14 +121,14 @@ service cloud.firestore {
 
       // Group sets (breakout rooms): the teacher makes them; learners can see their room
       match /groupSets/{sid} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
       }
 
       // Survey and poll answers. Anonymous answers carry no uid, learner id or name and have a
       // random id; named answers use surveyId_uid so the learner can change them.
       match /surveyResponses/{rid} {
-        allow read: if teachesClass(classId) || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.get('uid', '') == request.auth.uid);
         allow create: if memberOf(classId) && (
           (!('uid' in request.resource.data) && !('learnerId' in request.resource.data) && !('name' in request.resource.data))
           || (request.resource.data.uid == request.auth.uid && rid == request.resource.data.surveyId + '_' + request.auth.uid));
@@ -119,13 +136,13 @@ service cloud.firestore {
         allow delete: if teachesClass(classId);
       }
       match /surveyDone/{did} {
-        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
         allow create, update: if memberOf(classId) && request.resource.data.uid == request.auth.uid && did == request.resource.data.surveyId + '_' + request.auth.uid;
         allow delete: if teachesClass(classId);
       }
       // Shared results: counts and texts only
       match /surveyResults/{sid} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
       }
 
@@ -138,7 +155,7 @@ service cloud.firestore {
       function nbCanAdd() { return memberOf(classId) && nbLevel() != 'view' && !(myLearnerId() in nb().get('blocked', [])); }
       match /notebook/{eid} {
         // Learners see published, unhidden entries and anything they added themselves.
-        allow read: if teachesClass(classId)
+        allow read: if viewsClass(classId)
           || (memberOf(classId) && ((resource.data.status == 'published' && resource.data.get('hidden', false) == false) || resource.data.addedBy == request.auth.uid));
         allow create: if teachesClass(classId)
           || (nbCanAdd() && request.resource.data.type != 'page'
@@ -156,7 +173,7 @@ service cloud.firestore {
 
         // Earlier versions: anyone who edits writes one; only the teacher reads and restores
         match /history/{hid} {
-          allow read: if teachesClass(classId);
+          allow read: if viewsClass(classId);
           allow create: if teachesClass(classId) || (nbCanAdd() && request.resource.data.by is string);
           allow delete: if teachesClass(classId);
         }
@@ -171,7 +188,7 @@ service cloud.firestore {
 
       // Attendance: learners add their own minutes while a lesson is live; the teacher corrects
       match /attendance/{aid} {
-        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
         allow create: if teachesClass(classId)
           || (memberOf(classId) && request.resource.data.uid == request.auth.uid && aid == request.resource.data.itemId + '_' + request.auth.uid && !('corrected' in request.resource.data));
         allow update: if teachesClass(classId)
@@ -181,14 +198,14 @@ service cloud.firestore {
       }
       // Mistake bank: each learner's own review deck; the teacher reads all of it
       match /mistakes/{mid} {
-        allow read: if teachesClass(classId) || (signedIn() && resource.data.learnerUid == request.auth.uid);
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.learnerUid == request.auth.uid);
         allow create, update: if memberOf(classId) && request.resource.data.learnerUid == request.auth.uid;
         allow delete: if teachesClass(classId) || (signedIn() && resource.data.learnerUid == request.auth.uid);
       }
 
       // Exam attempts: a learner starts once and can only add the time they submitted
       match /examRuns/{rid} {
-        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
         allow create: if memberOf(classId) && request.resource.data.uid == request.auth.uid
           && rid == request.resource.data.scope + '_' + request.auth.uid
           && request.resource.data.submittedMs == null;
@@ -199,7 +216,7 @@ service cloud.firestore {
 
       // The level a learner chose for a task with level versions
       match /levelChoices/{cid} {
-        allow read: if teachesClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
+        allow read: if viewsClass(classId) || (signedIn() && resource.data.uid == request.auth.uid);
         allow create, update: if memberOf(classId) && request.resource.data.uid == request.auth.uid
           && cid == request.resource.data.family + '_' + request.auth.uid
           && request.resource.data.learnerId == get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId;
@@ -208,7 +225,7 @@ service cloud.firestore {
 
       // Peer feedback sent to a classmate: the giver writes it, the receiver and the teacher read it
       match /feedback/{fid} {
-        allow read: if teachesClass(classId)
+        allow read: if viewsClass(classId)
           || (memberOf(classId) && (resource.data.fromUid == request.auth.uid
               || resource.data.to == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.learnerId));
         allow create, update: if memberOf(classId) && request.resource.data.fromUid == request.auth.uid;
@@ -217,14 +234,14 @@ service cloud.firestore {
 
       // Short audio clips (recorded or uploaded by the teacher)
       match /media/{mediaId} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow create: if teachesClass(classId) && request.resource.data.size < 700000;
         allow delete: if teachesClass(classId);
       }
 
       // Profile pictures in use in this class (one person per picture)
       match /avatars/{key} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow create: if (teachesClass(classId) || memberOf(classId)) && request.resource.data.uid == request.auth.uid;
         allow update: if resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
         allow delete: if resource.data.uid == request.auth.uid || teachesClass(classId);
@@ -232,7 +249,7 @@ service cloud.firestore {
 
       // Announcements: the teacher writes; learners can only add their own "Got it"
       match /announcements/{aid} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || (memberOf(classId) && resource.data.get('sendAt', 0) <= request.time.toMillis());
         allow create, delete: if teachesClass(classId);
         allow update: if teachesClass(classId)
           || (memberOf(classId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acks'])
@@ -241,7 +258,7 @@ service cloud.firestore {
 
       // Annotations on task text and on long answers
       match /annotations/{aid} {
-        allow read: if teachesClass(classId)
+        allow read: if viewsClass(classId)
           || (memberOf(classId) && (resource.data.visibility == 'class' || resource.data.get('learnerUid', '') == request.auth.uid));
         allow create, delete: if teachesClass(classId);
         // Learners can only add replies to threads they can see.
@@ -252,7 +269,7 @@ service cloud.firestore {
 
       // Tag notifications
       match /notices/{nid} {
-        allow read: if teachesClass(classId)
+        allow read: if viewsClass(classId)
           || (memberOf(classId) && resource.data.to == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.learnerId);
         allow create: if (teachesClass(classId) || memberOf(classId)) && request.resource.data.fromUid == request.auth.uid;
         allow delete: if teachesClass(classId);
@@ -260,7 +277,7 @@ service cloud.firestore {
 
       // Message boards and post-it walls
       match /boards/{boardId}/posts/{postId} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow create: if (teachesClass(classId) || memberOf(classId))
           && request.resource.data.byUid == request.auth.uid
           && request.resource.data.text is string && request.resource.data.text.size() <= 1000;
@@ -271,33 +288,35 @@ service cloud.firestore {
 
       // Shared "draw a card" piles (played together as a class)
       match /picks/{pickId} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId)
           || (memberOf(classId) && request.resource.data.keys().hasOnly(['taskId', 'pickId', 'h', 'b', 'seq', 'by', 'at']));
       }
 
       // Where the teacher is in a lesson
       match /live/{docId} {
-        allow read: if teachesClass(classId) || memberOf(classId);
+        allow read: if viewsClass(classId) || memberOf(classId);
         allow write: if teachesClass(classId);
       }
 
       // Who is online and which task they are on
       match /presence/{uid} {
-        allow read: if teachesClass(classId);
+        allow read: if viewsClass(classId);
         allow write: if isSelf(uid) && memberOf(classId);
         allow delete: if teachesClass(classId);
       }
 
       // Roster: teacher only
       match /learners/{learnerId} {
-        allow read, write: if teachesClass(classId);
+        allow read: if viewsClass(classId);
+        allow write: if teachesClass(classId);
       }
       match /secrets/{learnerId} {
-        allow read, write: if teachesClass(classId);
+        allow read: if teachesClass(classId);
+        allow write: if teachesClass(classId);
       }
       match /members/{memberUid} {
-        allow read: if teachesClass(classId) || isSelf(memberUid);
+        allow read: if viewsClass(classId) || isSelf(memberUid);
         allow write: if teachesClass(classId);
       }
     }
@@ -307,7 +326,9 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
       allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+      allow update: if signedIn() && (resource.data.teacherId == request.auth.uid || teachesClass(resource.data.classId))
+        && request.resource.data.teacherId == resource.data.teacherId;
+      allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
     }
   }
 }

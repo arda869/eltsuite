@@ -2447,6 +2447,7 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .item-extra { display: flex; align-items: center; gap: 8px; flex-basis: 100%; padding-left: 84px; font-family: var(--sans); font-size: 12px; }
 .item-due { display: flex; align-items: center; gap: 6px; }
 .item-due input { font: inherit; font-size: 12px; border: 1px solid var(--hair); border-radius: 6px; padding: 2px 6px; }
+.item-link { font: inherit; font-size: 12px; border: 1px solid var(--hair); border-radius: 6px; padding: 2px 6px; width: 200px; }
 .use-as { font: inherit; font-size: 12px; border: 1px solid var(--hair); border-radius: 6px; padding: 2px 6px; background: #fff; color: var(--muted); }
 .item { flex-wrap: wrap; }
 .todo { display: flex; flex-direction: column; gap: 8px; }
@@ -2550,3 +2551,23 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 
 /* ---- Worksheet export ---- */
 .ws-tasks { max-height: 220px; overflow: auto; }
+
+/* ---- Co-teachers ---- */
+.tp-list { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tp-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--hair); border-radius: 10px; font-size: 14px; }
+.tp-invite { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tp-invite input { flex: 1; min-width: 180px; }
+.invite-card { border: 1px solid var(--accent); border-radius: 14px; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; max-width: 640px; background: color-mix(in srgb, var(--accent) 6%, white); }
+
+/* ---- Announcements board ---- */
+.board { border: 1px solid var(--hair); border-radius: 14px; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.board-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.board-head .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-badge { font: 600 11px var(--sans); color: var(--accent-text); background: color-mix(in srgb, var(--accent) 14%, white); border-radius: 999px; padding: 2px 8px; }
+.board-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.board-row { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 8px 14px; border-left: 3px solid var(--hair); border-radius: 4px; }
+.board-row.pinned { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 5%, white); }
+.board-row.unread .board-text::after { content: ' •'; color: var(--accent-text); }
+.board-text { font: 15px var(--serif); }
+.ann-pin { font: 600 10px var(--sans); text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-text); margin-right: 6px; }
+.ann-history { max-height: 260px; overflow: auto; }

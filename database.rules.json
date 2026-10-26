@@ -6,32 +6,38 @@
         ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && newData.val() === auth.uid"
       }
     },
+    "classTeachers": {
+      "$classId": {
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
+      }
+    },
     "sessions": {
       "$classId": {
         ".read": "auth != null",
         "pointer": {
-          ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
+          ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
         },
         "signals": {
           "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || root.child('classOwners').child($classId).val() === auth.uid)"
+            ".write": "auth != null && (auth.uid === $uid || (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true))"
           }
         },
         "board": {
           "$taskId": {
             "pen": {
-              ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
+              ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
             },
             "strokes": {
               "$sid": {
-                ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || ((root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === 'all' || root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === auth.uid) && (!data.exists() || data.child('by').val() === auth.uid) && (!newData.exists() || newData.child('by').val() === auth.uid)))"
+                ".write": "auth != null && ((root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true) || ((root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === 'all' || root.child('sessions').child($classId).child('board').child($taskId).child('pen').val() === auth.uid) && (!data.exists() || data.child('by').val() === auth.uid) && (!newData.exists() || newData.child('by').val() === auth.uid)))"
               },
-              ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid"
+              ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)"
             }
           }
         },
         "quiz": {
-          ".write": "auth != null && root.child('classOwners').child($classId).val() === auth.uid",
+          ".write": "auth != null && (root.child('classOwners').child($classId).val() === auth.uid || root.child('classTeachers').child($classId).child(auth.uid).val() === true)",
           "answers": {
             "$uid": {
               ".write": "auth != null && auth.uid === $uid"

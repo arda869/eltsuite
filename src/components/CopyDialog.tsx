@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
+import { allTeacherClasses, canEdit } from '../lib/coteach';
 import { copyLesson, copyTask } from '../lib/copy';
 
 type Opt = { id: string; name: string };
@@ -18,9 +19,7 @@ export function CopyDialog({ kind, fromClass, itemId, taskId, title, onClose, on
 
   useEffect(() => {
     if (!user) return;
-    getDocs(query(collection(db, 'classes'), where('teacherId', '==', user.uid))).then((s) =>
-      setClasses(s.docs.filter((d) => d.data().status !== 'deleted').map((d) => ({ id: d.id, name: d.data().name as string }))),
-    );
+    allTeacherClasses(user.uid).then((all) => setClasses(all.filter((c) => c.status !== 'deleted' && canEdit(c, user.uid)).map((c) => ({ id: c.id, name: c.name }))));
   }, [user]);
   useEffect(() => {
     if (kind !== 'task' || !toClass) return;

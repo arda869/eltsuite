@@ -22,7 +22,9 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const [classIds, setClassIds] = useState<string[]>([]);
   useEffect(() => {
     if (!user || profile?.role !== 'teacher') return;
-    return onSnapshot(query(collection(db, 'classes'), where('teacherId', '==', user.uid)), (s) => setClassIds(s.docs.map((d) => d.id)), () => {});
+    const u1 = onSnapshot(query(collection(db, 'classes'), where('teacherId', '==', user.uid)), (s) => setClassIds((cur) => [...new Set([...cur, ...s.docs.map((d) => d.id)])]), () => {});
+    const u2 = onSnapshot(query(collection(db, 'classes'), where('teacherIds', 'array-contains', user.uid)), (s) => setClassIds((cur) => [...new Set([...cur, ...s.docs.map((d) => d.id)])]), () => {});
+    return () => (u1(), u2());
   }, [user, profile?.role]);
   const ref = useRef<HTMLDivElement>(null);
   const name = user?.displayName || user?.email?.split('@')[0] || '';

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { updateClass, type ClassDoc, type Item } from '../lib/classes';
@@ -8,6 +8,7 @@ import { isLive, liveRef, type LiveState } from '../lib/live';
 import { theme } from '../lib/themes';
 import { DELETE_AFTER_DAYS, purgeClass, restoreClass } from '../lib/deletion';
 import { createDemoClass } from '../lib/demo';
+import { acceptInvite, declineInvite, emailKey, syncLiveTeachers, useInvites, useTeacherClasses } from '../lib/coteach';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
 
@@ -41,7 +42,6 @@ function useClassDetails(ids: string[]) {
 export function TeacherHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [classes, setClasses] = useState<ClassDoc[] | null>(null);
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -59,19 +59,18 @@ export function TeacherHome() {
     }
   }
 
+  const mine = useTeacherClasses(user?.uid);
+  const classes = mine.classes;
   useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'classes'), where('teacherId', '==', user.uid));
-    return onSnapshot(
-      q,
-      (snap) => setClasses(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))),
-      (e) => {
-        console.error(e);
-        setError('Your classes could not be loaded. Please refresh the page.');
-        setClasses([]);
-      },
-    );
-  }, [user]);
+    if (mine.error) setError(mine.error);
+  }, [mine.error]);
+  const invites = useInvites(user?.email);
+  const [inviteMsg, setInviteMsg] = useState('');
+  // Keep the live database in step with the co-teacher list for the classes I own.
+  useEffect(() => {
+    for (const c of classes ?? []) if (c.teacherId === user?.uid && c.coTeachers && Object.keys(c.coTeachers).length) syncLiveTeachers(c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify((classes ?? []).map((c) => [c.id, c.coTeachers ?? null]))]);
 
   const byNewest = (a: ClassDoc, b: ClassDoc) => (b.createdAt?.toMillis?.() ?? Date.now()) - (a.createdAt?.toMillis?.() ?? Date.now());
   const active = useMemo(() => (classes ?? []).filter((c) => c.status === 'active').sort(byNewest), [classes]);
@@ -165,6 +164,33 @@ export function TeacherHome() {
 
           {error && <span className="error">{error}</span>}
 
+          {invites.length > 0 && user && (
+            <section className="invite-card" aria-label="Invitations">
+              <span className="eyebrow" style={{ fontSize: 11 }}>
+                You are invited
+              </span>
+              {invites.map((c) => {
+                const inv = c.invites?.[emailKey(user.email ?? '')];
+                return (
+                  <div key={c.id} className="row-between" style={{ gap: 10, flexWrap: 'wrap' }}>
+                    <span>
+                      <strong>{c.name}</strong> <span className="hint">· {inv?.by ?? 'A teacher'} invited you as {inv?.role === 'viewer' ? 'a viewer' : 'a co-teacher'}</span>
+                    </span>
+                    <span style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" className="btn small-btn" onClick={() => declineInvite(c, user.email ?? '').catch((e) => setInviteMsg((e as Error).message))}>
+                        Decline
+                      </button>
+                      <button type="button" className="btn small-btn primary" onClick={() => acceptInvite(c, { uid: user.uid, email: user.email ?? '', name: user.displayName || user.email?.split('@')[0] || 'Teacher' }).catch((e) => setInviteMsg((e as Error).message))}>
+                        Accept
+                      </button>
+                    </span>
+                  </div>
+                );
+              })}
+              {inviteMsg && <span className="error">{inviteMsg}</span>}
+            </section>
+          )}
+
           {featured && (
             <section
               className="live-card"
@@ -230,7 +256,7 @@ export function TeacherHome() {
                     <span className="meta">
                       {teaching ? <span style={{ color: t.text, fontWeight: 600 }}>Teaching now</span> : lessons ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : 'No lessons yet'}
                     </span>
-                    <span className="code">Class code {c.classCode}</span>
+                    <span className="code">{c.teacherId !== user?.uid ? (c.coTeachers?.[user?.uid ?? '']?.role === 'viewer' ? 'Viewer · shared with you' : 'Co-teacher · shared with you') : `Class code ${c.classCode}`}</span>
                   </Link>
                 );
               })}

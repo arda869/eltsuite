@@ -37,6 +37,7 @@ import { CopyDialog } from '../components/CopyDialog';
 import { VersionsDialog } from '../components/VersionsDialog';
 import { download, lessonText } from '../lib/transfer';
 import { downloadJson, lessonBundle } from '../lib/fullcopy';
+import { roleIn } from '../lib/coteach';
 import { WorksheetDialog } from '../components/WorksheetDialog';
 import { Avatar } from '../components/avatars';
 import { ClassAvatarsContext, useLearnerAvatars } from '../lib/avatars';
@@ -117,6 +118,10 @@ export function LessonEditor() {
   const [previewChecked, setPreviewChecked] = useState(false);
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
   const { user, profile } = useAuth();
+  const viewer = roleIn(c, user?.uid) === 'viewer'; // read-only access (observer or substitute)
+  useEffect(() => {
+    if (viewer) setPreview(true);
+  }, [viewer]);
   const [live, setLiveState] = useState<LiveState | null>(null);
   const timer = useRef<number>();
   const pending = useRef<{ taskId: string; patch: Partial<Draft> } | null>(null);
@@ -388,6 +393,7 @@ export function LessonEditor() {
         itemId,
         taskId: selected,
         teacherName: (user?.displayName || user?.email?.split('@')[0] || 'Your teacher').split(' ')[0],
+        teacherUid: user?.uid ?? '',
       });
   }
 
@@ -580,22 +586,30 @@ export function LessonEditor() {
         <button type="button" className="btn small-btn" onClick={() => setNbOpen(true)} title="The class notebook: words and notes, grammar and vocabulary banks">
           Notebook
         </button>
-        <button type="button" className={'btn small-btn' + (boardView ? ' on-accent' : '')} onClick={() => showBoard(!boardView)} title="The lesson board: pages you can prepare and show in class">
-          Board
-        </button>
-        <button type="button" className={'btn small-btn' + (teachingHere && live?.groupSetId ? ' on-accent' : '')} onClick={() => setGroupsOpen(true)} title="Group sets and breakout rooms">
-          Groups
-        </button>
+        {!viewer && (
+          <button type="button" className={'btn small-btn' + (boardView ? ' on-accent' : '')} onClick={() => showBoard(!boardView)} title="The lesson board: pages you can prepare and show in class">
+            Board
+          </button>
+        )}
+        {!viewer && (
+          <button type="button" className={'btn small-btn' + (teachingHere && live?.groupSetId ? ' on-accent' : '')} onClick={() => setGroupsOpen(true)} title="Group sets and breakout rooms">
+            Groups
+          </button>
+        )}
         <button type="button" className="btn small-btn hide-phone" onClick={() => setPresent((v) => !v)} title="Hide the side panels for screen sharing (P)">
           {present ? 'Exit present mode' : 'Present'}
         </button>
         <button type="button" className="btn small-btn icon-help hide-phone" onClick={() => setHelp(true)} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
           ?
         </button>
-        <button type="button" className={'btn small-btn teach-btn' + (teachingHere ? ' on' : '')} onClick={toggleTeaching} title="Shows learners which task you are on">
+        {viewer ? (
+          teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
+        ) : (
+          <button type="button" className={'btn small-btn teach-btn' + (teachingHere ? ' on' : '')} onClick={toggleTeaching} title={teachingHere && live?.teacherUid && live.teacherUid !== user?.uid ? `${live.teacherName} is teaching this lesson. Stopping ends it for them too.` : 'Shows learners which task you are on'}>
           {teachingHere && <span className="live-dot" aria-hidden="true" />}
-          {teachingHere ? 'Teaching · stop' : 'Start teaching'}
-        </button>
+          {teachingHere ? (live?.teacherUid && live.teacherUid !== user?.uid ? `${live.teacherName} teaching · stop` : 'Teaching · stop') : 'Start teaching'}
+          </button>
+        )}
         <TextSizeControl />
         <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
       </TopBar>
@@ -715,14 +729,16 @@ export function LessonEditor() {
                 )}
               </div>
             ))}
-            <div className="list-adds">
-              <button type="button" className="btn dashed" onClick={newTask}>
-                + New task
-              </button>
-              <button type="button" className="btn dashed" onClick={newSection}>
-                + Section
-              </button>
-            </div>
+            {!viewer && (
+              <div className="list-adds">
+                <button type="button" className="btn dashed" onClick={newTask}>
+                  + New task
+                </button>
+                <button type="button" className="btn dashed" onClick={newSection}>
+                  + Section
+                </button>
+              </div>
+            )}
           </nav>
 
           <div className="center-col">
@@ -1011,7 +1027,13 @@ export function LessonEditor() {
               tagOf={tagOf}
             />
           )}
-          {task && draft && !(teachingHere && !editWhileTeaching && !preview) && (
+          {task && draft && viewer && (
+            <aside className="task-side" aria-label="Viewing">
+              <span className="eyebrow">Viewing</span>
+              <span className="hint">You have view-only access to this class, so you see the lesson as learners do. Nothing here is saved.</span>
+            </aside>
+          )}
+          {task && draft && !viewer && !(teachingHere && !editWhileTeaching && !preview) && (
             <aside className="task-side" aria-label="Task settings">
               <button className={'btn block' + (preview ? ' primary' : '')} onClick={() => (flush(), setPreview((p) => !p))}>
                 {preview ? 'Back to editing' : 'Preview as learner'}
