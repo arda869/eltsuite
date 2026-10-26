@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { chatTitle, chime, unreadIn, useChats, useUnread, type Chat } from '../lib/chat';
+import { isSelf, chatTitle, chime, unreadIn, useChats, useUnread, type Chat } from '../lib/chat';
 import { useDirectory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
@@ -61,12 +61,10 @@ export function ChatDock() {
   // The window goes with you from page to page; it is opened from Messages in the top bar.
   const hidden = !me || isProxyTab() || phone || !st.open || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || document.body.classList.contains('presenting');
   if (hidden) return null;
-  // On lesson screens the window sits above the buttons that move between tasks.
-  const lift = /\/lesson\/|^\/learn\/|^\/recap\//.test(loc.pathname);
-  return <DockWindow lift={lift} me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onClose={() => save({ open: false, chat: st.chat })} />;
+  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onClose={() => save({ open: false, chat: st.chat })} />;
 }
 
-function DockWindow({ lift, me, chats, chatId, onChat, onClose }: { lift?: boolean; me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onClose: () => void }) {
+function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onClose: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === chatId);
@@ -148,8 +146,8 @@ function DockWindow({ lift, me, chats, chatId, onChat, onClose }: { lift?: boole
   const boxStyle: React.CSSProperties = pos ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto', width: size.w, height: size.h } : { width: size.w, height: size.h };
   return (
     <>
-    {near && <div className={'dock-snap' + (lift ? ' lift' : '')} style={{ width: size.w, height: size.h }} aria-hidden="true" />}
-    <div ref={winRef} className={'dock-win' + (lift && !pos ? ' lift' : '') + (pos ? ' moved' : '')} role="dialog" aria-label="Messages" style={boxStyle}>
+    {near && <div className="dock-snap" style={{ width: size.w, height: size.h }} aria-hidden="true" />}
+    <div ref={winRef} className={'dock-win' + (pos ? ' moved' : '')} role="dialog" aria-label="Messages" style={boxStyle}>
       <span className="dock-resize" onPointerDown={resize} title="Drag to resize" aria-hidden="true" />
       <div className="dock-head" onPointerDown={drag} title="Drag to move">
         {cur ? (
@@ -162,8 +160,8 @@ function DockWindow({ lift, me, chats, chatId, onChat, onClose }: { lift?: boole
         <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn" aria-label="Open in full" data-tip="Open in full">
           <UiIcon name="fullscreen" size={15} />
         </Link>
-        <button type="button" className="icon-btn" onClick={onClose} aria-label="Minimise" data-tip="Minimise">
-          <span className="dock-min" />
+        <button type="button" className="icon-btn" onClick={onClose} aria-label="Close" data-tip="Close">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
         </button>
       </div>
       {cur && dir ? (
@@ -178,7 +176,7 @@ function DockWindow({ lift, me, chats, chatId, onChat, onClose }: { lift?: boole
             const title = chatTitle(c, me);
             return (
               <button key={c.id} type="button" className={'msg-row' + (un ? ' unread' : '')} onClick={() => onChat(c.id)}>
-                <span className={'msg-av' + (c.kind === 'group' ? ' group' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={15} /> : title.trim().slice(0, 1).toUpperCase()}</span>
+                <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={15} /> : isSelf(c) ? <UiIcon name="pen" size={14} /> : title.trim().slice(0, 1).toUpperCase()}</span>
                 <span className="msg-row-t">
                   <span className="msg-row-top">
                     <b>{title}</b>

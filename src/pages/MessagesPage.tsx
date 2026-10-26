@@ -6,7 +6,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { isSelf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -99,7 +99,7 @@ export function MessagesPage() {
                 const title = chatTitle(c, me.key);
                 return (
                   <button key={c.id} type="button" role="option" aria-selected={c.id === open} className={'msg-row' + (c.id === open ? ' on' : '') + (un ? ' unread' : '')} onClick={() => pick(c.id)}>
-                    <span className={'msg-av' + (c.kind === 'group' ? ' group' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : initial(title)}</span>
+                    <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : initial(title)}</span>
                     <span className="msg-row-t">
                       <span className="msg-row-top">
                         <b>{title}</b>
@@ -203,6 +203,13 @@ function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void
     <div className="scrim" onClick={onClose}>
       <div className="dialog msg-new" role="dialog" aria-label="New message" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>New message</h2>
+        <button type="button" className="msg-self-row" disabled={busy} onClick={() => void ((setBusy(true), openChat(dir.me, [])).then(onOpen).catch(() => (setErr('The chat could not be started. Please try again.'), setBusy(false))))}>
+          <span className="msg-av self"><UiIcon name="pen" size={15} /></span>
+          <span className="sh-pt">
+            <b>Notes to self</b>
+            <span className="hint">Jot things down, save links and materials for later</span>
+          </span>
+        </button>
         <PeoplePicker dir={dir} picked={picked} onToggle={toggle} />
         {picked.length > 1 && (
           <label className="field">
@@ -302,10 +309,10 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
         <button type="button" className="icon-btn chat-back" onClick={onBack} aria-label="All chats">
           <UiIcon name="prev" size={16} />
         </button>
-        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : initial(title)}</span>
+        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : initial(title)}</span>
         <span className="chat-head-t">
           <b>{title}</b>
-          <span className="hint">{c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'Teacher' : 'Learner'}</span>
+          <span className="hint">{isSelf(c) ? (teacher ? 'Only you can see this' : 'Notes for yourself. Your teacher can see class chats') : c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'Teacher' : 'Learner'}</span>
         </span>
         {c.kind === 'group' && (
           <button type="button" className="btn small-btn" onClick={() => setSettings((s) => !s)}>

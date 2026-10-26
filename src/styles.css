@@ -4933,3 +4933,10 @@ body.is-dragging-dock, body.is-dragging-dock * { cursor: grabbing !important; us
 .bub-meta { bottom: 4px; right: 10px; font-size: 10px; }
 .bub.first { margin-top: 10px; }
 .bub-av { width: 26px; height: 26px; } .bub-av-space { width: 26px; }
+
+/* Notes to self */
+.msg-av.self { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); color: var(--accent-ink, var(--accent)); }
+.msg-self-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); font: inherit; text-align: left; cursor: pointer; }
+.msg-self-row:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--hair)); background: color-mix(in srgb, var(--accent) 5%, var(--paper)); }
+.msg-self-row .sh-pt { display: flex; flex-direction: column; }
+.msg-pick .ma-search { padding: 9px 12px; border-radius: 10px; font-size: 14px; }

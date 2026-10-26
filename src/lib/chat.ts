@@ -91,6 +91,14 @@ export async function openChat(me: Person, others: Person[], title = ''): Promis
     lastAt: Date.now(),
     seen: { [me.key]: Date.now() },
   };
+  // A chat with yourself, for notes: one per person, like WhatsApp's "Message yourself".
+  if (people.length === 1) {
+    const id = 'self_' + me.key;
+    const ref = doc(col, id);
+    const s = await getDoc(ref).catch(() => null);
+    if (!s?.exists()) await setDoc(ref, { ...base, kind: 'dm' });
+    return id;
+  }
   if (people.length === 2) {
     const id = 'dm_' + [...members].sort().join('_');
     const ref = doc(col, id);
@@ -149,7 +157,8 @@ export function react(c: Chat, m: Msg, r: string, me: string) {
   return updateDoc(doc(msgsCol(c.id), m.id), { [`reactions.${r}`]: on ? arrayRemove(me) : arrayUnion(me) });
 }
 
-export const chatTitle = (c: Chat, me: string) => (c.kind === 'group' ? c.title || 'Group' : c.names[c.members.find((k) => k !== me) ?? ''] ?? 'Chat');
+export const isSelf = (c: Chat) => c.kind === 'dm' && c.members.length === 1;
+export const chatTitle = (c: Chat, me: string) => (isSelf(c) ? 'Notes to self' : c.kind === 'group' ? c.title || 'Group' : c.names[c.members.find((k) => k !== me) ?? ''] ?? 'Chat');
 
 // Who is typing: a time stamp in the live database while someone writes, cleared on send.
 export function setTyping(chatId: string, me: string, on: boolean) {
