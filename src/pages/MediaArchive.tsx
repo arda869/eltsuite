@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArchiveDocs, ArchiveTasks } from './ArchiveLibrary';
+import { ArchiveColleagues, ArchiveDocs, ArchiveShared, ArchiveTasks } from './ArchiveLibrary';
+import { ShareDialog } from '../components/ShareDialog';
 import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
@@ -32,11 +33,13 @@ type Sort = 'new' | 'name' | 'size';
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
 
+type Section = 'media' | 'tasks' | 'docs' | 'shared' | 'colleagues';
+
 export function MediaArchive() {
   const { user } = useAuth();
   const uid = user?.uid;
-  const [section, setSection] = useState<'media' | 'tasks' | 'docs'>(() => (new URLSearchParams(window.location.search).get('show') as 'tasks' | 'docs') || 'media');
-  const pick = (k: 'media' | 'tasks' | 'docs') => {
+  const [section, setSection] = useState<Section>(() => (new URLSearchParams(window.location.search).get('show') as Section) || 'media');
+  const pick = (k: Section) => {
     setSection(k);
     window.history.replaceState(null, '', k === 'media' ? '/archive' : `/archive?show=${k}`);
   };
@@ -141,6 +144,15 @@ export function MediaArchive() {
             <button type="button" className={section === 'docs' ? 'on' : ''} onClick={() => pick('docs')}>
               <UiIcon name="discuss" size={16} />
               Shared documents
+            </button>
+            <span className="ma-h">With colleagues</span>
+            <button type="button" className={section === 'shared' ? 'on' : ''} onClick={() => pick('shared')}>
+              <UiIcon name="link" size={16} />
+              Shared
+            </button>
+            <button type="button" className={section === 'colleagues' ? 'on' : ''} onClick={() => pick('colleagues')}>
+              <UiIcon name="groups" size={16} />
+              Colleagues
             </button>
           </nav>
           {section === 'media' && (<>
@@ -249,6 +261,28 @@ export function MediaArchive() {
               </div>
             </div>
             <ArchiveDocs uid={uid} />
+          </main>
+        )}
+        {section === 'shared' && uid && (
+          <main className="ma-main">
+            <div className="ma-head">
+              <div className="ma-head-text">
+                <h1 className="page-title">Shared</h1>
+                <span className="sub">Lessons, tasks, documents and media colleagues share with you, as read-only copies, and what you share.</span>
+              </div>
+            </div>
+            <ArchiveShared uid={uid} />
+          </main>
+        )}
+        {section === 'colleagues' && uid && user && (
+          <main className="ma-main">
+            <div className="ma-head">
+              <div className="ma-head-text">
+                <h1 className="page-title">Colleagues</h1>
+                <span className="sub">Teachers you share with. You connect through a link you send them.</span>
+              </div>
+            </div>
+            <ArchiveColleagues uid={uid} me={{ name: user.displayName || user.email?.split('@')[0] || 'A colleague', email: user.email ?? '' }} />
           </main>
         )}
         {section === 'media' && (
@@ -395,6 +429,7 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
   const [confirm, setConfirm] = useState(false);
   const [editing, setEditing] = useState<SoundSource | 'loading' | null>(null);
   const [dl, setDl] = useState('');
+  const [sharing, setSharing] = useState(false);
   const openEditor = async () => {
     if (!item.home) return;
     setEditing('loading');
@@ -483,7 +518,16 @@ function Detail({ uid, item, folders, onClose }: { uid: string; item: ArchiveIte
             <UiIcon name="edit" size={14} /> {editing === 'loading' ? 'Opening…' : 'Edit the sound'}
           </button>
         )}
+        <button type="button" className="btn small-btn" onClick={() => setSharing(true)}>
+          <UiIcon name="link" size={14} /> Share…
+        </button>
       </span>
+      {sharing && (
+        <ShareDialog
+          what={{ kind: 'media', title: item.name, src: { archiveId: item.id }, archive: Object.fromEntries(Object.entries({ kind: item.kind, name: item.name, tags: item.tags, size: item.size, link: item.link, home: item.home, thumb: item.thumb, script: item.script, duration: item.duration }).filter(([, v]) => v !== undefined)) }}
+          onClose={() => setSharing(false)}
+        />
+      )}
       {dl && <span className="hint">{dl}</span>}
       {item.kind !== 'image' && item.home && (
         <div className="field">

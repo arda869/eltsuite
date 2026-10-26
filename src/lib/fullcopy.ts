@@ -2,6 +2,7 @@ import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimesta
 import { get, ref, set } from 'firebase/database';
 import { db, rtdb } from './firebase';
 import { keyRef, notesRef, tasksCol } from './tasks';
+import { mediaCol, mediaDoc } from './media';
 import { pagesOf } from '../components/LessonBoard';
 import type { Item } from './classes';
 
@@ -27,7 +28,7 @@ const strip = (d: DocumentData) => {
 };
 
 // Finds the media ids a piece of JSON refers to: "media:<id>" strings, audioId fields and board image strokes.
-function mediaIds(value: unknown, into: Set<string>) {
+export function mediaIds(value: unknown, into: Set<string>) {
   if (typeof value === 'string') {
     if (value.startsWith('media:')) into.add(value.slice(6));
     return;
@@ -48,13 +49,13 @@ export async function carryMedia(fromClass: string, toClass: string, values: unk
   const ids = new Set<string>();
   values.forEach((v) => mediaIds(v, ids));
   for (const id of ids) {
-    const m = await getDoc(doc(db, 'classes', fromClass, 'media', id)).catch(() => null);
+    const m = await getDoc(mediaDoc(fromClass, id)).catch(() => null);
     if (!m?.exists()) continue;
     const d = m.data();
-    const r = doc(collection(db, 'classes', toClass, 'media'));
+    const r = doc(mediaCol(toClass));
     for (let k = 0; k < (d.kind === 'audio' ? d.parts ?? 0 : 0); k++) {
-      const p = await getDoc(doc(db, 'classes', fromClass, 'media', `${id}_p${k}`)).catch(() => null);
-      if (p?.exists()) await setDoc(doc(db, 'classes', toClass, 'media', `${r.id}_p${k}`), p.data());
+      const p = await getDoc(mediaDoc(fromClass, `${id}_p${k}`)).catch(() => null);
+      if (p?.exists()) await setDoc(mediaDoc(toClass, `${r.id}_p${k}`), p.data());
     }
     await setDoc(r, d);
     map[id] = r.id;

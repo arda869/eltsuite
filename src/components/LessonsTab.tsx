@@ -1,3 +1,4 @@
+import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyDialog } from './CopyDialog';
@@ -195,6 +196,7 @@ function WhenChip({ item, open, onToggle }: { item: Item; open: boolean; onToggl
 
 function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item; list: Item[]; topics: Topic[]; onResults?: (item: Item) => void }) {
   const [copying, setCopying] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [recap, setRecap] = useState(false);
   const i = list.findIndex((x) => x.id === item.id);
   // Move up or down within its topic by swapping order with the neighbour.
@@ -227,6 +229,7 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
   };
   return (
     <li className={'item' + (item.hidden ? ' is-hidden' : '')}>
+      {sharing && <ShareDialog what={{ kind: 'lesson', title: item.title, src: { classId: c.id, itemId: item.id }, item: Object.fromEntries(Object.entries(item).filter(([k, v]) => v !== undefined && !['id', 'createdAt', 'updatedAt', 'teachingAt'].includes(k))) }} onClose={() => setSharing(false)} />}
       {copying && <CopyDialog kind="lesson" fromClass={c.id} itemId={item.id} title={item.title} onClose={() => setCopying(false)} onDone={setMsg} />}
       <select className="type type-pick" value={item.type} aria-label="Type" title="Lesson, homework, exam or practice" onChange={(e) => updateItem(c.id, item.id, { type: e.target.value as Item['type'] })}>
         <option value="lesson">Lesson</option>
@@ -301,6 +304,9 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
               ))}
             <button role="menuitem" onClick={() => (setMenu(false), setCopying(true))}>
               Copy to another class…
+            </button>
+            <button role="menuitem" onClick={() => (setMenu(false), setSharing(true))}>
+              Share with colleagues…
             </button>
             <span className="menu-sep" aria-hidden="true" />
             <button role="menuitem" className="danger-item" onClick={() => (setMenu(false), window.confirm(`Delete “${item.title}”?`) && deleteItem(c.id, item.id))}>

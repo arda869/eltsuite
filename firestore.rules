@@ -37,6 +37,19 @@ service cloud.firestore {
       match /bank/{bankId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
       }
+      // Colleagues: two teachers connected through an invitation link. The invited teacher adds
+      // themselves to the inviter's list, which the rules allow only with the inviter's link.
+      match /colleagues/{other} {
+        allow read: if isSelf(uid);
+        allow create, update: if (isSelf(uid) && isTeacher())
+          || (signedIn() && request.auth.uid == other && isTeacher()
+              && get(/databases/$(database)/documents/colleagueLinks/$(request.resource.data.via)).data.from == uid);
+        allow delete: if isSelf(uid) || (signedIn() && request.auth.uid == other);
+      }
+      // Things shared with this teacher through a link, kept so they can find them again
+      match /received/{shareId} {
+        allow read, write: if isSelf(uid) && !learnerAccount();
+      }
       // A teacher's media archive and its folders
       match /archive/{itemId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
@@ -409,6 +422,30 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
       allow write: if teachesClass(request.resource.data.classId) && (resource == null || resource.data.classId == request.resource.data.classId);
+    }
+
+    // Colleague invitation links: anyone signed in as a teacher can open one by its token
+    match /colleagueLinks/{token} {
+      allow get: if isTeacher();
+      allow list: if signedIn() && resource.data.from == request.auth.uid;
+      allow create: if isTeacher() && request.resource.data.from == request.auth.uid;
+      allow delete: if signedIn() && resource.data.from == request.auth.uid;
+    }
+
+    // Lessons, tasks, documents and media a teacher shares: a read-only copy, opened by anyone
+    // with the link or only by the colleagues it is shared with. The owner can update or stop it.
+    function shareOk(d) { return isTeacher() && (d.owner == request.auth.uid || d.mode == 'link' || request.auth.uid in d.get('people', [])); }
+    function shareOf(id) { return get(/databases/$(database)/documents/shares/$(id)).data; }
+    match /shares/{id} {
+      allow get: if shareOk(resource.data);
+      allow list: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.get('people', []));
+      allow create: if isTeacher() && request.resource.data.owner == request.auth.uid;
+      allow update: if signedIn() && resource.data.owner == request.auth.uid && request.resource.data.owner == request.auth.uid;
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+      match /{sub}/{docId} {
+        allow read: if shareOk(shareOf(id));
+        allow write: if signedIn() && shareOf(id).owner == request.auth.uid;
+      }
     }
 
     // Class codes: looked up one at a time when learners join

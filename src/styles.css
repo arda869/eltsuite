@@ -4085,3 +4085,50 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .al-doc-t { display: flex; flex-direction: column; gap: 4px; } .al-doc-t b { font: 600 15px var(--serif); color: var(--ink); } .al-doc-t .hint { font-size: 12px; }
 .al-open { width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 .al-open-h { display: flex; flex-direction: column; gap: 2px; }
+
+/* Sharing and colleagues */
+.sh-dialog { width: min(560px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 14px; }
+.sh-head { display: flex; gap: 12px; align-items: flex-start; } .sh-head .hint { display: block; margin-top: 4px; font-size: 12.5px; }
+.sh-ic { width: 38px; height: 38px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 12px; background: var(--tint-strong); color: var(--accent-text); }
+.sh-modes { display: flex; flex-direction: column; gap: 6px; }
+.sh-mode { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; box-shadow: 0 0 0 1px var(--hair); cursor: pointer; }
+.sh-mode.on { box-shadow: 0 0 0 1.5px var(--accent); background: var(--tint); }
+.sh-mode input { margin-top: 3px; accent-color: var(--accent); }
+.sh-mode > span { display: flex; flex-direction: column; font-size: 13.5px; } .sh-mode .hint { font-size: 12px; }
+.sh-people { display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; padding: 6px; border-radius: 12px; background: var(--surface); }
+.sh-person { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 9px; cursor: pointer; }
+.sh-person:hover, .sh-person.on { background: var(--card, #fff); } .sh-person input { accent-color: var(--accent); }
+.sh-av { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 99px; background: var(--tint-strong); color: var(--accent-text); font: 700 12.5px var(--sans); }
+.sh-pt { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13.5px; line-height: 1.3; } .sh-pt .hint { font-size: 12px; }
+.sh-live { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--tint); }
+.sh-live-top { display: flex; flex-direction: column; font-size: 13.5px; } .sh-live-top .hint { font-size: 12px; }
+.sh-link { display: flex; gap: 6px; align-items: center; } .sh-link input { flex: 1; min-width: 0; height: 32px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 0 10px; font: 12.5px var(--sans); background: #fff; color: var(--ink); }
+.sh-live-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.sh-foot { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.cl { display: flex; flex-direction: column; gap: 14px; max-width: 720px; }
+.cl-invite { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; padding: 16px 18px; border-radius: 16px; background: linear-gradient(135deg, var(--tint), var(--card, #fff) 75%); box-shadow: 0 0 0 1px var(--hair); }
+.cl-invite .sh-link { width: 100%; }
+.cl-invite-t { display: flex; flex-direction: column; gap: 3px; } .cl-invite-t b { font: 600 15px var(--serif); } .cl-invite-t .hint { font-size: 12.5px; }
+.cl-list { display: flex; flex-direction: column; gap: 6px; }
+.cl-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
+.sp { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; margin: 0 auto; padding: 8px 0 40px; width: 100%; }
+.sp-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 60px auto; max-width: 460px; text-align: center; color: var(--muted); }
+.sp-empty .page-title { color: var(--ink); margin: 0; } .sp-empty p { margin: 0; }
+.sp-av { width: 56px; height: 56px; display: grid; place-items: center; border-radius: 99px; background: var(--tint-strong); color: var(--accent-text); font: 600 22px var(--serif); }
+.sp-head { display: flex; flex-direction: column; gap: 4px; position: relative; padding: 20px 22px; border-radius: 18px; background: linear-gradient(135deg, var(--tint), var(--card, #fff) 70%); box-shadow: 0 0 0 1px var(--hair); }
+.sp-head .page-title { margin: 0; }
+.sp-kind { display: flex; align-items: center; gap: 10px; font: 700 11px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+.sp-ro { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: #fff; box-shadow: 0 0 0 1px var(--hair); color: var(--muted); letter-spacing: .02em; text-transform: none; font-weight: 600; }
+.sp-acts { position: absolute; right: 20px; top: 50%; translate: 0 -50%; display: flex; gap: 8px; }
+@media (max-width: 720px) { .sp-acts { position: static; translate: none; margin-top: 8px; } }
+.sp-body { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.sp-body.one { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 860px) { .sp-body { grid-template-columns: 1fr; } }
+.sp-tasks { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 12px; }
+.sp-tasks button { display: flex; gap: 8px; align-items: baseline; padding: 8px 10px; border: 0; border-radius: 10px; background: none; text-align: left; font: 13.5px var(--sans); color: var(--ink); cursor: pointer; }
+.sp-tasks button:hover { background: var(--surface); } .sp-tasks button.on { background: var(--tint); font-weight: 600; }
+.sp-task { padding: 22px 26px; border-radius: 18px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
+.sp-task-t { margin: 0 0 4px; font: 600 22px var(--serif); } .sp-task-i { margin: 0 0 14px; font-weight: 600; color: var(--accent-text); }
+.sp-notes { margin-top: 18px; padding: 12px 14px; border-radius: 12px; background: var(--surface); } .sp-notes p { margin: 4px 0 0; white-space: pre-wrap; font-size: 13.5px; }
+.sp-media { display: grid; place-items: center; padding: 20px; border-radius: 18px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
+.sp-media img { max-width: 100%; max-height: 70vh; border-radius: 10px; } .sp-media.wide { display: block; }

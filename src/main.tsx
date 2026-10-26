@@ -1,3 +1,4 @@
+import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -50,6 +51,15 @@ function Home() {
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
   }
+  // Back to a shared link opened before signing in.
+  let after = '';
+  try {
+    after = sessionStorage.getItem(AFTER_SIGN_IN) ?? '';
+    if (after) sessionStorage.removeItem(AFTER_SIGN_IN);
+  } catch {
+    /* fine */
+  }
+  if (after.startsWith('/s/') || after.startsWith('/colleague/')) return <Navigate to={after} replace />;
   return <TeacherHome />;
 }
 
@@ -95,6 +105,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/r/:token" element={<SharedRecap />} />
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
+          <Route path="/s/:id" element={<SharedPage />} />
+          <Route path="/colleague/:token" element={<ColleagueJoin />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />

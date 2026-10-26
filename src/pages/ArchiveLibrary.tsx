@@ -10,6 +10,8 @@ import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { CopyDialog } from '../components/CopyDialog';
 import { CollabTask, type CollabAttrs } from '../collab/CollabTask';
+import { ShareDialog, type ShareWhat } from '../components/ShareDialog';
+import { colleagueLink, dropLink, forgetShare, makeColleagueLink, removeColleague, useColleagues, useMyLinks, useMyShares, useSharedWithMe, type Share } from '../lib/sharing';
 
 // The archive's Tasks and Documents: every task and every shared document or deck in all
 // your classes, in one place, to find, open and copy.
@@ -112,6 +114,7 @@ export function ArchiveTasks({ uid }: { uid: string }) {
   const [q, setQ] = useState('');
   const [cls, setCls] = useState('');
   const [copy, setCopy] = useState<LibTask | null>(null);
+  const [sharing, setSharing] = useState<ShareWhat | null>(null);
   const [msg, setMsg] = useState('');
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -176,11 +179,15 @@ export function ArchiveTasks({ uid }: { uid: string }) {
                     Copy to…
                   </button>
                 )}
+                <button type="button" className="btn small-btn" onClick={() => setSharing({ kind: 'task', title: t.title, about: t.instructions, src: { classId: t.classId, itemId: t.itemId, taskId: t.id } })}>
+                  Share…
+                </button>
               </span>
             </div>
           ))}
         </div>
       )}
+      {sharing && <ShareDialog what={sharing} onClose={() => setSharing(null)} />}
       {copy && <CopyDialog kind="task" fromClass={copy.classId} itemId={copy.itemId} taskId={copy.id} title={copy.title} onClose={() => setCopy(null)} onDone={setMsg} />}
     </>
   );
@@ -192,6 +199,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
   const [cls, setCls] = useState('');
   const [kind, setKind] = useState<'' | 'doc' | 'slides'>('');
   const [open, setOpen] = useState<LibDoc | null>(null);
+  const [sharing, setSharing] = useState<LibDoc | null>(null);
   const [mates, setMates] = useState<{ id: string; name: string }[]>([]);
   useEffect(() => {
     if (!open) return;
@@ -267,6 +275,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
           ))}
         </div>
       )}
+      {sharing && <ShareDialog what={{ kind: 'doc', title: sharing.title, src: { classId: sharing.classId, docKey: sharing.key, docKind: sharing.kind } }} onClose={() => setSharing(null)} />}
       {open && c && (
         <div className="scrim" onClick={() => setOpen(null)}>
           <div className="dialog al-open" role="dialog" aria-label={open.title} onClick={(e) => e.stopPropagation()} style={{ ['--accent' as string]: theme(c.themeColor).accent, ['--accent-text' as string]: theme(c.themeColor).text }}>
@@ -278,6 +287,9 @@ export function ArchiveDocs({ uid }: { uid: string }) {
                 </span>
               </span>
               <span style={{ display: 'flex', gap: 8 }}>
+                <button type="button" className="btn small-btn" onClick={() => (setSharing(open), setOpen(null))}>
+                  Share…
+                </button>
                 {open.uses[0] && (
                   <Link className="btn small-btn" to={`/class/${open.uses[0].classId}/lesson/${open.uses[0].itemId}?task=${open.uses[0].id}`}>
                     Go to the task
@@ -302,3 +314,160 @@ export function ArchiveDocs({ uid }: { uid: string }) {
 }
 
 export const hasDocs = hasCollab;
+
+// Shared with me, and what I share
+const SKIND: Record<string, { label: string; icon: string }> = { lesson: { label: 'Lesson', icon: 'task' }, task: { label: 'Task', icon: 'edit' }, doc: { label: 'Shared document', icon: 'discuss' }, media: { label: 'Media', icon: 'picture' } };
+export function ArchiveShared({ uid }: { uid: string }) {
+  const withMe = useSharedWithMe(uid);
+  const mine = useMyShares(uid);
+  const colleagues = useColleagues(uid);
+  const [tab, setTab] = useState<'in' | 'out'>('in');
+  const [managing, setManaging] = useState<Share | null>(null);
+  const nameOf = (id: string) => colleagues?.find((c) => c.id === id)?.name.split(' ')[0] ?? 'a colleague';
+  const list = tab === 'in' ? withMe : mine;
+  return (
+    <>
+      <div className="ma-bar-row">
+        <span className="seg small-seg" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'in'} className={tab === 'in' ? 'on' : ''} onClick={() => setTab('in')}>
+            Shared with me {withMe?.length ? `(${withMe.length})` : ''}
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'out'} className={tab === 'out' ? 'on' : ''} onClick={() => setTab('out')}>
+            Shared by me {mine?.length ? `(${mine.length})` : ''}
+          </button>
+        </span>
+      </div>
+      {list === null ? (
+        <Loader label="Opening" />
+      ) : list.length === 0 ? (
+        <div className="ma-empty">
+          <UiIcon name="link" size={28} />
+          <strong>{tab === 'in' ? 'Nothing shared with you yet' : 'You have not shared anything yet'}</strong>
+          <span className="hint">{tab === 'in' ? 'When a colleague shares a lesson, task, document or media with you, or you open a link they send, it shows here.' : 'Share a lesson from its menu on the class page, or a task, document or media from here in the archive.'}</span>
+        </div>
+      ) : (
+        <div className="al-list">
+          {list.map((s) => (
+            <div key={s.id} className="al-row" style={{ ['--cc' as string]: 'var(--accent)' }}>
+              <span className="al-ic">
+                <UiIcon name={SKIND[s.kind ?? 'lesson'].icon} size={16} />
+              </span>
+              <span className="al-main">
+                <Link to={`/s/${s.id}`} className="al-title">
+                  {s.title}
+                </Link>
+                <span className="al-meta">
+                  <span>{SKIND[s.kind ?? 'lesson'].label}</span>
+                  {tab === 'in' ? (
+                    <span>from {s.ownerName}</span>
+                  ) : (
+                    <span>{(s as Share).mode === 'link' ? 'Anyone with the link' : `With ${((s as Share).people ?? []).map(nameOf).join(', ') || 'no one yet'}`}</span>
+                  )}
+                  <span className="ld-tag">Read-only</span>
+                </span>
+              </span>
+              <span className="al-when hint">{when(s.updated ?? s.at ?? 0)}</span>
+              <span className="al-acts">
+                <Link className="btn small-btn" to={`/s/${s.id}`}>
+                  Open
+                </Link>
+                {tab === 'out' ? (
+                  <button type="button" className="btn small-btn" onClick={() => setManaging(s as Share)}>
+                    Manage
+                  </button>
+                ) : (
+                  !(s as Share).people?.includes(uid) && (
+                    <button type="button" className="btn small-btn" onClick={() => forgetShare(uid, s.id)} data-tip="Take it off this list">
+                      Remove
+                    </button>
+                  )
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {managing && <ShareDialog what={{ kind: managing.kind, title: managing.title, src: managing.src, item: managing.item, archive: managing.archive }} onClose={() => setManaging(null)} />}
+    </>
+  );
+}
+
+export function ArchiveColleagues({ uid, me }: { uid: string; me: { name: string; email: string } }) {
+  const colleagues = useColleagues(uid);
+  const links = useMyLinks(uid);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState('');
+  const fresh = links[0];
+  const copy = (t: string) => navigator.clipboard?.writeText(colleagueLink(t)).then(() => (setCopied(t), window.setTimeout(() => setCopied(''), 1800)));
+  const make = async () => {
+    setBusy(true);
+    try {
+      const t = await makeColleagueLink({ uid, ...me });
+      copy(t);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="cl">
+      <section className="cl-invite">
+        <span className="cl-invite-t">
+          <b>Invite a colleague</b>
+          <span className="hint">Send them a link. When they open it and accept, you become colleagues and can share with each other. Nobody can find you by searching.</span>
+        </span>
+        {fresh ? (
+          <span className="sh-link">
+            <input readOnly value={colleagueLink(fresh.id)} onFocus={(e) => e.target.select()} />
+            <button type="button" className="btn small-btn" onClick={() => copy(fresh.id)}>
+              {copied === fresh.id ? 'Copied' : 'Copy link'}
+            </button>
+            <button type="button" className="btn small-btn" onClick={() => dropLink(fresh.id)} data-tip="Stop this link working">
+              End link
+            </button>
+          </span>
+        ) : (
+          <button type="button" className="btn primary" disabled={busy} onClick={make}>
+            {busy ? 'Making a link…' : 'Make an invitation link'}
+          </button>
+        )}
+        {fresh && (
+          <button type="button" className="btn link" disabled={busy} onClick={make}>
+            Make another link
+          </button>
+        )}
+      </section>
+      <span className="eyebrow">Your colleagues {colleagues?.length ? `· ${colleagues.length}` : ''}</span>
+      {colleagues === null ? (
+        <Loader label="Opening" />
+      ) : colleagues.length === 0 ? (
+        <span className="hint">No colleagues yet.</span>
+      ) : (
+        <div className="cl-list">
+          {colleagues.map((c) => (
+            <div key={c.id} className="cl-row">
+              <span className="sh-av">{c.name.trim().slice(0, 1).toUpperCase()}</span>
+              <span className="sh-pt">
+                <b>{c.name}</b>
+                <span className="hint">
+                  {c.email}
+                  {c.at ? ` · since ${when(c.at)}` : ''}
+                </span>
+              </span>
+              <button type="button" className="btn link small" onClick={() => window.confirm(`Stop being colleagues with ${c.name}? Things already shared stay shared until you stop sharing them.`) && removeColleague(uid, c.id)}>
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {links.length > 1 && (
+        <span className="hint">
+          {links.length} invitation links are open.{' '}
+          <button type="button" className="btn link small" onClick={() => links.slice(1).forEach((l) => dropLink(l.id))}>
+            End the older ones
+          </button>
+        </span>
+      )}
+    </div>
+  );
+}
