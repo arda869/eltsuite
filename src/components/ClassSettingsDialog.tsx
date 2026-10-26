@@ -4,6 +4,7 @@ import { DEFAULT_CODES } from '../lib/annotations';
 import { updateClass, type ClassDoc, type Meeting } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
+import { CoverPicker } from './Covers';
 
 export function meetingProvider(url: string) {
   const u = url.toLowerCase();
@@ -22,6 +23,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [passcode, setPasscode] = useState(c.meeting?.passcode ?? '');
   const [visibility, setVisibility] = useState<Meeting['visibility']>(c.meeting?.visibility ?? 'live');
   const [codes, setCodes] = useState(c.codes ?? DEFAULT_CODES);
+  const [cover, setCover] = useState<string>(c.cover ?? 'preset:waves');
   const [showCodes, setShowCodes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -43,6 +45,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         name: name.trim() || c.name,
         level,
         themeColor,
+        cover,
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -76,6 +79,9 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
             ))}
           </div>
           <span className="hint">Green and red stay reserved for right and wrong answers.</span>
+        </div>
+        <div style={{ ['--accent' as string]: THEMES.find((t) => t.key === themeColor)?.accent }}>
+          <CoverPicker classId={c.id} value={cover} onChange={setCover} />
         </div>
 
         <div className="field">

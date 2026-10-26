@@ -6,6 +6,9 @@ import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
 import { IconLink } from '../components/UiIcon';
 import { useMyRecaps } from '../lib/recap';
+import { useMistakes } from '../lib/mistakes';
+import { useNotebook } from '../lib/notebook';
+import { CoverArt } from '../components/Covers';
 import { isProxyTab } from '../lib/proxy';
 import { MySecretDialog } from '../components/MySecretDialog';
 import { isUnread, readSeen, useThreads } from '../lib/discussion';
@@ -73,6 +76,11 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [section, setSection] = useState<Item['type']>('lesson');
   const answers = useMyAnswers(classId, user?.uid);
   const recaps = useMyRecaps(classId, user?.uid);
+  const mistakes = useMistakes(classId, user?.uid);
+  const dueMistakes = mistakes.filter((m) => !m.done && m.nextAt <= Date.now()).length;
+  const nbMe = useMemo(() => (user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null), [user, profile]);
+  const entries = useNotebook(classId, nbMe);
+  const words = entries.filter((e) => e.type === 'vocab' && e.status === 'published').length;
   const threads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
   const unreadThreads = useMemo(() => {
     const seen = readSeen(classId);
@@ -90,6 +98,14 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
     .filter(({ i, r }) => r.status !== 'marked' && !(r.status === 'submitted' && (!i.due || Date.now() - i.due > 7 * 86400000) && i.type !== 'exam'))
     .sort((a, b) => (a.i.due ?? Infinity) - (b.i.due ?? Infinity));
   const firstName = name.split(' ')[0];
+  // Progress: lessons worked on, average score, where to carry on.
+  const lessons = visible.filter((i) => i.type === 'lesson');
+  const lessonsDone = lessons.filter((i) => answers.some((a) => a.itemId === i.id && (a.checked || Object.keys(a.responses ?? {}).length))).length;
+  const checked = answers.filter((a) => a.checked && (a.total ?? 0) > 0);
+  const avg = checked.length ? Math.round((checked.reduce((s, a) => s + (a.score ?? 0), 0) / checked.reduce((s, a) => s + (a.total ?? 0), 0)) * 100) : null;
+  const lastAnswer = [...answers].filter((a) => visible.some((i) => i.id === a.itemId)).sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0))[0];
+  const carryOn = lastAnswer ? visible.find((i) => i.id === lastAnswer.itemId) : undefined;
+  const latestThreads = threads.filter((x) => x.approved && !x.hidden).slice(0, 3);
   const liveNow = isLive(live) ? items.find((i) => i.id === live!.itemId) : undefined;
   // The next scheduled lesson (within the last hour counts as now). Times are shown in the learner's own time zone.
   const nextLesson = useMemo(() => {
@@ -144,11 +160,20 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       {c === null || c?.status === 'deleted' ? (
         <p className="placeholder">You’re no longer in this class. Ask your teacher if this is a mistake.</p>
       ) : (
-        <main style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <h1 className="page-title">Hello, {firstName}</h1>
-            <span className="sub">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          </div>
+        <main className="lh">
+          <section className="lh-hero">
+            <div className="lh-hello">
+              <span className="eyebrow accent">
+                {c?.name}
+                {c?.level ? ` · ${c.level}` : ''}
+              </span>
+              <h1 className="page-title">Hello, {firstName}</h1>
+              <span className="sub">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            </div>
+            {c && <CoverArt cover={c.cover} classId={classId} className="lh-cover" />}
+          </section>
+          <div className="lh-cols">
+          <div className="lh-main">
 
           {liveNow && (
             <section className="live-card">
@@ -199,25 +224,19 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
             </section>
           )}
 
-          {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}
 
-          {recaps.length > 0 && (
-            <section className="recaps">
-              <h2 style={{ fontSize: 16 }}>Lesson recaps</h2>
-              <ul className="recap-list">
-                {recaps.slice(0, 5).map((r) => (
-                  <li key={r.id}>
-                    <Link to={`/recap/${r.itemId}`}>
-                      <span className="recap-list-title">{r.lessonTitle}</span>
-                      <span className="hint">
-                        {new Date(r.date).toLocaleDateString([], { day: 'numeric', month: 'short' })}
-                        {r.comment ? ' · with a comment from your teacher' : ''}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+          {carryOn && !liveNow && (
+            <Link className="lh-carry" to={`/learn/${carryOn.id}`}>
+              <span className="eyebrow">Carry on</span>
+              <span className="lh-carry-title">{carryOn.title}</span>
+              <span className="hint">
+                {(() => {
+                  const r = itemResult(carryOn, answers);
+                  return r.tasksTotal > 1 ? `${r.tasksDone} of ${r.tasksTotal} tasks checked` : STATUS_LABEL[r.status];
+                })()}
+              </span>
+              <span className="lh-carry-go" aria-hidden="true">→</span>
+            </Link>
           )}
 
           {todo.length > 0 && (
@@ -303,6 +322,77 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
               ))
             )}
           </section>
+          </div>
+          <aside className="lh-side">
+            <section className="lh-card lh-progress">
+              <h2>My progress</h2>
+              <div className="lh-bar" role="img" aria-label={`${lessonsDone} of ${lessons.length} lessons`}>
+                <i style={{ width: lessons.length ? `${(lessonsDone / lessons.length) * 100}%` : 0 }} />
+              </div>
+              <span className="hint">
+                {lessonsDone} of {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'} worked on
+              </span>
+              <div className="lh-stats">
+                <span>
+                  <b>{avg === null ? '–' : `${avg}%`}</b>
+                  <span className="hint">right answers</span>
+                </span>
+                <Link to="/notebook">
+                  <b>{words}</b>
+                  <span className="hint">words in the notebook</span>
+                </Link>
+                <Link to="/notebook">
+                  <b>{dueMistakes}</b>
+                  <span className="hint">{dueMistakes === 1 ? 'question to review' : 'questions to review'}</span>
+                </Link>
+              </div>
+            </section>
+            {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}
+          {recaps.length > 0 && (
+            <section className="recaps lh-card">
+              <h2 style={{ fontSize: 16 }}>Lesson recaps</h2>
+              <ul className="recap-list">
+                {recaps.slice(0, 5).map((r) => (
+                  <li key={r.id}>
+                    <Link to={`/recap/${r.itemId}`}>
+                      <span className="recap-list-title">{r.lessonTitle}</span>
+                      <span className="hint">
+                        {new Date(r.date).toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                        {r.comment ? ' · with a comment from your teacher' : ''}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+            <section className="lh-card">
+              <span className="row-between">
+                <h2>Discussion</h2>
+                <Link className="btn link small" to="/discuss">
+                  Open{unreadThreads ? ` · ${unreadThreads} new` : ''}
+                </Link>
+              </span>
+              {latestThreads.length ? (
+                <ul className="lh-threads">
+                  {latestThreads.map((x) => (
+                    <li key={x.id}>
+                      <Link to={`/discuss/${x.id}`}>
+                        <span>{x.title}</span>
+                        <span className="hint">
+                          {x.replyCount} {x.replyCount === 1 ? 'reply' : 'replies'}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="hint">Nothing here yet.</span>
+              )}
+            </section>
+          </aside>
+          </div>
         </main>
       )}
     </div>

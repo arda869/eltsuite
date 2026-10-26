@@ -13,6 +13,7 @@ import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
 import { DiscussionBoard, DiscussionSettingsPanel } from '../components/Discussion';
+import { CoverArt } from '../components/Covers';
 import { Notebook } from '../components/Notebook';
 import { Reports } from '../components/Reports';
 import { useAuth } from '../lib/auth';
@@ -113,6 +114,7 @@ export function ClassPage() {
 
       {c && (
         <>
+          <CoverArt cover={c.cover} classId={c.id} className="page-cover" />
           <div className="row-between" style={{ alignItems: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <h1 className="page-title">{c.name}</h1>

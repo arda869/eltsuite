@@ -8,6 +8,7 @@ import { isLive, liveRef, type LiveState } from '../lib/live';
 import { theme } from '../lib/themes';
 import { DELETE_AFTER_DAYS, purgeClass, restoreClass } from '../lib/deletion';
 import { createDemoClass } from '../lib/demo';
+import { CoverArt } from '../components/Covers';
 import { acceptInvite, declineInvite, emailKey, syncLiveTeachers, useInvites, useTeacherClasses } from '../lib/coteach';
 import { TopBar } from '../components/TopBar';
 import { NewClassDialog } from '../components/NewClassDialog';
@@ -244,7 +245,8 @@ export function TeacherHome() {
                 const lessons = list.filter((i) => i.type === 'lesson').length;
                 const teaching = isLive(live[c.id]);
                 return (
-                  <Link key={c.id} to={`/class/${c.id}`} className="class-card" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
+                  <Link key={c.id} to={`/class/${c.id}`} className="class-card has-cover" style={{ ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text }}>
+                    <CoverArt cover={c.cover} classId={c.id} className="card-cover" />
                     <span className="name">
                       <span className="dot" style={{ background: t.accent }} />
                       {c.name}
