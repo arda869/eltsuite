@@ -1,12 +1,12 @@
 import type { JSONContent } from '@tiptap/react';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, PageBreak, HeadingLevel, BorderStyle } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType } from 'docx';
 import type { ExportTask } from './textformat';
-import { packAnswerText, splitPack, type PackKind } from './pack';
+import { packAnswerText, scorePack, splitPack, type PackKind } from './pack';
 
 // Printable worksheets. A task becomes a list of blocks: paragraphs made of runs (text or a
 // blank), word boxes, two-column matching, ruled lines, and the answer key.
 
-export type Run = { t?: string; blank?: number; options?: string[]; bold?: boolean; italic?: boolean };
+export type Run = { t?: string; blank?: number; options?: string[]; stack?: string[]; num?: number; bold?: boolean; italic?: boolean };
 export type Block =
   | { kind: 'p'; runs: Run[]; n?: number; heading?: boolean; list?: 'bullet' | 'number' }
   | { kind: 'box'; words: string[]; label: string }
@@ -15,9 +15,10 @@ export type Block =
   | { kind: 'table'; rows: string[][] }
   | { kind: 'note'; text: string }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[] };
-export type WsTask = { title: string; instructions?: string; blocks: Block[]; answers: { n: number; text: string }[] };
+export type WsTask = { title: string; instructions?: string; blocks: Block[]; answers: { n: number; text: string }[]; marks: number };
+export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
-export type Options = { header: boolean; key: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string };
+export type Options = { header: boolean; key: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string };
 
 const LET = 'abcdefghijklmnop';
 const UP = 'ABCDEFGHIJKLMNOP';
@@ -28,6 +29,7 @@ export function flattenTask(t: ExportTask): WsTask {
   let cur: Block[] = blocks;
   const answers: { n: number; text: string }[] = [];
   let n = 0;
+  let marks = 0;
   const bank: string[] = [];
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
     const out: Run[] = [];
@@ -39,8 +41,9 @@ export function flattenTask(t: ExportTask): WsTask {
           break;
         case 'gap': {
           n++;
+          marks++;
           answers.push({ n, text: (a.answers ?? []).join(' / ') });
-          out.push({ t: ` (${n}) `, bold: true }, { blank: Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
+          out.push({ num: n }, { blank: Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
           if (a.stem) out.push({ t: ` ${a.stem} `, bold: true });
           break;
         }
@@ -48,16 +51,18 @@ export function flattenTask(t: ExportTask): WsTask {
           n++;
           const opts: string[] = a.options ?? [];
           const correct: number[] = Array.isArray(a.correct) ? a.correct : [a.correct];
+          marks++;
           answers.push({ n, text: correct.map((i) => opts[i]).filter(Boolean).join(', ') });
-          if (a.display === 'radio') out.push({ t: ` (${n}) `, bold: true }, { t: opts.map((o, i) => `${LET[i]}) ${o}`).join('   ') });
-          else out.push({ t: ` (${n}) `, bold: true }, { options: opts });
+          if (a.display === 'radio') out.push({ num: n }, { stack: opts.map((o, i) => `${LET[i]}  ${o}`) });
+          else out.push({ num: n }, { options: opts });
           break;
         }
         case 'dropgap': {
           n++;
+          marks++;
           answers.push({ n, text: a.answer ?? '' });
           if (a.answer) bank.push(a.answer);
-          out.push({ t: ` (${n}) `, bold: true }, { blank: 14 });
+          out.push({ num: n }, { blank: 14 });
           break;
         }
         case 'hardBreak':
@@ -94,6 +99,7 @@ export function flattenTask(t: ExportTask): WsTask {
         const pairs: { left: string; right: string }[] = a.pairs ?? [];
         const extras: string[] = a.extras ?? [];
         const right = [...pairs.map((p) => p.right), ...extras].sort(() => 0.5 - Math.random());
+        marks += pairs.length;
         answers.push({ n, text: pairs.map((p, i) => `${i + 1}–${LET[right.indexOf(p.right)]}`).join(', ') });
         cur.push({ kind: 'match', n, left: pairs.map((p) => p.left), right });
         return;
@@ -103,14 +109,16 @@ export function flattenTask(t: ExportTask): WsTask {
         return;
       case 'order': {
         n++;
+        marks++;
         answers.push({ n, text: a.sentence ?? '' });
         const words = String(a.sentence ?? '').split(/\s+/).sort(() => 0.5 - Math.random());
-        cur.push({ kind: 'p', runs: [{ t: `(${n}) `, bold: true }, { t: words.join(' / '), italic: true }] });
+        cur.push({ kind: 'p', runs: [{ num: n }, { t: words.join(' / '), italic: true }] });
         cur.push({ kind: 'lines', n, count: 1 });
         return;
       }
       case 'writing': {
         n++;
+        marks += Number(a.points) || 5;
         answers.push({ n, text: a.model ? 'Model: ' + a.model : '(marked by the teacher)' });
         const words = a.maxWords ?? a.minWords;
         cur.push({ kind: 'lines', n, count: Math.min(14, Math.max(5, Math.ceil(((words as number) || 100) / 12))), prompt: words ? `${a.minWords ? a.minWords + '–' : 'up to '}${a.maxWords ?? a.minWords} words` : undefined });
@@ -127,7 +135,8 @@ export function flattenTask(t: ExportTask): WsTask {
         n++;
         const { pub, key } = splitPack(kind, d, 'ws');
         if (key) answers.push({ n, text: packAnswerText({ kind: 'pack', t: kind, k: key }, pub) });
-        const pre = { t: `(${n}) `, bold: true };
+        if (key) marks += Math.max(1, scorePack({ kind: 'pack', t: kind, k: key }, undefined).max);
+        const pre: Run = { num: n };
         switch (kind) {
           case 'fix':
             cur.push({ kind: 'p', runs: [pre, { t: 'Find and correct the mistake: ' }, { t: d.sentence ?? '' }] });
@@ -226,7 +235,21 @@ export function flattenTask(t: ExportTask): WsTask {
     }
   };
   (t.content.content ?? []).forEach((c) => walk(c));
-  return { title: t.title, instructions: t.instructions, blocks, answers };
+  return { title: t.title, instructions: t.instructions, blocks, answers, marks };
+}
+
+// The lesson as printed: section headings followed by their tasks. A section is kept only
+// when at least one of its tasks is printed.
+export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>): WsItem[] {
+  const out: WsItem[] = [];
+  let pending: string | null = null;
+  tasks.forEach((t, i) => {
+    if (t.kind === 'section') return void (pending = t.title);
+    if (t.hidden || (ids && !ids.has(i))) return;
+    if (pending !== null) out.push({ kind: 'section', title: pending }), (pending = null);
+    out.push({ kind: 'task', task: flattenTask(t) });
+  });
+  return out;
 }
 
 export function flattenLesson(tasks: ExportTask[], ids?: Set<number>) {
@@ -235,7 +258,7 @@ export function flattenLesson(tasks: ExportTask[], ids?: Set<number>) {
 
 // ---------------------------------------------------------------- DOCX
 
-export async function lessonDocx(title: string, tasks: WsTask[], opts: Options): Promise<Blob> {
+export async function lessonDocx(title: string, items: WsItem[], opts: Options): Promise<Blob> {
   // Word keeps the same look as the print version: serif text, the class colour for numbers and
   // labels, tinted boxes. Fonts that ship with Word and Google Docs are used so it looks right anywhere.
   const ACC = (opts.accent ?? '#d98f63').replace('#', '').toUpperCase();
@@ -247,6 +270,8 @@ export async function lessonDocx(title: string, tasks: WsTask[], opts: Options):
     runs.flatMap((r) => {
       if (r.blank) return [new TextRun({ text: '\u00A0'.repeat(Math.min(40, r.blank)), underline: {} })];
       if (r.options) return [new TextRun({ text: ' ' + r.options.join('  /  ') + ' ', font: SANS, size: 20 })];
+      if (r.stack) return r.stack.map((o) => new TextRun({ text: '      ' + o, break: 1, font: SERIF }));
+      if (r.num !== undefined) return [new TextRun({ text: ` ${r.num} `, bold: true, font: SERIF })];
       const q = /^\s*\((\d+)\)\s*$/.exec(r.t ?? '');
       if (q) return [new TextRun({ text: ` ${q[1]} `, bold: true, font: SANS, size: 16, color: ACC, superScript: false })];
       return [new TextRun({ text: r.t ?? '', bold: r.bold, italics: r.italic, font: SERIF })];
@@ -257,55 +282,79 @@ export async function lessonDocx(title: string, tasks: WsTask[], opts: Options):
       borders: { top: { style: BorderStyle.SINGLE, size: 4, color: 'E4E0DA' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'E4E0DA' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'E4E0DA' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'E4E0DA' }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
       rows: [new TableRow({ children: [new TableCell({ shading: { fill, color: 'auto', type: 'clear' as never }, margins: { top: 120, bottom: 120, left: 180, right: 180 }, children: kids })] })],
     });
-  const toParas = (list: Block[]): (Paragraph | Table)[] => {
+  const toParas = (list: Block[], kn = false): (Paragraph | Table)[] => {
     const out: (Paragraph | Table)[] = [];
     for (const b of list) {
-      if (b.kind === 'p') out.push(new Paragraph({ children: runsToDocx(b.runs), bullet: b.list === 'bullet' ? { level: 0 } : undefined, numbering: b.list === 'number' ? { reference: 'nums', level: 0 } : undefined, heading: b.heading ? HeadingLevel.HEADING_3 : undefined, spacing: { after: 100, line: 320 } }));
-      else if (b.kind === 'note') out.push(new Paragraph({ children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
-      else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ text: '' }));
-      else if (b.kind === 'callout') out.push(shaded(TINT[b.tone] ?? 'F4F3F1', [...(b.label ? [new Paragraph({ children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ text: '' }));
+      if (b.kind === 'p') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: runsToDocx(b.runs), bullet: b.list === 'bullet' ? { level: 0 } : undefined, numbering: b.list === 'number' ? { reference: 'nums', level: 0 } : undefined, heading: b.heading ? HeadingLevel.HEADING_3 : undefined, spacing: { after: 100, line: 320 } }));
+      else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: 18 })] }));
+      else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
+      else if (b.kind === 'callout') out.push(shaded(TINT[b.tone] ?? 'F4F3F1', [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'lines') {
-        if (b.prompt) out.push(new Paragraph({ children: [new TextRun({ text: b.prompt, font: SANS, size: 16, color: '8A847D' })] }));
+        if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SANS, size: 16, color: '8A847D' })] }));
         const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
         const rule = { style: BorderStyle.SINGLE, size: 4, color: 'C9C4BD' };
-        out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: none, bottom: rule, left: none, right: none, insideHorizontal: rule, insideVertical: none }, rows: Array.from({ length: b.count }, () => new TableRow({ height: { value: 480, rule: 'atLeast' as never }, children: [new TableCell({ children: [new Paragraph('')] })] })) }), new Paragraph({ text: '' }));
+        out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: none, bottom: rule, left: none, right: none, insideHorizontal: rule, insideVertical: none }, rows: Array.from({ length: b.count }, () => new TableRow({ cantSplit: true, height: { value: 480, rule: 'atLeast' as never }, children: [new TableCell({ children: [new Paragraph({ text: '', keepNext: kn })] })] })) }), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       } else if (b.kind === 'match')
         out.push(
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             borders: { top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' }, insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' } },
-            rows: Array.from({ length: Math.max(b.left.length, b.right.length) }, (_, i) => new TableRow({ children: [new TableCell({ borders: noBorders, children: [new Paragraph({ children: b.left[i] ? [new TextRun({ text: `${i + 1}  `, bold: true, color: ACC, font: SANS, size: 18 }), new TextRun({ text: b.left[i], font: SERIF }), new TextRun({ text: '   ______', font: SERIF })] : [] })] }), new TableCell({ borders: noBorders, children: [new Paragraph({ children: b.right[i] ? [new TextRun({ text: `${LET[i]}  `, bold: true, color: '8A847D', font: SANS, size: 18 }), new TextRun({ text: b.right[i], font: SERIF })] : [] })] })] })),
+            rows: Array.from({ length: Math.max(b.left.length, b.right.length) }, (_, i) => new TableRow({ cantSplit: true, children: [new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.left[i] ? [new TextRun({ text: `${i + 1}  `, bold: true, color: ACC, font: SANS, size: 18 }), new TextRun({ text: b.left[i], font: SERIF }), new TextRun({ text: '   ______', font: SERIF })] : [] })] }), new TableCell({ borders: noBorders, children: [new Paragraph({ keepNext: kn, keepLines: true, children: b.right[i] ? [new TextRun({ text: `${LET[i]}  `, bold: true, color: '8A847D', font: SANS, size: 18 }), new TextRun({ text: b.right[i], font: SERIF })] : [] })] })] })),
           }),
         );
-      else if (b.kind === 'table') out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: b.rows.map((r, ri) => new TableRow({ children: r.map((c) => new TableCell({ shading: ri === 0 ? { fill: 'F7EFE9', color: 'auto', type: 'clear' as never } : c === '■' ? { fill: 'E6E3DE', color: 'auto', type: 'clear' as never } : undefined, children: [new Paragraph({ children: [new TextRun({ text: c === '■' ? '' : c, bold: ri === 0, font: ri === 0 ? SANS : SERIF, size: ri === 0 ? 18 : 22 })] })] })) })) }));
+      else if (b.kind === 'table') out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: b.rows.map((r, ri) => new TableRow({ cantSplit: true, children: r.map((c) => new TableCell({ shading: ri === 0 ? { fill: 'F7EFE9', color: 'auto', type: 'clear' as never } : c === '■' ? { fill: 'E6E3DE', color: 'auto', type: 'clear' as never } : undefined, children: [new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: c === '■' ? '' : c, bold: ri === 0, font: ri === 0 ? SANS : SERIF, size: ri === 0 ? 18 : 22 })] })] })) })) }));
     }
     return out;
   };
   const children: (Paragraph | Table)[] = [];
-  children.push(new Paragraph({ children: [new TextRun({ text: 'Lesson Lit', font: SERIF, size: 22, color: '8A847D' }), new TextRun({ text: '      WORKSHEET', font: SANS, size: 14, bold: true, color: 'A29C95', characterSpacing: 40 })], spacing: { after: 160 } }));
-  if (opts.className) children.push(new Paragraph({ children: [new TextRun({ text: [opts.className, opts.level].filter(Boolean).join(' · ').toUpperCase(), font: SANS, size: 15, bold: true, color: ACC, characterSpacing: 40 })] }));
-  children.push(new Paragraph({ children: [new TextRun({ text: title, font: SERIF, size: 48, bold: true })], border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: ACC, space: 8 } }, spacing: { after: 240 } }));
-  if (opts.header) children.push(new Paragraph({ children: [label('Name   '), new TextRun({ text: '_____________________________     ', font: SERIF }), label('Class   '), new TextRun({ text: '__________     ', font: SERIF }), label('Date   '), new TextRun({ text: '__________', font: SERIF })], spacing: { after: 360 } }));
-  tasks.forEach((t, ti) => {
-    children.push(new Paragraph({ keepNext: true, spacing: { before: 320, after: 60 }, children: [new TextRun({ text: ` ${ti + 1} `, bold: true, font: SANS, size: 22, color: 'FFFFFF', shading: { fill: ACC, color: 'auto', type: 'clear' as never } }), new TextRun({ text: '  ' + t.title, font: SERIF, size: 30, bold: true })] }));
-    if (t.instructions) children.push(new Paragraph({ keepNext: true, spacing: { after: 160 }, children: [new TextRun({ text: t.instructions, bold: true, font: SANS, size: 21, color: ACC })] }));
-    children.push(...toParas(t.blocks));
-  });
+  const tasks = items.flatMap((i) => (i.kind === 'task' ? [i.task] : []));
+  children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ______________________   CLASS ____________' : ' ', font: SANS, size: 15, bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: 26, bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
+  children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: 30, bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: 15, bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: ACC, space: 4 } }, spacing: { after: 280 } }));
+  const body: (Paragraph | Table)[] = [];
+  const markRun = (n: number) => new TextRun({ text: `   _____ / ${n}`, font: SANS, size: 17, bold: true, color: '57534D' });
+  let num = 0;
+  let sec = '';
+  let secMarks = 0;
+  const closeSec = () => {
+    if (opts.marks && sec && secMarks) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 60, after: 200 }, children: [new TextRun({ text: `${sec} total`, font: SANS, size: 16, bold: true }), markRun(secMarks)] }));
+    secMarks = 0;
+  };
+  for (const it of items) {
+    if (it.kind === 'section') {
+      closeSec();
+      sec = it.title;
+      body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACC, space: 2 } }, children: [new TextRun({ text: it.title.toUpperCase(), font: SANS, size: 21, bold: true, color: '262420', characterSpacing: 20 })] }));
+      continue;
+    }
+    const t = it.task;
+    num++;
+    secMarks += t.marks;
+    body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: 23 }), new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: 23 })] }));
+    body.push(...toParas(t.blocks, true));
+    body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 160 }, children: opts.marks && t.marks ? [markRun(t.marks)] : [] }));
+  }
+  closeSec();
+  const grand = tasks.reduce((sum, t) => sum + t.marks, 0);
+  if (opts.marks && grand) body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { before: 120 }, children: [new TextRun({ text: 'TOTAL', font: SANS, size: 18, bold: true }), markRun(grand)] }));
+  const keyParas: (Paragraph | Table)[] = [];
   if (opts.key) {
-    children.push(new Paragraph({ children: [new PageBreak()] }));
-    children.push(new Paragraph({ children: [new TextRun({ text: 'FOR THE TEACHER', font: SANS, size: 15, bold: true, color: ACC, characterSpacing: 40 })] }));
-    children.push(new Paragraph({ children: [new TextRun({ text: 'Answer key', font: SERIF, size: 40, bold: true })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACC, space: 6 } }, spacing: { after: 200 } }));
+    keyParas.push(new Paragraph({ children: [new TextRun({ text: 'FOR THE TEACHER', font: SANS, size: 15, bold: true, color: ACC, characterSpacing: 40 })] }));
+    keyParas.push(new Paragraph({ children: [new TextRun({ text: 'Answer key', font: SERIF, size: 40, bold: true })], border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: ACC, space: 6 } }, spacing: { after: 200 } }));
     tasks.forEach((t, ti) => {
       if (!t.answers.length) return;
-      children.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${ti + 1}  `, bold: true, color: ACC, font: SANS }), new TextRun({ text: t.title, bold: true, font: SERIF })] }));
-      t.answers.forEach((a) => children.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: 18, color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
+      keyParas.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${ti + 1}  `, bold: true, color: ACC, font: SANS }), new TextRun({ text: t.title, bold: true, font: SERIF })] }));
+      t.answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: 18, color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
     });
   }
   const SIZES: Record<string, { width: number; height: number }> = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 }, A5: { width: 8391, height: 11906 } };
   const doc = new Document({
     numbering: { config: [{ reference: 'nums', levels: [{ level: 0, format: 'decimal', text: '%1.', alignment: AlignmentType.LEFT }] }] },
     styles: { default: { document: { run: { font: SERIF, size: opts.paper === 'A5' ? 20 : 22, color: '2F2C29' } } } },
-    sections: [{ properties: { page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 1000, bottom: 1100, left: 1000, right: 1000 } } }, children }],
+    sections: [
+      { properties: { page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children },
+      { properties: { type: SectionType.CONTINUOUS, column: { count: opts.columns ?? 2, space: 500 }, page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children: body },
+      ...(keyParas.length ? [{ properties: { type: SectionType.NEXT_PAGE, column: { count: 2, space: 500 }, page: { size: SIZES[opts.paper ?? 'A4'], margin: { top: 800, bottom: 1000, left: 1000, right: 1000 } } }, children: keyParas }] : []),
+    ],
   });
   return Packer.toBlob(doc);
 }

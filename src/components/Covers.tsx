@@ -1,4 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { audioUrl } from '../lib/media';
 import { useImageSrc } from '../editor/PackNode';
 import { saveImage } from '../lib/media';
 
@@ -295,5 +297,20 @@ export function CoverPicker({ classId, value, onChange }: { classId: string; val
       </div>
       <span className="hint">The ready-made covers use your theme colour.</span>
     </div>
+  );
+}
+
+// The cover as plain HTML, for printed worksheets. Presets keep using var(--accent).
+export async function coverMarkup(cover: string | null | undefined, classId: string): Promise<string> {
+  if (cover?.startsWith('media:')) {
+    const url = await audioUrl(classId, cover.slice(6)).catch(() => '');
+    if (url) return `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`;
+  }
+  const key = cover?.startsWith('preset:') ? cover.slice(7) : 'waves';
+  const p = PRESETS.find((x) => x.key === key) ?? PRESETS[0];
+  return renderToStaticMarkup(
+    <svg viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+      {p.art}
+    </svg>,
   );
 }

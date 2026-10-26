@@ -3,10 +3,11 @@ import { gatherLesson } from '../lib/transfer';
 import type { ExportTask } from '../lib/textformat';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { flattenLesson, lessonDocx, saveBlob, type Paper } from '../lib/worksheet';
+import { flattenWithSections, lessonDocx, saveBlob, type Paper } from '../lib/worksheet';
 import { worksheetHtml } from '../lib/worksheetHtml';
 import { theme } from '../lib/themes';
-import type { ClassDoc } from '../lib/classes';
+import { coverMarkup } from './Covers';
+import type { ClassDoc, Item } from '../lib/classes';
 
 const defaultPaper = (): Paper => {
   try {
@@ -35,25 +36,46 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     }
   };
   const [cls, setCls] = useState<ClassDoc | null>(null);
+  const [item, setItem] = useState<Item | null>(null);
+  const [columns, setColumnsState] = useState<1 | 2>(() => {
+    try {
+      return localStorage.getItem('ll.wsCols') === '1' ? 1 : 2;
+    } catch {
+      return 2;
+    }
+  });
+  const setColumns = (c: 1 | 2) => {
+    setColumnsState(c);
+    try {
+      localStorage.setItem('ll.wsCols', String(c));
+    } catch {
+      /* ignore */
+    }
+  };
+  const [marks, setMarks] = useState(true);
   useEffect(() => {
     gatherLesson(classId, itemId).then(setLesson).catch(() => setLesson({ title: 'Lesson', tasks: [] }));
     getDoc(doc(db, 'classes', classId)).then((d) => d.exists() && setCls({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }), () => {});
+    getDoc(doc(db, 'classes', classId, 'items', itemId)).then((d) => d.exists() && setItem({ id: d.id, ...(d.data() as Omit<Item, 'id'>) }), () => {});
   }, [classId, itemId]);
-  const look = () => ({ header, key, paper, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
+  const isExam = item?.type === 'exam';
+  const look = () => ({ header, key, paper, columns, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
   const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden);
   const ids = picked ?? new Set(visible.map((x) => x.i));
-  const chosen = () => flattenLesson(lesson!.tasks, ids);
+  const chosen = () => flattenWithSections(lesson!.tasks, ids);
 
+  const [cover, setCover] = useState('');
+  useEffect(() => {
+    if (cls) coverMarkup(cls.cover, classId).then(setCover, () => setCover(''));
+  }, [cls, classId]);
   const print = () => {
     const tasks = chosen();
     const w = window.open('', '_blank');
     if (!w) return setBusy('Your browser blocked the print window. Allow pop-ups for this site.');
-    w.document.write(worksheetHtml(lesson!.title, tasks, look()));
+    (w as unknown as { __autoPrint: boolean }).__autoPrint = true; // the page prints itself once it is laid out
+    w.document.write(worksheetHtml(lesson!.title, tasks, { ...look(), cover }));
     w.document.close();
     w.focus();
-    const go = () => window.setTimeout(() => w.print(), 150);
-    if (w.document.fonts?.ready) w.document.fonts.ready.then(go, go);
-    else window.setTimeout(() => w.print(), 600);
   };
   const docx = async () => {
     setBusy('Making the Word file…');
@@ -72,7 +94,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
           <span className="hint">Loading…</span>
         ) : (
           <>
-            <span className="hint">Gaps become lines, choices become (a / b / c), drag and drop becomes a word box, matching becomes two columns, long answers become ruled lines. Hidden tasks are left out.</span>
+            <span className="hint">Laid out like a coursebook page: your sections as headings, each task as a numbered exercise (its instruction is the heading), and no exercise split across columns or pages. Hidden tasks are left out.</span>
             <div className="field" style={{ gap: 6 }}>
               <span>Tasks</span>
               <div className="aud-pick ws-tasks">
@@ -94,10 +116,26 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
                 ))}
               </span>
             </div>
+            <div className="field" style={{ gap: 6 }}>
+              <span>Layout</span>
+              <span className="seg small-seg" role="radiogroup" aria-label="Columns" style={{ width: 260 }}>
+                {([1, 2] as const).map((c) => (
+                  <button key={c} type="button" role="radio" aria-checked={columns === c} className={columns === c ? 'on' : ''} onClick={() => setColumns(c)}>
+                    {c === 1 ? 'One column' : 'Two columns'}
+                  </button>
+                ))}
+              </span>
+            </div>
             <label className="pop-check">
               <input type="checkbox" checked={header} onChange={() => setHeader((v) => !v)} />
-              Name, class and date boxes at the top
+              Name and class boxes in the header
             </label>
+            {isExam && (
+              <label className="pop-check">
+                <input type="checkbox" checked={marks} onChange={() => setMarks((v) => !v)} />
+                Mark boxes for each exercise, section totals and a total
+              </label>
+            )}
             <label className="pop-check">
               <input type="checkbox" checked={key} onChange={() => setKey((v) => !v)} />
               Answer key on a separate page
