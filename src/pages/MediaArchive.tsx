@@ -1,7 +1,8 @@
-import { useMyDocs } from '../lib/sharedDocs';
+import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
+import { ShareDialog as DocShareDialog } from './DocPage';
 import { usePhone } from '../lib/useMedia';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibrary';
+import { FileDocs, ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibrary';
 import { moveLibTasks, newLibTask, removeLibTask, renameLibTask, useLibTasks, type LibTask } from '../lib/libtasks';
 import { ChainIcon, FolderDetail, TaskDetail, TaskWindow } from './LibraryParts';
 import { useDismiss } from '../lib/useDismiss';
@@ -36,8 +37,9 @@ const KINDS = [
   { k: 'audio', label: 'Sounds', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
-type Kind = 'image' | 'audio' | 'video' | 'task';
-const ALL_KINDS: { k: Kind; label: string }[] = [...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'task', label: 'Tasks' }];
+type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd';
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'task', label: 'Tasks' }, { k: 'doc', label: 'Documents' }, { k: 'slides', label: 'Slides' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
+const COLLAB_KINDS: Kind[] = ['doc', 'slides'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
 type View = 'icons' | 'list' | 'time';
@@ -50,18 +52,19 @@ const MOVE = 'application/x-ll-media';
 const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Earlier');
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
-const kindName = (k: string) => (k === 'image' ? 'Picture' : k === 'video' ? 'Video' : k === 'task' ? 'Task' : 'Sound');
-const ORDER: Record<Kind, number> = { task: 0, image: 1, audio: 2, video: 3 };
+const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Sound', lesson: 'Lesson', doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading' })[k] ?? 'File';
+const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, image: 6, audio: 7, video: 8 };
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
 
 // One thing in the library, whatever it is.
-type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask };
+type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask; doc?: SharedDoc };
+const entryOfDoc = (d: SharedDoc): Entry => ({ key: 'd:' + d.id, kind: d.kind as Kind, name: d.title, folder: d.path ?? '', at: d.updatedAt?.toMillis?.() ?? d.createdAt?.toMillis?.() ?? 0, size: d.size ?? 0, doc: d });
 const entryOfItem = (i: ArchiveItem): Entry => ({ key: i.id, kind: i.kind, name: i.name, folder: i.folder, at: i.createdAt, size: spaceOf(i), item: i });
 const entryOfTask = (t: LibTask): Entry => ({ key: 't:' + t.id, kind: 'task', name: t.title, folder: t.folder, at: t.createdAt || t.updatedAt, size: 0, task: t });
 
-type Section = 'media' | 'docs' | 'shared' | 'colleagues';
+type Section = 'media' | 'folders' | 'docs' | 'shared' | 'colleagues';
 
 const openStudio = (kind: 'task' | 'sound', id: string) => window.open(`/studio/${kind}/${id}`, '_blank');
 const stored = <T,>(k: string, d: T): T => {
@@ -87,7 +90,7 @@ export function MediaArchive() {
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
   const [section, setSection] = useState<Section>(() => {
     const v = new URLSearchParams(window.location.search).get('show');
-    return v === 'docs' || v === 'shared' ? v : 'media';
+    return v === 'docs' || v === 'shared' || v === 'folders' ? v : new URLSearchParams(window.location.search).get('folder') ? 'folders' : 'media';
   });
   const pick = (k: Section) => {
     setSection(k);
@@ -142,9 +145,12 @@ export function MediaArchive() {
     if (sound) setDialog({ tab: 'upload', file: sound });
   };
 
+  const { mine: myDocsTop } = useMyDocs(uid || undefined);
   const all = items ?? [];
   const tasks = libTasks ?? [];
-  const entries = useMemo(() => [...all.map(entryOfItem), ...tasks.map(entryOfTask)], [all, tasks]);
+  const ownDocs = useMemo(() => (myDocsTop ?? []).filter((d) => !d.folder), [myDocsTop]);
+  const entries = useMemo(() => [...all.map(entryOfItem), ...tasks.map(entryOfTask), ...ownDocs.map(entryOfDoc)], [all, tasks, ownDocs]);
+  const [sharing, setSharing] = useState<SharedDoc | null>(null);
   // Every folder, with the folders above it.
   const allFolders = useMemo(() => {
     const set = new Set<string>();
@@ -175,7 +181,7 @@ export function MediaArchive() {
   }, [entries, folder, kinds, tag, q, sort, filtering, view]);
   const subFolders = filtering || view === 'time' ? [] : kidsOf(folder);
   const groups: [string, Entry[]][] = group === 'type' ? ALL_KINDS.map((k) => [k.label, shown.filter((e) => e.kind === k.k)] as [string, Entry[]]).filter(([, l]) => l.length) : [['', shown]];
-  const { mine: myDocs } = useMyDocs(uid || undefined);
+  const myDocs = myDocsTop;
   const docBytes = (myDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
   const total = all.reduce((s, i) => s + spaceOf(i), 0) + docBytes;
 
@@ -274,6 +280,7 @@ export function MediaArchive() {
     if (!e || n === e.name) return;
     if (e.item) await archiveUpdate(uid, e.item, { name: n }).catch(() => {});
     else if (e.task) await renameLibTask(uid, e.task.id, n).catch(() => {});
+    else if (e.doc) await renameDoc(e.doc.id, n).catch(() => {});
   };
   const deleteF = async (f: string) => {
     const n = countIn(f);
@@ -291,6 +298,7 @@ export function MediaArchive() {
     for (const e of list) {
       if (e.item) await archiveRemove(uid, e.item.id).catch(() => {});
       else if (e.task) await removeLibTask(uid, e.task).catch(() => {});
+      else if (e.doc) await removeSharedDoc(e.doc.id).catch(() => {});
     }
     setSel(new Set());
   };
@@ -319,6 +327,7 @@ export function MediaArchive() {
     const ts = list.filter((e) => e.task && e.folder !== to).map((e) => e.task!.id);
     if (its.length) await moveItems(uid, its, to).catch(() => {});
     if (ts.length) await moveLibTasks(uid, ts, to).catch(() => {});
+    await Promise.all(list.filter((e) => e.doc && e.folder !== to).map((e) => setDocPath(e.doc!.id, to))).catch(() => {});
     setSel(new Set());
   };
   // Drag onto a folder (in the pane, the breadcrumbs or the files) to move it there.
@@ -345,13 +354,22 @@ export function MediaArchive() {
     e.dataTransfer.effectAllowed = 'move';
   };
   // Editors open full screen in their own tab: Task editor, Sound editor.
-  const openE = (en: Entry) => (en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openE = (en: Entry) => (en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
         ...(selEntries.length ? [{ label: `Move ${selEntries.length} items to…`, icon: 'folder', onClick: () => setMoving(selEntries) } as MenuItem] : []),
         { label: `Download ${sel.size} items`, icon: 'import', onClick: () => void download(selEntries, selFolders) },
         ...(selEntries.length ? ['sep' as const, { label: `Remove ${selEntries.length} from the library`, icon: 'trash', danger: true, onClick: () => void removeE(selEntries) } as MenuItem] : []),
+      ];
+    if (en.doc)
+      return [
+        { label: 'Open', icon: 'fullscreen', onClick: () => openE(en) },
+        { label: COLLAB_KINDS.includes(en.kind) ? 'Share…' : 'Share with colleagues…', icon: 'person', onClick: () => setSharing(en.doc!) },
+        { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
+        { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
+        'sep',
+        { label: 'Delete', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
       ];
     return [
       { label: en.task ? 'Edit' : 'Open', icon: en.task ? 'edit' : 'fullscreen', onClick: () => openE(en) },
@@ -370,10 +388,28 @@ export function MediaArchive() {
     'sep',
     { label: 'Delete the folder', icon: 'trash', danger: true, onClick: () => void deleteF(f) },
   ];
+  const makeDoc = async (k: DocKind) => {
+    if (!uid) return;
+    const w = window.open('about:blank', '_blank');
+    const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k);
+    if (folder) await setDocPath(id, folder).catch(() => {});
+    if (w) w.location.href = `/doc/${id}`;
+  };
+  const newMenu: MenuItem[] = [
+    { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
+    'sep',
+    { label: 'Lesson', icon: 'classes', onClick: () => void makeDoc('lesson') },
+    { label: 'Task', icon: 'task', onClick: () => void newTask() },
+    { label: 'Document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
+    { label: 'Slides', icon: 'present', hint: 'with learners too', onClick: () => void makeDoc('slides') },
+    { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
+    { label: 'PD reading', icon: 'notebook', onClick: () => void makeDoc('pd') },
+    'sep',
+    { label: 'Recording, with colleagues', icon: 'mic', onClick: () => setTogether(true) },
+    { label: 'Pictures, sounds or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
+  ];
   const emptyMenu: MenuItem[] = [
-    { label: 'Add media…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
-    { label: 'New task', icon: 'task', onClick: () => void newTask() },
-    { label: 'New folder', icon: 'folder', onClick: () => void newFolder() },
+    ...newMenu,
     ...(order.length ? ['sep' as const, { label: 'Select everything', icon: 'check', hint: 'Ctrl A', onClick: () => setSel(new Set(order)) } as MenuItem] : []),
   ];
   const clickFolder = (f: string) => (e: React.MouseEvent) => (touch || phone ? setFolder(f) : select('f:' + f, e));
@@ -438,10 +474,11 @@ export function MediaArchive() {
     </>
   );
 
-  const SECTIONS: { k: Section; label: string }[] = [
-    { k: 'media', label: 'Library' },
-    { k: 'docs', label: 'Collaborative documents' },
-    { k: 'shared', label: 'Shared with colleagues' },
+  const SECTIONS: { k: Section; label: string; icon: string }[] = [
+    { k: 'media', label: 'My files', icon: 'archive' },
+    { k: 'folders', label: 'Shared folders', icon: 'groups' },
+    { k: 'shared', label: 'Shared with me', icon: 'person' },
+    { k: 'docs', label: 'In my classes', icon: 'classes' },
   ];
   const editTask = tasks.find((t) => t.id === editing) ?? null;
   // The pane on the right: whatever is selected (one thing).
@@ -484,7 +521,7 @@ export function MediaArchive() {
         <MainNav on="archive" />
       </TopBar>
       <div
-        className={'ma' + (over ? ' dropping' : '') + (section !== 'media' ? ' no-side' : '') + (pane ? ' with-detail' : '')}
+        className={'ma' + (over ? ' dropping' : '') + (pane ? ' with-detail' : '')}
         onDragOver={(e) => {
           if (section !== 'media' || !e.dataTransfer.types.includes('Files')) return;
           e.preventDefault();
@@ -499,30 +536,25 @@ export function MediaArchive() {
         }}
       >
         {over && <div className="ma-drop">Drop pictures or sounds to add them{folder ? ` to ${leafOf(folder)}` : ''}</div>}
-        <nav className="ma-sections" aria-label="Library">
-          {SECTIONS.map((s) => (
-            <button key={s.k} type="button" className={section === s.k ? 'on' : ''} aria-current={section === s.k ? 'page' : undefined} onClick={() => pick(s.k)}>
-              {s.label}
-            </button>
-          ))}
-          <Link to="/colleagues" className="ma-sections-link">
-            Colleagues
-          </Link>
-        </nav>
-
-        {section === 'media' && (
-          <aside className="ma-side">
+        <aside className="ma-side">
+            <nav className="ma-nav ma-places" aria-label="Files">
+              {SECTIONS.map((x) => (
+                <button key={x.k} type="button" className={section === x.k && (x.k !== 'media' || folder === '') ? 'on' : ''} aria-current={section === x.k ? 'page' : undefined} onClick={() => (pick(x.k), x.k === 'media' && setFolder(''))} {...(x.k === 'media' ? folderDrop('') : {})}>
+                  <UiIcon name={x.icon} size={16} />
+                  <span className="ma-fname">{x.label}</span>
+                  {x.k === 'media' && <b>{entries.length}</b>}
+                </button>
+              ))}
+            </nav>
+            {section === 'media' && (
             <nav className="ma-nav ma-tree" aria-label="Folders">
               <span className="ma-h">Folders</span>
-              <button type="button" className={(folder === '' ? 'on' : '') + (dropOn === '' ? ' drop' : '')} onClick={() => setFolder('')} onContextMenu={(e) => openMenu(e, emptyMenu)} {...folderDrop('')}>
-                <UiIcon name="archive" size={16} />
-                <span className="ma-fname">Resources library</span> <b>{entries.length}</b>
-              </button>
               <Tree parent="" depth={1} />
               <button type="button" className="ma-new" onClick={() => void newFolder()}>
                 <UiIcon name="plus" size={14} /> New folder
               </button>
             </nav>
+            )}
             {tags.length > 0 && (
               <div className="ma-tags">
                 <span className="ma-h">Tags</span>
@@ -569,14 +601,13 @@ export function MediaArchive() {
               <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space; documents, slides, flashcards and reading notes count.</span>
             </div>
           </aside>
-        )}
 
         {section === 'docs' && uid && (
           <main className="ma-main">
             <div className="ma-head">
               <div className="ma-head-text">
-                <h1 className="page-title">Collaborative documents</h1>
-                <span className="sub">Your documents, slides, flashcards and reading notes, your shared folders, and what your classes write together.</span>
+                <h1 className="page-title">In my classes</h1>
+                <span className="sub">The documents and slides your classes write together, and where each is used.</span>
               </div>
             </div>
             <ArchiveDocs uid={uid} />
@@ -586,11 +617,17 @@ export function MediaArchive() {
           <main className="ma-main">
             <div className="ma-head">
               <div className="ma-head-text">
-                <h1 className="page-title">Shared with colleagues</h1>
-                <span className="sub">Lessons, tasks, documents and media colleagues share with you, as read-only copies, and what you share.</span>
+                <h1 className="page-title">Shared with me</h1>
+                <span className="sub">Files colleagues and others share with you, and what you share.</span>
               </div>
             </div>
+            <FileDocs uid={uid} mode="shared" />
             <ArchiveShared uid={uid} />
+          </main>
+        )}
+        {section === 'folders' && uid && (
+          <main className="ma-main">
+            <FileDocs uid={uid} mode="folders" />
           </main>
         )}
         {section === 'colleagues' && <Navigate to="/colleagues" replace />}
@@ -600,7 +637,7 @@ export function MediaArchive() {
               <div className="ma-head-text">
                 <nav className="ma-crumbs" aria-label="Where you are">
                   <button type="button" className={folder ? '' : 'here'} onClick={() => setFolder('')} {...folderDrop('')}>
-                    Resources library
+                    My files
                   </button>
                   {crumbs.map((c) => (
                     <span key={c} className="ma-crumb">
@@ -611,20 +648,11 @@ export function MediaArchive() {
                     </span>
                   ))}
                 </nav>
-                <h1 className="page-title">{folder ? leafOf(folder) : 'Resources library'}</h1>
+                <h1 className="page-title">{folder ? leafOf(folder) : 'My files'}</h1>
               </div>
               <span className="ma-add">
-                <button type="button" className="btn ma-new-folder" onClick={() => void newFolder()}>
-                  <UiIcon name="folder" size={15} /> New folder
-                </button>
-                <button type="button" className="btn ma-new-folder" onClick={() => setTogether(true)} data-tip="Record a dialogue with colleagues, each on their own device">
-                  <UiIcon name="mic" size={15} /> Record together
-                </button>
-                <button type="button" className="btn ma-new-folder" onClick={() => void newTask()}>
-                  <UiIcon name="task" size={15} /> New task
-                </button>
-                <button type="button" className="btn primary" onClick={() => setDialog({ tab: 'upload' })}>
-                  + Add media
+                <button type="button" className="btn primary" onClick={(e) => openMenu(e, newMenu)} aria-haspopup="menu">
+                  + New
                 </button>
               </span>
             </div>
@@ -816,6 +844,37 @@ export function MediaArchive() {
         )}
 
         {pane && oneEntry?.item && <Detail key={oneEntry.key} uid={uid!} item={oneEntry.item} folders={allFolders} shared={sharedIds.has(oneEntry.item.id)} onClose={() => setSel(new Set())} />}
+        {pane && oneEntry?.doc && (
+          <aside className="ma-detail" aria-label={oneEntry.doc.title}>
+            <div className="ma-detail-head">
+              <span className="pop-type">{kindName(oneEntry.kind)}</span>
+              <button type="button" className="ma-x big" onClick={() => setSel(new Set())} aria-label="Close">
+                ×
+              </button>
+            </div>
+            <div className="lt-preview dd" onDoubleClick={() => openE(oneEntry)} title="Double-click to open">
+              <FileIcon kind={oneEntry.kind} size={56} />
+              <b className="lt-preview-t">{oneEntry.doc.title}</b>
+              <span className="hint">
+                {Object.keys(oneEntry.doc.members ?? {}).length ? `Shared with ${Object.values(oneEntry.doc.members).map((m) => m.name.split(' ')[0]).join(', ')}` : 'Only you'}
+                {oneEntry.doc.classes && Object.keys(oneEntry.doc.classes).length ? ` · in ${Object.values(oneEntry.doc.classes).map((c) => c.name).join(', ')}` : ''}
+              </span>
+              {oneEntry.size > 0 && <span className="hint">{formatBytes(oneEntry.size)}</span>}
+              <span className="hint">{COLLAB_KINDS.includes(oneEntry.kind) ? 'Can be shared with colleagues and learners.' : 'Can be shared with other teachers.'}</span>
+            </div>
+            <span className="ma-detail-acts">
+              <button type="button" className="btn small-btn primary" onClick={() => openE(oneEntry)}>
+                <UiIcon name="fullscreen" size={14} /> Open
+              </button>
+              <button type="button" className="btn small-btn" onClick={() => setSharing(oneEntry.doc!)}>
+                <UiIcon name="person" size={14} /> Share
+              </button>
+              <button type="button" className="btn link small" onClick={() => void removeE([oneEntry])}>
+                Delete
+              </button>
+            </span>
+          </aside>
+        )}
         {pane && oneEntry?.task && <TaskDetail key={oneEntry.key} task={oneEntry.task} onOpen={() => openStudio('task', oneEntry.task!.id)} onDownload={() => downloadTask(oneEntry.task!)} onRemove={() => void removeE([oneEntry])} onClose={() => setSel(new Set())} />}
         {pane && oneFolder && (
           <FolderDetail
@@ -833,7 +892,8 @@ export function MediaArchive() {
         )}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
-        {together && <RecordTogether onClose={() => setTogether(false)} />}
+        {sharing && <DocShareDialog d={sharing} onClose={() => setSharing(null)} />}
+      {together && <RecordTogether onClose={() => setTogether(false)} />}
         {editTask && uid && <TaskWindow uid={uid} task={editTask} onClose={() => setEditing(null)} />}
       </div>
     </div>

@@ -3,12 +3,15 @@ import { UiIcon } from './UiIcon';
 // One look for every kind of thing you keep: a small page with a folded corner, its own colour
 // and symbol, and a label. Folders are folders. Used in the archive, in shares and in messages.
 
-export type FileKind = 'lesson' | 'task' | 'doc' | 'image' | 'audio' | 'video' | 'link' | 'media';
+export type FileKind = 'lesson' | 'task' | 'doc' | 'slides' | 'flash' | 'pd' | 'image' | 'audio' | 'video' | 'link' | 'media';
 
 const LOOK: Record<FileKind, { icon: string; label: string }> = {
   lesson: { icon: 'classes', label: 'Lesson' },
   task: { icon: 'task', label: 'Task' },
   doc: { icon: 'discuss', label: 'Doc' },
+  slides: { icon: 'present', label: 'Slides' },
+  flash: { icon: 'pick', label: 'Cards' },
+  pd: { icon: 'notebook', label: 'Reading' },
   image: { icon: 'picture', label: 'Picture' },
   audio: { icon: 'music', label: 'Sound' },
   video: { icon: 'video', label: 'Video' },

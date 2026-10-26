@@ -1,6 +1,6 @@
 import { ask } from '../lib/ask';
 import { useAuth } from '../lib/auth';
-import { KIND_LABEL, moveToFolder, newDocInFolder, newFolder, newSharedDoc, removeFolder, removeSharedDoc, renameFolder, sendFolderInChat, shareFolder, unshareFolder, useFolderDocs, useFolders, useMyDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
+import { KIND_LABEL, moveToFolder, newDocInFolder, newFolder, removeFolder, removeSharedDoc, renameFolder, sendFolderInChat, shareFolder, unshareFolder, useFolderDocs, useFolders, useMyDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { DocIcon, SharePeople } from './DocPage';
 import { useDirectory } from '../lib/directory';
 import { exportLesson } from '../lib/textformat';
@@ -338,25 +338,31 @@ function FolderView({ f, uid, onBack, folders }: { f: SharedFolder; uid: string;
   );
 }
 
-function FileDocs({ uid }: { uid: string }) {
+export function FileDocs({ uid, mode }: { uid: string; mode: 'folders' | 'shared' }) {
   const { user } = useAuth();
-  const { mine, withMe } = useMyDocs(uid);
+  const { withMe } = useMyDocs(uid);
   const folders = useFolders(uid);
   const [qs, setQs] = useSearchParams();
   const openId = qs.get('folder') ?? '';
   const allFolders = [...(folders.mine ?? []), ...(folders.withMe ?? [])];
   const open = allFolders.find((f) => f.id === openId);
   const setOpen = (id: string) => setQs((q) => (id ? q.set('folder', id) : q.delete('folder'), q), { replace: true });
+  if (mode === 'shared') {
+    const list = (withMe ?? []).filter((d) => !d.folder);
+    return list.length ? (
+      <section className="fd">
+        <h2 className="fd-h">Files shared with you</h2>
+        <div className="al-grid">{list.map((d) => <DocCard key={d.id} d={d} shared />)}</div>
+      </section>
+    ) : null;
+  }
   if (open) return <FolderView f={open} uid={uid} onBack={() => setOpen('')} folders={folders.mine ?? []} />;
-  const loose = (mine ?? []).filter((d) => !d.folder);
-  const sharedLoose = (withMe ?? []).filter((d) => !d.folder);
   return (
     <section className="fd">
       <div className="fd-head">
-        <h2 className="fd-h">Your documents</h2>
-        <NewButtons make={(k) => void openNew(newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k))} />
+        <h1 className="page-title">Shared folders</h1>
       </div>
-      <span className="hint">Lessons, documents, slides, flashcard sets and reading notes. Share each one with the people you choose, or put them in a shared folder. Each opens in its own tab.</span>
+      <span className="hint">A shared folder is shared with everyone in it: colleagues, or learners for documents and slides. Everything in it uses the owner's space.</span>
       <div className="fd-folders">
         {allFolders.map((f) => (
           <button key={f.id} type="button" className="fd-folder" onClick={() => setOpen(f.id)}>
@@ -375,14 +381,6 @@ function FileDocs({ uid }: { uid: string }) {
           <span>+ New shared folder</span>
         </button>
       </div>
-      {loose.length > 0 ? <div className="al-grid">{loose.map((d) => <DocCard key={d.id} d={d} shared={false} folders={folders.mine ?? []} />)}</div> : <span className="hint fd-none">{mine ? 'No documents of your own yet.' : ''}</span>}
-      {sharedLoose.length > 0 && (
-        <>
-          <h2 className="fd-h">Shared with you</h2>
-          <div className="al-grid">{sharedLoose.map((d) => <DocCard key={d.id} d={d} shared />)}</div>
-        </>
-      )}
-      <h2 className="fd-h">In your classes</h2>
     </section>
   );
 }
@@ -410,7 +408,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
   const c = open && lib.classes.find((x) => x.id === open.classId);
   return (
     <>
-      <FileDocs uid={uid} />
+
       <div className="ma-bar-row">
         <input className="ma-search" type="search" value={q} placeholder="Search names, classes and lessons" onChange={(e) => setQ(e.target.value)} />
         <span className="seg small-seg" role="radiogroup" aria-label="Kind">

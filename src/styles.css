@@ -5845,3 +5845,6 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .ld-suite { width: auto; height: auto; }
 .ld-suite::before, .ld-suite::after { display: none; }
 .suite-mark { flex-direction: row; align-items: center; gap: 9px; } .suite-mark > span { display: flex; flex-direction: column; line-height: 1.05; }
+.ma-places { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--hair); }
+.fk-slides { --fk: #b7791f; } .fk-flash { --fk: #8a4f9e; } .fk-pd { --fk: #3c7c8c; } .fk-lesson { --fk: #c8764a; }
+.lt-preview.dd { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 22px 14px; }

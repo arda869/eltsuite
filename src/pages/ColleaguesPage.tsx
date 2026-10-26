@@ -29,11 +29,11 @@ export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | 'me
     </Link>
   );
   return (
-    <nav aria-label="Main" className="main-nav">
+    <nav aria-label="Main" className="main-nav mn-phone">
       {tab('/', 'classes', 'classes', 'Classes', 'Classes')}
       {tab('/messages', 'messages', 'message', 'Messages', 'Messages', unread)}
       {tab('/colleagues', 'colleagues', 'groups', 'Colleagues', 'Colleagues')}
-      {tab('/archive', 'archive', 'archive', 'Resources library', 'Library')}
+      {tab('/archive', 'archive', 'archive', 'Files', 'Files')}
     </nav>
   );
 }

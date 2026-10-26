@@ -155,6 +155,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   const dir = useDirectory();
   return (
     <SharePeople
+      teachersOnly={!['doc', 'slides'].includes(d.kind)}
       title={`Share “${d.title}”`}
       ownerName={d.ownerName}
       members={d.members ?? {}}
@@ -170,7 +171,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   );
 }
 
-export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link' }: { title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly }: { teachersOnly?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
   const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
@@ -181,9 +182,9 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
   const [done, setDone] = useState('');
   const people = useMemo(() => {
     const all = new Map<string, Person & { where: string }>();
-    for (const g of dir?.groups ?? []) for (const p of g.people) if (p.key !== dir?.me.key && !all.has(p.key)) all.set(p.key, { ...p, where: g.label });
+    for (const g of dir?.groups ?? []) for (const p of g.people) if (p.key !== dir?.me.key && !all.has(p.key) && (!teachersOnly || p.role === 'teacher')) all.set(p.key, { ...p, where: g.label });
     return [...all.values()];
-  }, [dir]);
+  }, [dir, teachersOnly]);
   const s = q.trim().toLowerCase();
   const found = people.filter((p) => !members?.[p.key] && !picked.some((x) => x.key === p.key) && (!s || `${p.name} ${p.where}`.toLowerCase().includes(s))).slice(0, 8);
   const go = async () => {
@@ -205,6 +206,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog dp-dialog" role="dialog" aria-label={title}>
         <h2>{title}</h2>
+        {teachersOnly && <span className="hint">You can share this with other teachers. Documents and slides can also be shared with learners.</span>}
         <div className="dp-add">
           <span className="dp-chips">
             {picked.map((p) => (
@@ -215,7 +217,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
                 </button>
               </span>
             ))}
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={picked.length ? 'Add more' : 'Colleagues or learners'} aria-label="Find people" autoFocus />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={picked.length ? 'Add more' : teachersOnly ? 'Colleagues' : 'Colleagues or learners'} aria-label="Find people" autoFocus />
           </span>
           {(s || !picked.length) && found.length > 0 && (
             <span className="dp-found">

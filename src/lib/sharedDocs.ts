@@ -31,6 +31,7 @@ export type SharedDoc = {
   classes?: Record<string, { role: DocRole; name: string }>;
   size?: number; // bytes the document takes, counted towards the owner's space
   folder?: string; // a shared folder it is in
+  path?: string; // the folder in the owner's files
   createdBy?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -163,7 +164,7 @@ export function useFolderDocs(f?: SharedFolder | null, uid?: string) {
 }
 // A new file in a folder belongs to the folder's owner and is shared with everyone in it.
 export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind) {
-  const members = { ...(f.members ?? {}) } as SharedDoc['members'];
+  const members = Object.fromEntries(Object.entries(f.members ?? {}).filter(([, m]) => m.kind === 'teacher' || kind === 'doc' || kind === 'slides')) as SharedDoc['members'];
   if (me.uid !== f.owner) members[me.uid] = f.members?.[me.uid] ?? { role: 'edit', name: me.name, kind: 'teacher' };
   delete members[f.owner];
   const r = await addDoc(col, {
@@ -187,7 +188,17 @@ export async function shareFolder(f: SharedFolder, people: Person[], role: DocRo
   for (const p of people) add[p.key] = { role, name: p.name, kind: p.role };
   const memberIds = [...new Set([...(f.memberIds ?? []), ...people.map((p) => p.key)])];
   await updateDoc(doc(fcol, f.id), { members: { ...(f.members ?? {}), ...add }, memberIds });
-  await Promise.all(docs.filter((d) => d.owner === f.owner).map((d) => updateDoc(doc(col, d.id), { members: { ...(d.members ?? {}), ...add }, memberIds: [...new Set([...(d.memberIds ?? []), ...people.map((p) => p.key)])] })));
+  // Learners get documents and slides; everything else in the folder is for teachers.
+  await Promise.all(
+    docs
+      .filter((d) => d.owner === f.owner)
+      .map((d) => {
+        const who = people.filter((p) => p.role === 'teacher' || d.kind === 'doc' || d.kind === 'slides');
+        if (!who.length) return null;
+        const a = Object.fromEntries(who.map((p) => [p.key, add[p.key]]));
+        return updateDoc(doc(col, d.id), { members: { ...(d.members ?? {}), ...a }, memberIds: [...new Set([...(d.memberIds ?? []), ...who.map((p) => p.key)])] });
+      }),
+  );
 }
 export async function unshareFolder(f: SharedFolder, uid: string, docs: SharedDoc[]) {
   const { [uid]: _, ...rest } = f.members ?? {};
@@ -217,3 +228,5 @@ export async function sendFolderInChat(f: SharedFolder, me: Person, people: Pers
     });
   }
 }
+
+export const setDocPath = (id: string, path: string) => updateDoc(doc(col, id), { path });
