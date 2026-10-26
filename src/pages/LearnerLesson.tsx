@@ -343,7 +343,7 @@ export function LearnerLesson() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
-        <span className="right-push" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <span className="right-push icon-row">
           {c?.meeting?.url && c.meeting.visibility === 'always' && <IconLink icon="call" label="Join the call" href={c.meeting.url} />}
           <IconLink icon="discuss" label="Class discussion" to="/discuss" />
           <IconBtn icon="notebook" label="Notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
