@@ -7,7 +7,7 @@ import { mediaCol, mediaDoc } from './media';
 // any lesson or class. The archive entry lives with the teacher; the media itself lives in each class
 // that uses it (so that class's learners can open it), copied there the first time it is used.
 
-export type ScriptLine = { t: number | null; text: string; who?: string }; // who: the speaker, when there is more than one
+export type ScriptLine = { t: number | null; text: string; who?: string; e?: number }; // who: the speaker, when there is more than one; e: when the line ends
 export type ArchiveKind = 'image' | 'audio' | 'video';
 export type ArchiveItem = {
   id: string;

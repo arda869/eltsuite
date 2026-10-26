@@ -425,7 +425,7 @@ export function MediaArchive() {
         <span key={f} className="ma-folder" style={{ ['--d' as string]: depth }}>
           <button type="button" className={(folder === f ? 'on' : '') + (dropOn === f ? ' drop' : '')} onClick={() => setFolder(f)} onContextMenu={(e) => openMenu(e, folderMenu(f))} {...folderDrop(f)}>
             <FolderIcon size={15} open={folder === f || dropOn === f} />
-            <span className="ma-fname">{leafOf(f)}</span> <b>{countIn(f)}</b>
+            <span className="ma-fname">{leafOf(f) || 'Untitled folder'}</span> <b>{countIn(f)}</b>
           </button>
           {inTree(folder, f) && <Tree parent={f} depth={depth + 1} />}
         </span>
@@ -768,28 +768,30 @@ export function MediaArchive() {
                 </div>
               ) : (
                 <>
-                  {subFolders.length > 0 && (
-                    <div className="ma-grid">
-                      {subFolders.map((f) => (
-                        <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
-                          <span className="ma-thumb ma-fthumb">
-                            <FolderIcon size={46} open={dropOn === f} />
+                  {/* Folders first, then everything else, in one grid (or one grid per kind when grouped). */}
+                  {(group === 'none' ? [['', shown] as [string, Entry[]]] : [['', [] as Entry[]] as [string, Entry[]], ...groups]).map(([g, list], gi) =>
+                    gi > 0 || group === 'none' || subFolders.length ? (
+                      <section key={g || 'top'} className="ma-group">
+                        {g && (
+                          <span className="ma-group-h">
+                            {g} <span className="hint">{list.length}</span>
                           </span>
-                          {nameOf('f:' + f, leafOf(f))}
-                        </button>
-                      ))}
-                    </div>
+                        )}
+                        <div className="ma-grid">
+                          {gi === 0 &&
+                            subFolders.map((f) => (
+                              <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
+                                <span className="ma-thumb ma-fthumb">
+                                  <FolderIcon size={46} open={dropOn === f} />
+                                </span>
+                                {nameOf('f:' + f, leafOf(f) || 'Untitled folder')}
+                              </button>
+                            ))}
+                          {list.map(tile)}
+                        </div>
+                      </section>
+                    ) : null,
                   )}
-                  {groups.map(([g, list]) => (
-                    <section key={g || 'all'} className="ma-group">
-                      {g && (
-                        <span className="ma-group-h">
-                          {g} <span className="hint">{list.length}</span>
-                        </span>
-                      )}
-                      <div className="ma-grid">{list.map(tile)}</div>
-                    </section>
-                  ))}
                 </>
               )}
               {box && <span className="ma-box" style={{ left: box.x, top: box.y, width: box.w, height: box.h }} aria-hidden="true" />}
@@ -859,7 +861,7 @@ function MoveDialog({ folders, count, from, onClose, onMove }: { folders: string
 function Card({ entry, chosen, shared, name, onClick, onDoubleClick, onDragStart, onMenu }: { entry: Entry; chosen: boolean; shared: boolean; name: ReactNode; onClick: (e: React.MouseEvent) => void; onDoubleClick: () => void; onDragStart: (e: React.DragEvent) => void; onMenu: (e: React.MouseEvent) => void }) {
   const item = entry.item;
   return (
-    <button type="button" data-sel={entry.key} className={'ma-card' + (chosen ? ' chosen' : '')} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onMenu} draggable onDragStart={onDragStart} title={entry.task ? `${entry.name}${entry.task.uses.length ? `\nIn ${entry.task.uses.length} ${entry.task.uses.length === 1 ? 'lesson' : 'lessons'}, linked` : ''}` : entry.name}>
+    <button type="button" data-sel={entry.key} className={'ma-card' + (chosen ? ' chosen' : '')} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onMenu} draggable onDragStart={onDragStart} title={entry.task ? `${entry.name}${entry.task.uses.length ? `\nIn ${entry.task.uses.length} ${entry.task.uses.length === 1 ? 'lesson' : 'lessons'}, linked` : ''}` : undefined}>
       <span className={'ma-thumb k-' + entry.kind}>
         {item && item.kind === 'image' && (item.thumb || item.link) ? (
           <img src={item.thumb || item.link} alt="" draggable={false} />
