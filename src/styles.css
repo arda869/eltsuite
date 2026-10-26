@@ -256,6 +256,8 @@ a.btn.primary { color: #ffffff; }
 .input::placeholder { color: #b0b0b0; font-weight: 400; }
 .frame-body { flex: 1; overflow: auto; padding: 16px 24px 24px; }
 .frame-foot { display: flex; align-items: center; gap: 10px; padding: 10px 24px; border-top: 1px solid var(--hair); }
+.foot-short { display: none; }
+@media (max-width: 640px) { .frame-foot .foot-short { display: inline; } }
 .score { color: var(--muted); }
 .score .big { font-family: var(--serif); font-size: 20px; color: var(--ink); margin-right: 4px; }
 .task-side { flex: 0 0 240px; display: flex; flex-direction: column; gap: 12px; padding: 2px 0 0 16px; border-left: 1px solid var(--hair); min-height: 400px; }
@@ -1737,7 +1739,10 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .ann-dialog { width: 520px; }
 .ann-input { min-height: 90px; border: 1px solid var(--hair-strong); border-radius: 10px; padding: 10px 12px; font: 15px var(--serif); resize: vertical; }
 .ann-link-input { height: 36px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 0 10px; font: 14px var(--sans); }
-.ann-to { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ann-to { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.ann-dialog input[type=checkbox] { accent-color: var(--accent); }
+.ann-dialog input[type=datetime-local] { height: 36px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+@media (max-width: 640px) { .ann-to { flex-direction: column; align-items: stretch; } .ann-to .pop-check { white-space: nowrap; } .ann-to input[type=datetime-local] { flex: 1; min-width: 0; } }
 .ann-people { display: flex; flex-wrap: wrap; gap: 6px; }
 .ann-person { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--hair-strong); border-radius: 999px; padding: 3px 10px; font: 13px var(--sans); cursor: pointer; }
 .ann-person.on { border-color: var(--ink); }
@@ -1985,10 +1990,14 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
   .frame-head { padding: 12px 16px 10px; }
   .task-title { font-size: 17px; }
   .frame-body { padding: 14px 16px 20px; }
-  .frame-foot { flex-wrap: wrap; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; background: var(--paper); z-index: 5; }
-  .frame-foot > .hint, .frame-foot > .score { flex: 1 1 100%; }
-  .foot-acts { flex: 1 1 100%; margin-left: 0; }
-  .foot-acts .btn { flex: 1; min-width: 0; height: 42px; }
+  /* Moving between tasks: one slim line, the arrows either side of the main button */
+  .frame-foot { flex-wrap: nowrap; gap: 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); position: sticky; bottom: 0; background: var(--paper); z-index: 5; }
+  .frame-foot > .hint, .frame-foot > .score, .frame-foot > .exam-clock { flex: 0 1 auto; min-width: 0; max-width: 42%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .frame-foot > .score .big { font-size: 16px; }
+  .frame-foot .foot-long, .frame-foot .save-dot { display: none; }
+  .foot-acts { flex: 1 1 auto; min-width: 0; margin-left: 0; gap: 6px; }
+  .foot-acts .btn { flex: 1; min-width: 0; height: 36px; padding: 0 10px; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .foot-acts .icon-tool.nav-arrow { width: 36px; height: 36px; flex: none; }
   .foot-acts .saved-auto { flex: 1; text-align: center; }
 
   /* Inputs at 16 px so phones don't zoom in when you tap them */
@@ -4264,6 +4273,30 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .msg-side .ma-search { flex: 0 0 auto; height: 36px; }
 .chat-editor.text-only .tool[aria-label="Insert gap"], .chat-editor.text-only .tool[aria-label="Insert multiple choice in line"], .chat-editor.text-only .tool[aria-label="Everything you can add, with pictures"], .chat-editor.text-only .slash { display: none !important; }
 
+/* Messages on a phone: an open chat fills the screen like a messaging app, the composer stays slim */
+@media (max-width: 640px) {
+  .msg { height: calc(100dvh - 150px); margin-top: 8px; border-radius: 14px; }
+  .msg.has-chat { position: fixed; inset: 0; z-index: 60; height: 100dvh; margin: 0; border-radius: 0; }
+  .msg.has-chat .chat-head { padding: calc(8px + env(safe-area-inset-top)) 10px 8px; gap: 8px; }
+  .chat-head .msg-av { width: 32px; height: 32px; }
+  .chat-body { padding: 10px 10px 6px; }
+  .bub { max-width: 88%; }
+  .bub:not(.mine) { padding-left: 36px; } .bub-av { width: 28px; height: 28px; }
+  .bub-doc.has-blocks { min-width: 0; width: 72vw; }
+  .bub-share { min-width: 0; }
+  .bub-tools { display: none; opacity: 1; }
+  .bub.sel .bub-tools { display: flex; }
+  .chat-compose { padding: 6px 8px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+  .chat-editor { max-height: 38dvh; }
+  .chat-editor .toolbar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin-bottom: 2px; }
+  .chat-editor .toolbar::-webkit-scrollbar { display: none; }
+  .chat-editor .toolbar > * { flex: 0 0 auto; }
+  .chat-actions { gap: 8px; } .chat-actions .chat-keys { display: none; }
+  .chat-actions .btn.small-btn { margin-right: auto; }
+  .msg-set-menu { left: auto; right: 0; width: min(290px, calc(100vw - 40px)); }
+}
+@media (hover: none) { .bub-tools { opacity: 1; } }
+
 /* Phones */
 @media (max-width: 640px) {
   .topbar nav:not(.crumbs) { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; margin: 0 -4px; }
@@ -4439,7 +4472,7 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 
 /* Messages: hover tools, emoji reactions, typing, the chat window at the lower right */
 .bub-tools { align-items: center; }
-@media (hover: none) { .bub-tools { opacity: 0; } .bub:focus-within .bub-tools, .bub:active .bub-tools { opacity: 1; } }
+@media (hover: none) and (min-width: 641px) { .bub-tools { opacity: 0; } .bub.sel .bub-tools, .bub:focus-within .bub-tools { opacity: 1; } }
 .bub-emo { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; border-left: 1px solid var(--hair); border-right: 1px solid var(--hair); }
 .bub-emo button { width: 26px; height: 24px; padding: 0 !important; display: grid; place-items: center; }
 .bub-emo button:hover { transform: scale(1.15); }

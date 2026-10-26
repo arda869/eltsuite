@@ -7,6 +7,7 @@ import type { ClassDoc, Item, Topic } from '../lib/classes';
 import { theme } from '../lib/themes';
 import { Wordmark } from '../components/Wordmark';
 import { TextSizeControl } from '../components/TextSizeControl';
+import { PhoneMessagesLink } from '../components/ChatDock';
 import { Notebook } from '../components/Notebook';
 
 // The learner's notebook page: class notebook, my notebook, grammar bank and vocabulary bank.
@@ -40,6 +41,7 @@ export function LearnerNotebook() {
           <span className="here">Notebook</span>
         </nav>
         <span className="right-push">
+          <PhoneMessagesLink />
           <TextSizeControl />
         </span>
       </header>

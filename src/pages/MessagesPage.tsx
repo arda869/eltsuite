@@ -364,7 +364,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
               <UiIcon name="link" size={14} /> Share material
             </button>
           )}
-          <span className="hint">Ctrl + Enter to send · @ to tag</span>
+          <span className="hint chat-keys">Ctrl + Enter to send · @ to tag</span>
           <button type="button" className="btn primary" disabled={busy || isEmptyContent(content)} onClick={send}>
             {editing ? 'Save' : 'Send'}
           </button>
@@ -384,13 +384,15 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
   const score = checked ? scoreTask(qs, m.key ?? {}, responses) : null;
   const tagged = m.mentions?.includes(me.key);
   const [copied, setCopied] = useState(false);
+  // On a phone there is no hover: a tap on the message shows Reply, reactions and the rest.
+  const [sel, setSel] = useState(false);
   // Copy the message (its text and task elements, with answers) to paste into a task or another chat.
   const clip = (): Clip => ({ v: 1, space: 'chat:' + c.id, content: (m.content ? mergeKey(m.content, m.key ?? {}) : { type: 'doc', content: [] }).content ?? [] });
   const copy = async () => {
     if (await writeClip(clip(), m.text)) setCopied(true), window.setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <div className={'bub' + (mine ? ' mine' : '') + (first ? ' first' : '') + (tagged ? ' tagged' : '')} id={'m-' + m.id}>
+    <div className={'bub' + (mine ? ' mine' : '') + (first ? ' first' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '')} id={'m-' + m.id}>
       {!mine && first && <span className="bub-av">{initial(m.name)}</span>}
       <div className="bub-col">
         {first && (
@@ -400,7 +402,7 @@ function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare
             <span className="hint">{clock(m.at)}</span>
           </span>
         )}
-        <div className="bub-box">
+        <div className="bub-box" onClick={(e) => !(e.target as HTMLElement).closest('button, a, input, textarea, select, label, .ProseMirror [contenteditable], [role=button]') && setSel((v) => !v)}>
           {m.replyTo && (
             <button type="button" className="bub-quote" onClick={() => document.getElementById('m-' + m.replyTo!.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
               <b>{m.replyTo.name.split(' ')[0]}</b> {m.replyTo.text}

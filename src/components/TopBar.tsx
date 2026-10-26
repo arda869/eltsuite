@@ -8,6 +8,7 @@ import { db } from '../lib/firebase';
 import { Avatar } from './avatars';
 import { AvatarPicker } from './AvatarPicker';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
+import { PhoneMessagesLink } from './ChatDock';
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -51,6 +52,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
       </Link>
       {children}
       <div className="right" ref={ref}>
+        <PhoneMessagesLink />
         <button className="avatar" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : initials(name)}
         </button>

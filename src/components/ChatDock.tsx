@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { chatTitle, chime, unreadIn, useChats, type Chat } from '../lib/chat';
+import { chatTitle, chime, unreadIn, useChats, useUnread, type Chat } from '../lib/chat';
 import { useDirectory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
 import { ChatView } from '../pages/MessagesPage';
-import { UiIcon } from './UiIcon';
+import { IconLink, UiIcon } from './UiIcon';
 
 // Messages on every screen: a small button at the lower right that opens a chat window there,
 // to write without leaving the lesson. A soft chime when a message comes in.
@@ -51,13 +51,8 @@ export function ChatDock() {
   const unread = (chats ?? []).filter((c) => unreadIn(c, me!)).length;
   // Lessons have their own buttons at the bottom right; the messages button sits above them.
   const lift = /\/lesson\/|^\/learn\/|^\/recap\//.test(loc.pathname) ? ' lift' : '';
-  if (phone)
-    return (
-      <Link to="/messages" className={'dock-btn' + lift} aria-label={unread ? `Messages, ${unread} unread` : 'Messages'}>
-        <UiIcon name="message" size={20} />
-        {unread > 0 && <span className="dock-badge">{unread}</span>}
-      </Link>
-    );
+  // On a phone a floating button covers buttons and text: Messages is in the top bar there instead.
+  if (phone) return null;
   if (!st.open)
     return (
       <button type="button" className={'dock-btn' + lift} onClick={() => save({ open: true, chat: st.chat })} aria-label={unread ? `Messages, ${unread} unread` : 'Messages'} data-tip="Messages">
@@ -119,4 +114,15 @@ function DockWindow({ me, chats, chatId, onChat, onClose }: { me: string; chats:
       )}
     </div>
   );
+}
+
+// The Messages icon for the top bar on a phone, with the number of unread chats.
+export function PhoneMessagesLink() {
+  const { user, profile } = useAuth();
+  const phone = usePhone();
+  const loc = useLocation();
+  const me = profile?.role === 'learner' ? profile.learnerId : profile?.role === 'teacher' ? user?.uid : undefined;
+  const unread = useUnread(phone && !isProxyTab() ? me : undefined);
+  if (!phone || !me || isProxyTab() || loc.pathname.startsWith('/messages')) return null;
+  return <IconLink icon="message" label={unread ? `Messages · ${unread} new` : 'Messages'} to="/messages" badge={unread ? <span className="icon-badge">{unread}</span> : null} />;
 }

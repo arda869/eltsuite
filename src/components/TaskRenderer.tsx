@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { TimelineFigure, type TlAttrs } from '../editor/Timeline';
 import { LetterGap } from './LetterGap';
 import { PicFrame } from '../editor/Picture';
@@ -82,10 +83,17 @@ function DefWord({ word, data, children }: { word: string; data: DefData; childr
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
-  const [at, setAt] = useState<{ top: number; left: number; below: boolean }>({ top: 0, left: 0, below: true });
+  const cardRef = useRef<HTMLSpanElement>(null);
+  const shut = useRef(0);
+  const enter = () => window.clearTimeout(shut.current);
+  const leave = () => {
+    window.clearTimeout(shut.current);
+    shut.current = window.setTimeout(() => !pinned && setOpen(false), 160);
+  };
+  const [at, setAt] = useState<{ top: number; left: number; below: boolean; vars?: Record<string, string> }>({ top: 0, left: 0, below: true });
   useEffect(() => {
     if (!pinned) return;
-    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && (setPinned(false), setOpen(false));
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && !cardRef.current?.contains(e.target as Node) && (setPinned(false), setOpen(false));
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [pinned]);
@@ -94,7 +102,11 @@ function DefWord({ word, data, children }: { word: string; data: DefData; childr
     if (!r) return;
     const below = window.innerHeight - r.bottom > 320 || r.top < 320;
     const w = Math.min(320, window.innerWidth - 24);
-    setAt({ below, top: below ? r.bottom + 6 : r.top - 6, left: Math.max(12, Math.min(r.left - 8, window.innerWidth - 12 - w)) });
+    // The card is drawn on the page itself (a zoomed or tilted box around the word would push a
+    // fixed card away from it), with the class colours of the word's place.
+    const cs = getComputedStyle(ref.current!);
+    const vars = Object.fromEntries(['--accent', '--accent-text', '--tint', '--tint-strong'].map((k) => [k, cs.getPropertyValue(k)]).filter(([, v]) => v));
+    setAt({ below, top: below ? r.bottom + 6 : r.top - 6, left: Math.max(12, Math.min(r.left - 8, window.innerWidth - 12 - w)), vars });
   };
   useEffect(() => {
     if (!open) return;
@@ -106,17 +118,19 @@ function DefWord({ word, data, children }: { word: string; data: DefData; childr
     <span
       ref={ref}
       className={'def-word' + (open ? ' open' : '')}
-      onMouseEnter={() => (place(), setOpen(true))}
-      onMouseLeave={() => !pinned && setOpen(false)}
+      onMouseEnter={() => (enter(), place(), setOpen(true))}
+      onMouseLeave={leave}
     >
       <button type="button" className="def-trigger" aria-expanded={open} onClick={() => (place(), setPinned(!pinned), setOpen(!pinned))}>
         {children}
       </button>
-      {open && (
-        <span className={'def-card' + (at.below ? ' below' : ' above')} style={{ top: at.top, left: at.left }} role="tooltip">
-          <DefCard word={word} d={data} />
-        </span>
-      )}
+      {open &&
+        createPortal(
+          <span ref={cardRef} className={'def-card' + (at.below ? ' below' : ' above')} style={{ top: at.top, left: at.left, ...(at.vars as object) }} role="tooltip" onMouseEnter={enter} onMouseLeave={leave}>
+            <DefCard word={word} d={data} />
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }

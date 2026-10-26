@@ -35,6 +35,7 @@ import {
 import { theme } from '../lib/themes';
 import { isLive, isSynced, liveRef, revealedCount, revealedSingles, revealedSubset, type LiveState } from '../lib/live';
 import { TextSizeControl } from '../components/TextSizeControl';
+import { PhoneMessagesLink } from '../components/ChatDock';
 import { NoticeToasts } from '../components/NoticeToasts';
 import { AnnouncementCards, PickedBanner, SignalBar, SpotlightCard, TimerChip } from '../components/LiveExtras';
 import { DEFAULT_CODES, useAnnotations } from '../lib/annotations';
@@ -354,6 +355,7 @@ export function LearnerLesson() {
           {c?.meeting?.url && c.meeting.visibility === 'always' && <IconLink icon="call" label="Join the call" href={c.meeting.url} />}
           <IconLink icon="discuss" label="Class discussion" to="/discuss" />
           <IconBtn icon="notebook" label="Notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
+          <PhoneMessagesLink />
           <TextSizeControl />
         </span>
       </header>
@@ -560,8 +562,9 @@ export function LearnerLesson() {
                     {result.hasWriting && <span className="hint">{result.total > 0 ? ' · ' : ''}Your writing has gone to your teacher</span>}
                   </span>
                 ) : (
-                  <span className="hint">
-                    {qs.length > 0 ? `${answered} of ${qs.length} answered` : ''}
+                  <span className="hint foot-status">
+                    {qs.length > 0 && <span className="foot-short">{answered}/{qs.length}</span>}
+                    {qs.length > 0 ? <span className="foot-long">{`${answered} of ${qs.length} answered`}</span> : ''}
                     {qs.length > 0 && <span className={'save-dot' + (pendingSave ? ' pending' : '')}>{pendingSave ? ' · saving…' : ' · saved'}</span>}
                     {flags.filter((f) => qs.some((q) => q.id === f)).length > 0 && ` · ${flags.filter((f) => qs.some((q) => q.id === f)).length} flagged`}
                   </span>
@@ -591,7 +594,7 @@ export function LearnerLesson() {
                       )
                     ) : (
                       <button className="btn primary" disabled={busy || task.locked || answered === 0 || !!task.needsLevel} onClick={check}>
-                        {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : 'Check answers'}
+                        {busy ? 'One moment…' : qs.every((q) => q.type === 'writing' || q.type === 'reflect') ? 'Hand in' : (<>Check<span className="foot-long"> answers</span></>)}
                       </button>
                     ))}
                   <IconBtn icon="next" label={synced ? 'Your teacher is moving the class' : 'Next task'} className={'nav-arrow foot-next' + (checked || qs.length === 0 ? ' pulse' : '')} disabled={!nextOpen || synced} onClick={() => nextOpen && go(nextOpen.id)} />

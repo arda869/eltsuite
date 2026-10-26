@@ -7,6 +7,7 @@ import type { ClassDoc } from '../lib/classes';
 import { theme } from '../lib/themes';
 import { Wordmark } from '../components/Wordmark';
 import { TextSizeControl } from '../components/TextSizeControl';
+import { PhoneMessagesLink } from '../components/ChatDock';
 import { RecapView } from '../components/Recap';
 import { loadRecap, readShared, recapId, type Recap } from '../lib/recap';
 
@@ -39,6 +40,7 @@ export function LearnerRecap() {
           <span className="here">Recap</span>
         </nav>
         <span className="right">
+          <PhoneMessagesLink />
           <TextSizeControl />
         </span>
       </header>

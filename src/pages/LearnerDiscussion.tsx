@@ -8,6 +8,7 @@ import { theme } from '../lib/themes';
 import { useClassmates } from '../lib/learners';
 import { Wordmark } from '../components/Wordmark';
 import { TextSizeControl } from '../components/TextSizeControl';
+import { PhoneMessagesLink } from '../components/ChatDock';
 import { DiscussionBoard } from '../components/Discussion';
 import { NoticeToasts } from '../components/NoticeToasts';
 
@@ -40,6 +41,7 @@ export function LearnerDiscussion() {
           <span className="here">Discussion</span>
         </nav>
         <span className="right">
+          <PhoneMessagesLink />
           <TextSizeControl />
         </span>
       </header>
