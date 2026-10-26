@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import { get } from 'firebase/database';
+import { collabRef } from '../collab/provider';
 import { newId } from './tasks';
 import { openChat, sendMsg, type Chat, type Person } from './chat';
 import type { CollabMode } from '../collab/suggest';
@@ -22,11 +24,12 @@ export type SharedDoc = {
   owner: string;
   ownerName: string;
   title: string;
-  kind: 'doc' | 'slides';
+  kind: DocKind;
   docKey: string;
   members: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner' }>;
   memberIds: string[];
   classes?: Record<string, { role: DocRole; name: string }>;
+  size?: number; // bytes the document takes, counted towards the owner's space
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
@@ -34,11 +37,13 @@ export type SharedDoc = {
 const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
-export async function newSharedDoc(owner: { uid: string; name: string }, kind: 'doc' | 'slides', title = '') {
+export type DocKind = 'doc' | 'slides' | 'flash' | 'pd';
+export const KIND_LABEL: Record<DocKind, string> = { doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading' };
+export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '') {
   const r = await addDoc(col, {
     owner: owner.uid,
     ownerName: owner.name,
-    title: title || (kind === 'slides' ? 'Untitled slides' : 'Untitled document'),
+    title: title || `Untitled ${KIND_LABEL[kind].toLowerCase()}`,
     kind,
     docKey: 'f' + newId() + newId(),
     members: {},
@@ -94,7 +99,7 @@ export const noteClass = (d: SharedDoc, classId: string, name: string, role: Doc
 // A message with the link, to each person (their own chat with you), or into one chat.
 export async function sendDocInChat(d: SharedDoc, me: Person, people: Person[], note = '') {
   const link = docLink(d.id);
-  const what = d.kind === 'slides' ? 'slides' : 'a document';
+  const what = d.kind === 'slides' ? 'slides' : d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : 'a document';
   const text = note.trim() || `I shared ${what} with you: ${d.title}.`;
   for (const p of people) {
     const chatId = await openChat(me, [p]);
@@ -106,4 +111,12 @@ export async function sendDocInChat(d: SharedDoc, me: Person, people: Person[], 
       mentions: [p.key],
     });
   }
+}
+
+// How much space a document takes: everything stored for it, measured now and then.
+export async function measureDoc(d: SharedDoc, extra = 0) {
+  const v = await get(collabRef(d.docKey)).then((s) => s.val()).catch(() => null);
+  const size = (v ? JSON.stringify(v).length : 0) + extra;
+  if (Math.abs(size - (d.size ?? 0)) > 512) await updateDoc(doc(col, d.id), { size }).catch(() => {});
+  return size;
 }

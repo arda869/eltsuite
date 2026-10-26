@@ -5,7 +5,8 @@ import { auth } from '../lib/firebase';
 import { CollabDoc } from '../collab/CollabDoc';
 import { SlidesDoc } from '../collab/slides/SlidesDoc';
 import type { CollabMode } from '../collab/suggest';
-import { ROLES, docLink, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
+import { FlashSet } from '../flash/FlashSet';
+import { ROLES, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
 import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
 import { UiIcon } from '../components/UiIcon';
@@ -13,10 +14,21 @@ import { UiIcon } from '../components/UiIcon';
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
 // sharing, and the whole window for writing.
 
-function DocIcon({ kind }: { kind: 'doc' | 'slides' }) {
+export function DocIcon({ kind }: { kind: DocKind }) {
   return (
     <span className={'dp-icon k-' + kind} aria-hidden="true">
-      {kind === 'slides' ? (
+      {kind === 'flash' ? (
+        <svg width="22" height="22" viewBox="0 0 24 24">
+          <rect x="7" y="3" width="13" height="16" rx="2.2" fill="currentColor" opacity="0.45" transform="rotate(8 13 11)" />
+          <rect x="4" y="5" width="13" height="16" rx="2.2" fill="currentColor" />
+          <path d="M7.5 11h6M7.5 14h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      ) : kind === 'pd' ? (
+        <svg width="22" height="22" viewBox="0 0 24 24">
+          <path d="M3 5.5C6 4.5 9 4.6 12 6.2v13.3c-3-1.6-6-1.7-9-.7z" fill="currentColor" />
+          <path d="M21 5.5c-3-1-6-.9-9 .7v13.3c3-1.6 6-1.7 9-.7z" fill="currentColor" opacity="0.6" />
+        </svg>
+      ) : kind === 'slides' ? (
         <svg width="22" height="22" viewBox="0 0 24 24">
           <rect x="3" y="4" width="18" height="16" rx="2.5" fill="currentColor" />
           <rect x="6.5" y="8" width="11" height="7" rx="1" fill="#fff" opacity="0.9" />
@@ -44,13 +56,23 @@ export function DocPage() {
   useEffect(() => setTitle(d?.title ?? qs.get('t') ?? ''), [d?.title, qs]);
   // A lesson's shared document, opened in its own tab.
   const lesson = !!key;
-  const kind = (lesson ? (qs.get('kind') === 'slides' ? 'slides' : 'doc') : d?.kind ?? 'doc') as 'doc' | 'slides';
+  const kind = (lesson ? (qs.get('kind') === 'slides' ? 'slides' : 'doc') : d?.kind ?? 'doc') as DocKind;
   const role: DocRole | null = lesson ? null : d && uid ? roleOf(d, uid) : null;
   const teacher = lesson ? profile?.role === 'teacher' : d?.owner === uid;
   const modes: CollabMode[] = lesson ? ((qs.get('m') ?? 'edit').split(',').filter(Boolean) as CollabMode[]) : role ? modesFor(role) : ['view'];
   useEffect(() => {
     document.title = `${title || 'Document'} · Lesson Lit`;
   }, [title]);
+  useEffect(() => {
+    if (d && d.owner === uid) {
+      const m = () => void measureDoc(d);
+      const first = window.setTimeout(m, 4000);
+      const t = window.setInterval(m, 3 * 60 * 1000);
+      window.addEventListener('pagehide', m);
+      return () => (window.clearTimeout(first), window.clearInterval(t), window.removeEventListener('pagehide', m));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d?.id, uid]);
   useEffect(() => {
     if (d && role && role !== 'view' && role !== 'comment') {
       const t = window.setInterval(() => touchDoc(d.id), 5 * 60 * 1000);
@@ -76,10 +98,10 @@ export function DocPage() {
           {canRename ? (
             <input className="dp-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
           ) : (
-            <span className="dp-title ro">{title || (kind === 'slides' ? 'Slides' : 'Document')}</span>
+            <span className="dp-title ro">{title || KIND_LABEL[kind]}</span>
           )}
           <span className="dp-sub">
-            {lesson ? `${qs.get('cn') ? qs.get('cn') + ' · ' : ''}Shared with the class` : teacher ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}` : 'Only you') : `${d!.ownerName}’s ${kind === 'slides' ? 'slides' : 'document'} · ${ROLES.find((r) => r.k === role)?.label.toLowerCase()}`}
+            {lesson ? `${qs.get('cn') ? qs.get('cn') + ' · ' : ''}Shared with the class` : teacher ? (others ? `Shared with ${others} ${others === 1 ? 'person' : 'people'}` : 'Only you') : `${d!.ownerName}’s ${KIND_LABEL[kind].toLowerCase()} · ${ROLES.find((r) => r.k === role)?.label.toLowerCase()}`}
             {d?.classes && Object.keys(d.classes).length > 0 && ` · in ${Object.values(d.classes).map((c) => c.name).join(', ')}`}
           </span>
         </span>
@@ -96,7 +118,7 @@ export function DocPage() {
           )}
         </span>
       </header>
-      <main className="dp-main">{kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
+      <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
   );

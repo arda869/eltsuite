@@ -1,3 +1,4 @@
+import { useMyDocs } from '../lib/sharedDocs';
 import { usePhone } from '../lib/useMedia';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibrary';
@@ -174,7 +175,9 @@ export function MediaArchive() {
   }, [entries, folder, kinds, tag, q, sort, filtering, view]);
   const subFolders = filtering || view === 'time' ? [] : kidsOf(folder);
   const groups: [string, Entry[]][] = group === 'type' ? ALL_KINDS.map((k) => [k.label, shown.filter((e) => e.kind === k.k)] as [string, Entry[]]).filter(([, l]) => l.length) : [['', shown]];
-  const total = all.reduce((s, i) => s + spaceOf(i), 0);
+  const { mine: myDocs } = useMyDocs(uid || undefined);
+  const docBytes = (myDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
+  const total = all.reduce((s, i) => s + spaceOf(i), 0) + docBytes;
 
   // ---------------------------------------------------------------- selecting
   // Click selects one, Ctrl/Cmd or Shift click adds, and dragging on the empty space draws a box
@@ -542,6 +545,7 @@ export function MediaArchive() {
                   const bytes = all.filter((i) => i.kind === k.k).reduce((s, i) => s + spaceOf(i), 0);
                   return <span key={k.k} className={'k-' + k.k} style={{ width: `${Math.max(bytes ? 0.8 : 0, (bytes / FREE) * 100)}%` }} />;
                 })}
+                <span className="k-docs" style={{ width: `${Math.max(docBytes ? 0.8 : 0, (docBytes / FREE) * 100)}%` }} />
               </span>
               <span className="ma-legend">
                 {KINDS.map((k) => {
@@ -555,7 +559,14 @@ export function MediaArchive() {
                   );
                 })}
               </span>
-              <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space.</span>
+              <span className="ma-legend">
+                <span>
+                  <i className="k-docs" />
+                  Collaborative files
+                  <b>{docBytes ? formatBytes(docBytes) : '0'}</b>
+                </span>
+              </span>
+              <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space; documents, slides, flashcards and reading notes count.</span>
             </div>
           </aside>
         )}

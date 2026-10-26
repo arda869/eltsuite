@@ -5648,3 +5648,4 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .dp .co-tab { display: none; }
 .co-warn { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 7%, var(--paper)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, var(--hair)); width: 100%; }
 .co-warn-acts { display: flex; gap: 8px; justify-content: flex-end; }
+.ma-bar .k-docs, .ma-legend i.k-docs { background: color-mix(in srgb, var(--accent) 35%, #3a3733); }
