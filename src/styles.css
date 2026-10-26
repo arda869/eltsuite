@@ -4718,8 +4718,10 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .ProseMirror .dl-who:hover { filter: brightness(.96); box-shadow: inset 0 0 0 1.5px var(--accent); }
 li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
 .dialogue-node { position: relative; }
-.dlg-tools { position: absolute; left: auto; right: 0; bottom: calc(100% + 2px); z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: 100%; padding: 4px 8px 4px 4px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 6px 18px rgba(51, 48, 44, .12); font: 12px var(--sans); color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .12s; }
-.dialogue-node:hover .dlg-tools, .dialogue-node:focus-within .dlg-tools { opacity: 1; pointer-events: auto; }
+.dlg-tools { position: absolute; left: auto; right: 0; bottom: 100%; z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: 100%; padding: 4px 8px 4px 4px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 6px 18px rgba(51, 48, 44, .12); font: 12px var(--sans); color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.dialogue-node:hover .dlg-tools, .dialogue-node:focus-within .dlg-tools, .dlg-tools:hover { opacity: 1; pointer-events: auto; transition-delay: 0s; }
+.dlg-tools { transition: opacity .15s .35s; }
+.dlg-tools::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px; }
 .dlg-tools .remove { margin-left: 4px; border: 0; background: none; font: 600 11px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--soft); cursor: pointer; }
 .dlg-names { display: inline-flex; align-items: center; gap: 4px; }
 .dlg-name { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 2px; border-radius: 99px; background: var(--surface); }
@@ -4841,3 +4843,9 @@ html[data-standalone], html[data-standalone] body { overflow-x: clip; }
   .ld-card, .lh-card, .item-card, .class-card { border-radius: 14px; }
 }
 body:has(.scrim) .main-nav, body:has(.msg.has-chat) .main-nav, body:has(.sp-window) .main-nav { display: none !important; }
+.task-body > .para:last-child:has(> p:empty) { display: none; }
+
+/* A part chosen with "Select" (six dots) shows that it is selected */
+.task-editor .ProseMirror > .ProseMirror-selectednode:is(p, h3, ul, ol, blockquote, hr, .tableWrapper, table),
+.task-editor .ProseMirror .ProseMirror-selectednode:is(p, h3, ul, ol, blockquote) { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.task-editor .ProseMirror > .ProseMirror-selectednode:not(p, h3, ul, ol, blockquote, hr, table, .tableWrapper) { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }

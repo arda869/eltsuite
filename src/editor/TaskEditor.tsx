@@ -1,3 +1,5 @@
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { tell } from '../lib/ask';
 import { createPortal } from 'react-dom';
 import { newTimeline, TimelineNode } from './Timeline';
@@ -317,6 +319,28 @@ function withPictures(n: JSONContent): JSONContent {
   return { ...n, content: n.content.map((c) => (c.type === 'image' && c.attrs?.src ? { type: 'paragraph', content: [{ type: 'picture', attrs: { src: c.attrs.src, alt: c.attrs.alt ?? '', size: 'm' } }] } : withPictures(c))) };
 }
 
+// The task always ends with an empty line, so there is somewhere to click and type after the last box or question.
+const TrailingLine = Extension.create({
+  name: 'trailingLine',
+  onCreate() {
+    const { state, view } = this.editor;
+    const last = state.doc.lastChild;
+    if (!last || last.type.name !== 'paragraph' || last.content.size) view.dispatch(state.tr.insert(state.doc.content.size, state.schema.nodes.paragraph.create()).setMeta('addToHistory', false));
+  },
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('trailingLine'),
+        appendTransaction: (_trs, _old, state) => {
+          const last = state.doc.lastChild;
+          if (last && last.type.name === 'paragraph' && last.content.size === 0) return null;
+          return state.tr.insert(state.doc.content.size, state.schema.nodes.paragraph.create()).setMeta('addToHistory', false);
+        },
+      }),
+    ];
+  },
+});
+
 export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true }: { handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
@@ -375,6 +399,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       DialogueNode,
       DialogueLine,
       Mention,
+      ...(handles ? [TrailingLine] : []),
       RevealBox,
       LinkCard,
       MediaBlock,
