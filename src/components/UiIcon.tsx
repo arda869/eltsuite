@@ -56,6 +56,8 @@ const P: Record<string, ReactNode> = {
   tag: <><path d="M4 11.5V5a1 1 0 0 1 1-1h6.5l8.5 8.5-7.5 7.5z" strokeLinejoin="round" /><circle cx="8.5" cy="8.5" r="1.3" /></>,
   trash: <path d="M5 7h14M10 7V4.5h4V7M6.5 7l1 12.5h9l1-12.5" strokeLinejoin="round" />,
   picture: <><rect x="3.5" y="5" width="17" height="14" rx="2" /><circle cx="9" cy="10" r="1.8" /><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5" strokeLinejoin="round" /></>,
+  lock: <><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3" /></>,
+  unlock: <><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 6.8-1.2" /></>,
 };
 
 export function UiIcon({ name, size = 18 }: { name: string; size?: number }) {

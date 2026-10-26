@@ -125,9 +125,11 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
 
   useLayoutEffect(() => {
     if (!open) return;
+    // Below the word when there is room, otherwise above it; the pop-up guard keeps it on screen.
     const c = editor.view.coordsAtPos(editor.state.selection.from);
-    const room = window.innerHeight - c.bottom - 16;
-    setPos({ top: room > 300 ? c.bottom + 8 : Math.max(8, c.top - 8 - Math.min(560, window.innerHeight * 0.7)), left: Math.max(8, Math.min(c.left - 20, window.innerWidth - 380 - 8)) });
+    const h = Math.min(ref.current?.offsetHeight || 420, window.innerHeight * 0.8);
+    const below = window.innerHeight - c.bottom - 16 >= h || c.top < h + 16;
+    setPos({ top: below ? c.bottom + 8 : c.top - 8 - h, left: Math.max(8, Math.min(c.left - 20, window.innerWidth - 380 - 8)) });
   }, [open, editor]);
 
   useEffect(() => {

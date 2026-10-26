@@ -221,7 +221,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const counts = side === 'people' ? contributions(session.doc, session.pud) : null;
 
   const body = (
-    <div className={'cd' + (big ? ' big' : '') + ' m-' + eff}>
+    <div className={'cd' + (big ? ' big' : '') + ' m-' + eff + (locked ? ' is-locked' : '')}>
       <div className="cd-top">
         <span className="cd-title">
           <UiIcon name="task" size={16} />
@@ -239,7 +239,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         <span className="cd-mode">
           {locked ? (
             <span className="cd-locked">
-              <UiIcon name="hideAnswers" size={14} /> Locked by your teacher
+              <UiIcon name="lock" size={14} /> Locked
             </span>
           ) : allowed.length > 1 ? (
             <select value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
@@ -254,8 +254,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           )}
         </span>
         {teacher && (
-          <button type="button" className={'btn small-btn' + (flags.lock ? ' primary' : '')} onClick={() => setLock(classId, docKey, !flags.lock)} data-tip={flags.lock ? 'Let learners change it again' : 'Stop learners changing it'}>
-            {flags.lock ? 'Unlock' : 'Lock'}
+          <button type="button" className={'btn small-btn cd-lock' + (flags.lock ? ' on' : '')} onClick={() => setLock(classId, docKey, !flags.lock)} data-tip={flags.lock ? 'Let learners change it again' : 'Stop learners changing it'}>
+            <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
         {(teacher || canDownload) && <DownloadMenu onWord={() => downloadDocx(editor.getJSON(), title)} onPdf={() => printDoc(editor.getJSON(), title)} />}
@@ -304,6 +304,20 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           <button type="button" className="btn small-btn" disabled={!quote} onClick={startComment}>
             <UiIcon name="discuss" size={14} /> Comment
           </button>
+        </div>
+      )}
+      {flags.lock && (
+        <div className={'cd-lockbar' + (teacher ? ' for-teacher' : '')} role="status">
+          <UiIcon name="lock" size={16} />
+          {teacher ? (
+            <span>
+              <b>Locked.</b> Learners can read it but cannot change it. You can still edit.
+            </span>
+          ) : (
+            <span>
+              <b>Your teacher has locked this document.</b> You can read it, but not change it for now.
+            </span>
+          )}
         </div>
       )}
       <div className="cd-main">
