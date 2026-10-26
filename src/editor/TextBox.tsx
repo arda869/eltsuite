@@ -30,7 +30,7 @@ export const BOX_TONES: { key: BoxTone; label: string; bg: string }[] = [
 
 export const SYMBOLS = ['!', '?', 'i', '✓', '★', '✎', '→', '≠', '＋'];
 
-export type BoxAttrs = { style: BoxStyle; tone: BoxTone; label: string; meta: string; side: 'left' | 'right'; symbol: string; numbering?: 'none' | 'paras' | 'lines' };
+export type BoxAttrs = { style: BoxStyle; tone: BoxTone; label: string; meta: string; side: 'left' | 'right'; symbol: string; numbering?: 'none' | 'paras' | 'lines'; width?: 'full' | 'fit' };
 
 // Line numbers every five lines, in the margin of a reading text.
 function LineNumbered({ children }: { children: ReactNode }) {
@@ -77,7 +77,7 @@ export function BoxFrame({ attrs, children: kids, editable, onMeta }: { attrs: B
       <span className={className}>{attrs[key]}</span>
     ) : null;
 
-  const cls = `tbox s-${attrs.style} t-${attrs.tone ?? 'grey'} side-${attrs.side ?? 'left'}` + (attrs.numbering && attrs.numbering !== 'none' ? ' num-' + attrs.numbering : '');
+  const cls = `tbox s-${attrs.style} t-${attrs.tone ?? 'grey'} side-${attrs.side ?? 'left'}` + (attrs.numbering && attrs.numbering !== 'none' ? ' num-' + attrs.numbering : '') + (attrs.width === 'fit' ? ' w-fit' : '');
   if (attrs.numbering === 'lines' && !editable) children = <LineNumbered>{children}</LineNumbered>;
   switch (attrs.style) {
     case 'info':
@@ -190,6 +190,20 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected, editor, get
             <option value="lines">Line numbers</option>
           </select>
         )}
+        {!['speech', 'message'].includes(attrs.style) && (
+          <span className="seg small-seg" role="radiogroup" aria-label="Width">
+            {(
+              [
+                ['full', 'Full width'],
+                ['fit', 'Fit the text'],
+              ] as const
+            ).map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={(attrs.width ?? 'full') === k} className={(attrs.width ?? 'full') === k ? 'on' : ''} onClick={() => updateAttributes({ width: k })} title={k === 'full' ? 'The box reaches the right edge of the page' : 'The box is only as wide as what is in it'}>
+                {l}
+              </button>
+            ))}
+          </span>
+        )}
         {(attrs.style === 'speech' || attrs.style === 'message') && (
           <span className="seg small-seg" role="radiogroup" aria-label="Bubble side">
             {(['left', 'right'] as const).map((sd) => (
@@ -225,6 +239,7 @@ export const TextBox = Node.create({
     side: { default: 'left' },
     symbol: { default: '!' },
     numbering: { default: 'none' },
+    width: { default: 'full' },
   }),
   parseHTML: () => [{ tag: 'div[data-text-box]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-text-box': '' }), 0],

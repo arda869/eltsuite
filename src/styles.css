@@ -5247,3 +5247,6 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .sp3 { --sp-bg: color-mix(in srgb, #8b6f4e 16%, var(--paper)); --sp-ink: #72593d; }
 .kl-line.has-who { display: flex; gap: 10px; align-items: baseline; }
 .kl-who { flex: none; min-width: 22px; padding: 1px 8px; border-radius: 99px; background: var(--sp-bg); color: var(--sp-ink); font: 700 11.5px/1.6 var(--sans); text-align: center; }
+/* Text boxes can be as wide as their text instead of the page */
+.tbox.w-fit { width: fit-content; max-width: 100%; }
+.paper-wrap:has(> .tbox.w-fit) { width: fit-content; max-width: 100%; }
