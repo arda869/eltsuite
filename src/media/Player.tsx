@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
 import { UiIcon } from '../components/UiIcon';
 import { decodeSound, fmtTime, peaks as peaksOf, toMono } from '../lib/sound';
@@ -35,6 +35,7 @@ export const isVideoUrl = (u = '') => !!youTubeId(u) || /\.(mp4|webm|mov|m4v)(\?
 export const mediaIsVideo = (m?: Manifest | null) => !!m && (m.kind === 'link' ? !!m.video || isVideoUrl(m.url) : !!m.video);
 
 export type Engine = {
+  duck: (quiet: boolean) => void;
   volume: number;
   setVolume: (v: number) => void;
   m: Manifest | null | undefined;
@@ -214,8 +215,16 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
     if (el.current) el.current.volume = volume;
     else if (yt.current) yt.current.setVolume?.(Math.round(volume * 100));
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Silent for a moment without changing the volume setting (a speaker who is switched off).
+  const volRef = useRef(volume);
+  volRef.current = volume;
+  const duck = useCallback((quiet: boolean) => {
+    const v = quiet ? 0 : volRef.current;
+    if (yt.current) yt.current.setVolume?.(Math.round(v * 100));
+    else if (el.current && el.current.volume !== v) el.current.volume = v;
+  }, []);
   const host = useCallback((h: HTMLDivElement | null) => setHostEl(h), []);
-  return { m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume };
+  return { m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume, duck };
 }
 
 // ------------------------------------------------------------------ the sound wave
@@ -287,7 +296,8 @@ function drawWave(c: HTMLCanvasElement, p: Float32Array, color: string) {
 }
 
 // The wave (or a timeline) with a numbered mark where each line starts. Marks can be dragged.
-export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 }: { wave: Float32Array | null | false; duration: number; time: number; lines?: ScriptLine[]; onSeek?: (t: number) => void; onMove?: (i: number, t: number) => void; height?: number }) {
+export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54, range, onRange }: { wave: Float32Array | null | false; duration: number; time: number; lines?: ScriptLine[]; onSeek?: (t: number) => void; onMove?: (i: number, t: number) => void; height?: number; range?: { a: number; b: number } | null; onRange?: (r: { a: number; b: number } | null) => void }) {
+  const sel0 = useRef<{ x: number; t: number; moved: boolean } | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const back = useRef<HTMLCanvasElement>(null);
   const front = useRef<HTMLCanvasElement>(null);
@@ -329,15 +339,33 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 
       }}
       onPointerDown={(ev) => {
         if (!duration || !onSeek) return;
-        scrubbing.current = true;
         (ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId);
+        // Teachers drag across the wave to select a part; a click moves the playhead.
+        if (onRange) return void (sel0.current = { x: ev.clientX, t: at(ev.clientX), moved: false });
+        scrubbing.current = true;
         onSeek(at(ev.clientX));
       }}
       onPointerMove={(ev) => {
         if (drag.current !== null && duration) onMove?.(drag.current, +at(ev.clientX).toFixed(2));
-        else if (scrubbing.current && duration) onSeek?.(at(ev.clientX));
+        else if (sel0.current && duration) {
+          if (!sel0.current.moved && Math.abs(ev.clientX - sel0.current.x) < 5) return;
+          sel0.current.moved = true;
+          const t = at(ev.clientX);
+          onRange?.({ a: Math.min(sel0.current.t, t), b: Math.max(sel0.current.t, t) });
+        } else if (scrubbing.current && duration) onSeek?.(at(ev.clientX));
       }}
-      onPointerUp={() => ((drag.current = null), (scrubbing.current = false))}
+      onPointerUp={(ev) => {
+        if (sel0.current) {
+          if (!sel0.current.moved) {
+            const t = at(ev.clientX);
+            if (range && t >= range.a && t <= range.b) onSeek?.(t);
+            else onRange?.(null), onSeek?.(t);
+          } else onSeek?.(Math.min(sel0.current.t, at(ev.clientX)));
+          sel0.current = null;
+        }
+        drag.current = null;
+        scrubbing.current = false;
+      }}
       onPointerCancel={() => ((drag.current = null), (scrubbing.current = false))}
     >
       {wave ? (
@@ -350,6 +378,7 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54 
           <span style={{ width: `${p * 100}%` }} />
         </span>
       )}
+      {range && duration > 0 && <span className="wv-range" style={{ left: `${(range.a / duration) * 100}%`, width: `${((range.b - range.a) / duration) * 100}%` }} />}
       <span className="wv-head" style={{ left: `${p * 100}%` }} />
       {duration > 0 &&
         (lines ?? []).map((l, i) =>
@@ -525,14 +554,14 @@ function SpeedMenu({ rate, onRate }: { rate: number; onRate: (r: number) => void
   );
 }
 
-function PlayerWave({ e, classId, mediaId, lines, locked }: { e: Engine; classId: string; mediaId: string; lines?: ScriptLine[]; locked?: boolean }) {
+function PlayerWave({ e, classId, mediaId, lines, locked, range, onRange }: { e: Engine; classId: string; mediaId: string; lines?: ScriptLine[]; locked?: boolean; range?: { a: number; b: number } | null; onRange?: (r: { a: number; b: number } | null) => void }) {
   const wave = useWave(classId, mediaId, e.m);
-  return <Wave wave={wave} duration={e.duration || e.m?.duration || 0} time={e.time} lines={lines} onSeek={locked ? undefined : e.seek} height={40} />;
+  return <Wave wave={wave} duration={e.duration || e.m?.duration || 0} time={e.time} lines={lines} onSeek={locked ? undefined : e.seek} height={40} range={range} onRange={onRange} />;
 }
 
 // teacher: the lesson editor (everything shows). teaching: the teaching screen, which the class may
 // see, so the script follows the setting and the teacher opens it with a button.
-export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean }) {
+export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void }) {
   const teacher = editing || teaching;
   const e = useEngine(classId, mediaId, manifest);
   const [open, setOpen] = useState(false);
@@ -556,6 +585,36 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [e.time, lineStop]);
+  // A part selected on the wave (teachers): play it, stop at its end or loop it.
+  const [range, setRange] = useState<{ a: number; b: number } | null>(null);
+  const [loop, setLoop] = useState(false);
+  useEffect(() => {
+    if (!range || !e.playing) return;
+    if (e.time >= range.b) {
+      if (loop) e.seek(range.a);
+      else (e.pause(), e.seek(range.a));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e.time, range, loop]);
+  useEffect(() => {
+    if (e.playing && range && (e.time < range.a - 0.05 || e.time >= range.b - 0.05)) e.seek(range.a);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e.playing]);
+  // Speakers: with A, B or names in the script, the teacher chooses whose lines are heard.
+  const cast = [...new Set(lines.map((l) => l.who).filter(Boolean) as string[])];
+  const [muted, setMutedState] = useState<string[]>(preset ?? []);
+  useEffect(() => setMutedState(preset ?? []), [(preset ?? []).join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setMuted = (m: string[]) => (setMutedState(m), onMute?.(m));
+  const spans = useMemo(() => {
+    const ts = lines.filter((l) => l.t !== null).sort((a, b) => (a.t as number) - (b.t as number));
+    return ts.map((l, i) => ({ who: l.who, a: l.t as number, b: l.e ?? (ts[i + 1]?.t as number | undefined) ?? Infinity }));
+  }, [lines]);
+  useEffect(() => {
+    if (!muted.length) return void e.duck(false);
+    const quiet = spans.some((x) => x.who && muted.includes(x.who) && e.time >= x.a - 0.02 && e.time < x.b);
+    e.duck(quiet);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e.time, muted, spans]);
   const used = plays > 0 && !teacher && e.ends >= plays && !e.playing;
   const showScript = lines.length > 0 && (editing || scriptMode === 'karaoke' || (teaching && open) || (scriptMode === 'after' && e.ends > 0) || (scriptMode === 'button' && open));
   if (e.m === undefined) return <div className="mp mp-wait" />;
@@ -576,17 +635,41 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
         e={e}
         locked={used}
         tools={
-          timed.length > 1 ? (
+          <>
+          {teacher && cast.length > 1 && (
+            <span className="mp-speakers" role="group" aria-label="Speakers heard">
+              {cast.map((w) => {
+                const on = !muted.includes(w);
+                return (
+                  <button key={w} type="button" className={'mp-spk' + (on ? ' on' : '')} aria-pressed={on} onClick={() => setMuted(on ? [...muted, w] : muted.filter((x) => x !== w))} data-tip={on ? `${w} is heard. Click to leave ${w} silent, so learners can say the lines.` : `${w} is silent. Click to hear ${w}.`}>
+                    {w}
+                  </button>
+                );
+              })}
+            </span>
+          )}
+          {range && (
+            <>
+              <button type="button" className={'mp-rate mp-loop' + (loop ? ' on' : '')} onClick={() => setLoop((v) => !v)} aria-pressed={loop} aria-label="Loop the selected part" data-tip={loop ? 'Looping the selected part' : 'Loop the selected part'}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 2l3 3-3 3" /><path d="M4 11V9a4 4 0 0 1 4-4h12" /><path d="M7 22l-3-3 3-3" /><path d="M20 13v2a4 4 0 0 1-4 4H4" /></svg>
+              </button>
+              <button type="button" className="mp-rate mp-clear" onClick={() => setRange(null)} aria-label="Clear the selection" data-tip="Clear the selection">
+                ×
+              </button>
+            </>
+          )}
+          {timed.length > 1 ? (
             <button type="button" className={'mp-rate mp-linestop' + (lineStop ? ' on' : '')} onClick={() => setLineStop((v) => !v)} aria-pressed={lineStop} aria-label="Pause after each line" data-tip={lineStop ? 'Pausing after each line' : 'Pause after each line'}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
                 <path d="M4 7h9M4 12h9M4 17h6" />
                 <path d="M17 9v8M21 9v8" />
               </svg>
             </button>
-          ) : null
+          ) : null}
+          </>
         }
       >
-        <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used} />
+        <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used} range={teacher ? range : null} onRange={teacher ? setRange : undefined} />
       </Transport>
       {e.error && <p className="mp-error">{e.error}</p>}
       {showScript && (

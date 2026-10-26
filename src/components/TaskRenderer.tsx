@@ -1066,7 +1066,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'media':
         return node.attrs?.media ? (
           <div key={key} data-bk={key} className="task-media">
-            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} />
+            <MediaPlayer classId={classId ?? ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} />
           </div>
         ) : null;
       case 'linkCard':

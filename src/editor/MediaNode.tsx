@@ -16,7 +16,7 @@ import { UiIcon } from '../components/UiIcon';
 // class ("media" is its id there); the script lives with it, and with the archive entry, so it is
 // the same in every lesson that uses it.
 
-export type MediaAttrs = { media: string; archiveId: string; kind: 'audio' | 'video'; title: string; scriptMode: ScriptMode; plays: number };
+export type MediaAttrs = { media: string; archiveId: string; kind: 'audio' | 'video'; title: string; scriptMode: ScriptMode; plays: number; mute?: string[] };
 
 // A new script for media in a class: through the archive when the teacher has it there, so
 // every class that uses it gets the new script.
@@ -64,7 +64,7 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
         </div>
       ) : (
         <>
-          <MediaPlayer classId={classId} mediaId={a.media} title={a.title} scriptMode={a.scriptMode} plays={a.plays} teacher />
+          <MediaPlayer classId={classId} mediaId={a.media} title={a.title} scriptMode={a.scriptMode} plays={a.plays} teacher mute={a.mute ?? []} onMute={(m) => updateAttributes({ mute: m })} />
           <div className="md-settings">
             <label className="md-set">
               <span>Name</span>
@@ -128,6 +128,7 @@ export const MediaBlock = Node.create({
     title: { default: '' },
     scriptMode: { default: 'karaoke' },
     plays: { default: 0 },
+    mute: { default: [] }, // speakers left silent when it plays (learners say their lines)
   }),
   parseHTML: () => [{ tag: 'div[data-media]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-media': '' })],
