@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { updateClass, type ClassDoc, type Item } from '../lib/classes';
@@ -67,6 +67,13 @@ export function TeacherHome() {
   const classes = mine.classes;
   const invites = useInvites(user?.email);
   const [inviteMsg, setInviteMsg] = useState('');
+  // Learners see their teacher's name in Messages.
+  useEffect(() => {
+    const n = user?.displayName;
+    if (!n) return;
+    for (const c of classes ?? []) if (c.teacherId === user?.uid && (c as ClassDoc & { teacherName?: string }).teacherName !== n) updateDoc(doc(db, 'classes', c.id), { teacherName: n }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify((classes ?? []).map((c) => c.id))]);
   // Keep the live database in step with the co-teacher list for the classes I own.
   useEffect(() => {
     for (const c of classes ?? []) if (c.teacherId === user?.uid && c.coTeachers && Object.keys(c.coTeachers).length) syncLiveTeachers(c);

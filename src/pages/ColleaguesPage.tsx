@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { removeColleague, setShareAccess, useColleagues, useMyShares, useSharedWithMe, type Share } from '../lib/sharing';
 import { TopBar } from '../components/TopBar';
+import { useUnread } from '../lib/chat';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { ArchiveColleagues } from './ArchiveLibrary';
@@ -12,11 +13,16 @@ import { ArchiveColleagues } from './ArchiveLibrary';
 const KIND: Record<string, { label: string; icon: string }> = { lesson: { label: 'Lesson', icon: 'task' }, task: { label: 'Task', icon: 'edit' }, doc: { label: 'Shared document', icon: 'discuss' }, media: { label: 'Media', icon: 'picture' } };
 const when = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
 
-export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | '' }) {
+export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | 'messages' | '' }) {
+  const { user } = useAuth();
+  const unread = useUnread(user?.uid);
   return (
     <nav aria-label="Main">
       <Link to="/" className={on === 'classes' ? 'on' : ''}>
         Classes
+      </Link>
+      <Link to="/messages" className={on === 'messages' ? 'on' : ''}>
+        Messages{unread > 0 && <span className="nav-badge">{unread}</span>}
       </Link>
       <Link to="/colleagues" className={on === 'colleagues' ? 'on' : ''}>
         Colleagues

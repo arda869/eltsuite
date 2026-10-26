@@ -1,0 +1,662 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { collection, getDocs, type DocumentData } from 'firebase/firestore';
+import type { JSONContent } from '@tiptap/react';
+import { db } from '../lib/firebase';
+import { useAuth } from '../lib/auth';
+import { addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, REACTS, renameGroup, sendMsg, unreadIn, useChats, useMessages, type Chat, type Msg, type Person } from '../lib/chat';
+import { useDirectory, type Directory } from '../lib/directory';
+import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
+import type { Responses } from '../lib/tasks';
+import { addTask, tasksCol } from '../lib/tasks';
+import { carryMedia, remap } from '../lib/fullcopy';
+import { allTeacherClasses, canEdit } from '../lib/coteach';
+import { createShare } from '../lib/sharing';
+import { useArchive } from '../lib/archive';
+import { loadLibrary } from './ArchiveLibrary';
+import { TaskEditor } from '../editor/TaskEditor';
+import { TaskRenderer } from '../components/TaskRenderer';
+import { TopBar } from '../components/TopBar';
+import { Loader } from '../components/Loader';
+import { UiIcon } from '../components/UiIcon';
+import { MainNav } from './ColleaguesPage';
+import type { ClassDoc } from '../lib/classes';
+
+// Messages: chats on the left, the conversation on the right. Messages use the same tools as
+// tasks (formatting, IPA, word stress, definitions, symbols, pictures and whole task elements),
+// with @tags, replies and quick reactions.
+
+const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
+const clock = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+const dayOf = (at: number) => {
+  const d = new Date(at);
+  if (d.toDateString() === new Date().toDateString()) return 'Today';
+  if (d.toDateString() === new Date(Date.now() - 86400000).toDateString()) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+};
+const short = (at: number) => (new Date(at).toDateString() === new Date().toDateString() ? clock(at) : new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }));
+const initial = (n: string) => n.trim().slice(0, 1).toUpperCase() || '?';
+
+export function MessagesPage() {
+  const { user, profile } = useAuth();
+  const dir = useDirectory();
+  const me = dir?.me;
+  const chats = useChats(me?.key);
+  const [params, setParams] = useSearchParams();
+  const open = params.get('c') ?? '';
+  const [creating, setCreating] = useState(false);
+  const [q, setQ] = useState('');
+  const teacher = profile?.role === 'teacher';
+  const cur = chats?.find((c) => c.id === open);
+  const shown = (chats ?? []).filter((c) => !q.trim() || chatTitle(c, me?.key ?? '').toLowerCase().includes(q.trim().toLowerCase()) || Object.values(c.names).some((n) => n.toLowerCase().includes(q.trim().toLowerCase())));
+  const pick = (id: string) => setParams(id ? { c: id } : {});
+
+  return (
+    <div className="shell">
+      {teacher ? (
+        <TopBar>
+          <MainNav on="messages" />
+        </TopBar>
+      ) : (
+        <TopBar>
+          <nav aria-label="Main">
+            <Link to="/">Home</Link>
+            <Link to="/messages" className="on">
+              Messages
+            </Link>
+          </nav>
+        </TopBar>
+      )}
+      {!user || !me || chats === null ? (
+        <Loader label="Opening your messages" />
+      ) : (
+        <div className={'msg' + (cur ? ' has-chat' : '')}>
+          <aside className="msg-side">
+            <div className="msg-side-top">
+              <h1 className="page-title">Messages</h1>
+              <button type="button" className="btn primary small-btn" onClick={() => setCreating(true)}>
+                + New
+              </button>
+            </div>
+            <input className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
+            <div className="msg-list" role="listbox" aria-label="Chats">
+              {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : 'No messages yet. Write to a classmate or your teacher.'}</span>}
+              {shown.map((c) => {
+                const un = unreadIn(c, me.key);
+                const tagged = un && c.last?.mentions?.includes(me.key);
+                const title = chatTitle(c, me.key);
+                return (
+                  <button key={c.id} type="button" role="option" aria-selected={c.id === open} className={'msg-row' + (c.id === open ? ' on' : '') + (un ? ' unread' : '')} onClick={() => pick(c.id)}>
+                    <span className={'msg-av' + (c.kind === 'group' ? ' group' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : initial(title)}</span>
+                    <span className="msg-row-t">
+                      <span className="msg-row-top">
+                        <b>{title}</b>
+                        <span className="hint">{c.last ? short(c.lastAt) : ''}</span>
+                      </span>
+                      <span className="msg-row-last">
+                        {tagged && <span className="msg-at">@you</span>}
+                        {c.last ? `${c.last.by === me.key ? 'You' : c.last.name.split(' ')[0]}: ${c.last.text}` : 'No messages yet'}
+                      </span>
+                    </span>
+                    {un && <i className="msg-dot" aria-label="Unread" />}
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+          <main className="msg-main">
+            {cur ? (
+              <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} />
+            ) : (
+              <div className="msg-empty">
+                <UiIcon name="discuss" size={30} />
+                <strong>Choose a chat, or start a new one</strong>
+                <span className="hint">{teacher ? 'Write to one learner, a group from a class, or colleagues. Send task elements learners answer right in the chat, and materials colleagues copy into their own classes.' : 'Write to a classmate, a group, or your teacher.'}</span>
+                <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+                  New message
+                </button>
+              </div>
+            )}
+          </main>
+        </div>
+      )}
+      {creating && dir && <NewChat dir={dir} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), pick(id))} />}
+    </div>
+  );
+}
+
+function PeoplePicker({ dir, picked, onToggle, exclude = [] }: { dir: Directory; picked: Person[]; onToggle: (p: Person) => void; exclude?: string[] }) {
+  const [q, setQ] = useState('');
+  const s = q.trim().toLowerCase();
+  return (
+    <div className="msg-pick">
+      <input className="ma-search" type="search" autoFocus value={q} placeholder="Search names" onChange={(e) => setQ(e.target.value)} />
+      <div className="msg-pick-list">
+        {dir.groups.map((g) => {
+          const people = g.people.filter((p) => !exclude.includes(p.key) && (!s || p.name.toLowerCase().includes(s)));
+          if (!people.length) return null;
+          const all = people.every((p) => picked.some((x) => x.key === p.key));
+          return (
+            <div key={g.id} className="msg-pick-g">
+              <span className="msg-pick-h">
+                <span className="eyebrow">{g.label}</span>
+                {people.length > 1 && (
+                  <button type="button" className="btn link small" onClick={() => people.forEach((p) => (all ? picked.some((x) => x.key === p.key) : !picked.some((x) => x.key === p.key)) && onToggle(p))}>
+                    {all ? 'None' : 'Everyone'}
+                  </button>
+                )}
+              </span>
+              {people.map((p) => {
+                const on = picked.some((x) => x.key === p.key);
+                return (
+                  <label key={p.key} className={'sh-person' + (on ? ' on' : '')}>
+                    <input type="checkbox" checked={on} onChange={() => onToggle(p)} />
+                    <span className="sh-av">{initial(p.name)}</span>
+                    <span className="sh-pt">
+                      <b>{p.name}</b>
+                      <span className="hint">{p.role === 'teacher' ? 'Teacher' : 'Learner'}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          );
+        })}
+        {dir.groups.every((g) => !g.people.length) && <span className="hint">There is no one to write to yet.</span>}
+      </div>
+    </div>
+  );
+}
+
+function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void; onOpen: (id: string) => void }) {
+  const [picked, setPicked] = useState<Person[]>([]);
+  const [title, setTitle] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const toggle = (p: Person) => setPicked((x) => (x.some((y) => y.key === p.key) ? x.filter((y) => y.key !== p.key) : [...x, p]));
+  // Learners from one class only in a chat, so their teachers can look after it.
+  const classes = new Set(picked.filter((p) => p.role === 'learner').map((p) => p.classId));
+  const go = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      onOpen(await openChat(dir.me, picked, title));
+    } catch (e) {
+      console.error(e);
+      setErr('The chat could not be started. Please try again.');
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog msg-new" role="dialog" aria-label="New message" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: 0 }}>New message</h2>
+        <PeoplePicker dir={dir} picked={picked} onToggle={toggle} />
+        {picked.length > 1 && (
+          <label className="field">
+            Group name
+            <input value={title} placeholder={picked.map((p) => p.name.split(' ')[0]).join(', ')} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+        )}
+        {classes.size > 1 && <span className="error">Put learners from one class in a chat at a time.</span>}
+        {err && <span className="error">{err}</span>}
+        <span className="sh-foot">
+          <span className="hint">{picked.length ? `${picked.length} chosen${picked.length > 1 ? ' · a group' : ''}` : ''}</span>
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn primary" disabled={!picked.length || busy || classes.size > 1} onClick={go}>
+            {picked.length > 1 ? 'Start the group' : 'Start'}
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void }) {
+  const msgs = useMessages(c.id);
+  const navigate = useNavigate();
+  const [content, setContent] = useState<JSONContent>(EMPTY);
+  const [edKey, setEdKey] = useState(0);
+  const [replyTo, setReplyTo] = useState<Msg | null>(null);
+  const [editing, setEditing] = useState<Msg | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [settings, setSettings] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [copying, setCopying] = useState<Msg | null>(null);
+  const end = useRef<HTMLDivElement>(null);
+  const people = c.members.filter((k) => k !== me.key).map((k) => ({ id: k, name: c.names[k] ?? 'Someone' }));
+  const colleaguesHere = c.members.filter((k) => k !== me.key && c.roles[k] === 'teacher');
+  const learnersHere = c.members.some((k) => c.roles[k] === 'learner');
+  useEffect(() => {
+    markRead(c, me.key);
+  }, [c.lastAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [msgs?.length]);
+
+  const reset = () => (setContent(EMPTY), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null));
+  const send = async () => {
+    if (isEmptyContent(content) || busy) return;
+    setBusy(true);
+    try {
+      const { content: body, key } = splitKey(content);
+      const m = { text: plainOf(content).trim(), content: body, key, blocks: blocksIn(content), mentions: [...new Set(mentionsOf(content))] };
+      if (editing) await editMsg(c, editing.id, m);
+      else await sendMsg(c, me, { ...m, replyTo: replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null });
+      reset();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const startEdit = (m: Msg) => {
+    setEditing(m);
+    setReplyTo(null);
+    setContent(m.content ? mergeKey(m.content, m.key ?? {}) : EMPTY);
+    setEdKey((k) => k + 1);
+  };
+
+  const days: [string, Msg[]][] = [];
+  for (const m of msgs ?? []) {
+    const d = dayOf(m.at);
+    if (days[days.length - 1]?.[0] !== d) days.push([d, []]);
+    days[days.length - 1][1].push(m);
+  }
+  const title = chatTitle(c, me.key);
+  return (
+    <div className="chat">
+      <header className="chat-head">
+        <button type="button" className="icon-btn chat-back" onClick={onBack} aria-label="All chats">
+          <UiIcon name="prev" size={16} />
+        </button>
+        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : initial(title)}</span>
+        <span className="chat-head-t">
+          <b>{title}</b>
+          <span className="hint">{c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'Teacher' : 'Learner'}</span>
+        </span>
+        {c.kind === 'group' && (
+          <button type="button" className="btn small-btn" onClick={() => setSettings((s) => !s)}>
+            Group
+          </button>
+        )}
+      </header>
+      {learnersHere && <div className="chat-note hint">{teacher ? 'Learners are in this chat. Their class’s teachers can read it.' : 'Your teacher can read the messages in your class.'}</div>}
+      {settings && c.kind === 'group' && <GroupSettings c={c} me={me} dir={dir} onLeave={() => (leaveGroup(c, me.key), onBack())} />}
+      <div className="chat-body">
+        {msgs === null && <Loader label="Opening the chat" />}
+        {msgs && msgs.length === 0 && <span className="hint chat-start">Say hello. You can tag people with @, and add questions, vocabulary boxes and more from + Add.</span>}
+        {days.map(([d, list]) => (
+          <div key={d} className="chat-day">
+            <span className="chat-day-h">{d}</span>
+            {list.map((m, i) => (
+              <Bubble
+                key={m.id}
+                m={m}
+                c={c}
+                me={me}
+                first={i === 0 || list[i - 1].by !== m.by || m.at - list[i - 1].at > 5 * 60000}
+                teacher={teacher}
+                onReply={() => (setReplyTo(m), setEditing(null))}
+                onEdit={() => startEdit(m)}
+                onCopy={() => setCopying(m)}
+                onOpenShare={(id) => navigate(`/s/${id}`)}
+              />
+            ))}
+          </div>
+        ))}
+        <div ref={end} />
+      </div>
+      <div className="chat-compose" onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? (e.preventDefault(), void send()) : undefined)}>
+        {(replyTo || editing) && (
+          <span className="chat-replying">
+            <span>
+              <b>{editing ? 'Editing your message' : `Replying to ${replyTo!.name.split(' ')[0]}`}</b>
+              {replyTo && <span className="hint"> {replyTo.text.slice(0, 90) || (replyTo.blocks ? 'A task element' : '')}</span>}
+            </span>
+            <button type="button" className="btn link small" onClick={reset}>
+              Cancel
+            </button>
+          </span>
+        )}
+        <div className="chat-editor">
+          <TaskEditor key={edKey} content={content} onChange={setContent} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
+        </div>
+        <span className="chat-actions">
+          {teacher && colleaguesHere.length > 0 && (
+            <button type="button" className="btn small-btn" onClick={() => setSharing(true)} data-tip="A lesson, task, document or media, for colleagues to copy">
+              <UiIcon name="link" size={14} /> Share material
+            </button>
+          )}
+          <span className="hint">Ctrl + Enter to send · @ to tag</span>
+          <button type="button" className="btn primary" disabled={busy || isEmptyContent(content)} onClick={send}>
+            {editing ? 'Save' : 'Send'}
+          </button>
+        </span>
+      </div>
+      {sharing && <ShareMaterial c={c} me={me} to={colleaguesHere} onClose={() => setSharing(false)} />}
+      {copying && <CopyElement c={c} m={copying} onClose={() => setCopying(null)} />}
+    </div>
+  );
+}
+
+function Bubble({ m, c, me, first, teacher, onReply, onEdit, onCopy, onOpenShare }: { m: Msg; c: Chat; me: Person; first: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void }) {
+  const mine = m.by === me.key;
+  const [responses, setResponses] = useState<Responses>({});
+  const [checked, setChecked] = useState<AnswerKey | null>(null);
+  const qs = useMemo(() => (m.content ? questionIds(m.content) : []), [m.content]);
+  const score = checked ? scoreTask(qs, m.key ?? {}, responses) : null;
+  const tagged = m.mentions?.includes(me.key);
+  return (
+    <div className={'bub' + (mine ? ' mine' : '') + (first ? ' first' : '') + (tagged ? ' tagged' : '')} id={'m-' + m.id}>
+      {!mine && first && <span className="bub-av">{initial(m.name)}</span>}
+      <div className="bub-col">
+        {first && (
+          <span className="bub-who">
+            {!mine && <b>{m.name}</b>}
+            {m.role === 'teacher' && !mine && c.kind === 'group' && <span className="ld-tag">Teacher</span>}
+            <span className="hint">{clock(m.at)}</span>
+          </span>
+        )}
+        <div className="bub-box">
+          {m.replyTo && (
+            <button type="button" className="bub-quote" onClick={() => document.getElementById('m-' + m.replyTo!.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+              <b>{m.replyTo.name.split(' ')[0]}</b> {m.replyTo.text}
+            </button>
+          )}
+          {m.deleted ? (
+            <span className="hint bub-del">Message deleted</span>
+          ) : (
+            <>
+              {m.content && !isEmptyContent(m.content) && (
+                <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')}>
+                  <TaskRenderer content={m.content} responses={responses} onChange={(id, r) => setResponses((x) => ({ ...x, [id]: r }))} results={checked} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
+                </div>
+              )}
+              {qs.length > 0 && !mine && (
+                <span className="bub-check">
+                  {checked ? (
+                    <>
+                      <span className="ld-pct">
+                        {score!.score} of {score!.total}
+                      </span>
+                      <button type="button" className="btn link small" onClick={() => (setChecked(null), setResponses({}))}>
+                        Try again
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="btn small-btn" onClick={() => setChecked(m.key ?? {})}>
+                      Check
+                    </button>
+                  )}
+                </span>
+              )}
+              {m.share && (
+                <button type="button" className="bub-share" onClick={() => onOpenShare(m.share!.id)}>
+                  <span className="sh-ic">
+                    <UiIcon name={m.share.kind === 'media' ? 'picture' : m.share.kind === 'doc' ? 'discuss' : 'task'} size={16} />
+                  </span>
+                  <span className="sh-pt">
+                    <b>{m.share.title}</b>
+                    <span className="hint">
+                      {m.share.kind === 'lesson' ? 'Lesson' : m.share.kind === 'task' ? 'Task' : m.share.kind === 'doc' ? 'Shared document' : 'Media'} from {m.share.ownerName} · open, then make your own copy
+                    </span>
+                  </span>
+                </button>
+              )}
+            </>
+          )}
+          {m.edited && !m.deleted && <span className="bub-edited hint">edited</span>}
+        </div>
+        {m.reactions && Object.values(m.reactions).some((l) => l.length) && (
+          <span className="bub-reacts">
+            {REACTS.filter(([k]) => m.reactions?.[k]?.length).map(([k, l]) => (
+              <button key={k} type="button" className={'bub-react' + (m.reactions![k].includes(me.key) ? ' on' : '')} onClick={() => react(c, m, k, me.key)} title={m.reactions![k].map((x) => c.names[x] ?? '').join(', ')}>
+                {l} <b>{m.reactions![k].length}</b>
+              </button>
+            ))}
+          </span>
+        )}
+        {!m.deleted && (
+          <span className="bub-tools">
+            <button type="button" onClick={onReply}>
+              Reply
+            </button>
+            {REACTS.map(([k, l]) => (
+              <button key={k} type="button" className={(m.reactions?.[k] ?? []).includes(me.key) ? 'on' : ''} onClick={() => react(c, m, k, me.key)}>
+                {l}
+              </button>
+            ))}
+            {teacher && !!m.blocks && (
+              <button type="button" onClick={onCopy}>
+                Copy to a lesson
+              </button>
+            )}
+            {mine && (
+              <>
+                <button type="button" onClick={onEdit}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => window.confirm('Delete this message for everyone?') && deleteMsg(c, m.id)}>
+                  Delete
+                </button>
+              </>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GroupSettings({ c, me, dir, onLeave }: { c: Chat; me: Person; dir: Directory; onLeave: () => void }) {
+  const [name, setName] = useState(c.title ?? '');
+  const [adding, setAdding] = useState<Person[] | null>(null);
+  return (
+    <div className="chat-settings">
+      <label className="field">
+        Group name
+        <span className="sh-link">
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+          <button type="button" className="btn small-btn" disabled={!name.trim() || name === c.title} onClick={() => renameGroup(c, name)}>
+            Save
+          </button>
+        </span>
+      </label>
+      <span className="chat-members">
+        {c.members.map((k) => (
+          <span key={k} className="ap-chip">
+            {k === me.key ? 'You' : c.names[k]}
+          </span>
+        ))}
+      </span>
+      {adding ? (
+        <>
+          <PeoplePicker dir={dir} picked={adding} exclude={c.members} onToggle={(p) => setAdding((x) => (x!.some((y) => y.key === p.key) ? x!.filter((y) => y.key !== p.key) : [...x!, p]))} />
+          <span className="sh-foot">
+            <button type="button" className="btn" onClick={() => setAdding(null)}>
+              Cancel
+            </button>
+            <button type="button" className="btn primary" disabled={!adding.length} onClick={() => (addToGroup(c, adding), setAdding(null))}>
+              Add {adding.length || ''}
+            </button>
+          </span>
+        </>
+      ) : (
+        <span className="sh-foot" style={{ justifyContent: 'flex-start' }}>
+          <button type="button" className="btn small-btn" onClick={() => setAdding([])}>
+            + Add people
+          </button>
+          <button type="button" className="btn link small" onClick={() => window.confirm('Leave this group?') && onLeave()}>
+            Leave the group
+          </button>
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Teachers: send a lesson, task, shared document or media to colleagues in the chat.
+function ShareMaterial({ c, me, to, onClose }: { c: Chat; me: Person; to: string[]; onClose: () => void }) {
+  const { user } = useAuth();
+  const archive = useArchive(user?.uid);
+  const [tab, setTab] = useState<'lesson' | 'task' | 'doc' | 'media'>('lesson');
+  const [lib, setLib] = useState<Awaited<ReturnType<typeof loadLibrary>> | null>(null);
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState('');
+  useEffect(() => {
+    if (user) loadLibrary(user.uid).then(setLib, () => setLib({ classes: [], tasks: [], docs: [] }));
+  }, [user]);
+  const lessons = useMemo(() => {
+    const seen = new Map<string, { classId: string; itemId: string; title: string; className: string }>();
+    for (const t of lib?.tasks ?? []) if (!seen.has(t.classId + t.itemId)) seen.set(t.classId + t.itemId, { classId: t.classId, itemId: t.itemId, title: t.itemTitle, className: t.className });
+    return [...seen.values()];
+  }, [lib]);
+  const s = q.trim().toLowerCase();
+  type Row = { id: string; title: string; sub: string; go: () => Parameters<typeof createShare>[0] };
+  const base = { owner: me.key, ownerName: me.name, ownerEmail: user?.email ?? '', mode: 'people' as const, people: to, notes: false, about: '' };
+  const rows: Row[] =
+    tab === 'lesson'
+      ? lessons.map((l) => ({ id: l.classId + l.itemId, title: l.title, sub: l.className, go: () => ({ ...base, kind: 'lesson', title: l.title, src: { classId: l.classId, itemId: l.itemId } }) }))
+      : tab === 'task'
+        ? (lib?.tasks ?? []).map((t) => ({ id: t.classId + t.id, title: t.title, sub: `${t.className} · ${t.itemTitle}`, go: () => ({ ...base, kind: 'task', title: t.title, about: t.instructions, src: { classId: t.classId, itemId: t.itemId, taskId: t.id } }) }))
+        : tab === 'doc'
+          ? (lib?.docs ?? []).map((d) => ({ id: d.classId + d.key, title: d.title, sub: `${d.className} · ${d.kind === 'slides' ? 'Slides' : 'Document'}`, go: () => ({ ...base, kind: 'doc', title: d.title, src: { classId: d.classId, docKey: d.key, docKind: d.kind } }) }))
+          : (archive ?? []).map((a) => ({ id: a.id, title: a.name, sub: a.kind === 'image' ? 'Picture' : a.kind === 'audio' ? 'Sound' : 'Video', go: () => ({ ...base, kind: 'media', title: a.name, src: { archiveId: a.id }, archive: JSON.parse(JSON.stringify({ kind: a.kind, name: a.name, tags: a.tags, size: a.size, link: a.link, home: a.home, thumb: a.thumb, script: a.script, duration: a.duration })) }) }));
+  const list = rows.filter((r) => !s || `${r.title} ${r.sub}`.toLowerCase().includes(s)).slice(0, 80);
+  const send = async (r: Row) => {
+    setBusy(r.id);
+    try {
+      const sh = r.go();
+      const id = await createShare(sh);
+      await sendMsg(c, me, { text: '', content: null, share: { id, title: sh.title, kind: sh.kind, ownerName: me.name } });
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setBusy('');
+    }
+  };
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog it-dialog" role="dialog" aria-label="Share material" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: 0 }}>Share material</h2>
+        <span className="hint">Colleagues in this chat get a read-only copy they can copy into their own classes.</span>
+        <span className="seg small-seg">
+          {(
+            [
+              ['lesson', 'Lessons'],
+              ['task', 'Tasks'],
+              ['doc', 'Documents'],
+              ['media', 'Media'],
+            ] as const
+          ).map(([k, l]) => (
+            <button key={k} type="button" className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>
+              {l}
+            </button>
+          ))}
+        </span>
+        <input className="ma-search" type="search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
+        <div className="it-list">
+          {!lib && tab !== 'media' ? (
+            <span className="hint">Gathering your materials…</span>
+          ) : list.length === 0 ? (
+            <span className="hint">Nothing here yet.</span>
+          ) : (
+            list.map((r) => (
+              <button key={r.id} type="button" className="it-row" disabled={!!busy} onClick={() => send(r)}>
+                <span className="it-t">
+                  <b>{r.title}</b>
+                  <span className="hint">{r.sub}</span>
+                </span>
+                <span className="hint">{busy === r.id ? 'Sharing…' : 'Send'}</span>
+              </button>
+            ))
+          )}
+        </div>
+        <span className="sh-foot">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Teachers: a task element from a message, copied into one of their lessons as a new task.
+function CopyElement({ c, m, onClose }: { c: Chat; m: Msg; onClose: () => void }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [classes, setClasses] = useState<ClassDoc[]>([]);
+  const [toClass, setToClass] = useState('');
+  const [lessons, setLessons] = useState<{ id: string; title: string }[]>([]);
+  const [toItem, setToItem] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    allTeacherClasses(user.uid).then((all) => {
+      const l = all.filter((x) => x.status === 'active' && canEdit(x, user.uid)).sort((a, b) => a.name.localeCompare(b.name));
+      setClasses(l);
+      setToClass(l[0]?.id ?? '');
+    });
+  }, [user]);
+  useEffect(() => {
+    if (!toClass) return;
+    getDocs(collection(db, 'classes', toClass, 'items')).then((s) => {
+      const l = s.docs.map((d) => ({ id: d.id, title: String(d.data().title ?? 'Untitled'), order: Number(d.data().order ?? 0) })).sort((a, b) => a.order - b.order);
+      setLessons(l);
+      setToItem(l[0]?.id ?? '');
+    });
+  }, [toClass]);
+  const go = async () => {
+    if (!m.content) return;
+    setBusy(true);
+    try {
+      const full = mergeKey(m.content, m.key ?? {});
+      const map = await carryMedia('chat:' + c.id, toClass, [full]);
+      const ex = await getDocs(tasksCol(toClass, toItem));
+      const order = ex.docs.reduce((x, d) => Math.max(x, Number((d.data() as DocumentData).order ?? 0)), -1) + 1;
+      const id = await addTask(toClass, toItem, order, 'task', { title: `From ${m.name.split(' ')[0]}`, instructions: '', content: remap(full, map) as JSONContent });
+      navigate(`/class/${toClass}/lesson/${toItem}?task=${id}`);
+    } catch (e) {
+      console.error(e);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog" role="dialog" aria-label="Copy to a lesson" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ margin: 0 }}>Copy to a lesson</h2>
+        <span className="hint">The message becomes a new task in the lesson you choose, with its answers.</span>
+        <label className="field">
+          Class
+          <select value={toClass} onChange={(e) => setToClass(e.target.value)}>
+            {classes.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          Lesson
+          <select value={toItem} onChange={(e) => setToItem(e.target.value)}>
+            {lessons.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="sh-foot">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn primary" disabled={busy || !toItem} onClick={go}>
+            {busy ? 'Copying…' : 'Copy'}
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+}

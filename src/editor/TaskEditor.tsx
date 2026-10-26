@@ -297,7 +297,7 @@ const BTN = (label: string, active: boolean, onClick: () => void, text: React.Re
   </button>
 );
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank }: { content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder }: { placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -361,7 +361,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       LessonLink,
       jsonClip(Reflect, 'div', 'data-reflect'),
       FreshIds,
-      Placeholder.configure({ placeholder: 'Write the task. Type / for a question, list or image.' }),
+      Placeholder.configure({ placeholder: placeholder ?? 'Write the task. Type / for a question, list or image.' }),
     ],
     content,
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),

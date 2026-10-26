@@ -1,5 +1,6 @@
 import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
 import { ColleaguesPage } from './pages/ColleaguesPage';
+import { MessagesPage } from './pages/MessagesPage';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -76,6 +77,12 @@ function TeacherOnly({ children }: { children: JSX.Element }) {
   return user && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
 }
 
+function SignedIn({ children }: { children: JSX.Element }) {
+  const { user, profile, ready } = useAuth();
+  if (!ready || (user && !profile)) return <Boot />;
+  return user ? children : <Navigate to="/" replace />;
+}
+
 function LearnerOnly({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
@@ -107,6 +114,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
+          <Route path="/messages" element={<SignedIn><MessagesPage /></SignedIn>} />
           <Route path="/colleagues" element={<TeacherOnly><ColleaguesPage /></TeacherOnly>} />
           <Route path="/colleague/:token" element={<ColleagueJoin />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />

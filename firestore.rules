@@ -448,6 +448,34 @@ service cloud.firestore {
       }
     }
 
+    // Messages. A person's key is a teacher's sign-in id or a learner's learner id. Members read
+    // and write; the teachers of a class can also read chats that its learners are in.
+    function chatKey() {
+      return learnerAccount() ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.learnerId : request.auth.uid;
+    }
+    function myClass() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.classId; }
+    function chatOf(id) { return get(/databases/$(database)/documents/chats/$(id)).data; }
+    function inChat(c) { return signedIn() && chatKey() in c.members; }
+    function oversees(c) { return signedIn() && !learnerAccount() && c.get('classId', null) != null && viewsClass(c.classId); }
+    match /chats/{id} {
+      allow read: if inChat(resource.data) || oversees(resource.data);
+      allow create: if inChat(request.resource.data) && request.resource.data.members.size() <= 60
+        && (isTeacher() || (learnerAccount() && request.resource.data.classId == myClass()));
+      allow update: if inChat(resource.data)
+        && (isTeacher() || request.resource.data.get('classId', null) == resource.data.get('classId', null));
+      allow delete: if signedIn() && resource.data.createdBy == chatKey();
+      match /msgs/{mid} {
+        allow read: if inChat(chatOf(id)) || oversees(chatOf(id));
+        allow create: if inChat(chatOf(id)) && request.resource.data.by == chatKey();
+        allow update: if inChat(chatOf(id)) && (resource.data.by == chatKey() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));
+        allow delete: if signedIn() && resource.data.by == chatKey();
+      }
+      match /media/{mediaId} {
+        allow read: if inChat(chatOf(id)) || oversees(chatOf(id));
+        allow write: if inChat(chatOf(id));
+      }
+    }
+
     // Class codes: looked up one at a time when learners join
     match /classCodes/{code} {
       allow get: if true;

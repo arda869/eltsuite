@@ -38,6 +38,7 @@ const P: Record<string, ReactNode> = {
   copyall: <><rect x="8" y="8" width="12" height="12" rx="1.5" /><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" /><path d="M14 11v6M11 14h6" /></>,
   call: <><rect x="3.5" y="6.5" width="12" height="11" rx="2" /><path d="M15.5 10.5l5-3v9l-5-3z" strokeLinejoin="round" /></>,
   discuss: <><path d="M4 5.5h11a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 15 14.5H9l-3.5 3v-3H4A1.5 1.5 0 0 1 2.5 13V7A1.5 1.5 0 0 1 4 5.5z" strokeLinejoin="round" /><path d="M19 9h1a1.5 1.5 0 0 1 1.5 1.5v6A1.5 1.5 0 0 1 20 18h-1v2.5L16 18h-4.5" strokeLinejoin="round" /></>,
+  message: <><path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 19 17h-7l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 5 5z" strokeLinejoin="round" /><path d="M8 10h8M8 13h5" /></>,
   hand: <><path d="M8 12.5V6.8a1.3 1.3 0 0 1 2.6 0V11M10.6 10.5V5.3a1.3 1.3 0 0 1 2.6 0v5.2M13.2 10.5V6.3a1.3 1.3 0 0 1 2.6 0v6" /><path d="M15.8 9.5a1.3 1.3 0 0 1 2.6 0V14a6.5 6.5 0 0 1-6.5 6.5h-.4a6 6 0 0 1-4.6-2.2L4.3 15a1.4 1.4 0 0 1 2.1-1.8L8 14.8" strokeLinejoin="round" /></>,
   stuck: <><circle cx="12" cy="12" r="8.5" /><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6.9c0 1.6-2.3 2-2.3 3.6" /><circle cx="12" cy="16.8" r=".6" fill="currentColor" /></>,
   react: <><circle cx="12" cy="12" r="8.5" /><path d="M8.5 13.5c.9 1.4 2.1 2.1 3.5 2.1s2.6-.7 3.5-2.1" /><circle cx="9.2" cy="9.8" r=".7" fill="currentColor" /><circle cx="14.8" cy="9.8" r=".7" fill="currentColor" /></>,
