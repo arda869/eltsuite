@@ -3086,3 +3086,12 @@ textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hid
 .ch-text .page-title { margin: 0; }
 .ch-cover { display: block; height: 100%; min-height: 156px; border-radius: 0; }
 @media (max-width: 760px) { .class-hero { grid-template-columns: 1fr; } .ch-cover { order: -1; min-height: 96px; height: 96px; } .ch-text { padding: 16px; } }
+
+/* Text size and reading: an icon button like the others, and a calmer popover */
+.ts-pop { flex-direction: column; align-items: stretch; gap: 10px; width: 300px; min-width: 0; padding: 14px; border-radius: 14px; font-family: var(--sans); }
+.ts-sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; border-radius: 10px; background: var(--page, #f5f4f1); }
+.ts-pop .ts-sizes button { width: auto; height: 40px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); font-family: var(--serif); font-weight: 500; line-height: 1; }
+.ts-pop .ts-sizes button:hover { color: var(--ink); background: #fff; }
+.ts-pop .ts-sizes button.on { background: #fff; color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 1px 3px rgba(51, 48, 44, 0.08); }
+.ts-pop .rd-opts { border-top: 1px solid var(--hair); padding-top: 10px; margin-top: 2px; }
+.ts-pop .rd-row .seg button.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: none; color: var(--accent-text); }
