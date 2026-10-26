@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { ArchiveDocs, ArchiveTasks } from './ArchiveLibrary';
 import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
@@ -34,6 +35,11 @@ const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ??
 export function MediaArchive() {
   const { user } = useAuth();
   const uid = user?.uid;
+  const [section, setSection] = useState<'media' | 'tasks' | 'docs'>(() => (new URLSearchParams(window.location.search).get('show') as 'tasks' | 'docs') || 'media');
+  const pick = (k: 'media' | 'tasks' | 'docs') => {
+    setSection(k);
+    window.history.replaceState(null, '', k === 'media' ? '/archive' : `/archive?show=${k}`);
+  };
   const items = useArchive(uid);
   const folders = useFolders(uid);
   const [folder, setFolder] = useState<string | null>(null); // null: all, '': not in a folder
@@ -123,6 +129,21 @@ export function MediaArchive() {
       >
         {over && <div className="ma-drop">Drop pictures or sounds to add them{folder ? ` to ${folder}` : ''}</div>}
         <aside className="ma-side">
+          <nav className="ma-nav ma-lib" aria-label="Archive">
+            <button type="button" className={section === 'media' ? 'on' : ''} onClick={() => pick('media')}>
+              <UiIcon name="picture" size={16} />
+              Media <b>{all.length}</b>
+            </button>
+            <button type="button" className={section === 'tasks' ? 'on' : ''} onClick={() => pick('tasks')}>
+              <UiIcon name="task" size={16} />
+              Tasks
+            </button>
+            <button type="button" className={section === 'docs' ? 'on' : ''} onClick={() => pick('docs')}>
+              <UiIcon name="discuss" size={16} />
+              Shared documents
+            </button>
+          </nav>
+          {section === 'media' && (<>
           <div className="ma-space">
             <span className="ma-space-n">{formatBytes(total)}</span>
             <span className="hint">used by your media</span>
@@ -205,8 +226,32 @@ export function MediaArchive() {
               </span>
             </div>
           )}
+          </>)}
         </aside>
 
+        {section === 'tasks' && uid && (
+          <main className="ma-main">
+            <div className="ma-head">
+              <div className="ma-head-text">
+                <h1 className="page-title">Tasks</h1>
+                <span className="sub">Every task in all your classes. Open one, or copy it into another lesson.</span>
+              </div>
+            </div>
+            <ArchiveTasks uid={uid} />
+          </main>
+        )}
+        {section === 'docs' && uid && (
+          <main className="ma-main">
+            <div className="ma-head">
+              <div className="ma-head-text">
+                <h1 className="page-title">Shared documents</h1>
+                <span className="sub">The documents and slides your classes write together, and where each is used.</span>
+              </div>
+            </div>
+            <ArchiveDocs uid={uid} />
+          </main>
+        )}
+        {section === 'media' && (
         <main className="ma-main">
           <div className="ma-head">
             <div className="ma-head-text">
@@ -293,8 +338,9 @@ export function MediaArchive() {
             </div>
           )}
         </main>
+        )}
 
-        {open && uid && <Detail key={open.id} uid={uid} item={open} folders={allFolders} onClose={() => setOpenId(null)} />}
+        {section === 'media' && open && uid && <Detail key={open.id} uid={uid} item={open} folders={allFolders} onClose={() => setOpenId(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={into} noArchive onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
       </div>
     </div>

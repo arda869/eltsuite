@@ -4052,3 +4052,36 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .cc-opt input { margin-top: 3px; accent-color: var(--accent); }
 .cc-opt > span { display: flex; flex-direction: column; font-size: 13px; } .cc-opt .hint { font-size: 12px; }
 .list-adds .wide-add { flex-basis: 100%; }
+
+/* Archive: tasks and shared documents */
+.ma-lib { padding-bottom: 12px; border-bottom: 1px solid var(--hair); }
+.al-msg { padding: 8px 12px; border-radius: 10px; background: var(--tint); font-size: 13px; }
+.al-list { display: flex; flex-direction: column; gap: 6px; }
+.al-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); }
+.al-row:hover { box-shadow: 0 0 0 1px var(--hair-strong), 0 4px 14px rgba(51, 48, 44, .06); }
+@media (max-width: 760px) { .al-row { grid-template-columns: 34px 1fr; } .al-when, .al-acts { grid-column: 2; } }
+.al-ic { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--cc) 14%, #fff); color: color-mix(in srgb, var(--cc) 80%, #000); }
+.al-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.al-title { font: 600 15px var(--serif); color: var(--ink); text-decoration: none; } .al-title:hover { color: var(--accent-text); }
+.al-sub { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.al-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+.al-meta .ld-tag { margin-left: 0; }
+.al-cls { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: var(--ink); } .al-cls i { width: 7px; height: 7px; border-radius: 99px; background: var(--cc); }
+.al-when { font-size: 12px; white-space: nowrap; }
+.al-acts { display: flex; gap: 6px; }
+.al-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.al-doc { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 0; border-radius: 16px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair); text-align: left; cursor: pointer; font-family: var(--sans); }
+.al-doc:hover { box-shadow: 0 0 0 1.5px var(--cc), 0 8px 22px rgba(51, 48, 44, .08); }
+.al-doc-art { position: relative; height: 110px; border-radius: 10px; background: color-mix(in srgb, var(--cc) 10%, #faf8f5); display: flex; flex-direction: column; justify-content: center; gap: 7px; padding: 0 26%; overflow: hidden; }
+.al-doc-art.k-doc em { display: block; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--cc) 30%, #ddd); } .al-doc-art.k-doc em:first-child { height: 8px; width: 70%; background: color-mix(in srgb, var(--cc) 70%, #555); } .al-doc-art.k-doc em.short { width: 55%; }
+.al-doc-art.k-doc::before { content: ''; position: absolute; inset: 12px 22%; border-radius: 4px; background: #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); z-index: 0; }
+.al-doc-art.k-doc em { position: relative; z-index: 1; }
+.al-doc-art.k-slides { padding: 0; align-items: center; }
+.al-doc-art.k-slides b { position: absolute; left: 50%; top: 50%; width: 62%; aspect-ratio: 16 / 9; translate: -50% -50%; border-radius: 5px; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, .08); }
+.al-doc-art.k-slides b::before { content: ''; position: absolute; left: 10%; top: 16%; width: 50%; height: 12%; border-radius: 2px; background: color-mix(in srgb, var(--cc) 70%, #555); }
+.al-doc-art.k-slides b::after { content: ''; position: absolute; right: 10%; bottom: 14%; width: 30%; height: 44%; border-radius: 50%; background: var(--cc); opacity: .8; }
+.al-doc-art.k-slides i { position: absolute; top: 50%; width: 52%; aspect-ratio: 16 / 9; translate: 0 -50%; border-radius: 5px; background: #fff; opacity: .6; }
+.al-doc-art.k-slides i:first-child { left: 8%; } .al-doc-art.k-slides i:nth-child(2) { right: 8%; }
+.al-doc-t { display: flex; flex-direction: column; gap: 4px; } .al-doc-t b { font: 600 15px var(--serif); color: var(--ink); } .al-doc-t .hint { font-size: 12px; }
+.al-open { width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 40px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.al-open-h { display: flex; flex-direction: column; gap: 2px; }
