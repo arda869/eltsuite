@@ -5742,3 +5742,27 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 .fd-name { font: 500 20px var(--serif); border: 0; background: none; color: var(--ink); padding: 2px 6px; border-radius: 6px; }
 input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .fd-del { align-self: flex-start; }
+
+/* A lesson in Files */
+.lf { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; max-width: 1240px; width: 100%; margin: 0 auto; align-items: start; }
+.lf-side { position: sticky; top: 79px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); max-height: calc(100vh - 100px); overflow-y: auto; }
+.lf-list { display: flex; flex-direction: column; gap: 2px; }
+.lf-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 9px; background: none; text-align: left; font: 14px var(--sans); color: inherit; cursor: pointer; }
+.lf-row:hover { background: var(--surface); }
+.lf-row.on { background: var(--selected); font-weight: 600; }
+.lf-row.k-section { font: 700 11px var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+.lf-n { width: 18px; color: var(--muted); font-size: 12px; text-align: right; }
+.lf-adds { display: flex; gap: 6px; }
+.lf-main { min-width: 0; }
+.lf-task { display: flex; flex-direction: column; gap: 10px; padding: 18px 22px; border-radius: 16px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); }
+.lf-head { display: flex; align-items: center; gap: 10px; }
+.lf-title { flex: 1; font: 500 22px var(--serif); border: 0; background: none; color: var(--ink); padding: 2px 6px; margin-left: -6px; border-radius: 6px; }
+.lf-title:hover { box-shadow: 0 0 0 1px var(--hair); }
+.lf-acts { display: flex; gap: 4px; align-items: center; }
+.lf-classes { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.lf-class { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 10px; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); text-align: left; font: 14px var(--sans); color: inherit; cursor: pointer; }
+.lf-class i { width: 10px; height: 10px; border-radius: 50%; background: var(--cc); }
+.lf-class:hover { box-shadow: 0 0 0 1.5px var(--cc); }
+.dp.k-lesson { --dp: #c8764a; } .dp-icon.k-lesson { color: #c8764a; }
+.al-doc-art.k-lesson { display: grid; place-items: center; } .al-doc-art.k-lesson svg { width: 40px; height: 40px; }
+@media (max-width: 860px) { .lf { grid-template-columns: 1fr; } .lf-side { position: static; max-height: none; } }

@@ -238,7 +238,7 @@ function DocCard({ d, shared, folders }: { d: SharedDoc; shared: boolean; folder
   return (
     <a href={`/doc/${d.id}`} target="_blank" rel="noopener" className={'al-doc fd-doc k-' + d.kind} onContextMenu={(e) => menu.length && openMenu(e, menu)}>
       <span className={'al-doc-art k-' + d.kind}>
-        {d.kind === 'flash' || d.kind === 'pd' ? (
+        {d.kind === 'flash' || d.kind === 'pd' || d.kind === 'lesson' ? (
           <DocIcon kind={d.kind} />
         ) : d.kind === 'slides' ? (
           <>
@@ -269,9 +269,9 @@ function DocCard({ d, shared, folders }: { d: SharedDoc; shared: boolean; folder
 function NewButtons({ make }: { make: (k: DocKind) => void }) {
   return (
     <span className="fd-new">
-      {(['doc', 'slides', 'flash', 'pd'] as DocKind[]).map((k) => (
+      {(['lesson', 'doc', 'slides', 'flash', 'pd'] as DocKind[]).map((k) => (
         <button key={k} type="button" className="btn" onClick={() => make(k)}>
-          + {k === 'doc' ? 'Document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
+          + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
         </button>
       ))}
     </span>
@@ -356,7 +356,7 @@ function FileDocs({ uid }: { uid: string }) {
         <h2 className="fd-h">Your documents</h2>
         <NewButtons make={(k) => void openNew(newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k))} />
       </div>
-      <span className="hint">Documents, slides, flashcard sets and reading notes. Share each one with the people you choose, or put them in a shared folder. Each opens in its own tab.</span>
+      <span className="hint">Lessons, documents, slides, flashcard sets and reading notes. Share each one with the people you choose, or put them in a shared folder. Each opens in its own tab.</span>
       <div className="fd-folders">
         {allFolders.map((f) => (
           <button key={f.id} type="button" className="fd-folder" onClick={() => setOpen(f.id)}>

@@ -7,6 +7,7 @@ import { SlidesDoc } from '../collab/slides/SlidesDoc';
 import type { CollabMode } from '../collab/suggest';
 import { FlashSet } from '../flash/FlashSet';
 import { PdReading } from '../pd/PdReading';
+import { LessonFile } from '../lessons/LessonFile';
 import { CiteStyleContext } from '../editor/Cite';
 import { CITE_STYLES, type CiteStyle } from '../lib/cite';
 import { doc as fsDoc, updateDoc } from 'firebase/firestore';
@@ -22,7 +23,12 @@ import { UiIcon } from '../components/UiIcon';
 export function DocIcon({ kind }: { kind: DocKind }) {
   return (
     <span className={'dp-icon k-' + kind} aria-hidden="true">
-      {kind === 'flash' ? (
+      {kind === 'lesson' ? (
+        <svg width="22" height="22" viewBox="0 0 24 24">
+          <rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="currentColor" />
+          <path d="M7.5 8.5h9M7.5 12h9M7.5 15.5h5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ) : kind === 'flash' ? (
         <svg width="22" height="22" viewBox="0 0 24 24">
           <rect x="7" y="3" width="13" height="16" rx="2.2" fill="currentColor" opacity="0.45" transform="rotate(8 13 11)" />
           <rect x="4" y="5" width="13" height="16" rx="2.2" fill="currentColor" />
@@ -137,7 +143,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>

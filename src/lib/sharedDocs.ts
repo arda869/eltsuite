@@ -39,8 +39,8 @@ export type SharedDoc = {
 const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
-export type DocKind = 'doc' | 'slides' | 'flash' | 'pd';
-export const KIND_LABEL: Record<DocKind, string> = { doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading' };
+export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson';
+export const KIND_LABEL: Record<DocKind, string> = { doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading', lesson: 'Lesson' };
 export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '') {
   const r = await addDoc(col, {
     owner: owner.uid,
@@ -101,7 +101,7 @@ export const noteClass = (d: SharedDoc, classId: string, name: string, role: Doc
 // A message with the link, to each person (their own chat with you), or into one chat.
 export async function sendDocInChat(d: SharedDoc, me: Person, people: Person[], note = '') {
   const link = docLink(d.id);
-  const what = d.kind === 'slides' ? 'slides' : d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : 'a document';
+  const what = d.kind === 'slides' ? 'slides' : d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : d.kind === 'lesson' ? 'a lesson' : 'a document';
   const text = note.trim() || `I shared ${what} with you: ${d.title}.`;
   for (const p of people) {
     const chatId = await openChat(me, [p]);

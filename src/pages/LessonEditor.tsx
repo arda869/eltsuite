@@ -31,6 +31,7 @@ import {
 } from '../lib/tasks';
 import { theme } from '../lib/themes';
 import { useLiveAudioSetup } from '../lib/liveAudio';
+import { saveLessonToFiles } from '../lessons/LessonFile';
 import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLive, type LiveState } from '../lib/live';
 import { TEXT_SCALE } from '../lib/auth';
 import { TextSizeControl } from '../components/TextSizeControl';
@@ -699,6 +700,23 @@ export function LessonEditor() {
               </button>
               <span className="menu-sep" aria-hidden="true" />
               <span className="menu-label">Export</span>
+              {item?.type === 'lesson' && user && (
+                <button
+                  role="menuitem"
+                  onClick={async () => {
+                    setExportOpen(false);
+                    await flush();
+                    const w = window.open('about:blank', '_blank');
+                    const id = await saveLessonToFiles({ uid: user.uid, name: user.displayName || 'Teacher' }, classId, itemId, item.title);
+                    if (w) w.location.href = `/doc/${id}`;
+                  }}
+                >
+                  Save a copy in Files
+                  <span className="hint" style={{ display: 'block' }}>
+                    To add it to other classes later
+                  </span>
+                </button>
+              )}
               {item?.type === 'lesson' && c && (
                 <button role="menuitem" onClick={() => (setExportOpen(false), setRecapOpen(true))}>
                   Lesson recap…
