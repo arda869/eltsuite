@@ -3863,3 +3863,8 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
 .wb-showcur { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; font: 600 12px var(--sans); color: var(--muted); cursor: pointer; white-space: nowrap; }
 .wb-showcur input { accent-color: var(--accent); }
 .cd-mode[hidden] { display: none !important; }
+/* the class menu opens out of the class header instead of being cut off */
+.class-hero { overflow: visible; position: relative; z-index: 6; }
+.class-hero .ch-cover { overflow: hidden; border-radius: 0 18px 18px 0; }
+@media (max-width: 760px) { .class-hero .ch-cover { border-radius: 18px 18px 0 0; } }
+.class-hero .menu { z-index: 50; }
