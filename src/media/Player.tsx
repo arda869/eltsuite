@@ -35,6 +35,8 @@ export const isVideoUrl = (u = '') => !!youTubeId(u) || /\.(mp4|webm|mov|m4v)(\?
 export const mediaIsVideo = (m?: Manifest | null) => !!m && (m.kind === 'link' ? !!m.video || isVideoUrl(m.url) : !!m.video);
 
 export type Engine = {
+  volume: number;
+  setVolume: (v: number) => void;
   m: Manifest | null | undefined;
   ready: boolean;
   playing: boolean;
@@ -189,8 +191,31 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
     if (yt.current) yt.current.setPlaybackRate?.(r);
     else if (el.current) el.current.playbackRate = r;
   }, []);
+  // Volume, remembered on this device for every player.
+  const [volume, setVolumeState] = useState(() => {
+    try {
+      const v = Number(localStorage.getItem('ll.volume'));
+      return v > 0 && v <= 1 ? v : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const setVolume = useCallback((v: number) => {
+    setVolumeState(v);
+    try {
+      localStorage.setItem('ll.volume', String(v));
+    } catch {
+      /* fine */
+    }
+    if (yt.current) yt.current.setVolume?.(Math.round(v * 100));
+    else if (el.current) el.current.volume = v;
+  }, []);
+  useEffect(() => {
+    if (el.current) el.current.volume = volume;
+    else if (yt.current) yt.current.setVolume?.(Math.round(volume * 100));
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
   const host = useCallback((h: HTMLDivElement | null) => setHostEl(h), []);
-  return { m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate };
+  return { m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume };
 }
 
 // ------------------------------------------------------------------ the sound wave
@@ -405,7 +430,7 @@ const PlayIcon = ({ playing }: { playing: boolean }) =>
   );
 
 // Play, the sound wave as the bar (click or drag it to move), the time and the speed.
-export function Transport({ e, locked, compact, children }: { e: Engine; locked?: boolean; compact?: boolean; children?: ReactNode }) {
+export function Transport({ e, locked, compact, children, tools }: { e: Engine; locked?: boolean; compact?: boolean; children?: ReactNode; tools?: ReactNode }) {
   const d = e.duration || e.m?.duration || 0;
   return (
     <div className={'mp-bar' + (compact ? ' compact' : '')}>
@@ -417,8 +442,46 @@ export function Transport({ e, locked, compact, children }: { e: Engine; locked?
         {fmtTime(e.time)}
         <span> / {fmtTime(d)}</span>
       </span>
+      {tools}
+      <VolumeMenu volume={e.volume} onVolume={e.setVolume} />
       <SpeedMenu rate={e.rate} onRate={e.setRate} />
     </div>
+  );
+}
+
+function VolumeMenu({ volume, onVolume }: { volume: number; onVolume: (v: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const before = useRef(1);
+  useEffect(() => {
+    if (!open) return;
+    const close = (ev: MouseEvent) => ref.current && !ref.current.contains(ev.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  const waves = volume === 0 ? 0 : volume < 0.5 ? 1 : 2;
+  return (
+    <span className="mp-speed mp-vol" ref={ref}>
+      <button type="button" className={'mp-rate mp-vol-btn' + (volume < 1 ? ' on' : '')} onClick={() => setOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={open} aria-label={`Volume ${Math.round(volume * 100)}%`} data-tip="Volume">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor" fillOpacity=".15" />
+          {waves === 0 ? <path d="M16 9.5l5 5M21 9.5l-5 5" /> : <path d="M15.5 9.5a3.5 3.5 0 0 1 0 5" />}
+          {waves === 2 && <path d="M18 7a7 7 0 0 1 0 10" />}
+        </svg>
+      </button>
+      {open && (
+        <span className="mp-speed-menu mp-vol-menu" role="dialog" aria-label="Volume">
+          <span className="mp-speed-head">Volume</span>
+          <span className="mp-vol-row">
+            <button type="button" className="mp-vol-mute" onClick={() => (volume > 0 ? ((before.current = volume), onVolume(0)) : onVolume(before.current || 1))}>
+              {volume > 0 ? 'Mute' : 'Sound on'}
+            </button>
+            <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(ev) => onVolume(Number(ev.target.value))} aria-label="Volume" />
+            <b>{Math.round(volume * 100)}%</b>
+          </span>
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -474,6 +537,25 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
   const e = useEngine(classId, mediaId, manifest);
   const [open, setOpen] = useState(false);
   const lines = (e.m?.script ?? []).filter((l) => l.text.trim());
+  // Pause at the end of each line: for repeating after the speaker, or dictation.
+  const [lineStop, setLineStop] = useState(false);
+  const timed = lines.filter((l) => l.t !== null).map((l) => l.t as number).sort((a, b) => a - b);
+  const stopAt = useRef<number | null>(null);
+  useEffect(() => {
+    if (!e.playing) return void (stopAt.current = null);
+    if (stopAt.current === null) stopAt.current = timed.find((t) => t > e.time + 0.15) ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e.playing]);
+  useEffect(() => {
+    if (!lineStop || !e.playing || stopAt.current === null) return;
+    if (e.time >= stopAt.current - 0.05) {
+      const t = stopAt.current;
+      stopAt.current = null;
+      e.pause();
+      e.seek(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e.time, lineStop]);
   const used = plays > 0 && !teacher && e.ends >= plays && !e.playing;
   const showScript = lines.length > 0 && (editing || scriptMode === 'karaoke' || (teaching && open) || (scriptMode === 'after' && e.ends > 0) || (scriptMode === 'button' && open));
   if (e.m === undefined) return <div className="mp mp-wait" />;
@@ -490,7 +572,20 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
         {plays > 0 && <span className="mp-plays">{teacher ? `Learners can play it ${plays === 1 ? 'once' : plays + ' times'}` : used ? 'No plays left' : `${plays - e.ends} ${plays - e.ends === 1 ? 'play' : 'plays'} left`}</span>}
         {extra}
       </div>
-      <Transport e={e} locked={used}>
+      <Transport
+        e={e}
+        locked={used}
+        tools={
+          timed.length > 1 ? (
+            <button type="button" className={'mp-rate mp-linestop' + (lineStop ? ' on' : '')} onClick={() => setLineStop((v) => !v)} aria-pressed={lineStop} aria-label="Pause after each line" data-tip={lineStop ? 'Pausing after each line' : 'Pause after each line'}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+                <path d="M4 7h9M4 12h9M4 17h6" />
+                <path d="M17 9v8M21 9v8" />
+              </svg>
+            </button>
+          ) : null
+        }
+      >
         <PlayerWave e={e} classId={classId} mediaId={mediaId} lines={teacher ? lines : undefined} locked={used} />
       </Transport>
       {e.error && <p className="mp-error">{e.error}</p>}

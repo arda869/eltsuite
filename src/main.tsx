@@ -8,6 +8,7 @@ import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
 import { ColleaguesPage } from './pages/ColleaguesPage';
 import { MessagesPage } from './pages/MessagesPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SoundStudio, TaskStudio } from './pages/Studio';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -124,6 +125,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
+          <Route path="/studio/task/:id" element={<TeacherOnly><TaskStudio /></TeacherOnly>} />
+          <Route path="/studio/sound/:id" element={<TeacherOnly><SoundStudio /></TeacherOnly>} />
           <Route path="/settings" element={<SignedIn><SettingsPage /></SignedIn>} />
           <Route path="/messages" element={<SignedIn><MessagesPage /></SignedIn>} />
           <Route path="/colleagues" element={<TeacherOnly><ColleaguesPage /></TeacherOnly>} />

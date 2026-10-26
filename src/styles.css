@@ -5250,3 +5250,105 @@ select:not([multiple]) { -webkit-appearance: none; appearance: none; padding-rig
 /* Text boxes can be as wide as their text instead of the page */
 .tbox.w-fit { width: fit-content; max-width: 100%; }
 .paper-wrap:has(> .tbox.w-fit) { width: fit-content; max-width: 100%; }
+/* Library links on tasks */
+.lib-link, .lib-save { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; height: 24px; padding: 0 10px; border-radius: 99px; font: 600 11.5px var(--sans); }
+.lib-link { background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--accent-text, var(--accent)); }
+.lib-break { margin-left: 4px; padding: 0 0 0 8px; border: 0; border-left: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); background: none; color: var(--muted); font: inherit; font-weight: 500; cursor: pointer; }
+.lib-break:hover { color: var(--ink); text-decoration: underline; }
+.lib-save { border: 1px dashed var(--hair-strong); background: none; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
+.frame-head:hover .lib-save, .lib-save:focus-visible { opacity: 1; }
+.lib-save:hover { color: var(--accent-text, var(--accent)); border-color: var(--accent); }
+.lib-save .ui-icon { color: var(--accent); }
+.lp-dialog { width: min(560px, 100%); display: flex; flex-direction: column; gap: 10px; }
+.lp-folders { display: flex; flex-wrap: wrap; gap: 6px; }
+.lp-folders .ap-chip { display: inline-flex; align-items: center; gap: 5px; }
+.lp-list { display: flex; flex-direction: column; gap: 2px; max-height: 52vh; overflow-y: auto; padding: 4px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 3%, var(--paper)); }
+.lp-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border: 0; border-radius: 10px; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.lp-row:hover { background: var(--paper); box-shadow: 0 0 0 1px var(--hair); }
+.lp-row > .ui-icon { color: var(--accent); margin-left: auto; }
+.lp-t { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.lp-t .hint { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-none { padding: 18px; text-align: center; }
+/* The play button's ring is never cut off at the edge */
+.mp-bar { padding-left: 4px; margin-left: -4px; }
+.mp-vol-btn { display: inline-grid; place-items: center; padding: 0 8px; }
+.mp-vol-menu { min-width: 230px; }
+.mp-vol-row { display: flex; align-items: center; gap: 10px; padding: 4px 6px 6px; }
+.mp-vol-row input { flex: 1; accent-color: var(--accent); }
+.mp-vol-row b { min-width: 36px; text-align: right; font: 600 12px var(--sans); color: var(--muted); }
+.mp-vol-mute { border: 0; background: none; padding: 0; font: 600 12px var(--sans); color: var(--accent-text, var(--accent)); cursor: pointer; white-space: nowrap; }
+.mp-linestop { display: inline-grid; place-items: center; padding: 0 8px; }
+
+/* Library fits the screen: only the files panel (and the side panes) scroll */
+@media (min-width: 961px) {
+  .lib-shell { height: 100dvh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 16px; box-sizing: border-box; }
+  .lib-shell > .ma { flex: 1 1 auto; min-height: 0; padding-bottom: 0; grid-template-rows: auto minmax(0, 1fr); }
+  .lib-shell .ma-main { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .lib-shell .ma-main:has(.al-grid, .al-list) { overflow-y: auto; }
+  .lib-shell .ma-files { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+  .lib-shell .ma-side { position: static; height: auto; min-height: 0; overflow-y: auto; }
+  .lib-shell .ma-detail { position: static; max-height: 100%; align-self: stretch; overflow-y: auto; }
+}
+.ma-tools { gap: 8px; }
+.ma-tool { height: 36px; min-width: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 1px solid var(--hair); border-radius: 10px; background: var(--paper); color: var(--ink); font: 500 13px var(--sans); cursor: pointer; }
+.ma-tool:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--hair)); }
+.ma-tool.on { border-color: var(--accent); color: var(--accent-text, var(--accent)); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
+.ma-tool .ui-icon, .ma-tool svg { color: var(--accent); }
+.ma-search-wrap { position: relative; display: inline-flex; align-items: center; width: min(340px, 100%); }
+.ma-search-wrap .ui-icon { position: absolute; left: 11px; color: var(--accent); pointer-events: none; }
+.ma-search-wrap .ma-search { width: 100%; padding-left: 34px; animation: ask-fade .12s ease-out; }
+.ma-filter { position: relative; }
+.ma-filter-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 220px; display: flex; flex-direction: column; gap: 2px; padding: 8px; }
+.ma-filter-menu .ma-h { margin: 2px 6px 4px; }
+.ma-filter-row { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13.5px; cursor: pointer; }
+.ma-filter-row:hover { background: var(--selected); }
+.ma-filter-row .hint { margin-left: auto; font-size: 12px; }
+.ma-filter-menu .btn.link { align-self: flex-start; margin: 4px 8px 2px; }
+.ma-rename { width: 100%; box-sizing: border-box; padding: 1px 4px; border: 1.5px solid var(--accent); border-radius: 5px; background: var(--paper); color: var(--ink); font: 500 12px var(--sans); text-align: center; outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.ma-lrow .ma-rename { text-align: left; font-size: 13.5px; width: auto; min-width: 200px; }
+.ma-lname-t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-linked { display: inline-grid; place-items: center; color: var(--accent); }
+.ma-group { margin-bottom: 14px; }
+.ma-group-h { display: flex; align-items: baseline; gap: 8px; margin: 4px 4px 8px; font: 700 10.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.ma-group-h.list { padding: 10px 14px 4px; margin: 0; border-top: 1px solid var(--hair); }
+.ma-files > .ma-grid + .ma-group { margin-top: 14px; }
+.ma-badges .ma-shared svg { width: 11px; height: 11px; }
+/* A library task open for editing */
+.lt-scrim { padding: 3vh 16px; }
+.lt-window { width: min(980px, 100%); max-height: 94vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.lt-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--hair); background: color-mix(in srgb, var(--accent) 4%, var(--paper)); }
+.lt-where { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; min-width: 0; font: 500 13px var(--sans); color: var(--muted); }
+.lt-status { font: 500 12px var(--sans); color: var(--soft); }
+.lt-status.error { color: var(--ink); font-weight: 700; }
+.lt-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 26px 30px 64px; }
+.lib-link.small { height: 22px; font-size: 11px; }
+.lt-preview { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: hidden; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 3%, var(--paper)); box-shadow: 0 0 0 1px var(--hair); cursor: default; position: relative; }
+.lt-preview::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, color-mix(in srgb, var(--ink) 3%, var(--paper))); }
+.lt-preview-t { font: 500 17px var(--serif); }
+.lt-preview-body { zoom: .78; pointer-events: none; }
+.lt-kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.lt-folder { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 10px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 5%, var(--paper)); text-align: center; }
+.lt-folder b { font: 500 18px var(--serif); }
+.dock-ic { color: var(--muted); }
+.dock-ic:hover { color: var(--ink); }
+.dock-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--hair-strong, var(--hair)); }
+.block-drop-line { position: fixed; z-index: 140; height: 3px; margin-top: -1.5px; border-radius: 3px; background: var(--accent); pointer-events: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); }
+.block-drop-line::before { content: ""; position: absolute; left: -5px; top: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+
+/* Studios: full-screen editors in their own tab */
+.studio { min-height: 100dvh; display: flex; flex-direction: column; background: var(--page); }
+.studio-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 18px; background: var(--paper); box-shadow: 0 1px 0 var(--hair); font-family: var(--sans); }
+.studio-brand { text-decoration: none; display: inline-flex; }
+.studio-app { padding: 4px 10px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 13%, var(--paper)); color: var(--accent-text, var(--accent)); font: 700 12px var(--sans); letter-spacing: .04em; white-space: nowrap; }
+.studio-where { display: inline-flex; align-items: center; gap: 10px; min-width: 0; font-size: 13px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.studio-missing { padding: 40px; text-align: center; }
+.studio-task { flex: 1; display: flex; justify-content: center; padding: 28px 20px 80px; }
+.studio-sheet { width: min(980px, 100%); background: var(--paper); border-radius: 18px; box-shadow: 0 0 0 1px var(--hair), 0 10px 30px color-mix(in srgb, var(--shadow) 40%, transparent); padding: 22px 32px 40px 72px; box-sizing: border-box; }
+.studio-sound { flex: 1; padding: 18px 22px 30px; }
+.studio-sound .daw-wave { height: 220px; }
+.studio-done { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 60px 20px; text-align: center; }
+.studio-done strong { font: 500 26px var(--serif); }
+/* Sound editing from Add media or a recording also gets the whole screen */
+.scrim:has(.md-dialog .daw) { padding: 0; }
+.md-dialog:has(.daw) { width: 100vw !important; max-width: none; height: 100dvh; max-height: none; border-radius: 0; overflow-y: auto; }
+.md-dialog:has(.daw) .daw-wave { height: 200px; }

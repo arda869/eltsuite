@@ -97,8 +97,9 @@ export function useLibrary(uid?: string) {
 }
 
 // A task as a text file (the same convention lessons import from).
-export const taskMd = (t: LibTask) => exportLesson(t.title, [{ title: t.title, instructions: t.instructions, content: (t.content ?? { type: 'doc', content: [] }) as never }], false);
-export function downloadTask(t: LibTask) {
+type TaskLike = { title: string; instructions: string; content?: unknown };
+export const taskMd = (t: TaskLike) => exportLesson(t.title, [{ title: t.title, instructions: t.instructions, content: (t.content ?? { type: 'doc', content: [] }) as never }], false);
+export function downloadTask(t: TaskLike) {
   const text = taskMd(t);
   const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
   const a = document.createElement('a');

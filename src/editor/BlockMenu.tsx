@@ -134,6 +134,80 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
   const [hover, setHover] = useState<{ pos: number; top: number; left: number } | null>(null);
   const [menu, setMenu] = useState<{ pos: number; anchor: DOMRect } | null>(null);
   const hide = useRef(0);
+  // Moving a whole block (by this handle or a question's own grip): it lands between blocks,
+  // in the space nearest the pointer, with a line showing where. Never inside another line.
+  useEffect(() => {
+    const el = host;
+    if (!el) return;
+    const view = editor.view;
+    const line = document.createElement('div');
+    line.className = 'block-drop-line';
+    const moving = () => {
+      const sel = view.state.selection;
+      return (view as unknown as { dragging: unknown }).dragging && sel instanceof NodeSelection && sel.$from.depth === 0 ? sel : null;
+    };
+    const targetOf = (y: number) => {
+      let at = { pos: view.state.doc.content.size, y: 0 };
+      let last: DOMRect | null = null;
+      let found = false;
+      view.state.doc.forEach((_n, off) => {
+        if (found) return;
+        const d = view.nodeDOM(off) as HTMLElement | null;
+        if (!d?.getBoundingClientRect) return;
+        const r = d.getBoundingClientRect();
+        if (y < r.top + r.height / 2) {
+          // halfway into the space above this block
+          at = { pos: off, y: last ? (last.bottom + r.top) / 2 : r.top - 3 };
+          found = true;
+        }
+        last = r;
+      });
+      if (!found && last) at = { pos: view.state.doc.content.size, y: (last as DOMRect).bottom + 3 };
+      return at;
+    };
+    const clear = () => line.remove();
+    const over = (e: DragEvent) => {
+      const sel = moving();
+      if (!sel) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      const t = targetOf(e.clientY);
+      const pr = view.dom.getBoundingClientRect();
+      const same = t.pos === sel.from || t.pos === sel.to;
+      line.style.cssText = `left:${pr.left}px;width:${pr.width}px;top:${t.y}px;opacity:${same ? 0.35 : 1}`;
+      if (!line.isConnected) document.body.append(line);
+    };
+    const drop = (e: DragEvent) => {
+      const sel = moving();
+      if (!sel) return;
+      e.preventDefault();
+      e.stopPropagation();
+      clear();
+      const t = targetOf(e.clientY).pos;
+      (view as unknown as { dragging: unknown }).dragging = null;
+      if (t === sel.from || t === sel.to) return;
+      const node = sel.node;
+      const tr = view.state.tr.delete(sel.from, sel.to);
+      const at = t > sel.from ? t - node.nodeSize : t;
+      tr.insert(at, node);
+      tr.setSelection(NodeSelection.create(tr.doc, at));
+      view.dispatch(tr.scrollIntoView());
+      view.focus();
+    };
+    const leave = (e: DragEvent) => !el.contains(e.relatedTarget as Node) && clear();
+    el.addEventListener('dragover', over, true);
+    el.addEventListener('drop', drop, true);
+    el.addEventListener('dragleave', leave);
+    window.addEventListener('dragend', clear);
+    return () => {
+      el.removeEventListener('dragover', over, true);
+      el.removeEventListener('drop', drop, true);
+      el.removeEventListener('dragleave', leave);
+      window.removeEventListener('dragend', clear);
+      clear();
+    };
+  }, [editor, host]);
   useEffect(() => {
     const el = host;
     if (!el) return;

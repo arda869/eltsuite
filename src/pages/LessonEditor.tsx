@@ -1,5 +1,7 @@
 import { LIVE_BEAT } from '../lib/live';
-import { ask, askText } from '../lib/ask';
+import { ask, askText, tell } from '../lib/ask';
+import { addToLesson, breakLink, lessonTaskBody, saveToLibrary, updateLibTask } from '../lib/libtasks';
+import { LibraryPicker } from '../components/LibraryPicker';
 import { usePhone } from '../lib/useMedia';
 import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
@@ -356,6 +358,7 @@ export function LessonEditor() {
   const [copyTask, setCopyTask] = useState<Task | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
   const [importing, setImporting] = useState(false);
+  const [fromLib, setFromLib] = useState(false);
   const panels = usePanels('ll.teacherPanels');
   const panes = usePaneWidths();
   const [present, setPresent] = useState(false);
@@ -544,7 +547,13 @@ export function LessonEditor() {
     pending.current = null;
     setStatus('saving');
     try {
-      await saveTask(classId, itemId, p.taskId, { ...p.patch, restricted: !!rawTasks.find((t) => t.id === p.taskId)?.restricted });
+      const saved = rawTasks.find((t) => t.id === p.taskId);
+      await saveTask(classId, itemId, p.taskId, { ...p.patch, restricted: !!saved?.restricted });
+      // A task linked to the library: the library and the other lessons that use it follow.
+      if (saved?.lib && user && saved.lib.uid === user.uid && draftRef.current) {
+        const d = draftRef.current;
+        updateLibTask(user.uid, saved.lib.id, { title: d.title, instructions: d.instructions, instrDoc: d.instrDoc ?? null, content: d.content }, { classId, itemId, taskId: p.taskId }).catch(() => {});
+      }
       setStatus(pending.current ? 'saving' : 'saved');
       // Keep a version at most every 3 minutes of editing.
       const last = lastVersion.current[p.taskId] ?? 0;
@@ -890,6 +899,9 @@ export function LessonEditor() {
                 <button type="button" className="btn dashed wide-add" onClick={() => setImporting(true)}>
                   + From another lesson…
                 </button>
+                <button type="button" className="btn dashed wide-add" onClick={() => setFromLib(true)}>
+                  + From the resources library…
+                </button>
               </div>
             )}
           </nav>
@@ -1101,6 +1113,7 @@ export function LessonEditor() {
                     </button>
                   )}
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
+                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
@@ -1301,6 +1314,18 @@ export function LessonEditor() {
         />
       )}
       {copyTask && <CopyDialog kind="task" fromClass={classId} itemId={itemId} taskId={copyTask.id} title={copyTask.title || 'Untitled task'} onClose={() => setCopyTask(null)} onDone={setCopyMsg} />}
+      {fromLib && user && (
+        <LibraryPicker
+          uid={user.uid}
+          onClose={() => setFromLib(false)}
+          onPick={async (lt) => {
+            setFromLib(false);
+            await flush();
+            const id = await addToLesson(user.uid, lt, classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0);
+            setSelected(id);
+          }}
+        />
+      )}
       {importing && <ImportTasksDialog classId={classId} itemId={itemId} onClose={() => setImporting(false)} onDone={(m, id) => (setCopyMsg(m), id && setSelected(id))} />}
       {copyMsg && (
         <div className="toasts">
@@ -1374,5 +1399,55 @@ export function LessonEditor() {
       )}
     </div>
     </ClassAvatarsContext.Provider>
+  );
+}
+
+// Above a task's title: whether it is linked to the resources library, and the way to link or unlink.
+function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: string; classId: string; itemId: string; flush: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const use = { classId, itemId, taskId: task.id };
+  if (task.lib)
+    return (
+      <span className="lib-link" data-tip="Linked to your resources library: changes here reach the library and every lesson that uses it">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+          <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+        </svg>
+        Linked to the library
+        {task.lib.uid === uid && (
+          <button
+            type="button"
+            className="lib-break"
+            disabled={busy}
+            onClick={async () => {
+              if (!(await ask('Break the link with the library? This lesson’s task becomes its own: changes stop going both ways, and it cannot be linked again.', { ok: 'Break the link' }))) return;
+              setBusy(true);
+              await flush();
+              await breakLink(uid, task.lib!.id, use).catch(() => {});
+              setBusy(false);
+            }}
+          >
+            Break the link
+          </button>
+        )}
+      </span>
+    );
+  return (
+    <button
+      type="button"
+      className="lib-save"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        await flush();
+        const body = await lessonTaskBody(use).catch(() => null);
+        if (body) await saveToLibrary(uid, use, body).catch(() => {});
+        setBusy(false);
+        if (body) void tell('Saved in your resources library. The two stay linked: a change in either reaches the other.');
+      }}
+      data-tip="Keep a linked copy in your resources library, to use in other lessons"
+    >
+      <UiIcon name="archive" size={13} /> {busy ? 'Saving…' : 'Save to the library'}
+    </button>
   );
 }

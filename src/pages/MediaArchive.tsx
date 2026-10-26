@@ -1,31 +1,32 @@
 import { usePhone } from '../lib/useMedia';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArchiveDocs, ArchiveShared, downloadTask, taskMd, useLibrary, type LibTask } from './ArchiveLibrary';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibrary';
+import { moveLibTasks, newLibTask, removeLibTask, renameLibTask, useLibTasks, type LibTask } from '../lib/libtasks';
+import { ChainIcon, FolderDetail, TaskDetail, TaskWindow } from './LibraryParts';
+import { useDismiss } from '../lib/useDismiss';
 import { ShareDialog } from '../components/ShareDialog';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
 import { useAuth } from '../lib/auth';
-import { addFolder, archiveRemove, archiveUpdate, downloadItem, downloadZip, findUses, formatBytes, inTree, leafOf, loadManifest, moveItems, parentOf, placeKey, placeTasks, removeFolder, useLibPlaces, renameFolder, replaceSound, soundUrl, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
+import { addFolder, archiveRemove, archiveUpdate, downloadItem, downloadZip, findUses, formatBytes, inTree, leafOf, moveItems, parentOf, removeFolder, renameFolder, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
 import { useMyShares } from '../lib/sharing';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
-import { SoundEditor, type SoundSource } from '../media/SoundEditor';
-import { decodeSound } from '../lib/sound';
-import { createPortal } from 'react-dom';
 import { useImageSrc } from '../editor/PackNode';
 import { MediaPlayer } from '../media/Player';
 import { ScriptEditor } from '../media/ScriptEditor';
 import { fmtTime } from '../lib/sound';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
 import { FileIcon, FolderIcon } from '../components/FileIcon';
-import { ask, askText } from '../lib/ask';
+import { ask } from '../lib/ask';
 import { uploadPicture, type PicQuality } from '../editor/PackNode';
 
-// The resources library: every picture, sound and video the teacher has added, to use again in any
-// lesson. Folders and tags to keep it in order, the space it takes, and karaoke scripts that are
-// edited once here and change in every lesson that uses them.
+// The resources library: pictures, sounds, videos and tasks the teacher keeps, in folders, to use
+// in any lesson. Works like a folder on a computer: icons, a list or a timeline; click to select,
+// double-click to open, drag a box to select several, drag onto a folder to move, right-click for
+// more, type over a name to rename it. The pane on the right shows whatever is selected.
 
 const FREE = 1024 * 1024 * 1024;
 const KINDS = [
@@ -33,9 +34,10 @@ const KINDS = [
   { k: 'audio', label: 'Sounds', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
-type Sort = 'new' | 'name' | 'size';
-const SEG = [...KINDS.map((k) => ({ k: k.k as string, label: k.label })), { k: 'task', label: 'Tasks' }];
-const tkey = (t: LibTask) => 't:' + placeKey(t.classId, t.id);
+type Kind = 'image' | 'audio' | 'video' | 'task';
+const ALL_KINDS: { k: Kind; label: string }[] = [...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'task', label: 'Tasks' }];
+type Sort = 'new' | 'name' | 'size' | 'type';
+type Group = 'none' | 'type';
 type View = 'icons' | 'list' | 'time';
 const VIEWS: { k: View; label: string }[] = [
   { k: 'icons', label: 'Icons' },
@@ -46,69 +48,78 @@ const MOVE = 'application/x-ll-media';
 const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Earlier');
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
-const kindName = (k: string) => (k === 'image' ? 'Picture' : k === 'video' ? 'Video' : 'Sound');
+const kindName = (k: string) => (k === 'image' ? 'Picture' : k === 'video' ? 'Video' : k === 'task' ? 'Task' : 'Sound');
+const ORDER: Record<Kind, number> = { task: 0, image: 1, audio: 2, video: 3 };
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
 
-type Section = 'media' | 'tasks' | 'docs' | 'shared' | 'colleagues';
+// One thing in the library, whatever it is.
+type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask };
+const entryOfItem = (i: ArchiveItem): Entry => ({ key: i.id, kind: i.kind, name: i.name, folder: i.folder, at: i.createdAt, size: spaceOf(i), item: i });
+const entryOfTask = (t: LibTask): Entry => ({ key: 't:' + t.id, kind: 'task', name: t.title, folder: t.folder, at: t.createdAt || t.updatedAt, size: 0, task: t });
+
+type Section = 'media' | 'docs' | 'shared' | 'colleagues';
+
+const openStudio = (kind: 'task' | 'sound', id: string) => window.open(`/studio/${kind}/${id}`, '_blank');
+const stored = <T,>(k: string, d: T): T => {
+  try {
+    const v = localStorage.getItem(k);
+    return v === null ? d : (JSON.parse(v) as T);
+  } catch {
+    return d;
+  }
+};
+const store = (k: string, v: unknown) => {
+  try {
+    localStorage.setItem(k, JSON.stringify(v));
+  } catch {
+    /* fine */
+  }
+};
 
 export function MediaArchive() {
   const { user } = useAuth();
   const uid = user?.uid;
   const phone = usePhone();
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
-  const nav = useNavigate();
   const [section, setSection] = useState<Section>(() => {
-    const v = new URLSearchParams(window.location.search).get('show') as Section;
-    return v && v !== 'tasks' ? v : 'media';
+    const v = new URLSearchParams(window.location.search).get('show');
+    return v === 'docs' || v === 'shared' ? v : 'media';
   });
   const pick = (k: Section) => {
     setSection(k);
     window.history.replaceState(null, '', k === 'media' ? '/archive' : `/archive?show=${k}`);
   };
   const items = useArchive(uid);
+  const libTasks = useLibTasks(uid);
   const markers = useFolders(uid);
   const shares = useMyShares(uid);
   const sharedIds = useMemo(() => new Set((shares ?? []).map((s) => s.src?.archiveId).filter(Boolean) as string[]), [shares]);
   const [folder, setFolder] = useState(''); // '' is the library itself
-  const [kind, setKind] = useState<string | null>(() => (new URLSearchParams(window.location.search).get('show') === 'tasks' ? 'task' : null));
-  // Tasks sit with the media: they live in lessons, and the library remembers their folder.
-  const { lib } = useLibrary(section === 'media' ? uid : undefined);
-  const places = useLibPlaces(uid);
-  const tasks = lib?.tasks ?? [];
-  const folderOfT = (t: LibTask) => places[placeKey(t.classId, t.id)] ?? '';
+  const [kinds, setKindsS] = useState<Kind[]>(() => stored('ll.maKinds', [] as Kind[])); // none chosen: everything
+  const setKinds = (k: Kind[]) => (setKindsS(k), store('ll.maKinds', k));
   const [tag, setTag] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState<Sort>('new');
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [view, setViewS] = useState<View>(() => {
-    try {
-      return (localStorage.getItem('ll.maView') as View) || 'icons';
-    } catch {
-      return 'icons';
-    }
-  });
-  const setView = (v: View) => {
-    setViewS(v);
-    try {
-      localStorage.setItem('ll.maView', v);
-    } catch {
-      /* fine */
-    }
-  };
+  const [searching, setSearching] = useState(false);
+  const [sort, setSortS] = useState<Sort>(() => stored('ll.maSort', 'new' as Sort));
+  const setSort = (v: Sort) => (setSortS(v), store('ll.maSort', v));
+  const [group, setGroupS] = useState<Group>(() => stored('ll.maGroup', 'none' as Group));
+  const setGroup = (v: Group) => (setGroupS(v), store('ll.maGroup', v));
+  const [view, setViewS] = useState<View>(() => stored('ll.maView2', 'icons' as View));
+  const setView = (v: View) => (setViewS(v), store('ll.maView2', v));
   const [dialog, setDialog] = useState<{ tab: MediaTab; file?: File } | null>(null);
   const [upBusy, setUpBusy] = useState('');
   const [over, setOver] = useState(false);
-  const [moving, setMoving] = useState<{ items: ArchiveItem[]; tasks: LibTask[] } | null>(null);
+  const [moving, setMoving] = useState<Entry[] | null>(null);
+  const [editing, setEditing] = useState<string | null>(null); // a library task open in its window
+  const [renaming, setRenaming] = useState<string | null>(null); // an entry key or 'f:' + path
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useDismiss<HTMLSpanElement>(filterOpen, () => setFilterOpen(false));
   const space = uid ? 'user:' + uid : '';
   const quality = (): PicQuality => {
-    try {
-      const v = localStorage.getItem('ll.picQuality');
-      return v === 'high' || v === 'small' ? v : 'standard';
-    } catch {
-      return 'standard';
-    }
+    const v = stored<string>('ll.picQuality', 'standard');
+    return v === 'high' || v === 'small' ? v : 'standard';
   };
   const addPictures = async (pics: File[]) => {
     if (!pics.length || !space) return;
@@ -129,53 +140,48 @@ export function MediaArchive() {
   };
 
   const all = items ?? [];
+  const tasks = libTasks ?? [];
+  const entries = useMemo(() => [...all.map(entryOfItem), ...tasks.map(entryOfTask)], [all, tasks]);
   // Every folder, with the folders above it.
   const allFolders = useMemo(() => {
     const set = new Set<string>();
-    [...markers, ...all.map((i) => i.folder), ...Object.values(places)].filter(Boolean).forEach((f) => {
+    [...markers, ...entries.map((e) => e.folder)].filter(Boolean).forEach((f) => {
       const parts = f.split('/');
       parts.forEach((_, k) => set.add(parts.slice(0, k + 1).join('/')));
     });
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [markers, all, places]);
+  }, [markers, entries]);
   const kidsOf = (f: string) => allFolders.filter((x) => parentOf(x) === f);
-  const countIn = (f: string) => all.filter((i) => inTree(i.folder, f)).length + tasks.filter((t) => inTree(folderOfT(t), f)).length;
+  const countIn = (f: string) => entries.filter((e) => inTree(e.folder, f)).length;
   const tags = useMemo(() => {
     const m = new Map<string, number>();
     all.forEach((i) => i.tags.forEach((t) => m.set(t, (m.get(t) ?? 0) + 1)));
     return [...m].sort((a, b) => a[0].localeCompare(b[0]));
   }, [all]);
-  const filtering = !!q.trim() || !!kind || !!tag;
+  const filtering = !!q.trim() || kinds.length > 0 || !!tag;
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    // Searching looks through this folder and the folders in it; otherwise just this folder.
-    const list = all
-      .filter((i) => (filtering || view === 'time' ? inTree(i.folder, folder) : i.folder === folder))
-      .filter((i) => !kind || i.kind === kind)
-      .filter((i) => !tag || i.tags.includes(tag))
-      .filter((i) => !s || `${i.name} ${i.tags.join(' ')} ${(i.script ?? []).map((l) => l.text).join(' ')}`.toLowerCase().includes(s));
-    return sort === 'name' ? [...list].sort((a, b) => a.name.localeCompare(b.name)) : sort === 'size' ? [...list].sort((a, b) => spaceOf(b) - spaceOf(a)) : [...list].sort((a, b) => b.createdAt - a.createdAt);
-  }, [all, folder, kind, tag, q, sort, filtering, view]);
-  const shownTasks = useMemo(() => {
-    if ((kind && kind !== 'task') || tag || view === 'time') return [];
-    const s = q.trim().toLowerCase();
-    const list = tasks
-      .filter((t) => (filtering ? inTree(folderOfT(t), folder) : folderOfT(t) === folder))
-      .filter((t) => !s || `${t.title} ${t.instructions} ${t.itemTitle} ${t.className} ${t.kinds.join(' ')}`.toLowerCase().includes(s));
-    return sort === 'name' ? [...list].sort((a, b) => a.title.localeCompare(b.title)) : list;
-  }, [tasks, places, folder, kind, tag, q, sort, filtering, view]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Searching and filtering look through this folder and every folder in it; the timeline too.
+    const list = entries
+      .filter((e) => (filtering || view === 'time' ? inTree(e.folder, folder) : e.folder === folder))
+      .filter((e) => !kinds.length || kinds.includes(e.kind))
+      .filter((e) => !tag || (e.item?.tags ?? []).includes(tag))
+      .filter((e) => !s || `${e.name} ${(e.item?.tags ?? []).join(' ')} ${(e.item?.script ?? []).map((l) => l.text).join(' ')} ${e.task?.instructions ?? ''}`.toLowerCase().includes(s));
+    const by = sort === 'name' ? (a: Entry, b: Entry) => a.name.localeCompare(b.name) : sort === 'size' ? (a: Entry, b: Entry) => b.size - a.size : sort === 'type' ? (a: Entry, b: Entry) => ORDER[a.kind] - ORDER[b.kind] || a.name.localeCompare(b.name) : (a: Entry, b: Entry) => b.at - a.at;
+    return [...list].sort(by);
+  }, [entries, folder, kinds, tag, q, sort, filtering, view]);
   const subFolders = filtering || view === 'time' ? [] : kidsOf(folder);
+  const groups: [string, Entry[]][] = group === 'type' ? ALL_KINDS.map((k) => [k.label, shown.filter((e) => e.kind === k.k)] as [string, Entry[]]).filter(([, l]) => l.length) : [['', shown]];
   const total = all.reduce((s, i) => s + spaceOf(i), 0);
-  const open = all.find((i) => i.id === openId) ?? null;
 
-  // ---------------------------------------------------------------- choosing several
-  // Click chooses one, Ctrl/Cmd or Shift click adds, and dragging on the empty space draws a box
-  // that chooses what it touches. Folders are chosen as 'f:' + path.
+  // ---------------------------------------------------------------- selecting
+  // Click selects one, Ctrl/Cmd or Shift click adds, and dragging on the empty space draws a box
+  // that selects what it touches. Folders are 'f:' + path.
   const [sel, setSel] = useState<Set<string>>(new Set());
   const anchor = useRef<string | null>(null);
-  const order = [...subFolders.map((f) => 'f:' + f), ...shown.map((i) => i.id), ...shownTasks.map(tkey)];
-  useEffect(() => setSel(new Set()), [folder, kind, tag, q, section]);
-  const choose = (id: string, e: React.MouseEvent) => {
+  const order = [...subFolders.map((f) => 'f:' + f), ...groups.flatMap(([, l]) => l.map((e) => e.key))];
+  useEffect(() => setSel(new Set()), [folder, kinds.join(), tag, q, section]);
+  const select = (id: string, e: React.MouseEvent | { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
     if (e.shiftKey && anchor.current) {
       const a = order.indexOf(anchor.current);
       const b = order.indexOf(id);
@@ -185,14 +191,14 @@ export function MediaArchive() {
     if (e.metaKey || e.ctrlKey) return setSel((s) => (s.has(id) ? new Set([...s].filter((x) => x !== id)) : new Set([...s, id])));
     setSel(new Set([id]));
   };
-  const selItems = shown.filter((i) => sel.has(i.id));
+  const selEntries = shown.filter((e) => sel.has(e.key));
   const selFolders = subFolders.filter((f) => sel.has('f:' + f));
-  const selTasks = shownTasks.filter((t) => sel.has(tkey(t)));
+  const one = sel.size === 1 ? [...sel][0] : null;
   const filesRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const marquee = (e: React.PointerEvent) => {
     if (e.button !== 0 || touch) return;
-    if ((e.target as HTMLElement).closest('[data-sel], button, a, input, select, .ma-selbar')) return;
+    if ((e.target as HTMLElement).closest('[data-sel], button, a, input, select')) return;
     const host = filesRef.current;
     if (!host) return;
     e.preventDefault();
@@ -226,68 +232,91 @@ export function MediaArchive() {
     window.addEventListener('pointermove', mv);
     window.addEventListener('pointerup', up);
   };
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (section !== 'media' || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true]')) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a') e.preventDefault(), setSel(new Set(order));
-      if (e.key === 'Escape') setSel(new Set());
-    };
-    window.addEventListener('keydown', key);
-    return () => window.removeEventListener('keydown', key);
-  });
 
   // ---------------------------------------------------------------- actions
   const [busy, setBusy] = useState('');
   const newFolder = async (inside = folder) => {
-    const n = (await askText(inside ? `New folder in “${leafOf(inside)}”` : 'Name the new folder', '', { ok: 'Make the folder' }))?.trim().replace(/\//g, '-');
-    if (!n || !uid) return;
+    if (!uid) return;
+    let n = 'New folder';
+    for (let k = 2; allFolders.includes(inside ? `${inside}/${n}` : n); k++) n = `New folder ${k}`;
     const path = inside ? `${inside}/${n}` : n;
     await addFolder(uid, path).catch(() => {});
+    if (inside !== folder) setFolder(inside);
+    setSel(new Set(['f:' + path]));
+    setRenaming('f:' + path); // straight into typing its name, like on a computer
   };
-  const renameF = async (f: string) => {
-    const n = (await askText('Rename the folder', leafOf(f), { ok: 'Rename' }))?.trim().replace(/\//g, '-');
-    if (!n || !uid || n === leafOf(f)) return;
-    const to = parentOf(f) ? `${parentOf(f)}/${n}` : n;
-    await renameFolder(uid, f, to, all, allFolders, places).catch(() => {});
-    if (inTree(folder, f)) setFolder(to + folder.slice(f.length));
+  const newTask = async () => {
+    if (!uid) return;
+    const id = await newLibTask(uid, folder).catch(() => null);
+    if (id) openStudio('task', id);
+  };
+  const doRename = async (key: string, name: string) => {
+    setRenaming(null);
+    const n = name.trim();
+    if (!n || !uid) return;
+    if (key.startsWith('f:')) {
+      const f = key.slice(2);
+      const leaf = n.replace(/\//g, '-');
+      if (leaf === leafOf(f)) return;
+      const to = parentOf(f) ? `${parentOf(f)}/${leaf}` : leaf;
+      await renameFolder(uid, f, to, all, allFolders).catch(() => {});
+      await Promise.all(tasks.filter((t) => inTree(t.folder, f)).map((t) => moveLibTasks(uid, [t.id], to + t.folder.slice(f.length)))).catch(() => {});
+      if (inTree(folder, f)) setFolder(to + folder.slice(f.length));
+      setSel(new Set(['f:' + to]));
+      return;
+    }
+    const e = entries.find((x) => x.key === key);
+    if (!e || n === e.name) return;
+    if (e.item) await archiveUpdate(uid, e.item, { name: n }).catch(() => {});
+    else if (e.task) await renameLibTask(uid, e.task.id, n).catch(() => {});
   };
   const deleteF = async (f: string) => {
     const n = countIn(f);
     if (!(await ask(`Delete the folder “${leafOf(f)}”? ${n ? `The ${n === 1 ? 'item' : `${n} items`} in it move up to ${parentOf(f) ? `“${leafOf(parentOf(f))}”` : 'the library'}.` : 'It is empty.'}`, { ok: 'Delete the folder' }))) return;
-    if (uid) await removeFolder(uid, f, all, allFolders, places).catch(() => {});
+    if (!uid) return;
+    await removeFolder(uid, f, all, allFolders).catch(() => {});
+    await moveLibTasks(uid, tasks.filter((t) => inTree(t.folder, f)).map((t) => t.id), parentOf(f)).catch(() => {});
     if (inTree(folder, f)) setFolder(parentOf(f));
-  };
-  const renameI = async (it: ArchiveItem) => {
-    const n = (await askText('Rename', it.name, { ok: 'Rename' }))?.trim();
-    if (n && uid && n !== it.name) await archiveUpdate(uid, it, { name: n }).catch(() => {});
-  };
-  const removeI = async (list: ArchiveItem[]) => {
-    if (!list.length || !uid) return;
-    if (!(await ask(list.length === 1 ? `Remove “${list[0].name}” from the library? Lessons that use it keep it.` : `Remove ${list.length} items from the library? Lessons that use them keep them.`, { ok: 'Remove' }))) return;
-    for (const it of list) await archiveRemove(uid, it.id).catch(() => {});
     setSel(new Set());
-    if (list.some((i) => i.id === openId)) setOpenId(null);
   };
-  const download = async (list: ArchiveItem[], folders: string[] = [], name = '', tlist: LibTask[] = []) => {
-    const every = [...new Map([...list, ...all.filter((i) => folders.some((f) => inTree(i.folder, f)))].map((i) => [i.id, i])).values()];
-    const everyT = [...new Map([...tlist, ...tasks.filter((t) => folders.some((f) => inTree(folderOfT(t), f)))].map((t) => [tkey(t), t])).values()];
-    if (!every.length && !everyT.length) return;
-    if (every.length === 1 && !everyT.length && !folders.length) return void downloadItem(every[0]).catch(() => {});
-    if (everyT.length === 1 && !every.length && !folders.length) return downloadTask(everyT[0]);
+  const removeE = async (list: Entry[]) => {
+    if (!list.length || !uid) return;
+    const lessons = list.reduce((s, e) => s + (e.task?.uses.length ?? 0), 0);
+    if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}” from the library?` : `Remove ${list.length} items from the library?`} ${lessons ? 'Lessons that use them keep their copies, no longer linked.' : 'Lessons that use them keep them.'}`, { ok: 'Remove' }))) return;
+    for (const e of list) {
+      if (e.item) await archiveRemove(uid, e.item.id).catch(() => {});
+      else if (e.task) await removeLibTask(uid, e.task).catch(() => {});
+    }
+    setSel(new Set());
+  };
+  const download = async (list: Entry[], folders: string[] = []) => {
+    const every = [...new Map([...list, ...entries.filter((e) => folders.some((f) => inTree(e.folder, f)))].map((e) => [e.key, e])).values()];
+    if (!every.length) return;
+    if (every.length === 1 && !folders.length) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
     setBusy('Putting the files together…');
+    const base = folders.length === 1 && !list.length ? folders[0] : folder;
     try {
-      await downloadZip(every, name || (folders.length === 1 && !list.length ? leafOf(folders[0]) : folder ? leafOf(folder) : 'Resources'), folders.length === 1 && !list.length ? folders[0] : folder, (d, t) => setBusy(`Putting the files together… ${d} of ${t}`), everyT.map((t) => ({ folder: folderOfT(t), name: t.title, text: taskMd(t) })));
+      await downloadZip(
+        every.filter((e) => e.item).map((e) => e.item!),
+        folders.length === 1 && !list.length ? leafOf(folders[0]) : folder ? leafOf(folder) : 'Resources',
+        base,
+        (d, t) => setBusy(`Putting the files together… ${d} of ${t}`),
+        every.filter((e) => e.task).map((e) => ({ folder: e.folder, name: e.name, text: taskMd(e.task!) })),
+      );
       setBusy('');
     } catch {
       setBusy('The download could not be made. Try fewer items.');
     }
   };
-  const moveTo = async (list: ArchiveItem[], to: string, tlist: LibTask[] = []) => {
-    if (uid && list.length) await moveItems(uid, list, to).catch(() => {});
-    if (uid && tlist.length) await placeTasks(uid, tlist.map((t) => placeKey(t.classId, t.id)), to).catch(() => {});
+  const moveTo = async (list: Entry[], to: string) => {
+    if (!uid) return;
+    const its = list.filter((e) => e.item && e.folder !== to).map((e) => e.item!);
+    const ts = list.filter((e) => e.task && e.folder !== to).map((e) => e.task!.id);
+    if (its.length) await moveItems(uid, its, to).catch(() => {});
+    if (ts.length) await moveLibTasks(uid, ts, to).catch(() => {});
     setSel(new Set());
   };
-  // Drag items onto a folder (in the pane or in the list) to move them there.
+  // Drag onto a folder (in the pane, the breadcrumbs or the files) to move it there.
   const [dropOn, setDropOn] = useState<string | null>(null);
   const folderDrop = (f: string) => ({
     onDragOver: (e: React.DragEvent) => {
@@ -302,62 +331,92 @@ export function MediaArchive() {
       e.preventDefault();
       e.stopPropagation();
       setDropOn(null);
-      void moveTo(all.filter((i) => ids.includes(i.id) && i.folder !== f), f, tasks.filter((t) => ids.includes(tkey(t))));
+      void moveTo(entries.filter((x) => ids.includes(x.key)), f);
     },
   });
-  const dragItem = (it: ArchiveItem | LibTask) => (e: React.DragEvent) => {
-    const id = 'kind' in it ? it.id : tkey(it);
-    const ids = sel.has(id) ? [...selItems.map((i) => i.id), ...selTasks.map(tkey)] : [id];
+  const dragE = (en: Entry) => (e: React.DragEvent) => {
+    const ids = sel.has(en.key) ? selEntries.map((x) => x.key) : [en.key];
     e.dataTransfer.setData(MOVE, ids.join(','));
     e.dataTransfer.effectAllowed = 'move';
   };
-  const itemMenu = (it: ArchiveItem): MenuItem[] => {
-    if (sel.has(it.id) && sel.size > 1) return manyMenu();
+  // Editors open full screen in their own tab: Task editor, Sound editor.
+  const openE = (en: Entry) => (en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const entryMenu = (en: Entry): MenuItem[] => {
+    if (sel.has(en.key) && sel.size > 1)
+      return [
+        ...(selEntries.length ? [{ label: `Move ${selEntries.length} items to…`, icon: 'folder', onClick: () => setMoving(selEntries) } as MenuItem] : []),
+        { label: `Download ${sel.size} items`, icon: 'import', onClick: () => void download(selEntries, selFolders) },
+        ...(selEntries.length ? ['sep' as const, { label: `Remove ${selEntries.length} from the library`, icon: 'trash', danger: true, onClick: () => void removeE(selEntries) } as MenuItem] : []),
+      ];
     return [
-      { label: 'Open', icon: 'fullscreen', onClick: () => setOpenId(it.id) },
-      { label: 'Rename', icon: 'edit', onClick: () => void renameI(it) },
-      { label: 'Move to…', icon: 'folder', onClick: () => setMoving({ items: [it], tasks: [] }) },
-      { label: it.link ? 'Open the link' : 'Download', icon: it.link ? 'link' : 'import', hint: it.script?.length ? '+ transcript' : undefined, onClick: () => void downloadItem(it).catch(() => {}) },
+      { label: en.task ? 'Edit' : 'Open', icon: en.task ? 'edit' : 'fullscreen', onClick: () => openE(en) },
+      { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
+      { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
+      en.item?.link ? { label: 'Open the link', icon: 'link', onClick: () => void downloadItem(en.item!).catch(() => {}) } : { label: en.task ? 'Download as .md' : 'Download', icon: 'import', hint: en.item?.script?.length ? '+ transcript' : undefined, onClick: () => void download([en]) },
       'sep',
-      { label: 'Remove from the library', icon: 'trash', danger: true, onClick: () => void removeI([it]) },
+      { label: 'Remove from the library', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
     ];
   };
-  const manyMenu = (): MenuItem[] => {
-    const n = sel.size;
-    return [
-      ...(selItems.length || selTasks.length ? [{ label: `Move ${n} items to…`, icon: 'folder', onClick: () => setMoving({ items: selItems, tasks: selTasks }) } as MenuItem] : []),
-      { label: `Download ${n} items`, icon: 'import', onClick: () => void download(selItems, selFolders, '', selTasks) },
-      ...(selItems.length ? ['sep' as const, { label: `Remove ${selItems.length} ${selItems.length === 1 ? 'item' : 'items'}`, icon: 'trash', danger: true, onClick: () => void removeI(selItems) } as MenuItem] : []),
-    ];
-  };
-  const openTask = (t: LibTask) => nav(`/class/${t.classId}/lesson/${t.itemId}?task=${t.id}`);
-  const taskMenu = (t: LibTask): MenuItem[] =>
-    sel.has(tkey(t)) && sel.size > 1
-      ? manyMenu()
-      : [
-          { label: 'Open in its lesson', icon: 'fullscreen', onClick: () => openTask(t) },
-          { label: 'Move to…', icon: 'folder', onClick: () => setMoving({ items: [], tasks: [t] }) },
-          { label: 'Download as a text file', icon: 'import', hint: '.md', onClick: () => downloadTask(t) },
-        ];
   const folderMenu = (f: string): MenuItem[] => [
     { label: 'Open', icon: 'folder', onClick: () => setFolder(f) },
     { label: 'New folder inside', icon: 'plus', onClick: () => void newFolder(f) },
-    { label: 'Rename', icon: 'edit', onClick: () => void renameF(f) },
+    { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => (setSel(new Set(['f:' + f])), setRenaming('f:' + f)) },
     { label: 'Download everything in it', icon: 'import', disabled: !countIn(f), onClick: () => void download([], [f]) },
     'sep',
     { label: 'Delete the folder', icon: 'trash', danger: true, onClick: () => void deleteF(f) },
   ];
   const emptyMenu: MenuItem[] = [
     { label: 'Add media…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
+    { label: 'New task', icon: 'task', onClick: () => void newTask() },
     { label: 'New folder', icon: 'folder', onClick: () => void newFolder() },
-    ...(order.length ? [{ label: 'Choose everything', icon: 'check', onClick: () => setSel(new Set(order)) } as MenuItem] : []),
+    ...(order.length ? ['sep' as const, { label: 'Select everything', icon: 'check', hint: 'Ctrl A', onClick: () => setSel(new Set(order)) } as MenuItem] : []),
   ];
-  const clickFolder = (f: string) => (e: React.MouseEvent) => (touch || phone ? setFolder(f) : choose('f:' + f, e));
-  const clickItem = (it: ArchiveItem) => (e: React.MouseEvent) => {
-    choose(it.id, e);
-    if (!e.metaKey && !e.ctrlKey && !e.shiftKey) setOpenId(it.id);
-  };
+  const clickFolder = (f: string) => (e: React.MouseEvent) => (touch || phone ? setFolder(f) : select('f:' + f, e));
+  const clickE = (en: Entry) => (e: React.MouseEvent) => (touch || phone ? openE(en) : select(en.key, e));
+  const menuE = (en: Entry) => (e: React.MouseEvent) => (sel.has(en.key) || setSel(new Set([en.key])), openMenu(e, entryMenu(en)));
+  const menuF = (f: string) => (e: React.MouseEvent) => (sel.has('f:' + f) || setSel(new Set(['f:' + f])), openMenu(e, folderMenu(f)));
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (section !== 'media' || editing || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true], .scrim')) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a') e.preventDefault(), setSel(new Set(order));
+      else if (e.key === 'Escape') setSel(new Set());
+      else if ((e.key === 'F2' || e.key === 'Enter') && one && !e.metaKey) {
+        e.preventDefault();
+        if (e.key === 'Enter' && one.startsWith('f:')) setFolder(one.slice(2));
+        else setRenaming(one);
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selEntries.length) e.preventDefault(), void removeE(selEntries);
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  });
   const crumbs = folder ? folder.split('/').map((_, k, a) => a.slice(0, k + 1).join('/')) : [];
+  const nameOf = (key: string, text: string, cls = 'ma-name') =>
+    renaming === key ? (
+      <input
+        className={'ma-rename ' + cls}
+        defaultValue={text}
+        autoFocus
+        onFocus={(e) => {
+          const v = e.target.value;
+          const dot = key.startsWith('f:') ? -1 : -1;
+          e.target.setSelectionRange(0, dot > 0 ? dot : v.length);
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') setRenaming(null);
+        }}
+        onBlur={(e) => void doRename(key, e.target.value)}
+        aria-label="New name"
+      />
+    ) : (
+      <span className={cls} onDoubleClick={(e) => one === key && (e.stopPropagation(), setRenaming(key))}>
+        {text}
+      </span>
+    );
 
   // ---------------------------------------------------------------- the folder tree
   const Tree = ({ parent, depth }: { parent: string; depth: number }) => (
@@ -376,17 +435,51 @@ export function MediaArchive() {
 
   const SECTIONS: { k: Section; label: string }[] = [
     { k: 'media', label: 'Library' },
-    { k: 'docs', label: 'Shared documents' },
+    { k: 'docs', label: 'Collaborative documents' },
     { k: 'shared', label: 'Shared with colleagues' },
   ];
+  const editTask = tasks.find((t) => t.id === editing) ?? null;
+  // The pane on the right: whatever is selected (one thing).
+  const oneEntry = one && !one.startsWith('f:') ? entries.find((e) => e.key === one) ?? null : null;
+  const oneFolder = one?.startsWith('f:') ? one.slice(2) : null;
+  const pane = section === 'media' && uid && (oneEntry || oneFolder);
+  const kindsLabel = !kinds.length ? 'Everything' : kinds.length === 1 ? ALL_KINDS.find((k) => k.k === kinds[0])!.label : `${kinds.length} kinds`;
+
+  const tile = (en: Entry) => <Card key={en.key} entry={en} chosen={sel.has(en.key)} shared={!!en.item && sharedIds.has(en.item.id)} onClick={clickE(en)} onDoubleClick={() => openE(en)} onDragStart={dragE(en)} onMenu={menuE(en)} name={nameOf(en.key, en.name)} />;
+  const row = (en: Entry) => (
+    <button key={en.key} type="button" data-sel={en.key} draggable={renaming !== en.key} onDragStart={dragE(en)} className={'ma-lrow' + (sel.has(en.key) ? ' chosen' : '')} onClick={clickE(en)} onDoubleClick={() => openE(en)} onContextMenu={menuE(en)}>
+      <span className="ma-lname">
+        {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} />}
+        {nameOf(en.key, en.name, 'ma-lname-t')}
+        {en.item && sharedIds.has(en.item.id) && <SharedMark />}
+        {en.task && en.task.uses.length > 0 && (
+          <span className="ma-linked" data-tip={`Linked in ${en.task.uses.length} ${en.task.uses.length === 1 ? 'lesson' : 'lessons'}`}>
+            <ChainIcon />
+          </span>
+        )}
+        {(en.item?.tags ?? []).slice(0, 2).map((t) => (
+          <span key={t} className="ma-ltag">
+            {t}
+          </span>
+        ))}
+      </span>
+      <span className="hint">
+        {kindName(en.kind)}
+        {en.item?.duration ? ' · ' + fmtTime(en.item.duration) : ''}
+      </span>
+      <span className="hint">{en.task ? (en.task.uses.length ? `${en.task.uses.length} ${en.task.uses.length === 1 ? 'lesson' : 'lessons'}` : '·') : en.item?.link ? 'Link' : formatBytes(en.size)}</span>
+      <span className="hint">{en.folder ? leafOf(en.folder) : '·'}</span>
+      <span className="hint">{dayOf(en.at)}</span>
+    </button>
+  );
 
   return (
-    <div className="shell">
+    <div className="shell lib-shell">
       <TopBar>
         <MainNav on="archive" />
       </TopBar>
       <div
-        className={'ma' + (over ? ' dropping' : '') + (section !== 'media' ? ' no-side' : '') + (section === 'media' && open && uid ? ' with-detail' : '')}
+        className={'ma' + (over ? ' dropping' : '') + (section !== 'media' ? ' no-side' : '') + (pane ? ' with-detail' : '')}
         onDragOver={(e) => {
           if (section !== 'media' || !e.dataTransfer.types.includes('Files')) return;
           e.preventDefault();
@@ -418,7 +511,7 @@ export function MediaArchive() {
               <span className="ma-h">Folders</span>
               <button type="button" className={(folder === '' ? 'on' : '') + (dropOn === '' ? ' drop' : '')} onClick={() => setFolder('')} onContextMenu={(e) => openMenu(e, emptyMenu)} {...folderDrop('')}>
                 <UiIcon name="archive" size={16} />
-                <span className="ma-fname">Resources library</span> <b>{all.length + tasks.length}</b>
+                <span className="ma-fname">Resources library</span> <b>{entries.length}</b>
               </button>
               <Tree parent="" depth={1} />
               <button type="button" className="ma-new" onClick={() => void newFolder()}>
@@ -460,7 +553,7 @@ export function MediaArchive() {
                   );
                 })}
               </span>
-              <span className="hint small">The free plan has 1 GB for the whole app. Links take no space.</span>
+              <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space.</span>
             </div>
           </aside>
         )}
@@ -469,7 +562,7 @@ export function MediaArchive() {
           <main className="ma-main">
             <div className="ma-head">
               <div className="ma-head-text">
-                <h1 className="page-title">Shared documents</h1>
+                <h1 className="page-title">Collaborative documents</h1>
                 <span className="sub">The documents and slides your classes write together, and where each is used.</span>
               </div>
             </div>
@@ -511,6 +604,9 @@ export function MediaArchive() {
                 <button type="button" className="btn ma-new-folder" onClick={() => void newFolder()}>
                   <UiIcon name="folder" size={15} /> New folder
                 </button>
+                <button type="button" className="btn ma-new-folder" onClick={() => void newTask()}>
+                  <UiIcon name="task" size={15} /> New task
+                </button>
                 <button type="button" className="btn primary" onClick={() => setDialog({ tab: 'upload' })}>
                   + Add media
                 </button>
@@ -518,64 +614,112 @@ export function MediaArchive() {
             </div>
             {(upBusy || busy) && <span className="hint">{upBusy || busy}</span>}
             {sel.size > 0 ? (
-                <div className="ma-selbar">
-                  <b>{sel.size} chosen</b>
-                  {selItems.length + selTasks.length > 0 && (
-                    <button type="button" className="btn small-btn" onClick={() => setMoving({ items: selItems, tasks: selTasks })}>
-                      <UiIcon name="folder" size={14} /> Move to…
-                    </button>
-                  )}
-                  <button type="button" className="btn small-btn" onClick={() => void download(selItems, selFolders, '', selTasks)}>
-                    <UiIcon name="import" size={14} /> Download
+              <div className="ma-selbar">
+                <b>{sel.size} selected</b>
+                {selEntries.length > 0 && (
+                  <button type="button" className="btn small-btn" onClick={() => setMoving(selEntries)}>
+                    <UiIcon name="folder" size={14} /> Move to…
                   </button>
-                  {selItems.length > 0 && (
-                    <button type="button" className="btn small-btn" onClick={() => void removeI(selItems)}>
-                      <UiIcon name="trash" size={14} /> Remove
-                    </button>
-                  )}
-                  <span style={{ flex: 1 }} />
-                  <button type="button" className="btn link small" onClick={() => setSel(new Set())}>
-                    Clear
-                  </button>
-                </div>
-              ) : (
-            <div className="ma-bar-row">
-              <input className="ma-search" type="search" value={q} placeholder={folder ? `Search in ${leafOf(folder)}` : 'Search names, tags and scripts'} onChange={(e) => setQ(e.target.value)} />
-              <span className="seg small-seg" role="radiogroup" aria-label="Kind">
-                <button type="button" role="radio" aria-checked={!kind} className={!kind ? 'on' : ''} onClick={() => setKind(null)}>
-                  All
+                )}
+                <button type="button" className="btn small-btn" onClick={() => void download(selEntries, selFolders)}>
+                  <UiIcon name="import" size={14} /> Download
                 </button>
-                {SEG.map((k) => (
-                  <button key={k.k} type="button" role="radio" aria-checked={kind === k.k} className={kind === k.k ? 'on' : ''} onClick={() => setKind(k.k)}>
-                    {k.label}
+                {one && (
+                  <button type="button" className="btn small-btn" onClick={() => setRenaming(one)}>
+                    <UiIcon name="edit" size={14} /> Rename
                   </button>
-                ))}
-              </span>
-              <select className="ma-sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort">
-                <option value="new">Newest first</option>
-                <option value="name">By name</option>
-                <option value="size">Largest first</option>
-              </select>
-              <span className="seg small-seg ma-views" role="radiogroup" aria-label="View">
-                {VIEWS.map((v) => (
-                  <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} aria-label={v.label} data-tip={v.label}>
-                    <ViewGlyph k={v.k} />
+                )}
+                {selEntries.length > 0 && (
+                  <button type="button" className="btn small-btn" onClick={() => void removeE(selEntries)}>
+                    <UiIcon name="trash" size={14} /> Remove
                   </button>
-                ))}
-              </span>
-            </div>
+                )}
+                <span style={{ flex: 1 }} />
+                <button type="button" className="btn link small" onClick={() => setSel(new Set(order))}>
+                  Select everything
+                </button>
+                <button type="button" className="btn link small" onClick={() => setSel(new Set())}>
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <div className="ma-bar-row ma-tools">
+                {searching || q ? (
+                  <span className="ma-search-wrap">
+                    <UiIcon name="search" size={15} />
+                    <input className="ma-search" type="search" autoFocus value={q} placeholder={folder ? `Search in ${leafOf(folder)}` : 'Search names, tags and scripts'} onChange={(e) => setQ(e.target.value)} onBlur={() => !q && setSearching(false)} onKeyDown={(e) => e.key === 'Escape' && (setQ(''), setSearching(false))} />
+                  </span>
+                ) : (
+                  <button type="button" className="ma-tool" onClick={() => setSearching(true)} aria-label="Search" data-tip="Search">
+                    <UiIcon name="search" size={16} />
+                  </button>
+                )}
+                <span className="ma-filter" ref={filterRef}>
+                  <button type="button" className={'ma-tool wide' + (kinds.length ? ' on' : '')} onClick={() => setFilterOpen((v) => !v)} aria-expanded={filterOpen} data-tip="Show only some kinds">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4 5h16l-6 7.5V19l-4-2v-4.5z" />
+                    </svg>
+                    {kindsLabel}
+                  </button>
+                  {filterOpen && (
+                    <span className="ma-filter-menu menu" role="menu">
+                      <span className="ma-h">Show</span>
+                      {ALL_KINDS.map((k) => (
+                        <label key={k.k} className="ma-filter-row">
+                          <input type="checkbox" checked={!kinds.length || kinds.includes(k.k)} onChange={(e) => {
+                            const now = kinds.length ? kinds : ALL_KINDS.map((x) => x.k);
+                            const next = e.target.checked ? [...new Set([...now, k.k])] : now.filter((x) => x !== k.k);
+                            setKinds(next.length === ALL_KINDS.length ? [] : next);
+                          }} />
+                          <FileIcon kind={k.k} size={16} label={false} />
+                          {k.label}
+                          <span className="hint">{entries.filter((e) => e.kind === k.k && inTree(e.folder, folder)).length}</span>
+                        </label>
+                      ))}
+                      {kinds.length > 0 && (
+                        <button type="button" className="btn link small" onClick={() => setKinds([])}>
+                          Show everything
+                        </button>
+                      )}
+                    </span>
+                  )}
+                </span>
+                {tag && (
+                  <button type="button" className="ap-chip on" onClick={() => setTag(null)}>
+                    {tag} ×
+                  </button>
+                )}
+                <span style={{ flex: 1 }} />
+                <select className="ma-sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Order">
+                  <option value="new">Newest first</option>
+                  <option value="name">By name</option>
+                  <option value="type">By kind</option>
+                  <option value="size">Largest first</option>
+                </select>
+                <select className="ma-sort" value={group} onChange={(e) => setGroup(e.target.value as Group)} aria-label="Group">
+                  <option value="none">No groups</option>
+                  <option value="type">Group by kind</option>
+                </select>
+                <span className="seg small-seg ma-views" role="radiogroup" aria-label="View">
+                  {VIEWS.map((v) => (
+                    <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} aria-label={v.label} data-tip={v.label}>
+                      <ViewGlyph k={v.k} />
+                    </button>
+                  ))}
+                </span>
+              </div>
             )}
             <div ref={filesRef} className={'ma-files' + (box ? ' boxing' : '')} onPointerDown={marquee} onContextMenu={(e) => !(e.target as HTMLElement).closest('[data-sel]') && openMenu(e, emptyMenu)}>
-              {items === null ? (
+              {items === null || libTasks === null ? (
                 <Loader label="Opening your resources library" />
-              ) : shown.length === 0 && subFolders.length === 0 && shownTasks.length === 0 ? (
+              ) : shown.length === 0 && subFolders.length === 0 ? (
                 <div className="ma-empty">
                   <UiIcon name="archive" size={28} />
-                  <strong>{all.length ? (filtering ? 'Nothing matches' : 'This folder is empty') : 'Your resources library is empty'}</strong>
-                  <span className="hint">{filtering ? 'Try another search, kind or tag.' : all.length ? 'Drop files here, or use Add media. Drag items onto a folder to move them.' : 'Pictures, recordings and videos you add to a task appear here, so you can use them again without uploading them twice.'}</span>
+                  <strong>{entries.length ? (filtering ? 'Nothing matches' : 'This folder is empty') : 'Your resources library is empty'}</strong>
+                  <span className="hint">{filtering ? 'Try another search, kind or tag.' : entries.length ? 'Drop files here, add media, or make a task. Drag items onto a folder to move them.' : 'Pictures, recordings and videos you add to a task appear here. Save tasks here from any lesson, or make new ones, to use again in other lessons.'}</span>
                 </div>
               ) : view === 'list' ? (
-                <div className="ma-list" role="table" aria-label="Media">
+                <div className="ma-list" role="table" aria-label="Library">
                   <span className="ma-lrow ma-lhead" role="row">
                     <span>Name</span>
                     <span>Kind</span>
@@ -584,10 +728,10 @@ export function MediaArchive() {
                     <span>Added</span>
                   </span>
                   {subFolders.map((f) => (
-                    <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => setFolder(f)} onContextMenu={(e) => (sel.has('f:' + f) || setSel(new Set(['f:' + f])), openMenu(e, folderMenu(f)))} {...folderDrop(f)}>
+                    <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
                       <span className="ma-lname">
                         <FolderIcon size={18} />
-                        <b>{leafOf(f)}</b>
+                        {nameOf('f:' + f, leafOf(f), 'ma-lname-t')}
                       </span>
                       <span className="hint">Folder</span>
                       <span className="hint">{nItems(countIn(f))}</span>
@@ -595,39 +739,11 @@ export function MediaArchive() {
                       <span />
                     </button>
                   ))}
-                  {shown.map((i) => (
-                    <button key={i.id} type="button" data-sel={i.id} draggable onDragStart={dragItem(i)} className={'ma-lrow' + (openId === i.id ? ' on' : '') + (sel.has(i.id) ? ' chosen' : '')} onClick={clickItem(i)} onContextMenu={(e) => (sel.has(i.id) || setSel(new Set([i.id])), openMenu(e, itemMenu(i)))}>
-                      <span className="ma-lname">
-                        {i.kind === 'image' && (i.thumb || i.link) ? <img className="ma-lthumb" src={i.thumb || i.link} alt="" /> : <FileIcon kind={i.kind} size={18} label={false} />}
-                        <b>{i.name}</b>
-                        {sharedIds.has(i.id) && <SharedMark />}
-                        {i.tags.slice(0, 2).map((t) => (
-                          <span key={t} className="ma-ltag">
-                            {t}
-                          </span>
-                        ))}
-                      </span>
-                      <span className="hint">
-                        {kindName(i.kind)}
-                        {i.duration ? ' · ' + fmtTime(i.duration) : ''}
-                      </span>
-                      <span className="hint">{i.link ? 'Link' : formatBytes(spaceOf(i))}</span>
-                      <span className="hint">{i.folder ? leafOf(i.folder) : '·'}</span>
-                      <span className="hint">{dayOf(i.createdAt)}</span>
-                    </button>
-                  ))}
-                  {shownTasks.map((t) => (
-                    <button key={tkey(t)} type="button" data-sel={tkey(t)} draggable onDragStart={dragItem(t)} className={'ma-lrow' + (sel.has(tkey(t)) ? ' chosen' : '')} onClick={(e) => choose(tkey(t), e)} onDoubleClick={() => openTask(t)} onContextMenu={(e) => (sel.has(tkey(t)) || setSel(new Set([tkey(t)])), openMenu(e, taskMenu(t)))}>
-                      <span className="ma-lname">
-                        <FileIcon kind="task" size={18} label={false} />
-                        <b>{t.title}</b>
-                        <span className="hint ma-lsub">{t.itemTitle}</span>
-                      </span>
-                      <span className="hint">Task</span>
-                      <span className="hint">{t.className}</span>
-                      <span className="hint">{folderOfT(t) ? leafOf(folderOfT(t)) : '·'}</span>
-                      <span className="hint">{dayOf(t.updated)}</span>
-                    </button>
+                  {groups.map(([g, list]) => (
+                    <span key={g || 'all'} style={{ display: 'contents' }}>
+                      {g && <span className="ma-group-h list">{g}</span>}
+                      {list.map(row)}
+                    </span>
                   ))}
                 </div>
               ) : view === 'time' ? (
@@ -640,10 +756,10 @@ export function MediaArchive() {
                         <span className="hint">{nItems(list.length)}</span>
                       </span>
                       <div className="ma-tm-strip">
-                        {list.map((i) => (
-                          <span key={i.id} className="ma-tm-it">
-                            <span className="ma-tm-day">{dayOf(i.createdAt)}</span>
-                            <Card item={i} on={openId === i.id} chosen={sel.has(i.id)} shared={sharedIds.has(i.id)} onClick={clickItem(i)} onDragStart={dragItem(i)} onMenu={(e) => (sel.has(i.id) || setSel(new Set([i.id])), openMenu(e, itemMenu(i)))} />
+                        {list.map((en) => (
+                          <span key={en.key} className="ma-tm-it">
+                            <span className="ma-tm-day">{dayOf(en.at)}</span>
+                            {tile(en)}
                           </span>
                         ))}
                       </div>
@@ -651,37 +767,55 @@ export function MediaArchive() {
                   ))}
                 </div>
               ) : (
-                <div className="ma-grid">
-                  {subFolders.map((f) => (
-                    <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => setFolder(f)} onContextMenu={(e) => (sel.has('f:' + f) || setSel(new Set(['f:' + f])), openMenu(e, folderMenu(f)))} {...folderDrop(f)}>
-                      <span className="ma-thumb ma-fthumb">
-                        <FolderIcon size={46} open={dropOn === f} />
-                      </span>
-                      <span className="ma-name">{leafOf(f)}</span>
-                      <span className="ma-meta">{nItems(countIn(f))}</span>
-                    </button>
+                <>
+                  {subFolders.length > 0 && (
+                    <div className="ma-grid">
+                      {subFolders.map((f) => (
+                        <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
+                          <span className="ma-thumb ma-fthumb">
+                            <FolderIcon size={46} open={dropOn === f} />
+                          </span>
+                          {nameOf('f:' + f, leafOf(f))}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {groups.map(([g, list]) => (
+                    <section key={g || 'all'} className="ma-group">
+                      {g && (
+                        <span className="ma-group-h">
+                          {g} <span className="hint">{list.length}</span>
+                        </span>
+                      )}
+                      <div className="ma-grid">{list.map(tile)}</div>
+                    </section>
                   ))}
-                  {shown.map((i) => (
-                    <Card key={i.id} item={i} on={openId === i.id} chosen={sel.has(i.id)} shared={sharedIds.has(i.id)} onClick={clickItem(i)} onDragStart={dragItem(i)} onMenu={(e) => (sel.has(i.id) || setSel(new Set([i.id])), openMenu(e, itemMenu(i)))} />
-                  ))}
-                  {shownTasks.map((t) => (
-                    <button key={tkey(t)} type="button" data-sel={tkey(t)} className={'ma-card ma-tcard' + (sel.has(tkey(t)) ? ' chosen' : '')} draggable onDragStart={dragItem(t)} onClick={(e) => (touch || phone ? openTask(t) : choose(tkey(t), e))} onDoubleClick={() => openTask(t)} onContextMenu={(e) => (sel.has(tkey(t)) || setSel(new Set([tkey(t)])), openMenu(e, taskMenu(t)))} title={`${t.title}\n${t.className} · ${t.itemTitle}`}>
-                      <span className="ma-thumb">
-                        <FileIcon kind="task" size={42} />
-                      </span>
-                      <span className="ma-name">{t.title}</span>
-                    </button>
-                  ))}
-                </div>
+                </>
               )}
               {box && <span className="ma-box" style={{ left: box.x, top: box.y, width: box.w, height: box.h }} aria-hidden="true" />}
             </div>
           </main>
         )}
 
-        {section === 'media' && open && uid && <Detail key={open.id} uid={uid} item={open} folders={allFolders} shared={sharedIds.has(open.id)} onClose={() => setOpenId(null)} />}
+        {pane && oneEntry?.item && <Detail key={oneEntry.key} uid={uid!} item={oneEntry.item} folders={allFolders} shared={sharedIds.has(oneEntry.item.id)} onClose={() => setSel(new Set())} />}
+        {pane && oneEntry?.task && <TaskDetail key={oneEntry.key} task={oneEntry.task} onOpen={() => openStudio('task', oneEntry.task!.id)} onDownload={() => downloadTask(oneEntry.task!)} onRemove={() => void removeE([oneEntry])} onClose={() => setSel(new Set())} />}
+        {pane && oneFolder && (
+          <FolderDetail
+            key={oneFolder}
+            path={oneFolder}
+            items={all.filter((i) => inTree(i.folder, oneFolder))}
+            tasks={tasks.filter((t) => inTree(t.folder, oneFolder))}
+            folders={allFolders.filter((f) => f.startsWith(oneFolder + '/'))}
+            onOpen={() => setFolder(oneFolder)}
+            onRename={() => setRenaming('f:' + oneFolder)}
+            onDownload={() => void download([], [oneFolder])}
+            onDelete={() => void deleteF(oneFolder)}
+            onClose={() => setSel(new Set())}
+          />
+        )}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
-        {moving && <MoveDialog folders={allFolders} count={moving.items.length + moving.tasks.length} from={moving.items.length === 1 && !moving.tasks.length ? moving.items[0].folder : moving.tasks.length === 1 && !moving.items.length ? folderOfT(moving.tasks[0]) : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving.items, to, moving.tasks), setMoving(null))} />}
+        {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
+        {editTask && uid && <TaskWindow uid={uid} task={editTask} onClose={() => setEditing(null)} />}
       </div>
     </div>
   );
@@ -722,49 +856,43 @@ function MoveDialog({ folders, count, from, onClose, onMove }: { folders: string
   );
 }
 
-function Card({ item, on, chosen, shared, onClick, onDragStart, onMenu }: { item: ArchiveItem; on: boolean; chosen: boolean; shared: boolean; onClick: (e: React.MouseEvent) => void; onDragStart: (e: React.DragEvent) => void; onMenu: (e: React.MouseEvent) => void }) {
-  const places = new Set([item.home?.classId, ...Object.keys(item.copies ?? {})].filter((c) => c && !c.startsWith('user:'))).size;
+function Card({ entry, chosen, shared, name, onClick, onDoubleClick, onDragStart, onMenu }: { entry: Entry; chosen: boolean; shared: boolean; name: ReactNode; onClick: (e: React.MouseEvent) => void; onDoubleClick: () => void; onDragStart: (e: React.DragEvent) => void; onMenu: (e: React.MouseEvent) => void }) {
+  const item = entry.item;
   return (
-    <button type="button" data-sel={item.id} className={'ma-card' + (on ? ' on' : '') + (chosen ? ' chosen' : '')} onClick={onClick} onContextMenu={onMenu} draggable onDragStart={onDragStart}>
-      <span className={'ma-thumb k-' + item.kind}>
-        {item.kind === 'image' && (item.thumb || item.link) ? (
+    <button type="button" data-sel={entry.key} className={'ma-card' + (chosen ? ' chosen' : '')} onClick={onClick} onDoubleClick={onDoubleClick} onContextMenu={onMenu} draggable onDragStart={onDragStart} title={entry.task ? `${entry.name}${entry.task.uses.length ? `\nIn ${entry.task.uses.length} ${entry.task.uses.length === 1 ? 'lesson' : 'lessons'}, linked` : ''}` : entry.name}>
+      <span className={'ma-thumb k-' + entry.kind}>
+        {item && item.kind === 'image' && (item.thumb || item.link) ? (
           <img src={item.thumb || item.link} alt="" draggable={false} />
-        ) : item.link && item.kind === 'video' && /youtu/.test(item.link) ? (
+        ) : item?.link && item.kind === 'video' && /youtu/.test(item.link) ? (
           <img src={`https://img.youtube.com/vi/${/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(item.link)?.[1] ?? ''}/mqdefault.jpg`} alt="" draggable={false} />
         ) : (
-          <FileIcon kind={item.kind} size={42} />
+          <FileIcon kind={entry.kind} size={42} />
         )}
-        {item.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
+        {item?.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
         <span className="ma-badges">
           {shared && <SharedMark />}
-          {(item.script?.length ?? 0) > 0 && (
+          {entry.task && entry.task.uses.length > 0 && (
+            <span className="ma-shared" data-tip={`Linked in ${entry.task.uses.length} ${entry.task.uses.length === 1 ? 'lesson' : 'lessons'}`}>
+              <ChainIcon />
+            </span>
+          )}
+          {(item?.script?.length ?? 0) > 0 && (
             <span className="ma-badge" data-tip="Has a transcript">
               <UiIcon name="script" size={11} />
             </span>
           )}
         </span>
       </span>
-      <span className="ma-name">{item.name}</span>
-      <span className="ma-meta">
-        {item.link ? 'Link' : formatBytes(spaceOf(item))}
-        {places > 1 ? ` · ${places} classes` : ''}
-      </span>
-      {item.tags.length > 0 && (
-        <span className="ma-card-tags">
-          {item.tags.slice(0, 3).map((t) => (
-            <span key={t}>{t}</span>
-          ))}
-        </span>
-      )}
+      {name}
     </button>
   );
 }
 
-function months(list: ArchiveItem[]): [string, ArchiveItem[]][] {
-  const m = new Map<string, ArchiveItem[]>();
-  [...list].sort((a, b) => b.createdAt - a.createdAt).forEach((i) => {
-    const k = monthOf(i.createdAt);
-    m.set(k, [...(m.get(k) ?? []), i]);
+function months(list: Entry[]): [string, Entry[]][] {
+  const m = new Map<string, Entry[]>();
+  [...list].sort((a, b) => b.at - a.at).forEach((e) => {
+    const k = monthOf(e.at);
+    m.set(k, [...(m.get(k) ?? []), e]);
   });
   return [...m];
 }
@@ -804,25 +932,10 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
   const [tagText, setTagText] = useState('');
   const [script, setScript] = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const [editing, setEditing] = useState<SoundSource | 'loading' | null>(null);
   const [dl, setDl] = useState('');
   const [sharing, setSharing] = useState(false);
   const phone = usePhone();
-  const openEditor = async () => {
-    if (!item.home) return;
-    setEditing('loading');
-    try {
-      const m = await loadManifest(item.home.classId, item.home.mediaId);
-      if (!m) throw new Error('missing');
-      const url = await soundUrl(item.home.classId, item.home.mediaId, m);
-      const buffer = await decodeSound(await (await fetch(url)).blob());
-      const lines = item.script ?? m.script ?? [];
-      setEditing({ buffer, name: item.name, script: lines.map((l) => l.text), marks: lines.map((l) => (l.t === null ? NaN : l.t)) });
-    } catch {
-      setEditing(null);
-      setDl('The sound could not be opened.');
-    }
-  };
+
   const save = (patch: Parameters<typeof archiveUpdate>[2]) => archiveUpdate(uid, item, patch).catch(() => {});
   const addTag = () => {
     const t = tagText.trim().replace(/^#/, '');
@@ -893,8 +1006,8 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
           <UiIcon name={item.link ? 'link' : 'import'} size={14} /> {item.link ? 'Open the link' : 'Download'}
         </button>
         {item.kind === 'audio' && !item.link && item.home && !phone && (
-          <button type="button" className="btn small-btn" onClick={openEditor} disabled={editing === 'loading'}>
-            <UiIcon name="edit" size={14} /> {editing === 'loading' ? 'Opening…' : 'Edit the sound'}
+          <button type="button" className="btn small-btn" onClick={() => openStudio('sound', item.id)}>
+            <UiIcon name="edit" size={14} /> Sound editor
           </button>
         )}
         <button type="button" className="btn small-btn" onClick={() => setSharing(true)}>
@@ -991,29 +1104,6 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
           <UiIcon name="trash" size={14} /> Remove from the library
         </button>
       )}
-      {editing && editing !== 'loading' &&
-        createPortal(
-          <div className="scrim">
-            <div className="dialog md-dialog" role="dialog" aria-label="Edit the sound" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-              <div className="pic-dialog-head">
-                <h2 style={{ margin: 0 }}>Edit “{item.name}”</h2>
-                <button type="button" className="btn link" onClick={() => setEditing(null)}>
-                  Cancel
-                </button>
-              </div>
-              <SoundEditor
-                source={editing}
-                classId={'user:' + uid}
-                folder={item.folder}
-                backLabel="Close"
-                onBack={() => setEditing(null)}
-                onSaved={() => setEditing(null)}
-                replace={{ name: item.name, uses: () => findUses(item), run: (blob, meta, p) => replaceSound(uid, item, blob, meta, p) }}
-              />
-            </div>
-          </div>,
-          document.body,
-        )}
       {script && item.home && <ScriptEditor classId={item.home.classId} mediaId={item.home.mediaId} title={item.name} onClose={() => setScript(false)} onSave={(lines) => archiveUpdate(uid, item, { script: lines })} />}
     </aside>
   );

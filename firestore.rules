@@ -57,6 +57,10 @@ service cloud.firestore {
       match /archiveFolders/{folderId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
       }
+      // Tasks kept in the resources library
+      match /libTasks/{taskId} {
+        allow read, write: if isSelf(uid) && !learnerAccount();
+      }
       // Where tasks sit in the resources library's folders
       match /libPlaces/{placeId} {
         allow read, write: if isSelf(uid) && !learnerAccount();

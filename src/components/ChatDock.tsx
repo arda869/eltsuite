@@ -62,7 +62,7 @@ export function ChatDock() {
   const hidden = !me || isProxyTab() || phone || !st.open || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || document.body.classList.contains('presenting');
   if (hidden) return null;
   if (st.min) return <DockTab me={me!} chats={chats ?? []} chatId={st.chat} onOpen={() => save({ open: true, chat: st.chat })} onClose={() => save({ open: false, chat: st.chat })} />;
-  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onMin={() => save({ open: true, chat: st.chat, min: true })} onClose={() => save({ open: false, chat: st.chat })} />;
+  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onMin={(x) => (x !== null && (() => { try { localStorage.setItem('ll.dockTab', String(Math.round(x))); } catch { /* fine */ } })(), save({ open: true, chat: st.chat, min: true }))} onClose={() => save({ open: false, chat: st.chat })} />;
 }
 
 // Minimised: a slim tab on the bottom edge. Slide it left or right so it covers nothing; a
@@ -121,7 +121,7 @@ function DockTab({ me, chats, chatId, onOpen, onClose }: { me: string; chats: Ch
   );
 }
 
-function DockWindow({ me, chats, chatId, onChat, onMin, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onMin: () => void; onClose: () => void }) {
+function DockWindow({ me, chats, chatId, onChat, onMin, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onMin: (x: number | null) => void; onClose: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === chatId);
@@ -216,19 +216,21 @@ function DockWindow({ me, chats, chatId, onChat, onMin, onClose }: { me: string;
         ) : null}
         <b>{cur ? chatTitle(cur, me) : 'Messages'}</b>
         <span style={{ flex: 1 }} />
+        {/* One set of window icons, drawn alike: write a new message, then minimise, full size, close. */}
         {dir && (
-          <button type="button" className="icon-btn" onClick={() => setCreating(true)} aria-label="New message" data-tip="New message">
-            <UiIcon name="edit" size={15} />
+          <button type="button" className="icon-btn dock-ic" onClick={() => setCreating(true)} aria-label="New message" data-tip="New message">
+            <WinIcon d="M14.5 5.5l4 4M4 20l1-4.5L15.5 5a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L8.5 19z" />
           </button>
         )}
-        <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn" aria-label="Open in full" data-tip="Open in full">
-          <UiIcon name="fullscreen" size={15} />
-        </Link>
-        <button type="button" className="icon-btn" onClick={onMin} aria-label="Minimise" data-tip="Minimise">
-          <span className="dock-min" />
+        <span className="dock-sep" aria-hidden="true" />
+        <button type="button" className="icon-btn dock-ic" onClick={() => onMin(pos ? pos.x : null)} aria-label="Minimise" data-tip="Minimise">
+          <WinIcon d="M5 12h14" />
         </button>
-        <button type="button" className="icon-btn" onClick={onClose} aria-label="Close" data-tip="Close">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+        <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in full" data-tip="Open in full">
+          <WinIcon d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+        </Link>
+        <button type="button" className="icon-btn dock-ic" onClick={onClose} aria-label="Close" data-tip="Close">
+          <WinIcon d="M6 6l12 12M18 6L6 18" />
         </button>
       </div>
       {cur && dir ? (
@@ -290,3 +292,9 @@ export function PhoneMessagesLink() {
     </button>
   );
 }
+
+const WinIcon = ({ d }: { d: string }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
+);

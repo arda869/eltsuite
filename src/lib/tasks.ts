@@ -41,6 +41,7 @@ export type Task = {
   restricted?: boolean; // content lives in private/body
   exam?: { minutes: number | null; single?: boolean } | null; // exam mode for this task
   examReleased?: boolean; // the teacher has released the results
+  lib?: { uid: string; id: string } | null; // linked to a task in the teacher's resources library
 };
 
 export const tasksCol = (classId: string, itemId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks');

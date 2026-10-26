@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { UiIcon } from '../components/UiIcon';
 
-// A "+" in the left margin beside the line under the pointer. Click it for a new, empty line below.
+// A "+" in the left margin, level with the space under the line the pointer is on: where the new,
+// empty line will go when it is clicked.
 export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement | null }) {
   const [top, setTop] = useState<number | null>(null);
   const [below, setBelow] = useState(0); // where the new line goes: under the block
@@ -79,7 +80,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
   };
   return (
     <>
-    <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 300))} onClick={add}>
+    <button type="button" className="line-add" style={{ top: below }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 300))} onClick={add}>
       <UiIcon name="plus" />
     </button>
     <span className="line-add-guide" style={{ top: below }} aria-hidden="true" />
