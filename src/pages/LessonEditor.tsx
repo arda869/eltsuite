@@ -78,7 +78,7 @@ import type { Prefill } from '../components/Notebook';
 import { collection } from 'firebase/firestore';
 import type { Topic } from '../lib/classes';
 import { examScope, useRuns } from '../lib/exam';
-import { HIGHLIGHTS, INK_COLORS, InkBar, PresentInk, type InkMode } from '../components/PresentInk';
+import { type InkMode } from '../components/PresentInk';
 
 const svg = (d: React.ReactNode) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -126,9 +126,6 @@ export function LessonEditor() {
     setNbOpen(true);
   };
   const [quizOpen, setQuizOpen] = useState(false);
-  const [inkColor, setInkColor] = useState(INK_COLORS[0]);
-  const [inkHl, setInkHl] = useState(HIGHLIGHTS[0]);
-  const [inkClear, setInkClear] = useState(0);
   const [previewResponses, setPreviewResponses] = useState<Responses>({});
   const [previewChecked, setPreviewChecked] = useState(false);
   const [editWhileTeaching, setEditWhileTeaching] = useState(false);
@@ -435,7 +432,6 @@ export function LessonEditor() {
       if (e.key === 'ArrowRight' && i < list.length - 1) select(list[i + 1].id);
       else if (e.key === 'ArrowLeft' && i > 0) select(list[i - 1].id);
       else if (e.key === 's' || e.key === 'S') toggleSync();
-      else if (e.key === 'd' || e.key === 'D') setInkMode((m) => (m === 'off' ? 'pen' : 'off'));
       else if (e.key === 'R') (revealN < 0 ? hideAnswers() : revealAll());
       else if (e.key === 'r') (revealN < 0 || revealN >= qCount ? hideAnswers() : revealNext());
       else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
@@ -678,9 +674,6 @@ export function LessonEditor() {
         </nav>
         <span className="icon-row tb-icons">
         <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
-        {!viewer && !teachingHere && (
-          <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Board'} active={boardView} className="desktop-only" onClick={() => showBoard(!boardView)} />
-        )}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
           {exportOpen && (
@@ -927,8 +920,6 @@ export function LessonEditor() {
                 )}
               </span>
               <span className="tb-group" aria-label="Screen">
-                <IconBtn icon={boardView ? 'task' : 'board'} label={boardView ? 'Back to the task' : 'Board'} active={boardView} onClick={() => showBoard(!boardView)} />
-                <IconBtn icon="annotate" label="Annotate: pen and highlighter on the screen, not saved (D)" active={inkMode !== 'off'} className="hide-phone" onClick={() => setInkMode(inkMode === 'off' ? 'pen' : 'off')} />
                 <span className="timer-ctl" ref={timerRef}>
                   <IconBtn icon="timer" label="Timer (T)" active={timerMenu || !!(live?.timer && (live.timer.up || live.timer.endsAt > Date.now()))} onClick={() => setTimerMenu((v) => !v)} />
                   {timerMenu && <TimerMenu running={!!live?.timer && (live.timer.up || live.timer.endsAt > Date.now())} onStart={startTimer} onCountUp={startCountUp} onAdd={() => addTime(60)} onStop={stopTimer} up={!!live?.timer?.up} />}
@@ -1055,7 +1046,6 @@ export function LessonEditor() {
                   }}
                 >
                   {!preview && user && inkMode === 'off' && <SelectionNote container={teachBodyRef} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} onAdd={toNotebook} />}
-                  {!preview && <PresentInk container={teachBodyRef} mode={inkMode} color={inkColor} highlight={inkHl} clearKey={task.id + ':' + inkClear} />}
                   {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere && inkMode === 'off'} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
                   <TaskRenderer
                     content={previewKey?.content ?? null}
@@ -1078,7 +1068,6 @@ export function LessonEditor() {
                     onSharedReset={(pickId) => drawShared(classId, task.id, pickId, [], [], (sharedPicks[pickId]?.seq ?? 0) + 1, '').catch((e) => console.error(e))}
                   />
                 </div>
-                {!preview && <InkBar mode={inkMode} setMode={setInkMode} color={inkColor} setColor={setInkColor} highlight={inkHl} setHighlight={setInkHl} onClear={() => setInkClear((n) => n + 1)} />}
                 <div className="frame-foot">
                   <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
@@ -1354,7 +1343,6 @@ export function LessonEditor() {
               {[
                 ['← →', 'Previous or next task (moves the class when synced)'],
                 ['S', 'Sync the class to you, or stop'],
-                ['D', 'Draw or highlight on the screen (not saved)'],
                 ['R', 'Reveal the next answer (again at the end to hide)'],
                 ['Shift + R', 'Reveal all answers, or hide them'],
                 ['H', 'Hide or show this task'],
