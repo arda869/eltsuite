@@ -333,7 +333,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
   const children: (Paragraph | Table)[] = [];
   const tasks = items.flatMap((i) => (i.kind === 'task' ? [i.task] : []));
   children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: opts.header ? 'NAME ________________________________' : ' ', font: SANS, size: 15, bold: true, color: '3D3A36' }), new TextRun({ text: '\tLesson Lit', font: SERIF, size: 26, bold: true, color: '262420' })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 0 } }));
-  children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: 30, bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: 15, bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: ACC, space: 4 } }, spacing: { after: 280 } }));
+  children.push(new Paragraph({ shading: { fill: 'DAD8D4', color: 'auto', type: 'clear' as never }, children: [new TextRun({ text: title, font: SANS, size: 30, bold: true, color: '4B4843' }), new TextRun({ text: '\t' + [opts.className, opts.level].filter(Boolean).join(' · '), font: SANS, size: 15, bold: true, color: ACC })], tabStops: [{ type: 'right' as never, position: 9600 }], spacing: { after: 280 } }));
   const body: (Paragraph | Table)[] = [];
   const markRun = (n: number) => new TextRun({ text: `   _____ / ${n}`, font: SANS, size: 17, bold: true, color: '57534D' });
   let num = 0;

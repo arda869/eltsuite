@@ -233,9 +233,7 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .cut-sym { position: absolute; right: 3mm; bottom: 2.2mm; font-size: 10pt; color: var(--tint-line); }
 
 /* Class colour, more prominent */
-.band { box-shadow: inset 0 -2.2pt 0 var(--accent); }
 h1 { color: var(--ink); }
-.namebox { box-shadow: inset 0 2pt 0 var(--accent); }
 .section h2 { color: var(--accent-ink); }
 .section h2::after { height: 1.4pt; opacity: 1; background: var(--accent); }
 .ex-n { color: var(--accent-ink); }
