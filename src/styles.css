@@ -197,7 +197,7 @@ a.btn.primary { color: #ffffff; }
 }
 
 /* Lesson editor and learner lesson */
-.save-state { font-size: 12px; color: var(--right); }
+.save-state { font-size: 12px; color: var(--soft); }
 .save-state.saving { color: var(--soft); }
 .save-state.error { color: var(--wrong); }
 .lesson-layout { flex: 1; display: flex; gap: 16px; align-items: flex-start; min-height: 0; }
@@ -2771,8 +2771,7 @@ a.lc:hover { transform: translateY(-2px); box-shadow: 0 14px 28px -16px rgba(0,0
 .icon-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .icon-tool.on { background: color-mix(in srgb, var(--accent) 12%, white); border-color: var(--accent); color: var(--accent-text); }
 .icon-tool:disabled { opacity: 0.45; cursor: default; }
-.topbar .icon-tool { margin: 0 -14px 0 0; } /* the top bar has wide gaps; icons sit closer */
-.topbar .icon-tool + .icon-tool, .topbar .menu-anchor + .icon-tool { margin-left: -6px; }
+.topbar .icon-tool { margin: 0; } /* icons sit in an .icon-row, which sets their spacing */
 .picking-name { display: inline-flex; align-items: center; height: 34px; padding: 0 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, white); color: var(--accent-text); font: 600 13px var(--sans); }
 .tool-group:last-of-type { border-right: 0; }
 @media (pointer: coarse) { .icon-tool { width: 40px; height: 40px; } }
@@ -3095,3 +3094,20 @@ textarea.lesson-title { display: block; width: 100%; resize: none; overflow: hid
 .ts-pop .ts-sizes button.on { background: #fff; color: var(--accent-text); border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 1px 3px rgba(51, 48, 44, 0.08); }
 .ts-pop .rd-opts { border-top: 1px solid var(--hair); padding-top: 10px; margin-top: 2px; }
 .ts-pop .rd-row .seg button.on { border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: none; color: var(--accent-text); }
+
+/* Top bar on phones: one tidy row (logo, icons, mode, text size, you), the breadcrumb below */
+.tb-icons { gap: 6px; }
+@media (max-width: 640px) {
+  .topbar { gap: 8px 8px; }
+  .topbar .desktop-only, .topbar .save-state { display: none; }
+  .topbar-right { gap: 6px; }
+  .mode-btn .mode-label { display: none; }
+  .mode-btn { padding: 0 8px; gap: 4px; height: 34px; }
+  .topbar .right .avatar { width: 32px; height: 32px; }
+}
+.live-card .lc-text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+@media (max-width: 640px) {
+  .mode-list .desktop-only { display: none; }
+  .live-card .lc-text { flex: 1 1 100%; }
+  .live-card > .btn { flex: 1 1 0; justify-content: center; }
+}

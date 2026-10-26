@@ -635,9 +635,10 @@ export function LessonEditor() {
           <span aria-hidden="true">/</span>
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
+        <span className="icon-row tb-icons">
         <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
         {!viewer && !teachingHere && (
-          <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Board'} active={boardView} onClick={() => showBoard(!boardView)} />
+          <IconBtn icon="board" label={boardView ? 'Back to the task' : 'Board'} active={boardView} className="desktop-only" onClick={() => showBoard(!boardView)} />
         )}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, present mode, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
@@ -697,6 +698,7 @@ export function LessonEditor() {
             </div>
           )}
         </div>
+        </span>
         <span className="topbar-right">
           <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
           {viewer ? (

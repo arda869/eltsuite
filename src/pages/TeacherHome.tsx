@@ -198,7 +198,7 @@ export function TeacherHome() {
               style={{ ['--accent' as string]: theme(featured.c.themeColor).accent, ['--accent-text' as string]: theme(featured.c.themeColor).text }}
               aria-label={featured.isLive ? 'Teaching now' : 'Latest lesson'}
             >
-              <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+              <span className="lc-text">
                 <span className="eyebrow accent" style={{ letterSpacing: '0.2em' }}>
                   {featured.isLive ? 'Teaching now' : 'Latest lesson'}
                 </span>

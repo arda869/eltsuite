@@ -28,13 +28,13 @@ export function ModeMenu({ mode, live, onMode, onEnd, endLabel, children }: { mo
       <button type="button" className={'mode-btn m-' + mode + (live ? ' live' : '')} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         {live && <span className="live-dot" aria-hidden="true" />}
         <UiIcon name={cur.icon} />
-        <span>{cur.label}{live && mode === 'edit' ? ' · live' : ''}</span>
+        <span className="mode-label">{cur.label}{live && mode === 'edit' ? ' · live' : ''}</span>
         <span aria-hidden="true" className="mode-caret">▾</span>
       </button>
       {open && (
         <div className="menu mode-list" role="menu">
           {MODES.map((m) => (
-            <button key={m.mode} role="menuitemradio" aria-checked={mode === m.mode} className={mode === m.mode ? 'on' : ''} onClick={() => (setOpen(false), onMode(m.mode))}>
+            <button key={m.mode} role="menuitemradio" aria-checked={mode === m.mode} className={(mode === m.mode ? 'on' : '') + (m.mode === 'present' ? ' desktop-only' : '')} onClick={() => (setOpen(false), onMode(m.mode))}>
               <UiIcon name={m.icon} />
               <span className="mode-text">
                 <span>{m.label}</span>
