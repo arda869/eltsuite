@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { Link } from 'react-router-dom';
+import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { auth, db, googleProvider } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav, LearnerNav } from './ColleaguesPage';
@@ -62,6 +63,9 @@ export function SettingsPage() {
     const u2 = onSnapshot(query(collection(db, 'classes'), where('teacherIds', 'array-contains', user.uid)), (s) => add(s.docs.map((d) => d.id)), () => {});
     return () => (u1(), u2());
   }, [user, teacher]);
+  useEffect(() => {
+    if (profile?.role === 'learner' && profile.classId) setClassIds([profile.classId]);
+  }, [profile]);
   useEffect(() => void pushState().then(setPush), [appOpen]);
   const [quality, setQ] = useState<PicQuality>(() => {
     try {
@@ -152,6 +156,8 @@ export function SettingsPage() {
           </Section>
         )}
 
+        {!teacher && user && profile?.role === 'learner' && <LearnerAccount uid={user.uid} classId={profile.classId} />}
+
         <Section icon="lock" title="Account">
           <Row title="Sign out" hint="On this device">
             <button type="button" className="btn small-btn" onClick={signOutNow}>
@@ -171,5 +177,91 @@ export function SettingsPage() {
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
       {deleting && <DeleteAccountDialog onClose={() => setDeleting(false)} />}
     </div>
+  );
+}
+
+// A learner's own sign-in and email, when their class allows it: Google sign-in, and an email for
+// message summaries.
+export function LearnerAccount({ uid, classId }: { uid: string; classId: string }) {
+  const [mode, setMode] = useState<'off' | 'optional' | 'required' | null>(null);
+  const [email, setEmail] = useState('');
+  const [saved, setSaved] = useState('');
+  const [google, setGoogle] = useState(() => auth.currentUser?.providerData.find((p) => p.providerId === 'google.com')?.email ?? '');
+  const [msg, setMsg] = useState('');
+  useEffect(() => {
+    getDoc(doc(db, 'classes', classId)).then((s) => setMode(s.data()?.accounts?.email ?? 'optional'), () => setMode('optional'));
+    getDoc(doc(db, 'users', uid)).then((s) => {
+      const e = String(s.data()?.contactEmail ?? '');
+      setEmail(e);
+      setSaved(e);
+    }, () => {});
+  }, [uid, classId]);
+  if (mode === null || mode === 'off') return null;
+  const linkGoogle = async () => {
+    setMsg('');
+    try {
+      const { linkWithPopup } = await import('firebase/auth');
+      const r = await linkWithPopup(auth.currentUser!, googleProvider);
+      const g = r.user.providerData.find((p) => p.providerId === 'google.com')?.email ?? '';
+      setGoogle(g);
+      if (g && !saved) await saveEmail(g);
+      setMsg('Linked. Next time you can sign in with Google.');
+    } catch (e) {
+      const code = (e as { code?: string }).code ?? '';
+      setMsg(code.includes('credential-already-in-use') || code.includes('email-already-in-use') ? 'That Google account is already used by another Lesson Lit account.' : code.includes('popup') ? 'The Google window was closed before it finished.' : 'It could not be linked. Please try again.');
+    }
+  };
+  const saveEmail = async (v = email) => {
+    const e = v.trim();
+    if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return setMsg('That email does not look right.');
+    await updateDoc(doc(db, 'users', uid), { contactEmail: e, msgPrefs: { email: !!e, after: 60 } }).catch(() => {});
+    setSaved(e);
+    setEmail(e);
+    setMsg(e ? 'Saved. You will get an email when messages wait for you.' : 'Email removed.');
+  };
+  return (
+    <Section icon="person" title="Sign-in and email">
+      {mode === 'required' && !google && !saved && <div className="set-must">Your teacher asks everyone to link an email. Link Google, or add your email below.</div>}
+      <Row title="Sign in with Google" hint={google ? `Linked to ${google}` : 'Then you can sign in with your Google account instead of your class code and PIN'}>
+        {google ? (
+          <span className="set-done">Linked</span>
+        ) : (
+          <button type="button" className="btn small-btn" onClick={() => void linkGoogle()}>
+            Link Google
+          </button>
+        )}
+      </Row>
+      <Row title="Email for message summaries" hint="When messages wait for you, a short email tells you">
+        <span className="set-email">
+          <input type="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveEmail()} aria-label="Email" />
+          <button type="button" className="btn small-btn" disabled={email.trim() === saved} onClick={() => void saveEmail()}>
+            Save
+          </button>
+        </span>
+      </Row>
+      {msg && <span className="hint set-msg">{msg}</span>}
+    </Section>
+  );
+}
+
+// On a learner's home: a reminder when the class asks everyone to link an email.
+export function AccountNudge({ uid, required }: { uid: string; required: boolean }) {
+  const [need, setNeed] = useState(false);
+  useEffect(() => {
+    if (!required) return setNeed(false);
+    const google = auth.currentUser?.providerData.some((p) => p.providerId === 'google.com');
+    if (google) return setNeed(false);
+    getDoc(doc(db, 'users', uid)).then((s) => setNeed(!s.data()?.contactEmail), () => {});
+  }, [uid, required]);
+  if (!need) return null;
+  return (
+    <Link to="/settings" className="lh-nudge">
+      <UiIcon name="person" size={16} />
+      <span>
+        <b>Link your email</b>
+        <span className="hint">Your teacher asks everyone to link Google or an email, so you can sign in easily and hear about new messages.</span>
+      </span>
+      <span className="lh-nudge-go">Link it ›</span>
+    </Link>
   );
 }

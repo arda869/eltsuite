@@ -35,9 +35,25 @@ export type ClassDoc = {
   inviteEmails?: string[];
   discussion?: { learnersStart?: boolean; approval?: boolean; muted?: string[]; track?: boolean };
   cover?: string | null; // "preset:<key>" or "media:<id>"
-  messaging?: { learnerElements?: boolean }; // learners may send task elements in messages
+  messaging?: { learnerElements?: boolean; mode?: MessagingMode }; // learners may send task elements in messages; who learners may write to
+  profile?: { photos?: boolean; names?: NameShow }; // learners may upload a photo; how learners' names show to each other
+  nicknames?: Record<string, string>; // learner id → nickname, when names show as nicknames
+  accounts?: { email?: 'off' | 'optional' | 'required' }; // learners link an email (Google sign-in, email summaries)
   teaching?: { showMarker?: boolean; seeLearners?: boolean }; // while teaching: show learners where I am, show me where learners are
 };
+
+// Messaging for learners: off; only with teachers; in groups the teacher makes; freely with each other.
+export type MessagingMode = 'off' | 'teacher' | 'groups' | 'free';
+// How a learner's name shows to other learners.
+export type NameShow = 'first' | 'initial' | 'full' | 'nick';
+export function shownName(name: string, id: string, c?: Pick<ClassDoc, 'profile' | 'nicknames'> | null): string {
+  const parts = name.trim().split(/\s+/);
+  const how = c?.profile?.names ?? 'full';
+  if (how === 'first') return parts[0] ?? name;
+  if (how === 'initial') return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0] ?? name;
+  if (how === 'nick') return c?.nicknames?.[id]?.trim() || parts[0] || name;
+  return name;
+}
 
 export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };
 export type BoardPage = { id: string; title?: string; from?: string }; // from: the lesson a borrowed page belongs to
@@ -89,7 +105,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('Could not find a free class code. Please try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

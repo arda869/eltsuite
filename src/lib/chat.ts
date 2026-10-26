@@ -60,6 +60,11 @@ export function useChats(me?: string) {
   }, [me]);
   return list;
 }
+// For learners, other learners' names as the class shows them (first name, initial, nickname…).
+export function withShownNames(list: Chat[] | null, nameFor?: (key: string, name: string) => string): Chat[] | null {
+  if (!list || !nameFor) return list;
+  return list.map((c) => ({ ...c, names: Object.fromEntries(Object.entries(c.names).map(([k, v]) => [k, c.roles?.[k] === 'learner' ? nameFor(k, v) : v])) }));
+}
 export const unreadIn = (c: Chat, me: string) => !!c.last && c.last.by !== me && (c.seen?.[me] ?? 0) < c.lastAt;
 export function useUnread(me?: string) {
   const chats = useChats(me);

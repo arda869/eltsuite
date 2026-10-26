@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { LevelPicker } from './LevelPicker';
 import { DEFAULT_CODES } from '../lib/annotations';
-import { updateClass, type ClassDoc, type Meeting } from '../lib/classes';
+import { updateClass, type ClassDoc, type Meeting, type MessagingMode, type NameShow } from '../lib/classes';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
@@ -27,6 +29,18 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [showMarker, setShowMarker] = useState(c.teaching?.showMarker !== false);
   const [seeLearners, setSeeLearners] = useState(c.teaching?.seeLearners !== false);
   const [learnerElements, setLearnerElements] = useState(c.messaging?.learnerElements !== false);
+  const [msgMode, setMsgMode] = useState<MessagingMode>(c.messaging?.mode ?? 'free');
+  const [photos, setPhotos] = useState(c.profile?.photos === true);
+  const [names, setNames] = useState<NameShow>(c.profile?.names ?? 'full');
+  const [nicks, setNicks] = useState<Record<string, string>>(c.nicknames ?? {});
+  const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(c.accounts?.email ?? 'optional');
+  const [learners, setLearners] = useState<{ id: string; name: string }[] | null>(null);
+  useEffect(() => {
+    if (names !== 'nick' || learners) return;
+    getDocs(collection(db, 'classes', c.id, 'learners'))
+      .then((s) => setLearners(s.docs.map((d) => ({ id: d.id, name: String(d.data().displayName ?? '') })).sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(() => setLearners([]));
+  }, [names, learners, c.id]);
   const [showCodes, setShowCodes] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -50,7 +64,10 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         themeColor,
         cover,
         teaching: { showMarker, seeLearners },
-        messaging: { learnerElements },
+        messaging: { learnerElements, mode: msgMode },
+        profile: { photos, names },
+        nicknames: Object.fromEntries(Object.entries(nicks).map(([k, v]) => [k, v.trim().slice(0, 30)]).filter(([, v]) => v)),
+        accounts: { email: emailLink },
         meeting: link ? { url: link, meetingId: meetingId.trim(), passcode: passcode.trim(), visibility } : null,
         codes: codes.filter((x) => x.code.trim()).map((x) => ({ code: x.code.trim().slice(0, 6), meaning: x.meaning.trim().slice(0, 60) })),
       });
@@ -146,6 +163,71 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               <span className="hint">Questions, vocabulary boxes and other elements from + Add. When off, learners send text and pictures.</span>
             </span>
             <input type="checkbox" checked={learnerElements} onChange={() => setLearnerElements((v) => !v)} />
+          </label>
+        </div>
+        <div className="field cs-learners">
+          <span>Learners</span>
+          <label className="cs-row">
+            <span>
+              Messages
+              <span className="hint">Who learners in this class can write to</span>
+            </span>
+            <select value={msgMode} onChange={(e) => setMsgMode(e.target.value as MessagingMode)}>
+              <option value="off">No messages</option>
+              <option value="teacher">Only with their teachers</option>
+              <option value="groups">Teachers, and groups I set up</option>
+              <option value="free">Each other freely</option>
+            </select>
+          </label>
+          <label className="cs-row">
+            <span>
+              Profile pictures
+              <span className="hint">Photos are seen by everyone in the class</span>
+            </span>
+            <select value={photos ? 'photos' : 'icons'} onChange={(e) => setPhotos(e.target.value === 'photos')}>
+              <option value="icons">Only the ready-made pictures</option>
+              <option value="photos">Ready-made pictures or their own photo</option>
+            </select>
+          </label>
+          <label className="cs-row">
+            <span>
+              Names other learners see
+              <span className="hint">You always see full names</span>
+            </span>
+            <select value={names} onChange={(e) => setNames(e.target.value as NameShow)}>
+              <option value="first">First name only (Anna)</option>
+              <option value="initial">First name and initial (Anna S.)</option>
+              <option value="full">Full name (Anna Silva)</option>
+              <option value="nick">A nickname I give each learner</option>
+            </select>
+          </label>
+          {names === 'nick' && (
+            <div className="cs-nicks">
+              {learners === null ? (
+                <span className="hint">Opening the learners…</span>
+              ) : learners.length === 0 ? (
+                <span className="hint">No learners in this class yet.</span>
+              ) : (
+                learners.map((l) => (
+                  <label key={l.id} className="cs-nick">
+                    <span>{l.name}</span>
+                    <input value={nicks[l.id] ?? ''} placeholder={l.name.split(' ')[0]} maxLength={30} onChange={(e) => setNicks((n) => ({ ...n, [l.id]: e.target.value }))} aria-label={`Nickname for ${l.name}`} />
+                  </label>
+                ))
+              )}
+              <span className="hint">Learners without a nickname show their first name.</span>
+            </div>
+          )}
+          <label className="cs-row">
+            <span>
+              Email and Google sign-in
+              <span className="hint">Learners can link their account to sign in with Google, and add an email for message summaries</span>
+            </span>
+            <select value={emailLink} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
+              <option value="off">Not for this class</option>
+              <option value="optional">Learners can if they want</option>
+              <option value="required">Every learner must</option>
+            </select>
           </label>
         </div>
         <TeachersPanel c={c} />

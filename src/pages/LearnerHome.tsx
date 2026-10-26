@@ -1,3 +1,4 @@
+import { AccountNudge } from './SettingsPage';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
@@ -175,6 +176,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
         <p className="placeholder">You’re no longer in this class. Ask your teacher if this is a mistake.</p>
       ) : (
         <main className="lh">
+          {user && <AccountNudge uid={user.uid} required={c?.accounts?.email === 'required'} />}
           <section className="lh-hero">
             <div className="lh-hello">
               <span className="eyebrow accent">

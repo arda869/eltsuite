@@ -1,4 +1,30 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+
+// A photo as a profile picture: its key is "photo:<uid>", the picture itself in photos/<uid>.
+const photoCache = new Map<string, Promise<string>>();
+export const photoKey = (uid: string) => 'photo:' + uid;
+export const loadPhoto = (uid: string) => {
+  if (!photoCache.has(uid)) photoCache.set(uid, getDoc(doc(db, 'photos', uid)).then((s) => String(s.data()?.data ?? ''), () => ''));
+  return photoCache.get(uid)!;
+};
+export async function savePhoto(uid: string, file: Blob) {
+  const bmp = await createImageBitmap(file);
+  const side = Math.min(bmp.width, bmp.height);
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  c.getContext('2d')!.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, 256, 256);
+  const data = c.toDataURL('image/jpeg', 0.82);
+  await setDoc(doc(db, 'photos', uid), { data, at: Date.now() });
+  photoCache.set(uid, Promise.resolve(data));
+  return data;
+}
+function Photo({ uid, size, className }: { uid: string; size: number; className: string }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => void loadPhoto(uid).then(setSrc), [uid]);
+  return src ? <img className={'avatar-photo ' + className} src={src} width={size} height={size} alt="" /> : <span className={'avatar-fallback ' + className} style={{ width: size, height: size }} aria-hidden="true" />;
+}
 
 // Profile pictures: flat illustrations on a soft circle, in the app's muted palette.
 // Each picture can be used by only one person in a class.
@@ -92,6 +118,7 @@ export const AVATARS: A[] = [
 export const avatarByKey = (k?: string) => AVATARS.find((a) => a.key === k);
 
 export function Avatar({ k, name, size = 32, className = '' }: { k?: string; name?: string; size?: number; className?: string }) {
+  if (k?.startsWith('photo:')) return <Photo uid={k.slice(6)} size={size} className={className} />;
   const a = avatarByKey(k);
   if (!a)
     return (

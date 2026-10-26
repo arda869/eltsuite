@@ -22,7 +22,10 @@ const now = Date.now();
 
 const users = await db.collection('users').where('msgPrefs.email', '==', true).get();
 for (const u of users.docs) {
-  const uid = u.id;
+  // Learners are in chats by their learner id, and give their own email (their sign-in email is not a real one).
+  const learner = u.data().role === 'learner';
+  const uid = learner ? u.data().learnerId : u.id;
+  if (!uid) continue;
   const after = Number(u.data().msgPrefs?.after ?? 60) * 60000;
   const chats = await db.collection('chats').where('members', 'array-contains', uid).get();
   const waiting = chats.docs.filter((c) => {
@@ -30,11 +33,13 @@ for (const u of users.docs) {
     return d.last && d.last.by !== uid && (d.seen?.[uid] ?? 0) < d.lastAt && now - d.lastAt >= after && (d.digested?.[uid] ?? 0) < d.lastAt;
   });
   if (!waiting.length) continue;
-  let email = '';
-  try {
-    email = (await getAuth().getUser(uid)).email ?? '';
-  } catch {
-    continue;
+  let email = String(u.data().contactEmail ?? '');
+  if (!email && !learner) {
+    try {
+      email = (await getAuth().getUser(u.id)).email ?? '';
+    } catch {
+      continue;
+    }
   }
   if (!email) continue;
   const parts = [];

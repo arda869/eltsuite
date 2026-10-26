@@ -464,6 +464,14 @@ service cloud.firestore {
     function myClass() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.classId; }
     function chatOf(id) { return get(/databases/$(database)/documents/chats/$(id)).data; }
     function inChat(c) { return signedIn() && chatKey() in c.members; }
+    // The class decides: no messages; only with teachers (or groups the teacher makes); or freely.
+    function msgMode() { return classData(myClass()).get('messaging', {}).get('mode', 'free'); }
+    function learnerMayStart(c) { return msgMode() == 'free' || (msgMode() != 'off' && c.roles.values().removeAll(['teacher']).size() <= 1); }
+    // Profile photos: small pictures anyone signed in may see; only the owner changes theirs.
+    match /photos/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid && request.resource.data.data.size() < 120000;
+    }
     // Recording together (see lib/studio.ts): the host and the colleagues they invite.
     function studioOf(id) { return get(/databases/$(database)/documents/studios/$(id)).data; }
     match /studios/{id} {
@@ -496,13 +504,14 @@ service cloud.firestore {
     match /chats/{id} {
       allow read: if inChat(resource.data);
       allow create: if inChat(request.resource.data) && request.resource.data.members.size() <= 60
-        && (isTeacher() || (learnerAccount() && request.resource.data.classId == myClass()));
+        && (isTeacher() || (learnerAccount() && request.resource.data.classId == myClass() && learnerMayStart(request.resource.data)));
       allow update: if inChat(resource.data)
         && (isTeacher() || request.resource.data.get('classId', null) == resource.data.get('classId', null));
       allow delete: if signedIn() && resource.data.createdBy == chatKey();
       match /msgs/{mid} {
         allow read: if inChat(chatOf(id));
         allow create: if inChat(chatOf(id)) && request.resource.data.by == chatKey()
+          && (!learnerAccount() || msgMode() != 'off')
           && (!learnerAccount() || request.resource.data.get('blocks', 0) == 0
             || classData(myClass()).get('messaging', {}).get('learnerElements', true) == true);
         allow update: if inChat(chatOf(id)) && (resource.data.by == chatKey() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']));

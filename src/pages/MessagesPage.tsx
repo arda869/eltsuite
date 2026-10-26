@@ -8,7 +8,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -51,7 +51,8 @@ export function MessagesPage() {
   const { user, profile } = useAuth();
   const dir = useDirectory();
   const me = dir?.me;
-  const chats = useChats(me?.key);
+  const rawChats = useChats(me?.key);
+  const chats = useMemo(() => withShownNames(rawChats, dir?.nameFor), [rawChats, dir]);
   const [params, setParams] = useSearchParams();
   const open = params.get('c') ?? '';
   const [creating, setCreating] = useState(false);
@@ -80,6 +81,12 @@ export function MessagesPage() {
       )}
       {!user || !me || chats === null ? (
         <Loader label="Opening your messages" />
+      ) : !teacher && dir?.mode === 'off' ? (
+        <div className="msg-empty msg-off">
+          <UiIcon name="message" size={30} />
+          <strong>Messages are off for your class</strong>
+          <span className="hint">Your teacher has turned off messages. You can still use the discussion board and your notebook.</span>
+        </div>
       ) : (
         <div className={'msg' + (cur ? ' has-chat' : '')}>
           <aside className="msg-side">
@@ -94,7 +101,7 @@ export function MessagesPage() {
             </div>
             <input className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
             <div className="msg-list" role="listbox" aria-label="Chats">
-              {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : 'No messages yet. Write to a classmate or your teacher.'}</span>}
+              {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
                 const un = unreadIn(c, me.key);
                 const tagged = un && c.last?.mentions?.includes(me.key);
@@ -125,7 +132,7 @@ export function MessagesPage() {
               <div className="msg-empty">
                 <UiIcon name="discuss" size={30} />
                 <strong>Choose a chat, or start a new one</strong>
-                <span className="hint">{teacher ? 'Write to one learner, a group from a class, or colleagues. Send task elements learners answer right in the chat, and materials colleagues copy into their own classes.' : 'Write to a classmate, a group, or your teacher.'}</span>
+                <span className="hint">{teacher ? 'Write to one learner, a group from a class, or colleagues. Send task elements learners answer right in the chat, and materials colleagues copy into their own classes.' : dir?.mode === 'free' || !dir?.mode ? 'Write to a classmate, a group, or your teacher.' : 'Write to your teacher.'}</span>
                 <button type="button" className="btn primary" onClick={() => setCreating(true)}>
                   New message
                 </button>
@@ -429,6 +436,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
 
 function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpenShare }: { m: Msg; c: Chat; me: Person; first: boolean; last?: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void }) {
   const mine = m.by === me.key;
+  const who = c.names[m.by] ?? m.name; // as the class shows it
   const [responses, setResponses] = useState<Responses>({});
   const [checked, setChecked] = useState<AnswerKey | null>(null);
   const qs = useMemo(() => (m.content ? questionIds(m.content) : []), [m.content]);
@@ -469,11 +477,11 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   return (
     <div className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '')} id={'m-' + m.id}>
       {/* Like a messaging app: the picture by the last message of a run, the name over the first (in groups), the time inside the bubble. */}
-      {!mine && (last ? <span className="bub-av">{initial(m.name)}</span> : <span className="bub-av-space" />)}
+      {!mine && (last ? <span className="bub-av">{initial(who)}</span> : <span className="bub-av-space" />)}
       <div className="bub-col">
         {first && !mine && c.kind === 'group' && (
           <span className="bub-who">
-            <b>{m.name.split(' ')[0]}</b>
+            <b>{who.split(' ')[0]}</b>
             {m.role === 'teacher' && <span className="ld-tag">Teacher</span>}
           </span>
         )}
@@ -547,7 +555,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
                   ))}
                 </span>
               ) : !mine && (
-                <span className="hint bub-answers-note">{m.shareAnswers ? 'Answer to see everyone’s answers.' : `Only ${first1(m.name)} sees the answers.`}</span>
+                <span className="hint bub-answers-note">{m.shareAnswers ? 'Answer to see everyone’s answers.' : `Only ${first1(who)} sees the answers.`}</span>
               ))}
               {m.share && (
                 <button type="button" className="bub-share" onClick={() => onOpenShare(m.share!.id)}>

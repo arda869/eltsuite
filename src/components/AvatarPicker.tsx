@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { chooseAvatar, useClaims } from '../lib/avatars';
-import { AVATARS, Avatar } from './avatars';
+import { AVATARS, Avatar, photoKey, savePhoto } from './avatars';
 
 // Choose a profile picture. Pictures someone else in the class already uses can't be chosen.
 export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClose: () => void }) {
@@ -16,9 +18,31 @@ export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClos
     return m;
   }, [claims, user?.uid]);
   const name = profile?.role === 'learner' ? profile.displayName : user?.displayName || user?.email?.split('@')[0] || 'Teacher';
+  // Teachers can always use a photo; learners when their class allows it.
+  const [photosOk, setPhotosOk] = useState(profile?.role !== 'learner');
+  useEffect(() => {
+    if (profile?.role !== 'learner') return;
+    getDoc(doc(db, 'classes', profile.classId))
+      .then((s) => setPhotosOk(s.data()?.profile?.photos === true))
+      .catch(() => {});
+  }, [profile]);
+  const fileIn = useRef<HTMLInputElement>(null);
+  const upload = async (f: File) => {
+    if (!user) return;
+    setBusy('photo');
+    setErr('');
+    try {
+      await savePhoto(user.uid, f);
+      await pick(photoKey(user.uid), true);
+    } catch {
+      setErr('That photo could not be used. Try another one.');
+    } finally {
+      setBusy('');
+    }
+  };
 
-  async function pick(k: string) {
-    if (!user || taken[k] || busy) return;
+  async function pick(k: string, force = false) {
+    if (!user || taken[k] || (busy && !force)) return;
     setBusy(k);
     setErr('');
     try {
@@ -52,6 +76,16 @@ export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClos
             );
           })}
         </div>
+        {photosOk && (
+          <div className="av-photo-row">
+            <button type="button" className={'av-opt av-upload' + (mine?.startsWith('photo:') ? ' on' : '')} onClick={() => fileIn.current?.click()} disabled={!!busy}>
+              {mine?.startsWith('photo:') ? <Avatar k={mine} size={52} /> : <span className="av-plus">+</span>}
+              <span className="av-label">{busy === 'photo' ? 'Adding…' : mine?.startsWith('photo:') ? 'Change photo' : 'Your photo'}</span>
+            </button>
+            <span className="hint">Use a photo of yourself. It is cropped to a circle and seen by everyone in your class.</span>
+            <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && void upload(e.target.files[0]), (e.target.value = ''))} />
+          </div>
+        )}
         {err && <span className="error">{err}</span>}
         <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={onClose}>
           Done

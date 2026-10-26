@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { isSelf, chatTitle, chime, unreadIn, useChats, useUnread, type Chat } from '../lib/chat';
+import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread, type Chat } from '../lib/chat';
 import { useDirectory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
@@ -44,7 +44,9 @@ export function ChatDock() {
   const loc = useLocation();
   const phone = usePhone();
   const me = profile?.role === 'learner' ? profile.learnerId : profile?.role === 'teacher' ? user?.uid : undefined;
-  const chats = useChats(isProxyTab() ? undefined : me);
+  const rawChats = useChats(isProxyTab() ? undefined : me);
+  const dirAll = useDirectory();
+  const chats = useMemo(() => withShownNames(rawChats, dirAll?.nameFor), [rawChats, dirAll]);
   const st = useDock();
   const save = setDock;
 

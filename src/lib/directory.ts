@@ -1,3 +1,4 @@
+import { shownName, type MessagingMode } from './classes';
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from './firebase';
@@ -9,7 +10,7 @@ import type { Person } from './chat';
 // Who I can write to, in groups: my colleagues and the learners and teachers of each class
 // (for a teacher); my classmates and teachers (for a learner).
 
-export type Directory = { me: Person; groups: { id: string; label: string; people: Person[] }[]; learnerElements?: boolean };
+export type Directory = { me: Person; groups: { id: string; label: string; people: Person[] }[]; learnerElements?: boolean; mode?: MessagingMode; nameFor?: (key: string, name: string) => string };
 
 export function useDirectory(): Directory | null {
   const { user, profile } = useAuth();
@@ -19,9 +20,11 @@ export function useDirectory(): Directory | null {
     let dead = false;
     (async () => {
       if (profile.role === 'learner') {
-        const me: Person = { key: profile.learnerId, name: profile.displayName, role: 'learner', classId: profile.classId };
         const c = await getDoc(doc(db, 'classes', profile.classId)).catch(() => null);
         const cd = c?.data() as (ClassDoc & { teacherName?: string }) | undefined;
+        // Names as the class shows them to learners; who learners may write to.
+        const me: Person = { key: profile.learnerId, name: shownName(profile.displayName, profile.learnerId, cd), role: 'learner', classId: profile.classId };
+        const mode: MessagingMode = cd?.messaging?.mode ?? 'free';
         const teachers: Person[] = cd ? [{ key: cd.teacherId, name: cd.teacherName || 'Your teacher', role: 'teacher' }, ...Object.entries(cd.coTeachers ?? {}).filter(([, t]) => t.role === 'co').map(([k, t]) => ({ key: k, name: t.name || 'Teacher', role: 'teacher' as const }))] : [];
         const code = cd?.classCode ? await getDoc(doc(db, 'classCodes', cd.classCode)).catch(() => null) : null;
         const roster = ((code?.data()?.roster ?? []) as { id: string; name: string }[]).filter((r) => r.id !== me.key).sort((a, b) => a.name.localeCompare(b.name));
@@ -29,10 +32,15 @@ export function useDirectory(): Directory | null {
           setDir({
             me,
             learnerElements: cd?.messaging?.learnerElements !== false,
-            groups: [
-              { id: 'teachers', label: 'Teachers', people: teachers },
-              { id: profile.classId, label: cd?.name ? `${cd.name} · classmates` : 'Classmates', people: roster.map((r) => ({ key: r.id, name: r.name, role: 'learner', classId: profile.classId })) },
-            ],
+            mode,
+            nameFor: (k, n) => shownName(n, k, cd),
+            groups:
+              mode === 'off'
+                ? []
+                : [
+                    { id: 'teachers', label: 'Teachers', people: teachers },
+                    ...(mode === 'free' ? [{ id: profile.classId, label: cd?.name ? `${cd.name} · classmates` : 'Classmates', people: roster.map((r) => ({ key: r.id, name: shownName(r.name, r.id, cd), role: 'learner' as const, classId: profile.classId })) }] : []),
+                  ],
           });
         return;
       }
