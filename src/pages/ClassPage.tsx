@@ -114,14 +114,14 @@ export function ClassPage() {
     setMenu(false);
     if (!(await ask(`Archive ${c.name}? Everything is kept and you can restore it later.`))) return;
     await updateClass(c, { status: 'archived' });
-    navigate('/');
+    navigate('/classes');
   }
 
   return (
     <div className="shell" style={style}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
-          <Link to="/">Classes</Link>
+          <Link to="/classes">Classes</Link>
           <span aria-hidden="true">/</span>
           <span className="here">{c?.name ?? '…'}</span>
         </nav>
@@ -146,7 +146,7 @@ export function ClassPage() {
             <button type="button" className="btn" onClick={() => (setC(undefined), setWhy({ code: '', attempt: 0 }))}>
               Try again
             </button>
-            <Link to="/" className="btn primary">
+            <Link to="/classes" className="btn primary">
               Back to your classes
             </Link>
           </span>
@@ -215,7 +215,7 @@ export function ClassPage() {
           </div>
 
           {announcing && <AnnounceDialog classId={c.id} roster={roster} onClose={() => setAnnouncing(false)} />}
-          {deleting && <DeleteClassDialog c={c} onClose={() => setDeleting(false)} onDeleted={() => navigate('/')} />}
+          {deleting && <DeleteClassDialog c={c} onClose={() => setDeleting(false)} onDeleted={() => navigate('/classes')} />}
           <nav className="tabs" aria-label="Class sections">
             <button className={tab === 'lessons' ? 'on' : ''} onClick={() => setTab('lessons')}>
               Lessons and work

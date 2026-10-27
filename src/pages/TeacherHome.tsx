@@ -26,7 +26,7 @@ function greeting() {
 type ItemWithTime = Item & { createdAt?: { toMillis: () => number } };
 
 // Lessons and live state for each class on the home screen.
-function useClassDetails(ids: string[]) {
+export function useClassDetails(ids: string[]) {
   const [items, setItems] = useState<Record<string, ItemWithTime[]>>({});
   const [live, setLive] = useState<Record<string, LiveState | null>>({});
   const key = ids.join(',');

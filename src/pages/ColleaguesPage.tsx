@@ -16,7 +16,7 @@ import { ArchiveColleagues } from './ArchiveLibrary';
 const KIND: Record<string, { label: string; icon: string }> = { lesson: { label: 'Lesson', icon: 'task' }, task: { label: 'Task', icon: 'edit' }, doc: { label: 'Shared document', icon: 'discuss' }, media: { label: 'Media', icon: 'picture' } };
 const when = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
 
-export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | 'messages' | '' }) {
+export function MainNav({ on }: { on: 'home' | 'classes' | 'colleagues' | 'archive' | 'messages' | '' }) {
   const { user } = useAuth();
   const unread = useUnread(user?.uid);
   // With icons; on a phone it becomes the tab bar at the bottom of the screen.
@@ -32,7 +32,8 @@ export function MainNav({ on }: { on: 'classes' | 'colleagues' | 'archive' | 'me
   );
   return (
     <nav aria-label="Main" className="main-nav mn-phone">
-      {tab('/', 'classes', 'classes', 'Classes', 'Classes')}
+      {tab('/', 'home', 'home', 'Home', 'Home')}
+      {tab('/classes', 'classes', 'classes', 'Classes', 'Classes')}
       {tab('/messages', 'messages', 'message', 'Messages', 'Messages', unread)}
       {tab('/colleagues', 'colleagues', 'groups', 'Colleagues', 'Colleagues')}
       {tab('/archive', 'archive', 'archive', 'Files', 'Files')}

@@ -34,6 +34,7 @@ const TaskStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m
 const StudioSession = lazy(() => import('./pages/StudioSession').then((m) => ({ default: m.StudioSession })));
 const Legal = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Legal })));
 const EmailLinkFinish = lazy(() => import('./pages/EmailLinkFinish').then((m) => ({ default: m.EmailLinkFinish })));
+const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const TeacherHome = lazy(() => import('./pages/TeacherHome').then((m) => ({ default: m.TeacherHome })));
 const ClassPage = lazy(() => import('./pages/ClassPage').then((m) => ({ default: m.ClassPage })));
 const LessonEditor = lazy(() => import('./pages/LessonEditor').then((m) => ({ default: m.LessonEditor })));
@@ -83,7 +84,7 @@ function Home() {
     /* fine */
   }
   if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
-  return <TeacherHome />;
+  return <HomePage />;
 }
 
 function Join() {
@@ -128,6 +129,7 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={<Loader full label="" />}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/invite/:id" element={<InvitePage />} />

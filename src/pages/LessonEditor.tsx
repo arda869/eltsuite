@@ -694,7 +694,7 @@ export function LessonEditor() {
     <div className="shell wide" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
-          <Link to="/">Classes</Link>
+          <Link to="/classes">Classes</Link>
           <span aria-hidden="true">/</span>
           <Link to={`/class/${classId}`}>{c?.name ?? 'Class'}</Link>
           <span aria-hidden="true">/</span>

@@ -84,8 +84,12 @@ const J = {
   'Teacher home': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/');
-    await see(s.p, 'text=Demo class', 'the demo class on the home page');
-    await axe(s.p, 'Teacher home', A11Y_FOUND);
+    await see(s.p, '.hm-hero', 'the home dashboard');
+    await see(s.p, 'text=Demo class', 'the demo class on the dashboard');
+    await axe(s.p, 'Home', A11Y_FOUND);
+    await s.p.goto(BASE + '/classes');
+    await see(s.p, 'text=Demo class', 'the demo class in Classes');
+    await axe(s.p, 'Classes', A11Y_FOUND);
     return s;
   },
   'Class and learners': async (b) => {

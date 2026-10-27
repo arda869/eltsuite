@@ -123,7 +123,9 @@ function AppMark() {
             ? { name: 'Settings', to: '/settings', color: '#6b6560' }
             : pathname.startsWith('/notebook')
               ? { name: 'Notebook', to: '/notebook', color: '#a8701f' }
-              : { name: 'Classes', to: '/', color: '#c8764a' };
+              : pathname === '/'
+                ? { name: 'Home', to: '/', color: '#c8764a' }
+                : { name: 'Classes', to: '/classes', color: '#c8764a' };
   return (
     <Link to={app.to} className="suite-mark" style={{ ['--app' as string]: app.color }}>
       <Mark size={26} />
