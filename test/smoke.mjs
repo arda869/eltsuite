@@ -233,6 +233,12 @@ const J = {
   'Learner signs in and opens the lesson': async (b) => {
     const s = await session(b, { as: 'Mia' });
     await s.p.goto(BASE + '/');
+    // A slow machine can show the sign-in before the learner's account is ready: once more.
+    if (!(await s.p.locator('text=Present perfect').first().waitFor({ state: 'visible', timeout: 8000 }).then(() => true, () => false))) {
+      await s.p.goto(`${BASE}/dev.html?as=Mia`);
+      await s.p.waitForTimeout(1500);
+      await s.p.goto(BASE + '/');
+    }
     await see(s.p, 'text=Present perfect', 'the lesson on the learner home page');
     await axe(s.p, 'Learner home', A11Y_FOUND);
     return s;

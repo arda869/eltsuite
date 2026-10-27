@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { stepFrom } from './MediaArchive';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
@@ -148,6 +149,22 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
   ];
   const [pick, setPick] = useState('');
   const chosen = shown.find((d) => d.id === pick) ?? null;
+  // Arrows move between files; Enter opens the one chosen.
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest('input, textarea, .scrim')) return;
+      const ids = shown.map((d) => d.id);
+      if (e.key.startsWith('Arrow') && ids.length) {
+        e.preventDefault();
+        const to = pick && ids.includes(pick) ? stepFrom(ids, pick, e.key) : ids[0];
+        setPick(to);
+        document.querySelector(`[data-sel="${CSS.escape(to)}"]`)?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter' && chosen) window.open(`/doc/${chosen.id}`, '_blank');
+      else if (e.key === 'Escape') setPick('');
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  });
   return (
     <>
       <div className="ma-head">

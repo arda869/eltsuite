@@ -19,7 +19,6 @@ const APPS: App[] = [
   { k: 'library', name: 'Organisation library', about: 'Your organisation’s lessons and materials, to copy into your classes', to: '/library', teacher: true, color: '#7a5a3a', icon: I('M4 4.5h3.5v15H4zM9.5 4.5H13v15H9.5zM15 5.2l3.3-.9 3.2 14.5-3.3.8z') },
   { k: 'superadmin', name: 'Super Admin', about: 'Every teacher, organisation and app switch', to: '/admin', teacher: true, color: '#2f2e2d', icon: I('M12 3.5l7 2.8v5.2c0 4.4-3 7.8-7 9-4-1.2-7-4.6-7-9V6.3zM9 12l2 2 4-4') },
   { k: 'orgadmin', name: 'Organisation admin', about: 'Your organisation’s teachers, rules, branding and library', to: '/org-admin', teacher: true, color: '#5d6f80', icon: I('M4 20V8l8-4.5L20 8v12M9 20v-5h6v5M4 20h16M9 10.5h.01M15 10.5h.01') },
-  { k: 'live', name: 'Live', about: 'Video lessons and meetings', soon: true, color: '#3c7c8c', icon: I('M4 7.5A1.5 1.5 0 0 1 5.5 6h9A1.5 1.5 0 0 1 16 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 4 16.5zM16 10.5l4-2.5v8l-4-2.5') },
   { k: 'planner', name: 'Planner', about: 'Timetable and lesson bookings', soon: true, color: '#8a6a4a', icon: I('M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM4 10h16M8 4v4M16 4v4') },
 ];
 
@@ -59,13 +58,12 @@ export function AppGrid() {
               <Link key={a.k} to={a.to} role="menuitem" className="app-tile" style={{ ['--app' as string]: a.color }} onClick={() => setOpen(false)}>
                 <span className="app-ico">{a.icon}</span>
                 <b>{a.name}</b>
-                <span className="hint">{a.about}</span>
               </Link>
             ) : (
               <span key={a.k} className="app-tile soon" style={{ ['--app' as string]: a.color }} aria-disabled="true">
                 <span className="app-ico">{a.icon}</span>
                 <b>{a.name}</b>
-                <span className="hint">Coming soon</span>
+                <span className="hint">Soon</span>
               </span>
             ),
           )}

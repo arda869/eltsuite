@@ -97,7 +97,7 @@ const store = (k: string, v: unknown) => {
 };
 
 export function MediaArchive() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const uid = user?.uid;
   const quota = useSpaceLimit();
   const acct = useAccount(uid);
@@ -117,7 +117,10 @@ export function MediaArchive() {
   const markers = useFolders(uid);
   const shares = useMyShares(uid);
   const sharedIds = useMemo(() => new Set((shares ?? []).map((s) => s.src?.archiveId).filter(Boolean) as string[]), [shares]);
-  const [folder, setFolder] = useState(''); // '' is the library itself
+  const [folder, setFolderRaw] = useState(''); // '' is the library itself
+  // Recent: everything used last, wherever it is.
+  const [recent, setRecent] = useState(false);
+  const setFolder = (f: string) => (setRecent(false), setFolderRaw(f));
   const [kinds, setKindsS] = useState<Kind[]>(() => stored('ll.maKinds', [] as Kind[])); // none chosen: everything
   const setKinds = (k: Kind[]) => (setKindsS(k), store('ll.maKinds', k));
   const [tag, setTag] = useState<string | null>(null);
@@ -198,14 +201,15 @@ export function MediaArchive() {
     const s = q.trim().toLowerCase();
     // Searching and filtering look through this folder and every folder in it; the timeline too.
     const list = entries
-      .filter((e) => (filtering || view === 'time' ? inTree(e.folder, folder) : e.folder === folder))
+      .filter((e) => recent || (filtering || view === 'time' ? inTree(e.folder, folder) : e.folder === folder))
       .filter((e) => !kinds.length || kinds.includes(e.kind))
       .filter((e) => !tag || (e.item?.tags ?? []).includes(tag))
       .filter((e) => !s || `${e.name} ${(e.item?.tags ?? []).join(' ')} ${(e.item?.script ?? []).map((l) => l.text).join(' ')} ${e.task?.instructions ?? ''}`.toLowerCase().includes(s));
     const by = sort === 'name' ? (a: Entry, b: Entry) => a.name.localeCompare(b.name) : sort === 'size' ? (a: Entry, b: Entry) => b.size - a.size : sort === 'type' ? (a: Entry, b: Entry) => ORDER[a.kind] - ORDER[b.kind] || a.name.localeCompare(b.name) : (a: Entry, b: Entry) => b.at - a.at;
+    if (recent) return [...list].sort((a, b) => b.at - a.at).slice(0, 40);
     return [...list].sort(by);
-  }, [entries, folder, kinds, tag, q, sort, filtering, view]);
-  const subFolders = filtering || view === 'time' ? [] : kidsOf(folder);
+  }, [entries, folder, kinds, tag, q, sort, filtering, view, recent]);
+  const subFolders = filtering || view === 'time' || recent ? [] : kidsOf(folder);
   const groups: [string, Entry[]][] = group === 'type' ? ALL_KINDS.map((k) => [k.label, shown.filter((e) => e.kind === k.k)] as [string, Entry[]]).filter(([, l]) => l.length) : [['', shown]];
   const myDocs = myDocsTop;
   const docBytes = (myDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
@@ -219,6 +223,7 @@ export function MediaArchive() {
   // that selects what it touches. Folders are 'f:' + path.
   const [sel, setSel] = useState<Set<string>>(new Set());
   const anchor = useRef<string | null>(null);
+  const cursor = useRef<string | null>(null);
   const order = [...subFolders.map((f) => 'f:' + f), ...groups.flatMap(([, l]) => l.map((e) => e.key))];
   useEffect(() => setSel(new Set()), [folder, kinds.join(), tag, q, section]);
   const select = (id: string, e: React.MouseEvent | { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
@@ -228,6 +233,7 @@ export function MediaArchive() {
       if (a >= 0 && b >= 0) return setSel(new Set(order.slice(Math.min(a, b), Math.max(a, b) + 1)));
     }
     anchor.current = id;
+    cursor.current = id;
     if (e.metaKey || e.ctrlKey) return setSel((s) => (s.has(id) ? new Set([...s].filter((x) => x !== id)) : new Set([...s, id])));
     setSel(new Set([id]));
   };
@@ -377,7 +383,7 @@ export function MediaArchive() {
   const [dropOn, setDropOn] = useState<string | null>(null);
   const folderDrop = (f: string) => ({
     onDragOver: (e: React.DragEvent) => {
-      if (!e.dataTransfer.types.includes(MOVE)) return;
+      if (!e.dataTransfer.types.includes(MOVE) || inClasses(f)) return; // class folders follow the classes
       e.preventDefault();
       setDropOn(f);
     },
@@ -505,7 +511,23 @@ export function MediaArchive() {
       if (section !== 'media' || editing || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true], .scrim')) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'a') e.preventDefault(), setSel(new Set(order));
       else if (e.key === 'Escape') setSel(new Set());
-      else if ((e.key === 'F2' || e.key === 'Enter') && one && !e.metaKey) {
+      else if (e.key.startsWith('Arrow') && order.length) {
+        // Arrows move between files; with Shift they select as they go.
+        e.preventDefault();
+        const from = cursor.current && order.includes(cursor.current) ? cursor.current : anchor.current && order.includes(anchor.current) ? anchor.current : '';
+        const to = from ? stepFrom(order, from, e.key) : order[0];
+        if (!to) return;
+        cursor.current = to;
+        if (e.shiftKey && anchor.current && order.includes(anchor.current)) {
+          const a = order.indexOf(anchor.current);
+          const b = order.indexOf(to);
+          setSel(new Set(order.slice(Math.min(a, b), Math.max(a, b) + 1)));
+        } else {
+          anchor.current = to;
+          setSel(new Set([to]));
+        }
+        document.querySelector(`[data-sel="${CSS.escape(to)}"]`)?.scrollIntoView({ block: 'nearest' });
+      } else if ((e.key === 'F2' || e.key === 'Enter') && one && !e.metaKey) {
         e.preventDefault();
         if (e.key === 'Enter' && one.startsWith('f:')) setFolder(one.slice(2));
         else setRenaming(one);
@@ -651,11 +673,19 @@ export function MediaArchive() {
         <aside className="ma-side">
             <nav className="ma-nav ma-places" aria-label="Files">
               {SECTIONS.map((x) => (
-                <button key={x.k} type="button" className={section === x.k && (x.k !== 'media' || folder === '') ? 'on' : ''} aria-current={section === x.k ? 'page' : undefined} onClick={() => (pick(x.k), x.k === 'media' && setFolder(''))} {...(x.k === 'media' ? folderDrop('') : {})}>
+                <span key={x.k} style={{ display: 'contents' }}>
+                <button type="button" className={section === x.k && (x.k !== 'media' || (folder === '' && !recent)) ? 'on' : ''} aria-current={section === x.k ? 'page' : undefined} onClick={() => (pick(x.k), x.k === 'media' && setFolder(''))} {...(x.k === 'media' ? folderDrop('') : {})}>
                   <UiIcon name={x.icon} size={16} />
                   <span className="ma-fname">{x.label}</span>
                   {x.k === 'media' && <b>{entries.length}</b>}
                 </button>
+                {x.k === 'media' && (
+                  <button type="button" className={section === 'media' && recent ? 'on' : ''} aria-current={section === 'media' && recent ? 'page' : undefined} onClick={() => (pick('media'), setFolderRaw(''), setRecent(true))}>
+                    <UiIcon name="timer" size={16} />
+                    <span className="ma-fname">Recent</span>
+                  </button>
+                )}
+                </span>
               ))}
             </nav>
             {section === 'media' && (
@@ -784,7 +814,7 @@ export function MediaArchive() {
                     </span>
                   ))}
                 </nav>
-                <h1 className="page-title">{folder ? leafOf(folder) : 'My files'}</h1>
+                <h1 className="page-title">{recent ? 'Recent' : folder ? leafOf(folder) : 'My files'}</h1>
               </div>
               <span className="ma-add">
                 <button type="button" className="btn primary" onClick={(e) => openMenu(e, newMenu)} aria-haspopup="menu">
@@ -892,22 +922,6 @@ export function MediaArchive() {
                 </span>
               </div>
             </div>
-            {folder === '' && !filtering && view !== 'time' && entries.length > 4 && profile?.showRecent !== false && (
-              <section className="ma-recent" aria-label="Recent files">
-                <span className="ma-group-h">Recent</span>
-                <div className="ma-recent-row">
-                  {[...entries]
-                    .sort((x, y) => y.at - x.at)
-                    .slice(0, 6)
-                    .map((en) => (
-                      <button key={'r-' + en.key} type="button" className="ma-recent-it" onClick={() => select(en.key, { shiftKey: false, metaKey: false, ctrlKey: false })} onDoubleClick={() => openE(en)}>
-                        <FileIcon kind={en.kind} size={26} label={false} sub={en.cls?.type} />
-                        <span className="ma-recent-t">{en.name}</span>
-                      </button>
-                    ))}
-                </div>
-              </section>
-            )}
             <div ref={filesRef} className={'ma-files' + (box ? ' boxing' : '')} onPointerDown={marquee} onContextMenu={(e) => !(e.target as HTMLElement).closest('[data-sel]') && openMenu(e, emptyMenu)}>
               {items === null || libTasks === null ? (
                 <Loader label="Opening your resources library" />
@@ -1091,7 +1105,7 @@ export function MediaArchive() {
         {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {toOrg && <ToOrgDialog d={toOrg} folders={orgFolders} me={{ uid: uid ?? '', name: user?.displayName || 'Teacher' }} onClose={() => setToOrg(null)} />}
-        {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
+        {moving && <MoveDialog folders={allFolders.filter((f) => !inClasses(f))} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
         {sharingLesson && !lessonWarned && (
         <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && setSharingLesson(null)}>
           <div className="dialog" role="alertdialog" aria-label="Share the lesson">
@@ -1147,7 +1161,7 @@ function MoveDialog({ folders, count, from, onClose, onMove }: { folders: string
           {['', ...folders].map((f) => (
             <button key={f || 'root'} type="button" role="radio" aria-checked={to === f} className={to === f ? 'on' : ''} style={{ ['--d' as string]: f ? f.split('/').length : 0 }} onClick={() => setTo(f)} onDoubleClick={() => onMove(f)}>
               {f ? <FolderIcon size={15} open={to === f} /> : <UiIcon name="archive" size={15} />}
-              {f ? leafOf(f) : 'Resources library'}
+              {f ? leafOf(f) : 'My files'}
             </button>
           ))}
         </div>
@@ -1267,7 +1281,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
       <label className="field">
         <span>Folder</span>
         <select value={item.folder} onChange={(e) => save({ folder: e.target.value })}>
-          <option value="">Resources library</option>
+          <option value="">My files</option>
           {folders.map((f) => (
             <option key={f} value={f}>
               {'\u00a0\u00a0'.repeat(f.split('/').length - 1)}
@@ -1442,6 +1456,27 @@ function BusyToast({ text, onClose }: { text: string; onClose: () => void }) {
     </div>,
     document.body,
   );
+}
+
+// The next item with the arrow keys, as laid out on the screen: left and right in order, up and
+// down to the nearest item in the row above or below.
+export function stepFrom(order: string[], from: string, key: string): string {
+  const i = order.indexOf(from);
+  if (key === 'ArrowLeft') return order[Math.max(0, i - 1)];
+  if (key === 'ArrowRight') return order[Math.min(order.length - 1, i + 1)];
+  const rect = (k: string) => document.querySelector(`[data-sel="${CSS.escape(k)}"]`)?.getBoundingClientRect();
+  const r0 = rect(from);
+  if (!r0) return from;
+  const down = key === 'ArrowDown';
+  let best = '';
+  let bestD = Infinity;
+  for (const k of order) {
+    const r = rect(k);
+    if (!r || (down ? r.top <= r0.top + 4 : r.top >= r0.top - 4)) continue;
+    const d = Math.abs(r.top - r0.top) * 4 + Math.abs(r.left + r.width / 2 - (r0.left + r0.width / 2));
+    if (d < bestD) (bestD = d), (best = k);
+  }
+  return best || from;
 }
 
 // A copy of a file into a folder of the organisation library.
