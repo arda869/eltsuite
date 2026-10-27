@@ -169,6 +169,21 @@ const J = {
     await axe(s.p, 'Messages', A11Y_FOUND);
     return s;
   },
+  'Timetable: a class added, and Rooms': async (b) => {
+    const s = await session(b);
+    await s.p.goto(`${BASE}/timetable`);
+    await see(s.p, '.ttb-week, .ttb-list', 'the timetable');
+    await s.p.click('.ttb-head button:has-text("New")');
+    await see(s.p, '.ttb-dialog', 'the new session dialog');
+    await s.p.fill('.ttb-dialog input[placeholder^="The lesson"], .ttb-dialog .field input:not([type])', 'Speaking club');
+    await s.p.click('.ttb-dialog button[type=submit]');
+    await see(s.p, '.ttb-ev:has-text("Speaking club"), .ttb-li:has-text("Speaking club")', 'the session in the week');
+    await axe(s.p, 'Timetable', A11Y_FOUND);
+    await s.p.goto(`${BASE}/rooms`);
+    await see(s.p, 'text=Class video rooms', 'Rooms');
+    await axe(s.p, 'Rooms', A11Y_FOUND);
+    return s;
+  },
   'Settings': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/settings`);

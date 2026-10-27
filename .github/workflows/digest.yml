@@ -24,7 +24,7 @@ jobs:
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
-          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/space.mjs "$RUNNER_TEMP/d/" && cd "$RUNNER_TEMP/d"
+          mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/space.mjs scripts/video.mjs "$RUNNER_TEMP/d/" && cd "$RUNNER_TEMP/d"
           npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 nodemailer@6 imapflow@1 mailparser@3 >/dev/null
           node space.mjs || echo "Space could not be measured this time."
           node video.mjs || echo "Video rooms could not be made this time."

@@ -24,6 +24,10 @@ import './styles.css';
 
 // Pages load when they are first opened, so the first screen comes up quickly.
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
+const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
+const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
+const LiveStartWatch = lazy(() => import('./components/LiveVideo').then((m) => ({ default: m.LiveStartWatch })));
+const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
 const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
 const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
 const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.SharedPage })));
@@ -131,6 +135,8 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
+          <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
+          <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/invite/:id" element={<InvitePage />} />
@@ -165,6 +171,8 @@ createRoot(document.getElementById('root')!).render(
         </PausedGate>
         <Suspense fallback={null}>
           <ChatDock />
+          <CallHost />
+          <LiveStartWatch />
         </Suspense>
         <AskHost />
         <MenuHost />

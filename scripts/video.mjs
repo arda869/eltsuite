@@ -42,3 +42,33 @@ for (const c of classes.docs) {
   made++;
 }
 console.log(`Video rooms: ${made} made or renewed.`);
+
+// Ready rooms for calls (chats, meetings, breakout rooms): the app takes one the moment a call
+// starts, as rooms can only be made here. Used rooms are deleted after a while and the stock is
+// topped up, so an old link never opens a new call.
+const POOL = Number(process.env.CALL_POOL || 24);
+const pool = db.collection('callRooms');
+const all = await pool.get();
+let gone = 0;
+for (const d of all.docs) {
+  const r = d.data();
+  const used = r.state === 'used' && Date.now() - (r.usedAt ?? 0) > 8 * 3600e3;
+  const old = r.state === 'free' && Date.now() - (r.at ?? 0) > 25 * DAY;
+  if (!used && !old) continue;
+  await api('/rooms/' + d.id, undefined, 'DELETE');
+  await d.ref.delete();
+  gone++;
+}
+const free = all.docs.filter((d) => d.data().state === 'free' && Date.now() - (d.data().at ?? 0) <= 25 * DAY).length;
+let added = 0;
+for (let i = free; i < POOL; i++) {
+  const name = 'r-' + [...crypto.getRandomValues(new Uint8Array(10))].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+  const room = await api('/rooms', { name, privacy: 'public', properties: { exp: Math.floor((Date.now() + 30 * DAY) / 1000), enable_screenshare: true, enable_chat: true, enable_prejoin_ui: false, max_participants: 40, enable_people_ui: true } });
+  if (!room.ok) {
+    console.log('A call room could not be made', room.status);
+    break;
+  }
+  await pool.doc(name).set({ name, url: room.j.url, state: 'free', at: Date.now() });
+  added++;
+}
+console.log(`Call rooms: ${added} added, ${gone} cleared, ${free + added} ready.`);

@@ -1,4 +1,5 @@
 import { VideoButton } from '../components/VideoCall';
+import { isNow, occurrences, useClassSessions, whenText as sessionWhen } from '../lib/sessions';
 import { tr, useClassTerms } from '../lib/terms';
 import { AccountNudge } from './SettingsPage';
 import { ThemeChoice } from '../lib/theme';
@@ -121,6 +122,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       .sort((a, b) => a.schedule!.at - b.schedule!.at)[0];
   }, [items, visible]);
   const soon = !!nextLesson && nextLesson.schedule!.at - Date.now() < 15 * 60000;
+  // The next class in the timetable, with its video room when it is online.
+  const sessions = useClassSessions(classId);
+  const nextSession = occurrences(sessions, Date.now() - 3 * 3600e3, Date.now() + 21 * 864e5).find((o) => o.end > Date.now());
   const showCall = !!c?.meeting?.url && (c.meeting.visibility === 'always' || !!liveNow || (c.meeting.visibility === 'before15' && soon));
   const nextLink = nextLesson?.schedule?.url || (c?.meeting?.url && (c.meeting.visibility === 'always' || soon) ? c.meeting.url : '');
 
@@ -208,7 +212,20 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
             </section>
           )}
 
-          {nextLesson && !liveNow && (
+          {nextSession && !liveNow && (!nextLesson || nextSession.start <= nextLesson.schedule!.at || nextSession.s.itemId === nextLesson.id) ? (
+            <section className={'live-card next-card' + (isNow(nextSession, 15) ? ' soon' : '')}>
+              {isNow(nextSession, 0) && <span className="live-dot" aria-hidden="true" />}
+              <span style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <span className="eyebrow accent">{isNow(nextSession, 0) ? 'Class now' : 'Next class'}</span>
+                <span style={{ fontFamily: 'var(--serif)', fontSize: 16 }}>{nextSession.s.title}</span>
+                <span className="hint">
+                  {sessionWhen(nextSession.start)} · {nextSession.s.online ? 'Online' : nextSession.s.place || 'In person'}
+                </span>
+              </span>
+              {nextSession.s.online && c?.video?.url && isNow(nextSession, 15) && <VideoButton c={c} name={name} />}
+              {nextSession.s.online && c?.video?.url && !isNow(nextSession, 15) && <span className="hint">The video opens 15 minutes before</span>}
+            </section>
+          ) : nextLesson && !liveNow && (
             <section className="live-card next-card">
               <span style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <span className="eyebrow accent">Next lesson</span>

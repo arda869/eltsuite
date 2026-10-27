@@ -145,6 +145,10 @@ function AppMark() {
             ? { name: libName(currentOrg()), to: '/library', color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', to: '/org-admin', color: '#5d6f80' }
+          : pathname.startsWith('/timetable')
+            ? { name: 'Timetable', to: '/timetable', color: '#8a6a4a' }
+          : pathname.startsWith('/rooms')
+            ? { name: 'Rooms', to: '/rooms', color: '#3b7f7a' }
           : pathname.startsWith('/settings')
             ? { name: 'Settings', to: '/settings', color: '#6b6560' }
             : pathname.startsWith('/notebook')

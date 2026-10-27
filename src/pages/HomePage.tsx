@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { isNow, occurrences, useTeacherSessions } from '../lib/sessions';
+import { startSession } from './TimetablePage';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
@@ -64,14 +66,18 @@ export function HomePage() {
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
   const unread = (chats ?? []).filter((c) => unreadIn(c, uid));
   const lessons = Object.values(items).reduce((n, l) => n + l.length, 0);
+  const sessions = useTeacherSessions(uid, active.map((c) => c.id));
   const coming = useMemo(
     () =>
       active
         .flatMap((c) => (items[c.id] ?? []).filter((i) => i.schedule?.at && i.schedule.at > Date.now() - 3600e3).map((i) => ({ c, i, at: i.schedule!.at })))
+        .filter(({ i }) => !sessions.some((x) => x.itemId === i.id))
         .sort((a, b) => a.at - b.at)
         .slice(0, 4),
-    [active, items],
+    [active, items, sessions],
   );
+  const upcoming = occurrences(sessions, Date.now() - 3 * 3600e3, Date.now() + 7 * 864e5).filter((o) => o.end > Date.now()).slice(0, 4);
+  const navigate = useNavigate();
   const due = useMemo(
     () =>
       active
@@ -149,10 +155,27 @@ export function HomePage() {
             <section className="hm-card" aria-labelledby="hm-coming">
               <header>
                 <h2 id="hm-coming">Coming up</h2>
-                <Link to="/classes" className="hm-more">All classes</Link>
+                <Link to="/timetable" className="hm-more">Timetable</Link>
               </header>
-              {coming.length || due.length ? (
+              {coming.length || due.length || upcoming.length ? (
                 <ol className="hm-agenda">
+                  {upcoming.map((o) => {
+                    const c = active.find((x) => x.id === o.s.classId);
+                    return (
+                      <li key={'s' + o.s.id + o.week} style={{ ['--cc' as string]: o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--ink)' }}>
+                        <span className="hm-time">{when(o.start)}</span>
+                        <span className="hm-what">
+                          <b>{o.s.title}</b>
+                          <span className="hint">{o.s.kind === 'class' ? `${c?.name ?? 'Class'}${o.s.online ? ' · online' : ''}` : 'Meeting'}</span>
+                        </span>
+                        {(o.s.online || o.s.kind === 'class') && (
+                          <button type="button" className={'btn small-btn' + (isNow(o) ? ' primary' : '')} onClick={() => void startSession(o, c, { uid, name: user?.displayName || 'Teacher' }, navigate)}>
+                            {isNow(o) ? 'Start' : 'Open'}
+                          </button>
+                        )}
+                      </li>
+                    );
+                  })}
                   {coming.map(({ c, i, at }) => (
                     <li key={c.id + i.id} style={{ ['--cc' as string]: theme(c.themeColor).accent }}>
                       <span className="hm-time">{when(at)}</span>

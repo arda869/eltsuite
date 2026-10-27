@@ -10,6 +10,7 @@ import { useOrgColleagues } from '../lib/admin';
 import { ChatView, NewChat } from '../pages/MessagesPage';
 import { IconLink, UiIcon } from './UiIcon';
 import { PersonFace } from './avatars';
+import { CallButtons } from './Rooms';
 
 // Messages on every screen, at the bottom right: a Messages tab that is always there, and any
 // number of chat windows beside it. Each window can be minimised to a tab, made large, or closed;
@@ -299,6 +300,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
             <WinIcon d="M14.5 5.5l4 4M4 20l1-4.5L15.5 5a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L8.5 19z" />
           </button>
         )}
+        {cur && dir && !isSelf(cur) && <CallButtons c={cur} me={dir.me} compact />}
         <span className="dock-sep" aria-hidden="true" />
         <button type="button" className="icon-btn dock-ic" onClick={() => go('min')} aria-label="Minimise" data-tip="Minimise">
           <WinIcon d="M5 12h14" />

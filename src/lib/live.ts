@@ -21,6 +21,8 @@ export type LiveState = {
   poll?: { id: string; q: import('./survey').SurveyQ; anonymous: boolean; open: boolean; at: number } | null; // a quick live poll
   quiz?: boolean | null; // a team quiz is running (details in the Realtime Database)
   board?: { open: boolean; page: string } | null; // the lesson board, and the page the teacher is on
+  video?: boolean | null; // the teacher is in the class video room: learners are asked to join
+  videoRooms?: Record<string, { url: string; name: string }> | null; // breakout video rooms, by group of the group set in use
   startedAt?: Timestamp;
   updatedAt?: Timestamp;
 };

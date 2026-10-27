@@ -1,5 +1,5 @@
 import { NSelect } from '../components/Select';
-import { VideoButton } from '../components/VideoCall';
+import { TeacherLiveVideo } from '../components/LiveVideo';
 import { setActivity } from '../lib/status';
 import { tr, useClassTerms } from '../lib/terms';
 import { LIVE_BEAT } from '../lib/live';
@@ -712,7 +712,7 @@ export function LessonEditor() {
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
         <span className="icon-row tb-icons">
-        {c && !viewer && <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />}
+        {c && !viewer && <TeacherLiveVideo c={c} live={live} teachingHere={teachingHere} groupSets={groupSets} itemId={itemId} />}
         {NOTEBOOK && <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />

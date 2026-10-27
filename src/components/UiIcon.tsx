@@ -48,6 +48,8 @@ const P: Record<string, ReactNode> = {
   mic: <><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" /></>,
   music: <><path d="M9 17.5V6l10-2v11.5" strokeLinejoin="round" /><circle cx="6.8" cy="17.5" r="2.2" /><circle cx="16.8" cy="15.5" r="2.2" /></>,
   video: <><rect x="3.5" y="6" width="12.5" height="12" rx="2" /><path d="M16 10.5l4.5-3v9l-4.5-3" strokeLinejoin="round" /></>,
+  phone: <path d="M7.2 3.8 9.4 4.4a1 1 0 0 1 .7.8l.6 3a1 1 0 0 1-.4 1l-1.6 1.2a11 11 0 0 0 5 5l1.2-1.6a1 1 0 0 1 1-.4l3 .6a1 1 0 0 1 .8.7l.6 2.2a1.5 1.5 0 0 1-1.2 1.9C11 20.4 3.6 13 4.1 5a1.5 1.5 0 0 1 1.9-1.2z" strokeLinejoin="round" />,
+  calendar: <><rect x="4" y="5.5" width="16" height="14.5" rx="2" /><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" /></>,
   bell: <><path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z" strokeLinejoin="round" /><path d="M10 20.5h4" /></>,
   beep: <><circle cx="12" cy="12" r="2" /><path d="M8 8.5a5 5 0 0 0 0 7M16 8.5a5 5 0 0 1 0 7" /></>,
   silence: <path d="M9.5 7v10M14.5 7v10" />,

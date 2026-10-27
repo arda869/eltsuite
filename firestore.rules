@@ -494,6 +494,30 @@ service cloud.firestore {
       }
     }
 
+    // Ready video rooms (made by scripts/video.mjs). Anyone signed in takes a free one for a call;
+    // nobody else can make, change or remove them.
+    match /callRooms/{id} {
+      allow read: if signedIn();
+      allow update: if signedIn() && resource.data.state == 'free' && request.resource.data.state == 'used'
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'by', 'usedAt', 'for']);
+    }
+    // The timetable: classes, meetings and one-to-ones. A class's sessions are seen by its
+    // teachers and learners; a meeting by the people invited.
+    function sessionReader(d) {
+      return signedIn() && (d.owner == request.auth.uid || request.auth.uid in d.get('attendees', [])
+        || (d.get('classId', null) is string && (viewsClass(d.classId) || (learnerAccount() && myClass() == d.classId))));
+    }
+    match /sessions/{id} {
+      allow read: if sessionReader(resource.data);
+      allow create: if isTeacher() && request.resource.data.owner == request.auth.uid
+        && (request.resource.data.get('classId', null) == null || teachesClass(request.resource.data.classId));
+      allow update: if signedIn() && (resource.data.owner == request.auth.uid
+        || (resource.data.get('classId', null) is string && teachesClass(resource.data.classId))
+        || (request.auth.uid in resource.data.get('attendees', []) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['live'])));
+      allow delete: if signedIn() && (resource.data.owner == request.auth.uid || (resource.data.get('classId', null) is string && teachesClass(resource.data.classId)));
+    }
+
     // Messages. A person's key is a teacher's sign-in id or a learner's learner id. Only the
     // people in a chat can read it: messages are private, teachers included.
     function chatKey() {

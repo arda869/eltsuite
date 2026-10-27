@@ -1,3 +1,4 @@
+import { CallButtons } from '../components/Rooms';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
 import { ask } from '../lib/ask';
@@ -331,6 +332,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           <b data-tip={c.kind === 'dm' && !isSelf(c) ? whoLine(dir, c.members.find((k) => k !== me.key), c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'teacher' : 'learner') : undefined}>{title}</b>
           <span className="hint">{isSelf(c) ? (teacher ? 'Only you can see this' : 'Notes for yourself. Your teacher can see class chats') : c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : whoLine(dir, c.members.find((k) => k !== me.key), c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'teacher' : 'learner')}</span>
         </span>
+        {!isSelf(c) && onMin && <CallButtons c={c} me={me} />}
         {c.kind === 'group' && (
           <button type="button" className="btn small-btn" onClick={() => setSettings((s) => !s)}>
             Group

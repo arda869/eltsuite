@@ -1,3 +1,4 @@
+import { LearnerLiveVideo } from '../components/LiveVideo';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
 import { InstrView } from '../editor/InstrEditor';
@@ -368,6 +369,7 @@ export function LearnerLesson() {
       </header>
 
       <AnnouncementCards classId={classId} learnerId={learnerId} />
+      <LearnerLiveVideo c={c} live={live} myRoomId={myRoom?.id} itemId={itemId} />
       {NOTEBOOK && nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
       {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}
       {liveHere && live?.poll && user && <PollCard classId={classId} poll={live.poll} me={{ uid: user.uid, learnerId, name: profile?.role === 'learner' ? profile.displayName : '' }} />}
