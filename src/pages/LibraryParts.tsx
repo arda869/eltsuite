@@ -199,7 +199,7 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
   const by = (k: string) => items.filter((i) => i.kind === k).length;
   const rows: [string, number][] = [
     ['Pictures', by('image')],
-    ['Sounds', by('audio')],
+    ['Recordings', by('audio')],
     ['Videos', by('video')],
     ['Tasks', tasks.length],
     ['Folders', folders.length],

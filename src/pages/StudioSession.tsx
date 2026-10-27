@@ -186,11 +186,6 @@ export function StudioSession() {
   if (editing && host)
     return (
       <div className="studio studio-dark">
-        <header className="studio-bar">
-          <Wordmark />
-          <span className="studio-app">Sound editor</span>
-          <span className="studio-where">{s.title || 'Recording session'} · round {round}</span>
-        </header>
         <main className="studio-sound">
           {saved ? (
             <div className="studio-done">
@@ -290,7 +285,7 @@ export function StudioSession() {
               )}
               {s.state === 'stopped' && round > 0 && (
                 <button type="button" className="btn ss-big" onClick={() => void openEditor()} disabled={!roundTakes.length}>
-                  Open in the Sound editor{roundTakes.length < expected.length ? ` (${roundTakes.length} of ${expected.length} in)` : ''}
+                  Open in the Recording editor{roundTakes.length < expected.length ? ` (${roundTakes.length} of ${expected.length} in)` : ''}
                 </button>
               )}
             </span>

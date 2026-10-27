@@ -35,7 +35,7 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
   const a = node.attrs as MediaAttrs;
   const [dialog, setDialog] = useState<MediaTab | null>(null);
   const [script, setScript] = useState(false);
-  const label = a.kind === 'video' ? 'Video' : 'Sound';
+  const label = a.kind === 'video' ? 'Video' : 'Recording';
   return (
     <NodeViewWrapper className={'block-node md-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">

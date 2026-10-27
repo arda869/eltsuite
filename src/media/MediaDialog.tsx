@@ -37,12 +37,12 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     if (snd) void open(snd);
   };
   const open = async (f: File) => {
-    setBusy('Opening the sound…');
+    setBusy('Opening the recording…');
     try {
       const buffer = await decodeSound(f);
       if (buffer.duration > MAX_MIN * 60) return setBusy(`That is ${Math.round(buffer.duration / 60)} minutes long. Sounds can be up to ${MAX_MIN} minutes: trim it first, or use a link.`);
       setBusy('');
-      setSource({ buffer, name: f.name.replace(/\.[a-z0-9]+$/i, '') || 'Sound', file: f });
+      setSource({ buffer, name: f.name.replace(/\.[a-z0-9]+$/i, '') || 'Recording', file: f });
     } catch {
       setBusy('That file could not be opened as a sound. Try an MP3, M4A or WAV file.');
     }
@@ -95,7 +95,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
   const editing = !!source;
   if (source)
     return createPortal(
-      <div className="sx-full" role="dialog" aria-label="Sound editor" onKeyDown={(e) => e.stopPropagation()}>
+      <div className="sx-full" role="dialog" aria-label="Recording editor" onKeyDown={(e) => e.stopPropagation()}>
         <SoundEditor
           source={source}
           classId={classId}
@@ -111,7 +111,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     <div className="scrim" onClick={editing ? undefined : onClose}>
       <div className="dialog md-dialog" role="dialog" aria-label="Add a sound or video" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <div className="pic-dialog-head">
-          <h2 style={{ margin: 0 }}>{editing ? 'Edit the sound' : onPictures ? 'Add media' : 'Add a sound or video'}</h2>
+          <h2 style={{ margin: 0 }}>{editing ? 'Edit the recording' : onPictures ? 'Add media' : 'Add a recording or video'}</h2>
           {editing && (
             <button type="button" className="btn link" onClick={onClose}>
               Cancel
@@ -143,7 +143,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
               role="button"
               tabIndex={0}
             >
-              <strong>{onPictures ? 'Choose pictures or a sound' : 'Choose a sound file'}</strong>
+              <strong>{onPictures ? 'Choose pictures or a recording' : 'Choose a recording or sound file'}</strong>
               <span className="hint">{onPictures ? `Pictures (JPG, PNG) go straight in. Sounds (MP3, M4A, WAV, up to ${MAX_MIN} minutes) open in the editor to trim and clean up. Or drop files here.` : `MP3, M4A, WAV or OGG, up to ${MAX_MIN} minutes. You can trim it, clean it up and make it smaller next.`}</span>
               <input ref={file} type="file" accept={onPictures ? 'image/*,audio/*,video/*' : 'audio/*,video/*'} multiple={!!onPictures} hidden onChange={(e) => (e.target.files && take2(e.target.files), (e.target.value = ''))} />
             </div>

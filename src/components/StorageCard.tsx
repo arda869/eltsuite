@@ -10,7 +10,7 @@ export function StorageCard({ uid }: { uid: string }) {
   const media = (k: string) => items.filter((i) => i.kind === k).reduce((s, i) => s + (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0), 0);
   const parts: [string, number, string][] = [
     ['Pictures', media('image'), 'k-image'],
-    ['Sounds', media('audio'), 'k-audio'],
+    ['Recordings', media('audio'), 'k-audio'],
     ['Videos', media('video'), 'k-video'],
     ['Collaborative files', (mine ?? []).reduce((s, d) => s + (d.size ?? 0), 0), 'k-docs'],
   ];

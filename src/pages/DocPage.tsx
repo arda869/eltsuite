@@ -1,3 +1,4 @@
+import { Mark } from '../components/Wordmark';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -110,8 +111,11 @@ export function DocPage() {
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
         <Link to={profile?.role === 'learner' ? '/' : '/archive?s=docs'} className="dp-home" aria-label="Back to ELT Suite">
-          <DocIcon kind={kind} />
+          <Mark size={30} />
         </Link>
+        <span className="dp-kind" aria-hidden="true">
+          <DocIcon kind={kind} />
+        </span>
         <span className="dp-names">
           {canRename ? (
             <input className="dp-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />

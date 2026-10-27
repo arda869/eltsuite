@@ -6081,3 +6081,46 @@ select.type-pick[data-type='practice'] { --tc: #a8701f; }
   .sx-bar .btn { padding: 0 12px; }
 }
 @media (max-width: 900px) { .sx-start { left: 168px; } .sx-start span { display: none; } .sx-start strong { font-size: 15px; } }
+.sx-bar { position: relative; }
+.sx-savepop { position: absolute; z-index: 40; top: calc(100% + 6px); right: 16px; width: 300px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: #24221f; box-shadow: 0 0 0 1px #3a3733, 0 18px 40px rgba(0, 0, 0, .5); color: var(--studio-ink); }
+.sx-savepop strong { font: 600 13px var(--sans); }
+.sx-qs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.sx-qs button { height: 34px; border: 1px solid #3a3733; border-radius: 8px; background: #2a2825; color: var(--studio-ink); font: 500 13px var(--sans); cursor: pointer; }
+.sx-qs button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 26%, #2a2825); color: #fff; }
+.studio:has(.sx) { position: fixed; inset: 0; min-height: 0; background: #171615; }
+.studio:has(.sx) .studio-sound { flex: 1; min-height: 0; }
+.studio-sound > .sx { min-height: 0; height: 100%; }
+.sx-full > .sx { min-height: 0; height: 100%; }
+.sx-acts { display: inline-flex; align-items: stretch; gap: 2px; }
+.sx-act { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 58px; height: 46px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--studio-ink); cursor: pointer; }
+.sx-act span { font: 600 10.5px var(--sans); letter-spacing: .02em; color: var(--studio-dim); }
+.sx-act:hover:not(:disabled) { background: #2a2825; }
+.sx-act:hover:not(:disabled) span { color: var(--studio-ink); }
+.sx-act:disabled { opacity: .35; cursor: default; }
+.sx-act.primary { color: var(--accent-text); }
+.sx-act.primary span { color: var(--accent-text); }
+.sx-act.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, #1b1a18); }
+.sx-bar { padding-top: 6px; padding-bottom: 6px; }
+@media (max-width: 900px) { .sx-act { min-width: 48px; padding: 0 4px; } }
+.sx-suite { text-decoration: none; flex: none; }
+.suite-mark.dark { color: var(--studio-ink); }
+.suite-mark.dark .suite-k { color: var(--studio-dim); }
+.suite-mark.dark b { font-size: 17px; }
+.sx-sep { width: 1px; height: 28px; background: var(--studio-line); flex: none; }
+.dp-home { width: auto; padding: 0 4px; }
+.dp-kind { display: grid; place-items: center; color: var(--dp); }
+@media (max-width: 900px) { .sx-suite .suite-mark > span { display: none; } }
+.sx-act.on { background: #2a2825; }
+.sx-keys { position: absolute; z-index: 45; top: calc(100% + 6px); right: 16px; width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 120px); overflow-y: auto; padding: 16px 18px; border-radius: 14px; background: #24221f; box-shadow: 0 0 0 1px #3a3733, 0 18px 40px rgba(0, 0, 0, .5); color: var(--studio-ink); }
+.sx-keys-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sx-keys-h strong { font: 500 18px var(--serif); }
+.sx-x { width: 28px; height: 28px; border: 0; border-radius: 8px; background: none; color: var(--studio-dim); font-size: 20px; cursor: pointer; }
+.sx-x:hover { background: #2f2d29; color: #fff; }
+.sx-keys-grid { columns: 2 300px; column-gap: 28px; }
+.sx-keys-grid section { break-inside: avoid; margin-bottom: 14px; }
+.sx-keys-grid h5 { margin: 0 0 6px; font: 700 10.5px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--accent-text); }
+.sx-key { display: flex; align-items: center; gap: 10px; padding: 3px 0; font-size: 13px; }
+.sx-kbd { display: inline-flex; gap: 3px; min-width: 104px; }
+.sx-kbd kbd { min-width: 20px; padding: 2px 6px; border-radius: 5px; background: #33302c; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .35); font: 600 11px ui-monospace, Menlo, monospace; color: #fff; text-align: center; }
+.sx.sil-mode .sx-lane, .sx.sil-mode .sx-clip { cursor: col-resize !important; }
+.sx .btn.sx-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 26%, #2a2825); color: #fff; }

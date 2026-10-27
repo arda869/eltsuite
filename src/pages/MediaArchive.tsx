@@ -37,7 +37,7 @@ import { uploadPicture, type PicQuality } from '../editor/PackNode';
 const FREE = 1024 * 1024 * 1024;
 const KINDS = [
   { k: 'image', label: 'Pictures', icon: 'picture' },
-  { k: 'audio', label: 'Sounds', icon: 'music' },
+  { k: 'audio', label: 'Recordings', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd';
@@ -420,8 +420,9 @@ export function MediaArchive() {
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'PD reading', icon: 'notebook', onClick: () => void makeDoc('pd') },
     'sep',
-    { label: 'Recording, with colleagues', icon: 'mic', onClick: () => setTogether(true) },
-    { label: 'Pictures, sounds or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
+    { label: 'Recording', icon: 'mic', onClick: () => setDialog({ tab: 'record' }) },
+    { label: 'Recording, with colleagues', icon: 'person', onClick: () => setTogether(true) },
+    { label: 'Pictures, recordings or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
   ];
   const emptyMenu: MenuItem[] = [
     ...newMenu,
@@ -1199,7 +1200,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
         </button>
         {item.kind === 'audio' && !item.link && item.home && !phone && (
           <button type="button" className="btn small-btn" onClick={() => openStudio('sound', item.id)}>
-            <UiIcon name="edit" size={14} /> Sound editor
+            <UiIcon name="edit" size={14} /> Recording editor
           </button>
         )}
         <button type="button" className="btn small-btn" onClick={() => setSharing(true)}>

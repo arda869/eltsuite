@@ -13,7 +13,7 @@ const LOOK: Record<FileKind, { icon: string; label: string }> = {
   flash: { icon: 'pick', label: 'Cards' },
   pd: { icon: 'notebook', label: 'Reading' },
   image: { icon: 'picture', label: 'Picture' },
-  audio: { icon: 'music', label: 'Sound' },
+  audio: { icon: 'music', label: 'Recording' },
   video: { icon: 'video', label: 'Video' },
   link: { icon: 'link', label: 'Link' },
   media: { icon: 'picture', label: 'Media' },

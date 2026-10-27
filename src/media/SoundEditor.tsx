@@ -7,6 +7,7 @@ import { cleanNoise } from '../lib/soundJobs';
 import { archiveAdd, formatBytes, saveSound, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
+import { SuiteMark } from '../components/Wordmark';
 import { UiIcon } from '../components/UiIcon';
 
 // The Sound editor, laid out like audio software. Voice tracks hold clips: split them (Ctrl B),
@@ -267,12 +268,8 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     }));
   };
   // Silence at the playhead pushes everything after it along, and shows as its own clip.
-  const insertSilence = (d: number) => {
-    const t = head;
-    if (!sources.current.silence) addSource('silence', new Float32Array(Math.round(rate * 120)), 'Silence');
-    const target = pickedTrack?.kind === 'voice' ? pickedTrack.id : p.tracks.find((tr) => tr.kind === 'voice')?.id;
-    const sil: Clip = { id: newId(), src: 'silence', a: 0, b: d, at: t, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
-    edit((x) => ({
+  // Silence at a point: everything after it moves along, and clips there are split.
+  const withSilence = (x: Project, t: number, d: number, target: string | undefined, sil: Clip): Project => ({
       ...x,
       tracks: x.tracks.map((tr) => ({
         ...tr,
@@ -290,10 +287,19 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         ],
       })),
       lines: x.lines.map((l) => (l.a >= t ? { ...l, a: l.a + d, b: l.b + d } : l.b > t ? { ...l, b: l.b + d } : l)),
-    }));
+  });
+  const silTrack = (want?: string) => (want && p.tracks.find((t) => t.id === want && t.kind === 'voice') ? want : pickedTrack?.kind === 'voice' ? pickedTrack.id : p.tracks.find((tr) => tr.kind === 'voice')?.id);
+  const insertSilence = (d: number, t = head, want?: string) => {
+    if (!sources.current.silence) addSource('silence', new Float32Array(Math.round(rate * 120)), 'Silence');
+    const target = silTrack(want);
+    const sil: Clip = { id: newId(), src: 'silence', a: 0, b: d, at: t, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
+    edit((x) => withSilence(x, t, d, target, sil));
     if (target) setPick({ kind: 'clip', track: target, id: sil.id });
   };
-  const [silLen, setSilLen] = useState(1);
+  // The silence tool: press where it goes and drag right; everything after it moves along as you drag.
+  const [silMode, setSilMode] = useState(false);
+  const [gap, setGap] = useState<{ t: number; d: number; track?: string } | null>(null);
+  const [keysOpen, setKeysOpen] = useState(false);
   const removePicked = () => {
     // Taking out a silence closes the gap it made.
     if (pick?.kind === 'clip' && pickedClip?.src === 'silence') {
@@ -476,6 +482,8 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   };
   // Record a new track while everything else plays (wear headphones).
   const [rec, setRec] = useState<{ at: number; started: number } | null>(null);
+  const [saveAsk, setSaveAsk] = useState<'new' | 'replace' | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const [mic, setMic] = useState({ device: '', noise: true, echo: true, auto: false });
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => void navigator.mediaDevices?.enumerateDevices?.().then((l) => setMics(l.filter((d) => d.kind === 'audioinput'))).catch(() => {}), []);
@@ -600,6 +608,23 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       if (el.closest('input, textarea, select, [contenteditable=true]')) return;
       const mod = e.metaKey || e.ctrlKey;
       const k = e.key.toLowerCase();
+      const clipOf = pickedClip && pickedTrack ? { c: pickedClip, t: pickedTrack } : null;
+      const edges = [0, ...p.tracks.flatMap((t) => t.clips.flatMap((c) => [c.at, clipEnd(c)])), ...p.lines.flatMap((l) => [l.a, l.b])].sort((a, b) => a - b);
+      if (e.key === '?' || (mod && e.key === '/')) return e.preventDefault(), setKeysOpen((v) => !v);
+      if (e.code === 'Space' && e.shiftKey && sel && !rec) return e.preventDefault(), playFrom(sel.a, sel.b);
+      if (mod && k === 's') return e.preventDefault(), hasSound && setSaveAsk(replace ? 'replace' : 'new');
+      if (mod && k === 'a') return e.preventDefault(), setSel({ a: 0, b: total });
+      if (mod && e.shiftKey && k === 'x' && sel) return e.preventDefault(), keepRange(sel.a, sel.b);
+      if (!mod && k === 'g') return setSilMode((v) => !v);
+      if (!mod && k === 'i') return setSel((x) => ({ a: head, b: Math.max(head + 0.05, x?.b ?? total) }));
+      if (!mod && k === 'o') return setSel((x) => ({ a: Math.min(x?.a ?? 0, head - 0.05), b: head }));
+      if (!mod && e.key === ',') return setHead((h) => Math.max(0, h - 0.1));
+      if (!mod && e.key === '.') return setHead((h) => Math.min(total, h + 0.1));
+      if (!mod && e.key === '[') return setHead((h) => [...edges].reverse().find((x) => x < h - 0.01) ?? 0);
+      if (!mod && e.key === ']') return setHead((h) => edges.find((x) => x > h + 0.01) ?? total);
+      if (!mod && e.key === '0') return setZoom(1);
+      if (!mod && k === 'f' && clipOf) return setClip(clipOf.t.id, clipOf.c.id, e.shiftKey ? { fadeOut: clipOf.c.fadeOut ? 0 : Math.min(0.5, clipLen(clipOf.c) / 3) } : { fadeIn: clipOf.c.fadeIn ? 0 : Math.min(0.5, clipLen(clipOf.c) / 3) });
+      if (e.key === 'Escape' && (silMode || keysOpen || saveAsk)) return setSilMode(false), setKeysOpen(false), setSaveAsk(null);
       if (e.code === 'Space') e.preventDefault(), e.stopPropagation(), rec ? (cueLines.length ? nextCue() : stopRec()) : toggle();
       else if (mod && k === 'z') e.preventDefault(), e.shiftKey ? redo() : undo();
       else if (mod && k === 'y') e.preventDefault(), redo();
@@ -736,8 +761,27 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     return near ?? t;
   };
 
+  const silenceDown = (e: React.PointerEvent, track?: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!sources.current.silence) addSource('silence', new Float32Array(Math.round(rate * 120)), 'Silence');
+    const t0 = Math.max(0, snap(T(e.clientX), e.altKey, []));
+    const x0 = e.clientX;
+    setGap({ t: t0, d: 0, track });
+    const mv = (ev: PointerEvent) => setGap({ t: t0, d: Math.round(Math.max(0, Math.min(120, (ev.clientX - x0) / pps)) * 20) / 20, track });
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      const d = Math.round(Math.max(0, (ev.clientX - x0) / pps) * 20) / 20;
+      setGap(null);
+      if (d >= 0.05) insertSilence(Math.min(120, d), t0, track);
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
   const backgroundDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    if (silMode) return silenceDown(e, (e.currentTarget as HTMLElement).closest('[data-track]')?.getAttribute('data-track') ?? undefined);
     const t0 = T(e.clientX);
     const x0 = e.clientX;
     let moved = false;
@@ -763,6 +807,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   // Dragging a clip: the middle moves it; the sides trim it; the top corners set its fades.
   const clipDown = (tr: Track, c: Clip, mode: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    if (silMode) return silenceDown(e, tr.kind === 'voice' ? tr.id : undefined);
     e.stopPropagation();
     setPick({ kind: 'clip', track: tr.id, id: c.id });
     setSel(null);
@@ -858,50 +903,97 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       </div>
     );
 
-  const voice = p.tracks.filter((t) => t.kind === 'voice');
+  const pv = gap && gap.d > 0 ? withSilence(p, gap.t, gap.d, silTrack(gap.track), { id: 'gap', src: 'silence', a: 0, b: gap.d, at: gap.t, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 }) : p;
+  const voice = pv.tracks.filter((t) => t.kind === 'voice');
   const hasSound = total >= 0.2 && p.tracks.some((t) => t.clips.length);
   const fresh = !voice.some((t) => t.clips.length);
-  const sfxTracks = p.tracks.filter((t) => t.kind === 'sfx');
+  const sfxTracks = pv.tracks.filter((t) => t.kind === 'sfx');
   const pickedLabel = pickedClip ? names.current[pickedClip.src] ?? 'Clip' : '';
   const rulerStep = STEPS.find((s) => s * pps >= 70) ?? 600;
   const ticks: number[] = [];
   for (let t = Math.floor(scroll / pps / rulerStep) * rulerStep; t <= (scroll + vw) / pps + rulerStep; t += rulerStep) ticks.push(+t.toFixed(3));
 
   return (
-    <div className="daw sx">
+    <div className={'daw sx' + (silMode ? ' sil-mode' : '')}>
       <div className="sx-bar">
-        <span className="sx-mark" aria-hidden="true">
-          <UiIcon name="mic" size={16} />
-        </span>
-        <input className="sx-name" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name the sound" aria-label="Name" />
+        <a href="/archive" className="sx-suite" aria-label="ELT Suite" onClick={(e) => e.preventDefault()}>
+          <SuiteMark app="Recording editor" color="#e9a77d" dark />
+        </a>
+        <span className="sx-sep" aria-hidden="true" />
+        <input ref={nameRef} className="sx-name" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name the recording" aria-label="Name" />
         <span style={{ flex: 1 }} />
-        <span className="sx-q">
-          <span className="seg small-seg" role="radiogroup" aria-label="Quality">
-            {SOUND_QUALITY.map((q) => (
-              <button key={q.k} type="button" role="radio" aria-checked={quality === q.k} className={quality === q.k ? 'on' : ''} onClick={() => setQuality(q.k)}>
-                {q.label}
-              </button>
-            ))}
-          </span>
-          <span className="sx-size">{hasSound ? formatBytes(est) : ''}</span>
-        </span>
         {error && <span className="hint warn">{error}</span>}
-        <button type="button" className="btn sx-ghost" onClick={onBack}>
-          {backLabel}
-        </button>
-        {replace ? (
-          <>
-            <button type="button" className="btn sx-ghost" onClick={save} disabled={!hasSound}>
-              Save as a new sound
-            </button>
-            <button type="button" className="btn primary" onClick={askReplace} disabled={!hasSound}>
-              Replace this sound…
-            </button>
-          </>
-        ) : (
-          <button type="button" className="btn primary" onClick={save} disabled={!hasSound}>
-            Save
+        <span className="sx-acts">
+          <button type="button" className={'sx-act' + (keysOpen ? ' on' : '')} onClick={() => setKeysOpen((v) => !v)} aria-expanded={keysOpen}>
+            <UiIcon name="help" size={18} />
+            <span>Shortcuts</span>
           </button>
+          <button type="button" className="sx-act" onClick={() => nameRef.current?.select()}>
+            <UiIcon name="edit" size={18} />
+            <span>Rename</span>
+          </button>
+          <button type="button" className="sx-act" onClick={onBack} data-tip={backLabel}>
+            <UiIcon name="trash" size={18} />
+            <span>Discard</span>
+          </button>
+          {replace && (
+            <button type="button" className="sx-act" onClick={() => setSaveAsk('new')} disabled={!hasSound}>
+              <UiIcon name="copyall" size={18} />
+              <span>Save as</span>
+            </button>
+          )}
+          <button type="button" className="sx-act primary" onClick={() => setSaveAsk(replace ? 'replace' : 'new')} disabled={!hasSound}>
+            <UiIcon name="check" size={18} />
+            <span>Save</span>
+          </button>
+        </span>
+        {keysOpen && (
+          <div className="sx-keys" role="dialog" aria-label="Shortcuts">
+            <span className="sx-keys-h">
+              <strong>Shortcuts</strong>
+              <button type="button" className="sx-x" onClick={() => setKeysOpen(false)} aria-label="Close">
+                ×
+              </button>
+            </span>
+            <div className="sx-keys-grid">
+              {KEYS.map(([g, list]) => (
+                <section key={g}>
+                  <h5>{g}</h5>
+                  {list.map(([k, what]) => (
+                    <span key={k + what} className="sx-key">
+                      <span className="sx-kbd">
+                        {k.split(' ').map((x, i) => (
+                          <kbd key={i}>{x}</kbd>
+                        ))}
+                      </span>
+                      <span>{what}</span>
+                    </span>
+                  ))}
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
+        {saveAsk && (
+          <div className="sx-savepop" role="dialog" aria-label="Save the recording">
+            <strong>Quality</strong>
+            <span className="sx-qs" role="radiogroup" aria-label="Quality">
+              {SOUND_QUALITY.map((q) => (
+                <button key={q.k} type="button" role="radio" aria-checked={quality === q.k} className={quality === q.k ? 'on' : ''} onClick={() => setQuality(q.k)}>
+                  {q.label}
+                </button>
+              ))}
+            </span>
+            <span className="hint">About {formatBytes(est)}. {SOUND_QUALITY.find((q) => q.k === quality)?.about}.</span>
+            <span className="cd-card-btns">
+              <button type="button" className="btn small-btn sx-ghost" onClick={() => setSaveAsk(null)}>
+                Back
+              </button>
+              <button type="button" className="btn small-btn primary" onClick={() => (setSaveAsk(null), saveAsk === 'replace' ? askReplace() : save())}>
+                {saveAsk === 'replace' ? 'Save over the old one' : replace ? 'Save as a new recording' : 'Save'}
+              </button>
+            </span>
+          </div>
         )}
       </div>
       {/* Transport */}
@@ -1018,7 +1110,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                   </span>
                   <input className="sx-tvol" type="range" min={0} max={2} step={0.05} value={tr.gain} onClick={(e) => e.stopPropagation()} onChange={(e) => setTrack(tr.id, { gain: Number(e.target.value) }, 'tg' + tr.id)} aria-label={`${tr.name} volume`} />
                 </span>
-                <span className="sx-lane" onPointerDown={backgroundDown}>
+                <span className="sx-lane" data-track={tr.id} onPointerDown={backgroundDown}>
                   {tr.clips.map((c) => (
                     <ClipView key={c.id} c={c} kind="voice" data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} />
                   ))}
@@ -1056,7 +1148,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                 </button>
               </span>
               <span className="sx-lane" onPointerDown={backgroundDown}>
-                {p.lines.map((l) => (
+                {pv.lines.map((l) => (
                   <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' empty')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
                     <span className="sx-edge l" onPointerDown={lineDown(l, 'l')} />
                     <span className="sx-line-t">
@@ -1251,18 +1343,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             </>
           )}
           <div className="sx-adds">
-            <span className="sx-sil">
-              <button type="button" className="btn small-btn" onClick={() => insertSilence(silLen)} data-tip="Adds silence at the playhead and moves the rest along">
-                <UiIcon name="silence" size={13} /> Silence
-              </button>
-              <select value={silLen} onChange={(e) => setSilLen(Number(e.target.value))} aria-label="Length of silence">
-                {[0.5, 1, 2, 3, 5, 10, 20, 30].map((x) => (
-                  <option key={x} value={x}>
-                    {x} s
-                  </option>
-                ))}
-              </select>
-            </span>
+            <button type="button" className={'btn small-btn' + (silMode ? ' sx-on' : '')} onClick={() => setSilMode((v) => !v)} aria-pressed={silMode} data-tip="Then press on a track and drag right (G)">
+              <UiIcon name="silence" size={13} /> {silMode ? 'Adding silence' : 'Add silence'}
+            </button>
             <button type="button" className="btn small-btn" onClick={() => fileIn.current?.click()}>
               <UiIcon name="upload" size={13} /> Bring in sounds
             </button>
@@ -1276,7 +1359,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         </aside>
       </div>
 
-      <span className="hint daw-keys">Space play · Ctrl B split · Delete remove · Ctrl D duplicate · Ctrl C / V copy and paste · Ctrl Z undo · R record · T add a line · M mute · S solo · L loop · + − zoom · Alt while dragging: no snapping</span>
+      <span className="hint daw-keys">{silMode ? 'Adding silence: press on a track where it should go and drag right. Esc to stop.' : 'Press ? for every shortcut'}</span>
       {asking && (
         <div className="sed-replace" role="alertdialog" aria-label="Replace this sound?" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
           <strong>Replace “{replace?.name}” everywhere?</strong>
@@ -1435,3 +1518,11 @@ function SfxMenu({ onAdd, onHear, mine = [] }: { onAdd: (k: string) => void; onH
     </span>
   );
 }
+
+const KEYS: [string, [string, string][]][] = [
+  ['Play and move', [['Space', 'Play or stop'], ['Shift Space', 'Play the selection'], ['Home', 'To the start'], ['End', 'To the end'], ['←', 'Back 1 second'], ['→', 'Forward 1 second'], ['Shift ←', 'Back 5 seconds'], ['Shift →', 'Forward 5 seconds'], [',', 'Back a tenth of a second'], ['.', 'Forward a tenth of a second'], ['[', 'To the edge before'], [']', 'To the edge after'], ['L', 'Loop the selection']]],
+  ['Record', [['R', 'Record or stop'], ['Space', 'While reading a script: the next line'], ['T', 'Add a script line at the playhead']]],
+  ['Edit', [['Ctrl B', 'Split at the playhead'], ['Delete', 'Remove the clip, or cut out the selection'], ['Ctrl D', 'Duplicate the clip'], ['Ctrl C', 'Copy the clip'], ['Ctrl X', 'Cut the clip'], ['Ctrl V', 'Paste at the playhead'], ['Ctrl Shift X', 'Keep only the selection'], ['G', 'Add silence: press and drag right'], ['F', 'Fade the clip in'], ['Shift F', 'Fade the clip out'], ['Ctrl Z', 'Undo'], ['Ctrl Shift Z', 'Redo']]],
+  ['Select and view', [['Ctrl A', 'Select everything'], ['I', 'Selection starts here'], ['O', 'Selection ends here'], ['Esc', 'Clear the selection'], ['M', 'Mute the track'], ['S', 'Solo the track'], ['+', 'Zoom in'], ['−', 'Zoom out'], ['0', 'Show it all'], ['Alt', 'While dragging: no snapping']]],
+  ['File', [['Ctrl S', 'Save'], ['?', 'Show or hide these shortcuts']]],
+];

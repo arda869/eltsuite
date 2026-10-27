@@ -25,3 +25,16 @@ export function Wordmark({ big = false }: { big?: boolean }) {
     </span>
   );
 }
+
+// The suite's mark with the app's name under "ELT Suite", for pages that open in their own tab.
+export function SuiteMark({ app, color = '#d98f63', dark = false }: { app: string; color?: string; dark?: boolean }) {
+  return (
+    <span className={'suite-mark' + (dark ? ' dark' : '')} style={{ ['--app' as string]: color }}>
+      <Mark size={28} />
+      <span>
+        <span className="suite-k">ELT Suite</span>
+        <b>{app}</b>
+      </span>
+    </span>
+  );
+}
