@@ -325,7 +325,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         <button type="button" className="icon-btn chat-back" onClick={onBack} aria-label="All chats">
           <UiIcon name="prev" size={16} />
         </button>
-        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : <PersonFace id={c.members.find((k) => k !== me.key)} name={title} size={36} />}</span>
+        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : <PersonFace id={c.members.find((k) => k !== me.key)} name={title} size={36} status />}</span>
         <span className="chat-head-t">
           <b>{title}</b>
           <span className="hint">{isSelf(c) ? (teacher ? 'Only you can see this' : 'Notes for yourself. Your teacher can see class chats') : c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'Teacher' : 'Learner'}</span>
@@ -406,37 +406,47 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           </span>
         )}
         {err && <span className="error">{err}</span>}
-        <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '') + (rich ? '' : ' plain')}>
-          <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
+        {/* The writing box holds its own buttons: formatting, size and send, at its right. */}
+        <div className="chat-box">
+          <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '') + (rich ? '' : ' plain')}>
+            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
+          </div>
+          <span className="chat-in">
+            <button type="button" className={'icon-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} aria-label="Formatting" data-tip={rich ? 'Back to plain text' : 'Formatting: bold, colour, lists, IPA and more'}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />
+              </svg>
+            </button>
+            <button type="button" className="icon-btn chat-big" onClick={() => setBig((b) => !b)} aria-label={big ? 'Smaller writing box' : 'Larger writing box'} data-tip={big ? 'Smaller writing box' : 'Larger writing box'} aria-pressed={big}>
+              <UiIcon name={big ? 'fullscreenOff' : 'fullscreen'} size={15} />
+            </button>
+            <button type="button" className="chat-send" disabled={busy || isEmptyContent(content)} onClick={send} aria-label={editing ? 'Save' : 'Send'} data-tip={editing ? 'Save' : 'Send'}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                {editing ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" />}
+              </svg>
+            </button>
+          </span>
         </div>
-        <span className="chat-actions">
-          {teacher && colleaguesHere.length > 0 && (
-            <button type="button" className="btn small-btn icon-only" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
-              <UiIcon name="mic" size={14} />
-            </button>
-          )}
-          {teacher && colleaguesHere.length > 0 && (
-            <button type="button" className="btn small-btn" onClick={() => setSharing(true)} data-tip="A lesson, task, document or media, for colleagues to copy">
-              <UiIcon name="link" size={14} /> Share material
-            </button>
-          )}
-          {questionIds(content).length > 0 && (
-            <label className="chat-opt" data-tip="Each person sees the others’ answers once they have sent their own. You always see everyone’s.">
-              <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
-              Others see answers after answering
-            </label>
-          )}
-          <button type="button" className={'btn small-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} data-tip={rich ? 'Back to plain text' : 'Rich text: bold, colour, lists, IPA and more'}>
-            <span className="chat-rich-a">Aa</span>
-          </button>
-          <span className="chat-spacer" />
-          <button type="button" className="icon-btn chat-big" onClick={() => setBig((b) => !b)} aria-label={big ? 'Smaller writing box' : 'Larger writing box'} data-tip={big ? 'Smaller writing box' : 'Larger writing box'} aria-pressed={big}>
-            <UiIcon name="fullscreen" size={15} />
-          </button>
-          <button type="button" className="btn primary" disabled={busy || isEmptyContent(content)} onClick={send}>
-            {editing ? 'Save' : 'Send'}
-          </button>
-        </span>
+        {((teacher && colleaguesHere.length > 0) || questionIds(content).length > 0) && (
+          <span className="chat-actions">
+            {teacher && colleaguesHere.length > 0 && (
+              <button type="button" className="btn small-btn icon-only" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
+                <UiIcon name="mic" size={14} />
+              </button>
+            )}
+            {teacher && colleaguesHere.length > 0 && (
+              <button type="button" className="btn small-btn" onClick={() => setSharing(true)} data-tip="A lesson, task, document or media, for colleagues to copy">
+                <UiIcon name="link" size={14} /> Share material
+              </button>
+            )}
+            {questionIds(content).length > 0 && (
+              <label className="chat-opt" data-tip="Each person sees the others’ answers once they have sent their own. You always see everyone’s.">
+                <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
+                Others see answers after answering
+              </label>
+            )}
+          </span>
+        )}
       </div>
       {sharing && <ShareMaterial c={c} me={me} to={colleaguesHere} onClose={() => setSharing(false)} />}
       {openShare && <SharedWindow id={openShare} onClose={() => setOpenShare('')} />}
@@ -446,6 +456,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
 }
 
 function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpenShare }: { m: Msg; c: Chat; me: Person; first: boolean; last?: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void }) {
+  const [armed, setArmed] = useState(false);
   const mine = m.by === me.key;
   const who = c.names[m.by] ?? m.name; // as the class shows it
   const [responses, setResponses] = useState<Responses>({});
@@ -496,7 +507,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             {m.role === 'teacher' && <span className="ld-tag">Teacher</span>}
           </span>
         )}
-        <div className="bub-box" onClick={(e) => !(e.target as HTMLElement).closest('button, a, input, textarea, select, label, .ProseMirror [contenteditable], [role=button]') && setSel((v) => !v)}>
+        <div className="bub-box" onClick={(e) => !m.deleted && !(e.target as HTMLElement).closest('button, a, input, textarea, select, label, .ProseMirror [contenteditable], [role=button]') && setSel((v) => !v)}>
           {m.replyTo && (
             <button type="button" className="bub-quote" onClick={() => document.getElementById('m-' + m.replyTo!.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
               <b>{m.replyTo.name.split(' ')[0]}</b> {m.replyTo.text}
@@ -623,8 +634,9 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
                 <button type="button" className="bt-i" onClick={onEdit} aria-label="Edit" data-tip="Edit">
                   <UiIcon name="edit" size={16} />
                 </button>
-                <button type="button" className="bt-i" onClick={() => void ask('Delete this message for everyone?').then((ok) => { if (ok) deleteMsg(c, m.id); })} aria-label="Delete" data-tip="Delete">
-                  <UiIcon name="trash" size={16} />
+                {/* Delete asks once, in place: a second click deletes it for everyone. */}
+                <button type="button" className={'bt-i' + (armed ? ' bt-armed' : '')} onClick={() => (armed ? (setArmed(false), void deleteMsg(c, m.id)) : (setArmed(true), window.setTimeout(() => setArmed(false), 3000)))} aria-label={armed ? 'Click again to delete for everyone' : 'Delete'} data-tip={armed ? 'Click again to delete for everyone' : 'Delete'}>
+                  {armed ? <span className="bt-sure">Delete?</span> : <UiIcon name="trash" size={16} />}
                 </button>
               </>
             )}

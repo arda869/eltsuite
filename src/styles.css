@@ -7211,3 +7211,38 @@ input.dg-cell-label:focus { outline: none; }
 /* Name boxes that edit in place grow with what is typed. */
 .adm-drivename, .adm-orgname, .fd-name, .adm-tag-in, .pv-names .dp-title, input.dp-title { field-sizing: content; min-width: 6ch; max-width: 100%; width: auto; }
 .lb-manage { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+
+/* Presence: a dot on a person's picture */
+.pz { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%; box-shadow: 0 0 0 2px var(--paper); background: #b9b5ad; }
+.pz-online { background: #3f9a62; }
+.pz-away { background: #d4a23c; }
+.pz-class { background: var(--accent); }
+.pz-call { background: #c2463d; }
+.pz-off { background: #c9c5bd; }
+.pz-host { position: relative; display: inline-flex; flex: none; }
+/* A message's tools stay while the pointer travels up to them. */
+@media (hover: hover) and (min-width: 641px) {
+  .bub-tools::after { content: ''; position: absolute; left: -8px; right: -8px; top: 100%; height: 22px; }
+  .bub:hover .bub-tools { transition-delay: 0s; }
+  .bub .bub-tools { transition: opacity .12s .15s; }
+}
+
+/* Chat windows: one size, set by the corner handle */
+.dock-bar .dock-win { width: var(--dock-w, 360px); height: min(var(--dock-h, 520px), calc(100vh - 110px)); position: relative; }
+.dock-size { position: absolute; left: 0; top: 0; width: 16px; height: 16px; z-index: 3; cursor: nwse-resize; }
+.dock-size::before { content: ''; position: absolute; left: 4px; top: 4px; width: 7px; height: 7px; border-left: 2px solid var(--hair-strong); border-top: 2px solid var(--hair-strong); border-radius: 2px 0 0 0; opacity: 0; transition: opacity .15s; }
+.dock-win:hover .dock-size::before { opacity: 1; }
+.chat-rich { display: inline-flex; align-items: center; gap: 6px; }
+.chat-rich-l { font: 600 12.5px var(--sans); }
+
+/* The writing box with its buttons inside, at the right */
+.chat-box { position: relative; }
+.chat-box .chat-editor .ProseMirror { padding-right: 112px !important; }
+.chat-in { position: absolute; right: 8px; bottom: 7px; display: flex; align-items: center; gap: 2px; z-index: 2; }
+.chat-in .icon-btn { width: 30px; height: 30px; border-radius: 8px; color: var(--muted); }
+.chat-in .icon-btn.on { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.chat-send { width: 32px; height: 32px; margin-left: 4px; border: 0; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 72%, #000); color: #fff; cursor: pointer; }
+.chat-send:disabled { background: var(--hair-strong); cursor: default; }
+.bt-i.bt-armed { width: auto !important; padding: 0 8px !important; background: color-mix(in srgb, #b64a3c 12%, var(--paper)) !important; color: #8f3a2f !important; border-radius: 99px; }
+.bt-sure { font: 600 12px var(--sans); }
+.bub.deleted .bub-box, .bub-box:has(.bub-del) { cursor: default; }

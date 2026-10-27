@@ -17,6 +17,7 @@ import { EscapeToClose } from './components/EscapeToClose';
 import { PopupGuard } from './components/PopupGuard';
 import { PausedGate } from './components/PausedGate';
 import { OrgLook } from './components/OrgLook';
+import { StatusBeat } from './lib/status';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
@@ -120,6 +121,7 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <UpdateBanner />
         <OrgLook />
+        <StatusBeat />
         <TooltipLayer />
         <EscapeToClose />
         <PopupGuard />

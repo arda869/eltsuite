@@ -1,3 +1,4 @@
+import { StatusDot, useStatus } from '../lib/status';
 import { useFace } from '../lib/faces';
 import { useEffect, useState, type ReactNode } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -148,7 +149,13 @@ export function Avatar({ k, name, size = 32, className = '' }: { k?: string; nam
 }
 
 // Someone's picture by their chat id, or their initials.
-export function PersonFace({ id, name, size = 32, className = '' }: { id?: string; name?: string; size?: number; className?: string }) {
+// status: a dot for online, away, in class or on a call.
+export function PersonFace({ id, name, size = 32, className = '', status }: { id?: string; name?: string; size?: number; className?: string; status?: boolean }) {
   const k = useFace(id);
-  return <Avatar k={k || undefined} name={name} size={size} className={className} />;
+  const face = <Avatar k={k || undefined} name={name} size={size} className={className} />;
+  return status && id ? <span className="pz-host">{face}<Dot id={id} /></span> : face;
+}
+function Dot({ id }: { id: string }) {
+  const st = useStatus([id]);
+  return <StatusDot p={st[id]} />;
 }

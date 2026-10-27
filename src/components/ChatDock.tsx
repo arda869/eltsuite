@@ -205,6 +205,43 @@ function DockTab({ me, c, id }: { me: string; c?: Chat; id: string }) {
   );
 }
 
+// Chat windows: one size for all, set by dragging the top left corner of any of them, remembered.
+const SIZE_KEY = 'll.dockSize';
+function applySize(w: number, h: number) {
+  document.documentElement.style.setProperty('--dock-w', w + 'px');
+  document.documentElement.style.setProperty('--dock-h', h + 'px');
+}
+try {
+  const v = JSON.parse(localStorage.getItem(SIZE_KEY) || 'null') as { w: number; h: number } | null;
+  if (v) applySize(v.w, v.h);
+} catch {
+  /* fine */
+}
+function sizeWins(e: React.PointerEvent) {
+  e.preventDefault();
+  const win = (e.currentTarget as HTMLElement).closest('.dock-win') as HTMLElement | null;
+  if (!win) return;
+  const r = win.getBoundingClientRect();
+  const x0 = e.clientX;
+  const y0 = e.clientY;
+  let size = { w: r.width, h: r.height };
+  const move = (ev: PointerEvent) => {
+    size = { w: Math.round(Math.max(300, Math.min(window.innerWidth - 40, r.width + (x0 - ev.clientX)))), h: Math.round(Math.max(320, Math.min(window.innerHeight - 90, r.height + (y0 - ev.clientY)))) };
+    applySize(size.w, size.h);
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    try {
+      localStorage.setItem(SIZE_KEY, JSON.stringify(size));
+    } catch {
+      /* fine */
+    }
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+}
+
 function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; chats: Chat[]; onNew: () => void; onGroup: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
@@ -219,10 +256,11 @@ function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; 
   const other = cur && cur.kind !== 'group' && !isSelf(cur) ? cur.members.find((k) => k !== me) : undefined;
   return (
     <div className={'dock-win' + (w.max ? ' max' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
+      {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
       <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && patch(w.id, { max: !w.max })}>
         {cur ? (
           <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
-            {other ? <PersonFace id={other} name={title} size={28} /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
+            {other ? <PersonFace id={other} name={title} size={28} status /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
           </span>
         ) : null}
         <b>{title}</b>
@@ -259,7 +297,7 @@ function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; 
             const o = c.kind !== 'group' && !isSelf(c) ? c.members.find((k) => k !== me) : undefined;
             return (
               <button key={c.id} type="button" className={'msg-row' + (un ? ' unread' : '')} onClick={() => replaceWin(w.id, c.id)}>
-                <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{o ? <PersonFace id={o} name={t} size={34} /> : c.kind === 'group' ? <UiIcon name="groups" size={15} /> : <UiIcon name="pen" size={14} />}</span>
+                <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{o ? <PersonFace id={o} name={t} size={34} status /> : c.kind === 'group' ? <UiIcon name="groups" size={15} /> : <UiIcon name="pen" size={14} />}</span>
                 <span className="msg-row-t">
                   <span className="msg-row-top">
                     <b>{t}</b>

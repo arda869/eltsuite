@@ -107,6 +107,12 @@
           ".write": "auth != null && (!newData.exists() || newData.isNumber())"
         }
       }
+    },
+    "presence": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }

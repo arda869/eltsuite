@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { UiIcon } from './UiIcon';
 import type { ClassDoc } from '../lib/classes';
+import { setActivity } from '../lib/status';
 
 // The class's video room, inside ELT Suite: a panel beside the lesson, or the whole screen.
 // Teachers join as hosts (mute, remove, share the screen); learners join by name.
@@ -15,6 +16,7 @@ export function VideoCall({ c, name, teacher, onClose }: { c: ClassDoc; name: st
   useEffect(() => {
     let frame: { destroy: () => Promise<void>; on: (e: string, f: () => void) => void } | null = null;
     let dead = false;
+    setActivity({ call: true });
     void (async () => {
       try {
         const token = teacher ? ((await getDoc(doc(db, 'classes', c.id, 'video', 'host')).catch(() => null))?.data()?.token as string | undefined) : undefined;
@@ -29,6 +31,7 @@ export function VideoCall({ c, name, teacher, onClose }: { c: ClassDoc; name: st
       }
     })();
     return () => {
+      setActivity({ call: null });
       dead = true;
       void frame?.destroy();
     };

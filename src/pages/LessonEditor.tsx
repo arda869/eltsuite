@@ -1,4 +1,5 @@
 import { VideoButton } from '../components/VideoCall';
+import { setActivity } from '../lib/status';
 import { tr, useClassTerms } from '../lib/terms';
 import { LIVE_BEAT } from '../lib/live';
 import { ask, askText, tell } from '../lib/ask';
@@ -217,6 +218,12 @@ export function LessonEditor() {
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
+  // Colleagues see that this teacher is in class while the lesson is live.
+  useEffect(() => {
+    if (!teachingHere || !c?.name) return;
+    setActivity({ cls: c.name });
+    return () => setActivity({ cls: null });
+  }, [teachingHere, c?.name]);
   const [fold, setFoldS] = useState<string>(() => {
     try {
       return localStorage.getItem('ll.taskFold') ?? 'who';

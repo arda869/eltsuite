@@ -30,7 +30,32 @@ export function MenuHost() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setter = setOpen;
-    return () => void (setter = null);
+    // Never the browser's menu: anywhere the app has no menu of its own, this one.
+    const fallback = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
+      const t = e.target as HTMLElement;
+      const field = t.closest('input, textarea, [contenteditable=true], .ProseMirror') as HTMLElement | null;
+      const link = t.closest('a[href]') as HTMLAnchorElement | null;
+      const text = window.getSelection()?.toString() ?? '';
+      const items: MenuItem[] = [];
+      const copy = (v: string) => void navigator.clipboard?.writeText(v).catch(() => {});
+      if (field) {
+        items.push(
+          { label: 'Cut', icon: '', hint: 'Ctrl X', disabled: !text, onClick: () => document.execCommand('cut') },
+          { label: 'Copy', icon: 'copyall', hint: 'Ctrl C', disabled: !text, onClick: () => document.execCommand('copy') },
+          { label: 'Paste', icon: '', hint: 'Ctrl V', onClick: () => void navigator.clipboard?.readText().then((v) => (field.focus(), document.execCommand('insertText', false, v))).catch(() => {}) },
+          'sep',
+          { label: 'Select all', icon: '', hint: 'Ctrl A', onClick: () => (field.focus(), document.execCommand('selectAll')) },
+        );
+      } else if (text) items.push({ label: 'Copy', icon: 'copyall', hint: 'Ctrl C', onClick: () => copy(text) });
+      if (link) items.push(...(items.length ? (['sep'] as MenuItem[]) : []), { label: 'Open in a new tab', icon: 'fullscreen', onClick: () => window.open(link.href, '_blank', 'noopener') }, { label: 'Copy the link', icon: 'link', onClick: () => copy(link.href) });
+      if (!items.length)
+        items.push({ label: 'Back', icon: 'prev', disabled: window.history.length < 2, onClick: () => window.history.back() }, { label: 'Reload', icon: 'sync', onClick: () => window.location.reload() }, 'sep', { label: 'Copy the link to this page', icon: 'link', onClick: () => copy(window.location.href) });
+      e.preventDefault();
+      setOpen({ x: e.clientX, y: e.clientY, items });
+    };
+    document.addEventListener('contextmenu', fallback);
+    return () => (document.removeEventListener('contextmenu', fallback), void (setter = null));
   }, []);
   useLayoutEffect(() => {
     if (!open || !ref.current) return setPos(null);
