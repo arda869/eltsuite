@@ -101,7 +101,7 @@ export function DocPage() {
         </span>
         <span className="dp-names">
           {canRename ? (
-            <input className="dp-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
+            <input className="dp-title" size={Math.max(6, title.length + 2)} value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Title" />
           ) : (
             <span className="dp-title ro">{title || KIND_LABEL[kind]}</span>
           )}

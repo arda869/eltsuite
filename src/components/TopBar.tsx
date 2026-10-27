@@ -12,6 +12,8 @@ import { Avatar } from './avatars';
 import { AvatarPicker } from './AvatarPicker';
 import { PhoneMessagesLink } from './ChatDock';
 import { UiIcon } from './UiIcon';
+import { AppSetupDialog } from './AppSetup';
+import { isStandalone } from '../lib/push';
 import { STATUS_SETS, setMyStatus, statusOf, useMySet, useStatus } from '../lib/status';
 
 export function initials(name: string) {
@@ -24,6 +26,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const { user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [installing, setInstalling] = useState(false);
   const [classIds, setClassIds] = useState<string[]>([]);
   useEffect(() => {
     if (!user || profile?.role !== 'teacher') return;
@@ -74,7 +77,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
               <div className="menu-status" role="group" aria-label="Your status">
                 {STATUS_SETS.map((o) => (
                   <button key={o.k} type="button" role="menuitemradio" aria-checked={set === o.k} className={'menu-link' + (set === o.k ? ' on' : '')} onClick={() => setMyStatus(o.k)} data-tip={o.hint}>
-                    <span className={'pz-i pz-' + (o.k === 'auto' ? 'online' : o.k === 'hidden' ? 'off' : o.k)} aria-hidden="true" />
+                    <span className={'pz-i pz-' + (o.k === 'auto' ? 'online' : o.k === 'hidden' ? 'off' : o.k === 'teaching' ? 'class' : o.k)} aria-hidden="true" />
                     {o.label}
                   </button>
                 ))}
@@ -100,10 +103,15 @@ export function TopBar({ children }: { children?: ReactNode }) {
               <UiIcon name="settings" size={15} />
               Settings
             </Link>
-            <button role="menuitem" className="menu-link" onClick={() => (setPicking(true), setOpen(false))}>
-              <UiIcon name="person" size={15} />
-              Change picture
-            </button>
+            {/* On a phone: put the app on the home screen, so it opens like any other app. */}
+            {!isStandalone() && (
+              <span className="show-phone">
+                <button role="menuitem" className="menu-link" onClick={() => (setInstalling(true), setOpen(false))}>
+                  <UiIcon name="import" size={15} />
+                  Add to your home screen
+                </button>
+              </span>
+            )}
             <ThemeChoice />
             <button role="menuitem" onClick={signOutNow}>
               Sign out
@@ -115,6 +123,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
         )}
       </div>
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
+      {installing && <AppSetupDialog onClose={() => setInstalling(false)} />}
     </header>
   );
 }

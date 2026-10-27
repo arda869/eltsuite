@@ -37,7 +37,6 @@ export function LearnerNav({ on, unreadMsgs = 0, unreadThreads = 0, phoneOnly }:
   return (
     <nav aria-label="Main" className={'main-nav' + (phoneOnly ? ' mn-phone' : '')}>
       {tab('/', 'home', 'home', 'Home')}
-      {tab('/notebook', 'notebook', 'notebook', 'Notebook')}
       {tab('/messages', 'messages', 'message', 'Messages', unreadMsgs)}
       {tab('/discuss', 'discuss', 'discuss', 'Discussion', unreadThreads)}
     </nav>

@@ -309,13 +309,17 @@ export function Wave({ wave, duration, time, lines, onSeek, onMove, height = 54,
     if (!wave || !box.current) return;
     const paint = () => {
       const accent = getComputedStyle(box.current!).getPropertyValue('--accent').trim() || '#d98f63';
-      if (back.current) drawWave(back.current, wave, 'rgba(51, 48, 44, 0.22)');
+      // The part not yet played: the app's line colour, so it shows in dark mode too.
+      const rest = getComputedStyle(box.current!).getPropertyValue('--hair-strong').trim() || 'rgba(51, 48, 44, 0.22)';
+      if (back.current) drawWave(back.current, wave, document.documentElement.dataset.theme === 'dark' ? 'rgba(236, 231, 223, 0.3)' : rest);
       if (front.current) drawWave(front.current, wave, accent);
     };
     paint();
     const ro = new ResizeObserver(paint);
     ro.observe(box.current);
-    return () => ro.disconnect();
+    const mo = new MutationObserver(paint);
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'style'] });
+    return () => (ro.disconnect(), mo.disconnect());
   }, [wave]);
   const p = duration ? Math.min(1, Math.max(0, time / duration)) : 0;
   const at = (clientX: number) => {

@@ -6,13 +6,14 @@ import { rtdb } from './firebase';
 // Who is around: online, away (the app hidden or untouched for a while), in a class right now,
 // or on a video call. Each person's app keeps their own line up to date; others only read it.
 
-export type StatusSet = 'auto' | 'away' | 'busy' | 'hidden';
+export type StatusSet = 'auto' | 'away' | 'teaching' | 'busy' | 'hidden';
 export type Status = { state: 'online' | 'away' | 'offline'; at?: number; cls?: string | null; call?: boolean | null; set?: StatusSet };
 // What a person chose to show: automatic, away, do not disturb, or offline to others.
 export const STATUS_SETS: { k: StatusSet; label: string; hint: string }[] = [
   { k: 'auto', label: 'Automatic', hint: 'Online, away, in class or on a call, as it happens' },
   { k: 'away', label: 'Away', hint: 'Until you change it' },
-  { k: 'busy', label: 'Do not disturb', hint: 'Messages wait without a sound' },
+  { k: 'teaching', label: 'Teaching', hint: 'Shown as in class; message sounds are off' },
+  { k: 'busy', label: 'Do not disturb', hint: 'Message sounds are off' },
   { k: 'hidden', label: 'Appear offline', hint: 'Others see you as offline' },
 ];
 const SET_KEY = 'll.statusSet';
@@ -77,6 +78,8 @@ export function startStatus(uid: string) {
   };
 }
 
+// Teaching right now, chosen or live in a lesson: message sounds stay off.
+export const quietNow = () => ['busy', 'teaching'].includes(mySet()) || !!activity.cls;
 // In a class (its name) or on a call: set while it lasts.
 export function setActivity(p: Pick<Status, 'cls' | 'call'>) {
   activity = { ...activity, ...p };
@@ -105,6 +108,7 @@ export function statusOf(p?: Status): { dot: 'call' | 'class' | 'online' | 'away
   if (!p || p.state === 'offline') return { dot: 'off', label: p?.at ? `Last seen ${ago(p.at)}` : 'Offline' };
   if (p.set === 'busy') return { dot: 'busy', label: p.call ? 'On a call, do not disturb' : p.cls ? `In class: ${p.cls}, do not disturb` : 'Do not disturb' };
   if (p.set === 'away') return { dot: 'away', label: 'Away' };
+  if (p.set === 'teaching') return { dot: 'class', label: p.cls ? `Teaching: ${p.cls}` : 'Teaching' };
   if (p.call) return { dot: 'call', label: 'On a call' };
   if (p.cls) return { dot: 'class', label: `In class: ${p.cls}` };
   return p.state === 'away' ? { dot: 'away', label: 'Away' } : { dot: 'online', label: 'Online' };

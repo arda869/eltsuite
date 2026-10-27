@@ -522,11 +522,6 @@ function WordGridEditor({ kind, d, set, classId }: { kind: 'crossword' | 'wordse
           <button type="button" className="btn link small" onClick={() => set({ words: [...words, { word: '', clue: '' }] })}>
             + Add a word
           </button>
-          {classId && (
-            <button type="button" className="btn link small" onClick={() => setPicking(true)}>
-              From the class notebook…
-            </button>
-          )}
         </span>
       </div>
       <span className="hint">

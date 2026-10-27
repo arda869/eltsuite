@@ -39,7 +39,6 @@ const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m
 const TeacherHome = lazy(() => import('./pages/TeacherHome').then((m) => ({ default: m.TeacherHome })));
 const ClassPage = lazy(() => import('./pages/ClassPage').then((m) => ({ default: m.ClassPage })));
 const LessonEditor = lazy(() => import('./pages/LessonEditor').then((m) => ({ default: m.LessonEditor })));
-const LearnerNotebook = lazy(() => import('./pages/LearnerNotebook').then((m) => ({ default: m.LearnerNotebook })));
 const LearnerLesson = lazy(() => import('./pages/LearnerLesson').then((m) => ({ default: m.LearnerLesson })));
 const LearnerJoin = lazy(() => import('./pages/LearnerJoin').then((m) => ({ default: m.LearnerJoin })));
 const LearnerHome = lazy(() => import('./pages/LearnerHome').then((m) => ({ default: m.LearnerHome })));
@@ -140,7 +139,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
-          <Route path="/notebook" element={<LearnerOnly><LearnerNotebook /></LearnerOnly>} />
+          <Route path="/notebook" element={<Navigate to="/" replace />} />
           <Route path="/recap/:itemId" element={<LearnerOnly><LearnerRecap /></LearnerOnly>} />
           <Route path="/discuss" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />
           <Route path="/discuss/:tid" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />

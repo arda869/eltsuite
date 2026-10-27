@@ -10,8 +10,6 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
 import { useMyRecaps } from '../lib/recap';
-import { useMistakes } from '../lib/mistakes';
-import { useNotebook } from '../lib/notebook';
 import { PhoneMessagesLink } from '../components/ChatDock';
 import { LearnerNav } from './ColleaguesPage';
 import { useUnread } from '../lib/chat';
@@ -89,11 +87,6 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const [section, setSection] = useState<Item['type']>('lesson');
   const answers = useMyAnswers(classId, user?.uid);
   const recaps = useMyRecaps(classId, user?.uid);
-  const mistakes = useMistakes(classId, user?.uid);
-  const dueMistakes = mistakes.filter((m) => !m.done && m.nextAt <= Date.now()).length;
-  const nbMe = useMemo(() => (user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null), [user, profile]);
-  const entries = useNotebook(classId, nbMe);
-  const words = entries.filter((e) => e.type === 'vocab' && e.status === 'published').length;
   const threads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
   const unreadThreads = useMemo(() => {
     const seen = readSeen(classId);
@@ -358,14 +351,6 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                   <b>{avg === null ? '–' : `${avg}%`}</b>
                   <span className="hint">right answers</span>
                 </span>
-                <Link to="/notebook">
-                  <b>{words}</b>
-                  <span className="hint">words in the notebook</span>
-                </Link>
-                <Link to="/notebook">
-                  <b>{dueMistakes}</b>
-                  <span className="hint">{dueMistakes === 1 ? 'question to review' : 'questions to review'}</span>
-                </Link>
               </div>
             </section>
             {profile?.role === 'learner' && <AnnouncementBoard classId={classId} learnerId={profile.learnerId} />}

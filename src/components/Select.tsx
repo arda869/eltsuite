@@ -15,7 +15,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
   const [hi, setHi] = useState(0);
   const btn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  const [at, setAt] = useState({ left: 0, top: 0, width: 0, up: false });
+  const [at, setAt] = useState({ left: 0, top: 0, width: 0, up: false, bottom: 0 });
   const cur = all.find((o) => o.v === value);
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -23,13 +23,14 @@ export function Select<T extends string>({ value, options: all, onChange, label,
     const h = list.current?.offsetHeight ?? 200;
     const up = r.bottom + 6 + h > window.innerHeight - 8 && r.top > h + 14;
     const width = Math.max(r.width, 200);
-    setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top: up ? r.top - 6 - h : r.bottom + 6, width, up });
+    // Opening upwards, the list keeps its bottom by the button, so typing to find does not leave it floating.
+    setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)), top: up ? r.top - 6 - h : r.bottom + 6, width, up, bottom: window.innerHeight - r.top + 6 });
   }, [open]);
   useEffect(() => {
     if (!open) return setQ('');
     setHi(Math.max(0, options.findIndex((o) => o.v === value)));
     const down = (e: MouseEvent) => !list.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node) && setOpen(false);
-    const away = () => setOpen(false);
+    const away = (e?: Event) => !(e && list.current?.contains(e.target as Node)) && setOpen(false);
     document.addEventListener('mousedown', down);
     window.addEventListener('scroll', away, true);
     window.addEventListener('resize', away);
@@ -61,7 +62,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
       </button>
       {open &&
         createPortal(
-          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-label={label} style={{ left: at.left, top: at.top, minWidth: at.width }}>
+          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-label={label} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
             {typing && (
               <input className="sel-q" autoFocus value={q} placeholder="Type to find…" aria-label={`Find in ${label}`} onChange={(e) => (setQ(e.target.value), setHi(0))} onKeyDown={key} />
             )}
@@ -117,7 +118,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
     if (!open) return;
     const down = (e: MouseEvent) => !list.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node) && setOpen(false);
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    const away = () => setOpen(false);
+    const away = (e?: Event) => !(e && list.current?.contains(e.target as Node)) && setOpen(false);
     document.addEventListener('mousedown', down);
     document.addEventListener('keydown', esc);
     window.addEventListener('scroll', away, true);

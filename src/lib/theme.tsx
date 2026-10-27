@@ -19,10 +19,17 @@ export function applyTheme(p = themePref()) {
 export function startTheme() {
   applyTheme();
   mq().addEventListener('change', () => applyTheme());
+  // A change in another tab or window applies here at once.
+  window.addEventListener('storage', (e) => e.key === KEY && (applyTheme(), listeners.forEach((f) => f(themePref()))));
 }
+const listeners = new Set<(p: ThemePref) => void>();
 export function useThemePref(): [ThemePref, (p: ThemePref) => void] {
   const [p, setP] = useState<ThemePref>(themePref);
   useEffect(() => applyTheme(p), [p]);
+  useEffect(() => {
+    listeners.add(setP);
+    return () => void listeners.delete(setP);
+  }, []);
   return [
     p,
     (v) => {
@@ -31,6 +38,7 @@ export function useThemePref(): [ThemePref, (p: ThemePref) => void] {
       } catch {
         /* fine */
       }
+      listeners.forEach((f) => f(v));
       setP(v);
     },
   ];

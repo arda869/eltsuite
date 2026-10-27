@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread, type Chat } from '../lib/chat';
-import { useDirectory } from '../lib/directory';
+import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
+import { useDirectory, whoLine, type Directory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
 import { publishFace } from '../lib/faces';
@@ -66,6 +66,13 @@ const replaceWin = (from: string, to: string) => {
   if (at < 0) return dockOpen(to);
   wins[at] = { ...wins[at], id: to, min: false, at: Date.now() };
   save({ wins });
+};
+// Larger and smaller: the window moves from where it was to where it goes (no pop-in).
+const flipFrom: Record<string, DOMRect> = {};
+const toggleMax = (id: string, max: boolean) => {
+  const el = document.querySelector<HTMLElement>(`.dock-win[data-win="${CSS.escape(id)}"]`);
+  if (el) flipFrom[id] = el.getBoundingClientRect();
+  patch(id, { max });
 };
 const patch = (id: string, p: Partial<DockWin>) => save({ wins: read().wins.map((w) => (w.id === id ? { ...w, ...p } : p.max ? { ...w, max: false } : w)) });
 const closeWin = (id: string) => save({ wins: read().wins.filter((w) => w.id !== id) });
@@ -178,7 +185,7 @@ export function ChatDock() {
         )}
       </div>
       {big && (
-        <div className="dock-max-scrim" onMouseDown={(e) => e.target === e.currentTarget && patch(big.id, { max: false })}>
+        <div className="dock-max-scrim" onMouseDown={(e) => e.target === e.currentTarget && toggleMax(big.id, false)}>
           <DockWindow me={me!} w={big} chats={list} onNew={() => setCreating(big.id)} onGroup={() => (setGrouping(true), setCreating(big.id))} />
         </div>
       )}
@@ -242,7 +249,7 @@ function sizeWins(e: React.PointerEvent) {
   window.addEventListener('pointerup', up);
 }
 
-function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; chats: Chat[]; onNew: () => void; onGroup: () => void }) {
+function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Chat[]; onNew: () => void; onGroup: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === w.id);
@@ -254,16 +261,38 @@ function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; 
     window.setTimeout(() => (what === 'min' ? patch(w.id, { min: true, max: false }) : closeWin(w.id)), 170);
   };
   const other = cur && cur.kind !== 'group' && !isSelf(cur) ? cur.members.find((k) => k !== me) : undefined;
+  const [q, setQ] = useState('');
+  const winRef = useRef<HTMLDivElement>(null);
+  const [flipping, setFlipping] = useState(() => !!flipFrom[w.id]);
+  useLayoutEffect(() => {
+    const from = flipFrom[w.id];
+    const el = winRef.current;
+    delete flipFrom[w.id];
+    if (!from || !el) return;
+    const to = el.getBoundingClientRect();
+    const a = el.animate(
+      [
+        { transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`, transformOrigin: 'top left' },
+        { transform: 'none', transformOrigin: 'top left' },
+      ],
+      { duration: 240, easing: 'cubic-bezier(.2, .8, .25, 1)' },
+    );
+    a.onfinish = () => setFlipping(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [w.max]);
   return (
-    <div className={'dock-win' + (w.max ? ' max' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
+    <div ref={winRef} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
       {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
-      <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && patch(w.id, { max: !w.max })}>
+      <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && toggleMax(w.id, !w.max)}>
         {cur ? (
           <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
             {other ? <PersonFace id={other} name={title} size={28} status /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
           </span>
         ) : null}
-        <b>{title}</b>
+        <span className="dock-title">
+          <b>{title}</b>
+          {other && cur && <span className="dock-who">{whoLine(dir, other, cur.roles[other] === 'teacher' ? 'teacher' : 'learner')}</span>}
+        </span>
         <span style={{ flex: 1 }} />
         {!cur && dir && (
           <button type="button" className="icon-btn dock-ic" onClick={onNew} aria-label="New message" data-tip="New message">
@@ -274,7 +303,7 @@ function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; 
         <button type="button" className="icon-btn dock-ic" onClick={() => go('min')} aria-label="Minimise" data-tip="Minimise">
           <WinIcon d="M5 12h14" />
         </button>
-        <button type="button" className="icon-btn dock-ic" onClick={() => patch(w.id, { max: !w.max })} aria-label={w.max ? 'Smaller' : 'Larger'} data-tip={w.max ? 'Smaller' : 'Larger'}>
+        <button type="button" className="icon-btn dock-ic" onClick={() => toggleMax(w.id, !w.max)} aria-label={w.max ? 'Smaller' : 'Larger'} data-tip={w.max ? 'Smaller' : 'Larger'}>
           <WinIcon d={w.max ? 'M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5' : 'M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5'} />
         </button>
         <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in Messages" data-tip="Open in Messages" onClick={() => closeWin(w.id)}>
@@ -290,8 +319,9 @@ function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; 
         </div>
       ) : (
         <div className="dock-list">
-          {chats.length === 0 && <span className="hint dock-none">No messages yet.</span>}
-          {chats.map((c) => {
+          {dir && <DockFind me={me} dir={dir} chats={chats} onOpen={(id) => replaceWin(w.id, id)} q={q} setQ={setQ} />}
+          {!q.trim() && chats.length === 0 && <span className="hint dock-none">No messages yet. Search for someone above.</span>}
+          {!q.trim() && chats.map((c) => {
             const un = unreadIn(c, me);
             const t = chatTitle(c, me);
             const o = c.kind !== 'group' && !isSelf(c) ? c.members.find((k) => k !== me) : undefined;
@@ -308,14 +338,6 @@ function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; 
               </button>
             );
           })}
-          <span className="dock-new-row">
-            <button type="button" className="btn small-btn dock-new" onClick={onNew}>
-              + New message
-            </button>
-            <button type="button" className="btn small-btn dock-new" onClick={onGroup}>
-              + New group
-            </button>
-          </span>
         </div>
       )}
     </div>
@@ -345,3 +367,58 @@ const WinIcon = ({ d, size = 16 }: { d: string; size?: number }) => (
     <path d={d} />
   </svg>
 );
+
+// At the top of the chats: find anyone to write to. Picking someone turns this window into that chat.
+function DockFind({ me, dir, chats, onOpen, q, setQ }: { me: string; dir: Directory; chats: Chat[]; onOpen: (id: string) => void; q: string; setQ: (v: string) => void }) {
+  const [busy, setBusy] = useState('');
+  const words = q.trim().toLowerCase();
+  const seen = new Set<string>();
+  const people = words
+    ? dir.groups
+        .flatMap((g) => g.people.map((p) => ({ p, where: g.label })))
+        .filter(({ p }) => p.key !== me && !seen.has(p.key) && seen.add(p.key) && p.name.toLowerCase().includes(words))
+        .slice(0, 12)
+    : [];
+  const groups = words ? chats.filter((c) => c.kind === 'group' && chatTitle(c, me).toLowerCase().includes(words)) : [];
+  const open = async (p: Person) => {
+    const have = chats.find((c) => c.kind === 'dm' && c.members.length === 2 && c.members.includes(p.key));
+    if (have) return onOpen(have.id);
+    setBusy(p.key);
+    try {
+      onOpen(await openChat(dir.me, [p]));
+    } finally {
+      setBusy('');
+    }
+  };
+  return (
+    <>
+      <span className="dock-find">
+        <UiIcon name="search" size={14} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Message someone…" aria-label="Find someone to message" autoFocus onKeyDown={(e) => e.key === 'Enter' && people[0] && void open(people[0].p)} />
+      </span>
+      {words && (
+        <>
+          {groups.map((c) => (
+            <button key={c.id} type="button" className="msg-row" onClick={() => onOpen(c.id)}>
+              <span className="msg-av group"><UiIcon name="groups" size={15} /></span>
+              <span className="msg-row-t">
+                <b>{chatTitle(c, me)}</b>
+                <span className="msg-row-last">Group</span>
+              </span>
+            </button>
+          ))}
+          {people.map(({ p, where }) => (
+            <button key={p.key} type="button" className="msg-row" disabled={busy === p.key} onClick={() => void open(p)}>
+              <span className="msg-av"><PersonFace id={p.key} name={p.name} size={34} status /></span>
+              <span className="msg-row-t">
+                <b>{p.name}</b>
+                <span className="msg-row-last">{p.role === 'teacher' ? 'Teacher' : where}</span>
+              </span>
+            </button>
+          ))}
+          {!people.length && !groups.length && <span className="hint dock-none">No one called that.</span>}
+        </>
+      )}
+    </>
+  );
+}

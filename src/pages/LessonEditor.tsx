@@ -80,6 +80,8 @@ import { ExamSettings } from '../components/ExamSettings';
 import { PollDialog } from '../components/Poll';
 import { TeacherQuiz } from '../components/TeamQuiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
+// The class notebook is switched off for now; its parts stay for later.
+const NOTEBOOK = false as boolean;
 import type { Prefill } from '../components/Notebook';
 import { collection } from 'firebase/firestore';
 import type { Topic } from '../lib/classes';
@@ -710,7 +712,7 @@ export function LessonEditor() {
         </nav>
         <span className="icon-row tb-icons">
         {c && !viewer && <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />}
-        <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
+        {NOTEBOOK && <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
           {exportOpen && (
@@ -791,7 +793,7 @@ export function LessonEditor() {
       </TopBar>
 
       {quizOpen && <TeacherQuiz classId={classId} itemId={itemId} tasks={tasks} taskId={selected} roster={classmates} online={inLesson.map((p) => p.learnerId)} activeSet={activeSet} onClose={() => setQuizOpen(false)} />}
-      {user && (
+      {NOTEBOOK && user && (
         <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} items={nbItems} topics={nbTopics} roster={classmates} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: selected }} />
       )}
       {pollOpen && <PollDialog classId={classId} poll={live?.poll} onClose={() => setPollOpen(false)} />}
@@ -1085,7 +1087,7 @@ export function LessonEditor() {
                     if (q?.dataset.qid) toggleSingle(q.dataset.qid);
                   }}
                 >
-                  {!preview && user && inkMode === 'off' && <SelectionNote container={teachBodyRef} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} onAdd={toNotebook} />}
+                  {NOTEBOOK && !preview && user && inkMode === 'off' && <SelectionNote container={teachBodyRef} c={c} me={{ uid: user.uid, name: (user.displayName || 'Teacher').split(' ')[0], teacher: true }} onAdd={toNotebook} />}
                   {!preview && <AnnotationLayer container={teachBodyRef} annotations={teacherAnns} classId={classId} taskId={task.id} canAnnotate={teachingHere && inkMode === 'off'} me={{ uid: user?.uid ?? '', name: (user?.displayName || 'Teacher').split(' ')[0], teacher: true }} />}
                   <TaskRenderer
                     content={previewKey?.content ?? null}
@@ -1153,7 +1155,7 @@ export function LessonEditor() {
                     onChange={(content) => change({ content })}
                     classmates={classmates}
                     classId={classId}
-                    onNotebook={(word, sentence) => toNotebook({ type: 'vocab', word, example: sentence })}
+                    onNotebook={NOTEBOOK ? (word, sentence) => toNotebook({ type: 'vocab', word, example: sentence }) : undefined}
                     onBank={(nodes) => nodes.length && setBankSave({ kind: 'question', content: nodes })}
                     onPickBank={(insert) => setBankPick(() => insert)}
                     places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}

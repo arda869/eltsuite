@@ -25,7 +25,7 @@ export function MentionTag({ label, me }: { label: string; me?: boolean }) {
 }
 
 // Suggestion list while typing @ in the editor.
-export function useMentionMenu(editor: Editor | null, people: { id: string; name: string }[]) {
+export function useMentionMenu(editor: Editor | null, people: { id: string; name: string }[], teacherTag = true) {
   const [state, setState] = useState<{ from: number; query: string; top: number; left: number } | null>(null);
   const [index, setIndex] = useState(0);
   useEffect(() => {
@@ -48,7 +48,8 @@ export function useMentionMenu(editor: Editor | null, people: { id: string; name
       editor.off('update', check);
     };
   }, [editor]);
-  const all = [{ id: TEACHER_TAG, name: 'Teacher' }, ...people];
+  // In a lesson, @Teacher reaches the class teacher; in a chat everyone is named.
+  const all = teacherTag ? [{ id: TEACHER_TAG, name: 'Teacher' }, ...people] : people;
   const q = state?.query.trim().toLowerCase() ?? '';
   const items = state ? all.filter((p) => p.name.toLowerCase().split(' ').some((w) => w.startsWith(q)) || p.name.toLowerCase().startsWith(q)).slice(0, 8) : [];
   const choose = (p: { id: string; name: string }) => {

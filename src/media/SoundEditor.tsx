@@ -1056,7 +1056,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           <SuiteMark app="Recording editor" color="#e9a77d" dark />
         </a>
         <span className="sx-sep" aria-hidden="true" />
-        <input ref={nameRef} className="sx-name" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name the recording" aria-label="Name" />
+        <input ref={nameRef} className="sx-name" size={Math.max(18, title.length + 2)} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name the recording" aria-label="Name" />
         <span style={{ flex: 1 }} />
         {error && <span className="hint warn">{error}</span>}
         <span className="sx-acts">

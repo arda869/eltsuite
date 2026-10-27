@@ -17,7 +17,7 @@ const SECTIONS: Section[] = [
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans, observation and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
-  { title: 'Notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['grammarlink', 'vocablink', 'bankpick'] },
+  { title: 'Question bank', blurb: 'Questions you saved to use again.', keys: ['bankpick'] },
 ];
 
 // Longer explanations than the / menu hints: what learners do and how it is marked.
@@ -55,7 +55,7 @@ const ABOUT: Record<string, string> = {
   'pq-pairs': 'Minimal pairs: learners hear one word and pick it from similar-sounding options, like ship / sheep.',
   ipa: 'A phonemic transcription with a chart to type it, British or American, and a listen button (computer voice or your recording).',
   stress: 'A word split into syllables with the stressed one marked.',
-  'pq-crossword': 'A crossword built from your words and clues, or from the class notebook. Learners type the letters; one point per word.',
+  'pq-crossword': 'A crossword built from your words and clues. Learners type the letters; one point per word.',
   'pq-wordsearch': 'A grid of letters. Learners read each clue and drag across the word.',
   drawcard: 'A pile of cards with your content on each. Learners draw one at random. Good for speaking prompts.',
   wheel: 'The same cards on a wheel learners spin.',

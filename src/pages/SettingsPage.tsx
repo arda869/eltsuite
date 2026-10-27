@@ -383,7 +383,7 @@ function ToolbarSettings() {
         <div className="tbs-foot">
           <span className="hint">Or select a tool and press the up or down arrow.</span>
           <button type="button" className="btn small-btn" onClick={resetTools}>
-            Show all
+            Back to the default
           </button>
         </div>
       </div>

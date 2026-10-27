@@ -150,7 +150,7 @@ export function MediaArchive() {
     if (!pics.length || !space) return;
     setUpBusy(pics.length > 1 ? `Adding ${pics.length} pictures…` : 'Adding the picture…');
     try {
-      for (const f of pics) await uploadPicture(space, f, quality(), undefined, folder);
+      for (const f of pics) await uploadPicture(space, f, quality(), undefined, inClasses(folder) ? "" : folder);
       setUpBusy('');
     } catch {
       setUpBusy('A picture could not be added. Try a smaller one.');
@@ -486,7 +486,7 @@ export function MediaArchive() {
       const pages = await pageSizes(await openPdf(bytes));
       const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'pdf', f.name.replace(/\.pdf$/i, ''));
       await saveFilePdf(id, bytes, pages);
-      if (folder) await setDocPath(id, folder).catch(() => {});
+      if (folder && !inClasses(folder)) await setDocPath(id, folder).catch(() => {});
       if (w) w.location.href = `/doc/${id}`;
     } catch {
       w?.close();
@@ -499,7 +499,7 @@ export function MediaArchive() {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
     const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k);
-    if (folder) await setDocPath(id, folder).catch(() => {});
+    if (folder && !inClasses(folder)) await setDocPath(id, folder).catch(() => {});
     if (w) w.location.href = `/doc/${id}`;
   };
   const newMenu: MenuItem[] = [
@@ -516,7 +516,7 @@ export function MediaArchive() {
     { label: 'Recordings or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
   ];
   const emptyMenu: MenuItem[] = [
-    ...newMenu,
+    ...(inClasses(folder) ? [] : newMenu),
     ...(order.length ? ['sep' as const, { label: 'Select everything', icon: 'check', hint: 'Ctrl A', onClick: () => setSel(new Set(order)) } as MenuItem] : []),
   ];
   const clickFolder = (f: string) => (e: React.MouseEvent) => (touch || phone ? setFolder(f) : select('f:' + f, e));
@@ -833,11 +833,14 @@ export function MediaArchive() {
                 </nav>
                 <h1 className="page-title">{recent ? 'Recent' : folder ? leafOf(folder) : 'My files'}</h1>
               </div>
-              <span className="ma-add">
-                <button type="button" className="btn primary" onClick={(e) => openMenu(e, newMenu)} aria-haspopup="menu">
-                  + New
-                </button>
-              </span>
+              {/* Classes hold what the classes have; new things are made in My files. */}
+              {!inClasses(folder) && (
+                <span className="ma-add">
+                  <button type="button" className="btn primary" onClick={(e) => openMenu(e, newMenu)} aria-haspopup="menu">
+                    + New
+                  </button>
+                </span>
+              )}
             </div>
             {acct?.over && <div className="ma-full" role="status"><b>Your space is full.</b> New pictures, recordings and files cannot be added until you delete some, or {quota.org ? `${quota.org} gives you more` : 'ask for more space'}.</div>}
             {(upBusy || busy) && <BusyToast text={upBusy || busy} onClose={() => (setBusy(''), setUpBusy(''))} />}

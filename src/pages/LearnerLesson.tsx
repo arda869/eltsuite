@@ -7,6 +7,8 @@ import { LiveWho } from '../components/LiveWho';
 import { recordMistakes } from '../lib/mistakes';
 import { LearnerQuiz } from '../components/TeamQuiz';
 import { NotebookDrawer, SelectionNote } from '../components/NotebookDrawer';
+// The class notebook is switched off for now; its parts stay for later.
+const NOTEBOOK = false as boolean;
 import type { Prefill } from '../components/Notebook';
 import { collection } from 'firebase/firestore';
 import type { Topic } from '../lib/classes';
@@ -359,14 +361,14 @@ export function LearnerLesson() {
         <span className="right-push icon-row">
           {c?.meeting?.url && c.meeting.visibility === 'always' && <IconLink icon="call" label="Join the call" href={c.meeting.url} />}
           <IconLink icon="discuss" label="Class discussion" to="/discuss" />
-          <IconBtn icon="notebook" label="Notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
+          {NOTEBOOK && <IconBtn icon="notebook" label="Notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
           <PhoneMessagesLink />
           <TextSizeControl />
         </span>
       </header>
 
       <AnnouncementCards classId={classId} learnerId={learnerId} />
-      {nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
+      {NOTEBOOK && nbMe && <NotebookDrawer open={nbOpen} onClose={() => (setNbOpen(false), setNbPrefill(null), setNbFocus(null))} classId={classId} c={c} me={nbMe} items={nbItems} topics={nbTopics} prefill={nbPrefill} onPrefillDone={() => setNbPrefill(null)} focus={nbFocus} context={{ itemId, taskId: current }} />}
       {liveHere && live?.quiz && user && <LearnerQuiz classId={classId} uid={user.uid} learnerId={learnerId} content={(tid) => withBodies.find((t) => t.id === tid)?.content ?? null} />}
       {liveHere && live?.poll && user && <PollCard classId={classId} poll={live.poll} me={{ uid: user.uid, learnerId, name: profile?.role === 'learner' ? profile.displayName : '' }} />}
       {liveHere && (
@@ -476,7 +478,7 @@ export function LearnerLesson() {
               {boardOpen && onBoard && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher={false} page={live?.board?.page || firstPage(item)} /></div>}
               <div className="frame-body" ref={bodyRef} hidden={boardOpen && onBoard}>
                 {liveHere && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} />}
-                {nbMe && <SelectionNote container={bodyRef} c={c} me={nbMe} onAdd={toNotebook} />}
+                {NOTEBOOK && nbMe && <SelectionNote container={bodyRef} c={c} me={nbMe} onAdd={toNotebook} />}
                 <AnnotationLayer container={bodyRef} annotations={anns} classId={classId} taskId={task.id} canAnnotate={false} me={{ uid: user?.uid ?? '', name: profile?.role === 'learner' ? profile.displayName : '', teacher: false }} />
                 {synced && (
                   <div className="sync-banner" role="status">

@@ -47,7 +47,7 @@ export function ClassPage() {
   const roster = useClassmates(c?.classCode ?? undefined);
   const [params] = useSearchParams();
   const focusEntry = params.get('entry');
-  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : params.get('tab') === 'portfolio' ? 'portfolio' : params.get('tab') === 'learners' || params.get('learner') ? 'learners' : 'lessons');
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : params.get('tab') === 'portfolio' ? 'portfolio' : params.get('tab') === 'learners' || params.get('learner') ? 'learners' : 'lessons');
   const [learnerOpen, setLearnerOpen] = useState(params.get('learner') ?? '');
   const [thread, setThread] = useState<string | null>(params.get('thread'));
   const { user } = useAuth();
@@ -226,9 +226,6 @@ export function ClassPage() {
             </button>
             <button className={tab === 'learners' ? 'on' : ''} onClick={() => (setTab('learners'), setLearnerOpen(''))}>
               {tr('Learners')} <span className="count">{learners.length}</span>
-            </button>
-            <button className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
-              Notebook
             </button>
             <button className={tab === 'discussion' ? 'on' : ''} onClick={() => setTab('discussion')}>
               Discussion

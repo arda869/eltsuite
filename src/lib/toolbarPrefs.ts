@@ -90,8 +90,10 @@ export function useToolbarPrefs() {
     listeners.add(setP);
     return () => void listeners.delete(setP);
   }, []);
-  return (k: string): ToolPlace => p[k] ?? 'show';
+  return (k: string): ToolPlace => p[k] ?? DEFAULT_PLACE[k] ?? 'show';
 }
+// Out of the box: the everyday tools on the bar, the rest behind the › arrow.
+export const DEFAULT_PLACE: Record<string, ToolPlace> = { strike: 'more', table: 'more', definition: 'more', icons: 'more', symbols: 'more' };
 
 // Learners: the teacher chooses the text tools for each class in class settings. Writing tools
 // are on by default; language teaching tools (pronunciation, grammar labels, definitions) and

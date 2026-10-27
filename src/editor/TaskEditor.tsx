@@ -61,7 +61,7 @@ import { BoardNode, newBoard } from './BoardNode';
 import { DrawBoardNode, newDrawBoard } from './DrawBoard';
 import { newPack, PackNode } from './PackNode';
 import { newSurvey, SurveyNode } from './SurveyNode';
-import { BankLinkNode, newBankLink } from './BankLink';
+import { BankLinkNode } from './BankLink';
 import type { PackKind } from '../lib/pack';
 import { Mention, MentionMenu, useMentionMenu } from './Mention';
 import { CELL_COLORS, cellBg } from './tableStyle';
@@ -132,8 +132,6 @@ export const COMMANDS: Cmd[] = [
   { key: 'peer', label: 'Peer feedback', hint: 'Learners choose a classmate and rate how they did', group: 'Questions', run: (e) => e.chain().focus().insertContent([newReflect('peer'), { type: 'paragraph' }]).run() },
   { key: 'board', label: 'Message board', hint: 'Learners post messages the whole class sees', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('board'), { type: 'paragraph' }]).run() },
   { key: 'postits', label: 'Post-it wall', hint: 'Learners stick notes on a shared wall', group: 'Questions', run: (e) => e.chain().focus().insertContent([newBoard('postits'), { type: 'paragraph' }]).run() },
-  { key: 'grammarlink', label: 'Grammar bank link', hint: 'A card that opens a grammar page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('grammar'), { type: 'paragraph' }]).run() },
-  { key: 'vocablink', label: 'Vocabulary bank link', hint: 'A card that opens a vocabulary page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('vocab'), { type: 'paragraph' }]).run() },
   { key: 'dialogue', label: 'Dialogue', hint: 'A and B (or names), one line under the other or side by side; gaps and choices work inside', group: 'Text', run: (e) => insertDialogue(e) },
 ...DG_KINDS.map((k): Cmd => ({ key: 'dg-' + k, label: DG[k].label, hint: DG[k].hint, group: 'Text', run: (e) => e.chain().focus().insertContent([newDiagram(k), { type: 'paragraph' }]).run() })),
     { key: 'timeline', label: 'Timeline', hint: 'A tense timeline: events, actions in progress, periods, arrows and labels', group: 'Text', run: (e) => e.chain().focus().insertContent([newTimeline(), { type: 'paragraph' }]).run() },
@@ -150,7 +148,7 @@ export const COMMANDS: Cmd[] = [
   { key: 'pq-speaking', label: 'Speaking prompt', hint: 'A prompt card with photos, questions and a timer', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('speaking' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'pq-dictation', label: 'Dictation', hint: 'Learners hear a sentence and type it; marked word by word', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('dictation' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'pq-pairs', label: 'Minimal pairs', hint: 'Hear a word, pick it: ship / sheep', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('pairs' as PackKind), { type: 'paragraph' }]).run() },
-  { key: 'pq-crossword', label: 'Crossword', hint: 'Made from words and clues, or from the class notebook', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('crossword' as PackKind), { type: 'paragraph' }]).run() },
+  { key: 'pq-crossword', label: 'Crossword', hint: 'Made from words and clues', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('crossword' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'pq-wordsearch', label: 'Word search', hint: 'Find the words that match the clues', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('wordsearch' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'survey', label: 'Survey', hint: 'Ratings, faces, choices, ranking or open answers; anonymous if you like', group: 'Questions', run: (e) => e.chain().focus().insertContent([newSurvey(), { type: 'paragraph' }]).run() },
   { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
@@ -373,20 +371,19 @@ export const TOOL_FACE: Record<string, React.ReactNode> = {
   italic: <i className="ti ti-i">I</i>,
   underline: <u className="ti ti-u">U</u>,
   strike: <s className="ti ti-s">S</s>,
-  heading: <span className="ti ti-h">Heading</span>,
+  heading: <span className="ti ti-h">H</span>,
   bullets: ICON_LIST,
   numbers: ICON_OL,
-  table: <span className="ti-row">{ICON_TABLE}<span>Table</span></span>,
-  definition: <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
-  link: <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
+  table: ICON_TABLE,
+  definition: <span className="ti-def">Aa</span>,
+  link: ICON_LINK,
   questions: (
     <span className="ti-row">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 17h.01" /></svg>
-      <span>Questions</span>
       <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
     </span>
   ),
-  add: '+ Add…',
+  add: ICON(<><rect x="2" y="2" width="12" height="12" rx="3" /><path d="M8 5v6M5 8h6" /></>),
 };
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
@@ -607,7 +604,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
-  const mention = useMentionMenu(editor, classmates);
+  const mention = useMentionMenu(editor, classmates, !classId.startsWith('chat:'));
   // Editor shortcuts: ⌘K link, Alt+↑/↓ move the current block.
   useEffect(() => {
     if (!editor) return;
@@ -681,10 +678,10 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             ['strike', BTN('Strikethrough', editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), <s className="ti ti-s">S</s>)],
             ['color', <TextColorTool key="c" editor={editor} />],
             ['highlight', <HighlightTool key="h" editor={editor} />],
-            ['heading', BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), <span className="ti ti-h">Heading</span>)],
+            ['heading', BTN('Heading', editor.isActive('heading'), () => editor.chain().focus().toggleHeading({ level: 3 }).run(), TOOL_FACE.heading)],
             ['bullets', BTN('Bulleted list', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), ICON_LIST)],
             ['numbers', BTN('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), ICON_OL)],
-            ['table', BTN('Insert a table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), <span className="ti-row">{ICON_TABLE}<span>Table</span></span>)],
+            ['table', BTN('Insert a table', editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), TOOL_FACE.table)],
             [
               'definition',
               BTN(
@@ -697,7 +694,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                   }
                   setDefOpen(true);
                 },
-                <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
+                TOOL_FACE.definition,
               ),
             ],
             [
@@ -712,7 +709,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                   }
                   setLinkOpen(true);
                 },
-                <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
+                TOOL_FACE.link,
               ),
             ],
             ['sep', <span key="sep" className="tool-sep" />],
@@ -726,15 +723,11 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                       type="button"
                       className="tool tb-qs"
                       aria-haspopup="menu"
-                      data-tip="Gaps, choices, matching and every other question"
+                      aria-label="Questions" data-tip="Questions: gaps, choices, matching and more"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={(e) => openMenuAt(e.currentTarget, COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'collab-slides', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => ({ label: c.label, hint: c.hint, icon: '', onClick: () => c.run(editor) })))}
                     >
-                      <span className="ti-row">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 17h.01" /></svg>
-                        <span>Questions</span>
-                        <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
-                      </span>
+                      {TOOL_FACE.questions}
                     </button>,
                   ],
                 ] as [string, React.ReactNode][])
@@ -742,7 +735,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             ['icons', <IconTool key="i" editor={editor} />],
             ['symbols', <SymbolTool key="s" editor={editor} />],
             ['pron', <ProsodyTool key="p" editor={editor} />],
-            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')]] as [string, React.ReactNode][]) : []),
+            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery(true), TOOL_FACE.add)]] as [string, React.ReactNode][]) : []),
           ];
           const shown = tools.filter(([k]) => toolPlace(k) === 'show');
           const more = tools.filter(([k]) => toolPlace(k) === 'more');

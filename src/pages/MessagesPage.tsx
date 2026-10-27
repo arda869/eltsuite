@@ -1,3 +1,4 @@
+import { whoLine } from '../lib/directory';
 import { ask } from '../lib/ask';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { startSessionWith } from './StudioSession';
@@ -8,7 +9,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -87,7 +88,7 @@ export function MessagesPage() {
         <div className="msg-empty msg-off">
           <UiIcon name="message" size={30} />
           <strong>Messages are off for your class</strong>
-          <span className="hint">Your teacher has turned off messages. You can still use the discussion board and your notebook.</span>
+          <span className="hint">Your teacher has turned off messages. You can still use the discussion board.</span>
         </div>
       ) : (
         <div className={'msg' + (cur ? ' has-chat' : '')}>
@@ -254,7 +255,6 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const [enterSends] = useState(enterSendOn);
   // Every message starts as plain text; Aa shows the writing tools for this one.
   const [rich, setRich] = useState(false);
-  const [big, setBig] = useState(false);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
   const [content, setContent] = useState<JSONContent>(EMPTY);
@@ -327,8 +327,8 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         </button>
         <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : <PersonFace id={c.members.find((k) => k !== me.key)} name={title} size={36} status />}</span>
         <span className="chat-head-t">
-          <b>{title}</b>
-          <span className="hint">{isSelf(c) ? (teacher ? 'Only you can see this' : 'Notes for yourself. Your teacher can see class chats') : c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'Teacher' : 'Learner'}</span>
+          <b data-tip={c.kind === 'dm' && !isSelf(c) ? whoLine(dir, c.members.find((k) => k !== me.key), c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'teacher' : 'learner') : undefined}>{title}</b>
+          <span className="hint">{isSelf(c) ? (teacher ? 'Only you can see this' : 'Notes for yourself. Your teacher can see class chats') : c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : whoLine(dir, c.members.find((k) => k !== me.key), c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'teacher' : 'learner')}</span>
         </span>
         {c.kind === 'group' && (
           <button type="button" className="btn small-btn" onClick={() => setSettings((s) => !s)}>
@@ -386,7 +386,8 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           const cmd = e.metaKey || e.ctrlKey;
           // Not while a menu (insert, tagging) is open: Enter picks from it.
           const menuOpen = !!document.querySelector('.slash-float, .mention-menu');
-          if (cmd || (enterSends && !e.shiftKey && !menuOpen && (e.target as HTMLElement).classList.contains('ProseMirror'))) {
+          // With formatting on, Enter makes a new line; Ctrl or Cmd + Enter sends.
+          if (cmd || (enterSends && !rich && !e.shiftKey && !menuOpen && (e.target as HTMLElement).classList.contains('ProseMirror'))) {
             e.preventDefault();
             e.stopPropagation();
             void send();
@@ -406,9 +407,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           </span>
         )}
         {err && <span className="error">{err}</span>}
-        {/* The writing box holds its own buttons: formatting, size and send, at its right. */}
+        {/* The writing box holds its own buttons: formatting and send, at its right. */}
         <div className="chat-box">
-          <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '') + (rich ? '' : ' plain')}>
+          <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
             <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
           </div>
           <span className="chat-in">
@@ -416,9 +417,6 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />
               </svg>
-            </button>
-            <button type="button" className="icon-btn chat-big" onClick={() => setBig((b) => !b)} aria-label={big ? 'Smaller writing box' : 'Larger writing box'} data-tip={big ? 'Smaller writing box' : 'Larger writing box'} aria-pressed={big}>
-              <UiIcon name={big ? 'fullscreenOff' : 'fullscreen'} size={15} />
             </button>
             <button type="button" className="chat-send" disabled={busy || isEmptyContent(content)} onClick={send} aria-label={editing ? 'Save' : 'Send'} data-tip={editing ? 'Save' : 'Send'}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -514,7 +512,10 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             </button>
           )}
           {m.deleted ? (
-            <span className="hint bub-del">Message deleted</span>
+            <span className="hint bub-del">
+              Message deleted
+              {mine && <UndoDelete c={c} id={m.id} />}
+            </span>
           ) : (
             <>
               {m.content && !isEmptyContent(m.content) && (
@@ -635,7 +636,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
                   <UiIcon name="edit" size={16} />
                 </button>
                 {/* Delete asks once, in place: a second click deletes it for everyone. */}
-                <button type="button" className={'bt-i' + (armed ? ' bt-armed' : '')} onClick={() => (armed ? (setArmed(false), void deleteMsg(c, m.id)) : (setArmed(true), window.setTimeout(() => setArmed(false), 3000)))} aria-label={armed ? 'Click again to delete for everyone' : 'Delete'} data-tip={armed ? 'Click again to delete for everyone' : 'Delete'}>
+                <button type="button" className={'bt-i' + (armed ? ' bt-armed' : '')} onClick={() => (armed ? (setArmed(false), void deleteWithUndo(c, m)) : (setArmed(true), window.setTimeout(() => setArmed(false), 3000)))} aria-label={armed ? 'Click again to delete for everyone' : 'Delete'} data-tip={armed ? 'Click again to delete for everyone' : 'Delete'}>
                   {armed ? <span className="bt-sure">Delete?</span> : <UiIcon name="trash" size={16} />}
                 </button>
               </>
@@ -943,5 +944,21 @@ function MsgSettings({ uid }: { uid: string }) {
         </span>
       )}
     </span>
+  );
+}
+
+// "Undo" next to a message you deleted, for a minute.
+function UndoDelete({ c, id }: { c: Chat; id: string }) {
+  const [until, setUntil] = useState(() => undoUntil(id));
+  useEffect(() => {
+    if (!until) return;
+    const t = window.setTimeout(() => setUntil(0), Math.max(0, until - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [until]);
+  if (!until) return null;
+  return (
+    <button type="button" className="btn link small bub-undo" onClick={(e) => (e.stopPropagation(), void undoDelete(c, id))}>
+      Undo
+    </button>
   );
 }

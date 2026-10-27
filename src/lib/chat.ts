@@ -1,3 +1,4 @@
+import { quietNow } from './status';
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
@@ -158,6 +159,25 @@ export async function sendMsg(c: Chat, me: Person, m: Omit<Msg, 'id' | 'by' | 'n
 }
 export const editMsg = (c: Chat, id: string, patch: Partial<Msg>) => updateDoc(doc(msgsCol(c.id), id), JSON.parse(JSON.stringify({ ...patch, edited: Date.now() })));
 export const deleteMsg = (c: Chat, id: string) => updateDoc(doc(msgsCol(c.id), id), { deleted: true, content: null, text: '', key: {}, share: null, blocks: 0 });
+// For a minute after deleting, the sender can bring the message back.
+export const UNDO_MS = 60_000;
+const undoable = new Map<string, { chat: string; data: Record<string, unknown>; until: number }>();
+export function deleteWithUndo(c: Chat, m: Msg) {
+  const { id: _id, ...rest } = m as Msg & Record<string, unknown>;
+  void _id;
+  undoable.set(m.id, { chat: c.id, until: Date.now() + UNDO_MS, data: JSON.parse(JSON.stringify({ content: rest.content ?? null, text: rest.text ?? '', key: rest.key ?? {}, share: rest.share ?? null, blocks: rest.blocks ?? 0 })) });
+  return deleteMsg(c, m.id);
+}
+export const undoUntil = (id: string) => {
+  const u = undoable.get(id);
+  return u && u.until > Date.now() ? u.until : 0;
+};
+export async function undoDelete(c: Chat, id: string) {
+  const u = undoable.get(id);
+  if (!u || u.until < Date.now()) return;
+  undoable.delete(id);
+  await updateDoc(doc(msgsCol(c.id), id), { ...u.data, deleted: false });
+}
 // Quick reactions: a few of the app's own emoji, and any other from the full set.
 export const QUICK_REACTS = ['thumbsup', 'love', 'laugh', 'wow', 'think', 'sad'];
 // Older reactions were words.
@@ -192,7 +212,7 @@ export function useTyping(chatId: string, me: string) {
 // Sounds, made in the browser: a soft two-note chime for a new message, a light tap on send.
 let ctx: AudioContext | null = null;
 export function chime(kind: 'in' | 'out') {
-  if (!soundsOn() || (kind === 'in' && localStorageGet('ll.statusSet') === 'busy')) return;
+  if (!soundsOn() || (kind === 'in' && quietNow())) return;
   try {
     ctx ??= new AudioContext();
     const t = ctx.currentTime;
@@ -288,10 +308,3 @@ export function saveEnterSend(v: boolean) {
   }
 }
 
-function localStorageGet(k: string) {
-  try {
-    return localStorage.getItem(k);
-  } catch {
-    return null;
-  }
-}

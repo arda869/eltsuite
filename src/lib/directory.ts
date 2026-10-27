@@ -1,3 +1,4 @@
+import { currentOrg } from './admin';
 import { shownName, type MessagingMode } from './classes';
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
@@ -60,4 +61,19 @@ export function useDirectory(): Directory | null {
     };
   }, [user, profile]);
   return dir;
+}
+
+// Who someone is, in a few words: a teacher (with their job title, in your organisation), or a
+// learner and their class.
+export function whoLine(dir: Directory | null | undefined, key: string | undefined, role?: 'teacher' | 'learner'): string {
+  if (!key) return '';
+  const all = dir?.groups.flatMap((g) => g.people.map((p) => ({ p, g }))) ?? [];
+  const hit = all.find((x) => x.p.key === key);
+  const r = role ?? hit?.p.role;
+  if (r === 'teacher') {
+    const title = currentOrg()?.teachers?.[key]?.title?.trim();
+    return title ? `Teacher · ${title}` : 'Teacher';
+  }
+  const cls = all.find((x) => x.p.key === key && x.p.classId && x.g.id !== 'colleagues')?.g.label.replace(/ · classmates$/, '');
+  return cls && cls !== 'Classmates' ? `Learner · ${cls}` : 'Learner';
 }

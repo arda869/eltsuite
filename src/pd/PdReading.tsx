@@ -92,10 +92,11 @@ function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 
   const t = s.type;
   return (
     <div className="pd-form">
-      <span className="seg small-seg pd-types" role="radiogroup" aria-label="Kind of source">
+      <span className="pd-kinds" role="radiogroup" aria-label="Kind of source">
         {SOURCE_TYPES.map((x) => (
-          <button key={x.k} type="button" role="radio" aria-checked={t === x.k} className={t === x.k ? 'on' : ''} onClick={() => set({ type: x.k as SourceType })}>
-            {x.label}
+          <button key={x.k} type="button" role="radio" aria-checked={t === x.k} className={'pd-kind' + (t === x.k ? ' on' : '')} onClick={() => set({ type: x.k as SourceType })}>
+            <SourceArt t={x.k} />
+            <span>{x.label}</span>
           </button>
         ))}
       </span>
@@ -157,6 +158,61 @@ const TYPE_D: Record<string, string> = {
   web: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 12h17M12 3c2.5 2.6 3.6 5.6 3.6 9s-1.1 6.4-3.6 9c-2.5-2.6-3.6-5.6-3.6-9S9.5 5.6 12 3z',
   report: 'M6 3h12v18H6zM9 15v2M12 12v5M15 9v8',
 };
+// A small drawing of each kind of source: grey, in the accent colour when chosen.
+function SourceArt({ t }: { t: SourceType }) {
+  const soft = { fill: 'currentColor', opacity: 0.14 };
+  const line = { stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none' };
+  return (
+    <svg width="64" height="44" viewBox="0 0 64 44" aria-hidden="true">
+      {t === 'book' && (
+        <>
+          <rect x="18" y="5" width="28" height="34" rx="3" {...soft} />
+          <rect x="18" y="5" width="28" height="34" rx="3" {...line} />
+          <path d="M23 5v34" {...line} />
+          <path d="M29 13h12M29 18h9" {...line} />
+          <path d="M39 5v11l3-2.2 3 2.2V5" fill="currentColor" opacity="0.55" />
+        </>
+      )}
+      {t === 'chapter' && (
+        <>
+          <path d="M32 11c-5-3-12-4-20-3v27c8-1 15 0 20 3 5-3 12-4 20-3V8c-8-1-15 0-20 3z" {...soft} />
+          <path d="M32 11c-5-3-12-4-20-3v27c8-1 15 0 20 3M32 11c5-3 12-4 20-3v27c-8-1-15 0-20 3M32 11v27" {...line} />
+          <path d="M37 16h10M37 21h10M37 26h7" {...line} />
+          <rect x="16" y="15" width="11" height="9" rx="1.5" fill="currentColor" opacity="0.5" />
+          <path d="M16 29h11" {...line} />
+        </>
+      )}
+      {t === 'article' && (
+        <>
+          <rect x="16" y="4" width="32" height="36" rx="2.5" {...soft} />
+          <rect x="16" y="4" width="32" height="36" rx="2.5" {...line} />
+          <rect x="20" y="8" width="24" height="5" rx="1" fill="currentColor" opacity="0.5" />
+          <path d="M20 18h10M20 22h10M20 26h10M20 30h10M20 34h7M34 18h10M34 22h10M34 26h10M34 30h10M34 34h6" {...line} strokeWidth={1.2} />
+        </>
+      )}
+      {t === 'web' && (
+        <>
+          <rect x="10" y="7" width="44" height="31" rx="3.5" {...soft} />
+          <rect x="10" y="7" width="44" height="31" rx="3.5" {...line} />
+          <path d="M10 14h44" {...line} />
+          <circle cx="14.5" cy="10.5" r="1" fill="currentColor" />
+          <circle cx="18" cy="10.5" r="1" fill="currentColor" />
+          <rect x="15" y="18" width="16" height="12" rx="1.5" fill="currentColor" opacity="0.5" />
+          <path d="M35 19h14M35 23h14M35 27h10M15 34h34" {...line} strokeWidth={1.2} />
+        </>
+      )}
+      {t === 'report' && (
+        <>
+          <rect x="17" y="4" width="30" height="36" rx="2.5" {...soft} />
+          <rect x="17" y="4" width="30" height="36" rx="2.5" {...line} />
+          <path d="M22 10h14" {...line} />
+          <path d="M22 32V24M28 32V18M34 32v-5M40 32V15" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" opacity="0.6" />
+          <path d="M21 35h22" {...line} strokeWidth={1.2} />
+        </>
+      )}
+    </svg>
+  );
+}
 function TypeIcon({ t, size = 16 }: { t: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
