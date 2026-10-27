@@ -36,7 +36,7 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
           Remove
         </button>
       </div>
-      <input className="r-title" value={node.attrs.title ?? ''} placeholder="Title (optional), for example: How was today’s lesson?" onKeyDown={stop} onChange={(e) => updateAttributes({ title: e.target.value })} />
+      <input aria-label="Title (optional), for example: How was today’s lesson?" className="r-title" value={node.attrs.title ?? ''} placeholder="Title (optional), for example: How was today’s lesson?" onKeyDown={stop} onChange={(e) => updateAttributes({ title: e.target.value })} />
       <label className="r-share">
         <input type="checkbox" checked={!!node.attrs.anonymous} onChange={() => updateAttributes({ anonymous: !node.attrs.anonymous })} />
         Anonymous
@@ -66,22 +66,22 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
                 </button>
               </span>
             </span>
-            <input className="sv-edit-prompt" value={q.prompt} placeholder="The question" onKeyDown={stop} onChange={(e) => setQ(i, { prompt: e.target.value })} />
+            <input aria-label="The question" className="sv-edit-prompt" value={q.prompt} placeholder="The question" onKeyDown={stop} onChange={(e) => setQ(i, { prompt: e.target.value })} />
             {q.type === 'scale' && (
               <span className="pq-row">
                 <NSelect value={q.max ?? 5} aria-label="Scale" onChange={(e) => setQ(i, { max: Number(e.target.value) })}>
                   <option value={5}>1 to 5</option>
                   <option value={10}>1 to 10</option>
                 </NSelect>
-                <input value={q.low ?? ''} placeholder="Label for 1" onKeyDown={stop} onChange={(e) => setQ(i, { low: e.target.value })} />
-                <input value={q.high ?? ''} placeholder={`Label for ${q.max ?? 5}`} onKeyDown={stop} onChange={(e) => setQ(i, { high: e.target.value })} />
+                <input aria-label="Label for 1" value={q.low ?? ''} placeholder="Label for 1" onKeyDown={stop} onChange={(e) => setQ(i, { low: e.target.value })} />
+                <input aria-label={`Label for ${q.max ?? 5}`} value={q.high ?? ''} placeholder={`Label for ${q.max ?? 5}`} onKeyDown={stop} onChange={(e) => setQ(i, { high: e.target.value })} />
               </span>
             )}
             {(q.type === 'single' || q.type === 'multi' || q.type === 'rank') && (
               <div className="pq-lines">
                 {(q.options ?? []).map((o, k) => (
                   <span key={k} className="pq-line">
-                    <input value={o} placeholder={`Option ${k + 1}`} onKeyDown={stop} onChange={(e) => setQ(i, { options: (q.options ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />
+                    <input aria-label={`Option ${k + 1}`} value={o} placeholder={`Option ${k + 1}`} onKeyDown={stop} onChange={(e) => setQ(i, { options: (q.options ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />
                     <button type="button" className="icon-btn" aria-label="Remove option" disabled={(q.options ?? []).length <= 2} onClick={() => setQ(i, { options: (q.options ?? []).filter((_, j) => j !== k) })}>
                       ×
                     </button>

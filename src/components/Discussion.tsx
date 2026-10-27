@@ -133,7 +133,7 @@ function Composer({ people, placeholder, onSend, busy, autoFocus, submitLabel = 
   };
   return (
     <div className="composer">
-      <textarea ref={ta} value={text} rows={3} placeholder={placeholder} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && send()} />
+      <textarea aria-label={placeholder} ref={ta} value={text} rows={3} placeholder={placeholder} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && send()} />
       {sug.length > 0 && (
         <span className="mention-sug">
           {sug.map((p) => (

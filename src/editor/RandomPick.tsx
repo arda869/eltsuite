@@ -123,7 +123,7 @@ function PickCardView({ node, updateAttributes, deleteNode, editor, getPos }: No
     <NodeViewWrapper className="pick-card-node">
       <div className="pick-card-head" contentEditable={false}>
         <span className="pick-card-n" />
-        <input
+        <input aria-label={mode === 'wheel' ? 'Label on the wheel (optional)' : 'Card name (optional, shown after it is drawn)'}
           className="pick-card-title"
           value={node.attrs.title ?? ''}
           placeholder={mode === 'wheel' ? 'Label on the wheel (optional)' : 'Card name (optional, shown after it is drawn)'}

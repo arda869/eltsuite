@@ -310,7 +310,7 @@ function ColumnMenu({ at, field, side, onClose, onSave, onMove, onRemove }: { at
     <div ref={ref} className="fs-colmenu" role="dialog" aria-label={field ? 'Column' : 'New column'} style={{ top: at.bottom + 6, left: Math.max(8, Math.min(at.left, window.innerWidth - 290)) }}>
       <label className="field">
         <span>Name</span>
-        <input value={name} autoFocus placeholder="For example: Example sentence" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && done()} />
+        <input aria-label="Name" value={name} autoFocus placeholder="For example: Example sentence" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && done()} />
       </label>
       <label className="field">
         <span>Kind</span>
@@ -502,7 +502,7 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
         <span className="fs-count">
           {cards.length} {cards.length === 1 ? 'card' : 'cards'}
         </span>
-        {view !== 'study' && <input className="ma-search fs-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the cards" />}
+        {view !== 'study' && <input aria-label="Search the cards" className="ma-search fs-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the cards" />}
         <span style={{ flex: 1 }} />
         {canEdit && view === 'cards' && (
           <button type="button" className={'btn' + (design ? ' on' : '')} onClick={() => (setDesign((v) => !v), setOpen(null))}>

@@ -132,7 +132,7 @@ function Lines({ items, onChange, placeholder, numbered, min = 1 }: { items: str
       {items.map((x, i) => (
         <span key={i} className="pq-line">
           {numbered && <span className="pq-n">{numbered(i)}</span>}
-          <input
+          <input aria-label={placeholder}
             value={x}
             placeholder={placeholder}
             onChange={(e) => onChange(items.map((y, k) => (k === i ? e.target.value : y)))}
@@ -160,11 +160,11 @@ const csv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 // Comma lists keep their own text while typing.
 function CommaField({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder: string }) {
   const [t, setT] = useState(value.join(', '));
-  return <input value={t} placeholder={placeholder} onChange={(e) => setT(e.target.value)} onBlur={() => onChange(csv(t))} onKeyDown={(e) => e.stopPropagation()} />;
+  return <input aria-label={placeholder} value={t} placeholder={placeholder} onChange={(e) => setT(e.target.value)} onBlur={() => onChange(csv(t))} onKeyDown={(e) => e.stopPropagation()} />;
 }
 function PipeField({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder: string }) {
   const [t, setT] = useState(value.join(' | '));
-  return <input value={t} placeholder={placeholder} onChange={(e) => setT(e.target.value)} onBlur={() => onChange(t.split('|').map((x) => x.trim()).filter(Boolean))} onKeyDown={(e) => e.stopPropagation()} />;
+  return <input aria-label={placeholder} value={t} placeholder={placeholder} onChange={(e) => setT(e.target.value)} onBlur={() => onChange(t.split('|').map((x) => x.trim()).filter(Boolean))} onKeyDown={(e) => e.stopPropagation()} />;
 }
 
 function LabelPoints({ d, set }: { d: Data; set: (p: Data) => void }) {
@@ -199,7 +199,7 @@ function LabelPoints({ d, set }: { d: Data; set: (p: Data) => void }) {
           {pts.map((p, i) => (
             <span key={i} className="pq-line">
               <span className="pq-n">{i + 1}</span>
-              <input value={p.label} placeholder="Label for this point" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ points: pts.map((q, k) => (k === i ? { ...q, label: e.target.value } : q)) })} />
+              <input aria-label="Label for this point" value={p.label} placeholder="Label for this point" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ points: pts.map((q, k) => (k === i ? { ...q, label: e.target.value } : q)) })} />
               <button type="button" className="icon-btn" aria-label="Remove point" onClick={() => set({ points: pts.filter((_, k) => k !== i) })}>
                 ×
               </button>
@@ -222,10 +222,10 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
       const ok = !d.wrong?.trim() || ` ${String(d.sentence ?? '').toLowerCase()} `.includes(` ${String(d.wrong).toLowerCase().trim()} `);
       return (
         <>
-          <input className="mcq-prompt" value={d.sentence ?? ''} placeholder="The sentence with a mistake, for example: She have been to Paris twice." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ sentence: e.target.value })} />
+          <input aria-label="The sentence with a mistake, for example: She have been to Paris twice." className="mcq-prompt" value={d.sentence ?? ''} placeholder="The sentence with a mistake, for example: She have been to Paris twice." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ sentence: e.target.value })} />
           <label className="inline-field">
             The mistake
-            <input value={d.wrong ?? ''} placeholder="have" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ wrong: e.target.value })} />
+            <input aria-label="The wrong word" value={d.wrong ?? ''} placeholder="have" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ wrong: e.target.value })} />
           </label>
           {!ok && <span className="error">The mistake must be words from the sentence.</span>}
           <label className="inline-field">
@@ -245,7 +245,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
             {cats.map((c, i) => (
               <div key={i} className="pq-cat">
                 <span className="pq-cat-head">
-                  <input value={c.name} placeholder="Column name" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => put(i, { name: e.target.value })} />
+                  <input aria-label="Column name" value={c.name} placeholder="Column name" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => put(i, { name: e.target.value })} />
                   <button type="button" className="icon-btn" aria-label="Remove column" disabled={cats.length <= 2} onClick={() => set({ cats: cats.filter((_, k) => k !== i) })}>
                     ×
                   </button>
@@ -264,11 +264,11 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
     case 'transform':
       return (
         <>
-          <input className="mcq-prompt" value={d.first ?? ''} placeholder="First sentence: This is my first time in Hong Kong." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ first: e.target.value })} />
+          <input aria-label="First sentence: This is my first time in Hong Kong." className="mcq-prompt" value={d.first ?? ''} placeholder="First sentence: This is my first time in Hong Kong." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ first: e.target.value })} />
           <div className="pq-row">
             <label className="inline-field">
               Key word
-              <input value={d.keyWord ?? ''} placeholder="NEVER" style={{ textTransform: 'uppercase', width: 120 }} onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ keyWord: e.target.value.toUpperCase() })} />
+              <input aria-label="Key word" value={d.keyWord ?? ''} placeholder="NEVER" style={{ textTransform: 'uppercase', width: 120 }} onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ keyWord: e.target.value.toUpperCase() })} />
             </label>
             <label className="inline-field small-field">
               Words
@@ -278,9 +278,9 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
             </label>
           </div>
           <div className="pq-row pq-tr">
-            <input value={d.before ?? ''} placeholder="I" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ before: e.target.value })} />
+            <input aria-label="Words before the gap" value={d.before ?? ''} placeholder="I" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ before: e.target.value })} />
             <span className="pq-gap-mark">gap</span>
-            <input value={d.after ?? ''} placeholder="to Hong Kong before." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ after: e.target.value })} />
+            <input aria-label="Words after the gap" value={d.after ?? ''} placeholder="to Hong Kong before." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ after: e.target.value })} />
           </div>
           <label className="inline-field">
             Answers
@@ -292,8 +292,8 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
       const { groups } = tokenise(d.text ?? '');
       return (
         <>
-          <input className="mcq-prompt" value={d.instruction ?? ''} placeholder="Tap every past participle." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ instruction: e.target.value })} />
-          <textarea className="pq-text" rows={4} value={d.text ?? ''} placeholder="I have {{seen}} the film and she has {{read}} the book." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ text: e.target.value })} />
+          <input aria-label="Instruction" className="mcq-prompt" value={d.instruction ?? ''} placeholder="Tap every past participle." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ instruction: e.target.value })} />
+          <textarea aria-label="Text, with the answers in double curly brackets" className="pq-text" rows={4} value={d.text ?? ''} placeholder="I have {{seen}} the film and she has {{read}} the book." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ text: e.target.value })} />
           <span className="hint">Put the words learners should tap in {'{{ }}'}. {groups.length} to find.</span>
           <label className="check-row">
             <input type="checkbox" checked={d.penalty !== false} onChange={() => set({ penalty: d.penalty === false })} />
@@ -318,7 +318,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
           <div className="pq-odd">
             {ws.map((w, i) => (
               <span key={i} className={'pq-odd-word' + (d.odd === i ? ' on' : '')}>
-                <input value={w} placeholder={`Word ${i + 1}`} onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ words: ws.map((x, k) => (k === i ? e.target.value : x)) })} />
+                <input aria-label={`Word ${i + 1}`} value={w} placeholder={`Word ${i + 1}`} onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ words: ws.map((x, k) => (k === i ? e.target.value : x)) })} />
                 <button type="button" className="pq-odd-pick" title="This is the odd one out" aria-pressed={d.odd === i} onClick={() => set({ odd: i })}>
                   {d.odd === i ? 'Odd one' : 'Mark'}
                 </button>
@@ -360,7 +360,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
             {opts.map((o, i) => (
               <span key={i} className="pq-line">
                 <span className="pq-n">{o}</span>
-                <input value={names[i] ?? ''} placeholder="Name (optional), for example: Anna" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ names: opts.map((_, k) => (k === i ? e.target.value : names[k] ?? '')) })} />
+                <input aria-label="Name (optional), for example: Anna" value={names[i] ?? ''} placeholder="Name (optional), for example: Anna" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ names: opts.map((_, k) => (k === i ? e.target.value : names[k] ?? '')) })} />
               </span>
             ))}
             <span className="pq-row">
@@ -377,7 +377,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
             {st.map((s, i) => (
               <span key={i} className="pq-line">
                 <span className="pq-n">{i + 1}</span>
-                <input value={s.text} placeholder="Which person mentions moving abroad?" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ statements: st.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)) })} />
+                <input aria-label="Statement" value={s.text} placeholder="Which person mentions moving abroad?" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ statements: st.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)) })} />
                 <NSelect value={s.answer} aria-label="Answer" onChange={(e) => set({ statements: st.map((x, k) => (k === i ? { ...x, answer: Number(e.target.value) } : x)) })}>
                   {opts.map((o, k) => (
                     <option key={k} value={k}>
@@ -402,7 +402,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
       const imgs: string[] = d.images ?? [];
       return (
         <>
-          <textarea className="pq-text" rows={2} value={d.prompt ?? ''} placeholder="Compare the two photos and say why people choose these holidays." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ prompt: e.target.value })} />
+          <textarea aria-label="Speaking prompt" className="pq-text" rows={2} value={d.prompt ?? ''} placeholder="Compare the two photos and say why people choose these holidays." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ prompt: e.target.value })} />
           {[0, 1].map((i) => (
             <PictureField key={i} label={`Photo ${i + 1}`} value={imgs[i] ?? ''} onChange={(v) => set({ images: [0, 1].map((k) => (k === i ? v : imgs[k] ?? '')).filter((x, k) => x || k < 1) })} />
           ))}
@@ -431,7 +431,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
     case 'dictation':
       return (
         <>
-          <textarea className="pq-text" rows={2} value={d.sentence ?? ''} placeholder="The sentence learners will hear and type." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ sentence: e.target.value })} />
+          <textarea aria-label="The sentence learners will hear and type." className="pq-text" rows={2} value={d.sentence ?? ''} placeholder="The sentence learners will hear and type." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ sentence: e.target.value })} />
           <div className="pq-row">
             <label className="inline-field small-field">
               Replays

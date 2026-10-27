@@ -1393,11 +1393,11 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               </span>
               <label className="field">
                 <span>Line</span>
-                <input className="sx-line-text" value={pickedLine.text} onChange={(e) => setLine(pickedLine.id, { text: e.target.value }, 'lt' + pickedLine.id)} placeholder="What is said" />
+                <input aria-label="What is said" className="sx-line-text" value={pickedLine.text} onChange={(e) => setLine(pickedLine.id, { text: e.target.value }, 'lt' + pickedLine.id)} placeholder="What is said" />
               </label>
               <label className="field">
                 <span>Speaker (optional)</span>
-                <input value={pickedLine.who ?? ''} list="sx-speakers" onChange={(e) => setLine(pickedLine.id, { who: e.target.value || undefined }, 'lw' + pickedLine.id)} placeholder="A, B, or a name" />
+                <input aria-label="Speaker" value={pickedLine.who ?? ''} list="sx-speakers" onChange={(e) => setLine(pickedLine.id, { who: e.target.value || undefined }, 'lw' + pickedLine.id)} placeholder="A, B, or a name" />
                 <datalist id="sx-speakers">
                   {[...new Set(p.lines.map((l) => l.who).filter(Boolean))].map((w) => (
                     <option key={w} value={w} />
@@ -1478,7 +1478,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                 Set my volume automatically
               </label>
               <h4 style={{ marginTop: 8 }}>Script to read</h4>
-              <textarea className="sx-scriptin" value={scriptText} onChange={(e) => setScriptText(e.target.value)} onBlur={() => takeScript(scriptText)} placeholder="Optional. Paste it here, one sentence per line. While you record it shows large, and Space starts each line, so the karaoke is timed for you." rows={6} />
+              <textarea aria-label="Optional. Paste it here, one sentence per line. While you record it shows large, and Space starts each line, so the karaoke is timed for you." className="sx-scriptin" value={scriptText} onChange={(e) => setScriptText(e.target.value)} onBlur={() => takeScript(scriptText)} placeholder="Optional. Paste it here, one sentence per line. While you record it shows large, and Space starts each line, so the karaoke is timed for you." rows={6} />
               <span className="hint">Keep a hand’s width from the microphone and speak a little slower than usual. Made a mistake? Stop, click just before it and record again.</span>
             </>
           ) : (

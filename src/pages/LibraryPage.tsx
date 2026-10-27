@@ -214,7 +214,7 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
         <div className={'ma-bar-row ma-tools' + (chosen ? ' under' : '')} aria-hidden={chosen ? true : undefined}>
           <span className="ma-search-wrap">
             <UiIcon name="search" size={15} />
-            <input className="ma-search" type="search" value={q} placeholder={`Search in ${f.name}`} onChange={(e) => setQ(e.target.value)} />
+            <input aria-label={`Search in ${f.name}`} className="ma-search" type="search" value={q} placeholder={`Search in ${f.name}`} onChange={(e) => setQ(e.target.value)} />
           </span>
           <span className="seg small-seg" role="radiogroup" aria-label="Show">
             {([['', 'Everything'], ['lesson', 'Lessons'], ['other', 'Other files']] as const).map(([k, l]) => (

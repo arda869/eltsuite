@@ -255,7 +255,7 @@ function DiagramView({ node, updateAttributes, editor, getPos, deleteNode, selec
     labels[i] = v;
     updateAttributes({ labels });
   };
-  const endLabel = editable ? (i: number) => <input className="dg-end-in" value={a.labels?.[i] ?? ''} placeholder={spec.ends?.[i] ?? ''} onChange={(e) => setLabel(i, e.target.value)} size={Math.max(4, (a.labels?.[i] ?? spec.ends?.[i] ?? '').length + 1)} /> : undefined;
+  const endLabel = editable ? (i: number) => <input aria-label={`End label ${i + 1}`} className="dg-end-in" value={a.labels?.[i] ?? ''} placeholder={spec.ends?.[i] ?? ''} onChange={(e) => setLabel(i, e.target.value)} size={Math.max(4, (a.labels?.[i] ?? spec.ends?.[i] ?? '').length + 1)} /> : undefined;
   return (
     <NodeViewWrapper className={'dg-node' + (selected ? ' is-selected' : '')} data-diagram="">
       <DiagramFrame
@@ -265,7 +265,7 @@ function DiagramView({ node, updateAttributes, editor, getPos, deleteNode, selec
         head={
           <div className="dg-ed-head" contentEditable={false}>
             <Select value={kind} options={DG_KINDS.filter((k) => DG[k].max >= n).map((k) => ({ v: k, label: DG[k].label, hint: DG[k].hint }))} onChange={(v) => change(v)} label="Kind of diagram" disabled={!editable} />
-            <input className="dg-title-in" value={a.title ?? ''} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} readOnly={!editable} />
+            <input aria-label="Title (optional)" className="dg-title-in" value={a.title ?? ''} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} readOnly={!editable} />
             <span style={{ flex: 1 }} />
             {editable && spec.add && n < spec.max && (
               <button type="button" className="btn small-btn" onClick={add}>
@@ -299,7 +299,7 @@ function CellView({ node, updateAttributes, editor, getPos, deleteNode }: NodeVi
   return (
     <NodeViewWrapper className={'dg-cell c' + i + (i === 0 && (kind === 'mind' || kind === 'tree') ? ' main' : '')} style={placeOf(kind, i, n)}>
       {lab !== null && (
-        <input className="dg-cell-label" contentEditable={false} value={node.attrs.label ?? ''} placeholder={lab} onChange={(e) => updateAttributes({ label: e.target.value })} readOnly={!editable} />
+        <input aria-label={lab} className="dg-cell-label" contentEditable={false} value={node.attrs.label ?? ''} placeholder={lab} onChange={(e) => updateAttributes({ label: e.target.value })} readOnly={!editable} />
       )}
       <NodeViewContent className="dg-cell-body" />
       {editable && spec.add && n > spec.min && !(i === 0 && (kind === 'mind' || kind === 'tree')) && (

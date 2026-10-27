@@ -205,7 +205,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         }}
       >
         <span className="bd-reply-wrap">
-          <input ref={replyRef} autoFocus value={replyText} maxLength={500} placeholder={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} onChange={(e) => (setReplyText(e.target.value), tagReply.track(e))} onKeyUp={tagReply.track} onClick={tagReply.track} />
+          <input aria-label={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} ref={replyRef} autoFocus value={replyText} maxLength={500} placeholder={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} onChange={(e) => (setReplyText(e.target.value), tagReply.track(e))} onKeyUp={tagReply.track} onClick={tagReply.track} />
           <TagList items={tagReply.items} onPick={(p) => tagReply.choose(p, replyRef.current)} />
         </span>
         <button type="submit" className="btn small-btn primary" disabled={!replyText.trim() || busy}>
@@ -257,7 +257,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
           }}
         >
           {!isNotes && (attrs.anonymous && !me.teacher ? <span className="bd-av me"><Icon name="question" size="14" /></span> : <Avatar k={me.teacher ? avatars.teacher : avatars.byLearner[me.selfId ?? '']} name={me.name} size={34} />)}
-          <textarea
+          <textarea aria-label={(isNotes ? 'Write on your note…' : attrs.anonymous && !me.teacher ? 'Write a message. Your name won’t be shown.' : 'Write a message to the class…') + (tagging ? ' Type @ to tag someone.' : '')}
             ref={composeRef}
             onKeyUp={tagMain.track}
             onClick={tagMain.track}

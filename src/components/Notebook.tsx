@@ -64,7 +64,7 @@ function VocabForm({ data, setData, withTranslation }: { data: EntryData; setDat
     <div className="nb-form">
       <label className="def-field">
         <span>Word or phrase</span>
-        <input className="nb-word" value={data.word ?? ''} autoFocus placeholder="reluctant" onChange={(e) => setData({ ...data, word: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+        <input aria-label="Word or phrase" className="nb-word" value={data.word ?? ''} autoFocus placeholder="reluctant" onChange={(e) => setData({ ...data, word: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       </label>
       {CORE.map((f) => (
         <DefField key={f.k} f={f} data={def} setData={setDef} word={data.word} />
@@ -97,9 +97,9 @@ function VocabForm({ data, setData, withTranslation }: { data: EntryData; setDat
 function NoteForm({ data, setData }: { data: EntryData; setData: (d: EntryData) => void }) {
   return (
     <div className="nb-form">
-      <input className="nb-title" value={data.title ?? ''} placeholder="Title (optional)" onChange={(e) => setData({ ...data, title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+      <input aria-label="Title (optional)" className="nb-title" value={data.title ?? ''} placeholder="Title (optional)" onChange={(e) => setData({ ...data, title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       <NoteEditor value={data.text} onChange={(v) => setData({ ...data, text: v })} autoFocus />
-      <input className="nb-tags" value={(data.tags ?? []).join(', ')} placeholder="Tags, separated by commas" onChange={(e) => setData({ ...data, tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} onKeyDown={(e) => e.stopPropagation()} />
+      <input aria-label="Tags, separated by commas" className="nb-tags" value={(data.tags ?? []).join(', ')} placeholder="Tags, separated by commas" onChange={(e) => setData({ ...data, tags: e.target.value.split(',').map((x) => x.trim()).filter(Boolean) })} onKeyDown={(e) => e.stopPropagation()} />
     </div>
   );
 }
@@ -256,7 +256,7 @@ function EntryCard({ classId, c, me, e, items, myTranslation, saved, onSaveToMin
                 !me.teacher && me.learnerId ? (
                   <span className="nb-mytr">
                     {trOpen ? (
-                      <input
+                      <input aria-label="My translation (only I see it)"
                         value={tr}
                         autoFocus
                         placeholder="My translation (only I see it)"
@@ -394,7 +394,7 @@ function PageCard({ classId, c, me, e, topics, places }: { classId: string; c: C
     <article className="nb-card page" id={'nb-' + e.id}>
       {editing ? (
         <div className="nb-editing">
-          <input className="nb-title" value={title} placeholder="Page title, for example: Present perfect vs past simple" onChange={(ev) => setTitle(ev.target.value)} />
+          <input aria-label="Page title, for example: Present perfect vs past simple" className="nb-title" value={title} placeholder="Page title, for example: Present perfect vs past simple" onChange={(ev) => setTitle(ev.target.value)} />
           <div className="nb-page-editor">
             <TaskEditor content={draft!} onChange={setDraft} classId={classId} places={places} />
           </div>

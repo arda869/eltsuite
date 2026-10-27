@@ -248,7 +248,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
               </span>
               <input type="checkbox" checked={tell} onChange={() => setTell((v) => !v)} />
             </label>
-            {tell && <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="A note (optional)" />}
+            {tell && <textarea aria-label="A note (optional)" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="A note (optional)" />}
             <button type="button" className="btn primary" disabled={busy} onClick={() => void go()}>
               {busy ? 'Sharing…' : `Share with ${picked.length} ${picked.length === 1 ? 'person' : 'people'}`}
             </button>

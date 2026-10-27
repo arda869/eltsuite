@@ -92,7 +92,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
           Remove
         </button>
       </div>
-      <input className="r-title" value={node.attrs.title ?? ''} placeholder={about === 'self' ? 'Title, for example: Look back at the role play' : 'Title, for example: Feedback on your partner’s presentation'} onChange={(e) => updateAttributes({ title: e.target.value })} />
+      <input aria-label={about === 'self' ? 'Title, for example: Look back at the role play' : 'Title, for example: Feedback on your partner’s presentation'} className="r-title" value={node.attrs.title ?? ''} placeholder={about === 'self' ? 'Title, for example: Look back at the role play' : 'Title, for example: Feedback on your partner’s presentation'} onChange={(e) => updateAttributes({ title: e.target.value })} />
       {about === 'peer' && (
         <div className="r-peer-settings">
           <span className="seg small-seg" role="radiogroup" aria-label="Who chooses the classmate">
@@ -151,7 +151,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
                   </option>
                 ))}
               </NSelect>
-              <input className="r-prompt" value={it.prompt} placeholder="Question" onChange={(e) => patch(i, { prompt: e.target.value })} />
+              <input aria-label="Question" className="r-prompt" value={it.prompt} placeholder="Question" onChange={(e) => patch(i, { prompt: e.target.value })} />
               <span className="r-move">
                 <button type="button" className="icon-btn" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
                   ↑
@@ -189,7 +189,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
                 {(it.options ?? []).map((o, k) => (
                   <span key={k} className="r-opt">
                     <span className={it.type === 'checklist' ? 'r-box' : 'r-dot'} aria-hidden="true" />
-                    <input value={o} placeholder={it.type === 'checklist' ? 'A can-do statement' : 'Option'} onChange={(e) => patch(i, { options: (it.options ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />
+                    <input aria-label={it.type === 'checklist' ? 'A can-do statement' : 'Option'} value={o} placeholder={it.type === 'checklist' ? 'A can-do statement' : 'Option'} onChange={(e) => patch(i, { options: (it.options ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />
                     <button type="button" className="icon-btn" aria-label="Remove option" onClick={() => patch(i, { options: (it.options ?? []).filter((_, j) => j !== k) })}>
                       ×
                     </button>

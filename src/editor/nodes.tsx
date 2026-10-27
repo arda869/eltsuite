@@ -212,7 +212,7 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
           </label>
           <label className="pop-stem">
             <span>Word formation</span>
-            <input value={node.attrs.stem ?? ''} placeholder="Stem word, for example DECIDE" onChange={(e) => updateAttributes({ stem: e.target.value.toUpperCase() })} onKeyDown={(e) => e.stopPropagation()} />
+            <input aria-label="Stem word, for example DECIDE" value={node.attrs.stem ?? ''} placeholder="Stem word, for example DECIDE" onChange={(e) => updateAttributes({ stem: e.target.value.toUpperCase() })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
           <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
         </span>

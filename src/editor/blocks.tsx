@@ -146,7 +146,7 @@ function WordBankView(props: NodeViewProps) {
       </div>
       <label className="inline-field">
         Extra words
-        <input
+        <input aria-label="Words that don’t belong, separated by commas"
           value={extraText}
           placeholder="Words that don’t belong, separated by commas"
           onChange={(e) => setExtraText(e.target.value)}
@@ -216,7 +216,7 @@ function MatchView(props: NodeViewProps) {
       </div>
       <label className="inline-field">
         Extra answers
-        <input
+        <input aria-label="Answers that match nothing, separated by commas"
           value={extraText}
           placeholder="Answers that match nothing, separated by commas"
           onChange={(e) => setExtraText(e.target.value)}
@@ -286,11 +286,11 @@ function WritingView(props: NodeViewProps) {
       <div className="writing-edit">
         <label className="inline-field small-field">
           Minimum words
-          <input inputMode="numeric" value={node.attrs.minWords ?? ''} placeholder="80" onChange={(e) => updateAttributes({ minWords: num(e.target.value) })} />
+          <input aria-label="Fewest words" inputMode="numeric" value={node.attrs.minWords ?? ''} placeholder="80" onChange={(e) => updateAttributes({ minWords: num(e.target.value) })} />
         </label>
         <label className="inline-field small-field">
           Maximum words
-          <input inputMode="numeric" value={node.attrs.maxWords ?? ''} placeholder="120" onChange={(e) => updateAttributes({ maxWords: num(e.target.value) })} />
+          <input aria-label="Most words" inputMode="numeric" value={node.attrs.maxWords ?? ''} placeholder="120" onChange={(e) => updateAttributes({ maxWords: num(e.target.value) })} />
         </label>
       </div>
       <div className="writing-edit">
@@ -357,7 +357,7 @@ function WritingView(props: NodeViewProps) {
       {criteriaOf(node.attrs) && <span className="hint">Marked out of {maxOf(criteriaOf(node.attrs)!)}: {criteriaOf(node.attrs)!.map((c) => c.name).join(', ')}.</span>}
       <label className="inline-field" style={{ alignItems: 'flex-start' }}>
         Model answer
-        <textarea rows={3} value={node.attrs.model ?? ''} placeholder="Optional. Learners see it after you mark their writing." onChange={(e) => updateAttributes({ model: e.target.value })} />
+        <textarea aria-label="Optional. Learners see it after you mark their writing." rows={3} value={node.attrs.model ?? ''} placeholder="Optional. Learners see it after you mark their writing." onChange={(e) => updateAttributes({ model: e.target.value })} />
       </label>
       <span className="hint">You mark long answers yourself. They don’t count towards the automatic score.</span>
     </NodeViewWrapper>

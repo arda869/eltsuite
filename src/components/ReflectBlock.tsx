@@ -159,7 +159,7 @@ export function ReflectBlock({ about, title, items, value, onChange, disabled, c
                   })}
                 </span>
               )}
-              {it.type === 'text' && <textarea className="rf-text" rows={2} value={typeof r === 'string' ? r : ''} disabled={off || needPeer} placeholder="Write here" onChange={(e) => set(it.id, e.target.value)} onInput={grow} ref={(el) => el && grow({ currentTarget: el })} />}
+              {it.type === 'text' && <textarea aria-label={it.prompt || "Your answer"} className="rf-text" rows={2} value={typeof r === 'string' ? r : ''} disabled={off || needPeer} placeholder="Write here" onChange={(e) => set(it.id, e.target.value)} onInput={grow} ref={(el) => el && grow({ currentTarget: el })} />}
             </li>
           );
         })}

@@ -880,7 +880,7 @@ export function MediaArchive() {
                 {searching || q ? (
                   <span className="ma-search-wrap">
                     <UiIcon name="search" size={15} />
-                    <input className="ma-search" type="search" autoFocus value={q} placeholder={folder ? `Search in ${leafOf(folder)}` : 'Search names, tags and scripts'} onChange={(e) => setQ(e.target.value)} onBlur={() => !q && setSearching(false)} onKeyDown={(e) => e.key === 'Escape' && (setQ(''), setSearching(false))} />
+                    <input aria-label={folder ? `Search in ${leafOf(folder)}` : 'Search names, tags and scripts'} className="ma-search" type="search" autoFocus value={q} placeholder={folder ? `Search in ${leafOf(folder)}` : 'Search names, tags and scripts'} onChange={(e) => setQ(e.target.value)} onBlur={() => !q && setSearching(false)} onKeyDown={(e) => e.key === 'Escape' && (setQ(''), setSearching(false))} />
                   </span>
                 ) : (
                   <button type="button" className="ma-tool" onClick={() => setSearching(true)} aria-label="Search" data-tip="Search">
@@ -1322,7 +1322,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
               </button>
             </span>
           ))}
-          <input
+          <input aria-label={item.tags.length ? 'Add a tag' : 'Add tags: unit 4, food, B1…'}
             value={tagText}
             placeholder={item.tags.length ? 'Add a tag' : 'Add tags: unit 4, food, B1…'}
             onChange={(e) => setTagText(e.target.value)}

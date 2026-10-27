@@ -50,7 +50,7 @@ function CiteView({ node, updateAttributes, deleteNode, selected, editor }: Node
           <Ref s={src} style={style} />
           <label className="pop-field">
             <span>Page</span>
-            <input value={node.attrs.page} placeholder="12 or 12–14" onChange={(e) => updateAttributes({ page: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+            <input aria-label="Page or pages" value={node.attrs.page} placeholder="12 or 12–14" onChange={(e) => updateAttributes({ page: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
           <label className="check-row">
             <input type="checkbox" checked={!!node.attrs.narrative} onChange={(e) => updateAttributes({ narrative: e.target.checked })} />
@@ -194,7 +194,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
           </span>
           <label className="cite-page">
             <span>Page</span>
-            <input value={page} onChange={(e) => setPage(e.target.value)} placeholder="optional" />
+            <input aria-label="Page (optional)" value={page} onChange={(e) => setPage(e.target.value)} placeholder="optional" />
           </label>
           <span className="hint">In {CITE_STYLES.find((c) => c.k === style)?.label ?? style}: {all?.[0] ? inText(all[0].src, style, page || '12') : '(Thornbury, 2006, p. 12)'}</span>
           {!hasList && (

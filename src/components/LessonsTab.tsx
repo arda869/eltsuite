@@ -52,7 +52,7 @@ function InlineAdd({ placeholder, label, onAdd }: { placeholder: string; label: 
     );
   return (
     <form className="inline-add" onSubmit={submit}>
-      <input
+      <input aria-label={placeholder}
         autoFocus
         value={v}
         onChange={(e) => setV(e.target.value)}

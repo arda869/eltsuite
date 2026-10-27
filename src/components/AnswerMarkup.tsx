@@ -88,7 +88,7 @@ export function AnswerMarkup({ text, anns, codes, editable, onAdd, onRemove }: {
               setSel(null);
             }}
           >
-            <input value={note} placeholder="or write a comment" onChange={(e) => setNote(e.target.value)} />
+            <input aria-label="Comment" value={note} placeholder="or write a comment" onChange={(e) => setNote(e.target.value)} />
           </form>
         </div>
       )}

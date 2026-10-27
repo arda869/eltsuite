@@ -32,7 +32,7 @@ export function SaveToBankDialog({ uid, kind, content, title: title0, instructio
         </label>
         <label className="field">
           Tags <span className="hint">grammar point, topic… separated by commas</span>
-          <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="present perfect, travel" />
+          <input aria-label="Tags, separated by commas" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="present perfect, travel" />
         </label>
         <div className="two">
           <label className="field">

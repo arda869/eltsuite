@@ -453,7 +453,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
           {tool === 'laser' && <span className="wb-laser-hint">Pointer on: everyone sees where you point</span>}
         </div>
         {textAt && (
-          <input
+          <input aria-label="Text on the board"
             className="wb-text"
             autoFocus
             value={textVal}

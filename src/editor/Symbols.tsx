@@ -207,7 +207,7 @@ export function SymbolPicker({ onPick, onClose }: { onPick: (a: SymAttrs) => voi
       )}
       {tab === 'own' && (
         <span className="sym-own">
-          <input value={own} maxLength={5} placeholder="Up to 5 letters, e.g. S, O, Q" onChange={(e) => setOwn(e.target.value)} />
+          <input aria-label="Up to 5 letters, e.g. S, O, Q" value={own} maxLength={5} placeholder="Up to 5 letters, e.g. S, O, Q" onChange={(e) => setOwn(e.target.value)} />
           <span className="seg small-seg" role="radiogroup" aria-label="Shape">
             {(['box', 'circle', 'pill', 'plain'] as const).map((k) => (
               <button key={k} type="button" role="radio" aria-checked={shape === k} className={shape === k ? 'on' : ''} onClick={() => setShape(k)}>

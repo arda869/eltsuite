@@ -604,7 +604,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
             <span className="cd-card-who">Comments on slide {curIdx + 1}</span>
             {eff !== 'view' && (
               <div className="cd-card cd-draft">
-                <textarea value={draft} placeholder="Comment on this slide" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? postComment() : e.stopPropagation())} />
+                <textarea aria-label="Comment on this slide" value={draft} placeholder="Comment on this slide" onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? postComment() : e.stopPropagation())} />
                 <span className="cd-card-btns">
                   <button type="button" className="btn small-btn primary" disabled={!draft.trim()} onClick={postComment}>
                     Comment

@@ -95,7 +95,7 @@ export function SurveyInput({ q, value, onChange, disabled }: { q: SurveyQ; valu
       );
     }
     case 'text':
-      return <textarea className="sv-text" rows={3} value={typeof value === 'string' ? value : ''} disabled={disabled} placeholder="Write your answer" onChange={(e) => onChange(e.target.value)} />;
+      return <textarea aria-label="Write your answer" className="sv-text" rows={3} value={typeof value === 'string' ? value : ''} disabled={disabled} placeholder="Write your answer" onChange={(e) => onChange(e.target.value)} />;
   }
 }
 

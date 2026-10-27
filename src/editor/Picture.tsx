@@ -281,7 +281,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
           )}
           <label className="pic-row">
             <span className="hint">Description</span>
-            <input value={a.alt ?? ''} placeholder="What the picture shows (for screen readers)" onChange={(e) => updateAttributes({ alt: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+            <input aria-label="What the picture shows (for screen readers)" value={a.alt ?? ''} placeholder="What the picture shows (for screen readers)" onChange={(e) => updateAttributes({ alt: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
           <span className="pic-row pic-actions">
             <button type="button" className="btn small-btn" onClick={() => setEditing(true)}>
@@ -511,7 +511,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
             {look}
             <label className="field">
               <span>Description (optional)</span>
-              <input value={alt} placeholder="What the picture shows, for learners who use a screen reader" onChange={(e) => setAlt(e.target.value)} />
+              <input aria-label="What the picture shows, for learners who use a screen reader" value={alt} placeholder="What the picture shows, for learners who use a screen reader" onChange={(e) => setAlt(e.target.value)} />
             </label>
           </>
         ) : (

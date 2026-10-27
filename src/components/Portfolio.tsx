@@ -165,7 +165,7 @@ function LearnerPortfolio({ c, l, items, answers, docs, files, me, avg }: { c: C
             <h2>From the teacher</h2>
             <span className="hint">In the PDF, above the results</span>
           </header>
-          <textarea className="pf-summary" defaultValue={profile?.summary ?? ''} placeholder={`How ${l.displayName.split(' ')[0]} is doing, what has improved and what to work on next.`} rows={4} onBlur={(e) => e.target.value !== (profile?.summary ?? '') && saveProfile({ summary: e.target.value })} />
+          <textarea aria-label={`How ${l.displayName.split(' ')[0]} is doing, what has improved and what to work on next.`} className="pf-summary" defaultValue={profile?.summary ?? ''} placeholder={`How ${l.displayName.split(' ')[0]} is doing, what has improved and what to work on next.`} rows={4} onBlur={(e) => e.target.value !== (profile?.summary ?? '') && saveProfile({ summary: e.target.value })} />
         </section>
         <section className="ov-card wide">
           <header>
@@ -222,7 +222,7 @@ function AddPiece({ onClose, onSave }: { onClose: () => void; onSave: (p: { titl
         <h2>Keep a piece of work</h2>
         <label className="field">
           What it is
-          <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="For example: Presentation about a city" maxLength={100} />
+          <input aria-label="Title" autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="For example: Presentation about a city" maxLength={100} />
         </label>
         <label className="field">
           Skill
@@ -230,7 +230,7 @@ function AddPiece({ onClose, onSave }: { onClose: () => void; onSave: (p: { titl
         </label>
         <label className="field">
           Your note
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="What it shows, and what to work on next." />
+          <textarea aria-label="What it shows, and what to work on next." value={note} onChange={(e) => setNote(e.target.value)} rows={4} placeholder="What it shows, and what to work on next." />
         </label>
         <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button type="button" className="btn" onClick={onClose}>

@@ -329,7 +329,7 @@ function LearnerDetail({ classId, taskId, learner, answer, content, answerKey, o
                     <input inputMode="numeric" value={m.score ?? ''} placeholder="–" readOnly={!!criteriaOf(nodes[q.id]?.attrs)} onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, score: e.target.value === '' ? null : Math.min(out, Math.max(0, Number(e.target.value.replace(/[^0-9.]/g, '')))) } }))} />
                     <span className="hint">/ {out}</span>
                   </span>
-                  <textarea value={m.comment} placeholder="A comment for the learner" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, comment: e.target.value } }))} />
+                  <textarea aria-label="A comment for the learner" value={m.comment} placeholder="A comment for the learner" onChange={(e) => setDraft((d) => ({ ...d, [q.id]: { ...m, comment: e.target.value } }))} />
                   <button type="button" className="btn small-btn primary" onClick={() => save(q.id)}>
                     {saved === q.id ? 'Saved' : 'Save mark'}
                   </button>

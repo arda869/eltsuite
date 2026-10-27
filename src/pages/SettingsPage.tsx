@@ -517,7 +517,7 @@ function ProfileAnswer({ f, value, onSave }: { f: ProfileField; value: string; o
       {f.kind === 'long' ? (
         <textarea rows={3} value={v} onChange={(e) => setV(e.target.value)} onBlur={save} maxLength={1200} />
       ) : (
-        <input value={v} onChange={(e) => setV(e.target.value)} onBlur={save} maxLength={300} placeholder={f.kind === 'list' ? 'Separate them with commas' : ''} />
+        <input aria-label={f.kind === 'list' ? 'Separate them with commas' : ''} value={v} onChange={(e) => setV(e.target.value)} onBlur={save} maxLength={300} placeholder={f.kind === 'list' ? 'Separate them with commas' : ''} />
       )}
     </label>
   );

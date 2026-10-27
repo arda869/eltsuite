@@ -11,7 +11,7 @@ function RevealView({ node, updateAttributes, deleteNode, editor, getPos, select
       <div className="reveal-ed-head" contentEditable={false}>
         <Grip editor={editor} getPos={getPos} />
         <span className="pop-type">Reveal box</span>
-        <input className="reveal-label-input" value={node.attrs.label ?? ''} placeholder="Button text, e.g. Show the answer" onChange={(e) => updateAttributes({ label: e.target.value })} />
+        <input aria-label="Button text, e.g. Show the answer" className="reveal-label-input" value={node.attrs.label ?? ''} placeholder="Button text, e.g. Show the answer" onChange={(e) => updateAttributes({ label: e.target.value })} />
         <button type="button" className="remove" onClick={deleteNode}>
           Remove
         </button>

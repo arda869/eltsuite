@@ -263,7 +263,7 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
           </span>
           <span className="ipa-input">
             <span className="ipa-slash">/</span>
-            <input ref={inputRef} value={text} placeholder="tap the symbols below" onChange={(e) => updateAttributes({ text: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), setOpen(false))} spellCheck={false} />
+            <input aria-label="Transcription" ref={inputRef} value={text} placeholder="tap the symbols below" onChange={(e) => updateAttributes({ text: e.target.value })} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), setOpen(false))} spellCheck={false} />
             <span className="ipa-slash">/</span>
           </span>
           <Chart accent={accent} onPick={insert} />
@@ -282,7 +282,7 @@ function IpaView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
             </span>
             {listen === 'voice' && (
               <span className="ipa-say">
-                <input value={say} placeholder="The word or phrase to say" onChange={(e) => updateAttributes({ say: e.target.value })} />
+                <input aria-label="The word or phrase to say" value={say} placeholder="The word or phrase to say" onChange={(e) => updateAttributes({ say: e.target.value })} />
                 <button type="button" className="btn small-btn" disabled={!say.trim()} onClick={() => speak(say, accent)}>
                   ▶ Try it
                 </button>
@@ -344,7 +344,7 @@ export function IpaField({ value, onChange, word }: { value: string; onChange: (
       <span className="ipa-field-row">
         <span className="ipa-input">
           <span className="ipa-slash">/</span>
-          <input ref={inputRef} value={bare} placeholder="rɪˈlʌktənt" spellCheck={false} onChange={(e) => set(e.target.value)} onKeyDown={(e) => e.stopPropagation()} onFocus={() => setChart(true)} />
+          <input aria-label="Transcription" ref={inputRef} value={bare} placeholder="rɪˈlʌktənt" spellCheck={false} onChange={(e) => set(e.target.value)} onKeyDown={(e) => e.stopPropagation()} onFocus={() => setChart(true)} />
           <span className="ipa-slash">/</span>
         </span>
         <button type="button" className={'btn small-btn' + (chart ? ' on' : '')} aria-expanded={chart} onClick={() => setChart((v) => !v)}>

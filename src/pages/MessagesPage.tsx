@@ -107,7 +107,7 @@ export function MessagesPage() {
                 </button>
               </span>
             </div>
-            <input className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
+            <input aria-label="Search people and groups" className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
             <div className="msg-list" role={shown.length ? 'listbox' : undefined} aria-label="Chats">
               {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
@@ -159,7 +159,7 @@ function PeoplePicker({ dir, picked, onToggle, exclude = [] }: { dir: Directory;
   const s = q.trim().toLowerCase();
   return (
     <div className="msg-pick">
-      <input className="ma-search" type="search" autoFocus value={q} placeholder="Search names" onChange={(e) => setQ(e.target.value)} />
+      <input aria-label="Search names" className="ma-search" type="search" autoFocus value={q} placeholder="Search names" onChange={(e) => setQ(e.target.value)} />
       <div className="msg-pick-list">
         {dir.groups.map((g) => {
           const people = g.people.filter((p) => !exclude.includes(p.key) && (!s || p.name.toLowerCase().includes(s)));
@@ -232,7 +232,7 @@ export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Director
         {(group || picked.length > 1) && (
           <label className="field">
             Group name
-            <input value={title} placeholder={picked.map((p) => p.name.split(' ')[0]).join(', ')} onChange={(e) => setTitle(e.target.value)} />
+            <input aria-label={picked.map((p) => p.name.split(' ')[0]).join(', ')} value={title} placeholder={picked.map((p) => p.name.split(' ')[0]).join(', ')} onChange={(e) => setTitle(e.target.value)} />
           </label>
         )}
         {classes.size > 1 && <span className="error">Put learners from one class in a chat at a time.</span>}
@@ -782,7 +782,7 @@ function ShareMaterial({ c, me, to, onClose }: { c: Chat; me: Person; to: string
             </button>
           ))}
         </span>
-        <input className="ma-search" type="search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
+        <input aria-label="Search" className="ma-search" type="search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} />
         <div className="it-list">
           {!lib && tab !== 'media' ? (
             <span className="hint">Gathering your materials…</span>

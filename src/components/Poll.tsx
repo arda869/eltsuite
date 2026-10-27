@@ -57,7 +57,7 @@ export function PollDialog({ classId, poll, onClose }: { classId: string; poll?:
             </span>
             <label className="field">
               <span>Question</span>
-              <input value={q.prompt} autoFocus placeholder="Ask the class something" onChange={(e) => setQ({ ...q, prompt: e.target.value })} />
+              <input aria-label="Ask the class something" value={q.prompt} autoFocus placeholder="Ask the class something" onChange={(e) => setQ({ ...q, prompt: e.target.value })} />
             </label>
             <label className="field">
               <span>Answer with</span>
@@ -73,7 +73,7 @@ export function PollDialog({ classId, poll, onClose }: { classId: string; poll?:
               <div className="pq-lines">
                 {(q.options ?? []).map((o, k) => (
                   <span key={k} className="pq-line">
-                    <input value={o} placeholder={`Option ${k + 1}`} onChange={(e) => setQ({ ...q, options: (q.options ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />
+                    <input aria-label={`Option ${k + 1}`} value={o} placeholder={`Option ${k + 1}`} onChange={(e) => setQ({ ...q, options: (q.options ?? []).map((x, j) => (j === k ? e.target.value : x)) })} />
                   </span>
                 ))}
                 <button type="button" className="btn link small" style={{ alignSelf: 'flex-start' }} onClick={() => setQ({ ...q, options: [...(q.options ?? []), ''] })}>
@@ -83,8 +83,8 @@ export function PollDialog({ classId, poll, onClose }: { classId: string; poll?:
             )}
             {q.type === 'scale' && (
               <span className="pq-row">
-                <input value={q.low ?? ''} placeholder="Label for 1" onChange={(e) => setQ({ ...q, low: e.target.value })} />
-                <input value={q.high ?? ''} placeholder="Label for 5" onChange={(e) => setQ({ ...q, high: e.target.value })} />
+                <input aria-label="Label for 1" value={q.low ?? ''} placeholder="Label for 1" onChange={(e) => setQ({ ...q, low: e.target.value })} />
+                <input aria-label="Label for 5" value={q.high ?? ''} placeholder="Label for 5" onChange={(e) => setQ({ ...q, high: e.target.value })} />
               </span>
             )}
             <label className="pop-check">

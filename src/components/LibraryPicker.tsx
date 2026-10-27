@@ -16,7 +16,7 @@ export function LibraryPicker({ uid, onPick, onClose }: { uid: string; onPick: (
       <div className="dialog lp-dialog" role="dialog" aria-label="From the resources library">
         <h2 style={{ margin: 0 }}>From the resources library</h2>
         <span className="hint">The task is added linked: change it here or in the library and both follow. You can break the link later.</span>
-        <input className="ma-search" type="search" autoFocus value={q} placeholder="Search tasks" onChange={(e) => setQ(e.target.value)} />
+        <input aria-label="Search tasks" className="ma-search" type="search" autoFocus value={q} placeholder="Search tasks" onChange={(e) => setQ(e.target.value)} />
         {folders.length > 0 && (
           <span className="lp-folders">
             <button type="button" className={'ap-chip' + (folder === null ? ' on' : '')} onClick={() => setFolder(null)}>

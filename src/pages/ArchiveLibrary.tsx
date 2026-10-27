@@ -151,7 +151,7 @@ export function ArchiveTasks({ uid }: { uid: string }) {
   return (
     <>
       <div className="ma-bar-row">
-        <input className="ma-search" type="search" value={q} placeholder="Search titles, instructions, lessons and question types" onChange={(e) => setQ(e.target.value)} />
+        <input aria-label="Search titles, instructions, lessons and question types" className="ma-search" type="search" value={q} placeholder="Search titles, instructions, lessons and question types" onChange={(e) => setQ(e.target.value)} />
         <ClassFilter classes={lib.classes} value={cls} onChange={setCls} />
         <span className="hint">
           {shown.length} {shown.length === 1 ? 'task' : 'tasks'}
@@ -413,7 +413,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
     <>
 
       <div className="ma-bar-row">
-        <input className="ma-search" type="search" value={q} placeholder="Search names, classes and lessons" onChange={(e) => setQ(e.target.value)} />
+        <input aria-label="Search names, classes and lessons" className="ma-search" type="search" value={q} placeholder="Search names, classes and lessons" onChange={(e) => setQ(e.target.value)} />
         <span className="seg small-seg" role="radiogroup" aria-label="Kind" hidden={!(lib?.docs ?? []).some((d) => d.kind === 'slides')}>
           {(
             [

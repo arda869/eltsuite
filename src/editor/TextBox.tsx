@@ -73,7 +73,7 @@ export function BoxFrame({ attrs, children: kids, editable, onMeta }: { attrs: B
   const ce = editable ? { contentEditable: false as const } : {};
   const field = (key: 'label' | 'meta', placeholder: string, className: string) =>
     editable ? (
-      <input contentEditable={false} className={className + ' box-input'} value={attrs[key] ?? ''} placeholder={placeholder} onChange={(e) => onMeta?.({ [key]: e.target.value })} />
+      <input aria-label={placeholder} contentEditable={false} className={className + ' box-input'} value={attrs[key] ?? ''} placeholder={placeholder} onChange={(e) => onMeta?.({ [key]: e.target.value })} />
     ) : attrs[key] ? (
       <span className={className}>{attrs[key]}</span>
     ) : null;

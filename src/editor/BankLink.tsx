@@ -37,7 +37,7 @@ function BankLinkView({ node, updateAttributes, deleteNode, editor, getPos, sele
           ))}
         </NSelect>
         {list.length === 0 && <span className="hint">No pages in this bank yet. Add them in the class Notebook.</span>}
-        <input value={node.attrs.label ?? ''} placeholder="Label (optional), for example: See the rule" onChange={(e) => updateAttributes({ label: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+        <input aria-label="Label (optional), for example: See the rule" value={node.attrs.label ?? ''} placeholder="Label (optional), for example: See the rule" onChange={(e) => updateAttributes({ label: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       </div>
       <BankLinkCard bank={bank} title={node.attrs.title} label={node.attrs.label} />
     </NodeViewWrapper>

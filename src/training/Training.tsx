@@ -57,7 +57,7 @@ function Area({ v, set, ph, rows = 2, ro }: { v: string; set: (v: string) => voi
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 2 + 'px';
   };
-  return <textarea ref={fit} className="tt-in" rows={rows} value={v} placeholder={ph} onChange={(e) => (set(e.target.value), fit(e.target))} onKeyDown={(e) => e.stopPropagation()} />;
+  return <textarea aria-label={ph} ref={fit} className="tt-in" rows={rows} value={v} placeholder={ph} onChange={(e) => (set(e.target.value), fit(e.target))} onKeyDown={(e) => e.stopPropagation()} />;
 }
 
 function Analysis({ v, set, ro }: { v: Data; set: (k: string, x: string) => void; ro?: boolean }) {
@@ -389,7 +389,7 @@ function TTView({ node, updateAttributes, deleteNode, editor, getPos, selected }
           Remove
         </button>
       </div>
-      <input className="tt-title" value={a.title} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+      <input aria-label="Title (optional)" className="tt-title" value={a.title} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       {!shared && <span className="hint">{a.kind === 'loop' ? 'Trainees see a closed box; they open it after you model the technique.' : a.mode === 'model' ? 'Fill it in: trainees read it.' : 'Fill in what trainees start with, or leave it empty: each trainee completes their own.'}</span>}
       <div className={'tt k-' + a.kind}>
         <Form kind={a.kind} def={a.def} v={a.data ?? {}} set={(k, x) => updateAttributes({ data: { ...(node.attrs.data ?? {}), [k]: x } })} setMany={(p) => updateAttributes({ data: { ...(node.attrs.data ?? {}), ...p } })} />

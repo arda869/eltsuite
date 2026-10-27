@@ -47,3 +47,7 @@ export function typingIn(t: EventTarget | null): boolean {
   const el = t as HTMLElement | null;
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
 }
+
+// A mouse or trackpad (not only a touch screen): fields may take the focus when a panel opens.
+// On phones and tablets that would pop the keyboard up over what people came to see.
+export const autoFocusOk = typeof window === 'undefined' || !window.matchMedia?.('(pointer: coarse)').matches;

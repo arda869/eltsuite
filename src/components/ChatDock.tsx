@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { autoFocusOk } from '../lib/keys';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
@@ -396,7 +397,7 @@ function DockFind({ me, dir, chats, onOpen, q, setQ }: { me: string; dir: Direct
     <>
       <span className="dock-find">
         <UiIcon name="search" size={14} />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Message someone…" aria-label="Find someone to message" autoFocus onKeyDown={(e) => e.key === 'Enter' && people[0] && void open(people[0].p)} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Message someone…" aria-label="Find someone to message" type="search" enterKeyHint="go" autoComplete="off" autoFocus={autoFocusOk} onKeyDown={(e) => e.key === 'Enter' && people[0] && void open(people[0].p)} />
       </span>
       {words && (
         <>

@@ -86,7 +86,7 @@ export function FileComments({ d, role, me }: { d: SharedDoc; role: DocRole; me:
           </div>
           {canWrite ? (
             <span className="fcm-new">
-              <textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a comment" onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), void send())} />
+              <textarea aria-label="Write a comment" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a comment" onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), void send())} />
               <button type="button" className="btn small-btn primary" disabled={!text.trim()} onClick={() => void send()}>
                 Send
               </button>

@@ -224,7 +224,7 @@ function TimelineView({ node, updateAttributes, deleteNode, editor, getPos, sele
           Remove
         </button>
       </div>
-      <input className="tl-title-in" value={a.title} placeholder="Title, for example: Present perfect" onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={stop} />
+      <input aria-label="Title, for example: Present perfect" className="tl-title-in" value={a.title} placeholder="Title, for example: Present perfect" onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={stop} />
       <div className="tl-add" role="toolbar" aria-label="Add to the timeline">
         {KINDS.map((k) => (
           <button key={k.k} type="button" className="ap-chip" data-tip={k.tip} onClick={() => add(k.k)}>
@@ -243,7 +243,7 @@ function TimelineView({ node, updateAttributes, deleteNode, editor, getPos, sele
       </div>
       {it ? (
         <div className="tl-edit">
-          <input autoFocus value={it.label ?? ''} placeholder="Label, for example: last year" onChange={(e) => patch({ label: e.target.value })} onKeyDown={stop} />
+          <input aria-label="Label, for example: last year" autoFocus value={it.label ?? ''} placeholder="Label, for example: last year" onChange={(e) => patch({ label: e.target.value })} onKeyDown={stop} />
           <span className="seg small-seg">
             {(['above', 'below'] as const).map((s) => (
               <button key={s} type="button" className={(it.side ?? 'above') === s ? 'on' : ''} onClick={() => patch({ side: s })}>
@@ -269,7 +269,7 @@ function TimelineView({ node, updateAttributes, deleteNode, editor, getPos, sele
       ) : (
         <span className="hint tl-hint">{cur.items.length ? 'Click a mark to label it; drag it, or the ends of a line, along the timeline. Drag NOW to move it.' : 'Add marks above, or start from a tense.'}</span>
       )}
-      <input className="tl-sentence-in" value={a.sentence} placeholder="Example sentence, for example: I have been to Japan." onChange={(e) => updateAttributes({ sentence: e.target.value })} onKeyDown={stop} />
+      <input aria-label="Example sentence, for example: I have been to Japan." className="tl-sentence-in" value={a.sentence} placeholder="Example sentence, for example: I have been to Japan." onChange={(e) => updateAttributes({ sentence: e.target.value })} onKeyDown={stop} />
     </NodeViewWrapper>
   );
 }

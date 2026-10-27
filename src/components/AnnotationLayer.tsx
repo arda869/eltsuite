@@ -270,7 +270,7 @@ export function AnnotationLayer({
               setReply('');
             }}
           >
-            <input value={reply} placeholder="Reply" onChange={(e) => setReply(e.target.value)} />
+            <input aria-label="Reply" value={reply} placeholder="Reply" onChange={(e) => setReply(e.target.value)} />
           </form>
           {canAnnotate && (
             <button type="button" className="btn link small" onClick={() => (removeAnnotation(classId, openAnn.id), setOpen(null))}>
@@ -308,7 +308,7 @@ export function AnnotationLayer({
                 if (commenting.trim()) make('comment', undefined, commenting.trim());
               }}
             >
-              <input autoFocus value={commenting.trimStart()} placeholder="Write a comment, then press Enter" onChange={(e) => setCommenting(e.target.value || ' ')} />
+              <input aria-label="Write a comment, then press Enter" autoFocus value={commenting.trimStart()} placeholder="Write a comment, then press Enter" onChange={(e) => setCommenting(e.target.value || ' ')} />
               <button type="submit" className="ann-btn">
                 Add
               </button>
