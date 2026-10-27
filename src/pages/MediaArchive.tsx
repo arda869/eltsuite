@@ -24,6 +24,7 @@ import { MediaPlayer } from '../media/Player';
 import { ScriptEditor } from '../media/ScriptEditor';
 import { fmtTime } from '../lib/sound';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
+import { WorksheetDialog } from '../components/WorksheetDialog';
 import { FileIcon, FolderIcon } from '../components/FileIcon';
 import { ask } from '../lib/ask';
 import { uploadPicture, type PicQuality } from '../editor/PackNode';
@@ -159,6 +160,7 @@ export function MediaArchive() {
   const classLessons = useClassLessons(uid);
   const entries = useMemo(() => [...all.map(entryOfItem), ...ownDocs.filter((d) => d.kind !== 'lesson').map(entryOfDoc), ...(classLessons.list ?? []).map(entryOfLesson)], [all, ownDocs, classLessons.list]);
   const [sharingLesson, setSharingLesson] = useState<ClassLesson | null>(null);
+  const [exporting, setExporting] = useState<ClassLesson | null>(null);
   const [lessonWarned, setLessonWarned] = useState(false);
   const [sharing, setSharing] = useState<SharedDoc | null>(null);
   // Every folder, with the folders above it.
@@ -375,6 +377,7 @@ export function MediaArchive() {
     if (en.cls)
       return [
         { label: 'Open', icon: 'fullscreen', onClick: () => openE(en) },
+        { label: 'Export as a worksheet…', icon: 'import', onClick: () => setExporting(en.cls!) },
         { label: 'Share with a colleague…', icon: 'person', onClick: () => (setLessonWarned(false), setSharingLesson(en.cls!)) },
       ];
     if (en.doc)
@@ -918,6 +921,9 @@ export function MediaArchive() {
               <button type="button" className="btn small-btn" onClick={() => (setLessonWarned(false), setSharingLesson(oneEntry.cls!))}>
                 <UiIcon name="person" size={14} /> Share with a colleague
               </button>
+              <button type="button" className="btn small-btn" onClick={() => setExporting(oneEntry.cls!)}>
+                <UiIcon name="import" size={14} /> Export
+              </button>
             </span>
           </aside>
         )}
@@ -967,6 +973,7 @@ export function MediaArchive() {
             onClose={() => setSel(new Set())}
           />
         )}
+        {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
         {sharingLesson && !lessonWarned && (
