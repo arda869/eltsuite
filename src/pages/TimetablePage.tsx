@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
@@ -6,40 +6,25 @@ import { MainNav } from './ColleaguesPage';
 import { useTeacherClasses } from '../lib/coteach';
 import { useClassDetails } from './TeacherHome';
 import { theme } from '../lib/themes';
-import { addSession, isNow, occurrences, removeSession, saveSession, setSessionLive, skipWeek, timeText, useTeacherSessions, whenText, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
+import { addSession, isNow, occurrences, removeSession, restoreSession, saveSession, setSessionLive, skipWeek, useTeacherSessions, whenText, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
 import { NoRoomError, openCall, takeRoom } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
-import { Select, MultiSelect } from '../components/Select';
 import { useDirectory } from '../lib/directory';
-import { ask, tell } from '../lib/ask';
-import { UiIcon } from '../components/UiIcon';
+import { tell } from '../lib/ask';
+import { IconBtn, UiIcon } from '../components/UiIcon';
 import type { ClassDoc } from '../lib/classes';
+import { addDays, addMonths, atMinutes, dayDiff, minutesOf, monthStart, niceStart, shortDay, span, spanTitle, startOfDay, step, VIEWS, type View } from './timetable/dates';
+import { TimeGrid, type GridEv } from './timetable/TimeGrid';
+import { MonthGrid } from './timetable/MonthGrid';
+import { MiniMonth, Schedule } from './timetable/Schedule';
+import { MoreList, QuickCreate, SessionPop } from './timetable/Cards';
+import { SessionDialog } from './timetable/SessionDialog';
+import { Pop, ScopeAsk, Shortcuts, ToastBar, type Anchor, type ScopeReq, type Toast } from './timetable/Pop';
+import './timetable.css';
 
-// Timetable: the week's classes and meetings. Class sessions open the lesson and the class's
-// video room; meetings get a call room when they start, and everyone invited is called.
-
-const HOUR = 52;
-const DAY = 864e5;
-const mondayOf = (t: number) => {
-  const d = new Date(t);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return d.getTime();
-};
-const addDays = (t: number, n: number) => {
-  const d = new Date(t);
-  d.setDate(d.getDate() + n);
-  return d.getTime();
-};
-const pad = (n: number) => String(n).padStart(2, '0');
-const dateIn = (t: number) => {
-  const d = new Date(t);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-const timeIn = (t: number) => {
-  const d = new Date(t);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
+// Timetable: classes and meetings by day, week, month or as a list. Class sessions open the
+// lesson and the class's video room; meetings get a call room when they start, and everyone
+// invited is called. It works like a calendar: drag to add, drag to move, keys to get about.
 
 // Starting, or joining, a session.
 export async function startSession(o: Occurrence, c: ClassDoc | undefined, me: { uid: string; name: string }, go: (to: string) => void) {
@@ -59,382 +44,358 @@ export async function startSession(o: Occurrence, c: ClassDoc | undefined, me: {
   }
 }
 
+// Kept on this device: the view, the side panel, which calendars are hidden, the last class.
+const store = {
+  get: (k: string) => {
+    try {
+      return localStorage.getItem('ll.ttb.' + k);
+    } catch {
+      return null;
+    }
+  },
+  set: (k: string, v: string) => {
+    try {
+      localStorage.setItem('ll.ttb.' + k, v);
+    } catch {
+      /* private window */
+    }
+  },
+};
+const NARROW = '(max-width: 700px)';
+const narrowNow = () => window.matchMedia(NARROW).matches;
+function useNarrow() {
+  const [n, setN] = useState(narrowNow);
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW);
+    const on = () => setN(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return n;
+}
+const copyOf = (s: Session): Omit<Session, 'id'> => {
+  const { id: _id, at: _at, ...rest } = s;
+  return { ...rest, live: null, skip: [] };
+};
+
 export function TimetablePage() {
   const { user } = useAuth();
   const uid = user?.uid ?? '';
-  const me = { uid, name: user?.displayName || 'Teacher' };
+  const me = useMemo(() => ({ uid, name: user?.displayName || 'Teacher' }), [uid, user?.displayName]);
   const navigate = useNavigate();
   const { classes } = useTeacherClasses(uid);
   const active = useMemo(() => (classes ?? []).filter((c) => c.status === 'active'), [classes]);
   const sessions = useTeacherSessions(uid, active.map((c) => c.id));
   const { items } = useClassDetails(active.map((c) => c.id));
-  const [week, setWeek] = useState(() => mondayOf(Date.now()));
+  const dirx = useDirectory();
+  const colleagues = dirx?.groups.find((g) => g.id === 'colleagues')?.people ?? [];
+
+  const [view, setViewNow] = useState<View>(() => (store.get('view') as View) || (narrowNow() ? 'day' : 'week'));
+  const [anchor, setAnchor] = useState(() => startOfDay(Date.now()));
+  const [dir, setDir] = useState(0);
+  const [side, setSide] = useState(() => store.get('side') !== '0');
+  const [drawer, setDrawer] = useState(false);
+  const [hidden, setHidden] = useState<string[]>(() => (store.get('hidden') ?? '').split(',').filter(Boolean));
+  const [lastClass, setLastClass] = useState(() => store.get('class'));
+  const [pending, setPending] = useState<{ start: number; end: number; at: Anchor; title?: string } | null>(null);
+  const [hold, setHold] = useState<{ key: string; start: number; mins: number } | null>(null);
+  const [picked, setPicked] = useState<{ ev: GridEv; at: Anchor } | null>(null);
+  const [more, setMore] = useState<{ day: number; list: GridEv[]; at: Anchor } | null>(null);
   const [editing, setEditing] = useState<Partial<Session> | null>(null);
-  const [picked, setPicked] = useState<Occurrence | null>(null);
+  const [help, setHelp] = useState(false);
+  const [scope, setScope] = useState<ScopeReq | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
+  const narrow = useNarrow();
   const [, tick] = useState(0);
   useEffect(() => {
     const t = window.setInterval(() => tick((n) => n + 1), 30000);
     return () => window.clearInterval(t);
   }, []);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(week, i));
-  const occ = occurrences(sessions, week, addDays(week, 7));
-  // Lessons with a time but no session yet show too, lightly.
-  const lone = active.flatMap((c) =>
-    (items[c.id] ?? [])
-      .filter((i) => i.type === 'lesson' && i.schedule?.at && i.schedule.at >= week && i.schedule.at < addDays(week, 7) && !sessions.some((s) => s.itemId === i.id))
-      .map((i) => ({ s: { id: 'i:' + i.id, owner: uid, ownerName: '', kind: 'class' as SessionKind, title: i.title, classId: c.id, itemId: i.id, start: i.schedule!.at, mins: 60, online: !!c.video?.url } as Session, start: i.schedule!.at, end: i.schedule!.at + 3600e3, week: 0 })),
-  );
-  const all = [...occ, ...lone];
-  const nowLine = Date.now() >= week && Date.now() < addDays(week, 7) ? Date.now() : 0;
-  const hours = all.map((o) => new Date(o.start).getHours());
-  const ends = all.map((o) => Math.min(24, Math.ceil((new Date(o.start).getHours() * 60 + new Date(o.start).getMinutes() + (o.end - o.start) / 60000) / 60)));
-  const from = Math.min(7, ...hours);
-  const to = Math.max(22, ...ends, nowLine ? Math.min(24, new Date().getHours() + 1) : 0);
+
   const cls = (id?: string | null) => active.find((c) => c.id === id);
-  const next = occurrences(sessions, Date.now() - 3 * 3600e3, Date.now() + 14 * DAY).find((o) => o.end > Date.now());
-  const grid = useRef<HTMLDivElement>(null);
+  const mine = (o: Occurrence) => o.s.owner === uid || !!cls(o.s.classId);
+  const colorOf = (o: Occurrence) => (o.s.kind === 'class' ? theme(cls(o.s.classId)?.themeColor).accent : 'var(--ink)');
+  const subOf = (o: Occurrence) => (o.s.kind === 'class' ? cls(o.s.classId)?.name ?? '' : (o.s.attendees ?? []).length ? `Meeting with ${[o.s.owner !== uid ? o.s.ownerName : '', ...(o.s.attendees ?? []).filter((a) => a !== uid).map((a) => o.s.names?.[a] ?? 'a colleague')].filter(Boolean).join(', ')}` : 'Meeting');
+  const shown = (o: Occurrence) => !hidden.includes(o.s.kind === 'meeting' ? 'meetings' : o.s.classId ?? '');
+
+  const { from, to, days } = span(view, anchor);
+  // Lessons with a time but no session yet show too, lightly.
+  const loneIn = (a: number, b: number): Occurrence[] =>
+    active.flatMap((c) =>
+      (items[c.id] ?? [])
+        .filter((i) => i.type === 'lesson' && i.schedule?.at && i.schedule.at >= a && i.schedule.at < b && !sessions.some((s) => s.itemId === i.id))
+        .map((i) => ({ s: { id: 'i:' + i.id, owner: uid, ownerName: '', kind: 'class' as SessionKind, title: i.title, classId: c.id, itemId: i.id, start: i.schedule!.at, mins: 60, online: !!c.video?.url } as Session, start: i.schedule!.at, end: i.schedule!.at + 3600e3, week: 0 })),
+    );
+  const all = [...occurrences(sessions, from, to), ...loneIn(from, to)].filter(shown);
+  const evs: GridEv[] = all.map((o) => ({ o, color: colorOf(o), sub: subOf(o), edit: mine(o), key: o.s.id + ':' + o.week }));
+  const pickedKey = picked?.ev.key ?? null;
+  const next = occurrences(sessions, Date.now() - 3 * 3600e3, Date.now() + 14 * 864e5).find((o) => o.end > Date.now());
+  // Dots in the small month: which days have something on.
+  const busyDays = useMemo(() => {
+    const a = addMonths(monthStart(anchor), -2);
+    return new Set(occurrences(sessions, a, addMonths(a, 5)).map((o) => startOfDay(o.start)));
+  }, [sessions, anchor]);
+
+  const closeAll = () => (setPending(null), setPicked(null), setMore(null));
+  const go = (d: number) => (closeAll(), setDir(d), setAnchor((a) => step(view, a, d)));
+  const jump = (d: number) => (closeAll(), setDir(d === anchor ? 0 : d > anchor ? 1 : -1), setAnchor(startOfDay(d)), narrowNow() && setDrawer(false));
+  const setView = (v: View) => (closeAll(), setDir(0), setViewNow(v), store.set('view', v));
+  const toggleSide = () => (narrowNow() ? setDrawer((x) => !x) : setSide((x) => (store.set('side', x ? '0' : '1'), !x)));
+  const toggleHidden = (k: string) => setHidden((h) => {
+    const n = h.includes(k) ? h.filter((x) => x !== k) : [...h, k];
+    store.set('hidden', n.join(','));
+    return n;
+  });
+  const say = (text: string, undo?: Toast['undo']) => setToast({ id: Date.now(), text, undo });
+  const fresh = (): Partial<Session> => ({ kind: active.length ? 'class' : 'meeting', start: niceStart(anchor), mins: 60, weeks: 1, online: true, classId: (lastClass && cls(lastClass) ? lastClass : active[0]?.id) ?? null });
+  const askScope = (verb: string, ev: GridEv) => new Promise<'one' | 'all' | null>((resolve) => setScope({ verb, title: ev.o.s.title || 'Untitled', day: shortDay(ev.o.start), resolve }));
+  const edit = (ev: GridEv) => {
+    closeAll();
+    const s = ev.o.s;
+    setEditing(s.id.startsWith('i:') ? { kind: 'class', classId: s.classId, itemId: s.itemId, title: s.title, start: ev.o.start, mins: 60, weeks: 1, online: s.online } : s);
+  };
+
+  // Moving a session, or making it longer or shorter. A weekly one asks: this one, or every week?
+  const change = async (ev: GridEv, start: number, mins: number) => {
+    closeAll();
+    const o = ev.o;
+    const s = o.s;
+    const moved = start !== o.start;
+    const done = moved ? `Moved to ${whenText(start)}` : `Now ${mins} minutes`;
+    try {
+      if (s.id.startsWith('i:')) {
+        const id = await addSession({ owner: uid, ownerName: me.name, kind: 'class', title: s.title, classId: s.classId, itemId: s.itemId, start, mins, weeks: 1, online: s.online, live: null });
+        return say(done, () => removeSession({ id } as Session));
+      }
+      let which: 'one' | 'all' = 'all';
+      if ((s.weeks ?? 1) > 1) {
+        setHold({ key: ev.key, start, mins });
+        const r = await askScope(moved ? 'Move' : 'Change', ev);
+        if (!r) return setHold(null);
+        which = r;
+      }
+      if (which === 'all') {
+        const dd = dayDiff(o.start, start);
+        const dm = minutesOf(start) - minutesOf(o.start);
+        await saveSession({ ...s, start: atMinutes(addDays(startOfDay(s.start), dd), minutesOf(s.start) + dm), mins });
+        say((s.weeks ?? 1) > 1 ? done + ', every week' : done, () => saveSession(s));
+      } else {
+        await skipWeek(s, o.week);
+        const id = await addSession({ ...copyOf(s), start, mins, weeks: 1 });
+        say(done + ', this time only', async () => (await removeSession({ id } as Session), await saveSession(s)));
+      }
+    } catch (e) {
+      console.error(e);
+      void tell('It could not be changed. Please try again.');
+    } finally {
+      setHold(null);
+    }
+  };
+  // Taking a session out: at once, with Undo. A weekly one asks which.
+  const takeOut = async (ev: GridEv) => {
+    const s = ev.o.s;
+    if (!ev.edit || s.id.startsWith('i:')) return;
+    closeAll();
+    try {
+      if ((s.weeks ?? 1) > 1) {
+        const r = await askScope('Take out', ev);
+        if (!r) return;
+        if (r === 'one') {
+          await skipWeek(s, ev.o.week);
+          return say(`Took out ${shortDay(ev.o.start)}`, () => saveSession(s));
+        }
+      }
+      await removeSession(s);
+      say(`Took out “${s.title}”`, () => restoreSession(s).catch(() => tell('It could not be put back.')));
+    } catch (e) {
+      console.error(e);
+      void tell('It could not be taken out. Please try again.');
+    }
+  };
+
+  // Keyboard shortcuts, as in Google Calendar.
+  const keys = useRef<(e: KeyboardEvent) => void>(() => {});
+  keys.current = (e: KeyboardEvent) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement;
+    const typing = t instanceof HTMLInputElement ? !['checkbox', 'radio', 'button'].includes(t.type) : !!t.closest?.('textarea, select, [contenteditable="true"], .sel-list');
+    if (typing || editing || scope || help || document.querySelector('.scrim')) return;
+    const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-occ]')?.dataset.occ;
+    const target = picked?.ev ?? evs.find((x) => x.key === focused);
+    const k = e.key;
+    const act: Record<string, () => void> = {
+      '?': () => (closeAll(), setHelp(true)),
+      t: () => jump(startOfDay(Date.now())),
+      j: () => go(1),
+      n: () => go(1),
+      k: () => go(-1),
+      p: () => go(-1),
+      c: () => (closeAll(), setEditing(fresh())),
+      ...Object.fromEntries(VIEWS.map((v) => [v.key, () => setView(v.k)])),
+      ...(target ? { e: () => target.edit && edit(target), Delete: () => void takeOut(target), Backspace: () => void takeOut(target) } : {}),
+      ...(pending || picked || more ? { Escape: closeAll } : {}),
+    };
+    const f = act[k] ?? act[k.toLowerCase()];
+    if (!f || (k.length === 1 && k !== k.toLowerCase() && k !== '?')) return;
+    e.preventDefault();
+    f();
+  };
   useEffect(() => {
-    grid.current?.scrollTo({ top: Math.max(0, (new Date().getHours() - from - 1) * HOUR) });
-  }, [from]);
-  const newAt = (t: number) => setEditing({ kind: 'class', start: t, mins: 60, weeks: 1, online: true, classId: active[0]?.id ?? null });
+    const h = (e: KeyboardEvent) => keys.current(e);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
+
+  const onCreate = (start: number, end: number, at: Anchor) => (setPicked(null), setMore(null), setPending({ start, end, at }));
+  const onPick = (ev: GridEv, at: Anchor) => (setPending(null), setMore(null), setPicked(picked?.ev.key === ev.key ? null : { ev, at }));
+  const today = startOfDay(Date.now());
+  const ps = picked?.ev.o.s;
   return (
-    <div className="shell ttb-shell">
+    <div className={'shell ttb-shell' + (side ? '' : ' no-side')}>
       <TopBar>
         <MainNav on="home" />
       </TopBar>
-      <main className="ttb">
-        <header className="ttb-head">
-          <div>
-            <h1 className="page-title">Timetable</h1>
-            <span className="hint">{next ? `Next: ${next.s.title}, ${whenText(next.start)}` : 'Nothing coming up. Add a class or a meeting.'}</span>
-          </div>
-          <span className="ttb-nav">
-            <button type="button" className="btn small-btn" onClick={() => setWeek(mondayOf(Date.now()))}>
-              This week
-            </button>
-            <button type="button" className="icon-btn" aria-label="The week before" onClick={() => setWeek(addDays(week, -7))}>
-              <UiIcon name="prev" size={16} />
-            </button>
-            <b>
-              {new Date(week).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – {new Date(addDays(week, 6)).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-            </b>
-            <button type="button" className="icon-btn" aria-label="The week after" onClick={() => setWeek(addDays(week, 7))}>
-              <UiIcon name="next" size={16} />
-            </button>
-            <button type="button" className="btn primary" onClick={() => newAt(nextHour())}>
-              + New
-            </button>
-          </span>
-        </header>
-        <div className="ttb-week" ref={grid}>
-          <div className="ttb-days" style={{ gridTemplateColumns: `56px repeat(7, minmax(0, 1fr))` }}>
-            <span />
-            {days.map((d) => (
-              <span key={d} className={'ttb-day' + (new Date(d).toDateString() === new Date().toDateString() ? ' today' : '')}>
-                <b>{new Date(d).toLocaleDateString(undefined, { weekday: 'short' })}</b>
-                <i>{new Date(d).getDate()}</i>
-              </span>
-            ))}
-          </div>
-          <div className="ttb-body" style={{ gridTemplateColumns: `56px repeat(7, minmax(0, 1fr))`, height: (to - from) * HOUR }}>
-            <span className="ttb-hours">
-              {Array.from({ length: to - from }, (_, i) => (
-                <span key={i} style={{ top: i * HOUR }}>
-                  {timeText(new Date(2020, 0, 1, from + i).getTime())}
+      <h1 className="ttb-sr">Timetable</h1>
+      <main className={'ttb' + (drawer ? ' drawer' : '')}>
+        <aside className="ttb-side" aria-label="Days and calendars">
+          <button type="button" className="ttb-new" onClick={() => (closeAll(), setDrawer(false), setEditing(fresh()))}>
+            <UiIcon name="plus" size={20} />
+            New
+          </button>
+          <MiniMonth anchor={anchor} from={view === "day" || view === "week" ? from : 0} to={view === "day" || view === "week" ? to : 0} busy={(d) => busyDays.has(d)} onPick={(d) => jump(d)} />
+          {next && (
+            <div className="ttb-next" style={{ ['--ev' as string]: colorOf(next) } as CSSProperties}>
+              <span className="ttb-side-h">{isNow(next) || next.s.live ? 'On now' : 'Up next'}</span>
+              <button type="button" className="ttb-next-b" onClick={() => jump(startOfDay(next.start))}>
+                <i aria-hidden="true" />
+                <span>
+                  <b>{next.s.title}</b>
+                  <span className="hint">{whenText(next.start)}</span>
                 </span>
-              ))}
-            </span>
-            {days.map((d) => (
-              <div
-                key={d}
-                className="ttb-col"
-                onClick={(e) => {
-                  if ((e.target as HTMLElement).closest('.ttb-ev')) return;
-                  const y = e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top;
-                  const mins = Math.floor((y / HOUR) * 2) * 30;
-                  newAt(d + (from * 60 + mins) * 60000);
-                }}
-              >
-                {Array.from({ length: to - from }, (_, i) => (
-                  <span key={i} className="ttb-line" style={{ top: i * HOUR }} />
-                ))}
-                {lanes(all.filter((o) => new Date(o.start).toDateString() === new Date(d).toDateString())).map(({ o, lane, of }) => {
-                    const st = new Date(o.start);
-                    const top = ((st.getHours() - from) * 60 + st.getMinutes()) * (HOUR / 60);
-                    const h = Math.max(22, ((o.end - o.start) / 60000) * (HOUR / 60) - 2);
-                    const c = cls(o.s.classId);
-                    const col = o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--ink)';
-                    const live = !!o.s.live || isNow(o, 0);
-                    return (
-                      <button key={o.s.id + o.week} type="button" className={'ttb-ev' + (o.s.id.startsWith('i:') ? ' lone' : '') + (live ? ' now' : '')} style={{ top, height: h, left: `calc(${(lane / of) * 100}% + 3px)`, width: `calc(${100 / of}% - 6px)`, right: 'auto', ['--ev' as string]: col }} onClick={() => setPicked(o)}>
-                        <b>{o.s.title || 'Untitled'}</b>
-                        <span>
-                          {timeText(o.start)}
-                          {o.s.kind === 'class' && c ? ` · ${c.name}` : o.s.kind === 'meeting' ? ' · Meeting' : ''}
-                        </span>
-                        {o.s.online && <UiIcon name="video" size={12} />}
-                      </button>
-                    );
-                  })}
-                {nowLine && new Date(nowLine).toDateString() === new Date(d).toDateString() && <span className="ttb-now" style={{ top: ((new Date().getHours() - from) * 60 + new Date().getMinutes()) * (HOUR / 60) }} />}
-              </div>
+              </button>
+              {(isNow(next) || !!next.s.live) && (next.s.online || next.s.kind === 'class') && (
+                <button type="button" className="btn primary small-btn" onClick={() => void startSession(next, cls(next.s.classId), me, navigate)}>
+                  {next.s.kind === 'class' ? (next.s.itemId ? 'Start teaching' : 'Open the class') : next.s.live ? 'Join' : 'Start now'}
+                </button>
+              )}
+            </div>
+          )}
+          <div className="ttb-cals">
+            <span className="ttb-side-h">Show</span>
+            {active.map((c) => (
+              <label key={c.id} className="ttb-cal" style={{ ['--ev' as string]: theme(c.themeColor).accent } as CSSProperties}>
+                <input type="checkbox" checked={!hidden.includes(c.id)} onChange={() => toggleHidden(c.id)} />
+                <i aria-hidden="true" />
+                <span>{c.name}</span>
+              </label>
             ))}
+            <label className="ttb-cal" style={{ ['--ev' as string]: 'var(--ink)' } as CSSProperties}>
+              <input type="checkbox" checked={!hidden.includes('meetings')} onChange={() => toggleHidden('meetings')} />
+              <i aria-hidden="true" />
+              <span>Meetings</span>
+            </label>
           </div>
-        </div>
-        <TtList all={all} cls={cls} onPick={setPicked} />
+        </aside>
+        {drawer && <div className="ttb-drawer-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
+        <section className="ttb-main" aria-label="Timetable">
+          <header className="ttb-bar">
+            <IconBtn icon="calendar" label={narrow ? 'Days and calendars' : side ? 'Hide the side panel' : 'Show the side panel'} onClick={toggleSide} className="ttb-sidebtn" aria-expanded={narrow ? drawer : side} />
+            <button type="button" className={'btn small-btn ttb-today' + (anchor === today && view !== 'month' ? ' on' : '')} onClick={() => jump(today)} data-tip={`${new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })} (t)`}>
+              Today
+            </button>
+            <span className="ttb-arrows">
+              <button type="button" className="ttb-arrow" aria-label={`The ${view === 'schedule' ? 'weeks' : view} before`} data-tip={`The ${view === 'schedule' ? 'weeks' : view} before (k)`} onClick={() => go(-1)}>
+                <UiIcon name="prev" size={16} />
+              </button>
+              <button type="button" className="ttb-arrow" aria-label={`The ${view === 'schedule' ? 'weeks' : view} after`} data-tip={`The ${view === 'schedule' ? 'weeks' : view} after (j)`} onClick={() => go(1)}>
+                <UiIcon name="next" size={16} />
+              </button>
+            </span>
+            <h2 className="ttb-title" aria-live="polite">
+              {spanTitle(view, anchor, narrow)}
+            </h2>
+            <span className="ttb-bar-r">
+              <span className="seg ttb-views" role="radiogroup" aria-label="View">
+                {VIEWS.map((v) => (
+                  <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} data-tip={`${v.label} (${v.key})`}>
+                    {v.label}
+                  </button>
+                ))}
+              </span>
+              <IconBtn icon="help" label="Keyboard shortcuts (?)" onClick={() => setHelp(true)} className="ttb-keysbtn" />
+            </span>
+          </header>
+          <div className="ttb-view" key={view}>
+            {view === 'day' || view === 'week' ? (
+              <TimeGrid days={days} evs={evs} pending={pending} hold={hold} picked={pickedKey} dir={dir} onCreate={onCreate} onPick={onPick} onChange={(ev, s, m) => void change(ev, s, m)} onDay={(d) => (jump(d), setView('day'))} />
+            ) : view === 'month' ? (
+              <MonthGrid days={days} month={monthStart(anchor)} evs={evs} hold={hold} picked={pickedKey} dir={dir} onDay={(d) => (jump(d), setView('day'))} onCreate={(d, at) => { const st = niceStart(d); onCreate(st, st + 3600e3, at); }} onPick={onPick} onMore={(day, list, at) => (setPicked(null), setPending(null), setMore({ day, list, at }))} onMove={(ev, st) => void change(ev, st, Math.round((ev.o.end - ev.o.start) / 60000))} />
+            ) : (
+              <Schedule from={from} to={to} evs={evs} picked={pickedKey} dir={dir} onPick={onPick} onDay={(d) => (jump(d), setView('day'))} />
+            )}
+          </div>
+        </section>
+        <button type="button" className="ttb-fab" aria-label="New" onClick={() => (closeAll(), setEditing(fresh()))}>
+          <UiIcon name="plus" size={24} />
+        </button>
       </main>
-      {picked && (
-        <SessionCard
-          o={picked}
-          c={cls(picked.s.classId)}
-          lessonTitle={picked.s.itemId ? (items[picked.s.classId ?? ''] ?? []).find((i) => i.id === picked.s.itemId)?.title : undefined}
-          mine={picked.s.owner === uid || !!cls(picked.s.classId)}
-          onClose={() => setPicked(null)}
-          onStart={() => (setPicked(null), void startSession(picked, cls(picked.s.classId), me, navigate))}
-          onEdit={() => (setPicked(null), setEditing(picked.s.id.startsWith('i:') ? { kind: 'class', classId: picked.s.classId, itemId: picked.s.itemId, title: picked.s.title, start: picked.start, mins: 60, weeks: 1, online: picked.s.online } : picked.s))}
-          onDelete={async () => {
-            const s = picked.s;
-            setPicked(null);
-            if ((s.weeks ?? 1) > 1) {
-              const all = await ask(`Take out every week of “${s.title}”? Choose No to take out only ${whenText(picked.start)}.`);
-              if (all) await removeSession(s);
-              else await skipWeek(s, picked.week);
-            } else if (await ask(`Take “${s.title}” out of the timetable?`)) await removeSession(s);
+      {pending && (
+        <Pop key={pending.start + ':' + pending.end} at={pending.at} label="Add to the timetable" onClose={() => setPending(null)} width={340} className="ttb-pop-quick">
+          <QuickCreate
+            start={pending.start}
+            end={pending.end}
+            classes={active}
+            colleagues={colleagues}
+            lastClass={lastClass}
+            me={me}
+            onDone={(t, c) => {
+              setPending(null);
+              if (c) (setLastClass(c), store.set('class', c));
+              if (t) say(`Added “${t}”`);
+            }}
+            onMore={(init) => {
+              setPending(null);
+              setEditing(init);
+            }}
+            onTitle={(title) => setPending((p) => (p ? { ...p, title } : p))}
+          />
+        </Pop>
+      )}
+      {picked && ps && (
+        <Pop key={picked.ev.key} at={picked.at} label={ps.title || 'Session'} onClose={() => setPicked(null)} width={380}>
+          <SessionPop
+            o={picked.ev.o}
+            c={cls(ps.classId)}
+            lessonTitle={ps.itemId ? (items[ps.classId ?? ''] ?? []).find((i) => i.id === ps.itemId)?.title : undefined}
+            mine={picked.ev.edit}
+            onClose={() => setPicked(null)}
+            onStart={() => (setPicked(null), void startSession(picked.ev.o, cls(ps.classId), me, navigate))}
+            onEdit={() => edit(picked.ev)}
+            onDelete={() => void takeOut(picked.ev)}
+          />
+        </Pop>
+      )}
+      {more && (
+        <Pop at={more.at} label={`Sessions on ${shortDay(more.day)}`} onClose={() => setMore(null)} width={280}>
+          <MoreList day={more.day} list={more.list} onPick={(ev, at) => (setMore(null), setPicked({ ev, at }))} />
+        </Pop>
+      )}
+      {editing && (
+        <SessionDialog
+          init={editing}
+          classes={active}
+          items={items}
+          me={me}
+          onClose={() => setEditing(null)}
+          onSaved={(t) => {
+            if (editing.classId) (setLastClass(editing.classId), store.set('class', editing.classId));
+            say(editing.id ? `Saved “${t}”` : `Added “${t}”`);
           }}
         />
       )}
-      {editing && <SessionDialog init={editing} classes={active} items={items} me={me} onClose={() => setEditing(null)} />}
-    </div>
-  );
-}
-// Sessions at the same time sit side by side.
-function lanes(list: Occurrence[]) {
-  const sorted = [...list].sort((a, b) => a.start - b.start || b.end - a.end);
-  const out: { o: Occurrence; lane: number; of: number }[] = [];
-  let cluster: { o: Occurrence; lane: number; of: number }[] = [];
-  let ends: number[] = [];
-  let clusterEnd = 0;
-  const flush = () => {
-    const n = Math.max(1, ends.length);
-    cluster.forEach((x) => (x.of = n));
-    out.push(...cluster);
-    cluster = [];
-    ends = [];
-  };
-  for (const o of sorted) {
-    if (o.start >= clusterEnd && cluster.length) flush();
-    let lane = ends.findIndex((e) => e <= o.start);
-    if (lane < 0) lane = ends.length;
-    ends[lane] = o.end;
-    cluster.push({ o, lane, of: 1 });
-    clusterEnd = Math.max(clusterEnd, o.end);
-  }
-  flush();
-  return out;
-}
-const nextHour = () => {
-  const d = new Date();
-  d.setMinutes(0, 0, 0);
-  return d.getTime() + 3600e3;
-};
-
-// On a phone: the week as a list.
-function TtList({ all, cls, onPick }: { all: Occurrence[]; cls: (id?: string | null) => ClassDoc | undefined; onPick: (o: Occurrence) => void }) {
-  const byDay = new Map<string, Occurrence[]>();
-  [...all].sort((a, b) => a.start - b.start).forEach((o) => byDay.set(new Date(o.start).toDateString(), [...(byDay.get(new Date(o.start).toDateString()) ?? []), o]));
-  return (
-    <div className="ttb-list">
-      {!all.length && <p className="hint">Nothing this week.</p>}
-      {[...byDay.entries()].map(([d, list]) => (
-        <section key={d}>
-          <h2>{new Date(d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
-          {list.map((o) => (
-            <button key={o.s.id + o.week} type="button" className="ttb-li" style={{ ['--ev' as string]: o.s.kind === 'class' ? theme(cls(o.s.classId)?.themeColor).accent : 'var(--ink)' }} onClick={() => onPick(o)}>
-              <span className="ttb-li-t">{timeText(o.start)}</span>
-              <span>
-                <b>{o.s.title}</b>
-                <span className="hint">{o.s.kind === 'class' ? cls(o.s.classId)?.name : 'Meeting'}</span>
-              </span>
-            </button>
-          ))}
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function SessionCard({ o, c, lessonTitle, mine, onClose, onStart, onEdit, onDelete }: { o: Occurrence; c?: ClassDoc; lessonTitle?: string; mine: boolean; onClose: () => void; onStart: () => void; onEdit: () => void; onDelete: () => void }) {
-  const s = o.s;
-  const now = isNow(o) || !!s.live;
-  return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog ttb-card" role="dialog" aria-label={s.title} style={{ ['--ev' as string]: s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--ink)' }}>
-        <span className="ttb-card-k">{s.kind === 'class' ? c?.name ?? 'Class' : 'Meeting'}</span>
-        <h2>{s.title || 'Untitled'}</h2>
-        <span className="ttb-card-when">
-          {whenText(o.start)} – {timeText(o.end)}
-          {(s.weeks ?? 1) > 1 && <span className="hint"> · every week, {s.weeks} times</span>}
-        </span>
-        <ul className="ttb-facts">
-          {lessonTitle && (
-            <li>
-              <UiIcon name="task" size={15} /> Lesson: {lessonTitle}
-            </li>
-          )}
-          <li>
-            <UiIcon name={s.online ? 'video' : 'classes'} size={15} />
-            {s.online ? (s.kind === 'class' ? (c?.video?.url ? 'Online, in the class video room' : 'Online: the class video room is on its way') : s.live ? `On now: ${s.live.byName} started it` : 'Online: the room opens when it starts') : s.place || 'In person'}
-          </li>
-          {s.kind === 'meeting' && !!s.attendees?.length && (
-            <li>
-              <UiIcon name="person" size={15} /> {[s.ownerName, ...s.attendees.map((a) => s.names?.[a] ?? 'Colleague')].join(', ')}
-            </li>
-          )}
-          {s.notes && <li className="ttb-notes">{s.notes}</li>}
-        </ul>
-        <div className="row-between">
-          <span className="ttb-card-acts">
-            {mine && (
-              <button type="button" className="btn small-btn" onClick={onEdit}>
-                Edit
-              </button>
-            )}
-            {mine && !s.id.startsWith('i:') && (
-              <button type="button" className="btn link small" onClick={onDelete}>
-                Take out
-              </button>
-            )}
-          </span>
-          {(s.online || s.kind === 'class') && (
-            <button type="button" className={'btn ' + (now ? 'primary' : '')} onClick={onStart}>
-              {s.kind === 'class' ? (s.itemId ? 'Start teaching' : 'Open the class') : s.live ? 'Join' : 'Start now'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const MINS = [30, 45, 60, 75, 90, 120, 180];
-function SessionDialog({ init, classes, items, me, onClose }: { init: Partial<Session>; classes: ClassDoc[]; items: Record<string, { id: string; title: string; type: string }[]>; me: { uid: string; name: string }; onClose: () => void }) {
-  const dir = useDirectory();
-  const colleagues = dir?.groups.find((g) => g.id === 'colleagues')?.people ?? [];
-  const [s, setS] = useState<Partial<Session>>({ kind: 'class', mins: 60, weeks: 1, online: true, ...init });
-  const [date, setDate] = useState(dateIn(init.start ?? nextHour()));
-  const [time, setTime] = useState(timeIn(init.start ?? nextHour()));
-  const [repeat, setRepeat] = useState((init.weeks ?? 1) > 1);
-  const [busy, setBusy] = useState(false);
-  const set = (p: Partial<Session>) => setS((x) => ({ ...x, ...p }));
-  const c = classes.find((x) => x.id === s.classId);
-  const lessons = (items[s.classId ?? ''] ?? []).filter((i) => i.type === 'lesson');
-  const title = s.title?.trim() || (s.kind === 'class' ? lessons.find((l) => l.id === s.itemId)?.title || c?.name || '' : '');
-  const ok = !!title && !!date && !!time && (s.kind === 'meeting' || !!c);
-  const save = async () => {
-    setBusy(true);
-    const start = new Date(`${date}T${time}`).getTime();
-    const base = { ...s, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
-    try {
-      if (s.id) await saveSession(base as Session);
-      else await addSession({ ...base, owner: me.uid, ownerName: me.name, live: null } as Omit<Session, 'id'>);
-      onClose();
-    } catch (e) {
-      console.error(e);
-      void tell('It could not be saved. Please try again.');
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <form className="dialog ttb-dialog" role="dialog" aria-label={s.id ? 'Change the session' : 'A new session'} onSubmit={(e) => (e.preventDefault(), ok && void save())}>
-        <h2>{s.id ? 'Change the session' : 'Add to the timetable'}</h2>
-        <span className="seg" role="radiogroup" aria-label="What">
-          {(
-            [
-              ['class', 'A class'],
-              ['meeting', 'A meeting'],
-            ] as const
-          ).map(([k, l]) => (
-            <button key={k} type="button" role="radio" aria-checked={s.kind === k} className={s.kind === k ? 'on' : ''} onClick={() => set({ kind: k, online: k === 'meeting' ? true : s.online })}>
-              {l}
-            </button>
-          ))}
-        </span>
-        {s.kind === 'class' ? (
-          <>
-            <div className="field">
-              <span>Class</span>
-              <Select label="Class" value={s.classId ?? ''} options={classes.map((x) => ({ v: x.id, label: x.name }))} onChange={(v) => set({ classId: v, itemId: null })} placeholder="Choose a class" />
-            </div>
-            <div className="field">
-              <span>Lesson to teach</span>
-              <Select label="Lesson" value={s.itemId ?? ''} options={[{ v: '', label: 'Choose later' }, ...lessons.map((l) => ({ v: l.id, label: l.title }))]} onChange={(v) => set({ itemId: v || null })} />
-              <span className="hint">With a lesson, Start teaching opens it live, and learners see its time.</span>
-            </div>
-          </>
-        ) : (
-          <div className="field">
-            <span>Who</span>
-            <MultiSelect label="Colleagues" value={s.attendees ?? []} options={colleagues.map((p) => ({ v: p.key, label: p.name }))} onChange={(v) => set({ attendees: v })} all="Nobody yet" foot="" />
-            <span className="hint">They see it in their timetable, and are called when it starts.</span>
-          </div>
-        )}
-        <label className="field">
-          <span>Title{s.kind === 'class' ? ' (optional)' : ''}</span>
-          <input value={s.title ?? ''} onChange={(e) => set({ title: e.target.value })} placeholder={s.kind === 'class' ? title || 'The lesson or class name' : 'For example: Team planning'} maxLength={90} />
-        </label>
-        <div className="ttb-when">
-          <label className="field">
-            <span>Day</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-          </label>
-          <label className="field">
-            <span>Starts</span>
-            <input type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
-          </label>
-          <div className="field">
-            <span>How long</span>
-            <Select label="How long" value={String(s.mins ?? 60)} options={MINS.map((m) => ({ v: String(m), label: m < 60 ? `${m} minutes` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} hour${m > 60 ? 's' : ''}` }))} onChange={(v) => set({ mins: Number(v) })} />
-          </div>
-        </div>
-        <label className="check-row">
-          <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-          Every week, at this time
-          {repeat && (
-            <span className="ttb-weeks">
-              for <input type="number" min={2} max={52} value={s.weeks && s.weeks > 1 ? s.weeks : 10} onChange={(e) => set({ weeks: Math.max(2, Math.min(52, Number(e.target.value) || 2)) })} aria-label="How many weeks" /> weeks
-            </span>
-          )}
-        </label>
-        <div className="field">
-          <span>Where</span>
-          <span className="seg small-seg" role="radiogroup" aria-label="Where">
-            <button type="button" role="radio" aria-checked={!!s.online} className={s.online ? 'on' : ''} onClick={() => set({ online: true })}>
-              Online
-            </button>
-            <button type="button" role="radio" aria-checked={!s.online} className={!s.online ? 'on' : ''} onClick={() => set({ online: false })}>
-              In person
-            </button>
-          </span>
-          {s.online ? (
-            <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page; no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : 'A video room opens when it starts. No link to send.'}</span>
-          ) : (
-            <input value={s.place ?? ''} onChange={(e) => set({ place: e.target.value })} placeholder="Room 4, or the address" aria-label="Where" />
-          )}
-        </div>
-        <label className="field">
-          <span>Notes (optional)</span>
-          <textarea rows={2} value={s.notes ?? ''} onChange={(e) => set({ notes: e.target.value })} />
-        </label>
-        <div className="row-between" style={{ justifyContent: 'flex-end' }}>
-          <button type="button" className="btn" onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <button type="submit" className="btn primary" disabled={!ok || busy}>
-            {busy ? 'Saving…' : s.id ? 'Save' : 'Add'}
-          </button>
-        </div>
-      </form>
+      {scope && <ScopeAsk req={scope} onDone={() => setScope(null)} />}
+      {help && <Shortcuts onClose={() => setHelp(false)} />}
+      {toast && <ToastBar toast={toast} onDone={() => setToast(null)} />}
     </div>
   );
 }

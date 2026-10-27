@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, setDoc, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { updateItem } from './classes';
@@ -45,6 +45,11 @@ export async function saveSession(s: Session) {
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
 }
 export const removeSession = (s: Session) => deleteDoc(doc(col, s.id));
+// Undo for a session taken out: back, as it was, with the same id.
+export function restoreSession(s: Session) {
+  const { id, ...rest } = s;
+  return setDoc(doc(col, id), JSON.parse(JSON.stringify(rest)));
+}
 export const skipWeek = (s: Session, week: number) => updateDoc(doc(col, s.id), { skip: [...new Set([...(s.skip ?? []), week])] });
 export const setSessionLive = (s: Session, live: Session['live']) => updateDoc(doc(col, s.id), { live });
 

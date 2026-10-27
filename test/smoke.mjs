@@ -172,13 +172,33 @@ const J = {
   'Timetable: a class added, and Rooms': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/timetable`);
-    await see(s.p, '.ttb-week, .ttb-list', 'the timetable');
-    await s.p.click('.ttb-head button:has-text("New")');
+    await see(s.p, '.ttb-grid, .ttb-sched', 'the timetable');
+    // The full form, from New.
+    await s.p.click('.ttb-new');
     await see(s.p, '.ttb-dialog', 'the new session dialog');
     await s.p.fill('.ttb-dialog input[placeholder^="The lesson"], .ttb-dialog .field input:not([type])', 'Speaking club');
     await s.p.click('.ttb-dialog button[type=submit]');
-    await see(s.p, '.ttb-ev:has-text("Speaking club"), .ttb-li:has-text("Speaking club")', 'the session in the week');
+    await s.p.keyboard.press('a');
+    await see(s.p, '.ttb-srow:has-text("Speaking club")', 'the session in the schedule');
+    // Dragging across the hours of a day adds one there, with the quick card.
+    await s.p.keyboard.press('d');
+    await see(s.p, '.ttb-col', 'the day view');
+    await s.p.locator('.ttb-scroll').evaluate((el) => (el.scrollTop = 9 * 48));
+    const box = await s.p.locator('.ttb-col').first().boundingBox();
+    await s.p.mouse.move(box.x + 60, box.y + 10 * 48 + 4);
+    await s.p.mouse.down();
+    await s.p.mouse.move(box.x + 60, box.y + 10 * 48 + 30, { steps: 3 });
+    await s.p.mouse.move(box.x + 60, box.y + 11 * 48 + 20, { steps: 5 });
+    await s.p.mouse.up();
+    await see(s.p, '.ttb-quick', 'the quick card after a drag');
+    await s.p.keyboard.type('Reading group');
+    await s.p.keyboard.press('Enter');
+    await see(s.p, '.ttb-ev:has-text("Reading group")', 'the dragged session in the day');
     await axe(s.p, 'Timetable', A11Y_FOUND);
+    await s.p.click('.ttb-ev:has-text("Reading group")');
+    await see(s.p, '.ttb-card', 'the session card');
+    await axe(s.p, 'Timetable card', A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
     await s.p.goto(`${BASE}/rooms`);
     await see(s.p, 'text=Class video rooms', 'Rooms');
     await axe(s.p, 'Rooms', A11Y_FOUND);
