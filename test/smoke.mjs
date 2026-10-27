@@ -213,8 +213,27 @@ const J = {
   },
   'Colleagues': async (b) => {
     const s = await session(b);
+    // No colleagues yet: the invitation.
     await s.p.goto(`${BASE}/colleagues`);
     await see(s.p, 'h1:has-text("Colleagues")', 'Colleagues');
+    await see(s.p, 'button:has-text("Make an invitation link")', 'the invitation when there are no colleagues');
+    // With an organisation and colleagues (test/mock/colleagues.ts).
+    await s.p.goto(`${BASE}/dev.html?seed&colleagues&as=teacher`);
+    await s.p.waitForFunction(() => !!localStorage.getItem('mockcolleagues'), null, { timeout: 30000 });
+    await s.p.goto(`${BASE}/colleagues`);
+    await see(s.p, '.clg-group-h:has-text("Harbour School")', 'the organisation group');
+    await see(s.p, '.clg-around .clg-card:has-text("Lena Park")', 'who is around now');
+    await axe(s.p, 'Colleagues', A11Y_FOUND);
+    await s.p.click('.clg-row-main:has-text("Lena Park")');
+    await see(s.p, 'h3:has-text("About Lena")', 'her profile');
+    await see(s.p, '.clg-thing:has-text("Speaking rubric")', 'what she shared');
+    await see(s.p, '.clg-tiles button[aria-label="Video call"]', 'the call buttons');
+    await axe(s.p, 'Colleague', A11Y_FOUND);
+    await s.p.fill('.clg-search input', 'spanish');
+    await see(s.p, '.clg-row:has-text("Tomás Rivera") .clg-mark', 'a search by language');
+    await s.p.click('.clg-row-main:has-text("Tomás Rivera")');
+    await s.p.click('.clg-tiles .clg-tile-msg');
+    await s.p.waitForURL(/\/messages\?c=dm_/, { timeout: 10000 });
     return s;
   },
   'Super Admin and an organisation': async (b) => {
