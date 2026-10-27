@@ -20,6 +20,7 @@ import { TableHandles } from '../editor/TableHandles';
 import { TableInsert } from '../editor/TableInsert';
 import { LinkPop } from '../editor/LessonLink';
 import { EditorContextMenu } from '../editor/ContextMenu';
+import { openMenuAt } from '../components/ContextMenu';
 import { TextColorTool } from '../editor/TextColor';
 import { DefinitionPop } from '../editor/Definition';
 import { newIpa } from '../editor/Ipa';
@@ -265,6 +266,93 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const showSide = side !== 'none' || !!draft || (!page && (sugg.length > 0 || open.length > 0));
   const counts = side === 'people' ? contributions(session.doc, session.pud) : null;
 
+  const SV = ({ d, size = 16 }: { d: string; size?: number }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+  const alignNow = (['center', 'right', 'justify'] as const).find((a) => editor.isActive({ textAlign: a })) ?? 'left';
+  const ALIGN_D = { left: 'M4 6h16M4 10h10M4 14h16M4 18h10', center: 'M4 6h16M7 10h10M4 14h16M7 18h10', right: 'M4 6h16M10 10h10M4 14h16M10 18h10', justify: 'M4 6h16M4 10h16M4 14h16M4 18h16' };
+  // The writing tools on a document page, in groups: history, style, text, lists, layout, language, writing, then comment and insert.
+  const PageBar = () => (
+    <div className="ne-bar cd-bar cd-pagebar" role="toolbar" aria-label="Formatting">
+      <span className="pb-g">
+        {B(<SV d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), 'Undo (Ctrl Z)', !editor.can().undo())}
+        {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), 'Redo (Ctrl Shift Z)', !editor.can().redo())}
+      </span>
+      <span className="pb-g">
+        <select
+          className="ne-style pb-style"
+          aria-label="Paragraph style"
+          value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
+          onChange={(e) => {
+            const v = e.target.value;
+            const c = editor.chain().focus();
+            (v === 'p' ? c.setParagraph() : c.setHeading({ level: Number(v.slice(1)) as 1 | 2 | 3 })).run();
+          }}
+        >
+          <option value="p">Text</option>
+          <option value="h1">Heading 1</option>
+          <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+        </select>
+      </span>
+      <span className="pb-g">
+        {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold (Ctrl B)')}
+        {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic (Ctrl I)')}
+        {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline (Ctrl U)')}
+        <TextColorTool editor={editor} />
+        <HighlightTool editor={editor} />
+      </span>
+      <span className="pb-g">
+        {B(<SV d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />, editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'Bulleted list')}
+        {B(<SV d="M10 6h10M10 12h10M10 18h10M4 5.5h1.5V9M4 9h3M4 14.5a1.5 1.5 0 0 1 3 0c0 1.5-3 2-3 3.5h3" />, editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered list')}
+        {B(<SV d="M4 6.5l1.5 1.5L8 5.5M4 12.5l1.5 1.5L8 11.5M11 7h9M11 13h9M11 19h9M4.5 18.5h3" />, editor.isActive('taskList'), () => editor.chain().focus().toggleTaskList().run(), 'Checklist')}
+        <button type="button" className="ne-btn" data-tip="Alignment" aria-label="Alignment" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, (['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: { left: 'Left', center: 'Centre', right: 'Right', justify: 'Justify' }[a], icon: '', onClick: () => editor.chain().focus().setTextAlign(a).run() })))}>
+          <SV d={ALIGN_D[alignNow]} />
+        </button>
+      </span>
+      <span className="pb-g">
+        {B(<UiIcon name="link" size={15} />, editor.isActive('link'), () => setLinkOpen(true), 'Link (Ctrl K)', editor.state.selection.empty && !editor.isActive('link'))}
+        {B(<UiIcon name="picture" size={15} />, false, () => pickPictures(editor), 'Picture')}
+        {B(<SV d="M4 5h16v14H4zM4 10h16M10 10v9" />, editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), 'Table')}
+      </span>
+      <span className="pb-g">
+        {gate('definition') !== 'hide' && B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition: select a word, then add its meaning', editor.state.selection.empty && !editor.isActive('definition'))}
+        {gate('pron') !== 'hide' && B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa('RP')).run(), 'IPA')}
+        {gate('pron') !== 'hide' && B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress')}
+        {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
+        {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
+        {gate('icons') !== 'hide' && <IconTool editor={editor} />}
+      </span>
+      <span className="pb-g">
+        {profileTeacher && <CiteTool editor={editor} />}
+        <span className="cd-wc-wrap">
+          {B(<span className="cd-wc-ic">123</span>, wcOpen, () => setWcOpen((v) => !v), 'Word count')}
+          {wcOpen && (
+            <span className="cd-wc" role="status">
+              <b>Word count</b>
+              <span className="cd-wc-row">
+                <span>Document</span>
+                <b>{wordCount(editor.getJSON())}</b>
+              </span>
+              <span className="cd-wc-row">
+                <span>Selected</span>
+                <b>{sel.empty ? '–' : selWords}</b>
+              </span>
+              <span className="hint">Without the reference list, as assignments count them.</span>
+            </span>
+          )}
+        </span>
+      </span>
+      <span className="pb-g pb-end">
+        {canComment && B(<UiIcon name="discuss" size={15} />, false, startComment, quote ? 'Comment on the selection' : 'Select some text to comment on it', !quote)}
+        <button type="button" className="btn small-btn pb-insert" onMouseDown={(e) => e.preventDefault()} onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text.">
+          <UiIcon name="plus" size={14} /> Insert
+        </button>
+      </span>
+    </div>
+  );
   const modeCtl = locked ? (
     <span className="cd-locked">
       <UiIcon name="lock" size={14} /> Locked
@@ -381,7 +469,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           </button>
         ) : null}
       </div>}
-      {writing && (
+      {writing && page && PageBar()}
+      {writing && !page && (
         <div className="ne-bar cd-bar" role="toolbar" aria-label="Formatting">
           {B('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
           {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}

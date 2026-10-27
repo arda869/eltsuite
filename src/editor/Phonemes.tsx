@@ -300,13 +300,15 @@ function usePop(initial: boolean) {
 
 function ChartView({ node, updateAttributes, selected }: NodeViewProps) {
   const { open, setOpen, ref } = usePop(false);
-  const style = usePopPos(ref, open, 320);
+  // The settings open under the Edit button, not above the whole chart.
+  const btn = useRef<HTMLButtonElement>(null);
+  const style = usePopPos(btn, open, 330);
   const a = node.attrs as { accent: Accent; part: ChartPart; by: string };
   return (
     <NodeViewWrapper as="span" className={'ph-node' + (selected ? ' is-selected' : '')} ref={ref}>
       <span contentEditable={false} onDoubleClick={() => setOpen(true)}>
         <PhonChart accent={a.accent} part={a.part} by={a.by} />
-        <button type="button" className="ph-edit" onClick={() => setOpen((o) => !o)} aria-label="Chart settings">
+        <button ref={btn} type="button" className="ph-edit" onClick={() => setOpen((o) => !o)} aria-label="Chart settings">
           Edit
         </button>
       </span>

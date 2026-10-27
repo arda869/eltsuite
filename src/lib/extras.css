@@ -330,3 +330,4 @@
 .fs-style .fc, .fs-style .fc.size-s, .fs-style .fc.size-m, .fs-style .fc.size-l { font-size: 6.5px !important; }
 .fs-def { grid-template-columns: 1fr 120px 28px; padding: 8px; border-radius: 10px; background: var(--surface); }
 .fs-def .fs-sides { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
+.ph-pop { z-index: 60; }

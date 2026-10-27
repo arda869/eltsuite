@@ -1195,7 +1195,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               </span>
               <span className="sx-lane" onPointerDown={backgroundDown}>
                 {pv.lines.filter((l) => lineTrack(l) === tr.id).map((l) => (
-                  <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' empty')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
+                  <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' blank')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
                     <span className="sx-edge l" onPointerDown={lineDown(l, 'l')} />
                     <span className="sx-line-t">
                       {l.who && <b>{l.who}</b>}
