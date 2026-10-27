@@ -20,10 +20,16 @@ const LOOK: Record<FileKind, { icon: string; label: string }> = {
   media: { icon: 'picture', label: 'Media' },
 };
 
-export function FileIcon({ kind, size = 40, label = true }: { kind: FileKind; size?: number; label?: boolean }) {
-  const l = LOOK[kind] ?? LOOK.media;
+// Lessons come in kinds, each with its own symbol on the same page.
+const LESSON_SUB: Record<string, { icon: string; label: string }> = {
+  homework: { icon: 'home', label: 'Homework' },
+  exam: { icon: 'timer', label: 'Exam' },
+  practice: { icon: 'pen', label: 'Practice' },
+};
+export function FileIcon({ kind, size = 40, label = true, sub }: { kind: FileKind; size?: number; label?: boolean; sub?: string }) {
+  const l = (kind === 'lesson' && sub && LESSON_SUB[sub]) || LOOK[kind] || LOOK.media;
   return (
-    <span className={'file-ic fk-' + kind} style={{ ['--fs' as string]: size + 'px' }} aria-hidden="true">
+    <span className={'file-ic fk-' + kind + (sub && kind === 'lesson' ? ' ls-' + sub : '')} style={{ ['--fs' as string]: size + 'px' }} aria-hidden="true">
       <svg className="file-ic-page" viewBox="0 0 40 48" width={size} height={size * 1.2}>
         <path className="fp" d="M6 1.5h20L38.5 14v30A2.5 2.5 0 0 1 36 46.5H6A2.5 2.5 0 0 1 3.5 44V4A2.5 2.5 0 0 1 6 1.5z" />
         <path className="ff" d="M26 1.5V11a3 3 0 0 0 3 3h9.5" />

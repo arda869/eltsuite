@@ -6861,3 +6861,7 @@ input.dg-cell-label:focus { outline: none; }
 .ma-tools.under { visibility: hidden; }
 .ma-toolwrap .ma-selbar > * { flex: 0 0 auto; }
 @container (max-width: 640px) { .ma-selbar .btn.small-btn { font-size: 0; gap: 0; width: 32px; padding: 0; justify-content: center; } .ma-selbar .btn.small-btn .ui-icon { font-size: 13px; } }
+
+.adm-who { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.adm-who > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.adm-who .avatar-photo, .adm-who .avatar-fallback, .adm-who svg { border-radius: 50%; flex: 0 0 auto; }

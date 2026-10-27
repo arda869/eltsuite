@@ -585,7 +585,7 @@ export function MediaArchive() {
   const row = (en: Entry, depth = 0) => (
     <button key={en.key} type="button" data-sel={en.key} draggable={renaming !== en.key} onDragStart={dragE(en)} className={'ma-lrow' + (sel.has(en.key) ? ' chosen' : '')} onClick={clickE(en)} onDoubleClick={() => openE(en)} onContextMenu={menuE(en)}>
       <span className="ma-lname" style={{ ['--depth' as string]: depth }}>
-        {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} />}
+        {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} sub={en.cls?.type} />}
         {nameOf(en.key, en.name, 'ma-lname-t')}
         {en.item && sharedIds.has(en.item.id) && <SharedMark />}
         {en.task && en.task.uses.length > 0 && (
@@ -883,7 +883,7 @@ export function MediaArchive() {
                     .slice(0, 6)
                     .map((en) => (
                       <button key={'r-' + en.key} type="button" className="ma-recent-it" onClick={() => select(en.key, { shiftKey: false, metaKey: false, ctrlKey: false })} onDoubleClick={() => openE(en)}>
-                        <FileIcon kind={en.kind} size={26} label={false} />
+                        <FileIcon kind={en.kind} size={26} label={false} sub={en.cls?.type} />
                         <span className="ma-recent-t">{en.name}</span>
                       </button>
                     ))}
@@ -1013,7 +1013,7 @@ export function MediaArchive() {
               </button>
             </div>
             <div className="lt-preview dd" onDoubleClick={() => openE(oneEntry)} title="Double-click to open">
-              <FileIcon kind={oneEntry.kind} size={56} />
+              <FileIcon kind={oneEntry.kind} size={56} sub={oneEntry.cls?.type} />
               <b className="lt-preview-t">{oneEntry.doc.title}</b>
               <span className="hint">
                 {Object.keys(oneEntry.doc.members ?? {}).length ? `Shared with ${Object.values(oneEntry.doc.members).map((m) => m.name.split(' ')[0]).join(', ')}` : 'Only you'}
@@ -1155,7 +1155,7 @@ function Card({ entry, chosen, shared, name, onClick, onDoubleClick, onDragStart
         ) : item?.link && item.kind === 'video' && /youtu/.test(item.link) ? (
           <img src={`https://img.youtube.com/vi/${/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(item.link)?.[1] ?? ''}/mqdefault.jpg`} alt="" draggable={false} />
         ) : (
-          <FileIcon kind={entry.kind} size={42} />
+          <FileIcon kind={entry.kind} size={42} sub={entry.cls?.type} />
         )}
         {item?.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
         <span className="ma-badges">

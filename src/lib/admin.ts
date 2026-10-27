@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { addDoc, collection, deleteField, doc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './auth';
 import { OWNER_EMAIL } from './phonAudio';
@@ -74,7 +74,7 @@ export type OrgPolicy = {
   externalTrainees?: boolean; // teacher trainers may add teachers from outside the organisation to training classes
 };
 export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
-export type Teacher = { uid: string; name: string; email: string; createdAt?: number; usedBytes?: number }; // usedBytes: what their files take, as their app last measured
+export type Teacher = { uid: string; name: string; email: string; avatar?: string; createdAt?: number; usedBytes?: number }; // usedBytes: what their files take, as their app last measured
 
 export const APP_KEYS: { k: string; name: string }[] = [
   { k: 'classes', name: 'Classes' },
@@ -143,7 +143,7 @@ export function useTeachers(on: boolean) {
     if (!on) return;
     return onSnapshot(
       query(collection(db, 'users'), where('role', '==', 'teacher')),
-      (s) => setList(s.docs.map((d) => ({ uid: d.id, name: String(d.data().displayName ?? ''), email: String(d.data().email ?? ''), createdAt: d.data().createdAt?.toMillis?.(), usedBytes: Number(d.data().space?.bytes ?? 0) || undefined })).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))),
+      (s) => setList(s.docs.map((d) => ({ uid: d.id, name: String(d.data().displayName ?? ''), email: String(d.data().email ?? ''), avatar: d.data().avatar as string | undefined, createdAt: d.data().createdAt?.toMillis?.(), usedBytes: Number(d.data().space?.bytes ?? 0) || undefined })).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))),
       () => setList([]),
     );
   }, [on]);
@@ -318,6 +318,13 @@ export function useOrgColleagues() {
   useEffect(() => {
     rememberOrg(org);
     if (!org || !user || profile?.role !== 'teacher') return;
+    // The teacher's picture, where the organisation's admins and colleagues can see it.
+    const pic = profile.avatar ?? '';
+    const picKey = `${org.id}:${user.uid}:${pic}`;
+    if (sentPic !== picKey) {
+      sentPic = picKey;
+      void setDoc(doc(db, 'teacherProfiles', user.uid), { org: org.id, avatar: pic }, { merge: true }).catch(() => {});
+    }
     void (async () => {
       const mine = await getDocs(collection(db, 'users', user.uid, 'colleagues')).catch(() => null);
       const have = new Map((mine?.docs ?? []).map((d) => [d.id, d.data()]));
@@ -328,13 +335,27 @@ export function useOrgColleagues() {
           .map(([uid, t]) => setDoc(doc(db, 'users', user.uid, 'colleagues', uid), { name: t.name || t.email, org: org.id, orgName: org.name, title: t.title ?? '', at: (have.get(uid)?.at as number) ?? Date.now() }, { merge: true }).catch(() => {})),
       );
     })();
-  }, [org, user, profile?.role]);
+  }, [org, user, profile?.role, profile?.avatar]);
   return org;
+}
+let sentPic = '';
+
+// The pictures of an organisation's teachers, by uid.
+export function useOrgPictures(org: Org | null) {
+  const [pics, setPics] = useState<Record<string, string>>({});
+  const ids = org ? Object.keys(org.teachers).sort().join() : '';
+  useEffect(() => {
+    if (!ids) return;
+    let dead = false;
+    void Promise.all(ids.split(',').map((uid) => getDoc(doc(db, 'teacherProfiles', uid)).then((d) => [uid, String(d.data()?.avatar ?? '')] as const).catch(() => [uid, ''] as const))).then((all) => !dead && setPics(Object.fromEntries(all.filter(([, a]) => a))));
+    return () => void (dead = true);
+  }, [ids]);
+  return pics;
 }
 
 // A teacher's profile for their organisation.
 // A teacher's profile: answers by field id. The organisation's admins choose the fields.
-export type TeacherProfile = { org?: string; fields?: Record<string, string>; about?: string; hobbies?: string; languages?: string; teaching?: string };
+export type TeacherProfile = { org?: string; avatar?: string; fields?: Record<string, string>; about?: string; hobbies?: string; languages?: string; teaching?: string };
 export type ProfileField = { id: string; label: string; icon: string; kind: 'short' | 'long' | 'list'; on: boolean; custom?: boolean };
 export const DEFAULT_PROFILE_FIELDS: ProfileField[] = [
   { id: 'about', label: 'About me', icon: 'quote', kind: 'long', on: true },

@@ -9,7 +9,8 @@ import { openChat, sendMsg, type Chat, type Person } from './chat';
 // folder for the class and one for each topic. They stay where the class puts them. A lesson can
 // be shared with a colleague, who then edits the class's lesson itself.
 
-export type ClassLesson = { classId: string; className: string; itemId: string; title: string; topic: string; at: number; editors: Record<string, string>; shared?: boolean; owner?: string };
+export type LessonType = 'lesson' | 'homework' | 'exam' | 'practice';
+export type ClassLesson = { type?: LessonType; classId: string; className: string; itemId: string; title: string; topic: string; at: number; editors: Record<string, string>; shared?: boolean; owner?: string };
 
 export function useClassLessons(uid?: string) {
   const [list, setList] = useState<ClassLesson[] | null>(null);
@@ -26,8 +27,7 @@ export function useClassLessons(uid?: string) {
           const topics = new Map((ts?.docs ?? []).map((d) => [d.id, String(d.data().name ?? 'Topic')]));
           for (const d of is?.docs ?? []) {
             const v = d.data();
-            if ((v.type ?? 'lesson') !== 'lesson') continue;
-            out.push({ classId: c.id, className: c.name, itemId: d.id, title: String(v.title ?? 'Lesson'), topic: v.topicId ? topics.get(v.topicId) ?? '' : '', at: v.createdAt?.toMillis?.() ?? 0, editors: (v.editors ?? {}) as Record<string, string> });
+            out.push({ type: (v.type ?? 'lesson') as LessonType, classId: c.id, className: c.name, itemId: d.id, title: String(v.title ?? 'Lesson'), topic: v.topicId ? topics.get(v.topicId) ?? '' : '', at: v.createdAt?.toMillis?.() ?? 0, editors: (v.editors ?? {}) as Record<string, string> });
           }
         }),
       );
@@ -44,7 +44,7 @@ export function useClassLessons(uid?: string) {
             for (const itemId of ids) {
               const it = await getDoc(doc(db, 'classes', c.id, 'items', itemId)).catch(() => null);
               if (!it?.exists() || !(uid in (it.data().editors ?? {}))) continue;
-              got.push({ classId: c.id, className: String(c.data().name ?? ''), itemId, title: String(it.data().title ?? 'Lesson'), topic: '', at: 0, editors: it.data().editors ?? {}, shared: true, owner: String(c.data().teacherName ?? '') });
+              got.push({ type: (it.data().type ?? 'lesson') as LessonType, classId: c.id, className: String(c.data().name ?? ''), itemId, title: String(it.data().title ?? 'Lesson'), topic: '', at: 0, editors: it.data().editors ?? {}, shared: true, owner: String(c.data().teacherName ?? '') });
             }
           }),
         );

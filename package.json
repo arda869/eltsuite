@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "smoke": "node test/smoke.mjs",
+    "a11y": "node test/smoke.mjs --a11y"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

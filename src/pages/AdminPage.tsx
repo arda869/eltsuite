@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { UiIcon } from '../components/UiIcon';
+import { Avatar } from '../components/avatars';
 import { Loader } from '../components/Loader';
 import { MultiSelect, Select } from '../components/Select';
 import { PROFILE_ICONS, ProfileIcon } from '../components/ProfileIcons';
@@ -69,6 +70,7 @@ import {
   type Org,
   type Plan,
   type Teacher,
+  useOrgPictures,
 } from '../lib/admin';
 
 // Super Admin: for the app's owner, every teacher, organisation and switch; for an organisation's
@@ -214,8 +216,7 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
               return (
                 <tr key={t.uid} className={a.suspended ? 'paused' : ''}>
                   <td>
-                    <b>{t.name || 'No name'}</b>
-                    <span className="hint">{t.email}</span>
+                    <Who name={t.name || 'No name'} email={t.email} pic={t.avatar} />
                   </td>
                   <td>{counts[t.uid]?.classes ?? '…'}</td>
                   <td>{counts[t.uid]?.learners ?? '…'}</td>
@@ -392,6 +393,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
   const [add, setAdd] = useState('');
   const list = Object.entries(org.teachers).sort((a, b) => (a[1].name || a[1].email).localeCompare(b[1].name || b[1].email));
   const free = teachers.filter((t) => !org.teachers[t.uid]);
+  const pics = useOrgPictures(org);
   return (
     <div className="adm-card">
       <span className="hint">Teachers here are colleagues of each other, always, and see each other's job titles and profiles.{org.allow?.trainers ? ' A teacher trainer creates teacher training classes for the others.' : ''}</span>
@@ -421,8 +423,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           {list.map(([uid, t]) => (
             <tr key={uid}>
               <td>
-                <b>{t.name || 'No name'}</b>
-                <span className="hint">{t.email}</span>
+                <Who name={t.name || 'No name'} email={t.email} pic={pics[uid]} />
               </td>
               <td>
                 <TitleInput value={t.title ?? ''} onSave={(v) => void setJobTitle(org, uid, v)} />
@@ -764,8 +765,22 @@ function OrgSpace({ org, owner }: { org: Org; owner: boolean }) {
   );
 }
 
+// A person: picture, name and email.
+function Who({ name, email, pic }: { name: string; email: string; pic?: string }) {
+  return (
+    <span className="adm-who">
+      <Avatar k={pic} name={name} size={32} />
+      <span>
+        <b>{name}</b>
+        <span className="hint">{email}</span>
+      </span>
+    </span>
+  );
+}
+
 function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
   const { user, profile } = useAuth();
+  const pics = useOrgPictures(org);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const teacherOf = (e: string) => Object.values(org.teachers).find((t) => t.email.toLowerCase() === e.toLowerCase());
@@ -787,10 +802,7 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
       <span className="hint">Admins are teachers in {org.name} with one more app, Organisation admin, for its teachers, classes, rules, branding and shared drives.</span>
       {org.adminEmails.map((e) => (
         <span key={e} className="adm-row">
-          <span>
-            <b>{teacherOf(e)?.name || e}</b>
-            <span className="hint">{teacherOf(e) ? e : `${e} · not a teacher here yet`}</span>
-          </span>
+          <Who name={teacherOf(e)?.name || e} email={teacherOf(e) ? e : `${e} · not a teacher here yet`} pic={teacherOf(e) ? pics[Object.entries(org.teachers).find(([, t]) => t.email.toLowerCase() === e.toLowerCase())?.[0] ?? ''] : undefined} />
           {owner && (
             <button type="button" className="btn link small" onClick={() => void removeOrgAdmin(org, e)}>
               Remove as admin
