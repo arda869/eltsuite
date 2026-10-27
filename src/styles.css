@@ -7206,7 +7206,7 @@ input.dg-cell-label:focus { outline: none; }
 .vc-bar { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
 .vc-bar b { font: 500 15px var(--serif); }
 .vc-live { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
-.vc-frame { flex: 1; min-height: 0; border-radius: 14px; overflow: hidden; background: #1f1d1b; }
+.vc-frame { flex: 1; min-height: 0; border-radius: 14px; overflow: hidden; background: var(--paper); }
 .vc-err { padding: 20px; }
 .vc-join { display: inline-flex; align-items: center; gap: 6px; }
 .vc-soon { font-size: 12px; }
@@ -7490,3 +7490,29 @@ input.dg-cell-label:focus { outline: none; }
 .lv-start-dot { width: 12px; height: 12px; flex: none; margin: 0 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); animation: ring-nudge 1.2s ease-in-out infinite; }
 .live-card.soon { box-shadow: inset 3px 0 0 var(--accent), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, var(--hair)); }
 .ttb, .rm { width: 100%; box-sizing: border-box; }
+.app-err { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; background: var(--bg); }
+.app-err strong { font: 500 22px var(--serif); }
+/* Toolbar settings: every tool the same size, lined up */
+.tbs-bar .tbs-chip { height: 36px; display: inline-flex; align-items: center; justify-content: center; }
+.tbs-face { height: 32px; align-items: center; justify-content: center; }
+.tbs-face .tool, .tbs-face .hl-tool { margin: 0; }
+.tbs-chip.wide { height: 40px; padding: 0 14px 0 6px; gap: 10px; justify-content: flex-start; }
+.tbs-chip.wide .tbs-face { min-width: 36px; height: 32px; border-radius: 8px; background: var(--surface); }
+.tbs-chip.wide .tbs-face .tool { min-width: 32px; height: 32px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; background: none; }
+.tbs-chip.wide .tbs-face .hl-more { display: none; }
+.tbs-name { font-size: 13.5px; color: var(--ink); white-space: nowrap; }
+.tbs-list { gap: 8px; }
+.tbs-bar .tbs-face .tool { display: inline-flex; align-items: center; justify-content: center; height: 32px; min-width: 32px; }
+.toolbar .tool { display: inline-flex; align-items: center; justify-content: center; }
+
+/* The apps menu, grouped, every tile the same */
+.apps-pop { display: flex; flex-direction: column; gap: 10px; width: 336px; padding: 14px 12px 12px; }
+.apps-g { display: flex; flex-direction: column; gap: 2px; }
+.apps-g + .apps-g { padding-top: 10px; border-top: 1px solid var(--hair); }
+.apps-h { padding: 0 8px 4px; }
+.apps-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
+.app-tile { gap: 7px; padding: 10px 4px 9px; transition: background .15s; }
+.app-ico { width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(150deg, color-mix(in srgb, var(--app) 82%, #fff), var(--app)); color: #fff; box-shadow: 0 6px 14px -8px var(--app), inset 0 1px 0 rgba(255, 255, 255, .25); transition: transform .15s, box-shadow .15s; }
+.app-ico svg { width: 23px; height: 23px; }
+.app-tile:hover .app-ico { transform: translateY(-2px); box-shadow: 0 10px 18px -8px var(--app), inset 0 1px 0 rgba(255, 255, 255, .25); }
+.app-tile b { font: 600 12.5px var(--sans); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

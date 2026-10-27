@@ -1,3 +1,4 @@
+import { AppError, watchChunkErrors } from './components/AppError';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
@@ -117,6 +118,7 @@ function LearnerOnly({ children }: { children: JSX.Element }) {
 
 startTheme();
 startTilt();
+watchChunkErrors();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -131,6 +133,7 @@ createRoot(document.getElementById('root')!).render(
         <ConnectionBanner />
         <ProxyGate>
         <PausedGate>
+        <AppError>
         <Suspense fallback={<Loader full label="" />}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -168,6 +171,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
+        </AppError>
         </PausedGate>
         <Suspense fallback={null}>
           <ChatDock />

@@ -23,9 +23,14 @@ for (const c of classes.docs) {
   const v = c.data().video ?? {};
   const host = await c.ref.collection('video').doc('host').get();
   const fresh = host.exists && (host.data().exp ?? 0) * 1000 > Date.now() + 30 * DAY;
+  // Rooms made before chat was turned off in calls: turned off once.
+  if (v.url && !v.noChat) {
+    const u = await api('/rooms/' + v.room, { properties: { enable_chat: false } });
+    if (u.ok) await c.ref.set({ video: { ...v, noChat: true } }, { merge: true });
+  }
   if (v.url && fresh) continue;
   const name = ('c-' + c.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60);
-  let room = await api('/rooms', { name, privacy: 'public', properties: { enable_screenshare: true, enable_chat: true, enable_prejoin_ui: true, start_video_off: true, start_audio_off: true, max_participants: 40, enable_people_ui: true } });
+  let room = await api('/rooms', { name, privacy: 'public', properties: { enable_screenshare: true, enable_chat: false, enable_prejoin_ui: true, start_video_off: true, start_audio_off: true, max_participants: 40, enable_people_ui: true } });
   if (!room.ok) room = await api('/rooms/' + name);
   if (!room.ok) {
     console.log('A room could not be made for', c.id, room.status);
@@ -37,7 +42,7 @@ for (const c of classes.docs) {
     console.log('No host key for', c.id, tok.status);
     continue;
   }
-  await c.ref.set({ video: { url: room.j.url, room: name, at: Date.now() } }, { merge: true });
+  await c.ref.set({ video: { url: room.j.url, room: name, at: Date.now(), noChat: true } }, { merge: true });
   await c.ref.collection('video').doc('host').set({ token: tok.j.token, exp });
   made++;
 }
@@ -59,16 +64,21 @@ for (const d of all.docs) {
   await d.ref.delete();
   gone++;
 }
+for (const d of all.docs) {
+  if (d.data().noChat || !d.exists) continue;
+  const u = await api('/rooms/' + d.id, { properties: { enable_chat: false } });
+  if (u.ok) await d.ref.set({ noChat: true }, { merge: true }).catch(() => {});
+}
 const free = all.docs.filter((d) => d.data().state === 'free' && Date.now() - (d.data().at ?? 0) <= 25 * DAY).length;
 let added = 0;
 for (let i = free; i < POOL; i++) {
   const name = 'r-' + [...crypto.getRandomValues(new Uint8Array(10))].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
-  const room = await api('/rooms', { name, privacy: 'public', properties: { exp: Math.floor((Date.now() + 30 * DAY) / 1000), enable_screenshare: true, enable_chat: true, enable_prejoin_ui: false, max_participants: 40, enable_people_ui: true } });
+  const room = await api('/rooms', { name, privacy: 'public', properties: { exp: Math.floor((Date.now() + 30 * DAY) / 1000), enable_screenshare: true, enable_chat: false, enable_prejoin_ui: false, max_participants: 40, enable_people_ui: true } });
   if (!room.ok) {
     console.log('A call room could not be made', room.status);
     break;
   }
-  await pool.doc(name).set({ name, url: room.j.url, state: 'free', at: Date.now() });
+  await pool.doc(name).set({ name, url: room.j.url, state: 'free', at: Date.now(), noChat: true });
   added++;
 }
 console.log(`Call rooms: ${added} added, ${gone} cleared, ${free + added} ready.`);

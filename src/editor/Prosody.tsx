@@ -293,10 +293,11 @@ export function ProsodyTool({ editor }: { editor: Editor }) {
     <span className="hl-tool pro-tool" ref={ref}>
       <button type="button" className={'tool' + (open || ss || it || sd ? ' on' : '')} data-tip="Pronunciation: stress, intonation, linking and sounds" aria-label="Pronunciation" aria-expanded={open} onMouseDown={keep} onClick={() => setOpen((o) => !o)}>
         <span className="ti-row">
-          <svg width="18" height="16" viewBox="0 0 20 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="5" cy="3" r="1.8" fill="currentColor" stroke="none" />
-            <path d="M10 5.5C13 5.5 15.5 4.5 17.5 1.8M15 1.8h2.6v2.6" />
-            <path d="M2 11.5C4 15 9 15 11 11.5" />
+          {/* A head speaking: pronunciation */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4.5 21v-3.6a6.6 6.6 0 1 1 10-8.4l1.4 3a.6.6 0 0 1-.55.85H14v2.3a1.6 1.6 0 0 1-1.6 1.6H10.5V21" />
+            <path d="M18.2 7.6a3.6 3.6 0 0 1 0 4.8" />
+            <path d="M20.6 5.4a6.8 6.8 0 0 1 0 9.2" />
           </svg>
         </span>
       </button>

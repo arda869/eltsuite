@@ -383,7 +383,7 @@ export const TOOL_FACE: Record<string, React.ReactNode> = {
       <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
     </span>
   ),
-  add: ICON(<><rect x="2" y="2" width="12" height="12" rx="3" /><path d="M8 5v6M5 8h6" /></>),
+  add: ICON(<><rect x="1.5" y="1.5" width="5" height="5" rx="1.2" /><rect x="9.5" y="1.5" width="5" height="5" rx="1.2" /><rect x="1.5" y="9.5" width="5" height="5" rx="1.2" /><path d="M12 9.5v5M9.5 12h5" /></>),
 };
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>

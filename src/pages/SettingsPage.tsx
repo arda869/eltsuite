@@ -351,7 +351,7 @@ function ToolbarSettings() {
         data-tool={t.k}
       >
         <span className="tbs-face" aria-hidden="true" {...{ inert: "" }}>{face(t.k)}</span>
-        {!big && !['heading', 'table', 'definition', 'link', 'questions', 'add'].includes(t.k) && <span className="tbs-name">{t.label}</span>}
+        {!big && <span className="tbs-name">{t.label}</span>}
       </span>
     );
   };

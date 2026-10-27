@@ -32,7 +32,29 @@ export function CallWindow({ call, onLeave, onAlone }: { call: OpenCall; onLeave
       try {
         const Daily = (await import('@daily-co/daily-js')).default;
         if (dead || !box.current) return;
-        frame = Daily.createFrame(box.current, { showLeaveButton: true, showFullscreenButton: false, iframeStyle: { width: '100%', height: '100%', border: '0', borderRadius: '14px' } }) as unknown as Frame;
+        // Daily's own screen, in the app's colours, so no lines or corners of another look show.
+        const css = getComputedStyle(document.documentElement);
+        const v = (k: string, d: string) => css.getPropertyValue(k).trim() || d;
+        const paper = v('--paper', '#ffffff');
+        frame = Daily.createFrame(box.current, {
+          showLeaveButton: true,
+          showFullscreenButton: false,
+          iframeStyle: { width: '100%', height: '100%', border: '0', display: 'block', background: paper },
+          theme: {
+            colors: {
+              accent: v('--accent', '#d98f63'),
+              accentText: '#ffffff',
+              background: paper,
+              backgroundAccent: v('--surface', '#f4f4f3'),
+              baseText: v('--ink', '#33302c'),
+              border: paper,
+              mainAreaBg: '#1f1d1b',
+              mainAreaBgAccent: '#2b2926',
+              mainAreaText: '#ffffff',
+              supportiveText: v('--muted', '#696969'),
+            },
+          },
+        } as object) as unknown as Frame;
         frame.on('participant-counts-updated', (ev) => (others.current = Math.max(0, ((ev as { participantCounts?: { present?: number } })?.participantCounts?.present ?? 1) - 1)));
         frame.on('left-meeting', () => {
           if (others.current === 0) alone.current?.();

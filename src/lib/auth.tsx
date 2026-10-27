@@ -38,11 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onAuthStateChanged(auth, async (u) => {
         let p: Profile | null = null;
         if (u) {
+          // A slow or stuck connection never leaves the app on its loading screen: after a few
+          // seconds it opens with what it knows, and the profile follows when it arrives.
+          const load = loadProfile(u);
           try {
-            p = await loadProfile(u);
+            p = await Promise.race([load, new Promise<never>((_, no) => window.setTimeout(() => no(new Error('slow')), 9000))]);
           } catch (e) {
             console.error('Could not load profile', e);
             p = isLearnerEmail(u.email) ? null : { role: 'teacher' };
+            void load.then((late) => late && setProfile(late)).catch(() => {});
           }
         }
         setUser(u);
