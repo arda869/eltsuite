@@ -27,7 +27,8 @@ import type { Responses } from '../lib/tasks';
 // "Make my own copy". Opening a link signs you in first, then comes back here.
 
 const KIND: Record<Share['kind'], string> = { lesson: 'Lesson', task: 'Task', doc: 'Shared document', media: 'Media' };
-export const AFTER_SIGN_IN = 'll.afterSignIn';
+import { AFTER_SIGN_IN } from '../lib/afterSignIn';
+export { AFTER_SIGN_IN };
 
 function SignInFirst({ what }: { what: string }) {
   const navigate = useNavigate();

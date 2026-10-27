@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useSpaceLimit, noteSpace } from '../lib/admin';
+import { useAccount, useSpaceLimit, noteSpace } from '../lib/admin';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
 import { shareLesson, unshareLesson, useClassLessons, type ClassLesson } from '../lib/classFiles';
@@ -96,6 +96,7 @@ export function MediaArchive() {
   const { user } = useAuth();
   const uid = user?.uid;
   const quota = useSpaceLimit();
+  const acct = useAccount(uid);
   const dir = useDirectory();
   const phone = usePhone();
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
@@ -754,6 +755,7 @@ export function MediaArchive() {
                 </button>
               </span>
             </div>
+            {acct?.over && <div className="ma-full" role="status"><b>Your space is full.</b> New pictures, recordings and files cannot be added until you delete some, or {quota.org ? `${quota.org} gives you more` : 'ask for more space'}.</div>}
             {(upBusy || busy) && <BusyToast text={upBusy || busy} onClose={() => (setBusy(''), setUpBusy(''))} />}
             {sel.size > 0 ? (
               <div className="ma-selbar">

@@ -57,7 +57,7 @@ export function MessagesPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const open = params.get('c') ?? '';
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<false | 'chat' | 'group'>(false);
   const [q, setQ] = useState('');
   const teacher = profile?.role === 'teacher';
   // A teacher looking at the app as a learner does not see that learner's messages.
@@ -96,7 +96,10 @@ export function MessagesPage() {
               <h1 className="page-title">Messages</h1>
               <span style={{ display: 'flex', gap: 6 }}>
                 <MsgSettings uid={teacher ? user.uid : ''} />
-                <button type="button" className="btn primary small-btn" onClick={() => setCreating(true)}>
+                <button type="button" className="btn small-btn" onClick={() => setCreating('group')} data-tip="Start a group chat">
+                  + Group
+                </button>
+                <button type="button" className="btn primary small-btn" onClick={() => setCreating('chat')}>
                   + New
                 </button>
               </span>
@@ -135,7 +138,7 @@ export function MessagesPage() {
                 <UiIcon name="discuss" size={30} />
                 <strong>Choose a chat, or start a new one</strong>
                 <span className="hint">{teacher ? 'Write to one learner, a group from a class, or colleagues. Send task elements learners answer right in the chat, and materials colleagues copy into their own classes.' : dir?.mode === 'free' || !dir?.mode ? 'Write to a classmate, a group, or your teacher.' : 'Write to your teacher.'}</span>
-                <button type="button" className="btn primary" onClick={() => setCreating(true)}>
+                <button type="button" className="btn primary" onClick={() => setCreating('chat')}>
                   New message
                 </button>
               </div>
@@ -143,7 +146,7 @@ export function MessagesPage() {
           </main>
         </div>
       )}
-      {creating && dir && <NewChat dir={dir} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), pick(id))} />}
+      {creating && dir && <NewChat dir={dir} group={creating === 'group'} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), pick(id))} />}
     </div>
   );
 }
@@ -191,7 +194,8 @@ function PeoplePicker({ dir, picked, onToggle, exclude = [] }: { dir: Directory;
   );
 }
 
-export function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () => void; onOpen: (id: string) => void }) {
+// group: starting a group chat: pick two or more people and name it.
+export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Directory; onClose: () => void; onOpen: (id: string) => void; group?: boolean }) {
   const [picked, setPicked] = useState<Person[]>([]);
   const [title, setTitle] = useState('');
   const [busy, setBusy] = useState(false);
@@ -213,16 +217,16 @@ export function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () 
   return (
     <div className="scrim" onClick={onClose}>
       <div className="dialog msg-new" role="dialog" aria-label="New message" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: 0 }}>New message</h2>
-        <button type="button" className="msg-self-row" disabled={busy} onClick={() => void ((setBusy(true), openChat(dir.me, [])).then(onOpen).catch(() => (setErr('The chat could not be started. Please try again.'), setBusy(false))))}>
+        <h2 style={{ margin: 0 }}>{group ? 'New group' : 'New message'}</h2>
+        {!group && <button type="button" className="msg-self-row" disabled={busy} onClick={() => void ((setBusy(true), openChat(dir.me, [])).then(onOpen).catch(() => (setErr('The chat could not be started. Please try again.'), setBusy(false))))}>
           <span className="msg-av self"><UiIcon name="pen" size={15} /></span>
           <span className="sh-pt">
             <b>Notes to self</b>
             <span className="hint">Jot things down, save links and materials for later</span>
           </span>
-        </button>
+        </button>}
         <PeoplePicker dir={dir} picked={picked} onToggle={toggle} />
-        {picked.length > 1 && (
+        {(group || picked.length > 1) && (
           <label className="field">
             Group name
             <input value={title} placeholder={picked.map((p) => p.name.split(' ')[0]).join(', ')} onChange={(e) => setTitle(e.target.value)} />
@@ -231,11 +235,11 @@ export function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () 
         {classes.size > 1 && <span className="error">Put learners from one class in a chat at a time.</span>}
         {err && <span className="error">{err}</span>}
         <span className="sh-foot">
-          <span className="hint">{picked.length ? `${picked.length} chosen${picked.length > 1 ? ' · a group' : ''}` : ''}</span>
+          <span className="hint">{picked.length ? `${picked.length} chosen${picked.length > 1 ? ' · a group' : group ? ' · choose at least two' : ''}` : group ? 'Choose at least two people' : ''}</span>
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn primary" disabled={!picked.length || busy || classes.size > 1} onClick={go}>
+          <button type="button" className="btn primary" disabled={picked.length < (group ? 2 : 1) || busy || classes.size > 1} onClick={go}>
             {picked.length > 1 ? 'Start the group' : 'Start'}
           </button>
         </span>

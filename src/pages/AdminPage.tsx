@@ -232,12 +232,12 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
                   <td>
                     {(() => {
                       const gb = inOrg ? inOrg.teachers[t.uid]?.gb ?? inOrg.perTeacherGb ?? 1 : a.limitGb ?? PLANS.find((p) => p.k === (a.plan ?? 'free'))?.gb ?? 1;
-                      const used = t.usedBytes ?? 0;
+                      const used = a.usedBytes ?? t.usedBytes ?? 0;
                       const pct = Math.min(100, (used / (gb * 1024 ** 3)) * 100);
                       return (
                         <span className="adm-use">
                           <span className="adm-use-row">
-                            <b>{t.usedBytes === undefined ? 'Not measured' : formatBytes(used)}</b>
+                            <b>{a.usedBytes === undefined && t.usedBytes === undefined ? 'Not measured' : formatBytes(used)}</b>{a.over && <span className="adm-over">Full</span>}
                             {inOrg ? <span className="hint">of {gb} GB, set by {inOrg.name}</span> : <>of <GbInput value={gb} onSave={(v) => void saveAccount(t, { limitGb: v })} /></>}
                           </span>
                           <span className={'adm-meter small' + (pct > 90 ? ' over' : '')}>

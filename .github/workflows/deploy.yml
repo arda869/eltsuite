@@ -28,6 +28,16 @@ jobs:
             exit 1
           fi
 
+      - name: Smoke tests
+        run: |
+          npx playwright install --with-deps chromium >/dev/null
+          set -o pipefail
+          if ! npm run smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"; then
+            msg=$(grep -E "^✗" "$RUNNER_TEMP/smoke.log" | head -5 | tr '\n' ' ')
+            echo "::error::Smoke tests failed, nothing was deployed: ${msg:-see log}"
+            exit 1
+          fi
+
       - name: Check deploy key
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

@@ -16,7 +16,7 @@ import { PersonFace } from './avatars';
 // all of them can be minimised or closed at once. They stay as you move between apps.
 
 const KEY = 'll.dock2';
-export type DockWin = { id: string; min?: boolean; max?: boolean }; // id: a chat, or 'list'
+export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number }; // id: a chat, or 'list'; at: when it was opened
 type DockState = { wins: DockWin[] };
 const read = (): DockState => {
   try {
@@ -34,15 +34,26 @@ function save(v: DockState) {
   }
   window.dispatchEvent(new Event('ll-dock'));
 }
-const MAX_OPEN = 3;
+// As many windows side by side as fit on the screen, beside the Messages tab, never on top of
+// each other; the oldest fold into tabs.
+const WIN_W = 372;
+const maxOpen = () => Math.max(1, Math.min(3, Math.floor(((typeof window === 'undefined' ? 1400 : window.innerWidth) - 300) / WIN_W)));
+export function fitDock() {
+  const st = read();
+  const open = st.wins.filter((w) => !w.min && !w.max);
+  const extra = open.length - maxOpen();
+  if (extra <= 0) return;
+  const fold = open.slice(0, extra).map((w) => w.id);
+  save({ wins: st.wins.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)) });
+}
 // Open a chat (or the list) in a window; `min` puts it straight in a tab.
 export function dockOpen(id: string, min = false) {
   const st = read();
   const rest = st.wins.filter((w) => w.id !== id).map((w) => (min || w.min ? w : { ...w, max: false }));
   // At most a few open side by side: older ones fold into tabs.
   const open = rest.filter((w) => !w.min);
-  const fold = min ? [] : open.slice(0, Math.max(0, open.length - (MAX_OPEN - 1))).map((w) => w.id);
-  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min }] });
+  const fold = min ? [] : open.slice(0, Math.max(0, open.length - (maxOpen() - 1))).map((w) => w.id);
+  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min, at: Date.now() }] });
 }
 // Kept for older callers: open the window with this chat.
 export function setDock(v: { open?: boolean; chat?: string; min?: boolean }) {
@@ -53,7 +64,7 @@ const replaceWin = (from: string, to: string) => {
   const wins = read().wins.filter((w) => w.id !== to);
   const at = wins.findIndex((w) => w.id === from);
   if (at < 0) return dockOpen(to);
-  wins[at] = { ...wins[at], id: to, min: false };
+  wins[at] = { ...wins[at], id: to, min: false, at: Date.now() };
   save({ wins });
 };
 const patch = (id: string, p: Partial<DockWin>) => save({ wins: read().wins.map((w) => (w.id === id ? { ...w, ...p } : p.max ? { ...w, max: false } : w)) });
@@ -78,7 +89,13 @@ export function ChatDock() {
   const chats = useMemo(() => withShownNames(rawChats, dirAll?.nameFor), [rawChats, dirAll]);
   const st = useDock();
   useOrgColleagues();
+  useEffect(() => {
+    fitDock();
+    window.addEventListener('resize', fitDock);
+    return () => window.removeEventListener('resize', fitDock);
+  }, []);
   const [creating, setCreating] = useState<string | false>(false); // the window it was started from
+  const [grouping, setGrouping] = useState(false);
   // The Messages tab can be dragged narrower (just its icon) or wider.
   const [launchW, setLaunchW] = useState(() => {
     try {
@@ -125,7 +142,7 @@ export function ChatDock() {
   if (hidden) return null;
   const list = chats ?? [];
   const unread = list.filter((c) => unreadIn(c, me!)).length;
-  const wins = st.wins.filter((w) => w.id === 'list' || list.some((c) => c.id === w.id) || !chats);
+  const wins = st.wins.filter((w) => w.id === 'list' || list.some((c) => c.id === w.id) || !chats || Date.now() - (w.at ?? 0) < 20000);
   const big = wins.find((w) => w.max && !w.min);
   const anyOpen = wins.some((w) => !w.min);
   return (
@@ -156,16 +173,16 @@ export function ChatDock() {
           w.min ? (
             <DockTab key={w.id} me={me!} c={list.find((c) => c.id === w.id)} id={w.id} />
           ) : w.max ? null : (
-            <DockWindow key={w.id} me={me!} w={w} chats={list} onNew={() => setCreating(w.id)} />
+            <DockWindow key={w.id} me={me!} w={w} chats={list} onNew={() => setCreating(w.id)} onGroup={() => (setGrouping(true), setCreating(w.id))} />
           ),
         )}
       </div>
       {big && (
         <div className="dock-max-scrim" onMouseDown={(e) => e.target === e.currentTarget && patch(big.id, { max: false })}>
-          <DockWindow me={me!} w={big} chats={list} onNew={() => setCreating(big.id)} />
+          <DockWindow me={me!} w={big} chats={list} onNew={() => setCreating(big.id)} onGroup={() => (setGrouping(true), setCreating(big.id))} />
         </div>
       )}
-      {creating !== false && dirAll && <NewChat dir={dirAll} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), creating ? replaceWin(creating, id) : read().wins.some((x) => x.id === 'list' && !x.min) ? replaceWin('list', id) : dockOpen(id))} />}
+      {creating !== false && dirAll && <NewChat dir={dirAll} group={grouping} onClose={() => (setCreating(false), setGrouping(false))} onOpen={(id) => (setCreating(false), setGrouping(false), creating ? replaceWin(creating, id) : read().wins.some((x) => x.id === 'list' && !x.min) ? replaceWin('list', id) : dockOpen(id))} />}
     </>
   );
 }
@@ -188,7 +205,7 @@ function DockTab({ me, c, id }: { me: string; c?: Chat; id: string }) {
   );
 }
 
-function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Chat[]; onNew: () => void }) {
+function DockWindow({ me, w, chats, onNew, onGroup }: { me: string; w: DockWin; chats: Chat[]; onNew: () => void; onGroup: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === w.id);
@@ -253,9 +270,14 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
               </button>
             );
           })}
-          <button type="button" className="btn small-btn dock-new" onClick={onNew}>
-            + New message
-          </button>
+          <span className="dock-new-row">
+            <button type="button" className="btn small-btn dock-new" onClick={onNew}>
+              + New message
+            </button>
+            <button type="button" className="btn small-btn dock-new" onClick={onGroup}>
+              + New group
+            </button>
+          </span>
         </div>
       )}
     </div>

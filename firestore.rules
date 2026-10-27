@@ -8,15 +8,20 @@ service cloud.firestore {
       return signedIn() && request.auth.token.email != null
         && request.auth.token.email.matches('.*@learners[.]lesson-lit[.]firebaseapp[.]com$');
     }
+    // A teacher's account as the owner of ELT Suite keeps it: paused, or over its space (see
+    // scripts/space.mjs, which measures every teacher's files a few times an hour).
+    function acct(uid) { return exists(/databases/$(database)/documents/accounts/$(uid)) ? get(/databases/$(database)/documents/accounts/$(uid)).data : {}; }
+    function active() { return signedIn() && acct(request.auth.uid).get('suspended', false) != true; }
+    function hasRoom(uid) { return acct(uid).get('over', false) != true; }
     function isTeacher() {
-      return signedIn() && !learnerAccount()
+      return active() && !learnerAccount()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
     }
     function classData(classId) { return get(/databases/$(database)/documents/classes/$(classId)).data; }
     function coRole(c) { return c.get('coTeachers', {}).get(request.auth.uid, {}).get('role', ''); }
-    function teachesClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) == 'co'); }
-    function viewsClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) in ['co', 'viewer']); }
+    function teachesClass(classId) { return active() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) == 'co'); }
+    function viewsClass(classId) { return active() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) in ['co', 'viewer']); }
     // An admin of the organisation a class belongs to: manages its learners, not its lessons.
     function runsClass(classId) { return signedIn() && classData(classId).get('org', null) is string && adminOfOrg(classData(classId).org); }
     function ownsClass(classId) { return signedIn() && classData(classId).teacherId == request.auth.uid; }
@@ -66,7 +71,8 @@ service cloud.firestore {
       }
       // A teacher's media archive and its folders
       match /archive/{itemId} {
-        allow read, write: if isSelf(uid) && !learnerAccount();
+        allow read, update, delete: if isSelf(uid) && !learnerAccount();
+        allow create: if isSelf(uid) && !learnerAccount() && active() && hasRoom(uid);
       }
       match /archiveFolders/{folderId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
@@ -82,7 +88,7 @@ service cloud.firestore {
       // Media added straight to the archive (copied into a class when it is first used there)
       match /media/{mediaId} {
         allow read, delete: if isSelf(uid) && !learnerAccount();
-        allow create, update: if isSelf(uid) && !learnerAccount()
+        allow create, update: if isSelf(uid) && !learnerAccount() && active() && (resource != null || hasRoom(uid))
           && (!('data' in request.resource.data) || request.resource.data.data.size() < 1000000)
           && request.resource.data.get('size', 0) < 700000;
       }
@@ -317,7 +323,7 @@ service cloud.firestore {
       match /media/{mediaId} {
         // Sounds and videos (and their scripts) open from a QR code without signing in.
         allow read: if resource.data.get('public', false) == true || viewsClass(classId) || memberOf(classId);
-        allow create: if teachesClass(classId) && request.resource.data.size < 700000;
+        allow create: if teachesClass(classId) && hasRoom(classData(classId).teacherId) && request.resource.data.size < 700000;
         allow update: if teachesClass(classId) && request.resource.data.get('size', 0) < 700000;
         allow delete: if teachesClass(classId);
       }
@@ -494,12 +500,16 @@ service cloud.firestore {
     match /sharedDocs/{id} {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
       // In a shared folder, files belong to the folder's owner, whoever makes them.
-      allow create: if isTeacher() && (request.resource.data.owner == request.auth.uid
+      allow create: if isTeacher() && hasRoom(request.resource.data.owner) && (request.resource.data.owner == request.auth.uid
         || (request.resource.data.folder is string && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.owner == request.resource.data.owner
           && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.members[request.auth.uid].role == 'edit'
           && request.resource.data.createdBy == request.auth.uid));
       allow update: if signedIn() && (resource.data.owner == request.auth.uid
-        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle'])));
+        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle']))
+        // in an organisation's shared drive, its admins decide who has the files
+        || (resource.data.get('folder', null) is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberIds'])
+            && get(/databases/$(database)/documents/sharedFolders/$(resource.data.folder)).data.get('org', null) is string
+            && adminOfOrg(get(/databases/$(database)/documents/sharedFolders/$(resource.data.folder)).data.org)));
       allow delete: if signedIn() && resource.data.owner == request.auth.uid;
       // Flashcards and reading notes inside a file: everyone it is shared with reads; editors write.
       function fileData() { return get(/databases/$(database)/documents/sharedDocs/$(id)).data; }

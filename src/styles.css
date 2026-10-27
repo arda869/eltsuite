@@ -6792,3 +6792,18 @@ input.dg-cell-label:focus { outline: none; }
 .fcm-new textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--hair-strong); border-radius: 10px; font: 14px/1.5 var(--sans); resize: vertical; background: var(--paper); color: var(--ink); }
 .fcm-new .btn { align-self: flex-end; }
 @media (max-width: 640px) { .fcm { top: 70px; } }
+/* Message tools in a chat window: smaller, and always inside the window */
+.dock-chat .bub-tools { left: auto !important; right: 2px !important; padding: 1px 3px; gap: 0; transform: none; }
+.dock-chat .bub-tools .bt-i { width: 24px; height: 24px; }
+.dock-chat .bub-tools .bt-i .ui-icon { width: 14px; height: 14px; }
+.dock-chat .bub-emo { padding: 0 2px; gap: 0; }
+.dock-chat .bub-emo button { width: 22px; height: 24px; }
+.dock-chat .bub-emo button svg { width: 15px; height: 15px; }
+.dock-chat .bub-emo-pop { left: auto; right: 0; }
+.dock-chat .bub:not(.mine) .bub-tools { left: 2px !important; right: auto !important; }
+/* Chat windows sit on the bottom edge of the screen, like a drawer, not floating above it */
+.dock-bar .dock-win { margin-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: 0 0 0 1px var(--hair), 0 -6px 28px color-mix(in srgb, var(--shadow) 70%, transparent); }
+.dock-bar > * { flex-shrink: 0; }
+.ma-full { padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, #b64a3c 8%, var(--paper)); border: 1px solid color-mix(in srgb, #b64a3c 30%, var(--hair)); font-size: 14px; }
+.adm-over { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, #b64a3c 12%, transparent); color: #9a3d31; font: 700 11px var(--sans); }
+.dock-new-row { display: flex; gap: 8px; flex-wrap: wrap; }

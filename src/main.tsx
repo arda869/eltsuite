@@ -1,46 +1,52 @@
-import { DocPage } from './pages/DocPage';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
 import { startTilt } from './lib/tilt';
-import { ChatDock } from './components/ChatDock';
 import { startTheme } from './lib/theme';
-import { ColleagueJoin, SharedPage, AFTER_SIGN_IN } from './pages/SharedPage';
-import { ColleaguesPage } from './pages/ColleaguesPage';
-import { MessagesPage } from './pages/MessagesPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { SoundStudio, TaskStudio } from './pages/Studio';
-import { StudioSession } from './pages/StudioSession';
-import { StrictMode } from 'react';
+import { AFTER_SIGN_IN } from './lib/afterSignIn';
+import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
 import { ConnectionBanner } from './components/ConnectionBanner';
-import { Legal } from './pages/Legal';
 import { AuthProvider, useAuth } from './lib/auth';
 import { SignIn } from './pages/SignIn';
-import { EmailLinkFinish } from './pages/EmailLinkFinish';
-import { TeacherHome } from './pages/TeacherHome';
-import { ClassPage } from './pages/ClassPage';
-import { LessonEditor } from './pages/LessonEditor';
-import { LearnerNotebook } from './pages/LearnerNotebook';
-import { LearnerLesson } from './pages/LearnerLesson';
-import { LearnerJoin } from './pages/LearnerJoin';
-import { LearnerHome } from './pages/LearnerHome';
-import { LearnerRecap, SharedRecap } from './pages/RecapPages';
-import { LearnerDiscussion } from './pages/LearnerDiscussion';
-import { PlayPage } from './pages/PlayPage';
-import { MediaArchive } from './pages/MediaArchive';
 import { ProxyGate } from './components/ProxyGate';
 import { TooltipLayer } from './components/Tooltip';
 import { EscapeToClose } from './components/EscapeToClose';
 import { PopupGuard } from './components/PopupGuard';
-import { AdminPage } from './pages/AdminPage';
 import { PausedGate } from './components/PausedGate';
-import { InvitePage } from './pages/InvitePage';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
+
+// Pages load when they are first opened, so the first screen comes up quickly.
+const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
+const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
+const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
+const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.SharedPage })));
+const ColleaguesPage = lazy(() => import('./pages/ColleaguesPage').then((m) => ({ default: m.ColleaguesPage })));
+const MessagesPage = lazy(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const SoundStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.SoundStudio })));
+const TaskStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.TaskStudio })));
+const StudioSession = lazy(() => import('./pages/StudioSession').then((m) => ({ default: m.StudioSession })));
+const Legal = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Legal })));
+const EmailLinkFinish = lazy(() => import('./pages/EmailLinkFinish').then((m) => ({ default: m.EmailLinkFinish })));
+const TeacherHome = lazy(() => import('./pages/TeacherHome').then((m) => ({ default: m.TeacherHome })));
+const ClassPage = lazy(() => import('./pages/ClassPage').then((m) => ({ default: m.ClassPage })));
+const LessonEditor = lazy(() => import('./pages/LessonEditor').then((m) => ({ default: m.LessonEditor })));
+const LearnerNotebook = lazy(() => import('./pages/LearnerNotebook').then((m) => ({ default: m.LearnerNotebook })));
+const LearnerLesson = lazy(() => import('./pages/LearnerLesson').then((m) => ({ default: m.LearnerLesson })));
+const LearnerJoin = lazy(() => import('./pages/LearnerJoin').then((m) => ({ default: m.LearnerJoin })));
+const LearnerHome = lazy(() => import('./pages/LearnerHome').then((m) => ({ default: m.LearnerHome })));
+const LearnerRecap = lazy(() => import('./pages/RecapPages').then((m) => ({ default: m.LearnerRecap })));
+const SharedRecap = lazy(() => import('./pages/RecapPages').then((m) => ({ default: m.SharedRecap })));
+const LearnerDiscussion = lazy(() => import('./pages/LearnerDiscussion').then((m) => ({ default: m.LearnerDiscussion })));
+const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m.PlayPage })));
+const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 function NoAccess() {
   const { signOutNow } = useAuth();
@@ -116,6 +122,7 @@ createRoot(document.getElementById('root')!).render(
         <ConnectionBanner />
         <ProxyGate>
         <PausedGate>
+        <Suspense fallback={<Loader full label="" />}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
@@ -147,8 +154,11 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
         </PausedGate>
-        <ChatDock />
+        <Suspense fallback={null}>
+          <ChatDock />
+        </Suspense>
         <AskHost />
         <MenuHost />
         </ProxyGate>

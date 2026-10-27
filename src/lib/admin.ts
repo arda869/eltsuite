@@ -14,7 +14,9 @@ export const PLANS: { k: Plan; label: string; gb: number; about: string }[] = [
   { k: 'teacher', label: 'Teacher', gb: 10, about: '10 GB, for one teacher' },
   { k: 'school', label: 'School', gb: 50, about: '50 GB a teacher, through an organisation' },
 ];
-export type Account = { plan?: Plan; limitGb?: number; suspended?: boolean; org?: string | null; features?: Record<string, boolean>; name?: string; email?: string; note?: string };
+export type Account = {
+  over?: boolean; // over its space, as measured by scripts/space.mjs
+  usedBytes?: number; plan?: Plan; limitGb?: number; suspended?: boolean; org?: string | null; features?: Record<string, boolean>; name?: string; email?: string; note?: string };
 // logo: the square mark, for small places; wide: the long logo, for worksheets and invitations.
 export type Brand = { color?: string; logo?: string; wide?: string };
 // A logo as a PNG data URL, transparency kept, no bigger than max on its longest side.
@@ -278,14 +280,23 @@ export async function newDriveFolder(org: Org, me: { uid: string }, name: string
   await addDoc(collection(db, 'sharedFolders'), { owner: me.uid, ownerName: org.name, name: name.trim() || 'Folder', org: org.id, drive, access, own, ...membersFor(org, access, me.uid), createdAt: serverTimestamp() });
 }
 type FolderLike = { id: string; drive?: string; access: DriveAccess; own?: boolean; owner?: string };
-export const saveDriveAccess = (org: Org, f: FolderLike, me: { uid: string }, access: DriveAccess, own = true) => updateDoc(doc(db, 'sharedFolders', f.id), { access, own, ...membersFor(org, own ? access : driveAccessOf(org, f.drive), f.owner ?? me.uid) });
+// The files in a folder have the same people as the folder, so a hidden folder hides its files too.
+async function filesFollow(folderId: string, m: ReturnType<typeof membersFor>) {
+  const files = await getDocs(query(collection(db, 'sharedDocs'), where('folder', '==', folderId))).catch(() => null);
+  await Promise.all((files?.docs ?? []).map((d) => updateDoc(d.ref, m).catch(() => {})));
+}
+export async function saveDriveAccess(org: Org, f: FolderLike, me: { uid: string }, access: DriveAccess, own = true) {
+  const m = membersFor(org, own ? access : driveAccessOf(org, f.drive), f.owner ?? me.uid);
+  await updateDoc(doc(db, 'sharedFolders', f.id), { access, own, ...m });
+  await filesFollow(f.id, m);
+}
 // After tags, teachers or a drive's access change: every folder's people again.
 export async function syncDrive(org: Org, folders: (FolderLike & { owner?: string; memberIds: string[] })[]) {
   await Promise.all(
     folders.map((f) => {
       const next = membersFor(org, accessOfFolder(org, f), f.owner ?? '');
       if (next.memberIds.sort().join() === [...f.memberIds].sort().join() && !f.own) return Promise.resolve();
-      return updateDoc(doc(db, 'sharedFolders', f.id), next).catch(() => {});
+      return updateDoc(doc(db, 'sharedFolders', f.id), next).then(() => filesFollow(f.id, next)).catch(() => {});
     }),
   );
 }
