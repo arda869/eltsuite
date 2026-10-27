@@ -1,4 +1,5 @@
 import { NSelect } from './Select';
+import { closeUnlessTyped, onBackdrop } from '../lib/ask';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { importLesson, type ImportResult } from '../lib/textformat';
@@ -68,7 +69,7 @@ export function ImportDialog({ classId, topics, onClose }: { classId: string; to
   }
 
   return (
-    <div className="scrim" onClick={onClose}>
+    <div className="scrim" {...onBackdrop(() => void closeUnlessTyped(!!text.trim(), onClose))}>
       <div className="dialog import-dialog" role="dialog" aria-label="Import a lesson" onClick={(e) => e.stopPropagation()}>
         <div className="row-between">
           <h2 style={{ margin: 0 }}>Import a lesson</h2>

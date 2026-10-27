@@ -93,7 +93,7 @@ function PictureField({ value, onChange, label = 'Picture' }: { value: string; o
   return (
     <span className="pq-pic">
       <span className="pq-lab">{label}</span>
-      <input value={value.startsWith('media:') ? 'Uploaded picture' : value} readOnly={value.startsWith('media:')} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
+      <input aria-label="Picture address" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} value={value.startsWith('media:') ? 'Uploaded picture' : value} readOnly={value.startsWith('media:')} placeholder="https://… or upload" onChange={(e) => onChange(e.target.value)} />
       <button type="button" className="btn small-btn" disabled={busy || !classId} onClick={() => file.current?.click()}>
         {busy ? 'Uploading…' : 'Upload'}
       </button>

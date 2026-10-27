@@ -430,6 +430,15 @@ export function LessonEditor() {
   const [notesEditing, setNotesEditing] = useState(false);
   const notesPane = usePresenterNotes();
   const notesTimer = useRef<number>();
+  // A note typed just before moving to another task (or leaving) is saved then, not dropped.
+  const notesPending = useRef<(() => void) | null>(null);
+  const flushNotes = () => {
+    window.clearTimeout(notesTimer.current);
+    const f = notesPending.current;
+    notesPending.current = null;
+    f?.();
+  };
+  useEffect(() => () => flushNotes(), [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     setNotes('');
     setNotesDoc(null);
@@ -447,7 +456,8 @@ export function LessonEditor() {
     setNotesDoc(doc);
     window.clearTimeout(notesTimer.current);
     const id = task?.id;
-    notesTimer.current = window.setTimeout(() => id && saveNotes(classId, itemId, id, text, doc).catch(() => {}), 700);
+    notesPending.current = id ? () => void saveNotes(classId, itemId, id, text, doc).catch(() => {}) : null;
+    notesTimer.current = window.setTimeout(flushNotes, 700);
   };
   const notesEditor = (cls: string, placeholder: string) =>
     task && notesFor === task.id ? <NotesEditor key={task.id} className={cls} doc={notesDoc} text={notes} onChange={changeNotes} placeholder={placeholder} /> : <span className="hint">Loading…</span>;

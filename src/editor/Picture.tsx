@@ -495,7 +495,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               <span className="hint">{PIC_QUALITY.find((q) => q.k === quality)?.about}. Smaller pictures leave more space for the rest of your media.</span>
             </div>
             <div className="pic-url">
-              <input value={url} placeholder="Or paste a picture address: https://…" onChange={(e) => setUrl(e.target.value)} />
+              <input value={url} aria-label="Picture address" type="url" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="Or paste a picture address: https://…" onChange={(e) => setUrl(e.target.value)} />
               <button
                 type="button"
                 className="btn"
@@ -553,7 +553,7 @@ export function ArchivePicker({ uid, kind, multiple, onPick, busy }: { uid?: str
   return (
     <div className="ap">
       <div className="ap-bar">
-        <input type="search" value={q} placeholder="Search by name or tag" onChange={(e) => setQ(e.target.value)} />
+        <input type="search" aria-label="Search by name or tag" enterKeyHint="search" value={q} placeholder="Search by name or tag" onChange={(e) => setQ(e.target.value)} />
       </div>
       {used.length > 0 && (
         <div className="ap-folders">

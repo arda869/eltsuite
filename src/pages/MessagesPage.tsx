@@ -259,7 +259,31 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const [rich, setRich] = useState(false);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
-  const [content, setContent] = useState<JSONContent>(EMPTY);
+  // What was being typed is kept for this chat until it is sent: switching chats, minimising the
+  // small window or leaving Messages loses nothing (kept for this browser tab).
+  const draftKey = 'chat-draft:' + c.id;
+  const [content, setContent] = useState<JSONContent>(() => {
+    try {
+      const d = sessionStorage.getItem(draftKey);
+      return d ? (JSON.parse(d) as JSONContent) : EMPTY;
+    } catch {
+      return EMPTY;
+    }
+  });
+  const draftT = useRef(0);
+  const keepDraft = (v: JSONContent | null) => {
+    window.clearTimeout(draftT.current);
+    const write = () => {
+      try {
+        if (!v || isEmptyContent(v)) sessionStorage.removeItem(draftKey);
+        else sessionStorage.setItem(draftKey, JSON.stringify(v));
+      } catch {
+        /* storage full or blocked: the draft just is not kept */
+      }
+    };
+    if (v) draftT.current = window.setTimeout(write, 250);
+    else write();
+  };
   const [edKey, setEdKey] = useState(0);
   const [replyTo, setReplyTo] = useState<Msg | null>(null);
   const [editing, setEditing] = useState<Msg | null>(null);
@@ -280,11 +304,12 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
     end.current?.scrollIntoView({ block: 'end' });
   }, [msgs?.length]);
 
-  const reset = () => (setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
+  const reset = () => (keepDraft(null), setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
   // Others see that I am typing (sent at most every few seconds).
   const typedAt = useRef(0);
   const onType = (v: JSONContent) => {
     setContent(v);
+    if (!editing) keepDraft(v);
     const now = Date.now();
     if (isEmptyContent(v)) return setTyping(c.id, me.key, false);
     if (now - typedAt.current > 2500) (typedAt.current = now), setTyping(c.id, me.key, true);
@@ -413,7 +438,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         {/* The writing box holds its own buttons: formatting and send, at its right. */}
         <div className="chat-box">
           <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
-            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
+            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
           </div>
           <span className="chat-in">
             <button type="button" className={'icon-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} aria-label="Formatting" data-tip={rich ? 'Back to plain text' : 'Formatting: bold, colour, lists, IPA and more'}>

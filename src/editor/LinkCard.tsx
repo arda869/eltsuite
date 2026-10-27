@@ -62,9 +62,9 @@ function EditView({ node, updateAttributes, deleteNode, editor, getPos, selected
         </button>
       </div>
       <div className="lc-fields">
-        <input value={node.attrs.url} placeholder="https://… (YouTube, an audio file or any web page)" onChange={(e) => updateAttributes({ url: e.target.value })} />
-        <input value={node.attrs.title} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} />
-        <input value={node.attrs.note} placeholder="A note for learners, e.g. Watch from 1:20 (optional)" onChange={(e) => updateAttributes({ note: e.target.value })} />
+        <input value={node.attrs.url} aria-label="Web address" type="url" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="https://… (YouTube, an audio file or any web page)" onChange={(e) => updateAttributes({ url: e.target.value })} />
+        <input value={node.attrs.title} aria-label="Title (optional)" placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} />
+        <input value={node.attrs.note} aria-label="A note for learners (optional)" placeholder="A note for learners, e.g. Watch from 1:20 (optional)" onChange={(e) => updateAttributes({ note: e.target.value })} />
         {node.attrs.url && !safeUrl(node.attrs.url) && <span className="error">The link must start with https://</span>}
       </div>
       <LinkCardView url={node.attrs.url} title={node.attrs.title} note={node.attrs.note} />

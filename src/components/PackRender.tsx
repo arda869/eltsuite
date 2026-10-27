@@ -118,7 +118,7 @@ function Fix({ id, data, value, onChange, result, locked, num, hideAnswers }: Pr
               {s && s.got === 2 ? TICK : !hideAnswers && <span className="fix">{k?.fixes?.[0]}</span>}
             </span>
           ) : (
-            <input className="gap-input" value={fix} disabled={locked} placeholder=" " size={Math.max(8, fix.length + 1)} autoComplete="off" spellCheck={false} onChange={(e) => onChange?.({ pick, fix: e.target.value })} />
+            <input className="gap-input" aria-label="The correction" value={fix} disabled={locked} placeholder=" " size={Math.max(8, fix.length + 1)} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={(e) => onChange?.({ pick, fix: e.target.value })} />
           )}
         </span>
       )}
@@ -195,7 +195,7 @@ function Transform({ id, data, value, onChange, result, locked, num, hideAnswers
             {s?.got ? TICK : !hideAnswers && <span className="fix">{result.k.answers?.[0]}</span>}
           </span>
         ) : (
-          <input className="gap-input pq-tr-input" value={v} disabled={locked} placeholder=" " size={Math.max(14, v.length + 1)} autoComplete="off" spellCheck={false} onChange={(e) => onChange?.(e.target.value)} />
+          <input className="gap-input pq-tr-input" aria-label="Your answer" value={v} disabled={locked} placeholder=" " size={Math.max(14, v.length + 1)} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={(e) => onChange?.(e.target.value)} />
         )}{' '}
         {data.after}
       </p>
@@ -590,7 +590,7 @@ function Dictation({ id, data, value, onChange, result, locked, num, hideAnswers
         <span className="hint">{result ? '' : left === Infinity ? 'Replay as often as you like' : left > 0 ? `${left} ${left === 1 ? 'play' : 'plays'} left` : 'No plays left'} · {data.count ?? '?'} words</span>
       </span>
       {!result ? (
-        <input className="gap-input pq-dict-input" value={v} disabled={locked} placeholder="Type what you hear" autoComplete="off" spellCheck={false} onChange={(e) => onChange?.(e.target.value)} />
+        <input className="gap-input pq-dict-input" value={v} disabled={locked} placeholder="Type what you hear" aria-label="Type what you hear" autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} onChange={(e) => onChange?.(e.target.value)} />
       ) : (
         <div className="pq-dict-result">
           <span className="pq-dict-typed">

@@ -143,9 +143,44 @@ function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 
 function NoteBox({ value, onSave, placeholder }: { value: JSONContent | null | undefined; onSave: (v: JSONContent) => void; placeholder: string }) {
   const t = useRef(0);
   const [key] = useState(() => newId());
+  // The note saves itself a moment after typing stops; leaving the page before then still saves it.
+  const pending = useRef<JSONContent | null>(null);
+  const saveRef = useRef(onSave);
+  saveRef.current = onSave;
+  const [state, setState] = useState<'' | 'saving' | 'saved'>('');
+  const flush = () => {
+    window.clearTimeout(t.current);
+    const v = pending.current;
+    if (!v) return;
+    pending.current = null;
+    try {
+      saveRef.current(v);
+      setState('saved');
+    } catch {
+      setState('');
+    }
+  };
+  useEffect(() => () => flush(), []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="pd-note">
-      <TaskEditor key={key} content={value ?? { type: 'doc', content: [{ type: 'paragraph' }] }} onChange={(c) => (window.clearTimeout(t.current), (t.current = window.setTimeout(() => onSave(c), 700)))} handles={false} compact textOnly placeholder={placeholder} />
+      <TaskEditor
+        key={key}
+        label={placeholder}
+        content={value ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
+        onChange={(c) => {
+          pending.current = c;
+          setState('saving');
+          window.clearTimeout(t.current);
+          t.current = window.setTimeout(flush, 700);
+        }}
+        handles={false}
+        compact
+        textOnly
+        placeholder={placeholder}
+      />
+      <span className="pd-note-state hint" role="status" aria-live="polite">
+        {state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : ''}
+      </span>
     </div>
   );
 }

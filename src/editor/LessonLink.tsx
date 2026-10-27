@@ -101,7 +101,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
             onClose();
           }}
         >
-          <input autoFocus className="link-search" value={url} placeholder="https://…" onChange={(e) => setUrl(e.target.value)} />
+          <input autoFocus className="link-search" aria-label="Web address" type="url" inputMode="url" autoComplete="off" autoCapitalize="off" spellCheck={false} enterKeyHint="go" value={url} placeholder="https://…" onChange={(e) => setUrl(e.target.value)} />
           {url.trim() && !/^https:\/\//i.test(url.trim()) && <span className="error">The link must start with https://</span>}
           <span style={{ display: 'flex', gap: 8 }}>
             <button type="submit" className="btn small-btn primary" disabled={!/^https:\/\//i.test(url.trim())}>
@@ -115,7 +115,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
           </span>
         </form>
       )}
-      {tab === 'task' && places.length > 6 && <input className="link-search" autoFocus value={q} placeholder="Find a task" onChange={(e) => setQ(e.target.value)} />}
+      {tab === 'task' && places.length > 6 && <input className="link-search" type="search" aria-label="Find a task" enterKeyHint="search" autoFocus value={q} placeholder="Find a task" onChange={(e) => setQ(e.target.value)} />}
       {tab === 'task' && <div className="link-list">
         {list.length === 0 && <span className="hint">No other tasks in this lesson yet.</span>}
         {list.map((p) => (

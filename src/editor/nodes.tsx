@@ -177,6 +177,9 @@ function GapView({ node, updateAttributes, selected, editor, getPos }: NodeViewP
           <input
             ref={inputRef}
             value={value}
+            aria-label="Right answers, separated by |"
+            enterKeyHint="done"
+            autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
             placeholder="have been | 've been"
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
@@ -266,7 +269,7 @@ function McqView({ node, updateAttributes, selected, deleteNode }: NodeViewProps
           Remove
         </button>
       </div>
-      <input className="mcq-prompt" value={node.attrs.prompt} placeholder="Question" onChange={(e) => updateAttributes({ prompt: e.target.value })} />
+      <input className="mcq-prompt" value={node.attrs.prompt} placeholder="Question" aria-label="Question" onChange={(e) => updateAttributes({ prompt: e.target.value })} />
       <div className="mcq-options">
         {options.map((o, i) => (
           <div key={i} className="mcq-option">
@@ -283,6 +286,9 @@ function McqView({ node, updateAttributes, selected, deleteNode }: NodeViewProps
               value={o}
               style={{ width: `${Math.max(14, o.length + 2)}ch` }}
               placeholder={`Option ${LETTERS[i]}`}
+              aria-label={`Option ${LETTERS[i]}`}
+              enterKeyHint="next"
+              autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
               onChange={(e) => setOption(i, e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && options.length < 8) {
@@ -427,6 +433,9 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
                 }}
                 value={o}
                 placeholder={`Option ${LETTERS[i]}`}
+                aria-label={`Option ${LETTERS[i]}`}
+                enterKeyHint="next"
+                autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
                 onChange={(e) => setOption(i, e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -453,6 +462,7 @@ function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeVi
                   className="opt-fb"
                   value={(node.attrs.optFeedback ?? [])[i] ?? ''}
                   placeholder="Feedback if a learner picks this"
+                  aria-label={`Feedback for option ${LETTERS[i]}`}
                   onChange={(e) => {
                     const fb = [...(node.attrs.optFeedback ?? [])];
                     while (fb.length < options.length) fb.push('');

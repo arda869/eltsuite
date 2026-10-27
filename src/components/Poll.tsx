@@ -1,4 +1,5 @@
 import { NSelect } from './Select';
+import { onBackdrop } from '../lib/ask';
 import { useState } from 'react';
 import { newQ, TYPE_LABELS, type SurveyQ, type SurveyType } from '../lib/survey';
 import { setLive, type LiveState } from '../lib/live';
@@ -21,7 +22,7 @@ export function PollDialog({ classId, poll, onClose }: { classId: string; poll?:
   const open = poll?.open;
   const launch = () => setLive(classId, { poll: { id: 'p' + newId(), q: { ...q, options: q.options?.filter((o) => o.trim()) }, anonymous, open: true, at: Date.now() } });
   return (
-    <div className="scrim" onClick={onClose}>
+    <div className="scrim" {...onBackdrop(onClose)}>
       <div className="dialog poll-dialog" role="dialog" aria-label="Live poll" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>Live poll</h2>
         {poll ? (

@@ -1,4 +1,5 @@
 import { NSelect } from '../components/Select';
+import { onBackdrop } from '../lib/ask';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Manifest, ScriptLine } from '../lib/archive';
@@ -138,7 +139,7 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
   };
 
   return createPortal(
-    <div className="scrim" onClick={onClose}>
+    <div className="scrim" {...onBackdrop(onClose)}>
       <div className="dialog se-dialog" role="dialog" aria-label="Script and timing" onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
         <div className="se-head">
           <h2 style={{ margin: 0 }}>Script and timing</h2>

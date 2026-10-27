@@ -43,6 +43,22 @@ export function ask(message: string, o: Opts = {}) {
 export function tell(message: string) {
   return open({ kind: 'tell', message, ok: 'OK', cancel: '', danger: false, value: '' }) as Promise<void>;
 }
+// Closing a window by a click outside it or Escape: if something was typed, ask first.
+export async function closeUnlessTyped(typed: boolean, close: () => void) {
+  if (!typed || (await ask('Discard what you typed?', { ok: 'Discard', cancel: 'Keep writing', danger: true }))) close();
+}
+// A click on the dark backdrop itself, not a text selection that ended there.
+export function onBackdrop(close: () => void) {
+  return {
+    onMouseDown: (e: React.MouseEvent) => ((e.currentTarget as HTMLElement).dataset.down = e.target === e.currentTarget ? '1' : ''),
+    onClick: (e: React.MouseEvent) => {
+      const el = e.currentTarget as HTMLElement;
+      // Escape (components/EscapeToClose) sends a click with no mouse down first: that counts too.
+      if (e.target === el && (el.dataset.down === '1' || e.detail === 0)) close();
+      el.dataset.down = '';
+    },
+  };
+}
 export function askText(message: string, value = '', o: Opts = {}) {
   return open({ kind: 'text', message, ok: o.ok ?? 'OK', cancel: o.cancel ?? 'Cancel', danger: false, value }) as Promise<string | null>;
 }

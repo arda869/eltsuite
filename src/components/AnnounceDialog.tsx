@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { closeUnlessTyped, onBackdrop } from '../lib/ask';
 import { doc, getDoc } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
@@ -67,11 +68,11 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
   }
 
   return (
-    <div className="scrim" onClick={onClose}>
+    <div className="scrim" {...onBackdrop(() => void closeUnlessTyped(!!(text.trim() || link.trim()), onClose))}>
       <div className="dialog ann-dialog" role="dialog" aria-label="Announcement" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>Announcement</h2>
-        <textarea className="ann-input" value={text} maxLength={400} autoFocus placeholder="For example: Please open Task 4 and work in pairs." onChange={(e) => setText(e.target.value)} />
-        <input className="ann-link-input" value={link} placeholder="Link (optional), https://…" onChange={(e) => setLink(e.target.value)} />
+        <textarea className="ann-input" aria-label="Announcement" value={text} maxLength={400} autoFocus placeholder="For example: Please open Task 4 and work in pairs." onChange={(e) => setText(e.target.value)} />
+        <input className="ann-link-input" aria-label="Link (optional)" type="url" inputMode="url" autoComplete="off" autoCapitalize="off" value={link} placeholder="Link (optional), https://…" onChange={(e) => setLink(e.target.value)} />
         {!okLink && <span className="error">The link must start with https://</span>}
         <div className="ann-to">
           <span className="seg small-seg" role="radiogroup" aria-label="Send to">

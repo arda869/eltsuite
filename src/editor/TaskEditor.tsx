@@ -490,7 +490,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false }: { textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -571,7 +571,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     content: withPictures(content),
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
-      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': placeholder ? 'Message' : 'Task' },
+      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': label, ...(enterHint ? { enterkeyhint: enterHint } : {}) },
       // Word and Outlook: real lists and paragraphs, without Office markup or empty lines.
       transformPastedHTML: cleanPastedHTML,
       // Paste or drop pictures straight into the task: they are uploaded to the class.

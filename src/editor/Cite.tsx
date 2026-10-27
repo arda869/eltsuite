@@ -170,7 +170,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
       </button>
       {open && (
         <span className="hl-pop cite-tool" style={pos}>
-          <input className="cite-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a source: author, title" autoFocus />
+          <input className="cite-q" type="search" aria-label="Find a source" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a source: author, title" autoFocus />
           <span className="cite-list">
             {all === null ? (
               <span className="hint">Opening your PD reading…</span>

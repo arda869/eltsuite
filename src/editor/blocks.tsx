@@ -72,6 +72,9 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
           <input
             ref={input}
             value={value}
+            aria-label="The word that goes here"
+            enterKeyHint="done"
+            autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
             placeholder="The word that goes here"
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
@@ -184,13 +187,16 @@ function MatchView(props: NodeViewProps) {
         {pairs.map((p, i) => (
           <div key={i} className="match-row">
             <span className="match-n">{i + 1}</span>
-            <input value={p.left} placeholder="Left side" onChange={(e) => setPair(i, { left: e.target.value })} />
+            <input value={p.left} placeholder="Left side" aria-label={`Pair ${i + 1}, left side`} autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} onChange={(e) => setPair(i, { left: e.target.value })} />
             <span className="match-arrow" aria-hidden="true">
               →
             </span>
             <input
               value={p.right}
               placeholder="Its match"
+              aria-label={`Pair ${i + 1}, its match`}
+              enterKeyHint="next"
+              autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false}
               onChange={(e) => setPair(i, { right: e.target.value })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -250,7 +256,7 @@ function OrderView(props: NodeViewProps) {
   return (
     <NodeViewWrapper className="block-node q-block" contentEditable={false}>
       <BlockHead label="Word order" onRemove={deleteNode} p={props} />
-      <input className="mcq-prompt" value={sentence} placeholder="Type the correct sentence, for example: I have never been to Japan." onChange={(e) => updateAttributes({ sentence: e.target.value })} />
+      <input className="mcq-prompt" value={sentence} placeholder="Type the correct sentence, for example: I have never been to Japan." aria-label="The correct sentence" autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} onChange={(e) => updateAttributes({ sentence: e.target.value })} />
       <span className="hint">Learners see the words shuffled and put them back in order.</span>
       <NoteFields hint={node.attrs.hint ?? ''} feedback={node.attrs.feedback ?? ''} onSave={(p) => updateAttributes(p)} />
     </NodeViewWrapper>
@@ -335,9 +341,9 @@ function WritingView(props: NodeViewProps) {
         <div className="rubric-edit">
           {(node.attrs.criteria ?? []).map((c: Criterion, i: number) => (
             <span key={i} className="pq-line">
-              <input value={c.name} placeholder="Criterion, for example: Task achievement" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => { const next = node.attrs.criteria.map((x: Criterion, k: number) => (k === i ? { ...x, name: e.target.value } : x)); updateAttributes({ criteria: next }); }} />
+              <input value={c.name} placeholder="Criterion, for example: Task achievement" aria-label={`Criterion ${i + 1}`} onKeyDown={(e) => e.stopPropagation()} onChange={(e) => { const next = node.attrs.criteria.map((x: Criterion, k: number) => (k === i ? { ...x, name: e.target.value } : x)); updateAttributes({ criteria: next }); }} />
               <span className="hint">0 to</span>
-              <input inputMode="numeric" style={{ width: 44 }} value={c.max} onChange={(e) => { const next = node.attrs.criteria.map((x: Criterion, k: number) => (k === i ? { ...x, max: Math.max(1, Math.min(20, Number(e.target.value.replace(/\D/g, '')) || 1)) } : x)); updateAttributes({ criteria: next, points: maxOf(next) }); }} />
+              <input inputMode="numeric" aria-label={`Points for criterion ${i + 1}`} style={{ width: 44 }} value={c.max} onChange={(e) => { const next = node.attrs.criteria.map((x: Criterion, k: number) => (k === i ? { ...x, max: Math.max(1, Math.min(20, Number(e.target.value.replace(/\D/g, '')) || 1)) } : x)); updateAttributes({ criteria: next, points: maxOf(next) }); }} />
               <button type="button" className="icon-btn" aria-label="Remove criterion" disabled={node.attrs.criteria.length <= 1} onClick={() => { const next = node.attrs.criteria.filter((_: Criterion, k: number) => k !== i); updateAttributes({ criteria: next, points: maxOf(next) }); }}>
                 ×
               </button>
