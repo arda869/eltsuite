@@ -898,7 +898,7 @@ function PersonCard({ p, r, me, onClose }: { p: { name: string; color: string; u
         <span>
           <b>{p.name}{self ? ' (you)' : ''}</b>
           <span className="hint">{info?.role === 'learner' ? 'Learner' : info?.role ? 'Teacher' : 'In this document now'}</span>
-          {info?.email && <span className="hint">{info.email}</span>}
+          {info?.email && info.role === 'learner' && profile?.role === 'teacher' && <span className="hint">{info.email}</span>}
         </span>
       </span>
       {!self && p.uid && (

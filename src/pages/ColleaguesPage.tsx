@@ -151,8 +151,8 @@ export function ColleaguesPage() {
                   <span className="sh-pt">
                     <h2>{cur.name}</h2>
                     <span className="hint">
-                      {cur.email}
-                      {cur.at ? ` · colleagues since ${new Date(cur.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+                      Colleague
+                      {cur.at ? ` · since ${new Date(cur.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
                     </span>
                   </span>
                   <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${cur.name}? What you have shared stays shared until you stop sharing it.`).then((ok) => { if (ok) (removeColleague(uid, cur.id), setPick('')); })}>

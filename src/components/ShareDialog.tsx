@@ -94,7 +94,6 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
                   <span className="sh-av">{c.name.trim().slice(0, 1).toUpperCase()}</span>
                   <span className="sh-pt">
                     <b>{c.name}</b>
-                    {c.email && <span className="hint">{c.email}</span>}
                   </span>
                 </label>
               ))

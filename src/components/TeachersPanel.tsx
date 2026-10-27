@@ -42,7 +42,7 @@ export function TeachersPanel({ c }: { c: ClassDoc }) {
           {cos.map(([uid, t]) => (
             <li key={uid}>
               <span>
-                <strong>{t.name}</strong> <span className="hint">{t.email}</span>
+                <strong>{t.name}</strong>
               </span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <select value={t.role} onChange={(e) => changeRole(c, uid, e.target.value as CoRole)} aria-label={`Access for ${t.name}`}>
