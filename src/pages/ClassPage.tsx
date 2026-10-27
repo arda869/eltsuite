@@ -14,6 +14,7 @@ import { DeleteClassDialog } from '../components/DeleteClassDialog';
 import { AnnounceDialog } from '../components/AnnounceDialog';
 import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
+import { PortfolioTab } from '../components/Portfolio';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
 import { DiscussionBoard, DiscussionSettingsPanel } from '../components/Discussion';
 import { CoverArt } from '../components/Covers';
@@ -21,7 +22,7 @@ import { Notebook } from '../components/Notebook';
 import { Reports } from '../components/Reports';
 import { useAuth } from '../lib/auth';
 
-type Tab = 'lessons' | 'learners' | 'notebook' | 'reports' | 'discussion';
+type Tab = 'lessons' | 'learners' | 'notebook' | 'reports' | 'discussion' | 'portfolio';
 
 function useCollection<T>(path: string[], ready: boolean) {
   const [rows, setRows] = useState<T[]>([]);
@@ -45,7 +46,7 @@ export function ClassPage() {
   const roster = useClassmates(c?.classCode ?? undefined);
   const [params] = useSearchParams();
   const focusEntry = params.get('entry');
-  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : params.get('tab') === 'learners' || params.get('learner') ? 'learners' : 'lessons');
+  const [tab, setTab] = useState<Tab>(params.get('tab') === 'notebook' || focusEntry ? 'notebook' : params.get('tab') === 'discussion' || params.get('thread') ? 'discussion' : params.get('tab') === 'reports' ? 'reports' : params.get('tab') === 'portfolio' ? 'portfolio' : params.get('tab') === 'learners' || params.get('learner') ? 'learners' : 'lessons');
   const [learnerOpen, setLearnerOpen] = useState(params.get('learner') ?? '');
   const [thread, setThread] = useState<string | null>(params.get('thread'));
   const { user } = useAuth();
@@ -233,12 +234,17 @@ export function ClassPage() {
             <button className={tab === 'reports' ? 'on' : ''} onClick={() => (setResultsItem(null), setTab('reports'))}>
               Reports
             </button>
+            <button className={tab === 'portfolio' ? 'on' : ''} onClick={() => setTab('portfolio')}>
+              Portfolio
+            </button>
           </nav>
 
           {tab === 'lessons' ? (
             <LessonsTab c={c} topics={topics} items={items} onResults={(i) => (setResultsItem(i), setTab('reports'))} />
           ) : tab === 'learners' ? (
             <LearnersTab c={c} learners={learners} pins={pins} own={ownSecret} items={items} openId={learnerOpen} onOpen={setLearnerOpen} />
+          ) : tab === 'portfolio' ? (
+            <PortfolioTab c={c} learners={learners} items={items} />
           ) : tab === 'reports' ? (
             <Reports key={resultsItem?.id ?? 'all'} c={c} items={items} learners={learners} initialItem={resultsItem} />
           ) : tab === 'discussion' ? (
