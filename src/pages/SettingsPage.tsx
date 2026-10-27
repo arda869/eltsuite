@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
@@ -24,8 +24,11 @@ import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from
 const slug = (t: string) => 'set-' + t.toLowerCase().replace(/[^a-z]+/g, '-');
 const narrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches;
 // One part of settings. On a phone each part folds, so the page is a short list.
+const SearchCtx = createContext('');
 function Section({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(() => !narrow() || title === 'Profile');
+  const [open0, setOpen] = useState(() => !narrow() || title === 'Profile');
+  const q = useContext(SearchCtx);
+  const open = open0 || !!q;
   return (
     <section className={'set-sec' + (open ? ' open' : '')} id={slug(title)} data-title={title} data-icon={icon}>
       <h2 className="set-h">
@@ -119,14 +122,49 @@ export function SettingsPage() {
     }
   };
   const name = user?.displayName || user?.email?.split('@')[0] || '';
+  // Searching: only the parts and rows that mention the words stay in view.
+  const [q, setSearch] = useState('');
+  const [none, setNone] = useState(false);
+  useEffect(() => {
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const has = (el: Element) => words.every((w) => (el.textContent ?? '').toLowerCase().includes(w) || (el.querySelector('input, select') as HTMLInputElement | null)?.placeholder?.toLowerCase().includes(w));
+    let shown = 0;
+    document.querySelectorAll<HTMLElement>('.set-sec').forEach((sec) => {
+      const titleHit = words.length > 0 && words.every((w) => (sec.dataset.title ?? '').toLowerCase().includes(w));
+      const rows = [...sec.querySelectorAll<HTMLElement>('.set-row')];
+      let any = !words.length || titleHit;
+      rows.forEach((r) => {
+        const hit = !words.length || titleHit || has(r);
+        r.style.display = hit ? '' : 'none';
+        if (hit) any = true;
+      });
+      if (!rows.length && words.length && has(sec)) any = true;
+      sec.style.display = any ? '' : 'none';
+      if (any) shown++;
+    });
+    setNone(words.length > 0 && shown === 0);
+  }, [q]);
 
   return (
     <div className="shell">
       <TopBar>{teacher ? <MainNav on="" /> : <LearnerNav on="home" phoneOnly />}</TopBar>
       <div className="set-layout">
       <SettingsNav />
+      <SearchCtx.Provider value={q.trim()}>
       <main className="set-page">
-        <h1 className="page-title">Settings</h1>
+        <span className="set-titlebar">
+          <h1 className="page-title">Settings</h1>
+          <label className="set-search">
+            <UiIcon name="search" size={15} />
+            <input value={q} onChange={(e) => setSearch(e.target.value)} placeholder="Search settings" aria-label="Search settings" onKeyDown={(e) => e.key === 'Escape' && setSearch('')} />
+            {q && (
+              <button type="button" onClick={() => setSearch('')} aria-label="Clear the search">
+                ×
+              </button>
+            )}
+          </label>
+        </span>
+        {q.trim() && none && <p className="hint set-none">No setting matches “{q.trim()}”.</p>}
 
         <Section icon="person" title="Profile">
           <div className="set-me">
@@ -230,6 +268,7 @@ export function SettingsPage() {
           )}
         </Section>
       </main>
+      </SearchCtx.Provider>
       </div>
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}

@@ -36,7 +36,8 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400,50;0,9..144,500,50;0,9..144,600,50;1,9..144,400,50&family=Karla:wght@400;500;600&family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans:wght@400;500&display=swap" />
   </head>
   <body>
-    <div id="root"><div class="loader full" role="status" aria-label="Loading"><span class="ld-mark" aria-hidden="true"><span class="ld-glow"></span><svg class="ld-flame" viewBox="0 0 34 48"><path class="ld-outer" d="M17 2 C25 14 30 22 30 30 C30 39 24 46 17 46 C10 46 4 39 4 30 C4 22 9 14 17 2 Z"/><path class="ld-core" d="M17 20 C21 26 23 30 23 34 C23 39 20 42 17 42 C14 42 11 39 11 34 C11 30 13 26 17 20 Z"/></svg><span class="ld-stem"></span></span></div></div>
+    <div id="root"><div class="boot" role="status" aria-label="Loading"><svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#d98f63"/><rect x="14" y="12" width="5.5" height="24" rx="2.75" fill="#fff"/><rect x="14" y="12" width="21" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="21.25" width="15" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="30.5" width="21" height="5.5" rx="2.75" fill="#fff"/></svg></div></div>
+    <style>.boot{position:fixed;inset:0;display:grid;place-items:center;background:#f5f4f1}[data-theme=dark] .boot{background:#1f1d1b}.boot svg{animation:boot 1.2s ease-in-out infinite}@keyframes boot{50%{opacity:.55;transform:scale(.94)}}</style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
