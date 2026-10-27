@@ -216,9 +216,10 @@ const J = {
     await t.click('button:has-text("+ Task")');
     await t.waitForTimeout(800);
     await t.close();
-    await see(s.p, '.lb-copy', 'the exam in the library');
+    await see(s.p, '.ma-card', 'the exam in the library');
+    await s.p.click('.ma-card');
     await axe(s.p, 'Organisation library', A11Y_FOUND);
-    await s.p.click('.lb-copy');
+    await s.p.click('.ma-selbar button:has-text("Copy to a class")');
     const [c] = await Promise.all([s.ctx.waitForEvent('page', { timeout: 15000 }), s.p.click('.dialog button:has-text("Demo")')]);
     await see(c, 'text=Exam', 'the exam in the class');
     return s;

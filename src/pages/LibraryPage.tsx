@@ -9,7 +9,7 @@ import { FolderIcon } from '../components/FileIcon';
 import { Loader } from '../components/Loader';
 import { openMenu, openMenuAt, type MenuItem } from '../components/ContextMenu';
 import { ask, askText } from '../lib/ask';
-import { libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
+import { currentOrg, libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
 import { KIND_LABEL, newDocInFolder, removeSharedDoc, renameDoc, useFolderDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { CopyToClass, LESSON_TYPES } from '../lessons/LessonFile';
 import { copyFile } from '../lib/copyFile';
@@ -56,16 +56,15 @@ export function LibraryPage() {
     );
   return (
     <Shell>
-      <div className="lb">
-        <aside className="lb-side" aria-label="Folders">
-          <span className="lb-org">{org.name}</span>
+      <div className="ma lb-ma">
+        <aside className="ma-side" aria-label="Folders">
           {sections.map((s) => (
-            <nav key={s.k} className="lb-sec" aria-label={s.name}>
-              {sections.length > 1 && <span className="ma-h">{s.name}</span>}
+            <nav key={s.k} className="ma-nav ma-tree" aria-label={s.name}>
+              <span className="ma-h">{sections.length > 1 ? s.name : org.name}</span>
               {s.folders.map((f) => (
-                <button key={f.id} type="button" className={'lb-f' + (f.id === open?.id ? ' on' : '')} aria-current={f.id === open?.id ? 'page' : undefined} onClick={() => setQs({ f: f.id }, { replace: true })}>
-                  <FolderIcon size={18} />
-                  <span>{f.name}</span>
+                <button key={f.id} type="button" className={f.id === open?.id ? 'on' : ''} aria-current={f.id === open?.id ? 'page' : undefined} onClick={() => setQs({ f: f.id }, { replace: true })}>
+                  <FolderIcon size={16} />
+                  <span className="ma-fname">{f.name}</span>
                   <RoleTag f={f} uid={uid} />
                 </button>
               ))}
@@ -73,12 +72,12 @@ export function LibraryPage() {
           ))}
           {!sections.length && <span className="hint">No folders yet.</span>}
           {admin && (
-            <Link to="/org-admin?tab=drives" className="btn link small lb-manage">
-              Folders and who can use them
+            <Link to="/org-admin?tab=drives" className="ma-new lb-manage">
+              <UiIcon name="settings" size={14} /> Folders and who can use them
             </Link>
           )}
         </aside>
-        <main className="lb-main">
+        <main className="ma-main">
           {open ? (
             <FolderPane key={open.id} f={open} uid={uid} me={{ uid, name: profile?.displayName || user?.displayName || 'Teacher' }} />
           ) : (
@@ -147,65 +146,103 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
     ...(canAdd ? [{ label: 'Rename', icon: 'edit', onClick: () => void askText('New name', d.title, { ok: 'Rename' }).then((v) => typeof v === 'string' && v.trim() && void renameDoc(d.id, v)) } as MenuItem] : []),
     ...(d.owner === uid ? [{ label: 'Delete', icon: 'trash', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone?`, { ok: 'Delete' }).then((ok) => ok && void removeSharedDoc(d.id)) } as MenuItem] : []),
   ];
+  const [pick, setPick] = useState('');
+  const chosen = shown.find((d) => d.id === pick) ?? null;
   return (
-    <section className="lb-pane">
-      <div className="lb-head">
-        <h1 className="page-title">{f.name}</h1>
+    <>
+      <div className="ma-head">
+        <div className="ma-head-text">
+          <nav className="ma-crumbs" aria-label="Where you are">
+            <button type="button" className="">
+              {libName(currentOrg())}
+            </button>
+            <span className="ma-crumb">
+              <span className="ma-crumb-sep" aria-hidden="true">›</span>
+              <button type="button" className="here">
+                {f.name}
+              </button>
+            </span>
+          </nav>
+          <h1 className="page-title">{f.name}</h1>
+        </div>
         {canAdd && (
-          <button type="button" className="btn primary" onClick={(e) => openMenuAt(e.currentTarget, NEW.flatMap((n, i): MenuItem[] => [...(i === LESSON_TYPES.length ? (['sep'] as MenuItem[]) : []), { label: n.label, hint: n.hint, icon: '', onClick: () => void make(n) }]))}>
-            + New
-          </button>
+          <span className="ma-add">
+            <button type="button" className="btn primary" aria-haspopup="menu" onClick={(e) => openMenuAt(e.currentTarget, NEW.flatMap((n, i): MenuItem[] => [...(i === LESSON_TYPES.length ? (['sep'] as MenuItem[]) : []), { label: n.label, hint: n.hint, icon: '', onClick: () => void make(n) }]))}>
+              + New
+            </button>
+          </span>
         )}
       </div>
-      <span className="hint">{canAdd ? 'You can add and change files here. Teachers copy lessons into their classes; their copy is theirs to change.' : 'Open anything to read it. Copy a lesson into one of your classes to teach it; your copy is yours to change.'}</span>
-      <div className="lb-tools">
-        <span className="ma-search-wrap">
-          <UiIcon name="search" size={15} />
-          <input className="ma-search" type="search" value={q} placeholder={`Search in ${f.name}`} onChange={(e) => setQ(e.target.value)} />
-        </span>
-        <span className="seg small-seg" role="radiogroup" aria-label="Show">
-          {([['', 'Everything'], ['lesson', 'Lessons'], ['other', 'Other files']] as const).map(([k, l]) => (
-            <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>
-              {l}
+      <div className="ma-toolwrap">
+        {chosen && (
+          <div className="ma-selbar">
+            <b>1 selected</b>
+            <a className="btn small-btn" href={`/doc/${chosen.id}`} target="_blank" rel="noopener">
+              <UiIcon name="fullscreen" size={14} /> Open
+            </a>
+            {chosen.kind === 'lesson' && (
+              <button type="button" className="btn small-btn" onClick={() => setCopying(chosen)}>
+                <UiIcon name="copyall" size={14} /> Copy to a class
+              </button>
+            )}
+            <button type="button" className="btn small-btn" onClick={() => void toMine(chosen)}>
+              <UiIcon name="archive" size={14} /> Copy to My files
             </button>
-          ))}
-        </span>
-      </div>
-      {docs === null ? (
-        <Loader label="" />
-      ) : shown.length ? (
-        <div className="lb-grid">
-          {shown.map((d) => (
-            <div key={d.id} className="lb-card" onContextMenu={(e) => openMenu(e, menuFor(d))}>
-              <a href={`/doc/${d.id}`} target="_blank" rel="noopener" className="lb-open">
-                <FileIcon kind={d.kind as FileKind} sub={d.ltype} size={44} />
-                <span className="lb-t">
-                  <b>{d.title}</b>
-                  <span className="hint">{d.kind === 'lesson' ? LESSON_TYPES.find((t) => t.v === (d.ltype ?? 'lesson'))?.label : KIND_LABEL[d.kind]}</span>
-                </span>
-              </a>
-              <span className="lb-acts">
-                {d.kind === 'lesson' && (
-                  <button type="button" className="btn small-btn lb-copy" onClick={() => setCopying(d)}>
-                    <UiIcon name="copyall" size={14} /> Copy to a class
-                  </button>
-                )}
-                <button type="button" className="btn link small" onClick={() => void toMine(d)}>
-                  Copy to My files
-                </button>
-              </span>
-            </div>
-          ))}
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn link small" onClick={() => setPick('')}>
+              Clear
+            </button>
+          </div>
+        )}
+        <div className={'ma-bar-row ma-tools' + (chosen ? ' under' : '')} aria-hidden={chosen ? true : undefined}>
+          <span className="ma-search-wrap">
+            <UiIcon name="search" size={15} />
+            <input className="ma-search" type="search" value={q} placeholder={`Search in ${f.name}`} onChange={(e) => setQ(e.target.value)} />
+          </span>
+          <span className="seg small-seg" role="radiogroup" aria-label="Show">
+            {([['', 'Everything'], ['lesson', 'Lessons'], ['other', 'Other files']] as const).map(([k, l]) => (
+              <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>
+                {l}
+              </button>
+            ))}
+          </span>
         </div>
-      ) : (
-        <span className="hint lb-none">{q || kind ? 'Nothing matches.' : canAdd ? 'Nothing here yet. Use + New to add a lesson.' : 'Nothing here yet.'}</span>
-      )}
+      </div>
       {note && (
         <span className="hint lb-note" role="status">
           {note}
         </span>
       )}
+      <div className="ma-files" onClick={(e) => e.target === e.currentTarget && setPick('')}>
+        {docs === null ? (
+          <Loader label="" />
+        ) : shown.length ? (
+          <div className="ma-grid">
+            {shown.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                data-sel={d.id}
+                className={'ma-card' + (pick === d.id ? ' chosen' : '')}
+                onClick={() => setPick(d.id)}
+                onDoubleClick={() => window.open(`/doc/${d.id}`, '_blank')}
+                onContextMenu={(e) => (setPick(d.id), openMenu(e, menuFor(d)))}
+                title={d.kind === 'lesson' ? LESSON_TYPES.find((t) => t.v === (d.ltype ?? 'lesson'))?.label : KIND_LABEL[d.kind]}
+              >
+                <span className={'ma-thumb k-' + d.kind}>
+                  <FileIcon kind={d.kind as FileKind} sub={d.ltype} size={42} />
+                </span>
+                <span className="ma-name">{d.title}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="ma-empty">
+            <span className="hint">{q || kind ? 'Nothing matches.' : canAdd ? 'Nothing here yet. Use + New to add a lesson.' : 'Nothing here yet.'}</span>
+          </div>
+        )}
+      </div>
       {copying && <CopyToClass docId={copying.id} title={copying.title} type={copying.ltype} onClose={() => setCopying(null)} />}
-    </section>
+    </>
   );
 }

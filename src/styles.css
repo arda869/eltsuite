@@ -7210,3 +7210,4 @@ input.dg-cell-label:focus { outline: none; }
 .vc-soon { font-size: 12px; }
 /* Name boxes that edit in place grow with what is typed. */
 .adm-drivename, .adm-orgname, .fd-name, .adm-tag-in, .pv-names .dp-title, input.dp-title { field-sizing: content; min-width: 6ch; max-width: 100%; width: auto; }
+.lb-manage { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
