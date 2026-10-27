@@ -1,3 +1,4 @@
+import { credit } from './brand';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { MARK } from '../components/Wordmark';
 import { currentOrg } from './admin';
@@ -242,6 +243,8 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   closeSection();
   const grand = tasks.reduce((s, t) => s + t.marks, 0);
   if (marks && grand) units.push(`<div class="unit total grand"><span>Total</span>${markBox(grand)}</div>`);
+  // Who made it, at the end of the worksheet.
+  units.push(`<div class="unit ws-credit"><b>${esc(credit().by)}</b><span>${esc(credit().note)}</span></div>`);
 
   // For the teacher: each exercise's answers and, when chosen, its teacher's notes.
   const keyUnits =
@@ -288,7 +291,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
         <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
-  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(brandLogo ? brandName : 'ELT Suite')}</span><span class="pn"></span></footer>`;
+  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(credit().by)}</span><span class="pn"></span></footer>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
 <style>
@@ -333,6 +336,7 @@ h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12
 /* Body: one or two columns of fixed height, filled by the layout script */
 .cols { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(${cols}, 1fr); column-gap: ${cols === 2 ? (small ? 6 : 9) : 0}mm; padding: ${small ? 5 : 7}mm var(--side) 0; }
 .col { height: 100%; overflow: hidden; }
+.ws-credit { margin-top: 6mm; padding-top: 2.5mm; border-top: .5pt solid #d6d3cd; display: flex; flex-direction: column; gap: .6mm; font: 7.5pt/1.4 Karla, sans-serif; color: #6f6a64; break-inside: avoid; } .ws-credit b { font-weight: 700; color: #4b4843; }
 .foot { flex: none; display: flex; justify-content: space-between; align-items: center; height: ${small ? 11 : 14}mm; padding-left: var(--side); font: 500 6.8pt Karla, sans-serif; color: #4b4843; }
 .pn { align-self: center; min-width: 17mm; height: 5mm; padding: 0 2.6mm; white-space: nowrap; display: grid; place-items: center; background: #8d8983; color: #fff; font: 700 8pt Karla, sans-serif; }
 

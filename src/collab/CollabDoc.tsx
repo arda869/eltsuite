@@ -35,11 +35,12 @@ import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
-import { downloadDocx, printDoc, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
+import { downloadDocx, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { PdfPreview } from '../components/PdfPreview';
 import { splitKey, type Responses } from '../lib/questions';
 
 // A document the class writes together, live: everyone's cursor and name, editing,
@@ -126,6 +127,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [viewResp, setViewResp] = useState<Responses>({});
   const [toc, setToc] = useState(false);
   const [viewEl, setViewEl] = useState<HTMLDivElement | null>(null);
+  const [pdfPrev, setPdfPrev] = useState<{ bytes: Uint8Array; name: string } | null>(null);
   useEffect(() => {
     if (!allowed.includes(mode)) setMode(allowed[0] ?? 'view');
   }, [allowed.join(), mode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -276,6 +278,16 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const sel = editor.state.selection;
   const quote = sel.empty ? '' : editor.state.doc.textBetween(sel.from, sel.to, ' ').slice(0, 160);
 
+  // The document as a PDF, opened in the viewer to save in Files or download.
+  const makePdf = async (o: ExportOpts) => {
+    try {
+      const [{ htmlToPdf }, { docBodyHtml }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
+      const bytes = await htmlToPdf(docBodyHtml(editor.getJSON(), title, o), await brandMark().catch(() => null));
+      setPdfPrev({ bytes, name: title || 'Document' });
+    } catch (e) {
+      console.error(e);
+    }
+  };
   const startComment = () => {
     if (!quote) return;
     setDraft({ quote });
@@ -435,7 +447,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name="discuss" size={17} />
             {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
           </button>
-          {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }, editor.view.dom))} />}
+          {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : void makePdf({ ...o, style: citeStyle }))} />}
           {modeSeg}
         </>,
         toolSlot,
@@ -445,6 +457,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     <>
       {pageTools0}
       {personAt && <PersonCard p={personAt.p} r={personAt.r} me={me.uid} onClose={() => setPersonAt(null)} />}
+      {pdfPrev && <PdfPreview bytes={pdfPrev.bytes} name={pdfPrev.name} onClose={() => setPdfPrev(null)} />}
     </>
   );
   const body = (
@@ -479,7 +492,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
-        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }, editor.view.dom))} />}
+        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : void makePdf({ ...o, style: citeStyle }))} />}
         {page && writing && (
           <button type="button" className="btn small-btn cd-insert" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text.">
             + Insert
@@ -857,7 +870,7 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
             Word document (.docx)…
           </button>
           <button type="button" role="menuitem" onClick={() => setOpen('pdf')}>
-            PDF (print or save)…
+            PDF, to save in Files…
           </button>
         </span>
       )}

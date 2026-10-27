@@ -1,3 +1,4 @@
+import { credit } from './brand';
 import type { TlAttrs } from '../editor/Timeline';
 import { listLabel } from './listLabel';
 import type { JSONContent } from '@tiptap/react';
@@ -749,6 +750,10 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
     cardParas.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: dash, bottom: dash, left: dash, right: dash, insideHorizontal: dash, insideVertical: dash }, rows }));
   }
   const SIZES: Record<string, { width: number; height: number }> = { A4: { width: 11906, height: 16838 }, Letter: { width: 12240, height: 15840 }, A5: { width: 8391, height: 11906 } };
+  // Who made it, at the end of the worksheet.
+  const cr = credit();
+  body.push(new Paragraph({ spacing: { before: 360, after: 40 }, border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'D6D3CD', space: 6 } }, children: [new TextRun({ text: cr.by, font: SANS, size: S(14), bold: true, color: '4B4843' })] }));
+  body.push(new Paragraph({ spacing: { after: 0 }, children: [new TextRun({ text: cr.note, font: SANS, size: S(13), color: '6F6A64' })] }));
   const doc = new Document({
     fonts: embedded,
     styles: { default: { document: { run: { font: SERIF, size: S(opts.paper === 'A5' ? 20 : 22), color: '2F2C29' } } } },

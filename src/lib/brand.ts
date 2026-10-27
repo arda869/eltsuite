@@ -1,4 +1,5 @@
 import { currentOrg } from './admin';
+import { auth } from './firebase';
 import { MARK } from '../components/Wordmark';
 
 // The brand that goes on files a teacher downloads: their organisation's logo (the long one if
@@ -56,4 +57,14 @@ async function make(): Promise<Brand> {
   }
   const dataUrl = c.toDataURL('image/png');
   return { png: toBytes(dataUrl), dataUrl, w: c.width, h: c.height, name: org?.name ?? 'ELT Suite', color };
+}
+
+// Who made a file, on everything exported: the teacher by name, and a short note that the
+// content is theirs and ELT Suite is the tool it was made with.
+export function credit(): { by: string; note: string } {
+  const name = (auth.currentUser?.displayName ?? '').trim();
+  const org = currentOrg()?.name;
+  const by = name ? `Created by ${name}${org ? `, ${org},` : ''} with ELT Suite` : `Created with ELT Suite${org ? ` for ${org}` : ''}`;
+  const note = `${name || 'The teacher'} wrote this material and is responsible for its content. ELT Suite is the tool it was made with.`;
+  return { by, note };
 }

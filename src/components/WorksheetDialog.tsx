@@ -12,6 +12,8 @@ import { theme } from '../lib/themes';
 import { coverMarkup } from './Covers';
 import { Loader } from './Loader';
 import type { ClassDoc, Item } from '../lib/classes';
+import { PdfPreview } from './PdfPreview';
+import { pdfName, worksheetPdf } from '../lib/pdfMake';
 
 const defaultPaper = (): Paper => {
   try {
@@ -182,6 +184,21 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     w.document.close();
     w.focus();
   };
+  // A real PDF, opened in the viewer, to save in Files or download.
+  const [preview, setPreview] = useState<{ bytes: Uint8Array; name: string } | null>(null);
+  const makePdf = async () => {
+    setBusy('Making the PDF…');
+    try {
+      const tasks = chosen();
+      const [media, snd] = await Promise.all([pictures(tasks), sounds(tasks)]);
+      const bytes = await worksheetPdf(worksheetHtml(lesson!.title, tasks, { ...look(), cover, origin: location.origin, media, sounds: snd }), paper === 'Letter' ? 'Letter' : 'A4');
+      setPreview({ bytes, name: pdfName(lesson!.title, cls?.name, isExam ? 'Exam' : 'Worksheet', key && 'with answers') });
+      setBusy('');
+    } catch (e) {
+      console.error(e);
+      setBusy('The PDF could not be made: ' + (e as Error).message);
+    }
+  };
   const docx = async () => {
     setBusy('Making the Word file…');
     try {
@@ -293,13 +310,17 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
               <button type="button" className="btn" disabled={!ids.size} onClick={docx}>
                 Word file (.docx)
               </button>
-              <button type="button" className="btn primary" disabled={!ids.size} onClick={print}>
-                Print or save as PDF
+              <button type="button" className="btn" disabled={!ids.size} onClick={print}>
+                Print
+              </button>
+              <button type="button" className="btn primary" disabled={!ids.size || !!busy} onClick={() => void makePdf()}>
+                PDF
               </button>
             </span>
           </>
         )}
       </div>
+      {preview && <PdfPreview bytes={preview.bytes} name={preview.name} onClose={() => setPreview(null)} />}
     </div>
   );
 }

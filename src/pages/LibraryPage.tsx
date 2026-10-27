@@ -12,6 +12,7 @@ import { ask, askText } from '../lib/ask';
 import { useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
 import { KIND_LABEL, newDocInFolder, removeSharedDoc, renameDoc, useFolderDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { CopyToClass, LESSON_TYPES } from '../lessons/LessonFile';
+import { copyFile } from '../lib/copyFile';
 
 // The organisation library: the organisation's own lessons and materials, kept by its admins and
 // the teachers they let edit. Teachers copy a lesson into one of their classes in one step.
@@ -128,8 +129,20 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
     if (w) w.location.href = `/doc/${id}`;
     else window.location.href = `/doc/${id}`;
   };
+  const [note, setNote] = useState('');
+  const toMine = async (d: SharedDoc) => {
+    setNote(`Copying ${d.title}…`);
+    try {
+      await copyFile(d, me, null);
+      setNote(`${d.title} is in your Files now.`);
+    } catch (e) {
+      console.error(e);
+      setNote('The copy could not be made. Check your space, then try again.');
+    }
+  };
   const menuFor = (d: SharedDoc): MenuItem[] => [
     { label: 'Open', icon: 'next', onClick: () => window.open(`/doc/${d.id}`, '_blank') },
+    { label: 'Copy to My files', icon: 'copyall', onClick: () => void toMine(d) },
     ...(d.kind === 'lesson' ? [{ label: 'Copy to a class…', icon: 'copyall', onClick: () => setCopying(d) }] : []),
     ...(canAdd ? [{ label: 'Rename', icon: 'edit', onClick: () => void askText('New name', d.title, { ok: 'Rename' }).then((v) => typeof v === 'string' && v.trim() && void renameDoc(d.id, v)) } as MenuItem] : []),
     ...(d.owner === uid ? [{ label: 'Delete', icon: 'trash', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone?`, { ok: 'Delete' }).then((ok) => ok && void removeSharedDoc(d.id)) } as MenuItem] : []),
@@ -171,16 +184,26 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
                   <span className="hint">{d.kind === 'lesson' ? LESSON_TYPES.find((t) => t.v === (d.ltype ?? 'lesson'))?.label : KIND_LABEL[d.kind]}</span>
                 </span>
               </a>
-              {d.kind === 'lesson' && (
-                <button type="button" className="btn small-btn lb-copy" onClick={() => setCopying(d)}>
-                  <UiIcon name="copyall" size={14} /> Copy to a class
+              <span className="lb-acts">
+                {d.kind === 'lesson' && (
+                  <button type="button" className="btn small-btn lb-copy" onClick={() => setCopying(d)}>
+                    <UiIcon name="copyall" size={14} /> Copy to a class
+                  </button>
+                )}
+                <button type="button" className="btn link small" onClick={() => void toMine(d)}>
+                  Copy to My files
                 </button>
-              )}
+              </span>
             </div>
           ))}
         </div>
       ) : (
         <span className="hint lb-none">{q || kind ? 'Nothing matches.' : canAdd ? 'Nothing here yet. Use + New to add a lesson.' : 'Nothing here yet.'}</span>
+      )}
+      {note && (
+        <span className="hint lb-note" role="status">
+          {note}
+        </span>
       )}
       {copying && <CopyToClass docId={copying.id} title={copying.title} type={copying.ltype} onClose={() => setCopying(null)} />}
     </section>

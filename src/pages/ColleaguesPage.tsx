@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { removeColleague, setShareAccess, useColleagues, useMyShares, useSharedWithMe, type Share } from '../lib/sharing';
 import { TopBar } from '../components/TopBar';
-import { useUnread } from '../lib/chat';
 import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { ArchiveColleagues } from './ArchiveLibrary';
@@ -16,29 +15,11 @@ import { ArchiveColleagues } from './ArchiveLibrary';
 const KIND: Record<string, { label: string; icon: string }> = { lesson: { label: 'Lesson', icon: 'task' }, task: { label: 'Task', icon: 'edit' }, doc: { label: 'Shared document', icon: 'discuss' }, media: { label: 'Media', icon: 'picture' } };
 const when = (t?: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '');
 
-export function MainNav({ on }: { on: 'home' | 'classes' | 'colleagues' | 'archive' | 'messages' | '' }) {
-  const { user } = useAuth();
-  const unread = useUnread(user?.uid);
-  // With icons; on a phone it becomes the tab bar at the bottom of the screen.
-  const tab = (to: string, key: typeof on, icon: string, label: string, short: string, badge?: number) => (
-    <Link to={to} className={'mn-tab' + (on === key ? ' on' : '')} aria-current={on === key ? 'page' : undefined}>
-      <span className="mn-ic">
-        <UiIcon name={icon} size={18} />
-        {!!badge && <span className="nav-badge">{badge}</span>}
-      </span>
-      <span className="mn-l">{label}</span>
-      <span className="mn-s">{short}</span>
-    </Link>
-  );
-  return (
-    <nav aria-label="Main" className="main-nav mn-phone">
-      {tab('/', 'home', 'home', 'Home', 'Home')}
-      {tab('/classes', 'classes', 'classes', 'Classes', 'Classes')}
-      {tab('/messages', 'messages', 'message', 'Messages', 'Messages', unread)}
-      {tab('/colleagues', 'colleagues', 'groups', 'Colleagues', 'Colleagues')}
-      {tab('/archive', 'archive', 'archive', 'Files', 'Files')}
-    </nav>
-  );
+// No tab bar: the apps button in the top bar leads everywhere, on a phone too. Pages still say
+// which place they are, for later.
+export function MainNav(_: { on: 'home' | 'classes' | 'colleagues' | 'archive' | 'messages' | '' }) {
+  void _;
+  return null;
 }
 
 // The learner's main places, the same way: in the top bar on a computer, at the bottom on a phone.

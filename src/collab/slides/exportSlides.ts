@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../../editor/TextColor';
+import { credit } from '../../lib/brand';
 import { textHtml as blockHtml } from '../export';
 import { BGS, H, PT, W, textJSON, type El, type Slide } from './model';
 
@@ -58,6 +59,9 @@ async function buildPptx(slides: Slide[], title: string, accent: string) {
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16x9'; // 10 × 5.625 inches
   pptx.title = title;
+  const cr = credit();
+  pptx.author = cr.by.replace(/^Created by /, '').replace(/ with ELT Suite$/, '');
+  pptx.subject = cr.note;
   const inch = (u: number) => +(u / 100).toFixed(3);
   for (const s of slides) {
     const sl = pptx.addSlide();
@@ -78,6 +82,10 @@ async function buildPptx(slides: Slide[], title: string, accent: string) {
       }
     }
   }
+  // Who made it, on the last slide, small.
+  const end = pptx.addSlide();
+  end.background = { color: 'FFFFFF' };
+  end.addText([{ text: cr.by, options: { bold: true, breakLine: true } }, { text: cr.note, options: {} }] as never, { x: 0.8, y: 2.3, w: 8.4, h: 1, fontFace: 'Arial', fontSize: 12, color: '6F6A64', align: 'center' } as never);
   return pptx;
 }
 

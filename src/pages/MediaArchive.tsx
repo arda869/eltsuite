@@ -1,5 +1,7 @@
 import { createPortal } from 'react-dom';
-import { useAccount, useSpaceLimit, noteSpace } from '../lib/admin';
+import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, type DriveFolder } from '../lib/admin';
+import { copyFile } from '../lib/copyFile';
+import { Select } from '../components/Select';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
 import { shareLesson, unshareLesson, useClassLessons, useHandIns, type ClassLesson, type HandIn } from '../lib/classFiles';
@@ -163,6 +165,11 @@ export function MediaArchive() {
   const all = items ?? [];
   const tasks = libTasks ?? [];
   const ownDocs = useMemo(() => (myDocsTop ?? []).filter((d) => !d.folder), [myDocsTop]);
+  // Folders of the organisation library this teacher may add to.
+  const myOrg = useMyOrg();
+  const drive = useDrive(myOrg);
+  const orgFolders = useMemo(() => (drive ?? []).filter((f) => f.owner === uid || (f as { members?: Record<string, { role: string }> }).members?.[uid ?? '']?.role === 'edit'), [drive, uid]);
+  const [toOrg, setToOrg] = useState<SharedDoc | null>(null);
   const classLessons = useClassLessons(uid);
   const handIns = useHandIns(uid);
   const entries = useMemo(() => [...all.map(entryOfItem), ...ownDocs.filter((d) => d.kind !== 'lesson').map(entryOfDoc), ...(classLessons.list ?? []).map(entryOfLesson), ...(handIns ?? []).map(entryOfHandIn)], [all, ownDocs, classLessons.list, handIns]);
@@ -413,6 +420,7 @@ export function MediaArchive() {
         { label: COLLAB_KINDS.includes(en.kind) ? 'Share…' : 'Share with colleagues…', icon: 'person', onClick: () => setSharing(en.doc!) },
         { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
         { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
+        ...(orgFolders.length ? [{ label: 'Copy to the organisation library…', icon: 'copyall', onClick: () => setToOrg(en.doc!) } as MenuItem] : []),
         'sep',
         { label: 'Delete', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
       ];
@@ -1081,6 +1089,7 @@ export function MediaArchive() {
         {pdfBusy && <span className="ma-toast" role="status">{pdfBusy}</span>}
         {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
+        {toOrg && <ToOrgDialog d={toOrg} folders={orgFolders} me={{ uid: uid ?? '', name: user?.displayName || 'Teacher' }} onClose={() => setToOrg(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
         {sharingLesson && !lessonWarned && (
         <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && setSharingLesson(null)}>
@@ -1431,5 +1440,42 @@ function BusyToast({ text, onClose }: { text: string; onClose: () => void }) {
       )}
     </div>,
     document.body,
+  );
+}
+
+// A copy of a file into a folder of the organisation library.
+function ToOrgDialog({ d, folders, me, onClose }: { d: SharedDoc; folders: DriveFolder[]; me: { uid: string; name: string }; onClose: () => void }) {
+  const [to, setTo] = useState(folders[0]?.id ?? '');
+  const [busy, setBusy] = useState('');
+  const go = async () => {
+    const f = folders.find((x) => x.id === to);
+    if (!f) return;
+    setBusy('Copying…');
+    try {
+      await copyFile(d, me, f as unknown as Parameters<typeof copyFile>[2]);
+      onClose();
+      void tell(`${d.title} is in ${f.name} now. Your own copy stays in your Files.`);
+    } catch (e) {
+      console.error(e);
+      setBusy('The copy could not be made. Try again.');
+    }
+  };
+  return (
+    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog" role="dialog" aria-label="Copy to the organisation library">
+        <h2>Copy to the organisation library</h2>
+        <span className="hint">A copy of “{d.title}” goes into the folder. The teachers who can see the folder can use it; your own file stays as it is.</span>
+        <Select value={to} options={folders.map((f) => ({ v: f.id, label: f.name }))} onChange={setTo} label="Folder" />
+        {busy && <span className="hint">{busy}</span>}
+        <span style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn primary" disabled={!to || !!busy} onClick={() => void go()}>
+            Copy
+          </button>
+        </span>
+      </div>
+    </div>
   );
 }

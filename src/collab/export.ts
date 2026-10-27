@@ -1,3 +1,4 @@
+import { credit } from '../lib/brand';
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../editor/TextColor';
 import { highlightBg } from '../editor/Highlight';
@@ -272,7 +273,7 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   await walk(json);
   if (o.wordCount) out.push(new Paragraph({ spacing: { before: 360 }, children: [new TextRun({ text: `Word count: ${wordCount(json)} (without the reference list)`, font: o.font, size: sz - 2, color: '555555' })] }));
   const mark = (t: string) => new TextRun({ text: t, font: o.font, size: sz - 4, color: '8A847D' });
-  const footers = { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [...(o.pageNumbers ? [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 }), mark('   ·   ')] : []), mark(brand && brand.name !== 'ELT Suite' ? `${brand.name} · made with ELT Suite` : 'Made with ELT Suite')] })] }) };
+  const footers = { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [...(o.pageNumbers ? [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 }), mark('   ·   ')] : []), mark(credit().by)] }), new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: credit().note, font: o.font, size: sz - 6, color: '8A847D', italics: true })] })] }) };
   const { Header } = D;
   const headers = brand ? { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: brand.png, transformation: { width: Math.round((brand.w / brand.h) * 28), height: 28 }, type: 'png' } as never)] })] }) } : undefined;
   const doc = new Document({

@@ -7,11 +7,13 @@ import type { SharedDoc } from './sharedDocs';
 import type { ClassLesson } from './classFiles';
 import type { ExportTask } from './textformat';
 import { readState } from '../collab/provider';
-import { brandMark, type Brand } from './brand';
+import { brandMark, credit, type Brand } from './brand';
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 import { configOf, plainOf, type Card, type FlashConfig } from './flash';
 import { piecesText, reference, type CiteStyle } from './cite';
 import type { ReadSource } from '../pd/PdReading';
 import { theme, type ThemeKey } from './themes';
+import { plainColours } from './pdfMake';
 
 // Everything in a folder, downloaded in one go: each kind of file in the form people use
 // outside the app, with the brand on it.
@@ -36,19 +38,19 @@ async function docJson(key: string): Promise<JSONContent> {
 }
 
 // A PDF of a document: its text laid out on A4 pages, with the brand at the top.
-async function htmlToPdf(bodyHtml: string, brand: Brand | null): Promise<Uint8Array> {
+export async function htmlToPdf(bodyHtml: string, brand: Brand | null): Promise<Uint8Array> {
   const [{ jsPDF }, h2c] = await Promise.all([import('jspdf'), import('html2canvas')]);
   const host = document.createElement('div');
   // On the page but clipped away, so the picture of it is not blank and nobody sees it.
   host.style.cssText = 'position:fixed;left:0;top:0;width:595px;background:#fff;color:#111;font:11pt/1.5 Arial,sans-serif;padding:0;z-index:-1;clip-path:inset(0 0 100% 0);pointer-events:none';
-  host.innerHTML = `<style>.pdfx h1{font-size:20pt;margin:0 0 18px;text-align:center}.pdfx h2{font-size:15pt;margin:18px 0 6px}.pdfx h3{font-size:13pt;margin:14px 0 6px}.pdfx p{margin:0 0 10px}.pdfx ul,.pdfx ol{margin:0 0 10px;padding-left:28px}.pdfx table{border-collapse:collapse;width:100%;margin:10px 0}.pdfx td,.pdfx th{border:.5pt solid #666;padding:5px 7px;vertical-align:top;text-align:left}.pdfx img{max-width:100%}.pdfx .brand{display:flex;justify-content:flex-end;margin:0 0 18px}.pdfx .brand img{height:30px}.pdfx .foot{margin-top:28px;color:#8a847d;font-size:9pt;text-align:center}</style><div class="pdfx" style="padding:0 4px">${brand ? `<div class="brand"><img src="${brand.dataUrl}" alt=""></div>` : ''}${bodyHtml}<p class="foot">${brand && brand.name !== 'ELT Suite' ? `${brand.name} · made with ELT Suite` : 'Made with ELT Suite'}</p></div>`;
+  host.innerHTML = `<style>.pdfx h1{font-size:20pt;margin:0 0 18px;text-align:center}.pdfx h2{font-size:15pt;margin:18px 0 6px}.pdfx h3{font-size:13pt;margin:14px 0 6px}.pdfx p{margin:0 0 10px}.pdfx ul,.pdfx ol{margin:0 0 10px;padding-left:28px}.pdfx table{border-collapse:collapse;width:100%;margin:10px 0}.pdfx td,.pdfx th{border:.5pt solid #666;padding:5px 7px;vertical-align:top;text-align:left}.pdfx img{max-width:100%}.pdfx .brand{display:flex;justify-content:flex-end;margin:0 0 18px}.pdfx .brand img{height:30px}.pdfx .foot{margin-top:28px;color:#8a847d;font-size:9pt;text-align:center}</style><div class="pdfx" style="padding:0 4px">${brand ? `<div class="brand"><img src="${brand.dataUrl}" alt=""></div>` : ''}${bodyHtml}<p class="foot">${esc(credit().by)}<br><span style="font-size:8pt">${esc(credit().note)}</span></p></div>`;
   host.dataset.pdfhost = '';
   document.body.append(host);
   try {
     await Promise.all([...host.querySelectorAll('img')].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = r), (i.onerror = r))))));
     // A picture of the text, cut into A4 pages between blocks so no line is split.
     const scale = 2;
-    const canvas = await h2c.default(host, { scale, useCORS: true, backgroundColor: '#fff', windowWidth: 595, onclone: (d) => d.querySelectorAll<HTMLElement>('[data-pdfhost]').forEach((x) => (x.style.clipPath = 'none')) });
+    const canvas = await h2c.default(host, { scale, useCORS: true, backgroundColor: '#fff', windowWidth: 595, onclone: (d) => (d.querySelectorAll<HTMLElement>('[data-pdfhost]').forEach((x) => (x.style.clipPath = 'none')), plainColours(d)) });
     const pageW = 595.28, pageH = 841.89, m = 50;
     const k = (pageW - 2 * m) / host.offsetWidth; // pt per CSS pixel
     const room = (pageH - 2 * m) / k; // CSS pixels a page holds
@@ -115,6 +117,11 @@ async function flash(d: SharedDoc, brand: Brand | null): Promise<OutFile[]> {
   ws.getCell(2, 1).font = { bold: true, size: 15, name: 'Georgia' };
   ws.getCell(3, 1).value = `${cards.length} cards · front: ${cfg.front.map((k) => cfg.fields.find((f) => f.id === k)?.name).filter(Boolean).join(', ') || '…'}`;
   ws.getCell(3, 1).font = { color: { argb: 'FF8A847D' }, size: 10 };
+  const last = 6 + cards.length;
+  ws.getCell(last, 1).value = credit().by;
+  ws.getCell(last, 1).font = { color: { argb: 'FF8A847D' }, size: 9 };
+  ws.getCell(last + 1, 1).value = credit().note;
+  ws.getCell(last + 1, 1).font = { color: { argb: 'FF8A847D' }, size: 9, italic: true };
   const head = ws.getRow(4);
   fields.forEach((f, i) => {
     const c = head.getCell(i + 1);
