@@ -242,13 +242,13 @@ for (const c of threads.docs) {
 
 const ADMIN_CAN = [
   'which apps you have, and how much space',
-  'whether you make your own classes, or they make them for you',
+  'whether you create your own classes, or they create them for you',
   'class settings for learners: emails, and how names show',
   'whether you can add colleagues from outside the organisation',
   'which shared folders you can view or change',
   'your job title, and whether you are a teacher trainer',
 ];
-const ADMIN_SEE = 'Your name, email, job title and the profile you write, if they ask for one. Not your lessons, files or messages, unless you share them.';
+const ADMIN_SEE = 'Your name, email, job title and the profile you write, if they ask for one, and the class lists of your classes. Not your lessons, files or messages, unless you share them.';
 const invites = await db.collection('orgInvites').where('status', '==', 'pending').get();
 const { getAuth } = await import('firebase-admin/auth');
 for (const i of invites.docs) {
@@ -261,8 +261,8 @@ for (const i of invites.docs) {
     const btn = (t) => `<p style="margin:18px 0"><a href="${link}" style="display:inline-block;background:${esc(d.color || '#b8744e')};color:#fff;text-decoration:none;font:600 15px Arial,sans-serif;padding:11px 20px;border-radius:9px">${t}</a></p>`;
     const can = `<p style="margin:14px 0 6px;font:600 14px Arial,sans-serif">In ${esc(d.orgName)}, its admins can set</p><ul style="margin:0 0 12px;padding-left:20px;font:14px/1.6 Arial,sans-serif;color:#3b3935">${ADMIN_CAN.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p style="margin:0 0 6px;font:600 14px Arial,sans-serif">What they see</p><p style="margin:0 0 12px;font:14px/1.6 Arial,sans-serif;color:#3b3935">${esc(ADMIN_SEE)} The teachers in ${esc(d.orgName)} become your colleagues.</p>`;
     const intro = existing
-      ? `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} would like you to join <b>${esc(d.orgName)}</b> in ELT Suite. Your account, classes and files stay yours. You can say no.</p>${btn('See the invitation')}${can}`
-      : `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} has made a place for you at <b>${esc(d.orgName)}</b> in ELT Suite, for planning lessons and teaching your classes. Choose a password, or use Google, to finish your account.</p>${btn('Finish your account')}${can}`;
+      ? `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} would like you to join <b>${esc(d.orgName)}</b> in ELT Suite${d.admin ? ', as a teacher and one of its admins' : ''}. Your account, classes and files stay yours. You can say no.</p>${btn('See the invitation')}${can}`
+      : `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} has made a place for you at <b>${esc(d.orgName)}</b> in ELT Suite${d.admin ? ', as a teacher and one of its admins' : ''}, for planning lessons and teaching your classes. Choose a password, or use Google, to finish your account.</p>${btn('Finish your account')}${can}`;
     await mail.sendMail({
       from: FROM,
       to: d.email,

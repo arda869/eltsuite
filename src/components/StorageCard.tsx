@@ -1,4 +1,5 @@
-import { useSpaceLimit } from '../lib/admin';
+import { useEffect } from 'react';
+import { noteSpace, useSpaceLimit } from '../lib/admin';
 import { useArchive } from '../lib/archive';
 import { useMyDocs } from '../lib/sharedDocs';
 import { formatBytes } from '../lib/archive';
@@ -16,6 +17,8 @@ export function StorageCard({ uid }: { uid: string }) {
     ['Collaborative files', (mine ?? []).reduce((s, d) => s + (d.size ?? 0), 0), 'k-docs'],
   ];
   const total = parts.reduce((s, p) => s + p[1], 0);
+  const ready = useArchive(uid) !== null && mine !== null;
+  useEffect(() => void (ready && noteSpace(uid, total)), [ready, uid, total]);
   return (
     <div className="ma-space st-card">
       <span className="ma-space-row">

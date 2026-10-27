@@ -1,4 +1,4 @@
-import { currentOrg, isTrainerIn } from '../lib/admin';
+import { classDefaults, currentOrg, isTrainerIn } from '../lib/admin';
 import { LevelPicker } from './LevelPicker';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
@@ -29,7 +29,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     try {
       const org = currentOrg();
       const pol = org?.policy;
-      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...(pol?.names ? { profile: { names: pol.names } } : {}), ...(pol?.learnerEmails ? { accounts: { email: pol.learnerEmails === 'none' ? 'off' : pol.learnerEmails } } : {}) } });
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: classDefaults(pol) });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -46,7 +46,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           Class name
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="For example: B1 Evening Group" />
         </label>
-        {onlyTraining ? <span className="hint">As a teacher trainer, you make teacher training classes. {currentOrg()?.name} makes the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} />}
+        {onlyTraining ? <span className="hint">As a teacher trainer, you create teacher training classes. {currentOrg()?.name} creates the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} />}
         {kind === 'language' ? (
           <LevelPicker value={level} onChange={setLevel} />
         ) : (

@@ -251,7 +251,7 @@ export function TeacherHome() {
           ) : active.length === 0 ? (
             <div className="empty">
               <h2>{canCreate ? 'Create your first class' : 'Your classes are on their way'}</h2>
-              <p>{canCreate ? 'A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.' : `${myOrg?.name} makes the classes for its teachers. They appear here as soon as they are ready.`}</p>
+              <p>{canCreate ? 'A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.' : `${myOrg?.name} creates the classes for its teachers. They appear here as soon as they are ready.`}</p>
               {canCreate && <span style={{ display: 'flex', gap: 8 }}>
                 <button className="btn primary" onClick={() => setCreating(true)}>
                   + New class

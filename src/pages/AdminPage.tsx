@@ -4,9 +4,13 @@ import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
+import { MultiSelect, Select } from '../components/Select';
 import { ask } from '../lib/ask';
-import { imageToData } from '../lib/flash';
-import { createClass } from '../lib/classes';
+import { createClass, type ClassDoc } from '../lib/classes';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { LearnersTab } from '../components/LearnersTab';
+import type { Learner } from '../lib/learners';
 import { formatBytes } from '../lib/archive';
 import { SfxSettings } from '../components/SfxSettings';
 import { SoundRecordings } from '../components/SoundRecordings';
@@ -34,11 +38,17 @@ import {
   setTeacherGb,
   setTeacherOrg,
   setTrainer,
+  classDefaults,
+  NAME_CHOICES,
+  EMAIL_CHOICES,
+  nameChoicesOf,
+  emailChoicesOf,
   inviteTeachers,
   useOrgInvites,
   cancelInvite,
   resendInvite,
   inviteLink,
+  logoToData,
   useAccounts,
   useDrive,
   useFeatures,
@@ -157,7 +167,7 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
 // ------------------------------------------------------------------ teachers (owner)
 function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null; accounts: Record<string, Account>; orgs: Org[] }) {
   const [q, setQ] = useState('');
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [counts, setCounts] = useState<Record<string, { classes: number; learners: number }>>({});
   useEffect(() => {
     for (const t of teachers ?? []) if (counts[t.uid] === undefined) void classCount(t.uid).then((n) => setCounts((c) => ({ ...c, [t.uid]: n })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,6 +189,7 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
             <tr>
               <th>Teacher</th>
               <th>Classes</th>
+              <th>Learners</th>
               <th>Organisation</th>
               <th>Plan</th>
               <th>Space</th>
@@ -196,36 +207,35 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
                     <b>{t.name || 'No name'}</b>
                     <span className="hint">{t.email}</span>
                   </td>
-                  <td>{counts[t.uid] ?? '…'}</td>
+                  <td>{counts[t.uid]?.classes ?? '…'}</td>
+                  <td>{counts[t.uid]?.learners ?? '…'}</td>
                   <td>
-                    <select value={a.org ?? ''} onChange={(e) => void setTeacherOrg(t, orgs.find((o) => o.id === e.target.value) ?? null, inOrg)}>
-                      <option value="">None</option>
-                      {orgs.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
+                    <Select value={a.org ?? ''} options={[{ v: '', label: 'None' }, ...orgs.map((o) => ({ v: o.id, label: o.name }))]} onChange={(v) => void setTeacherOrg(t, orgs.find((o) => o.id === v) ?? null, inOrg)} label="Choose" />
                   </td>
                   <td>
                     {inOrg ? (
                       <span className="hint">From {inOrg.name}</span>
                     ) : (
-                      <select value={a.plan ?? 'free'} onChange={(e) => void saveAccount(t, { plan: e.target.value as Plan, limitGb: PLANS.find((p) => p.k === e.target.value)?.gb })}>
-                        {PLANS.map((p) => (
-                          <option key={p.k} value={p.k}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
+                      <Select value={a.plan ?? 'free'} options={[...PLANS.map((p) => ({ v: p.k, label: p.label }))]} onChange={(v) => void saveAccount(t, { plan: v as Plan, limitGb: PLANS.find((p) => p.k === v)?.gb })} label="Choose" />
                     )}
                   </td>
                   <td>
-                    {inOrg ? (
-                      <span className="hint">Set by {inOrg.name}</span>
-                    ) : (
-                      <GbInput value={a.limitGb ?? PLANS.find((p) => p.k === (a.plan ?? 'free'))?.gb ?? 1} onSave={(gb) => void saveAccount(t, { limitGb: gb })} />
-                    )}
+                    {(() => {
+                      const gb = inOrg ? inOrg.teachers[t.uid]?.gb ?? inOrg.perTeacherGb ?? 1 : a.limitGb ?? PLANS.find((p) => p.k === (a.plan ?? 'free'))?.gb ?? 1;
+                      const used = t.usedBytes ?? 0;
+                      const pct = Math.min(100, (used / (gb * 1024 ** 3)) * 100);
+                      return (
+                        <span className="adm-use">
+                          <span className="adm-use-row">
+                            <b>{t.usedBytes === undefined ? 'Not measured' : formatBytes(used)}</b>
+                            {inOrg ? <span className="hint">of {gb} GB, set by {inOrg.name}</span> : <>of <GbInput value={gb} onSave={(v) => void saveAccount(t, { limitGb: v })} /></>}
+                          </span>
+                          <span className={'adm-meter small' + (pct > 90 ? ' over' : '')}>
+                            <span style={{ width: `${pct}%` }} />
+                          </span>
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td>
                     <span className="adm-chips">
@@ -374,19 +384,11 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
   const free = teachers.filter((t) => !org.teachers[t.uid]);
   return (
     <div className="adm-card">
-      <span className="hint">Teachers here are colleagues of each other, always, and see each other's job titles and profiles.{org.allow?.trainers ? ' A teacher trainer makes teacher training classes for the others.' : ''}</span>
-      <InviteTeachers org={org} />
+      <span className="hint">Teachers here are colleagues of each other, always, and see each other's job titles and profiles.{org.allow?.trainers ? ' A teacher trainer creates teacher training classes for the others.' : ''}</span>
+      <InviteTeachers org={org} owner={owner} />
       {owner && (
         <span className="adm-new">
-          <select value={add} onChange={(e) => setAdd(e.target.value)} aria-label="Teacher to add">
-            <option value="">Add a teacher…</option>
-            {free.map((t) => (
-              <option key={t.uid} value={t.uid}>
-                {t.name || t.email} · {t.email}
-                {accounts[t.uid]?.org ? ` (now in ${orgs.find((o) => o.id === accounts[t.uid]?.org)?.name ?? 'another'})` : ''}
-              </option>
-            ))}
-          </select>
+          <Select value={add} placeholder="Add a teacher who already has an account…" options={free.map((t) => ({ v: t.uid, label: t.name || t.email, hint: t.email + (accounts[t.uid]?.org ? ` · now in ${orgs.find((o) => o.id === accounts[t.uid]?.org)?.name ?? 'another organisation'}` : '') }))} onChange={(v) => setAdd(v)} label="Teacher to add" className="grow" />
           <button type="button" className="btn primary" disabled={!add} onClick={() => { const t = teachers.find((x) => x.uid === add); if (t) void setTeacherOrg(t, org, orgs.find((o) => o.id === accounts[t.uid]?.org) ?? null).then(() => setAdd('')); }}>
             Add
           </button>
@@ -397,7 +399,8 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           <tr>
             <th>Teacher</th>
             <th>Job title</th>
-            {org.allow?.trainers && <th title="Teacher trainers make teacher training classes for the teachers here">Teacher trainer</th>}
+            {owner && <th>Admin</th>}
+            {org.allow?.trainers && <th title="Teacher trainers create teacher training classes for the teachers here">Teacher trainer</th>}
             <th>Space</th>
             {owner && <th />}
           </tr>
@@ -412,6 +415,11 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
               <td>
                 <TitleInput value={t.title ?? ''} onSave={(v) => void setJobTitle(org, uid, v)} />
               </td>
+              {owner && (
+                <td>
+                  <Switch on={org.adminEmails.includes(t.email.toLowerCase())} onChange={(v) => void (v ? addOrgAdmin(org, t.email) : removeOrgAdmin(org, t.email.toLowerCase()))} label={`${t.name || t.email} is an admin`} />
+                </td>
+              )}
               {org.allow?.trainers && (
                 <td>
                   <Switch on={!!t.trainer} onChange={(v) => void setTrainer(org, uid, v)} label={`${t.name || t.email} is a teacher trainer`} />
@@ -431,7 +439,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           ))}
           {!list.length && (
             <tr>
-              <td colSpan={org.allow?.trainers ? 5 : 4} className="hint">
+              <td colSpan={4 + (org.allow?.trainers ? 1 : 0) + (owner ? 1 : 0)} className="hint">
                 {owner ? 'Add the teachers of this organisation.' : 'The owner of ELT Suite adds your teachers.'}
               </td>
             </tr>
@@ -458,7 +466,7 @@ function OrgClasses({ org }: { org: Org }) {
     if (!who || !name.trim()) return;
     try {
       const pol = org.policy;
-      await createClass(who, { name: name.trim(), level, themeColor: 'flame', org: org.id, extra: { ...(pol?.names ? { profile: { names: pol.names } } : {}), ...(pol?.learnerEmails ? { accounts: { email: pol.learnerEmails === 'none' ? 'off' : pol.learnerEmails } } : {}) } });
+      await createClass(who, { name: name.trim(), level, themeColor: 'flame', org: org.id, extra: classDefaults(pol) });
       setDone(`${name.trim()} is ready for ${org.teachers[who]?.name || 'the teacher'}.`);
       setName('');
     } catch {
@@ -467,18 +475,11 @@ function OrgClasses({ org }: { org: Org }) {
   };
   return (
     <div className="adm-card">
-      <span className="hint">{org.policy?.createClasses === false ? 'Your teachers cannot make classes themselves: make them here.' : 'Teachers make their own classes. You can also make one for a teacher here.'}</span>
+      <span className="hint">{org.policy?.createClasses === false ? 'Your teachers do not create their own classes. Create them here.' : 'Your teachers create their own classes. You can also create one for a teacher here.'}</span>
       <div className="adm-form">
         <label className="field">
           <span>Teacher</span>
-          <select value={who} onChange={(e) => setWho(e.target.value)}>
-            <option value="">Choose…</option>
-            {teachers.map(([uid, t]) => (
-              <option key={uid} value={uid}>
-                {t.name || t.email}
-              </option>
-            ))}
-          </select>
+          <Select value={who} options={[{ v: '', label: 'Choose…' }, ...teachers.map(([uid, t]) => ({ v: uid, label: t.name || t.email }))]} onChange={(v) => setWho(v)} label="Choose" />
         </label>
         <label className="field">
           <span>Class name</span>
@@ -486,17 +487,82 @@ function OrgClasses({ org }: { org: Org }) {
         </label>
         <label className="field">
           <span>Level</span>
-          <select value={level} onChange={(e) => setLevel(e.target.value)}>
-            {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
+          <Select value={level} options={[...['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((l) => ({ v: l, label: l }))]} onChange={(v) => setLevel(v)} label="Choose" />
         </label>
         <button type="button" className="btn primary" disabled={!who || !name.trim()} onClick={() => void make()}>
-          Make the class
+          Create the class
         </button>
       </div>
       {done && <span className="hint">{done}</span>}
+      <OrgClassList org={org} />
+    </div>
+  );
+}
+
+// Every class in the organisation; open one to add its learners and print their sign-in cards.
+function OrgClassList({ org }: { org: Org }) {
+  const [list, setList] = useState<ClassDoc[] | null>(null);
+  const [open, setOpen] = useState('');
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, 'classes'), where('org', '==', org.id)),
+        (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) })).filter((c) => c.status !== 'deleted').sort((a, b) => a.name.localeCompare(b.name))),
+        () => setList([]),
+      ),
+    [org.id],
+  );
+  const cur = list?.find((c) => c.id === open);
+  if (cur) return <ClassLearners c={cur} teacher={org.teachers[cur.teacherId]?.name ?? ''} onBack={() => setOpen('')} />;
+  return (
+    <div className="adm-classes">
+      <span className="adm-sub">Classes in {org.name}</span>
+      {list === null ? (
+        <span className="hint">Opening the classes…</span>
+      ) : !list.length ? (
+        <span className="hint">No classes yet.</span>
+      ) : (
+        list.map((c) => (
+          <button key={c.id} type="button" className="adm-class" onClick={() => setOpen(c.id)}>
+            <span>
+              <b>{c.name}</b>
+              <span className="hint">
+                {org.teachers[c.teacherId]?.name || 'A teacher'} · {c.level} · {c.classCode}
+              </span>
+            </span>
+            <span className="hint">{plural(c.learnerCount ?? 0, 'learner')}</span>
+            <span className="adm-ch" aria-hidden="true">›</span>
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
+function ClassLearners({ c, teacher, onBack }: { c: ClassDoc; teacher: string; onBack: () => void }) {
+  const [learners, setLearners] = useState<Learner[]>([]);
+  const [secrets, setSecrets] = useState<{ id: string; pin?: string; own?: boolean; kind?: string }[]>([]);
+  useEffect(() => {
+    const a = onSnapshot(collection(db, 'classes', c.id, 'learners'), (s) => setLearners(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Learner, 'id'>) }))), () => setLearners([]));
+    const b = onSnapshot(collection(db, 'classes', c.id, 'secrets'), (s) => setSecrets(s.docs.map((d) => ({ id: d.id, ...(d.data() as { pin?: string; own?: boolean; kind?: string }) }))), () => setSecrets([]));
+    return () => (a(), b());
+  }, [c.id]);
+  const pins = Object.fromEntries(secrets.filter((s) => !s.own).map((s) => [s.id, s.pin ?? '']));
+  const own = Object.fromEntries(secrets.filter((s) => s.own).map((s) => [s.id, s.kind === 'password' ? 'password' : 'PIN']));
+  return (
+    <div className="adm-classes">
+      <span className="adm-head">
+        <button type="button" className="btn link small" onClick={onBack}>
+          ‹ All classes
+        </button>
+      </span>
+      <span className="adm-head-t">
+        <b className="adm-class-t">{c.name}</b>
+        <span className="hint">
+          {teacher || 'A teacher'} · {c.level} · class code {c.classCode}
+        </span>
+      </span>
+      <LearnersTab c={c} learners={learners} pins={pins} own={own} manage />
     </div>
   );
 }
@@ -504,76 +570,54 @@ function OrgClasses({ org }: { org: Org }) {
 function OrgRules({ org }: { org: Org }) {
   const p = org.policy ?? {};
   const set = (x: Parameters<typeof savePolicy>[1]) => void savePolicy(org, x);
+  const Row = ({ title, about, children }: { title: string; about: string; children: React.ReactNode }) => (
+    <label className="adm-row">
+      <span>
+        <b>{title}</b>
+        <span className="hint">{about}</span>
+      </span>
+      {children}
+    </label>
+  );
+  const ABOUT: Record<string, string> = {
+    classes: 'Classes, lessons, homework and live teaching',
+    files: 'Their library: lessons, documents, flashcards, PD reading',
+    messages: 'Chats with learners and other teachers',
+    colleagues: 'Sharing lessons and files with other teachers',
+  };
   return (
     <div className="adm-card">
-      <label className="adm-row">
-        <span>
-          <b>Teachers make their own classes</b>
-          <span className="hint">Off: admins make the classes, in Classes here</span>
-        </span>
-        <Switch on={p.createClasses !== false} onChange={(v) => set({ createClasses: v })} label="Teachers make their own classes" />
-      </label>
-      <label className="adm-row">
-        <span>
-          <b>Colleagues outside {org.name}</b>
-          <span className="hint">Teachers here are always colleagues of each other</span>
-        </span>
-        <select value={org.outside ?? 'anyone'} onChange={(e) => void saveOutside(org, e.target.value as 'anyone' | 'org')}>
-          <option value="anyone">Teachers can add any colleague</option>
-          <option value="org">Only colleagues in {org.name}</option>
-        </select>
-      </label>
-      <label className="adm-row">
-        <span>
-          <b>Learners' email addresses</b>
-          <span className="hint">For every class of these teachers. Learners always sign in with the class code and a PIN</span>
-        </span>
-        <select value={p.learnerEmails ?? ''} onChange={(e) => set({ learnerEmails: (e.target.value || undefined) as never })}>
-          <option value="">The teacher decides</option>
-          <option value="none">No emails</option>
-          <option value="optional">Learners can add one</option>
-          <option value="required">Every learner adds one</option>
-        </select>
-      </label>
-      <label className="adm-row">
-        <span>
-          <b>Teachers see learners' emails</b>
-          <span className="hint">Learners never see each other's emails</span>
-        </span>
-        <Switch on={p.seeEmails !== false} onChange={(v) => set({ seeEmails: v })} label="Teachers see learners' emails" />
-      </label>
-      <label className="adm-row">
-        <span>
-          <b>Learners' names to each other</b>
-          <span className="hint">Teachers always see full names</span>
-        </span>
-        <select value={p.names ?? ''} onChange={(e) => set({ names: (e.target.value || undefined) as never })}>
-          <option value="">The teacher decides</option>
-          <option value="first">First name only</option>
-          <option value="initial">First name and initial</option>
-          <option value="full">Full name</option>
-        </select>
-      </label>
-      <label className="adm-row">
-        <span>
-          <b>Teacher profiles</b>
-          <span className="hint">Teachers are asked to introduce themselves: about them, hobbies, languages. Only teachers here see them</span>
-        </span>
-        <Switch on={!!p.profiles} onChange={(v) => set({ profiles: v })} label="Teacher profiles" />
-      </label>
-      {org.allow?.trainers && <label className="adm-row">
-        <span>
-          <b>Trainers add teachers from outside {org.name}</b>
-          <span className="hint">Teacher trainers always add teachers from here to their training classes. On: they can also add others by name</span>
-        </span>
-        <Switch on={!!p.externalTrainees} onChange={(v) => set({ externalTrainees: v })} label="Trainers add teachers from outside" />
-      </label>}
-      <span className="adm-sub">Apps for these teachers</span>
+      <span className="adm-sub">Classes</span>
+      <Row title="Teachers create their own classes" about="When this is off, only admins create classes, from the Classes tab here.">
+        <Switch on={p.createClasses !== false} onChange={(v) => set({ createClasses: v })} label="Teachers create their own classes" />
+      </Row>
+      <span className="adm-sub">Learners</span>
+      <Row title="Learner email addresses" about="Tick the settings teachers can choose from. Learners always sign in with the class code and their PIN.">
+        <MultiSelect value={emailChoicesOf(p)} options={EMAIL_CHOICES} onChange={(v) => set({ emailChoices: v, learnerEmails: undefined })} label="Learner email addresses" all="Each teacher decides" />
+      </Row>
+      <Row title="Teachers can see learner emails" about="Learners never see each other's email addresses.">
+        <Switch on={p.seeEmails !== false} onChange={(v) => set({ seeEmails: v })} label="Teachers can see learner emails" />
+      </Row>
+      <Row title="How learners see each other's names" about="Tick the ways teachers can choose from. Teachers always see full names.">
+        <MultiSelect value={nameChoicesOf(p)} options={NAME_CHOICES} onChange={(v) => set({ nameChoices: v, names: undefined })} label="How learners see each other's names" all="Each teacher decides" />
+      </Row>
+      <span className="adm-sub">Teachers</span>
+      <Row title="Colleagues outside the organisation" about={`Teachers in ${org.name} are always colleagues of each other.`}>
+        <Select value={org.outside ?? 'anyone'} options={[{ v: 'anyone', label: 'Allowed' }, { v: 'org', label: 'Not allowed' }]} onChange={(v) => void saveOutside(org, v as 'anyone' | 'org')} label="Choose" />
+      </Row>
+      <Row title="Ask teachers for a profile" about={`Teachers introduce themselves: a short bio, hobbies and languages. Only teachers in ${org.name} can see it.`}>
+        <Switch on={!!p.profiles} onChange={(v) => set({ profiles: v })} label="Ask teachers for a profile" />
+      </Row>
+      {org.allow?.trainers && (
+        <Row title="Trainers can add teachers from outside" about={`Teacher trainers can always add teachers from ${org.name}. When this is on, they can also add others by name.`}>
+          <Switch on={!!p.externalTrainees} onChange={(v) => set({ externalTrainees: v })} label="Trainers can add teachers from outside" />
+        </Row>
+      )}
+      <span className="adm-sub">Apps</span>
       {APP_KEYS.map((k) => (
-        <label key={k.k} className="adm-row">
-          <b>{k.name}</b>
-          <Switch on={p.apps?.[k.k] ?? true} onChange={(v) => set({ apps: { ...(p.apps ?? {}), [k.k]: v } })} label={k.name} />
-        </label>
+        <Row key={k.k} title={k.name} about={org.allow?.apps?.[k.k] === false ? 'Not part of your organisation’s plan' : ABOUT[k.k] ?? ''}>
+          <Switch on={org.allow?.apps?.[k.k] !== false && (p.apps?.[k.k] ?? true)} disabled={org.allow?.apps?.[k.k] === false} onChange={(v) => set({ apps: { ...(p.apps ?? {}), [k.k]: v } })} label={k.name} />
+        </Row>
       ))}
     </div>
   );
@@ -582,23 +626,46 @@ function OrgRules({ org }: { org: Org }) {
 const COLOURS = ['#c8764a', '#3667a6', '#2f7f6f', '#7a4fa3', '#b64a3c', '#a8701f', '#4f6b7a', '#2f2e2d'];
 function OrgBrand({ org }: { org: Org }) {
   const b = org.brand ?? {};
-  const [busy, setBusy] = useState(false);
-  const pick = () => {
+  const [busy, setBusy] = useState<'' | 'logo' | 'wide'>('');
+  const [err, setErr] = useState('');
+  const pick = (k: 'logo' | 'wide') => {
     const inp = document.createElement('input');
     inp.type = 'file';
-    inp.accept = 'image/*';
+    inp.accept = 'image/png,image/svg+xml,image/jpeg,image/webp';
     inp.onchange = async () => {
       const f = inp.files?.[0];
       if (!f) return;
-      setBusy(true);
+      setBusy(k);
+      setErr('');
       try {
-        await saveBrand(org, { ...b, logo: await imageToData(f, 360) });
+        await saveBrand(org, { ...b, [k]: await logoToData(f, k === 'wide' ? 720 : 320) });
+      } catch {
+        setErr('That picture could not be used. Try a PNG.');
       } finally {
-        setBusy(false);
+        setBusy('');
       }
     };
     inp.click();
   };
+  const slot = (k: 'logo' | 'wide', title: string, about: string) => (
+    <div className={'adm-logo-slot ' + k}>
+      <span className="adm-logo-box">{b[k] ? <img src={b[k]} alt="" /> : k === 'logo' ? <span className="adm-org-ic big">{org.name.slice(0, 1)}</span> : <span className="hint">No long logo yet</span>}</span>
+      <span className="adm-logo-t">
+        <b>{title}</b>
+        <span className="hint">{about}</span>
+        <span className="adm-logo-acts">
+          <button type="button" className="btn small-btn" disabled={!!busy} onClick={() => pick(k)}>
+            {busy === k ? 'Adding…' : b[k] ? 'Change' : 'Upload'}
+          </button>
+          {b[k] && (
+            <button type="button" className="btn link small" onClick={() => void saveBrand(org, { ...b, [k]: '' })}>
+              Remove
+            </button>
+          )}
+        </span>
+      </span>
+    </div>
+  );
   return (
     <div className="adm-card">
       <span className="adm-sub">Theme colour</span>
@@ -608,25 +675,20 @@ function OrgBrand({ org }: { org: Org }) {
         ))}
         <input type="color" value={b.color ?? '#5d6f80'} onChange={(e) => void saveBrand(org, { ...b, color: e.target.value })} aria-label="Another colour" />
       </span>
-      <span className="adm-sub">Logo</span>
-      <span className="adm-logo-row">
-        {b.logo ? <img className="adm-logo big" src={b.logo} alt="" /> : <span className="adm-org-ic big">{org.name.slice(0, 1)}</span>}
-        <button type="button" className="btn small-btn" disabled={busy} onClick={pick}>
-          {busy ? 'Adding…' : b.logo ? 'Change the logo' : 'Upload a logo'}
-        </button>
-        {b.logo && (
-          <button type="button" className="btn link small" onClick={() => void saveBrand(org, { ...b, logo: '' })}>
-            Remove
-          </button>
-        )}
-      </span>
-      <span className="hint">The logo and colour go on the worksheets your teachers print or download, and next to ELT Suite at the top of their screens.</span>
+      <span className="adm-sub">Logos</span>
+      <div className="adm-logos">
+        {slot('logo', 'Square logo', 'The mark on its own, for small places: next to ELT Suite at the top of the screen. A square PNG, at least 256 px.')}
+        {slot('wide', 'Long logo', 'The mark with the name beside it, for worksheets, tests and invitations. A wide PNG with a clear background, at least 600 px across.')}
+      </div>
+      {err && <span className="error">{err}</span>}
+      <span className="adm-sub">On a worksheet</span>
       <div className="adm-preview" style={{ ['--org' as string]: b.color ?? '#5d6f80' }}>
-        {b.logo && <img src={b.logo} alt="" />}
         <span>
           <b>Unit 4 · Present perfect</b>
           <span className="hint">Name ______________ · Class ________</span>
         </span>
+        <span style={{ flex: 1 }} />
+        {b.wide || b.logo ? <img src={b.wide || b.logo} alt="" /> : <span className="hint">ELT Suite</span>}
       </div>
     </div>
   );
@@ -646,19 +708,26 @@ function OrgSpace({ org, owner }: { org: Org; owner: boolean }) {
       {owner && (
         <label className="adm-row">
           <b>Plan</b>
-          <select value={org.plan} onChange={(e) => void saveOrg(org.id, { plan: e.target.value as Plan })}>
-            {PLANS.map((p) => (
-              <option key={p.k} value={p.k}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          <Select value={org.plan} options={[...PLANS.map((p) => ({ v: p.k, label: p.label }))]} onChange={(v) => void saveOrg(org.id, { plan: v as Plan })} label="Choose" />
         </label>
+      )}
+      {owner && (
+        <>
+          <span className="adm-sub">Apps for {org.name}</span>
+          <span className="hint">Its admins can turn these off for their teachers, but not turn on what you leave off.</span>
+          {APP_KEYS.map((k) => (
+            <label key={k.k} className="adm-row">
+              <b>{k.name}</b>
+              <Switch on={org.allow?.apps?.[k.k] !== false} onChange={(v) => void saveOrg(org.id, { allow: { ...(org.allow ?? {}), apps: { ...(org.allow?.apps ?? {}), [k.k]: v } } })} label={`${k.name} for ${org.name}`} />
+            </label>
+          ))}
+          <span className="adm-sub">Features</span>
+        </>
       )}
       <label className="adm-row">
         <span>
           <b>Teacher trainers</b>
-          <span className="hint">{owner ? 'On: its admins can make teachers trainers, who run teacher training classes' : org.allow?.trainers ? 'On for your organisation. Choose the trainers in Teachers' : 'Not part of your plan. Ask ELT Suite to turn it on'}</span>
+          <span className="hint">{owner ? 'On: its admins can make teachers trainers, who create and run teacher training classes' : org.allow?.trainers ? 'On for your organisation. Choose the trainers in Teachers' : 'Not part of your plan. Ask ELT Suite to turn it on'}</span>
         </span>
         <Switch on={!!org.allow?.trainers} disabled={!owner} onChange={(v) => void saveOrg(org.id, { allow: { ...(org.allow ?? {}), trainers: v } })} label="Teacher trainers" />
       </label>
@@ -680,16 +749,35 @@ function OrgSpace({ org, owner }: { org: Org; owner: boolean }) {
 }
 
 function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
+  const { user, profile } = useAuth();
   const [email, setEmail] = useState('');
+  const [note, setNote] = useState('');
+  const teacherOf = (e: string) => Object.values(org.teachers).find((t) => t.email.toLowerCase() === e.toLowerCase());
+  // A teacher here becomes an admin at once; anyone else is invited to join as a teacher and admin.
+  const add = async () => {
+    const e = email.trim().toLowerCase();
+    if (!/\S+@\S+\.\S+/.test(e) || !user) return;
+    if (teacherOf(e)) {
+      await addOrgAdmin(org, e);
+      setNote(`${teacherOf(e)?.name || e} is an admin now.`);
+    } else {
+      await inviteTeachers(org, [{ name: '', email: e, admin: true }], { uid: user.uid, name: profile?.displayName || user.displayName || 'ELT Suite' });
+      setNote(`${e} is invited to join ${org.name} as a teacher and admin.`);
+    }
+    setEmail('');
+  };
   return (
     <div className="adm-card">
-      <span className="hint">Admins run this organisation in Organisation admin: its teachers' classes, rules, branding and shared drives. They sign in with these emails.</span>
+      <span className="hint">Admins are teachers in {org.name} with one more app, Organisation admin, for its teachers, classes, rules, branding and shared drives.</span>
       {org.adminEmails.map((e) => (
         <span key={e} className="adm-row">
-          <b>{e}</b>
+          <span>
+            <b>{teacherOf(e)?.name || e}</b>
+            <span className="hint">{teacherOf(e) ? e : `${e} · not a teacher here yet`}</span>
+          </span>
           {owner && (
             <button type="button" className="btn link small" onClick={() => void removeOrgAdmin(org, e)}>
-              Remove
+              Remove as admin
             </button>
           )}
         </span>
@@ -697,12 +785,13 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
       {!org.adminEmails.length && <span className="hint">No admins yet.</span>}
       {owner && (
         <span className="adm-new">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@school.org" onKeyDown={(e) => e.key === 'Enter' && /\S+@\S+/.test(email) && void addOrgAdmin(org, email).then(() => setEmail(''))} />
-          <button type="button" className="btn primary" disabled={!/\S+@\S+\.\S+/.test(email)} onClick={() => void addOrgAdmin(org, email).then(() => setEmail(''))}>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email of a teacher here, or someone to invite" onKeyDown={(e) => e.key === 'Enter' && void add()} />
+          <button type="button" className="btn primary" disabled={!/\S+@\S+\.\S+/.test(email)} onClick={() => void add()}>
             Add admin
           </button>
         </span>
       )}
+      {note && <span className="hint">{note}</span>}
     </div>
   );
 }
@@ -767,11 +856,7 @@ function NewFolder({ onMake }: { onMake: (name: string, all: DriveAccess['all'])
   return (
     <span className="adm-new">
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New folder, for example: Exam papers" />
-      <select value={all} onChange={(e) => setAll(e.target.value as DriveAccess['all'])} aria-label="Everyone can">
-        <option value="view">Everyone can view</option>
-        <option value="edit">Everyone can edit</option>
-        <option value="none">Only chosen teachers</option>
-      </select>
+      <Select value={all} options={[{ v: 'view', label: 'Everyone can view' }, { v: 'edit', label: 'Everyone can edit' }, { v: 'none', label: 'Only chosen teachers' }]} onChange={(v) => setAll(v as DriveAccess['all'])} label="Everyone can" />
       <button type="button" className="btn small-btn primary" disabled={!name.trim()} onClick={() => (onMake(name, all), setName(''))}>
         Add folder
       </button>
@@ -797,11 +882,7 @@ function DriveFolderRow({ org, f, me, open, onToggle }: { org: Org; f: { id: str
         <div className="adm-folder-b">
           <label className="adm-row">
             <b>Everyone in {org.name}</b>
-            <select value={f.access.all} onChange={(e) => save({ ...f.access, all: e.target.value as DriveAccess['all'] })}>
-              <option value="view">Can view</option>
-              <option value="edit">Can edit</option>
-              <option value="none">No access</option>
-            </select>
+            <Select value={f.access.all} options={[{ v: 'view', label: 'Can view' }, { v: 'edit', label: 'Can edit' }, { v: 'none', label: 'No access' }]} onChange={(v) => save({ ...f.access, all: v as DriveAccess['all'] })} label="Choose" />
           </label>
           {Object.entries(org.teachers).map(([uid, t]) => {
             const r = f.access.people[uid];
@@ -811,20 +892,12 @@ function DriveFolderRow({ org, f, me, open, onToggle }: { org: Org; f: { id: str
                   {t.name || t.email}
                   {t.title && <span className="hint"> · {t.title}</span>}
                 </span>
-                <select
-                  value={r ?? ''}
-                  onChange={(e) => {
+                <Select value={r ?? ''} options={[{ v: '', label: 'Like everyone' }, { v: 'view', label: 'Can view' }, { v: 'edit', label: 'Can edit' }, { v: 'none', label: 'No access' }]} onChange={(v) => {
                     const people = { ...f.access.people };
-                    if (e.target.value) people[uid] = e.target.value as 'view' | 'edit' | 'none';
+                    if (v) people[uid] = v as 'view' | 'edit' | 'none';
                     else delete people[uid];
                     save({ ...f.access, people });
-                  }}
-                >
-                  <option value="">Like everyone</option>
-                  <option value="view">Can view</option>
-                  <option value="edit">Can edit</option>
-                  <option value="none">No access</option>
-                </select>
+                  }} label="Choose" />
               </label>
             );
           })}
@@ -836,10 +909,12 @@ function DriveFolderRow({ org, f, me, open, onToggle }: { org: Org; f: { id: str
 
 // Inviting teachers by email: a new teacher gets a link to finish their account; a teacher with an
 // account gets an invitation to say yes or no to, with what the admins can set and see.
-function InviteTeachers({ org }: { org: Org }) {
+function InviteTeachers({ org, owner }: { org: Org; owner: boolean }) {
   const { user, profile } = useAuth();
   const invites = useOrgInvites(org);
-  const [rows, setRows] = useState([{ name: '', email: '', title: '' }]);
+  const blank = { name: '', email: '', title: '', admin: false };
+  const [rows, setRows] = useState([blank]);
+  const [pasteAdmin, setPasteAdmin] = useState(false);
   const [paste, setPaste] = useState(false);
   const [text, setText] = useState('');
   const [note, setNote] = useState('');
@@ -851,7 +926,7 @@ function InviteTeachers({ org }: { org: Org }) {
       .map((l) => l.split(/\t|,|;/).map((x) => x.trim()))
       .map((c) => {
         const e = c.findIndex((x) => /@/.test(x));
-        return { email: e >= 0 ? c[e] : '', name: c.filter((_, i) => i !== e)[0] ?? '', title: c.filter((_, i) => i !== e)[1] ?? '' };
+        return { email: e >= 0 ? c[e] : '', name: c.filter((_, i) => i !== e)[0] ?? '', title: c.filter((_, i) => i !== e)[1] ?? '', admin: pasteAdmin };
       })
       .filter((r) => r.email);
   const list = paste ? fromText() : rows.filter((r) => /\S+@\S+\.\S+/.test(r.email));
@@ -859,10 +934,10 @@ function InviteTeachers({ org }: { org: Org }) {
     if (!user || !list.length) return;
     const n = await inviteTeachers(org, list, { uid: user.uid, name: profile?.displayName || user.displayName || 'An admin' });
     setNote(`${n} ${n === 1 ? 'invitation' : 'invitations'} on the way. Emails go out within 15 minutes.`);
-    setRows([{ name: '', email: '', title: '' }]);
+    setRows([blank]);
     setText('');
   };
-  const set = (i: number, k: 'name' | 'email' | 'title', v: string) => setRows((r) => { const n = r.map((x, j) => (j === i ? { ...x, [k]: v } : x)); return i === n.length - 1 && v ? [...n, { name: '', email: '', title: '' }] : n; });
+  const set = (i: number, k: 'name' | 'email' | 'title' | 'admin', v: string | boolean) => setRows((r) => { const n = r.map((x, j) => (j === i ? { ...x, [k]: v } : x)); return i === n.length - 1 && typeof v === 'string' && v ? [...n, blank] : n; });
   return (
     <div className="adm-invite">
       <span className="adm-head">
@@ -874,7 +949,15 @@ function InviteTeachers({ org }: { org: Org }) {
       </span>
       <span className="hint">New teachers get a link to finish their account. Teachers who already have one are asked if they would like to join, with what you can set and see.</span>
       {paste ? (
-        <textarea className="adm-paste" rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Name, email, job title: one teacher a line\nSofia Rossi, sofia@school.org, Senior teacher\nTariq Aziz, tariq@school.org'} />
+        <>
+          <textarea className="adm-paste" rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder={'Name, email, job title: one teacher a line\nSofia Rossi, sofia@school.org, Senior teacher\nTariq Aziz, tariq@school.org'} />
+          {owner && (
+            <label className="adm-inv-admin">
+              <input type="checkbox" checked={pasteAdmin} onChange={(e) => setPasteAdmin(e.target.checked)} />
+              Invite them all as admins
+            </label>
+          )}
+        </>
       ) : (
         <div className="adm-inv-rows">
           {rows.map((r, i) => (
@@ -882,6 +965,12 @@ function InviteTeachers({ org }: { org: Org }) {
               <input value={r.name} onChange={(e) => set(i, 'name', e.target.value)} placeholder="Name" aria-label="Name" />
               <input type="email" value={r.email} onChange={(e) => set(i, 'email', e.target.value)} placeholder="Email" aria-label="Email" />
               <input value={r.title} onChange={(e) => set(i, 'title', e.target.value)} placeholder="Job title (optional)" aria-label="Job title" />
+              {owner && (
+                <label className="adm-inv-admin" data-tip="Admins are teachers too, with the Organisation admin app">
+                  <input type="checkbox" checked={r.admin} onChange={(e) => set(i, 'admin', e.target.checked)} />
+                  Admin
+                </label>
+              )}
             </span>
           ))}
         </div>
@@ -903,7 +992,8 @@ function InviteTeachers({ org }: { org: Org }) {
                 <span className="hint">
                   {' '}
                   · {i.email}
-                  {i.title ? ` · ${i.title}` : ''} · {i.mailed ? (i.existing ? 'Asked to join' : 'Finishing their account') : 'Email on the way'}
+                  {i.title ? ` · ${i.title}` : ''}
+                  {i.admin ? ' · Admin' : ''} · {i.mailed ? (i.existing ? 'Asked to join' : 'Finishing their account') : 'Email on the way'}
                 </span>
               </span>
               <span className="adm-inv-acts">

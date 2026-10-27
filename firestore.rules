@@ -17,6 +17,8 @@ service cloud.firestore {
     function coRole(c) { return c.get('coTeachers', {}).get(request.auth.uid, {}).get('role', ''); }
     function teachesClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) == 'co'); }
     function viewsClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) in ['co', 'viewer']); }
+    // An admin of the organisation a class belongs to: manages its learners, not its lessons.
+    function runsClass(classId) { return signedIn() && classData(classId).get('org', null) is string && adminOfOrg(classData(classId).org); }
     function ownsClass(classId) { return signedIn() && classData(classId).teacherId == request.auth.uid; }
     function myEmailKey() { return request.auth.token.get('email', '').lower().replace('[.]', ','); }
     // A colleague a lesson is shared with: they edit that lesson only.
@@ -40,10 +42,10 @@ service cloud.firestore {
       allow read: if isSelf(uid) || isOwner()
         || (signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId));
       allow create: if (isSelf(uid) && !learnerAccount() && request.resource.data.role == 'teacher')
-        || (request.resource.data.role == 'learner' && isTeacher() && teachesClass(request.resource.data.classId));
+        || (request.resource.data.role == 'learner' && isTeacher() && (teachesClass(request.resource.data.classId) || runsClass(request.resource.data.classId)));
       allow update: if isSelf(uid) && request.resource.data.role == resource.data.role
         && request.resource.data.get('classId', null) == resource.data.get('classId', null);
-      allow delete: if signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId);
+      allow delete: if signedIn() && resource.data.role == 'learner' && (teachesClass(resource.data.classId) || runsClass(resource.data.classId));
 
       // A teacher's personal question bank
       match /bank/{bankId} {
@@ -87,7 +89,7 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if isOwner() || signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
+      allow read: if isOwner() || (signedIn() && resource.data.get('org', null) is string && adminOfOrg(resource.data.org)) || signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
         || request.auth.uid in resource.data.get('coTeachers', {})
         || request.auth.uid in resource.data.get('teacherIds', [])
         || request.auth.uid in resource.data.get('lessonEditorIds', [])
@@ -101,6 +103,8 @@ service cloud.firestore {
         && request.resource.data.classCode == resource.data.classCode
         && (
           resource.data.teacherId == request.auth.uid
+          // an organisation admin adding or removing learners: only the count changes
+          || (resource.data.get('org', null) is string && adminOfOrg(resource.data.org) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['learnerCount']))
           // a co-teacher may change anything except who has access
           || (coRole(resource.data) == 'co' && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['coTeachers', 'teacherIds', 'invites', 'inviteEmails']))
           // an invited teacher accepts (or declines) their own invitation
@@ -425,12 +429,12 @@ service cloud.firestore {
 
       // Roster: teacher only
       match /learners/{learnerId} {
-        allow read: if viewsClass(classId);
-        allow write: if teachesClass(classId);
+        allow read: if viewsClass(classId) || runsClass(classId);
+        allow write: if teachesClass(classId) || runsClass(classId);
       }
       match /secrets/{learnerId} {
-        allow read: if teachesClass(classId);
-        allow write: if teachesClass(classId);
+        allow read: if teachesClass(classId) || runsClass(classId);
+        allow write: if teachesClass(classId) || runsClass(classId);
         // A learner who sets their own PIN or password replaces the record with a note that
         // says so; the PIN itself is never written, so the teacher cannot see it.
         allow create, update: if memberOf(classId)
@@ -439,8 +443,8 @@ service cloud.firestore {
           && request.resource.data.own == true;
       }
       match /members/{memberUid} {
-        allow read: if viewsClass(classId) || isSelf(memberUid);
-        allow write: if teachesClass(classId);
+        allow read: if viewsClass(classId) || isSelf(memberUid) || runsClass(classId);
+        allow write: if teachesClass(classId) || runsClass(classId);
       }
     }
 
@@ -559,7 +563,7 @@ service cloud.firestore {
     match /orgInvites/{id} {
       allow get: if true;
       allow list: if isOwner() || adminOfOrg(resource.data.org);
-      allow create: if (isOwner() || adminOfOrg(request.resource.data.org)) && request.resource.data.status == 'pending' && request.resource.data.email is string && request.resource.data.by == request.auth.uid;
+      allow create: if (isOwner() || (adminOfOrg(request.resource.data.org) && request.resource.data.get('admin', false) == false)) && request.resource.data.status == 'pending' && request.resource.data.email is string && request.resource.data.by == request.auth.uid;
       allow update: if isOwner() || adminOfOrg(resource.data.org)
         || (signedIn() && resource.data.status == 'pending' && resource.data.email == request.auth.token.get('email', '').lower()
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'uid', 'answeredAt'])
@@ -575,9 +579,13 @@ service cloud.firestore {
       allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
       // A teacher saying yes to an invitation adds themselves, and only themselves.
       allow update: if signedIn() && !(request.auth.uid in resource.data.get('teachers', {}))
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teachers'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teachers', 'adminEmails'])
         && request.resource.data.teachers.diff(resource.data.get('teachers', {})).affectedKeys().hasOnly([request.auth.uid])
-        && invitedTo(request.resource.data.teachers[request.auth.uid].get('invite', null), id);
+        && invitedTo(request.resource.data.teachers[request.auth.uid].get('invite', null), id)
+        // invited as an admin: they add their own email to the admins, and nothing else
+        && (request.resource.data.get('adminEmails', []) == resource.data.get('adminEmails', [])
+            || (get(/databases/$(database)/documents/orgInvites/$(request.resource.data.teachers[request.auth.uid].invite)).data.get('admin', false) == true
+                && request.resource.data.adminEmails == resource.data.get('adminEmails', []).concat([request.auth.token.get('email', '').lower()])));
     }
     // A teacher's profile for the colleagues in their organisation.
     match /teacherProfiles/{uid} {
@@ -671,7 +679,7 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
       allow create: if (isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId);
-      allow update: if signedIn() && (resource.data.teacherId == request.auth.uid || teachesClass(resource.data.classId))
+      allow update: if signedIn() && (resource.data.teacherId == request.auth.uid || teachesClass(resource.data.classId) || runsClass(resource.data.classId))
         && request.resource.data.teacherId == resource.data.teacherId;
       allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
     }

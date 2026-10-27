@@ -130,7 +130,8 @@ function Answer({ inv, me }: { inv: OrgInvite; me: { uid: string; email: string;
       <h1>Join {inv.orgName}?</h1>
       <p>
         {inv.byName || 'An admin'} would like you to join {inv.orgName}
-        {inv.title ? `, as ${inv.title}` : ''}. Your classes, lessons and files stay yours.
+        {inv.title ? `, as ${inv.title}` : ''}
+        {inv.admin ? ', and to be one of its admins, with the Organisation admin app' : ''}. Your classes, lessons and files stay yours.
       </p>
       <What inv={inv} />
       {error && (

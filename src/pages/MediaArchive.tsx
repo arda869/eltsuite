@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useSpaceLimit } from '../lib/admin';
+import { useSpaceLimit, noteSpace } from '../lib/admin';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
 import { shareLesson, unshareLesson, useClassLessons, type ClassLesson } from '../lib/classFiles';
@@ -199,6 +199,7 @@ export function MediaArchive() {
   const myDocs = myDocsTop;
   const docBytes = (myDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
   const total = all.reduce((s, i) => s + spaceOf(i), 0) + docBytes;
+  useEffect(() => void (uid && items !== null && myDocs !== null && noteSpace(uid, total)), [uid, items, myDocs, total]);
 
   // ---------------------------------------------------------------- selecting
   // Click selects one, Ctrl/Cmd or Shift click adds, and dragging on the empty space draws a box

@@ -1,4 +1,4 @@
-import { useMyOrg } from '../lib/admin';
+import { emailChoicesOf, nameChoicesOf, useMyOrg } from '../lib/admin';
 import { tr } from '../lib/terms';
 import { useEffect, useState, type FormEvent } from 'react';
 import { LevelPicker } from './LevelPicker';
@@ -38,11 +38,14 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [msgMode, setMsgMode] = useState<MessagingMode>(c.messaging?.mode ?? 'free');
   const [photos, setPhotos] = useState(c.profile?.photos === true);
   const org = useMyOrg();
-  const orgNames = org?.policy?.names;
-  const orgEmail = org?.policy?.learnerEmails ? ({ none: 'off', optional: 'optional', required: 'required' } as const)[org.policy.learnerEmails] : undefined;
-  const [names, setNames] = useState<NameShow>(orgNames ?? c.profile?.names ?? 'full');
+  // What the organisation lets its teachers choose from.
+  const nameOk = nameChoicesOf(org?.policy);
+  const emailOk = emailChoicesOf(org?.policy);
+  const orgNames = org && nameOk.length < 4;
+  const orgEmail = org && emailOk.length < 3;
+  const [names, setNames] = useState<NameShow>(c.profile?.names && nameOk.includes(c.profile.names) ? c.profile.names : nameOk.includes('full') ? 'full' : nameOk[0]);
   const [nicks, setNicks] = useState<Record<string, string>>(c.nicknames ?? {});
-  const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(orgEmail ?? c.accounts?.email ?? 'optional');
+  const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(c.accounts?.email && emailOk.includes(c.accounts.email) ? c.accounts.email : emailOk.includes('optional') ? 'optional' : emailOk[0]);
   const [tools, setTools] = useState<Record<string, boolean>>(() => Object.fromEntries(LEARNER_TOOLS.map((t) => [t.k, learnerToolOn(t.k, c.learnerTools)])));
   const [showTools, setShowTools] = useState(false);
   const [kind, setKind] = useState<'language' | 'training'>(c.kind ?? 'language');
@@ -241,13 +244,13 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           <label className="cs-row">
             <span>
               Names other learners see
-              <span className="hint">{orgNames ? `Set by ${org?.name}` : 'You always see full names'}</span>
+              <span className="hint">{orgNames ? (nameOk.length === 1 ? `Set by ${org?.name}` : `${org?.name} chooses which ways you can use`) : 'You always see full names'}</span>
             </span>
-            <select value={names} disabled={!!orgNames} onChange={(e) => setNames(e.target.value as NameShow)}>
-              <option value="first">First name only (Anna)</option>
-              <option value="initial">First name and initial (Anna S.)</option>
-              <option value="full">Full name (Anna Silva)</option>
-              <option value="nick">{tr('A nickname I give each learner')}</option>
+            <select value={names} disabled={nameOk.length === 1} onChange={(e) => setNames(e.target.value as NameShow)}>
+              {nameOk.includes('first') && <option value="first">First name only (Anna)</option>}
+              {nameOk.includes('initial') && <option value="initial">First name and initial (Anna S.)</option>}
+              {nameOk.includes('full') && <option value="full">Full name (Anna Silva)</option>}
+              {nameOk.includes('nick') && <option value="nick">{tr('A nickname I give each learner')}</option>}
             </select>
           </label>
           {names === 'nick' && (
@@ -272,11 +275,11 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               Email and Google sign-in
               <span className="hint">{tr('Learners can link their account to sign in with Google, and add an email for message summaries')}</span>
             </span>
-            {orgEmail && <span className="hint cs-org">Set by {org?.name}</span>}
-            <select value={emailLink} disabled={!!orgEmail} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
-              <option value="off">Not for this class</option>
-              <option value="optional">{tr('Learners can if they want')}</option>
-              <option value="required">{tr('Every learner must')}</option>
+            {orgEmail && <span className="hint cs-org">{emailOk.length === 1 ? `Set by ${org?.name}` : `${org?.name} chooses which you can use`}</span>}
+            <select value={emailLink} disabled={emailOk.length === 1} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
+              {emailOk.includes('off') && <option value="off">Not for this class</option>}
+              {emailOk.includes('optional') && <option value="optional">{tr('Learners can if they want')}</option>}
+              {emailOk.includes('required') && <option value="required">{tr('Every learner must')}</option>}
             </select>
           </label>
           <div className="cs-row cs-tools-row">

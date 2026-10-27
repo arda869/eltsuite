@@ -182,7 +182,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   QR_ON = opts.qr !== false;
   // An organisation's teachers print with its logo and colour.
   const org = currentOrg();
-  const brandLogo = org?.brand?.logo || '';
+  const brandLogo = org?.brand?.wide || org?.brand?.logo || '';
   const accent = org?.brand?.color || opts.accent || '#d98f63';
   const brandName = org?.name ?? '';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;

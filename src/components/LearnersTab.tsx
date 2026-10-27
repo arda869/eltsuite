@@ -15,8 +15,9 @@ import { useAuth } from '../lib/auth';
 import { useMyOrg } from '../lib/admin';
 import { openChat, sendMsg, type Chat } from '../lib/chat';
 
-export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = '', onOpen }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string>; items?: Item[]; openId?: string; onOpen?: (id: string) => void }) {
-  const presence = usePresence(c.id);
+// manage: an organisation admin's view: add and remove learners and their PINs, nothing of their work.
+export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = '', onOpen, manage = false }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string>; items?: Item[]; openId?: string; onOpen?: (id: string) => void; manage?: boolean }) {
+  const presence = usePresence(manage ? '' : c.id);
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
   const [names, setNames] = useState('');
@@ -157,7 +158,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
               <thead>
                 <tr>
                   <th>{tr('Learner')}</th>
-                  <th>Languages</th>
+                  {!manage && <th>Languages</th>}
                   <th>PIN</th>
                   <th>
                     <span className="sr">Actions</span>
@@ -173,7 +174,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                         const on = p ? isOnline(p) : false;
                         const at = p?.at?.toMillis?.() ?? 0;
                         return (
-                          <button type="button" className="who-cell who-open" onClick={() => onOpen?.(l.id)} title={`See ${l.displayName.split(' ')[0]}’s activity`}>
+                          <button type="button" className="who-cell who-open" disabled={manage} onClick={() => onOpen?.(l.id)} title={`See ${l.displayName.split(' ')[0]}’s activity`}>
                             <span className="avatar small" aria-hidden="true">
                               {initials(l.displayName)}
                               {on && <i className="who-on" />}
@@ -186,9 +187,9 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                         );
                       })()}
                     </td>
-                    <td>
+                    {!manage && <td>
                       <LangChips classId={c.id} learner={l} all={learners} />
-                    </td>
+                    </td>}
                     <td>
                       {own[l.id] ? (
                         <span className="hint" title={tr('The learner chose their own, so you cannot see or reset it. If they forget it, resetting needs the Phase 5 server; removing and re-adding them starts a new account without their work.')}>
@@ -204,9 +205,9 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                       )}
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button className="btn small-btn" disabled={!pins[l.id]} title={tr('Open a new tab signed in as this learner')} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
+                      {!manage && <button className="btn small-btn" disabled={!pins[l.id]} title={tr('Open a new tab signed in as this learner')} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
                         View as {l.displayName.split(' ')[0]}
-                      </button>
+                      </button>}
                       <button
                         type="button"
                         className="icon-btn lt-more"
