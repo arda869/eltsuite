@@ -141,10 +141,29 @@ function NoteBox({ value, onSave, placeholder }: { value: JSONContent | null | u
   );
 }
 
+// The kind of source, as a small symbol.
+const TYPE_D: Record<string, string> = {
+  book: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19',
+  chapter: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM9 8h6M9 11h6',
+  article: 'M6 3h9l4 4v14H6zM9 10h7M9 13.5h7M9 17h5',
+  web: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3.5 12h17M12 3c2.5 2.6 3.6 5.6 3.6 9s-1.1 6.4-3.6 9c-2.5-2.6-3.6-5.6-3.6-9S9.5 5.6 12 3z',
+  report: 'M6 3h12v18H6zM9 15v2M12 12v5M15 9v8',
+};
+function TypeIcon({ t, size = 16 }: { t: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={TYPE_D[t] ?? TYPE_D.book} />
+    </svg>
+  );
+}
+const authorLine = (s: Source) => (s.org ? s.org : s.authors.map((a) => [a.first, a.last].filter(Boolean).join(' ')).filter(Boolean).join(', ')) || 'No author';
+
 export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: CiteStyle } }; canEdit: boolean }) {
   const list = useSources(d.id);
   const style: CiteStyle = d.pd?.style ?? 'apa';
   const [sel, setSel] = useState('');
+  const [q, setQ] = useState('');
+  const [copied, setCopied] = useState('');
   const [editing, setEditing] = useState<(Omit<ReadSource, 'id'> & { id?: string }) | null>(null);
   useEffect(() => {
     if (list && !sel && list[0]) setSel(list[0].id);
@@ -159,11 +178,45 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
     setEditing(null);
   };
   const patch = (p: Partial<ReadSource>) => cur && void updateDoc(doc(srcCol(d.id), cur.id), JSON.parse(JSON.stringify(p)));
+  const copy = (what: string, text: string) => {
+    void navigator.clipboard?.writeText(text);
+    setCopied(what);
+    window.setTimeout(() => setCopied(''), 1400);
+  };
   if (!list) return <div className="dp-msg">Opening your reading…</div>;
   const sections = cur?.sections?.length ? cur.sections : [{ id: 's1', page: '', content: null }];
+  const words = q.trim().toLowerCase();
+  const shown = [...list].sort((a, b) => sortKey(a).localeCompare(sortKey(b))).filter((s) => !words || `${shortName(s)} ${s.title} ${authorLine(s)} ${s.year}`.toLowerCase().includes(words));
+  const startNew = (t: SourceType) => setEditing({ ...blank(), type: t });
   return (
     <div className="pd">
-      <aside className="pd-side">
+      <aside className="pd-side" aria-label="Sources">
+        <div className="pd-side-top">
+          <span className="pd-side-h">
+            <b>Sources</b>
+            <span className="hint">{list.length}</span>
+          </span>
+          {canEdit && (
+            <button type="button" className="btn small-btn primary" onClick={() => setEditing(blank())}>
+              + Add
+            </button>
+          )}
+        </div>
+        {list.length > 4 && <input className="pd-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your reading" aria-label="Search your reading" />}
+        <nav className="pd-list">
+          {shown.map((s) => (
+            <button key={s.id} type="button" className={'pd-item' + (s.id === sel && !editing ? ' on' : '')} onClick={() => (setSel(s.id), setEditing(null))}>
+              <span className="pd-item-ic">
+                <TypeIcon t={s.type} />
+              </span>
+              <span className="pd-item-t">
+                <b>{shortName(s)}</b>
+                <span>{s.title || 'Untitled'}</span>
+              </span>
+            </button>
+          ))}
+          {!list.length && <span className="hint pd-none">Your books, chapters, articles and web pages appear here.</span>}
+        </nav>
         <label className="pd-style">
           <span className="pd-k">Citation style</span>
           <select value={style} disabled={!canEdit} onChange={(e) => void updateDoc(doc(db, 'sharedDocs', d.id), { pd: { style: e.target.value } })}>
@@ -175,84 +228,105 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
           </select>
           <span className="hint">{CITE_STYLES.find((c) => c.k === style)?.about}</span>
         </label>
-        <span className="pd-k">Sources</span>
-        <nav className="pd-list" aria-label="Sources">
-          {[...list]
-            .sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
-            .map((s) => (
-              <button key={s.id} type="button" className={'pd-item' + (s.id === sel && !editing ? ' on' : '')} onClick={() => (setSel(s.id), setEditing(null))}>
-                <b>{shortName(s)}</b>
-                <span>{s.title}</span>
-              </button>
-            ))}
-          {!list.length && <span className="hint">No sources yet.</span>}
-        </nav>
-        {canEdit && (
-          <button type="button" className="btn primary" onClick={() => setEditing(blank())}>
-            + Add a source
-          </button>
-        )}
       </aside>
       <main className="pd-main">
         {editing ? (
-          <SourceForm init={editing} style={style} onSave={(s) => void save(s)} onCancel={() => setEditing(null)} />
+          <div className="pd-sheet">
+            <span className="pd-sheet-h">
+              <b>{editing.id ? 'Edit the details' : 'A new source'}</b>
+              <span className="hint">Fill in what you have. The reference below is written as you type.</span>
+            </span>
+            <SourceForm init={editing} style={style} onSave={(s) => void save(s)} onCancel={() => setEditing(null)} />
+          </div>
         ) : cur ? (
-          <>
-            <div className="pd-head">
-              <Ref s={cur} style={style} />
-              <span className="pd-head-acts">
-                <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(piecesText(reference(cur, style)))}>
-                  Copy the reference
-                </button>
-                {canEdit && (
-                  <>
-                    <button type="button" className="btn small-btn" onClick={() => setEditing(cur)}>
-                      Edit the details
-                    </button>
-                    <button type="button" className="btn link small" onClick={() => void ask(`Delete ${shortName(cur)} and its notes?`).then((ok) => ok && void deleteDoc(doc(srcCol(d.id), cur.id)).then(() => setSel('')))}>
-                      Delete
-                    </button>
-                  </>
-                )}
+          <article className="pd-reading">
+            <header className="pd-cover">
+              <span className="pd-type">
+                <TypeIcon t={cur.type} size={14} /> {SOURCE_TYPES.find((x) => x.k === cur.type)?.label}
+                {cur.year ? ` · ${cur.year}` : ''}
               </span>
-            </div>
-            <label className="switch-row pd-paged">
-              <span>
-                Notes with page numbers
-                <span className="hint">Each page you read gets its own section, so you can quote it with the page</span>
-              </span>
-              <input type="checkbox" checked={!!cur.paged} disabled={!canEdit} onChange={() => patch({ paged: !cur.paged })} />
-            </label>
-            {cur.paged ? (
-              <div className="pd-sections">
-                {sections.map((sec, i) => (
-                  <section key={cur.id + sec.id} className="pd-sec">
-                    <label className="pd-page">
-                      <span>p.</span>
-                      <input value={sec.page} placeholder="12" disabled={!canEdit} onChange={(e) => patch({ sections: sections.map((x, k) => (k === i ? { ...x, page: e.target.value } : x)) })} aria-label="Page" />
-                    </label>
-                    <NoteBox value={sec.content} placeholder="Your notes on this page" onSave={(c) => patch({ sections: sections.map((x, k) => (k === i ? { ...x, content: c } : x)) })} />
-                    {canEdit && sections.length > 1 && (
-                      <button type="button" className="icon-btn pd-sec-x" aria-label="Remove this page" onClick={() => patch({ sections: sections.filter((_, k) => k !== i) })}>
-                        ×
-                      </button>
-                    )}
-                  </section>
-                ))}
-                {canEdit && (
-                  <button type="button" className="btn pd-newpage" onClick={() => patch({ sections: [...sections, { id: newId(), page: String((parseInt(sections[sections.length - 1]?.page, 10) || 0) + 1 || ''), content: null }] })}>
-                    + A new page
+              <h1 className="pd-title">{cur.title || 'Untitled'}</h1>
+              <span className="pd-by">{authorLine(cur)}</span>
+              <div className="pd-cite-box">
+                <span className="pd-k">Reference · {CITE_STYLES.find((x) => x.k === style)?.label}</span>
+                <Ref s={cur} style={style} />
+                <span className="pd-cite-acts">
+                  <button type="button" className="btn small-btn" onClick={() => copy('ref', piecesText(reference(cur, style)))}>
+                    {copied === 'ref' ? 'Copied' : 'Copy the reference'}
                   </button>
-                )}
+                  <button type="button" className="btn small-btn pd-intext" onClick={() => copy('in', inText(cur, style))} data-tip="Copy the citation for the text">
+                    {copied === 'in' ? 'Copied' : inText(cur, style)}
+                  </button>
+                  <span style={{ flex: 1 }} />
+                  {canEdit && (
+                    <>
+                      <button type="button" className="btn small-btn" onClick={() => setEditing(cur)}>
+                        Edit the details
+                      </button>
+                      <button type="button" className="btn link small" onClick={() => void ask(`Delete ${shortName(cur)} and its notes?`).then((ok) => ok && void deleteDoc(doc(srcCol(d.id), cur.id)).then(() => setSel('')))}>
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </span>
               </div>
-            ) : (
-              <NoteBox key={cur.id} value={cur.notes} placeholder="Your notes on this source" onSave={(c) => patch({ notes: c })} />
-            )}
-          </>
+            </header>
+            <section className="pd-notes">
+              <span className="pd-notes-h">
+                <b>Notes</b>
+                <span className="seg small-seg" role="radiogroup" aria-label="How the notes are kept">
+                  <button type="button" role="radio" aria-checked={!cur.paged} className={!cur.paged ? 'on' : ''} disabled={!canEdit} onClick={() => cur.paged && patch({ paged: false })}>
+                    One page of notes
+                  </button>
+                  <button type="button" role="radio" aria-checked={!!cur.paged} className={cur.paged ? 'on' : ''} disabled={!canEdit} onClick={() => !cur.paged && patch({ paged: true })} data-tip="Each page you read gets its own notes, so you can quote it with the page">
+                    Page by page
+                  </button>
+                </span>
+              </span>
+              {cur.paged ? (
+                <div className="pd-sections">
+                  {sections.map((sec, i) => (
+                    <section key={cur.id + sec.id} className="pd-sec">
+                      <label className="pd-page">
+                        <span>p.</span>
+                        <input value={sec.page} placeholder="12" disabled={!canEdit} onChange={(e) => patch({ sections: sections.map((x, k) => (k === i ? { ...x, page: e.target.value } : x)) })} aria-label="Page" />
+                      </label>
+                      <NoteBox value={sec.content} placeholder="Your notes on this page" onSave={(c) => patch({ sections: sections.map((x, k) => (k === i ? { ...x, content: c } : x)) })} />
+                      {canEdit && sections.length > 1 && (
+                        <button type="button" className="icon-btn pd-sec-x" aria-label="Remove this page" onClick={() => patch({ sections: sections.filter((_, k) => k !== i) })}>
+                          ×
+                        </button>
+                      )}
+                    </section>
+                  ))}
+                  {canEdit && (
+                    <button type="button" className="btn small-btn pd-newpage" onClick={() => patch({ sections: [...sections, { id: newId(), page: String((parseInt(sections[sections.length - 1]?.page, 10) || 0) + 1 || ''), content: null }] })}>
+                      + Next page
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <NoteBox key={cur.id} value={cur.notes} placeholder="Your notes on this source: key ideas, quotations with their pages, how it links to your teaching" onSave={(c) => patch({ notes: c })} />
+              )}
+            </section>
+          </article>
         ) : (
-          <div className="ma-empty">
-            <strong>Add the first source</strong>
-            <span className="hint">A book, a chapter, an article or a web page. Its reference is written for you in the style you choose, and your documents can cite it.</span>
+          <div className="pd-empty">
+            <span className="pd-empty-ic">
+              <TypeIcon t="book" size={34} />
+            </span>
+            <strong>Start your reading list</strong>
+            <span className="hint">Add what you read for your course or your own development. Each source gets its reference in the style you choose, and your collab documents can cite it.</span>
+            {canEdit && (
+              <span className="pd-empty-acts">
+                {(['book', 'chapter', 'article', 'web'] as SourceType[]).map((t) => (
+                  <button key={t} type="button" className="pd-start" onClick={() => startNew(t)}>
+                    <TypeIcon t={t} size={22} />
+                    <span>{SOURCE_TYPES.find((x) => x.k === t)?.label}</span>
+                  </button>
+                ))}
+              </span>
+            )}
           </div>
         )}
       </main>
