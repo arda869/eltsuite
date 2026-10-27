@@ -5,7 +5,7 @@ import { favAdds, onFavs, toggleFav } from '../lib/slashUse';
 // explanation and a picture of what learners see. The / menu stays for quick typing.
 
 export type GalleryCmd = { key: string; label: string; hint: string };
-type Section = { title: string; blurb: string; keys: string[] };
+export type Section = { title: string; blurb: string; keys: string[] };
 
 const SECTIONS: Section[] = [
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
@@ -757,7 +757,7 @@ const Star = ({ on }: { on?: boolean }) => (
   </svg>
 );
 
-export function InsertGallery({ commands, onPick, onClose }: { commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void }) {
+export function InsertGallery({ commands, onPick, onClose, sections: secs = SECTIONS, title = 'Add to the task' }: { commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void; sections?: Section[]; title?: string }) {
   const [q, setQ] = useState('');
   const byKey = useMemo(() => Object.fromEntries(commands.map((c) => [c.key, c])), [commands]);
   const [favs, setFavs] = useState<string[]>(() => favAdds());
@@ -771,13 +771,13 @@ export function InsertGallery({ commands, onPick, onClose }: { commands: Gallery
   }, [onClose]);
   const query = q.trim().toLowerCase();
   const favSec: Section = { title: 'Favourites', blurb: 'The elements you starred. Star any element to keep it here.', keys: favs };
-  const sections = [favSec, ...SECTIONS].map((s) => ({ ...s, items: s.keys.map((k) => byKey[k]).filter(Boolean).filter((c) => !query || `${c.label} ${c.hint} ${ABOUT[c.key] ?? ''}`.toLowerCase().includes(query)) })).filter((s) => s.items.length);
-  const shown = query ? sections.filter((s) => s.title !== 'Favourites') : sections.filter((s) => s.title === (section === -1 ? 'Favourites' : SECTIONS[section]?.title));
+  const sections = [favSec, ...secs].map((s) => ({ ...s, items: s.keys.map((k) => byKey[k]).filter(Boolean).filter((c) => !query || `${c.label} ${c.hint} ${ABOUT[c.key] ?? ''}`.toLowerCase().includes(query)) })).filter((s) => s.items.length);
+  const shown = query ? sections.filter((s) => s.title !== 'Favourites') : sections.filter((s) => s.title === (section === -1 ? 'Favourites' : secs[section]?.title));
   return (
     <div className="scrim" onClick={onClose}>
-      <div className="dialog wide gallery" role="dialog" aria-label="Add to the task" onClick={(e) => e.stopPropagation()}>
+      <div className="dialog wide gallery" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="gallery-head">
-          <h2 style={{ margin: 0 }}>Add to the task</h2>
+          <h2 style={{ margin: 0 }}>{title}</h2>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search, for example “match” or “listen”" aria-label="Search" autoFocus />
           <button type="button" className="btn small-btn" onClick={onClose}>
             Close
@@ -791,7 +791,7 @@ export function InsertGallery({ commands, onPick, onClose }: { commands: Gallery
                 Favourites
                 <span className="hint">{favs.filter((k) => byKey[k]).length}</span>
               </button>
-              {SECTIONS.map((s, i) => !s.keys.some((k) => byKey[k]) ? null : (
+              {secs.map((s, i) => !s.keys.some((k) => byKey[k]) ? null : (
                 <button key={s.title} type="button" className={section === i ? 'on' : ''} onClick={() => setSection(i)}>
                   {s.title}
                   <span className="hint">{s.keys.filter((k) => byKey[k]).length}</span>

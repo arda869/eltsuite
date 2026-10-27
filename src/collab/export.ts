@@ -70,7 +70,17 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
   return (n.content ?? []).map((c) => inlineHtml(c, o)).join('');
 }
 const align = (n: JSONContent) => (n.attrs?.textAlign && n.attrs.textAlign !== 'left' ? ` style="text-align:${n.attrs.textAlign}"` : '');
-function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent): string {
+// What the plain exporter writes itself; anything else (text boxes, timelines, sound cards,
+// pronunciation marks) is printed as it looks on screen.
+const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym']);
+const PLAIN_MARKS = new Set(['bold', 'italic', 'underline', 'strike', 'textColor', 'highlight', 'definition', 'suggestIns', 'suggestDel', 'comment', 'link']);
+export function plainOnly(n: JSONContent): boolean {
+  if (!PLAIN_BLOCKS.has(n.type ?? '')) return false;
+  if ((n.marks ?? []).some((m) => !PLAIN_MARKS.has(m.type))) return false;
+  return (n.content ?? []).every(plainOnly);
+}
+function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Element[]): string {
+  if (n.type === 'doc' && live) return (n.content ?? []).map((c, i) => (plainOnly(c) || !live[i] ? blockHtml(c, o, doc) : `<div class="live doc cd-doc"><div class="ProseMirror">${cleanLive(live[i])}</div></div>`)).join('');
   const kids = () => (n.content ?? []).map((c) => blockHtml(c, o, doc)).join('');
   const inl = () => (n.content ?? []).map((c) => inlineHtml(c, o)).join('');
   switch (n.type) {
@@ -100,6 +110,8 @@ function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent): string {
       return `<td>${kids()}</td>`;
     case 'image':
       return inlineHtml(n, o);
+    case 'horizontalRule':
+      return '<hr>';
     case 'refList':
       return `<h2 class="refs-h">${refsTitle(o.style)}</h2>${cited(doc)
         .map((s) => `<p class="ref">${reference(s, o.style).map((p) => (p.i ? `<i>${esc(p.t)}</i>` : esc(p.t))).join('')}</p>`)
@@ -109,12 +121,28 @@ function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent): string {
   }
 }
 
-export function printDoc(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) {
+// A block as it is on screen, without the editing controls.
+function cleanLive(el: Element): string {
+  const c = el.cloneNode(true) as HTMLElement;
+  c.querySelectorAll('button, .block-handle, .line-add, [data-no-print], .ProseMirror-widget, .collaboration-cursor__caret').forEach((x) => x.remove());
+  c.querySelectorAll('[contenteditable]').forEach((x) => x.removeAttribute('contenteditable'));
+  return c.outerHTML;
+}
+const appStyles = () =>
+  Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map((x) => x.outerHTML)
+    .join('');
+
+export function printDoc(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, liveRoot?: Element | null) {
+  const live = liveRoot ? Array.from(liveRoot.children) : undefined;
+  const needsApp = !!live && (json.content ?? []).some((c) => !plainOnly(c));
   const w = window.open('', '_blank');
   if (!w) return;
   const words = wordCount(json);
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title || 'Document')}</title>
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title || 'Document')}</title>${needsApp ? `<base href="${location.origin}/">${appStyles()}` : ''}
 <style>
+html, body { background: #fff !important; min-height: 0 !important; display: block !important; }
+.live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
 @page { size: A4; margin: 25mm 25mm; ${o.pageNumbers ? '@bottom-center { content: counter(page); }' : ''} }
 body { font: ${o.size}pt/${o.spacing} '${o.font}', Arial, sans-serif; color: #111; max-width: 160mm; margin: 0 auto; }
 h1 { font-size: ${o.size + 6}pt; margin: 0 0 6mm; text-align: center; } h2 { font-size: ${o.size + 3}pt; margin: 6mm 0 2mm; } h3 { font-size: ${o.size + 1}pt; margin: 5mm 0 2mm; } h4 { font-size: ${o.size}pt; font-style: italic; margin: 4mm 0 2mm; }
@@ -123,8 +151,8 @@ table { border-collapse: collapse; width: 100%; margin: 3mm 0; } td, th { border
 td p, th p { margin: 0; } img { max-width: 100%; }
 .ref { padding-left: 12.7mm; text-indent: -12.7mm; } .ipa { font-family: 'Lucida Sans Unicode', 'Segoe UI', sans-serif; }
 .defn { color: #666; } .wc { color: #555; font-size: ${o.size - 1}pt; margin-top: 8mm; }
-</style></head><body>${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}${o.wordCount ? `<p class="wc">Word count: ${words} (without the reference list)</p>` : ''}
-<script>setTimeout(() => print(), 300);</script></body></html>`);
+</style></head><body>${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json, live)}${o.wordCount ? `<p class="wc">Word count: ${words} (without the reference list)</p>` : ''}
+<script>setTimeout(() => print(), ${needsApp ? 900 : 300});</script></body></html>`);
   w.document.close();
 }
 
@@ -204,6 +232,12 @@ export async function downloadDocx(json: JSONContent, title: string, o: ExportOp
       }
       case 'blockquote':
         for (const c of n.content ?? []) out.push(para(runsOf(c.content, o), { indent: { left: 720 } }));
+        return;
+      case 'taskList':
+        for (const li of n.content ?? []) out.push(para([{ text: li.attrs?.checked ? '☑ ' : '☐ ' }, ...runsOf((li.content ?? [])[0]?.content, o)]));
+        return;
+      case 'horizontalRule':
+        out.push(new Paragraph({ spacing: { after: 160 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '999999', space: 1 } }, children: [] }));
         return;
       case 'table': {
         const rows = (n.content ?? []).map((r) => new TableRow({ children: (r.content ?? []).map((c) => new TableCell({ children: cellParas(c, c.type === 'tableHeader'), shading: c.type === 'tableHeader' ? { type: 'clear' as never, color: 'auto', fill: 'F0F0F0' } : undefined, margins: { top: 60, bottom: 60, left: 100, right: 100 } })) }));

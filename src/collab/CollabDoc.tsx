@@ -1,23 +1,28 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
 import { createPortal } from 'react-dom';
-import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
+import { BubbleMenu, EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
 import { onValue, push, set, update } from 'firebase/database';
-import { Highlight } from '../editor/Highlight';
-import { TextColor, TextColorTool } from '../editor/TextColor';
-import { Definition, DefinitionPop } from '../editor/Definition';
-import { Ipa, newIpa } from '../editor/Ipa';
-import { Stress, newStress } from '../editor/Stress';
-import { IconNode, IconTool } from '../editor/Icons';
-import { SymNode, SymbolTool } from '../editor/Symbols';
+import { HighlightTool } from '../editor/Highlight';
+import { DOC_CMDS, DOC_GROUPS, DOC_SECTIONS, DOC_NODES, PRON_KEYS, addPictures, pickPictures } from './docKit';
+import { SlashMenu, useSlash } from '../editor/TaskEditor';
+import { InsertGallery } from '../editor/InsertGallery';
+import { LineAdder } from '../editor/LineAdder';
+import { BlockHandles } from '../editor/BlockMenu';
+import { TableHandles } from '../editor/TableHandles';
+import { TableInsert } from '../editor/TableInsert';
+import { LinkPop } from '../editor/LessonLink';
+import { TextColorTool } from '../editor/TextColor';
+import { DefinitionPop } from '../editor/Definition';
+import { newIpa } from '../editor/Ipa';
+import { newStress } from '../editor/Stress';
+import { IconTool } from '../editor/Icons';
+import { SymbolTool } from '../editor/Symbols';
 import { EditorClassContext } from '../editor/context';
-import { LANG_MARKS } from '../editor/langMarks';
 import { ProsodyTool } from '../editor/Prosody';
 import { useToolGate } from '../lib/toolbarPrefs';
 import { newId } from '../lib/tasks';
@@ -25,14 +30,7 @@ import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
 import { downloadDocx, printDoc, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableHeader from '@tiptap/extension-table-header';
-import TableCell from '@tiptap/extension-table-cell';
-import Image from '@tiptap/extension-image';
-import TextAlign from '@tiptap/extension-text-align';
-import { CiteNode, CiteTool, RefListNode, useCiteStyle } from '../editor/Cite';
-import { imageToData } from '../lib/flash';
+import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
 
 // A document the class writes together, live: everyone's cursor and name, editing,
@@ -63,6 +61,8 @@ export type CollabProps = {
   display?: 'inline' | 'expand' | 'full';
   canDownload?: boolean;
   head?: ReactNode; // shown above the document (who it belongs to, a picker)
+  page?: boolean; // its own page, like a Loop page: a wide canvas, tools on selection and "/"
+  heading?: ReactNode; // the page title, at the top of the canvas
 };
 
 // Characters each person has written that are still in the document.
@@ -85,13 +85,13 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
   return out;
 }
 
-export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head }: CollabProps) {
+export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading }: CollabProps) {
   const session = useCollabSession(docKey, me.uid);
   if (!session) return <div className="cd cd-wait" />;
-  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head }} session={session} />;
+  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head, page, heading }} session={session} />;
 }
 
-function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, session }: CollabProps & { session: CollabSession }) {
+function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, session }: CollabProps & { session: CollabSession }) {
   const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   const allowed = (teacher ? (['edit', 'suggest', 'comment'] as CollabMode[]) : modes).filter(Boolean);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
@@ -107,7 +107,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [synced, setSynced] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const [big, setBig] = useState(display === 'full' ? false : false);
-  const imgRef = useRef<HTMLInputElement>(null);
+  const [gallery, setGallery] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [host, setHost] = useState<HTMLDivElement | null>(null);
   const citeStyle = useCiteStyle();
   const profileTeacher = useAuth().profile?.role === 'teacher';
   const [side, setSide] = useState<'none' | 'notes' | 'people'>('none');
@@ -122,39 +124,56 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({ history: false, heading: { levels: [1, 2, 3] }, codeBlock: false }),
-        Table.configure({ resizable: false }),
-        TableRow,
-        TableHeader,
-        TableCell,
-        Image.configure({ inline: false, allowBase64: true }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        CiteNode,
-        RefListNode,
-        Underline,
-        Highlight,
-        TextColor,
-        Definition,
-        Ipa,
-        Stress,
-        IconNode,
-        SymNode,
-        ...LANG_MARKS,
+        ...DOC_NODES,
         SuggestIns,
         SuggestDel,
         CommentMark,
         Suggestions.configure({ get: () => live.current }),
-        Placeholder.configure({ placeholder: 'Start writing…' }),
+        Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : 'Type / to add a heading, table, picture, IPA and more'), showOnlyCurrent: true }),
         Collaboration.configure({ document: session.doc }),
         CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color } }),
       ],
       editable: eff !== 'view',
-      editorProps: { attributes: { class: 'cd-text', spellcheck: 'true' } },
+      editorProps: {
+        attributes: { class: 'cd-text', spellcheck: 'true' },
+        handlePaste: (_v, e) => {
+          const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+          if (!files.length || !edRef.current) return false;
+          void addPictures(edRef.current, files);
+          return true;
+        },
+        handleDrop: (v, e) => {
+          const files = Array.from((e as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
+          if (!files.length || !edRef.current) return false;
+          e.preventDefault();
+          const at = v.posAtCoords({ left: (e as DragEvent).clientX, top: (e as DragEvent).clientY })?.pos;
+          void addPictures(edRef.current, files, at);
+          return true;
+        },
+      },
       onTransaction: () => tick((n) => n + 1),
     },
     [session],
   );
+  const edRef = useRef(editor);
+  edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
+  // The "/" menu: the lesson editor's elements, without learner tasks.
+  const docCmds = useMemo(() => DOC_CMDS.filter((c) => (profileTeacher || !c.key.startsWith('tt-')) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
+  const slash = useSlash(editor, docCmds, false, true, () => true);
+  // ⌘K: a link on the selected words.
+  useEffect(() => {
+    if (!editor) return;
+    const key = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && (!editor.state.selection.empty || editor.isActive('link'))) {
+        e.preventDefault();
+        setLinkOpen(true);
+      }
+    };
+    const dom = editor.view.dom;
+    dom.addEventListener('keydown', key);
+    return () => dom.removeEventListener('keydown', key);
+  }, [editor]);
 
   // Sync, the starting text, and who is here.
   useEffect(() => {
@@ -231,6 +250,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     </button>
   );
   const writing = eff === 'edit' || eff === 'suggest';
+  const showSide = side !== 'none' || !!draft || (!page && (sugg.length > 0 || open.length > 0));
   const counts = side === 'people' ? contributions(session.doc, session.pud) : null;
 
   const body = (
@@ -271,7 +291,19 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
-        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }))} />}
+        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }, editor.view.dom))} />}
+        {page && writing && (
+          <button type="button" className="btn small-btn cd-insert" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text.">
+            + Insert
+          </button>
+        )}
+        {page && writing && profileTeacher && <CiteTool editor={editor} />}
+        {page && (
+          <button type="button" className={'cd-icon cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
+            <UiIcon name="discuss" size={16} />
+            {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
+          </button>
+        )}
         <span className="cd-words" data-tip="Without the reference list">{wordCount(editor.getJSON())} words</span>
         {display !== 'inline' || big ? (
           <button type="button" className="cd-icon" onClick={() => setBig(!big)} aria-label={big ? 'Back to the task' : 'Full screen'} data-tip={big ? 'Back to the task (Esc)' : 'Full screen'}>
@@ -279,7 +311,39 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           </button>
         ) : null}
       </div>
-      {writing && (
+      {writing && page && (
+        <BubbleMenu editor={editor} tippyOptions={{ duration: 120, maxWidth: 'none', placement: 'top-start' }} shouldShow={({ editor: ed, state }) => ed.isEditable && !state.selection.empty && !ed.isActive('picture') && !ed.isActive('image') && state.selection.constructor.name !== 'NodeSelection'} className="cd-bubble">
+          <select
+            className="cd-bub-style"
+            aria-label="Paragraph style"
+            value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
+            onChange={(e) => {
+              const v = e.target.value;
+              const c = editor.chain().focus();
+              (v === 'p' ? c.setParagraph() : c.setHeading({ level: Number(v.slice(1)) as 1 | 2 | 3 })).run();
+            }}
+          >
+            <option value="p">Text</option>
+            <option value="h1">Heading 1</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+          </select>
+          {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
+          {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}
+          {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
+          {B(<s>S</s>, editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), 'Strikethrough')}
+          <TextColorTool editor={editor} />
+          <HighlightTool editor={editor} />
+          <span className="ne-sep" aria-hidden="true" />
+          {B(<UiIcon name="link" size={14} />, editor.isActive('link') || editor.isActive('lessonLink'), () => setLinkOpen(true), 'Link (Ctrl K)')}
+          {gate('definition') !== 'hide' && B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition')}
+          {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
+          {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
+          <span className="ne-sep" aria-hidden="true" />
+          {canComment && B(<UiIcon name="discuss" size={15} />, false, startComment, 'Comment')}
+        </BubbleMenu>
+      )}
+      {writing && !page && (
         <div className="ne-bar cd-bar" role="toolbar" aria-label="Formatting">
           {B('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
           {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}
@@ -316,8 +380,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             ),
           )}
           {gate('table') !== 'hide' && B(<UiIcon name="task" size={14} />, editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), 'Insert a table')}
-          {B(<UiIcon name="picture" size={14} />, false, () => imgRef.current?.click(), 'Insert a picture')}
-          <input ref={imgRef} type="file" accept="image/*" hidden onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) editor.chain().focus().setImage({ src: await imageToData(f, 1400) }).run(); }} />
+          {B(<UiIcon name="picture" size={14} />, false, () => pickPictures(editor), 'Insert a picture')}
           {profileTeacher && <CiteTool editor={editor} />}
           <span className="ne-sep" aria-hidden="true" />
           {gate('definition') !== 'hide' && B(
@@ -365,14 +428,21 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           )}
         </div>
       )}
-      <div className="cd-main">
+      <div className={'cd-main' + (page && !showSide ? ' no-side' : '')}>
         <div className="cd-page">
           {!synced && <span className="cd-sync">Opening the document…</span>}
+          {heading}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
-            <EditorContent editor={editor} />
+            <div className={'editor-host' + (page ? ' cd-host' : '')} ref={setHost}>
+              <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
+              {page && writing && <LineAdder editor={editor} host={host} />}
+              {page && writing && <BlockHandles editor={editor} host={host} space={classId} />}
+              {writing && <TableHandles editor={editor} host={host} />}
+              {writing && <TableInsert editor={editor} host={host} />}
+            </div>
           </EditorClassContext.Provider>
         </div>
-        <aside className={'cd-side' + (side === 'none' && !sugg.length && !open.length ? ' empty' : '')}>
+        {(!page || showSide) && <aside className={'cd-side' + (side === 'none' && !sugg.length && !open.length ? ' empty' : '')}>
           <span className="seg small-seg cd-tabs">
             <button type="button" className={side !== 'people' ? 'on' : ''} onClick={() => setSide('notes')}>
               Suggestions {sugg.length ? `(${sugg.length})` : ''} · Comments {open.length ? `(${open.length})` : ''}
@@ -467,9 +537,24 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
               {!sugg.length && !open.length && !draft && <span className="hint cd-none">{eff === 'suggest' ? 'Type to suggest a change. Others see it in your colour.' : 'Suggestions and comments show here.'}</span>}
             </>
           )}
-        </aside>
+        </aside>}
       </div>
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+      <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={[]} />
+      {writing && <SlashMenu editor={editor} slash={slash} groups={DOC_GROUPS} />}
+      {gallery && (
+        <InsertGallery
+          commands={docCmds}
+          sections={DOC_SECTIONS}
+          title="Add to the document"
+          onClose={() => setGallery(false)}
+          onPick={(key) => {
+            setGallery(false);
+            const c = docCmds.find((x) => x.key === key);
+            if (c) window.setTimeout(() => c.run(editor), 0);
+          }}
+        />
+      )}
     </div>
   );
   if (display === 'full' && !big)

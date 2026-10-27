@@ -81,11 +81,11 @@ function insertDropGap(e: Editor) {
   }
 }
 
-type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text' | 'Blocks' | 'More'; run: (e: Editor) => void };
+export type Cmd = { key: string; label: string; hint: string; group: 'Questions' | 'Text' | 'Blocks' | 'More' | 'Basic' | 'Media' | 'Writing' | 'Language' | 'Training'; run: (e: Editor) => void };
 
 const BLOCK_CMDS: Cmd[] = BLOCKS.map((b) => ({ key: 'b-' + b.key, label: b.label, hint: b.hint, group: 'Blocks', run: (e) => e.chain().focus().insertContent([...b.make(), { type: 'paragraph' }]).run() }));
 
-const COMMANDS: Cmd[] = [
+export const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
   { key: 'lettergap', label: 'Letter gaps', hint: 'One line per letter, for a word or a whole sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, letters: true } }).run() },
   { key: 'wordform', label: 'Word formation', hint: 'A gap with the stem word in capitals beside it', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, stem: 'WORD' } }).run() },
@@ -207,7 +207,7 @@ const COMMANDS: Cmd[] = [
 // Writing that is not a task (an email): only text tools, no questions or task elements.
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
 const TEXT_ONLY = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
-function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false) {
+export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false, only?: (c: Cmd) => boolean) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
   const [all, setAll] = useState(false);
@@ -248,14 +248,14 @@ function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, tr
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      const fit = [...COMMANDS, ...extra].filter((c) => training || !c.key.startsWith('tt-')).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
+      const fit = (only ? extra.filter(only) : [...COMMANDS, ...extra]).filter((c) => training || !c.key.startsWith('tt-')).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
       const q = state.query.trim();
       if (q) return fit.filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(q));
       // Just "/": the teacher's three most used, then "Show all".
       if (!all && fit.length > 4) return [...topSlash(fit, 3), MORE];
       return fit;
     },
-    [state, editor, extra, textOnly, all, training],
+    [state, editor, extra, textOnly, all, training, only],
   );
 
   const choose = (c: Cmd) => {
@@ -284,7 +284,7 @@ const ICON_OL = ICON(<><text x="0.5" y="5.5" fontSize="5" fill="currentColor" st
 const ICON_LINK = ICON(<><path d="M6.5 9.5l3-3" /><path d="M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2" /><path d="M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8" /></>);
 const ICON_TABLE = ICON(<><rect x="1.5" y="2.5" width="13" height="11" rx="1.5" /><path d="M1.5 6.5h13M6 6.5v7M10.5 6.5v7" /></>);
 
-const cellAttrs = {
+export const cellAttrs = {
   bg: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-bg') || '', renderHTML: (a: { bg: string }) => (a.bg ? { 'data-bg': a.bg, style: `background-color: ${cellBg(a.bg)}` } : {}) },
   align: { default: '', parseHTML: (el: HTMLElement) => el.getAttribute('data-align') || '', renderHTML: (a: { align: string }) => (a.align ? { 'data-align': a.align, style: `text-align: ${a.align}` } : {}) },
 };
@@ -326,7 +326,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
 const TOP_ONLY = ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
-function placeForBlock(e: Editor, c: { key: string; group: string }) {
+export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
   let target = 0;
@@ -356,7 +356,7 @@ function withPictures(n: JSONContent): JSONContent {
 }
 
 // The task always ends with an empty line, so there is somewhere to click and type after the last box or question.
-const TrailingLine = Extension.create({
+export const TrailingLine = Extension.create({
   name: 'trailingLine',
   onCreate() {
     const { state, view } = this.editor;
@@ -582,34 +582,6 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     return () => dom.removeEventListener('keydown', key);
   }, [editor]);
   const classCtx = useMemo(() => ({ classmates, classId }), [classmates, classId]);
-
-  useEffect(() => {
-    if (!editor || !slash.state) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (!slash.state) return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        slash.setIndex((i) => (i + 1) % slash.items.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        slash.setIndex((i) => (i - 1 + slash.items.length) % slash.items.length);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        slash.choose(slash.items[slash.index]);
-      } else if (e.key === 'Escape') {
-        slash.close();
-      }
-    };
-    const dom = editor.view.dom;
-    dom.addEventListener('keydown', onKey, true);
-    return () => dom.removeEventListener('keydown', onKey, true);
-  }, [editor, slash]);
-
-  const slashRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    slashRef.current?.querySelector('.slash-item.on')?.scrollIntoView({ block: 'nearest' });
-  }, [slash.index, slash.state]);
 
   // A narrow toolbar (in a chat): the tools that fit, and an arrow that opens the rest on new lines.
   const tbRef = useRef<HTMLDivElement>(null);
@@ -853,14 +825,53 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             bank: onBank ? () => onBank(((editor.state.selection.content().toJSON() as { content?: JSONContent[] } | null)?.content ?? []) as JSONContent[]) : undefined,
           }}
         />
-        {slash.state && editor && !editor.view.dom.closest('.text-only') && createPortal(
+        {!editor.view.dom.closest('.text-only') && <SlashMenu editor={editor} slash={slash} />}
+      </div>
+    </div>
+    </EditorClassContext.Provider>
+  );
+}
+
+type Slash = ReturnType<typeof useSlash>;
+// The "/" menu: arrows to move, Enter to choose, Esc to close.
+export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Slash; groups?: { k: Cmd['group']; label: string }[] }) {
+  useEffect(() => {
+    if (!slash.state) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!slash.state) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        slash.setIndex((i) => (i + 1) % slash.items.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        slash.setIndex((i) => (i - 1 + slash.items.length) % slash.items.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        slash.choose(slash.items[slash.index]);
+      } else if (e.key === 'Escape') {
+        slash.close();
+      }
+    };
+    const dom = editor.view.dom;
+    dom.addEventListener('keydown', onKey, true);
+    return () => dom.removeEventListener('keydown', onKey, true);
+  }, [editor, slash]);
+
+  const slashRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    slashRef.current?.querySelector('.slash-item.on')?.scrollIntoView({ block: 'nearest' });
+  }, [slash.index, slash.state]);
+
+  if (!slash.state) return null;
+  return createPortal(
           <div ref={slashRef} className="slash slash-float" role="listbox" aria-label="Insert" style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
-            {(slash.items.some((c) => c.key === '__more') ? (['Top', 'More'] as const) : (['Questions', 'Text', 'Blocks'] as const)).map((g) => {
+            {(slash.items.some((c) => c.key === '__more') ? (['Top', 'More'] as const) : (groups ? groups.map((x) => x.k) : (['Questions', 'Text', 'Blocks'] as const))).map((g) => {
               const list = g === 'Top' ? slash.items.filter((c) => c.key !== '__more') : slash.items.filter((c) => c.group === g);
               if (!list.length) return null;
               return (
                 <div key={g}>
-                  {g !== 'More' && <span className="slash-group">{g === 'Blocks' ? 'Lesson boxes' : g === 'Top' ? 'You use these most' : g}</span>}
+                  {g !== 'More' && <span className="slash-group">{groups?.find((x) => x.k === g)?.label ?? (g === 'Blocks' ? 'Lesson boxes' : g === 'Top' ? 'You use these most' : g)}</span>}
                   {list.map((c) => {
                     const i = slash.items.indexOf(c);
                     return (
@@ -885,9 +896,5 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             })}
           </div>,
           document.body,
-        )}
-      </div>
-    </div>
-    </EditorClassContext.Provider>
-  );
+        );
 }

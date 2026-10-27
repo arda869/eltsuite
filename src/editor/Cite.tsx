@@ -123,6 +123,12 @@ export function CiteTool({ editor }: { editor: Editor }) {
   const { mine, withMe } = useMyDocs(user?.uid);
   const style = useCiteStyle();
   const [open, setOpen] = useState(false);
+  // "/" then Citation opens this.
+  useEffect(() => {
+    const f = () => setOpen(true);
+    window.addEventListener('ll:cite', f);
+    return () => window.removeEventListener('ll:cite', f);
+  }, []);
   const [all, setAll] = useState<{ src: ReadSource; file: { title: string } }[] | null>(null);
   const [q, setQ] = useState('');
   const [page, setPage] = useState('');
