@@ -40,7 +40,7 @@ const KINDS = [
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Documents' }, { k: 'slides', label: 'Slides' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -414,7 +414,6 @@ export function MediaArchive() {
     { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
     'sep',
     { label: 'Document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
-    { label: 'Slides', icon: 'present', hint: 'with learners too', onClick: () => void makeDoc('slides') },
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'PD reading', icon: 'notebook', onClick: () => void makeDoc('pd') },
     'sep',

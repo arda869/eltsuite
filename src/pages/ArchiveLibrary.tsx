@@ -269,7 +269,7 @@ function DocCard({ d, shared, folders }: { d: SharedDoc; shared: boolean; folder
 function NewButtons({ make }: { make: (k: DocKind) => void }) {
   return (
     <span className="fd-new">
-      {(['lesson', 'doc', 'slides', 'flash', 'pd'] as DocKind[]).map((k) => (
+      {(['doc', 'flash', 'pd'] as DocKind[]).map((k) => (
         <button key={k} type="button" className="btn" onClick={() => make(k)}>
           + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
         </button>
@@ -411,7 +411,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
 
       <div className="ma-bar-row">
         <input className="ma-search" type="search" value={q} placeholder="Search names, classes and lessons" onChange={(e) => setQ(e.target.value)} />
-        <span className="seg small-seg" role="radiogroup" aria-label="Kind">
+        <span className="seg small-seg" role="radiogroup" aria-label="Kind" hidden={!(lib?.docs ?? []).some((d) => d.kind === 'slides')}>
           {(
             [
               ['', 'All'],

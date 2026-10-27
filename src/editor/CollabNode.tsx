@@ -58,18 +58,6 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
         </button>
       </div>
       <div className="co-settings">
-        <div className="md-set">
-          <span>Make</span>
-          {seg(
-            [
-              ['doc', 'A document'],
-              ['slides', 'Slides'],
-            ],
-            a.kind === 'slides' ? 'slides' : 'doc',
-            (k) => updateAttributes({ kind: k }),
-            'Document or slides',
-          )}
-        </div>
         <label className="md-set co-title">
           <span>Name</span>
           <input value={a.title} onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} placeholder={slides ? 'For example: Our trip to Japan' : 'For example: Our class story'} />
@@ -246,8 +234,8 @@ function FromFiles({ uid, onPick, onCancel }: { uid: string; onPick: (d: SharedD
     <div className="co-choose co-files">
       {!d ? (
         <>
-          <span className="hint">{mine === null ? 'Opening your files…' : mine.length ? 'Choose a document or slides from your files.' : 'There are no documents in your files yet. Make one in the resources library, under Collaborative documents.'}</span>
-          {(mine ?? []).map((x) => (
+          <span className="hint">{mine === null ? 'Opening your files…' : mine.length ? 'Choose a document from your files.' : 'There are no documents in your files yet. Make one in the resources library, under Collaborative documents.'}</span>
+          {(mine ?? []).filter((x) => x.kind === 'doc').map((x) => (
             <button key={x.id} type="button" className="ap-chip" onClick={() => setD(x)}>
               {x.kind === 'slides' ? 'Slides: ' : ''}
               {x.title}
