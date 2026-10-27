@@ -483,3 +483,91 @@ export async function acceptInvite(inv: OrgInvite, me: { uid: string; name: stri
   await b.commit();
 }
 export const declineInvite = (inv: OrgInvite, uid: string) => updateDoc(doc(db, 'orgInvites', inv.id), { status: 'declined', uid, answeredAt: Date.now() });
+
+// ------------------------------------------------------------------ for the admin pages
+// Every app a switch can turn on or off, as the apps menu shows them. APP_KEYS above is the older list.
+export const APP_LIST: { k: string; name: string; about: string }[] = [
+  { k: 'classes', name: 'Classes', about: 'Classes, lessons, homework and live teaching' },
+  { k: 'timetable', name: 'Timetable', about: 'Classes and meetings, week by week' },
+  { k: 'rooms', name: 'Rooms', about: 'Audio and video calls, and each class’s video room' },
+  { k: 'files', name: 'Files', about: 'Lessons, documents, flashcards and reading' },
+  { k: 'messages', name: 'Messages', about: 'Chats with learners and other teachers' },
+  { k: 'colleagues', name: 'Colleagues', about: 'Sharing lessons and files with other teachers' },
+  { k: 'library', name: 'Organisation library', about: 'The organisation’s lessons, to copy into classes' },
+];
+
+export type OrgClass = ClassDocLike & { id: string };
+type ClassDocLike = { teacherId: string; name: string; level: string; classCode: string; status: 'active' | 'archived' | 'deleted'; learnerCount?: number; kind?: 'language' | 'training'; org?: string | null; dates?: { start?: string | null; end?: string | null }; coTeachers?: Record<string, { role: 'co' | 'viewer'; email: string; name: string }>; createdAt?: { toMillis?: () => number } };
+const classOf = (id: string, d: Record<string, unknown>) => ({ id, ...(d as ClassDocLike) }) as OrgClass;
+// An organisation's classes, live: active and archived, not the deleted ones.
+export function useOrgClasses(org?: Org | null) {
+  const [list, setList] = useState<OrgClass[] | null>(null);
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, 'classes'), where('org', '==', org.id)),
+      (s) => setList(s.docs.map((d) => classOf(d.id, d.data())).filter((c) => c.status !== 'deleted').sort((a, b) => a.name.localeCompare(b.name))),
+      () => setList([]),
+    );
+  }, [org?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return list;
+}
+// Every class in ELT Suite, for the owner.
+export function useAllClasses(on: boolean) {
+  const [list, setList] = useState<OrgClass[] | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    return onSnapshot(
+      collection(db, 'classes'),
+      (s) => setList(s.docs.map((d) => classOf(d.id, d.data())).filter((c) => c.status !== 'deleted')),
+      () => setList([]),
+    );
+  }, [on]);
+  return list;
+}
+// The accounts of an organisation's teachers: what their files take.
+export function useOrgAccounts(org?: Org | null) {
+  const [m, setM] = useState<Record<string, Account>>({});
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      query(collection(db, 'accounts'), where('org', '==', org.id)),
+      (s) => setM(Object.fromEntries(s.docs.map((d) => [d.id, d.data() as Account]))),
+      () => setM({}),
+    );
+  }, [org?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return m;
+}
+// Every invitation, for the owner.
+export function useAllInvites(on: boolean) {
+  const [list, setList] = useState<OrgInvite[]>([]);
+  useEffect(() => {
+    if (!on) return;
+    return onSnapshot(
+      collection(db, 'orgInvites'),
+      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<OrgInvite, 'id'>) }))),
+      () => setList([]),
+    );
+  }, [on]);
+  return list;
+}
+
+// What the organisation's admins changed, and who: orgs/{id}/log. Entries are added, never changed.
+export type OrgLogEntry = { id: string; by: string; byName: string; at: number; what: string; detail?: string };
+export async function logOrg(orgId: string, me: { uid: string; name: string }, what: string, detail = '') {
+  await addDoc(collection(db, 'orgs', orgId, 'log'), { by: me.uid, byName: me.name.slice(0, 80), at: Date.now(), what: what.slice(0, 200), detail: detail.slice(0, 400) }).catch(() => {});
+}
+export function useOrgLog(org?: Org | null) {
+  const [list, setList] = useState<OrgLogEntry[] | null>(null);
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      collection(db, 'orgs', org.id, 'log'),
+      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<OrgLogEntry, 'id'>) })).sort((a, b) => b.at - a.at)),
+      () => setList([]),
+    );
+  }, [org?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return list;
+}
+// The owner's own note on an account, which only the owner sees.
+export const saveAccountNote = (t: Teacher, note: string) => saveAccount(t, { note: note.trim().slice(0, 2000) });

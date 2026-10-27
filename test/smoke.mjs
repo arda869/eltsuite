@@ -239,18 +239,70 @@ const J = {
   'Super Admin and an organisation': async (b) => {
     const s = await session(b, { owner: true });
     await s.p.goto(`${BASE}/admin`);
-    await see(s.p, 'text=Organisations', 'Super Admin');
+    await see(s.p, '.hq-nav-i:has-text("Organisations")', 'Super Admin');
     await axe(s.p, 'Super Admin', A11Y_FOUND);
-    await s.p.click('text=Organisations');
-    await s.p.fill('.adm-new input', 'Test School');
-    await s.p.click('button:has-text("Create")');
-    await s.p.click('.adm-org');
-    for (const t of ['Classes', 'Library', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
-      await s.p.click(`.adm-tabs >> text=${t}`);
-      await s.p.waitForTimeout(250);
+    await s.p.click('.hq-nav-i:has-text("Teachers")');
+    await see(s.p, '.hq-table', 'every teacher');
+    await s.p.click('.hq-table tbody tr >> nth=0');
+    await see(s.p, '.hq-drawer', 'one teacher, in the side panel');
+    await axe(s.p, 'Super Admin: a teacher', A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
+    await s.p.click('.hq-nav-i:has-text("Organisations")');
+    await s.p.click('button:has-text("New organisation")');
+    await s.p.fill('.hq-sheet input', 'Test School');
+    await s.p.click('.hq-sheet button:has-text("Create")');
+    await see(s.p, 'h1:has-text("Admins")', 'the new organisation, at its admins');
+    for (const t of ['Activity', 'Teachers', 'Invitations', 'Classes', 'Library', 'Rules', 'Branding', 'Plan and space', 'Overview']) {
+      await s.p.click(`.hq-nav-i:has-text("${t}")`);
+      await see(s.p, `h1:has-text("${t === 'Overview' ? 'Test School' : t}")`, `the ${t} page`);
     }
-    await see(s.p, 'text=Invite teachers', 'the organisation');
     await axe(s.p, 'Organisation', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Invitations")');
+    await s.p.click('.hq-head button:has-text("Invite teachers")');
+    await see(s.p, '.hq-sheet:has-text("Invite teachers")', 'the invitation form');
+    return s;
+  },
+  'Organisation admin: teachers, invitations and classes': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      const now = Date.now();
+      fs['users/teacher2'] = { role: 'teacher', displayName: 'Sofia Rossi', email: 'sofia@school.org', createdAt: { __ts: now - 9e8 } };
+      fs['accounts/teacher2'] = { org: 'o1', usedBytes: 4.8 * 1024 ** 3 };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'o1' };
+      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, perTeacherGb: 5, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' }, teacher2: { name: 'Sofia Rossi', email: 'sofia@school.org', title: 'Senior teacher' } }, tags: { t1: { name: 'Exams team' } }, brand: { color: '#2f6f8f' }, allow: { trainers: true } };
+      fs['orgInvites/i1'] = { org: 'o1', orgName: 'Harbour School', email: 'tom@school.org', name: 'Tom Becker', by: 'teacher1', byName: 'Arda', at: now - 10 * 864e5, status: 'pending', mailed: now - 10 * 864e5 };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/org-admin`);
+    await see(s.p, '.hq-ledger:has-text("invitation waiting more than a week")', 'what needs a look');
+    await see(s.p, '.hq-ledger:has-text("nearly out of space")', 'a teacher nearly out of space');
+    await axe(s.p, 'Organisation admin: overview', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Teachers")');
+    await s.p.click('.hq-table tbody tr:has-text("Sofia Rossi") .hq-check');
+    await see(s.p, '.hq-bulk:has-text("1 teacher selected")', 'the bar for the selected teachers');
+    await s.p.click('.hq-table tbody tr:has-text("Sofia Rossi") .hq-row-open');
+    await see(s.p, '.hq-drawer:has-text("Senior teacher"), .hq-drawer input[value="Senior teacher"]', 'Sofia in the side panel');
+    await axe(s.p, 'Organisation admin: a teacher', A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
+    await s.p.click('.hq-nav-i:has-text("Invitations")');
+    await s.p.click('.hq-head button:has-text("Invite teachers")');
+    await s.p.click('.hq-sheet button:has-text("From a list")');
+    await s.p.fill('.hq-sheet textarea', 'Priya Nair, priya@school.org\nSofia Rossi, sofia@school.org\nTom Becker, tom@school.org');
+    await see(s.p, '.hq-inv-check:has-text("1 teacher ready, 2 left out")', 'the list checked before sending');
+    await s.p.click('.hq-sheet button:has-text("Invite")');
+    await see(s.p, '.hq-table:has-text("priya@school.org")', 'the new invitation');
+    await axe(s.p, 'Organisation admin: invitations', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Classes")');
+    await s.p.click('.hq-head button:has-text("New class")');
+    await s.p.fill('.hq-sheet input[placeholder^="For example"]', 'Saturday FCE');
+    await s.p.click('.hq-sheet .field:has-text("Teacher") .sel');
+    await s.p.click('.sel-list .sel-o:has-text("Sofia Rossi")');
+    await s.p.click('.hq-sheet button:has-text("Create the class")');
+    await see(s.p, 'h1:has-text("Saturday FCE")', 'the new class, with its learners');
+    await axe(s.p, 'Organisation admin: a class', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Activity")');
+    await see(s.p, '.hq-ev:has-text("invited Priya Nair")', 'the invitation in Activity');
     return s;
   },
   'Organisation library: a lesson copied to a class': async (b) => {

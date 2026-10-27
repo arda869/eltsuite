@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { useMemo } from 'react';
 import { Avatar } from '../components/avatars';
-import { formatBytes } from '../lib/archive';
-import { PLANS, useOrgInvites, useOrgPictures, type Account, type Org, type Teacher } from '../lib/admin';
-import type { ClassDoc } from '../lib/classes';
+import { PLANS } from '../lib/admin';
+import { givenGb, limitGbOf, orgAttention, orgSetup, superAttention, usedOf, type Attention } from './admin/attention';
+import { EventList, orgEvents } from './admin/OrgActivity';
+import { GB, Meter, PageHead, Panel, daysSince, dateStr, fmtBytes, fmtGb, plural } from './admin/ui';
+import type { Go, OrgData, SuperData } from './admin/types';
+import type { OrgClass } from '../lib/admin';
 
-// Overviews for Super Admin and Organisation admin: the numbers that matter, then the people
-// behind them. One series per chart, in the organisation's colour; hover a bar for its value.
+// Overviews for Super Admin and Organisation admin: first what needs a look, then the numbers that
+// matter, then the people behind them. One series per chart, in the organisation's colour.
 
-const GB = 1024 ** 3;
 type Bar = { label: string; n: number; tip?: string };
 
+// Tile and Bars are also used by the class portfolio (components/Portfolio.tsx).
 export function Tile({ n, label, sub, tone }: { n: string | number; label: string; sub?: string; tone?: 'warn' }) {
   return (
     <div className={'ov-tile' + (tone ? ' ' + tone : '')}>
@@ -38,233 +39,281 @@ export function Bars({ data, unit }: { data: Bar[]; unit: string }) {
   );
 }
 
-// Horizontal bars for a ranked list: who has the most.
-function Ranked({ rows, fmt }: { rows: { key: string; who: React.ReactNode; n: number; of?: number }[]; fmt: (n: number) => string }) {
-  const max = Math.max(1, ...rows.map((r) => r.of ?? r.n));
-  return (
-    <ul className="ov-rank">
-      {rows.map((r) => (
-        <li key={r.key}>
-          <span className="ov-rank-who">{r.who}</span>
-          <span className="ov-rank-track" data-tip={fmt(r.n) + (r.of ? ` of ${fmt(r.of)}` : '')}>
-            <i style={{ width: `${(r.n / max) * 100}%` }} />
-          </span>
-          <span className="ov-rank-n">{fmt(r.n)}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 const LEVEL_ORDER = ['Pre-A1', 'A1', 'A2', 'B1', 'B1+', 'B2', 'C1', 'C2'];
-const byLevel = (classes: ClassDoc[]) => {
+const byLevel = (classes: OrgClass[]) => {
   const m = new Map<string, number>();
   for (const c of classes) m.set(c.level || 'Other', (m.get(c.level || 'Other') ?? 0) + (c.learnerCount ?? 0));
   return [...m.entries()].sort((a, b) => (LEVEL_ORDER.indexOf(a[0]) + 1 || 99) - (LEVEL_ORDER.indexOf(b[0]) + 1 || 99)).map(([label, n]) => ({ label, n }));
 };
+const today = () => new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+
+// What needs a look, most pressing first; a calm line when nothing does.
+function Ledger({ items, go, calm }: { items: Attention[]; go: Go; calm: string }) {
+  const high = items.filter((i) => !i.low);
+  const low = items.filter((i) => i.low);
+  return (
+    <section className={'hq-ledger' + (items.length ? '' : ' calm')} aria-labelledby="hq-ledger-h">
+      <h2 id="hq-ledger-h">{items.length ? 'Worth a look' : 'All in order'}</h2>
+      {!items.length ? (
+        <p>{calm}</p>
+      ) : (
+        <ul>
+          {[...high, ...low].map((i) => (
+            <li key={i.k} className={i.low ? 'low' : ''}>
+              <span className="hq-ledger-n" aria-hidden={!i.n}>
+                {i.n || ''}
+              </span>
+              <span className="hq-ledger-t">
+                <b>{i.n ? `${i.n} ${i.title}` : i.title}</b>
+                <span>{i.text}</span>
+              </span>
+              <button type="button" className="btn small-btn" onClick={() => go({ tab: i.go.tab, f: i.go.f })}>
+                {i.act}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// The few numbers that describe the place, in one strip.
+function Figures({ items }: { items: { n: string | number; label: string; sub?: string; go?: () => void }[] }) {
+  return (
+    <dl className="hq-figs">
+      {items.map((f) => (
+        <div key={f.label} className={f.go ? 'go' : ''}>
+          <dt>{f.label}</dt>
+          <dd>
+            {f.go ? (
+              <button type="button" onClick={f.go} aria-label={`${f.label}: ${f.n}. Open`}>
+                {f.n}
+              </button>
+            ) : (
+              f.n
+            )}
+          </dd>
+          {f.sub && <dd className="hq-figs-s">{f.sub}</dd>}
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 // ------------------------------------------------------------------ an organisation
-export function OrgOverview({ org, onTab }: { org: Org; onTab: (t: string) => void }) {
-  const [classes, setClasses] = useState<ClassDoc[] | null>(null);
-  const [accs, setAccs] = useState<Record<string, Account>>({});
-  const pics = useOrgPictures(org);
-  const invites = useOrgInvites(org);
-  useEffect(() => {
-    void getDocs(query(collection(db, 'classes'), where('org', '==', org.id)))
-      .then((s) => setClasses(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) })).filter((c) => c.status === 'active')))
-      .catch(() => setClasses([]));
-    void getDocs(query(collection(db, 'accounts'), where('org', '==', org.id)))
-      .then((s) => setAccs(Object.fromEntries(s.docs.map((d) => [d.id, d.data() as Account]))))
-      .catch(() => setAccs({}));
-  }, [org.id]);
-  const teachers = Object.entries(org.teachers);
-  const cls = classes ?? [];
-  const learners = cls.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
-  const used = Object.values(accs).reduce((n, a) => n + (a.usedBytes ?? 0), 0);
-  const pending = invites.filter((i) => i.status === 'pending').length;
-  const per = (uid: string) => cls.filter((c) => c.teacherId === uid);
-  const rows = teachers
-    .map(([uid, t]) => ({ uid, t, classes: per(uid).length, learners: per(uid).reduce((n, c) => n + (c.learnerCount ?? 0), 0), used: accs[uid]?.usedBytes ?? 0, gb: t.gb ?? org.perTeacherGb ?? 1 }))
-    .sort((a, b) => b.learners - a.learners || a.t.name.localeCompare(b.t.name));
-  const quiet = rows.filter((r) => !r.classes);
-  const big = [...cls].sort((a, b) => (b.learnerCount ?? 0) - (a.learnerCount ?? 0)).slice(0, 6);
+export function OrgOverview({ d, go }: { d: OrgData; go: Go }) {
+  const { org, classes, accounts, invites } = d;
+  const active = classes.filter((c) => c.status === 'active');
+  const items = d.loading ? [] : orgAttention(org, classes, accounts, invites);
+  const setup = orgSetup(org, d.folders.length, invites);
+  const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
+  const teachers = Object.keys(org.teachers);
+  const used = teachers.reduce((n, uid) => n + (accounts[uid]?.usedBytes ?? 0), 0);
+  const given = givenGb(org);
+  const waiting = invites.filter((i) => i.status === 'pending').length;
+  const old = invites.filter((i) => i.status === 'pending' && daysSince(i.at) >= 7).length;
+  const big = [...active].sort((a, b) => (b.learnerCount ?? 0) - (a.learnerCount ?? 0)).slice(0, 6);
+  const recent = orgEvents(d).slice(0, 6);
+  const trainers = teachers.filter((uid) => org.teachers[uid].trainer).length;
   return (
-    <div className="ov">
-      <div className="ov-tiles">
-        <Tile n={teachers.length} label={teachers.length === 1 ? 'teacher' : 'teachers'} sub={`${org.adminEmails.length} admin${org.adminEmails.length === 1 ? '' : 's'}${org.allow?.trainers ? ` · ${teachers.filter(([, t]) => t.trainer).length} trainers` : ''}`} />
-        <Tile n={classes ? cls.length : '…'} label="classes" sub={classes ? `${(learners / Math.max(1, cls.length)).toFixed(1)} learners a class` : undefined} />
-        <Tile n={classes ? learners : '…'} label="learners" sub={classes ? `${(learners / Math.max(1, teachers.length)).toFixed(1)} a teacher` : undefined} />
-        <Tile n={formatBytes(used)} label="space used" sub={`of ${org.limitGb} GB`} tone={used > org.limitGb * GB * 0.9 ? 'warn' : undefined} />
-        <Tile n={pending} label="invitations waiting" sub={pending ? 'Send them again from Teachers' : 'None waiting'} />
-      </div>
-      <div className="ov-grid">
-        <section className="ov-card">
-          <header>
-            <h2>Learners by level</h2>
-            <button type="button" className="btn link small" onClick={() => onTab('classes')}>Classes</button>
-          </header>
-          <Bars data={byLevel(cls)} unit="learners" />
-        </section>
-        <section className="ov-card">
-          <header>
-            <h2>Largest classes</h2>
-          </header>
+    <div className="hq-page">
+      <PageHead title={org.name} lede={`${today()}.${d.loading ? '' : items.length ? ` ${plural(items.filter((i) => !i.low).length || items.length, 'thing')} worth a look.` : ' Nothing needs you today.'}`} />
+      {!d.loading && <Ledger items={items} go={go} calm="Every teacher has a class, every class has learners, nobody is short of space and no invitation is waiting long." />}
+      {setup.some((s) => !s.done) && (
+        <Panel title={`Getting ${org.name} ready`} className="hq-setup">
+          <ol>
+            {setup.map((s) => (
+              <li key={s.k} className={s.done ? 'done' : ''}>
+                <span className="hq-setup-m" aria-hidden="true">
+                  {s.done ? '✓' : ''}
+                </span>
+                {s.done ? (
+                  <span>{s.label}</span>
+                ) : (
+                  <button type="button" className="btn link" onClick={() => go({ tab: s.tab })}>
+                    {s.label}
+                  </button>
+                )}
+                {s.done && <span className="hq-sr">, done</span>}
+              </li>
+            ))}
+          </ol>
+        </Panel>
+      )}
+      <Figures
+        items={[
+          { n: teachers.length, label: 'Teachers', sub: [plural(org.adminEmails.length, 'admin'), org.allow?.trainers ? plural(trainers, 'trainer') : ''].filter(Boolean).join(', '), go: () => go({ tab: 'teachers' }) },
+          { n: d.loading ? '…' : active.length, label: 'Classes', sub: active.length ? `${(learners / active.length).toFixed(1)} learners a class` : 'None yet', go: () => go({ tab: 'classes' }) },
+          { n: d.loading ? '…' : learners, label: 'Learners', sub: teachers.length ? `${(learners / teachers.length).toFixed(1)} a teacher` : undefined },
+          { n: fmtBytes(used), label: 'Space used', sub: `${fmtGb(given)} given out of ${fmtGb(org.limitGb)}`, go: () => go({ tab: 'space' }) },
+          { n: waiting, label: 'Invitations waiting', sub: waiting ? (old ? `${old} for more than a week` : 'All sent this week') : 'Nobody is waiting', go: () => go({ tab: 'invites' }) },
+        ]}
+      />
+      <div className="hq-grid">
+        <Panel title="Learners by level" action={<button type="button" className="btn link small" onClick={() => go({ tab: 'classes' })}>Classes</button>}>
+          <Bars data={byLevel(active)} unit="learners" />
+        </Panel>
+        <Panel title="Largest classes">
           {big.length ? (
-            <Ranked rows={big.map((c) => ({ key: c.id, who: <span><b>{c.name}</b><span className="hint">{org.teachers[c.teacherId]?.name ?? ''} · {c.level}</span></span>, n: c.learnerCount ?? 0 }))} fmt={(n) => `${n}`} />
+            <ul className="hq-rank">
+              {big.map((c) => (
+                <li key={c.id}>
+                  <button type="button" onClick={() => go({ tab: 'classes', c: c.id })}>
+                    <span className="hq-rank-n">
+                      <b>{c.name}</b>
+                      <span>
+                        {org.teachers[c.teacherId]?.name ?? ''}, {c.level}
+                      </span>
+                    </span>
+                    <span className="hq-bar" aria-hidden="true">
+                      <i style={{ width: `${((c.learnerCount ?? 0) / Math.max(1, big[0].learnerCount ?? 1)) * 100}%` }} />
+                    </span>
+                    <span className="hq-rank-v">{plural(c.learnerCount ?? 0, 'learner')}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           ) : (
             <p className="hint">No classes yet.</p>
           )}
-        </section>
-        <section className="ov-card wide">
-          <header>
-            <h2>Teachers</h2>
-            <button type="button" className="btn link small" onClick={() => onTab('teachers')}>Manage teachers</button>
-          </header>
-          <div className="adm-table-wrap">
-            <table className="adm-table ov-table">
-              <thead>
-                <tr>
-                  <th>Teacher</th>
-                  <th>Classes</th>
-                  <th>Learners</th>
-                  <th>Space</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.uid}>
-                    <td>
-                      <span className="adm-who">
-                        <Avatar k={pics[r.uid]} name={r.t.name || r.t.email} size={30} />
-                        <span>
-                          <b>{r.t.name || r.t.email}</b>
-                          <span className="hint">{r.t.title || r.t.email}</span>
-                        </span>
-                      </span>
-                    </td>
-                    <td>{r.classes}</td>
-                    <td>{r.learners}</td>
-                    <td>
-                      <span className="ov-space" data-tip={`${formatBytes(r.used)} of ${r.gb} GB`}>
-                        <i style={{ width: `${Math.min(100, (r.used / (r.gb * GB)) * 100)}%` }} />
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {quiet.length > 0 && <span className="hint">{quiet.length === 1 ? `${quiet[0].t.name || quiet[0].t.email} has no classes yet.` : `${quiet.length} teachers have no classes yet.`}</span>}
-        </section>
+        </Panel>
+        <Panel title="Recent activity" action={<button type="button" className="btn link small" onClick={() => go({ tab: 'activity' })}>All activity</button>} className="wide">
+          {recent.length ? <EventList list={recent} /> : <p className="hint">Invitations, new classes and changes show here as they happen.</p>}
+        </Panel>
       </div>
     </div>
   );
 }
 
 // ------------------------------------------------------------------ the whole of ELT Suite
-export function SuperOverview({ teachers, accounts, orgs, onOpen }: { teachers: Teacher[] | null; accounts: Record<string, Account>; orgs: Org[]; onOpen: (id: string) => void }) {
-  const [classes, setClasses] = useState<ClassDoc[] | null>(null);
-  useEffect(() => {
-    void getDocs(collection(db, 'classes'))
-      .then((s) => setClasses(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) })).filter((c) => c.status === 'active')))
-      .catch(() => setClasses([]));
-  }, []);
-  const list = teachers ?? [];
-  const cls = classes ?? [];
-  const learners = cls.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
-  const used = list.reduce((n, t) => n + (accounts[t.uid]?.usedBytes ?? t.usedBytes ?? 0), 0);
-  const week = Date.now() - 7 * 864e5;
-  const fresh = list.filter((t) => (t.createdAt ?? 0) > week).length;
-  const paused = Object.values(accounts).filter((a) => a.suspended).length;
-  const over = Object.values(accounts).filter((a) => a.over).length;
+export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
+  const { teachers, accounts, orgs, classes, invites } = d;
+  const active = classes.filter((c) => c.status === 'active');
+  const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
+  const used = teachers.reduce((n, t) => n + usedOf(accounts[t.uid], t), 0);
+  const fresh = teachers.filter((t) => daysSince(t.createdAt) < 7 && t.createdAt).length;
+  const paused = teachers.filter((t) => accounts[t.uid]?.suspended).length;
+  const items = d.loading ? [] : superAttention(teachers, accounts, orgs, classes, invites);
   // Sign-ups, a bar a week, for the last eight weeks.
   const weeks = useMemo(() => {
     const out: Bar[] = [];
     for (let i = 7; i >= 0; i--) {
       const end = Date.now() - i * 7 * 864e5;
       const start = end - 7 * 864e5;
-      const n = list.filter((t) => (t.createdAt ?? 0) > start && (t.createdAt ?? 0) <= end).length;
-      const d = new Date(start);
-      out.push({ label: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), n, tip: `Week from ${d.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}: ${n} new teachers` });
+      const n = teachers.filter((t) => (t.createdAt ?? 0) > start && (t.createdAt ?? 0) <= end).length;
+      const day = new Date(start);
+      out.push({ label: day.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), n, tip: `Week from ${day.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}: ${plural(n, 'new teacher')}` });
     }
     return out;
-  }, [list]);
-  const plans = PLANS.map((p) => ({ label: p.label, n: list.filter((t) => (accounts[t.uid]?.org ? 'school' : accounts[t.uid]?.plan ?? 'free') === p.k).length }));
-  const spaceTop = [...list].map((t) => ({ t, n: accounts[t.uid]?.usedBytes ?? t.usedBytes ?? 0 })).sort((a, b) => b.n - a.n).slice(0, 6);
-  const orgRows = [...orgs].map((o) => ({ o, n: Object.keys(o.teachers).length, learners: cls.filter((c) => (c as ClassDoc & { org?: string }).org === o.id).reduce((s, c) => s + (c.learnerCount ?? 0), 0) })).sort((a, b) => b.learners - a.learners || b.n - a.n).slice(0, 6);
-  const newest = [...list].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 6);
+  }, [teachers]);
+  const plans = PLANS.map((p) => ({ p, n: teachers.filter((t) => (accounts[t.uid]?.org ? 'school' : accounts[t.uid]?.plan ?? 'free') === p.k).length }));
+  const spaceTop = teachers
+    .map((t) => ({ t, n: usedOf(accounts[t.uid], t), of: limitGbOf(accounts[t.uid], orgs, t.uid) * GB }))
+    .sort((a, b) => b.n / b.of - a.n / a.of)
+    .slice(0, 6);
+  const orgRows = orgs
+    .map((o) => ({ o, n: Object.keys(o.teachers).length, l: active.filter((c) => c.org === o.id).reduce((s, c) => s + (c.learnerCount ?? 0), 0) }))
+    .sort((a, b) => b.l - a.l || b.n - a.n)
+    .slice(0, 8);
+  const newest = [...teachers].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)).slice(0, 6);
+  const orgName = (id?: string | null) => orgs.find((o) => o.id === id)?.name ?? '';
   return (
-    <div className="ov">
-      <div className="ov-tiles">
-        <Tile n={list.length} label="teachers" sub={`${fresh} new this week`} />
-        <Tile n={orgs.length} label="organisations" sub={`${orgs.reduce((n, o) => n + Object.keys(o.teachers).length, 0)} teachers in them`} />
-        <Tile n={classes ? cls.length : '…'} label="classes" />
-        <Tile n={classes ? learners : '…'} label="learners" />
-        <Tile n={formatBytes(used)} label="space used" sub={over ? `${over} accounts are full` : 'No account is full'} tone={over ? 'warn' : undefined} />
-        <Tile n={paused} label="paused" sub={paused ? 'Accounts you paused' : 'No account paused'} />
-      </div>
-      <div className="ov-grid">
-        <section className="ov-card">
-          <header>
-            <h2>New teachers</h2>
-            <span className="hint">a bar a week</span>
-          </header>
+    <div className="hq-page">
+      <PageHead title="ELT Suite" lede={`${today()}.${d.loading ? '' : items.length ? ` ${plural(items.filter((i) => !i.low).length || items.length, 'thing')} worth a look.` : ' Nothing needs you today.'}`} />
+      {!d.loading && <Ledger items={items} go={go} calm="No account is full, every organisation has an admin and gives out only the space it has." />}
+      <Figures
+        items={[
+          { n: teachers.length, label: 'Teachers', sub: `${fresh} new this week`, go: () => go({ tab: 'teachers' }) },
+          { n: orgs.length, label: 'Organisations', sub: `${plural(orgs.reduce((n, o) => n + Object.keys(o.teachers).length, 0), 'teacher')} in them`, go: () => go({ tab: 'orgs' }) },
+          { n: d.loading ? '…' : active.length, label: 'Classes' },
+          { n: d.loading ? '…' : learners, label: 'Learners' },
+          { n: fmtBytes(used), label: 'Space used', sub: 'Files, as last measured' },
+          { n: paused, label: 'Paused', sub: paused ? 'Accounts you paused' : 'No account paused', go: paused ? () => go({ tab: 'teachers', f: 'paused' }) : undefined },
+        ]}
+      />
+      <div className="hq-grid">
+        <Panel title="New teachers" action={<span className="hint">a bar a week</span>}>
           <Bars data={weeks} unit="teachers" />
-        </section>
-        <section className="ov-card">
-          <header>
-            <h2>Plans</h2>
-          </header>
-          <Ranked rows={plans.map((p) => ({ key: p.label, who: <b>{p.label}</b>, n: p.n }))} fmt={(n) => `${n}`} />
-          <h2 className="ov-sub">Learners by level</h2>
-          <Bars data={byLevel(cls)} unit="learners" />
-        </section>
-        <section className="ov-card">
-          <header>
-            <h2>Organisations</h2>
-          </header>
+        </Panel>
+        <Panel title="Plans">
+          <ul className="hq-rank">
+            {plans.map(({ p, n }) => (
+              <li key={p.k}>
+                <span className="hq-rank-row">
+                  <span className="hq-rank-n">
+                    <b>{p.label}</b>
+                    <span>{p.about}</span>
+                  </span>
+                  <span className="hq-bar" aria-hidden="true">
+                    <i style={{ width: `${(n / Math.max(1, teachers.length)) * 100}%` }} />
+                  </span>
+                  <span className="hq-rank-v">{plural(n, 'teacher')}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <h3 className="hq-sub">Learners by level</h3>
+          <Bars data={byLevel(active)} unit="learners" />
+        </Panel>
+        <Panel title="Organisations" action={<button type="button" className="btn link small" onClick={() => go({ tab: 'orgs' })}>All</button>}>
           {orgRows.length ? (
-            <ul className="ov-list">
-              {orgRows.map(({ o, n, learners: l }) => (
+            <ul className="hq-rank">
+              {orgRows.map(({ o, n, l }) => (
                 <li key={o.id}>
-                  <button type="button" onClick={() => onOpen(o.id)}>
-                    <span className="adm-dot" style={{ background: o.brand?.color ?? '#5d6f80' }} />
-                    <b>{o.name}</b>
-                    <span className="hint">
-                      {n} {n === 1 ? 'teacher' : 'teachers'} · {l} learners
+                  <button type="button" onClick={() => go({ org: o.id, tab: 'overview' })}>
+                    <span className="hq-rank-n hq-rank-org">
+                      <span className="hq-dot" style={{ background: o.brand?.color ?? '#5d6f80' }} />
+                      <b>{o.name}</b>
+                    </span>
+                    <Meter used={givenGb(o)} of={o.limitGb} small />
+                    <span className="hq-rank-v">
+                      {plural(n, 'teacher')}, {plural(l, 'learner')}
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="hint">No organisations yet.</p>
+            <p className="hint">No organisations yet. Create one in Organisations.</p>
           )}
-        </section>
-        <section className="ov-card">
-          <header>
-            <h2>Most space</h2>
-          </header>
-          <Ranked rows={spaceTop.map(({ t, n }) => ({ key: t.uid, who: <span className="adm-who"><Avatar k={t.avatar} name={t.name || t.email} size={26} /><b>{t.name || t.email}</b></span>, n, of: (accounts[t.uid]?.limitGb ?? 1) * GB }))} fmt={formatBytes} />
-        </section>
-        <section className="ov-card wide">
-          <header>
-            <h2>Newest teachers</h2>
-          </header>
-          <ul className="ov-people">
-            {newest.map((t) => (
+        </Panel>
+        <Panel title="Closest to their space limit" action={<button type="button" className="btn link small" onClick={() => go({ tab: 'teachers', f: 'near' })}>Teachers</button>}>
+          <ul className="hq-rank">
+            {spaceTop.map(({ t, n, of }) => (
               <li key={t.uid}>
-                <Avatar k={t.avatar} name={t.name || t.email} size={36} />
-                <span>
-                  <b>{t.name || 'No name'}</b>
-                  <span className="hint">{t.email}</span>
-                  <span className="hint">{[t.createdAt ? new Date(t.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '', accounts[t.uid]?.org ? orgs.find((o) => o.id === accounts[t.uid]?.org)?.name ?? '' : ''].filter(Boolean).join(' · ')}</span>
-                </span>
+                <button type="button" onClick={() => go({ tab: 'teachers', t: t.uid })}>
+                  <span className="hq-rank-n hq-rank-who">
+                    <Avatar k={t.avatar} name={t.name || t.email} size={24} />
+                    <b>{t.name || t.email}</b>
+                  </span>
+                  <Meter used={n} of={of} small />
+                  <span className="hq-rank-v">
+                    {fmtBytes(n)} of {fmtGb(of / GB)}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
-        </section>
+        </Panel>
+        <Panel title="Newest teachers" className="wide">
+          <ul className="hq-newest">
+            {newest.map((t) => (
+              <li key={t.uid}>
+                <button type="button" onClick={() => go({ tab: 'teachers', t: t.uid })}>
+                  <Avatar k={t.avatar} name={t.name || t.email} size={36} />
+                  <span>
+                    <b>{t.name || 'No name'}</b>
+                    <span>{t.email}</span>
+                    <span>{[dateStr(t.createdAt), orgName(accounts[t.uid]?.org)].filter(Boolean).join(', ')}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </div>
     </div>
   );
 }
+

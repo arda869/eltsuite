@@ -659,6 +659,18 @@ service cloud.firestore {
         && (request.resource.data.get('adminEmails', []) == resource.data.get('adminEmails', [])
             || (get(/databases/$(database)/documents/orgInvites/$(request.resource.data.teachers[request.auth.uid].invite)).data.get('admin', false) == true
                 && request.resource.data.adminEmails == resource.data.get('adminEmails', []).concat([request.auth.token.get('email', '').lower()])));
+      // What its admins changed (see logOrg in lib/admin.ts): the owner and the organisation's
+      // admins read it and add to it, each entry signed with their own uid. Nobody edits or deletes one.
+      match /log/{entry} {
+        allow read: if isOwner() || adminOfOrg(id);
+        allow create: if (isOwner() || adminOfOrg(id))
+          && request.resource.data.keys().hasOnly(['by', 'byName', 'at', 'what', 'detail'])
+          && request.resource.data.by == request.auth.uid
+          && request.resource.data.at is number
+          && request.resource.data.what is string && request.resource.data.what.size() <= 200
+          && request.resource.data.get('detail', '') is string && request.resource.data.get('detail', '').size() <= 400
+          && request.resource.data.get('byName', '') is string && request.resource.data.get('byName', '').size() <= 80;
+      }
     }
     // A teacher's profile for the colleagues in their organisation.
     match /teacherProfiles/{uid} {
