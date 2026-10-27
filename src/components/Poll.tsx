@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useState } from 'react';
 import { newQ, TYPE_LABELS, type SurveyQ, type SurveyType } from '../lib/survey';
 import { setLive, type LiveState } from '../lib/live';
@@ -59,13 +60,13 @@ export function PollDialog({ classId, poll, onClose }: { classId: string; poll?:
             </label>
             <label className="field">
               <span>Answer with</span>
-              <select value={q.type} onChange={(e) => setQ({ ...newQ(e.target.value as SurveyType, q.prompt), id: q.id })}>
+              <NSelect value={q.type} onChange={(e) => setQ({ ...newQ(e.target.value as SurveyType, q.prompt), id: q.id })}>
                 {(Object.keys(TYPE_LABELS) as SurveyType[]).map((t) => (
                   <option key={t} value={t}>
                     {TYPE_LABELS[t]}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             {(q.type === 'single' || q.type === 'multi' || q.type === 'rank') && (
               <div className="pq-lines">

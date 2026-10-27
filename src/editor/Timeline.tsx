@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useRef, useState } from 'react';
@@ -208,7 +209,7 @@ function TimelineView({ node, updateAttributes, deleteNode, editor, getPos, sele
       <div className="mcq-tools">
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">Timeline</span>
-        <select className="tl-preset" value="" onChange={(e) => {
+        <NSelect className="tl-preset" value="" onChange={(e) => {
           const p = PRESETS.find((x) => x.k === e.target.value);
           if (p) (updateAttributes({ title: p.title, sentence: p.sentence, now: 600, items: p.items.map((x) => ({ ...x, id: newId(), side: x.side ?? 'above', color: x.color ?? 'accent' })) }), setSel(null));
         }} aria-label="Start from a tense">
@@ -218,7 +219,7 @@ function TimelineView({ node, updateAttributes, deleteNode, editor, getPos, sele
               {p.label}
             </option>
           ))}
-        </select>
+        </NSelect>
         <button type="button" className="remove" style={{ marginLeft: 'auto' }} onClick={deleteNode}>
           Remove
         </button>

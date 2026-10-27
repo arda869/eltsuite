@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { newId } from '../lib/tasks';
@@ -50,14 +51,14 @@ function DrawBoardView({ node, updateAttributes, deleteNode, editor, getPos, sel
         {(node.attrs.scope ?? 'class') !== 'class' && (
           <label className="md-set">
             <span>Groups</span>
-            <select value={node.attrs.groupSet ?? ''} onChange={(e) => updateAttributes({ groupSet: e.target.value })}>
+            <NSelect value={node.attrs.groupSet ?? ''} onChange={(e) => updateAttributes({ groupSet: e.target.value })}>
               <option value="">{sets.length ? 'The first group set' : 'No groups yet'}</option>
               {sets.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
         )}
         <div className="md-set">

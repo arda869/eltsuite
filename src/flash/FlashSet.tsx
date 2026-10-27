@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { TaskRenderer } from '../components/TaskRenderer';
@@ -313,13 +314,13 @@ function ColumnMenu({ at, field, side, onClose, onSave, onMove, onRemove }: { at
       </label>
       <label className="field">
         <span>Kind</span>
-        <select value={type} onChange={(e) => setType(e.target.value as FieldType)}>
+        <NSelect value={type} onChange={(e) => setType(e.target.value as FieldType)}>
           {FIELD_TYPES.map((t) => (
             <option key={t.k} value={t.k}>
               {t.label}
             </option>
           ))}
-        </select>
+        </NSelect>
       </label>
       <span className="field">
         <span>On the card</span>
@@ -406,13 +407,13 @@ function Design({ cfg, onChange, sample }: { cfg: FlashConfig; onChange: (c: Fla
       {cfg.fields.map((f) => (
         <div key={f.id} className="fs-def">
           <input value={f.name} onChange={(e) => setField(f.id, { name: e.target.value })} aria-label="Field name" />
-          <select value={f.type} onChange={(e) => setField(f.id, { type: e.target.value as FieldType })} aria-label="Kind">
+          <NSelect value={f.type} onChange={(e) => setField(f.id, { type: e.target.value as FieldType })} aria-label="Kind">
             {FIELD_TYPES.map((t) => (
               <option key={t.k} value={t.k}>
                 {t.label}
               </option>
             ))}
-          </select>
+          </NSelect>
           <span className="seg small-seg fs-sides" role="radiogroup" aria-label="Where it shows">
             {(['front', 'back', 'none'] as const).map((s) => {
               const on = s === 'none' ? !cfg.front.includes(f.id) && !cfg.back.includes(f.id) : cfg[s].includes(f.id);

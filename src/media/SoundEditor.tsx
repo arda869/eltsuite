@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { bufferOf, decodeSound, peakIndex, rangePeak, reduceEcho, toMono, type NoiseLevel, type PeakIndex } from '../lib/sound';
@@ -1455,14 +1456,14 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               <h4>Microphone</h4>
               <label className="field">
                 <span>Input</span>
-                <select value={mic.device} onChange={(e) => setMic({ ...mic, device: e.target.value })}>
+                <NSelect value={mic.device} onChange={(e) => setMic({ ...mic, device: e.target.value })}>
                   <option value="">Default microphone</option>
                   {mics.filter((d) => d.deviceId && d.deviceId !== 'default').map((d, i) => (
                     <option key={d.deviceId} value={d.deviceId}>
                       {d.label || `Microphone ${i + 1}`}
                     </option>
                   ))}
-                </select>
+                </NSelect>
               </label>
               <label className="check-row">
                 <input type="checkbox" checked={mic.noise} onChange={(e) => setMic({ ...mic, noise: e.target.checked })} />

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // A drop-down in the app's own style, in place of the browser's: the choice with a chevron, and
@@ -166,5 +166,45 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
           document.body,
         )}
     </>
+  );
+}
+
+// The browser's <select>, drawn as our own drop-down: the same props and <option> children,
+// so any select in the app can use it as it is. onChange gets { target: { value } } as before.
+type NOpt = { v: string; label: string; disabled?: boolean };
+const textOf = (n: React.ReactNode): string =>
+  typeof n === 'string' || typeof n === 'number' ? String(n) : Array.isArray(n) ? n.map(textOf).join('') : n && typeof n === 'object' && 'props' in (n as object) ? textOf((n as React.ReactElement<{ children?: React.ReactNode }>).props.children) : '';
+function optionsOf(children: React.ReactNode, out: NOpt[] = []): NOpt[] {
+  React.Children.forEach(children, (c) => {
+    if (!React.isValidElement(c)) return;
+    const el = c as React.ReactElement<{ value?: string | number; children?: React.ReactNode; disabled?: boolean }>;
+    if (el.type === 'option') out.push({ v: String(el.props.value ?? textOf(el.props.children)), label: textOf(el.props.children), disabled: el.props.disabled });
+    else optionsOf(el.props.children, out);
+  });
+  return out;
+}
+export function NSelect({ value, defaultValue, onChange, children, disabled, className, title, id, ...rest }: React.SelectHTMLAttributes<HTMLSelectElement> & { 'aria-label'?: string }) {
+  const all = optionsOf(children);
+  const [own, setOwn] = useState(String(defaultValue ?? all[0]?.v ?? ''));
+  const v = value !== undefined ? String(value) : own;
+  // A disabled option with no value is the prompt shown before anything is chosen.
+  const prompt = all.find((o) => o.disabled && (o.v === '' || o.v === v));
+  const options = all.filter((o) => !o.disabled).map((o) => ({ v: o.v, label: o.label }));
+  const label = rest['aria-label'] || title || prompt?.label || 'Choose';
+  return (
+    <span className="nsel" id={id} title={title}>
+      <Select
+        value={v}
+        options={options}
+        label={label}
+        placeholder={prompt?.label ?? 'Choose…'}
+        className={className}
+        disabled={disabled}
+        onChange={(nv) => {
+          setOwn(nv);
+          onChange?.({ target: { value: nv }, currentTarget: { value: nv } } as unknown as React.ChangeEvent<HTMLSelectElement>);
+        }}
+      />
+    </span>
   );
 }

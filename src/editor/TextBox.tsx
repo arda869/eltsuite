@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -157,13 +158,13 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected, editor, get
       <div className="tbox-tools" contentEditable={false}>
         <Grip editor={editor} getPos={getPos} />
         <span className="pop-type">{attrs.style === 'info' ? 'Information box' : 'Text box'}</span>
-        <select value={attrs.style} onChange={(e) => updateAttributes({ style: e.target.value })} aria-label="Style">
+        <NSelect value={attrs.style} onChange={(e) => updateAttributes({ style: e.target.value })} aria-label="Style">
           {BOX_STYLES.map((s) => (
             <option key={s.key} value={s.key}>
               {s.label}
             </option>
           ))}
-        </select>
+        </NSelect>
         {attrs.style === 'info' && (
           <span className="symbols" role="radiogroup" aria-label="Symbol">
             {['', ...SYMBOLS].map((sy) => (
@@ -184,11 +185,11 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected, editor, get
           </span>
         )}
         {['box', 'paper', 'browser', 'email', 'notebook'].includes(attrs.style) && (
-          <select value={attrs.numbering ?? 'none'} onChange={(e) => updateAttributes({ numbering: e.target.value })} aria-label="Numbering" title="Numbering for reading texts">
+          <NSelect value={attrs.numbering ?? 'none'} onChange={(e) => updateAttributes({ numbering: e.target.value })} aria-label="Numbering" title="Numbering for reading texts">
             <option value="none">No numbering</option>
             <option value="paras">Paragraph letters</option>
             <option value="lines">Line numbers</option>
-          </select>
+          </NSelect>
         )}
         {!['speech', 'message'].includes(attrs.style) && (
           <span className="seg small-seg" role="radiogroup" aria-label="Width">

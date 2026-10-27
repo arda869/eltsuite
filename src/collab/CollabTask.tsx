@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useMemo, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { auth } from '../lib/firebase';
@@ -69,13 +70,13 @@ export function CollabTask({ a, classId, teacher, selfId, classmates }: { a: Col
     const options = a.scope === 'group' ? (set?.groups ?? []).map((g) => ({ id: g.id, name: g.name })) : (classmates ?? []);
     const cur = pick || options[0]?.id || '';
     const head = (
-      <select className="cd-pick" value={cur} onChange={(e) => setPick(e.target.value)} aria-label={a.scope === 'group' ? 'Group' : 'Learner'}>
+      <NSelect className="cd-pick" value={cur} onChange={(e) => setPick(e.target.value)} aria-label={a.scope === 'group' ? 'Group' : 'Learner'}>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>
         ))}
-      </select>
+      </NSelect>
     );
     if (!options.length) return <p className="hint">{a.scope === 'group' ? 'Make groups for this class first (Groups in the teaching tools).' : 'No learners in this class yet.'}</p>;
     return <AnyDoc key={cur} {...common} docKey={keyFor(a, a.scope === 'group' ? { group: cur } : { learner: cur })} modes={modes} teacher head={head} />;

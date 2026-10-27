@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { ask } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -15,7 +16,7 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
       <div className="mcq-tools">
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">Survey</span>
-        <select
+        <NSelect
           className="sv-template"
           value=""
           aria-label="Start from a template"
@@ -30,7 +31,7 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
               {t.label}
             </option>
           ))}
-        </select>
+        </NSelect>
         <button type="button" className="remove" style={{ marginLeft: 'auto' }} onClick={deleteNode}>
           Remove
         </button>
@@ -46,13 +47,13 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
           <div key={q.id} className="sv-edit-q">
             <span className="sv-edit-head">
               <span className="pq-n">{i + 1}</span>
-              <select value={q.type} aria-label="Question type" onChange={(e) => setQ(i, { ...newQ(e.target.value as SurveyType, q.prompt), id: q.id, ...(q.options && ['single', 'multi', 'rank'].includes(e.target.value) ? { options: q.options } : {}) })}>
+              <NSelect value={q.type} aria-label="Question type" onChange={(e) => setQ(i, { ...newQ(e.target.value as SurveyType, q.prompt), id: q.id, ...(q.options && ['single', 'multi', 'rank'].includes(e.target.value) ? { options: q.options } : {}) })}>
                 {(Object.keys(TYPE_LABELS) as SurveyType[]).map((t) => (
                   <option key={t} value={t}>
                     {TYPE_LABELS[t]}
                   </option>
                 ))}
-              </select>
+              </NSelect>
               <span className="sv-edit-move">
                 <button type="button" className="icon-btn" aria-label="Move up" disabled={i === 0} onClick={() => updateAttributes({ questions: swap(qs, i, i - 1) })}>
                   ↑
@@ -68,10 +69,10 @@ function SurveyView({ node, updateAttributes, deleteNode, editor, getPos, select
             <input className="sv-edit-prompt" value={q.prompt} placeholder="The question" onKeyDown={stop} onChange={(e) => setQ(i, { prompt: e.target.value })} />
             {q.type === 'scale' && (
               <span className="pq-row">
-                <select value={q.max ?? 5} aria-label="Scale" onChange={(e) => setQ(i, { max: Number(e.target.value) })}>
+                <NSelect value={q.max ?? 5} aria-label="Scale" onChange={(e) => setQ(i, { max: Number(e.target.value) })}>
                   <option value={5}>1 to 5</option>
                   <option value={10}>1 to 10</option>
-                </select>
+                </NSelect>
                 <input value={q.low ?? ''} placeholder="Label for 1" onKeyDown={stop} onChange={(e) => setQ(i, { low: e.target.value })} />
                 <input value={q.high ?? ''} placeholder={`Label for ${q.max ?? 5}`} onKeyDown={stop} onChange={(e) => setQ(i, { high: e.target.value })} />
               </span>

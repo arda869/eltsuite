@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { zoomOf } from '../lib/zoom';
 import { ask } from '../lib/ask';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -409,7 +410,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
           </label>
         )}
         {teacher && !free && (
-          <select className="wb-pen" value={pen === 'locked' ? 'teacher' : pen} onChange={(e) => set(ref(rtdb, `${base}/pen`), e.target.value).catch(() => {})} aria-label="Who can draw">
+          <NSelect className="wb-pen" value={pen === 'locked' ? 'teacher' : pen} onChange={(e) => set(ref(rtdb, `${base}/pen`), e.target.value).catch(() => {})} aria-label="Who can draw">
             <option value="teacher">Only I draw</option>
             <option value="all">Everyone can draw</option>
             {people.map((p) => (
@@ -417,7 +418,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
                 {p.name} draws
               </option>
             ))}
-          </select>
+          </NSelect>
         )}
         {!teacher && canDraw && <span className="wb-you">You have the pen</span>}
       </div>

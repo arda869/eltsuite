@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -208,23 +209,23 @@ function UploadView({ node, updateAttributes, deleteNode, editor, getPos, select
         </div>
         <label className="md-set">
           <span>Largest file</span>
-          <select value={a.maxMB} onChange={(e) => updateAttributes({ maxMB: Number(e.target.value) })}>
+          <NSelect value={a.maxMB} onChange={(e) => updateAttributes({ maxMB: Number(e.target.value) })}>
             {SIZES.map((s) => (
               <option key={s} value={s}>
                 {s} MB
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         <label className="md-set">
           <span>Files per learner</span>
-          <select value={a.maxFiles} onChange={(e) => updateAttributes({ maxFiles: Number(e.target.value) })}>
+          <NSelect value={a.maxFiles} onChange={(e) => updateAttributes({ maxFiles: Number(e.target.value) })}>
             {[1, 2, 3, 4, 5, 10].map((n) => (
               <option key={n} value={n}>
                 {n === 1 ? 'One file' : `Up to ${n}`}
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         <label className="check-row up-shrink">
           <input type="checkbox" checked={a.shrink} onChange={(e) => updateAttributes({ shrink: e.target.checked })} />

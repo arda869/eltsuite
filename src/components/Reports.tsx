@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useMemo, useState } from 'react';
 import type { ClassDoc, Item } from '../lib/classes';
 import type { Learner } from '../lib/learners';
@@ -154,14 +155,14 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
           ))}
         </span>
         {(view === 'class' || view === 'learner') && (
-          <select value={type} onChange={(e) => setType(e.target.value as typeof type)} aria-label="Type">
+          <NSelect value={type} onChange={(e) => setType(e.target.value as typeof type)} aria-label="Type">
             <option value="">Everything</option>
             {(['lesson', 'homework', 'exam', 'practice'] as const).map((t) => (
               <option key={t} value={t}>
                 {TYPE_LABEL[t]}s
               </option>
             ))}
-          </select>
+          </NSelect>
         )}
       </div>
 
@@ -217,14 +218,14 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
 
       {view === 'learner' && (
         <>
-          <select value={learnerId} onChange={(e) => setLearnerId(e.target.value)} aria-label="Learner" className="rp-pick">
+          <NSelect value={learnerId} onChange={(e) => setLearnerId(e.target.value)} aria-label="Learner" className="rp-pick">
             <option value="">Choose a learner</option>
             {roster.map((l) => (
               <option key={l.id} value={l.authUid}>
                 {l.displayName}
               </option>
             ))}
-          </select>
+          </NSelect>
           {learnerId && (
             <>
               <span className="rp-summary">
@@ -276,14 +277,14 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
 
       {view === 'item' && (
         <>
-          <select value={itemId} onChange={(e) => setItemId(e.target.value)} aria-label="Item" className="rp-pick">
+          <NSelect value={itemId} onChange={(e) => setItemId(e.target.value)} aria-label="Item" className="rp-pick">
             <option value="">Choose a lesson, homework, exam or practice</option>
             {items.map((i) => (
               <option key={i.id} value={i.id}>
                 {TYPE_LABEL[i.type]} · {i.title}
               </option>
             ))}
-          </select>
+          </NSelect>
           {itemId &&
             (() => {
               const item = items.find((i) => i.id === itemId)!;

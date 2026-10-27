@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { ask } from '../lib/ask';
 import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -228,12 +229,12 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
     <li className={'item' + (item.hidden ? ' is-hidden' : '')}>
       {sharing && <ShareDialog what={{ kind: 'lesson', title: item.title, src: { classId: c.id, itemId: item.id }, item: Object.fromEntries(Object.entries(item).filter(([k, v]) => v !== undefined && !['id', 'createdAt', 'updatedAt', 'teachingAt'].includes(k))) }} onClose={() => setSharing(false)} />}
       {copying && <CopyDialog kind="lesson" fromClass={c.id} itemId={item.id} title={item.title} onClose={() => setCopying(false)} onDone={setMsg} />}
-      <select className="type type-pick" data-type={item.type} value={item.type} aria-label="Type" title="Lesson, homework, exam or practice" onChange={(e) => updateItem(c.id, item.id, { type: e.target.value as Item['type'] })}>
+      <NSelect className="type type-pick" data-type={item.type} value={item.type} aria-label="Type" title="Lesson, homework, exam or practice" onChange={(e) => updateItem(c.id, item.id, { type: e.target.value as Item['type'] })}>
         <option value="lesson">Lesson</option>
         <option value="homework">Homework</option>
         <option value="exam">Exam</option>
         <option value="practice">Practice</option>
-      </select>
+      </NSelect>
       <Link to={`/class/${c.id}/lesson/${item.id}`} className="title">
         {item.title}
         {(item.taskCount ?? 0) > 0 && <span className="item-meta">{item.taskCount} {item.taskCount === 1 ? 'task' : 'tasks'}</span>}
@@ -245,14 +246,14 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
         <button type="button" className="icon-btn" aria-label="Move down" title="Move down" disabled={i < 0 || i >= list.length - 1} onClick={() => move(1)}>
           ↓
         </button>
-        <select className="move-topic" value={item.topicId ?? ''} aria-label="Move to topic" title="Move to topic" onChange={(e) => updateItem(c.id, item.id, { topicId: e.target.value || null, order: Date.now() % 100000 })}>
+        <NSelect className="move-topic" value={item.topicId ?? ''} aria-label="Move to topic" title="Move to topic" onChange={(e) => updateItem(c.id, item.id, { topicId: e.target.value || null, order: Date.now() % 100000 })}>
           {topics.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
           ))}
           <option value="">Not in a topic</option>
-        </select>
+        </NSelect>
       </span>
       <span className="status">{msg || [item.hidden ? 'Hidden from learners' : '', item.locked ? 'Locked' : ''].filter(Boolean).join(' · ')}</span>
       <WhenChip item={item} open={scheduling} onToggle={() => setScheduling((v) => !v)} />

@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useState } from 'react';
@@ -82,14 +83,14 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
         {a.scope !== 'class' && (
           <label className="md-set">
             <span>Groups</span>
-            <select value={a.groupSet} onChange={(e) => updateAttributes({ groupSet: e.target.value })}>
+            <NSelect value={a.groupSet} onChange={(e) => updateAttributes({ groupSet: e.target.value })}>
               <option value="">{sets.length ? 'The first group set' : 'No groups yet'}</option>
               {sets.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
         )}
         <div className="md-set">

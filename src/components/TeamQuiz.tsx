@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { loadKey, type AnswerKey, type Responses, type Task } from '../lib/tasks';
@@ -149,24 +150,24 @@ export function TeacherQuiz({ classId, itemId, tasks, taskId, roster, online, ac
             <h2>Start a team quiz</h2>
             <label className="field">
               <span>Questions from</span>
-              <select value={pick} onChange={(e) => setPick(e.target.value)}>
+              <NSelect value={pick} onChange={(e) => setPick(e.target.value)}>
                 {usable.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.title} · {quizQuestions(t.content).length} questions
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             {!usable.some((t) => t.id === pick) && <span className="hint">This task has no questions that can be marked automatically. Choose another task.</span>}
             <label className="field">
               <span>Time for each question</span>
-              <select value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>
+              <NSelect value={seconds} onChange={(e) => setSeconds(Number(e.target.value))}>
                 {[10, 20, 30, 45, 60, 90].map((s) => (
                   <option key={s} value={s}>
                     {s} seconds
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             <div className="field">
               <span>Teams</span>
@@ -179,13 +180,13 @@ export function TeacherQuiz({ classId, itemId, tasks, taskId, roster, online, ac
                 </button>
               </span>
               {source === 'random' && (
-                <select value={n} onChange={(e) => setN(Number(e.target.value))} aria-label="Number of teams">
+                <NSelect value={n} onChange={(e) => setN(Number(e.target.value))} aria-label="Number of teams">
                   {[2, 3, 4, 5, 6].map((x) => (
                     <option key={x} value={x}>
                       {x} teams ({TEAM_NAMES.slice(0, x).join(', ')})
                     </option>
                   ))}
-                </select>
+                </NSelect>
               )}
               <span className="hint">{online.length ? `${online.length} learners in the lesson take part.` : 'Everyone in the class takes part.'} Points: 500 to 1000 for a right answer, more for a fast one. A team gets its members’ average.</span>
             </div>

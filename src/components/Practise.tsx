@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useEffect, useMemo, useState } from 'react';
 import { doc, onSnapshot, query, setDoc, where, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -74,11 +75,11 @@ function Flashcards({ classId, uid, entries, mine }: { classId: string; uid: str
   return (
     <div className="fc">
       <span className="fc-bar">
-        <select value={source} onChange={(e) => (setSource(e.target.value as typeof source), setI(0))} aria-label="Which words">
+        <NSelect value={source} onChange={(e) => (setSource(e.target.value as typeof source), setI(0))} aria-label="Which words">
           <option value="all">All my words</option>
           <option value="class">Class notebook</option>
           <option value="mine">My notebook</option>
-        </select>
+        </NSelect>
         <span className="hint">
           {dueCards.length} to review · {known} of {pool.length} known well
         </span>

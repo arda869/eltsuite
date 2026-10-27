@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
@@ -124,14 +125,14 @@ export function LearnerJoin() {
         {found && (
           <label className="field">
             Your name
-            <select value={learnerId} onChange={(e) => setLearnerId(e.target.value)}>
+            <NSelect value={learnerId} onChange={(e) => setLearnerId(e.target.value)}>
               <option value="">Choose your name</option>
               {found.roster.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>
               ))}
-            </select>
+            </NSelect>
             {found.roster.length === 0 && <span className="hint">Your teacher hasn’t added learners to this class yet.</span>}
           </label>
         )}

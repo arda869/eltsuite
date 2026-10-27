@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { ask } from '../lib/ask';
 import { useAuth } from '../lib/auth';
 import { KIND_LABEL, rolesFor, moveToFolder, newDocInFolder, newFolder, removeFolder, removeSharedDoc, renameFolder, sendFolderInChat, shareFolder, unshareFolder, useFolderDocs, useFolders, useMyDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
@@ -119,14 +120,14 @@ const when = (t: number) => (t ? new Date(t).toLocaleDateString(undefined, { day
 
 function ClassFilter({ classes, value, onChange }: { classes: ClassDoc[]; value: string; onChange: (v: string) => void }) {
   return (
-    <select className="ma-sort" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Class">
+    <NSelect className="ma-sort" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Class">
       <option value="">All classes</option>
       {classes.map((c) => (
         <option key={c.id} value={c.id}>
           {c.name}
         </option>
       ))}
-    </select>
+    </NSelect>
   );
 }
 

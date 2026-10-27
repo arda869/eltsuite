@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { answerOf, profileFieldsOf, saveProfileAnswer, useMyOrg, useTeacherProfile, type ProfileField } from '../lib/admin';
 import { ProfileIcon } from '../components/ProfileIcons';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
@@ -206,13 +207,13 @@ export function SettingsPage() {
               </Row>
               {prefs.email && (
                 <Row title="When they stay unread for">
-                  <select className="set-select" value={prefs.after} onChange={(e) => saveMsgPrefs(user.uid, { ...prefs, after: Number(e.target.value) })}>
+                  <NSelect className="set-select" value={prefs.after} onChange={(e) => saveMsgPrefs(user.uid, { ...prefs, after: Number(e.target.value) })}>
                     {AFTER.map(([m, l]) => (
                       <option key={m} value={m}>
                         {l}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </Row>
               )}
             </>

@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { onValue, ref, set } from 'firebase/database';
@@ -29,13 +30,13 @@ export function BoardTask({ a, me, classmates }: { a: BoardAttrs2; me?: BoardMe;
       if (!options.length) return <p className="hint">{scope === 'group' ? 'Make groups for this class first.' : 'No learners in this class yet.'}</p>;
       boardId = `${a.id}~${scope === 'group' ? 'g' : 'l'}${cur}`;
       head = (
-        <select className="cd-pick" value={cur} onChange={(e) => setPick(e.target.value)} aria-label={scope === 'group' ? 'Group' : 'Learner'}>
+        <NSelect className="cd-pick" value={cur} onChange={(e) => setPick(e.target.value)} aria-label={scope === 'group' ? 'Group' : 'Learner'}>
           {options.map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
             </option>
           ))}
-        </select>
+        </NSelect>
       );
     } else {
       const g = scope === 'group' ? roomOf(set0, me.selfId ?? '') : undefined;

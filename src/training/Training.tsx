@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { tr } from '../lib/terms';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -177,12 +178,12 @@ function Plan({ v, set, ro, stagesFrom }: { v: Data; set: (k: string, x: string)
                 {cols.map(([k, , r]) => (
                   <td key={k} className={'c-' + k}>
                     {k === 'int' && !ro ? (
-                      <select value={v[`s${i}.${k}`] ?? ''} onChange={(e) => set(`s${i}.${k}`, e.target.value)}>
+                      <NSelect value={v[`s${i}.${k}`] ?? ''} onChange={(e) => set(`s${i}.${k}`, e.target.value)}>
                         <option value="">—</option>
                         {INTERACTION.map((x) => (
                           <option key={x}>{x}</option>
                         ))}
-                      </select>
+                      </NSelect>
                     ) : (
                       <Area v={v[`s${i}.${k}`] ?? ''} set={(x) => set(`s${i}.${k}`, x)} rows={r} ro={ro} />
                     )}

@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { ask } from '../lib/ask';
 import { useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -45,10 +46,10 @@ export function TeachersPanel({ c }: { c: ClassDoc }) {
                 <strong>{t.name}</strong>
               </span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <select value={t.role} onChange={(e) => changeRole(c, uid, e.target.value as CoRole)} aria-label={`Access for ${t.name}`}>
+                <NSelect value={t.role} onChange={(e) => changeRole(c, uid, e.target.value as CoRole)} aria-label={`Access for ${t.name}`}>
                   <option value="co">Co-teacher</option>
                   <option value="viewer">Viewer</option>
-                </select>
+                </NSelect>
                 <button type="button" className="btn link small" onClick={() => void ask(`Remove ${t.name} from this class?`).then((ok) => { if (ok) removeCoTeacher(c, uid); })}>
                   Remove
                 </button>
@@ -73,10 +74,10 @@ export function TeachersPanel({ c }: { c: ClassDoc }) {
       )}
       <span className="tp-invite">
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teacher@example.com" aria-label="Email to invite" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), invite())} />
-        <select value={role} onChange={(e) => setRole(e.target.value as CoRole)} aria-label="Access">
+        <NSelect value={role} onChange={(e) => setRole(e.target.value as CoRole)} aria-label="Access">
           <option value="co">Co-teacher</option>
           <option value="viewer">Viewer</option>
-        </select>
+        </NSelect>
         <button type="button" className="btn small-btn" disabled={!email.trim()} onClick={invite}>
           Invite
         </button>

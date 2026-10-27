@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { ask } from '../lib/ask';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDismiss } from '../lib/useDismiss';
@@ -179,23 +180,23 @@ function TaskLinkPicker({ classId, value, onChange }: { classId: string; value: 
   return (
     <div className="disc-link">
       <span className="hint">About a task (optional)</span>
-      <select value={value?.itemId ?? ''} aria-label="Lesson" onChange={(e) => { const it = items?.find((i) => i.id === e.target.value); onChange(it ? { itemId: it.id, title: it.title } : null); }}>
+      <NSelect value={value?.itemId ?? ''} aria-label="Lesson" onChange={(e) => { const it = items?.find((i) => i.id === e.target.value); onChange(it ? { itemId: it.id, title: it.title } : null); }}>
         <option value="">No lesson</option>
         {(items ?? []).map((i) => (
           <option key={i.id} value={i.id}>
             {i.title}
           </option>
         ))}
-      </select>
+      </NSelect>
       {value?.itemId && (
-        <select value={value.taskId ?? ''} aria-label="Task" onChange={(e) => { const t = tasks.find((x) => x.id === e.target.value); onChange(t ? { itemId: value.itemId, taskId: t.id, title: t.title } : { itemId: value.itemId, title: item?.title ?? value.title }); }}>
+        <NSelect value={value.taskId ?? ''} aria-label="Task" onChange={(e) => { const t = tasks.find((x) => x.id === e.target.value); onChange(t ? { itemId: value.itemId, taskId: t.id, title: t.title } : { itemId: value.itemId, title: item?.title ?? value.title }); }}>
           <option value="">The whole lesson</option>
           {tasks.map((t, n) => (
             <option key={t.id} value={t.id}>
               {n + 1}. {t.title}
             </option>
           ))}
-        </select>
+        </NSelect>
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
 import { ask } from '../lib/ask';
 import { FileIcon, type FileKind } from '../components/FileIcon';
@@ -829,23 +830,23 @@ function CopyElement({ c, m, onClose }: { c: Chat; m: Msg; onClose: () => void }
         <span className="hint">The message becomes a new task in the lesson you choose, with its answers.</span>
         <label className="field">
           Class
-          <select value={toClass} onChange={(e) => setToClass(e.target.value)}>
+          <NSelect value={toClass} onChange={(e) => setToClass(e.target.value)}>
             {classes.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         <label className="field">
           Lesson
-          <select value={toItem} onChange={(e) => setToItem(e.target.value)}>
+          <NSelect value={toItem} onChange={(e) => setToItem(e.target.value)}>
             {lessons.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.title}
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         <span className="sh-foot">
           <button type="button" className="btn" onClick={onClose}>
@@ -930,13 +931,13 @@ function MsgSettings({ uid }: { uid: string }) {
               {prefs.email && (
                 <label className="field msg-after">
                   When they stay unread for
-                  <select value={prefs.after} onChange={(e) => saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
+                  <NSelect value={prefs.after} onChange={(e) => saveMsgPrefs(uid, { ...prefs, after: Number(e.target.value) })}>
                     {AFTER.map(([m, l]) => (
                       <option key={m} value={m}>
                         {l}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
               )}
             </>

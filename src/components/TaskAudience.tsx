@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useState } from 'react';
 import { familyOf, LEVELS, ROLE_NAMES, type Audience, type Dist, type GroupSet } from '../lib/groups';
 import { setTaskFlags, type Task } from '../lib/tasks';
@@ -41,17 +42,17 @@ export function TaskAudience({
     return String.fromCharCode(65 + fam.length);
   };
   const versionPick = (value: string | undefined, onPick: (id: string) => void, label: string) => (
-    <select value={value ?? main.id} aria-label={label} onChange={(e) => onPick(e.target.value)}>
+    <NSelect value={value ?? main.id} aria-label={label} onChange={(e) => onPick(e.target.value)}>
       {fam.map((f) => (
         <option key={f.id} value={f.id}>
           {levels || !/^[A-Z]$/.test(labelOf(f)) ? labelOf(f) : `Version ${labelOf(f)}`}
         </option>
       ))}
-    </select>
+    </NSelect>
   );
   const setPick = (value: string | undefined, onPick: (id: string) => void) =>
     sets.length ? (
-      <select value={value ?? ''} aria-label="Group set" onChange={(e) => onPick(e.target.value)}>
+      <NSelect value={value ?? ''} aria-label="Group set" onChange={(e) => onPick(e.target.value)}>
         <option value="" disabled>
           Choose a group set
         </option>
@@ -60,7 +61,7 @@ export function TaskAudience({
             {s.name}
           </option>
         ))}
-      </select>
+      </NSelect>
     ) : (
       <button type="button" className="btn small-btn" onClick={onOpenGroups}>
         Make groups first
@@ -145,12 +146,12 @@ export function TaskAudience({
       {fam.length > 1 && (
         <>
           <h2>Give out versions</h2>
-          <select className="aud-mode" value={d.mode} aria-label="How versions are given out" onChange={(e) => setD({ mode: e.target.value as Dist['mode'], groupSetId: d.groupSetId ?? firstSet, roleMap: d.roleMap?.length ? d.roleMap : fam.map((f) => f.id) })}>
+          <NSelect className="aud-mode" value={d.mode} aria-label="How versions are given out" onChange={(e) => setD({ mode: e.target.value as Dist['mode'], groupSetId: d.groupSetId ?? firstSet, roleMap: d.roleMap?.length ? d.roleMap : fam.map((f) => f.id) })}>
             <option value="same">Same for everyone</option>
             <option value="room">Per room</option>
             <option value="role">Per person in each room (role cards)</option>
             <option value="choose">Learners choose{levels ? ' their level' : ''}</option>
-          </select>
+          </NSelect>
           {d.mode === 'same' && <div className="aud-pick">Everyone gets {versionPick(d.sameId, (id) => setD({ sameId: id }), 'Version for everyone')}</div>}
           {(d.mode === 'room' || d.mode === 'role') && <div className="aud-pick">{setPick(d.groupSetId, (id) => setD({ groupSetId: id, roomMap: {} }))}</div>}
           {d.mode === 'room' && dSet && (

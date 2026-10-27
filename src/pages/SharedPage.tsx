@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
@@ -353,25 +354,25 @@ function CopyOut({ sh, tasks, onClose }: { sh: Share; tasks: SharedTask[]; onClo
           ) : (
             <label className="field">
               Into class
-              <select value={toClass} onChange={(e) => setToClass(e.target.value)}>
+              <NSelect value={toClass} onChange={(e) => setToClass(e.target.value)}>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
           ))}
         {needLesson && toClass && (
           <label className="field">
             Into lesson
-            <select value={toItem} onChange={(e) => setToItem(e.target.value)}>
+            <NSelect value={toItem} onChange={(e) => setToItem(e.target.value)}>
               {lessons.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.title}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
         )}
         {sh.kind === 'lesson' && <span className="hint">The copy starts hidden from learners until you show it.</span>}

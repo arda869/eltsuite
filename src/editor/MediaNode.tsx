@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useState } from 'react';
@@ -72,22 +73,22 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
             </label>
             <label className="md-set">
               <span>Script</span>
-              <select value={a.scriptMode} onChange={(e) => updateAttributes({ scriptMode: e.target.value })}>
+              <NSelect value={a.scriptMode} onChange={(e) => updateAttributes({ scriptMode: e.target.value })}>
                 {SCRIPT_MODES.map((m) => (
                   <option key={m.k} value={m.k}>
                     {m.label}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             <label className="md-set">
               <span>Learners can play it</span>
-              <select value={a.plays} onChange={(e) => updateAttributes({ plays: Number(e.target.value) })}>
+              <NSelect value={a.plays} onChange={(e) => updateAttributes({ plays: Number(e.target.value) })}>
                 <option value={0}>As often as they like</option>
                 <option value={1}>Once</option>
                 <option value={2}>Twice</option>
                 <option value={3}>Three times</option>
-              </select>
+              </NSelect>
             </label>
             <label className="check-row up-shrink">
               <input type="checkbox" checked={!!(a as MediaAttrs & { notes?: boolean }).notes} onChange={(e) => updateAttributes({ notes: e.target.checked })} />

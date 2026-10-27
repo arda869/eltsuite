@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { VideoButton } from '../components/VideoCall';
 import { setActivity } from '../lib/status';
 import { tr, useClassTerms } from '../lib/terms';
@@ -951,14 +952,14 @@ export function LessonEditor() {
                   {live?.sync ? (live.syncRoom ? `${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room'} follows you` : 'Class follows you') : 'Sync class'}
                 </button>
                 {activeSet && fam.length > 1 && (
-                  <select className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
+                  <NSelect className="sync-who" value={live?.syncRoom ?? ''} aria-label="Who follows you" onChange={(e) => syncWho(e.target.value || null)}>
                     <option value="">Whole class</option>
                     {activeSet.groups.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.name}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 )}
               </span>
               <span className="tb-group" aria-label="Screen">

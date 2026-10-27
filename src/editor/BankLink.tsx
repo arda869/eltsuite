@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useBankPages } from '../lib/notebookPages';
@@ -27,14 +28,14 @@ function BankLinkView({ node, updateAttributes, deleteNode, editor, getPos, sele
         </button>
       </div>
       <div className="bl-edit">
-        <select value={node.attrs.entryId ?? ''} onChange={(e) => updateAttributes({ entryId: e.target.value, title: list.find((p) => p.id === e.target.value)?.title ?? '' })}>
+        <NSelect value={node.attrs.entryId ?? ''} onChange={(e) => updateAttributes({ entryId: e.target.value, title: list.find((p) => p.id === e.target.value)?.title ?? '' })}>
           <option value="">Choose a page…</option>
           {list.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
             </option>
           ))}
-        </select>
+        </NSelect>
         {list.length === 0 && <span className="hint">No pages in this bank yet. Add them in the class Notebook.</span>}
         <input value={node.attrs.label ?? ''} placeholder="Label (optional), for example: See the rule" onChange={(e) => updateAttributes({ label: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       </div>

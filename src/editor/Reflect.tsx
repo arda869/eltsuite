@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { newId } from '../lib/tasks';
@@ -120,7 +121,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
                 <span key={g.id} className="r-pair">
                   <span className="r-giver">{g.name}</span>
                   <span className="r-arrow" aria-hidden="true">→</span>
-                  <select value={pairs[g.id] ?? ''} onChange={(e) => setPair(g.id, e.target.value)} aria-label={`${g.name} gives feedback to`}>
+                  <NSelect value={pairs[g.id] ?? ''} onChange={(e) => setPair(g.id, e.target.value)} aria-label={`${g.name} gives feedback to`}>
                     <option value="">Not paired</option>
                     {classmates
                       .filter((r) => r.id !== g.id)
@@ -129,7 +130,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
                           {r.name}
                         </option>
                       ))}
-                  </select>
+                  </NSelect>
                 </span>
               ))}
             </div>
@@ -143,13 +144,13 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
           <div key={it.id} className="r-item">
             <div className="r-item-head">
               <span className="r-n">{i + 1}</span>
-              <select value={it.type} onChange={(e) => patch(i, { ...newItem(e.target.value as RItemType, it.prompt), id: it.id })} aria-label="Question type">
+              <NSelect value={it.type} onChange={(e) => patch(i, { ...newItem(e.target.value as RItemType, it.prompt), id: it.id })} aria-label="Question type">
                 {R_TYPES.map((t) => (
                   <option key={t.key} value={t.key}>
                     {t.label}
                   </option>
                 ))}
-              </select>
+              </NSelect>
               <input className="r-prompt" value={it.prompt} placeholder="Question" onChange={(e) => patch(i, { prompt: e.target.value })} />
               <span className="r-move">
                 <button type="button" className="icon-btn" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
@@ -167,11 +168,11 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
               <div className="r-opts">
                 <label className="r-mini">
                   Points
-                  <select value={it.points ?? 5} onChange={(e) => patch(i, { points: Number(e.target.value) })}>
+                  <NSelect value={it.points ?? 5} onChange={(e) => patch(i, { points: Number(e.target.value) })}>
                     {[3, 4, 5, 6, 7, 10].map((n) => (
                       <option key={n}>{n}</option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
                 <label className="r-mini">
                   Low end

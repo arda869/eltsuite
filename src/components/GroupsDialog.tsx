@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { ask } from '../lib/ask';
 import { useEffect, useState } from 'react';
 import { addGroupSet, autoGroups, averageScores, deleteGroupSet, groupsByScore, newGroup, saveGroupSet, ROLE_NAMES, type Group, type GroupSet } from '../lib/groups';
@@ -105,23 +106,23 @@ function NewSet({ classId, roster, count, onMade }: { classId: string; roster: P
               {k === 'size' && (
                 <span className="hint">
                   of{' '}
-                  <select value={size} onChange={(e) => setSize(Number(e.target.value))} onClick={() => setHow('size')}>
+                  <NSelect value={size} onChange={(e) => setSize(Number(e.target.value))} onClick={() => setHow('size')}>
                     {[3, 4, 5, 6].map((x) => (
                       <option key={x}>{x}</option>
                     ))}
-                  </select>
+                  </NSelect>
                 </span>
               )}
               {k === 'level' && (
                 <span className="hint">
                   {' '}
-                  <select value={n} onChange={(e) => setN(Number(e.target.value))} onClick={() => setHow('level')}>
+                  <NSelect value={n} onChange={(e) => setN(Number(e.target.value))} onClick={() => setHow('level')}>
                     {[2, 3, 4].map((x) => (
                       <option key={x} value={x}>
                         {x} groups
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </span>
               )}
               {hint && <span className="hint gd-opt-hint">{hint}</span>}

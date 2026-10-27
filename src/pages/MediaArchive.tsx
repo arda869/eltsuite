@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, type DriveFolder } from '../lib/admin';
 import { copyFile } from '../lib/copyFile';
-import { Select } from '../components/Select';
+import { Select, NSelect } from '../components/Select';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
 import { shareLesson, unshareLesson, useClassLessons, useHandIns, type ClassLesson, type HandIn } from '../lib/classFiles';
@@ -923,16 +923,16 @@ export function MediaArchive() {
                   </button>
                 )}
                 <span style={{ flex: 1 }} />
-                <select className="ma-sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Order">
+                <NSelect className="ma-sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Order">
                   <option value="new">Newest first</option>
                   <option value="name">By name</option>
                   <option value="type">By kind</option>
                   <option value="size">Largest first</option>
-                </select>
-                <select className="ma-sort" value={group} onChange={(e) => setGroup(e.target.value as Group)} aria-label="Group">
+                </NSelect>
+                <NSelect className="ma-sort" value={group} onChange={(e) => setGroup(e.target.value as Group)} aria-label="Group">
                   <option value="none">No groups</option>
                   <option value="type">Group by kind</option>
-                </select>
+                </NSelect>
                 <span className="seg small-seg ma-views" role="radiogroup" aria-label="View">
                   {VIEWS.map((v) => (
                     <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} aria-label={v.label} data-tip={v.label}>
@@ -1301,7 +1301,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
       </label>
       <label className="field">
         <span>Folder</span>
-        <select value={item.folder} onChange={(e) => save({ folder: e.target.value })}>
+        <NSelect value={item.folder} onChange={(e) => save({ folder: e.target.value })}>
           <option value="">My files</option>
           {folders.map((f) => (
             <option key={f} value={f}>
@@ -1309,7 +1309,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
               {leafOf(f)}
             </option>
           ))}
-        </select>
+        </NSelect>
       </label>
       <div className="field">
         <span>Tags</span>

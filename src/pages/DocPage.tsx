@@ -13,7 +13,7 @@ import { PdReading } from '../pd/PdReading';
 import { LessonFile } from '../lessons/LessonFile';
 import { CiteStyleContext } from '../editor/Cite';
 import { CITE_STYLES, type CiteStyle } from '../lib/cite';
-import { Select } from '../components/Select';
+import { Select, NSelect } from '../components/Select';
 import { doc as fsDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROLES, rolesFor, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
@@ -265,13 +265,13 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
               <b>{m.name}</b>
               <span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span>
               {noRoles ? <span className="hint">Can edit</span> : onRole ? (
-                <select value={m.role} onChange={(e) => onRole(k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
+                <NSelect value={m.role} onChange={(e) => onRole(k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
                   {roles.map((r) => (
                     <option key={r.k} value={r.k}>
                       {r.label}
                     </option>
                   ))}
-                </select>
+                </NSelect>
               ) : (
                 <span className="hint">{ROLES.find((r) => r.k === m.role)?.label}</span>
               )}

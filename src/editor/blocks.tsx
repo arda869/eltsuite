@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
@@ -305,18 +306,18 @@ function WritingView(props: NodeViewProps) {
       <div className="writing-edit">
         <label className="check-row">
           Type of writing
-          <select value={node.attrs.genre ?? ''} onChange={(e) => updateAttributes({ genre: e.target.value })}>
+          <NSelect value={node.attrs.genre ?? ''} onChange={(e) => updateAttributes({ genre: e.target.value })}>
             <option value="">Any</option>
             {GENRES.map((g) => (
               <option key={g} value={g}>
                 {genreLabel(g)}
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         <label className="check-row">
           Marking scale
-          <select
+          <NSelect
             value={node.attrs.rubric ?? 'none'}
             onChange={(e) => {
               const r = e.target.value;
@@ -327,7 +328,7 @@ function WritingView(props: NodeViewProps) {
             <option value="none">One mark</option>
             <option value="cambridge">Cambridge-style (4 × 0–5)</option>
             <option value="custom">My own criteria</option>
-          </select>
+          </NSelect>
         </label>
       </div>
       {node.attrs.rubric === 'custom' && (

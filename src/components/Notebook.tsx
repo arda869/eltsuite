@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { ask, askText } from '../lib/ask';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { JSONContent } from '@tiptap/react';
@@ -400,21 +401,21 @@ function PageCard({ classId, c, me, e, topics, places }: { classId: string; c: C
           <span className="nb-page-row">
             <label className="check-row">
               Topic
-              <select value={e.topicId ?? ''} onChange={(ev) => updateTeacherFields(classId, e.id, { topicId: ev.target.value || null })}>
+              <NSelect value={e.topicId ?? ''} onChange={(ev) => updateTeacherFields(classId, e.id, { topicId: ev.target.value || null })}>
                 <option value="">No topic</option>
                 {topics.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             <label className="check-row">
               Bank
-              <select value={e.bank ?? 'grammar'} onChange={(ev) => updateTeacherFields(classId, e.id, { bank: ev.target.value as Bank })}>
+              <NSelect value={e.bank ?? 'grammar'} onChange={(ev) => updateTeacherFields(classId, e.id, { bank: ev.target.value as Bank })}>
                 <option value="grammar">Grammar</option>
                 <option value="vocab">Vocabulary</option>
-              </select>
+              </NSelect>
             </label>
           </span>
           <span className="hint">Write the rule, examples and, if you like, practice questions from the / menu. Learners can check them here.</span>
@@ -651,38 +652,38 @@ export function Notebook({
   const filters = (
     <div className="nb-filters">
       <input className="nb-search" value={q} placeholder="Search" onChange={(e) => setQ(e.target.value)} aria-label="Search the notebook" />
-      <select value={fType} onChange={(e) => setFType(e.target.value as typeof fType)} aria-label="Type">
+      <NSelect value={fType} onChange={(e) => setFType(e.target.value as typeof fType)} aria-label="Type">
         <option value="">Words and notes</option>
         <option value="vocab">Words</option>
         <option value="note">Notes</option>
-      </select>
-      <select value={fLesson} onChange={(e) => setFLesson(e.target.value)} aria-label="Lesson">
+      </NSelect>
+      <NSelect value={fLesson} onChange={(e) => setFLesson(e.target.value)} aria-label="Lesson">
         <option value="">Any lesson</option>
         {items.map((i) => (
           <option key={i.id} value={i.id}>
             {i.title}
           </option>
         ))}
-      </select>
-      <select value={fPos} onChange={(e) => setFPos(e.target.value)} aria-label="Part of speech">
+      </NSelect>
+      <NSelect value={fPos} onChange={(e) => setFPos(e.target.value)} aria-label="Part of speech">
         <option value="">Any part of speech</option>
         {POS.map((p) => (
           <option key={p}>{p}</option>
         ))}
-      </select>
-      <select value={fCefr} onChange={(e) => setFCefr(e.target.value)} aria-label="CEFR level">
+      </NSelect>
+      <NSelect value={fCefr} onChange={(e) => setFCefr(e.target.value)} aria-label="CEFR level">
         <option value="">Any level</option>
         {CEFR.map((p) => (
           <option key={p}>{p}</option>
         ))}
-      </select>
+      </NSelect>
       {tags.length > 0 && (
-        <select value={fTag} onChange={(e) => setFTag(e.target.value)} aria-label="Tag">
+        <NSelect value={fTag} onChange={(e) => setFTag(e.target.value)} aria-label="Tag">
           <option value="">Any tag</option>
           {tags.map((t) => (
             <option key={t}>{t}</option>
           ))}
-        </select>
+        </NSelect>
       )}
     </div>
   );

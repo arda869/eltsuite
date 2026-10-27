@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -65,26 +66,26 @@ export function CopyDialog({ kind, fromClass, itemId, taskId, title, onClose, on
         <h2 style={{ margin: 0 }}>Copy “{title}”</h2>
         <label className="field">
           To class
-          <select value={toClass} onChange={(e) => setToClass(e.target.value)}>
+          <NSelect value={toClass} onChange={(e) => setToClass(e.target.value)}>
             {classes.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
                 {c.id === fromClass ? ' (this class)' : ''}
               </option>
             ))}
-          </select>
+          </NSelect>
         </label>
         {kind === 'task' && (
           <label className="field">
             To lesson
-            <select value={toItem} onChange={(e) => setToItem(e.target.value)}>
+            <NSelect value={toItem} onChange={(e) => setToItem(e.target.value)}>
               {lessons.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                   {l.id === itemId ? ' (this lesson)' : ''}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
         )}
         {hasDocs && <CollabChoice value={collab} onChange={setCollab} />}

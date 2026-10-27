@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { ask } from '../lib/ask';
 import { useMemo, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
@@ -36,23 +37,23 @@ export function SaveToBankDialog({ uid, kind, content, title: title0, instructio
         <div className="two">
           <label className="field">
             Level
-            <select value={level} onChange={(e) => setLevel(e.target.value)}>
+            <NSelect value={level} onChange={(e) => setLevel(e.target.value)}>
               <option value="">Any</option>
               {LEVELS.map((l) => (
                 <option key={l}>{l}</option>
               ))}
-            </select>
+            </NSelect>
           </label>
           <label className="field">
             Skill
-            <select value={skill} onChange={(e) => setSkill(e.target.value)}>
+            <NSelect value={skill} onChange={(e) => setSkill(e.target.value)}>
               <option value="">Any</option>
               {SKILLS.map((s) => (
                 <option key={s} value={s}>
                   {s[0].toUpperCase() + s.slice(1)}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
         </div>
         <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -88,27 +89,27 @@ export function BankPicker({ uid, onPick, onClose }: { uid: string; onPick: (b: 
         </div>
         <div className="bank-filters">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search" autoFocus />
-          <select value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Level">
+          <NSelect value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Level">
             <option value="">Any level</option>
             {LEVELS.map((l) => (
               <option key={l}>{l}</option>
             ))}
-          </select>
-          <select value={skill} onChange={(e) => setSkill(e.target.value)} aria-label="Skill">
+          </NSelect>
+          <NSelect value={skill} onChange={(e) => setSkill(e.target.value)} aria-label="Skill">
             <option value="">Any skill</option>
             {SKILLS.map((s) => (
               <option key={s} value={s}>
                 {s[0].toUpperCase() + s.slice(1)}
               </option>
             ))}
-          </select>
+          </NSelect>
           {tags.length > 0 && (
-            <select value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Tag">
+            <NSelect value={tag} onChange={(e) => setTag(e.target.value)} aria-label="Tag">
               <option value="">Any tag</option>
               {tags.map((t) => (
                 <option key={t}>{t}</option>
               ))}
-            </select>
+            </NSelect>
           )}
         </div>
         {!list.length ? (

@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { importLesson, type ImportResult } from '../lib/textformat';
@@ -72,11 +73,11 @@ export function ImportDialog({ classId, topics, onClose }: { classId: string; to
         <div className="row-between">
           <h2 style={{ margin: 0 }}>Import a lesson</h2>
           <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select value={format} onChange={(e) => setFormat(e.target.value as typeof format)} aria-label="File format">
+            <NSelect value={format} onChange={(e) => setFormat(e.target.value as typeof format)} aria-label="File format">
               <option value="auto">Work out the format</option>
               <option value="text">Lesson text (.md)</option>
               <option value="gift">Moodle GIFT</option>
-            </select>
+            </NSelect>
             <label className="btn small-btn">
               Upload a file
               <input type="file" accept=".md,.txt,.gift,.json,text/plain,text/markdown,application/json" hidden onChange={(e) => e.target.files?.[0]?.text().then(setText)} />
@@ -171,14 +172,14 @@ export function ImportDialog({ classId, topics, onClose }: { classId: string; to
         <div className="row-between">
           <label className="field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             Topic
-            <select value={topicId} onChange={(e) => setTopicId(e.target.value)}>
+            <NSelect value={topicId} onChange={(e) => setTopicId(e.target.value)}>
               {topics.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>
               ))}
               <option value="">Unsorted</option>
-            </select>
+            </NSelect>
           </label>
           <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {busy && <span className="hint">{busy}</span>}

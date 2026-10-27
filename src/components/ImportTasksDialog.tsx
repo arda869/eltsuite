@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -80,25 +81,25 @@ export function ImportTasksDialog({ classId, itemId, onClose, onDone }: { classI
         <div className="it-pick">
           <label className="field">
             Class
-            <select value={fromClass} onChange={(e) => setFromClass(e.target.value)}>
+            <NSelect value={fromClass} onChange={(e) => setFromClass(e.target.value)}>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                   {c.id === classId ? ' (this class)' : ''}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
           <label className="field">
             Lesson
-            <select value={fromItem} onChange={(e) => setFromItem(e.target.value)} disabled={!lessons.length}>
+            <NSelect value={fromItem} onChange={(e) => setFromItem(e.target.value)} disabled={!lessons.length}>
               {lessons.map((l) => (
                 <option key={l.id} value={l.id}>
                   {TYPE[l.type] ?? 'Lesson'} · {l.title}
                   {l.id === itemId && fromClass === classId ? ' (this lesson)' : ''}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
         </div>
         <div className="it-list" style={{ ['--accent' as string]: theme(classes.find((c) => c.id === fromClass)?.themeColor).accent }}>

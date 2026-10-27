@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Manifest, ScriptLine } from '../lib/archive';
@@ -230,13 +231,13 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
                   </button>
                   <TimeField value={l.t} onSet={(t) => set(i, { t })} now={e.time} />
                   {cast.length > 0 && (
-                    <select className={'se-who sp' + Math.max(0, cast.indexOf(l.who ?? '')) % 4} value={l.who ?? ''} onChange={(ev) => set(i, { who: ev.target.value || undefined })} aria-label={`Speaker of line ${i + 1}`}>
+                    <NSelect className={'se-who sp' + Math.max(0, cast.indexOf(l.who ?? '')) % 4} value={l.who ?? ''} onChange={(ev) => set(i, { who: ev.target.value || undefined })} aria-label={`Speaker of line ${i + 1}`}>
                       {cast.map((n) => (
                         <option key={n} value={n}>
                           {n}
                         </option>
                       ))}
-                    </select>
+                    </NSelect>
                   )}
                   <input className="se-text" value={l.text} onChange={(ev) => set(i, { text: ev.target.value })} aria-label={`Line ${i + 1}`} />
                   <button type="button" className="se-x" aria-label={`Remove line ${i + 1}`} onClick={() => setLines(L.filter((_, k) => k !== i))}>

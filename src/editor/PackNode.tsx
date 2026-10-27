@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -377,13 +378,13 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
               <span key={i} className="pq-line">
                 <span className="pq-n">{i + 1}</span>
                 <input value={s.text} placeholder="Which person mentions moving abroad?" onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ statements: st.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)) })} />
-                <select value={s.answer} aria-label="Answer" onChange={(e) => set({ statements: st.map((x, k) => (k === i ? { ...x, answer: Number(e.target.value) } : x)) })}>
+                <NSelect value={s.answer} aria-label="Answer" onChange={(e) => set({ statements: st.map((x, k) => (k === i ? { ...x, answer: Number(e.target.value) } : x)) })}>
                   {opts.map((o, k) => (
                     <option key={k} value={k}>
                       {o}
                     </option>
                   ))}
-                </select>
+                </NSelect>
                 <button type="button" className="icon-btn" aria-label="Remove" disabled={st.length <= 1} onClick={() => set({ statements: st.filter((_, k) => k !== i) })}>
                   ×
                 </button>
@@ -410,13 +411,13 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
           <div className="pq-row">
             <label className="inline-field small-field">
               Timer
-              <select value={d.timer ?? 60} onChange={(e) => set({ timer: Number(e.target.value) })}>
+              <NSelect value={d.timer ?? 60} onChange={(e) => set({ timer: Number(e.target.value) })}>
                 {[30, 45, 60, 90, 120, 180].map((s) => (
                   <option key={s} value={s}>
                     {s < 60 ? `${s} seconds` : `${s / 60} min${s > 60 ? '' : ''}`}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             <label className="check-row">
               <input type="checkbox" checked={d.pairs !== false} onChange={() => set({ pairs: d.pairs === false })} />
@@ -434,20 +435,20 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
           <div className="pq-row">
             <label className="inline-field small-field">
               Replays
-              <select value={d.replays ?? 2} onChange={(e) => set({ replays: Number(e.target.value) })}>
+              <NSelect value={d.replays ?? 2} onChange={(e) => set({ replays: Number(e.target.value) })}>
                 {[1, 2, 3, 5, 99].map((n) => (
                   <option key={n} value={n}>
                     {n === 99 ? 'Unlimited' : n}
                   </option>
                 ))}
-              </select>
+              </NSelect>
             </label>
             <label className="inline-field small-field">
               Accent
-              <select value={d.accent ?? 'RP'} onChange={(e) => set({ accent: e.target.value })}>
+              <NSelect value={d.accent ?? 'RP'} onChange={(e) => set({ accent: e.target.value })}>
                 <option value="RP">British</option>
                 <option value="GA">American</option>
-              </select>
+              </NSelect>
             </label>
             <button type="button" className="btn small-btn" onClick={() => speak(d.sentence ?? '', d.accent ?? 'RP')} disabled={!String(d.sentence ?? '').trim()}>
               Listen
@@ -465,11 +466,11 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
               <span key={i} className="pq-line pq-pair">
                 <span className="pq-n">{i + 1}</span>
                 <PipeField value={it.options ?? []} placeholder="ship | sheep" onChange={(v) => set({ items: items.map((x, k) => (k === i ? { ...x, options: v, say: v.includes(x.say) ? x.say : v[0] ?? '' } : x)) })} />
-                <select value={it.say} aria-label="The word learners hear" onChange={(e) => set({ items: items.map((x, k) => (k === i ? { ...x, say: e.target.value } : x)) })}>
+                <NSelect value={it.say} aria-label="The word learners hear" onChange={(e) => set({ items: items.map((x, k) => (k === i ? { ...x, say: e.target.value } : x)) })}>
                   {(it.options ?? []).map((o) => (
                     <option key={o}>{o}</option>
                   ))}
-                </select>
+                </NSelect>
                 <button type="button" className="icon-btn" aria-label="Listen" onClick={() => speak(it.say, d.accent ?? 'RP')}>
                   ♪
                 </button>
@@ -485,10 +486,10 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
           <div className="pq-row">
             <label className="inline-field small-field">
               Accent
-              <select value={d.accent ?? 'RP'} onChange={(e) => set({ accent: e.target.value })}>
+              <NSelect value={d.accent ?? 'RP'} onChange={(e) => set({ accent: e.target.value })}>
                 <option value="RP">British</option>
                 <option value="GA">American</option>
-              </select>
+              </NSelect>
             </label>
           </div>
           <span className="hint">Write the similar-sounding words separated by |, then choose the one learners hear. 1 point each.</span>

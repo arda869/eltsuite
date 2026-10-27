@@ -1,3 +1,4 @@
+import { NSelect } from './Select';
 import { emailChoicesOf, nameChoicesOf, useMyOrg } from '../lib/admin';
 import { tr } from '../lib/terms';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -171,11 +172,11 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
             </div>
             <label className="field">
               Learners see the link
-              <select value={visibility} onChange={(e) => setVisibility(e.target.value as Meeting['visibility'])}>
+              <NSelect value={visibility} onChange={(e) => setVisibility(e.target.value as Meeting['visibility'])}>
                 <option value="live">Only while a lesson is live</option>
                 <option value="before15">From 15 minutes before the lesson</option>
                 <option value="always">Always</option>
-              </select>
+              </NSelect>
             </label>
           </>
         )}
@@ -229,34 +230,34 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               Messages
               <span className="hint">{tr('Who learners in this class can write to')}</span>
             </span>
-            <select value={msgMode} onChange={(e) => setMsgMode(e.target.value as MessagingMode)}>
+            <NSelect value={msgMode} onChange={(e) => setMsgMode(e.target.value as MessagingMode)}>
               <option value="off">No messages</option>
               <option value="teacher">{tr('Only with their teachers')}</option>
               <option value="groups">{tr('Teachers, and groups I set up')}</option>
               <option value="free">Each other freely</option>
-            </select>
+            </NSelect>
           </label>
           <label className="cs-row">
             <span>
               Profile pictures
               <span className="hint">Photos are seen by everyone in the class</span>
             </span>
-            <select value={photos ? 'photos' : 'icons'} onChange={(e) => setPhotos(e.target.value === 'photos')}>
+            <NSelect value={photos ? 'photos' : 'icons'} onChange={(e) => setPhotos(e.target.value === 'photos')}>
               <option value="icons">Only the ready-made pictures</option>
               <option value="photos">Ready-made pictures or their own photo</option>
-            </select>
+            </NSelect>
           </label>
           <label className="cs-row">
             <span>
               Names other learners see
               <span className="hint">{orgNames ? (nameOk.length === 1 ? `Set by ${org?.name}` : `${org?.name} chooses which ways you can use`) : 'You always see full names'}</span>
             </span>
-            <select value={names} disabled={nameOk.length === 1} onChange={(e) => setNames(e.target.value as NameShow)}>
+            <NSelect value={names} disabled={nameOk.length === 1} onChange={(e) => setNames(e.target.value as NameShow)}>
               {nameOk.includes('first') && <option value="first">First name only (Anna)</option>}
               {nameOk.includes('initial') && <option value="initial">First name and initial (Anna S.)</option>}
               {nameOk.includes('full') && <option value="full">Full name (Anna Silva)</option>}
               {nameOk.includes('nick') && <option value="nick">{tr('A nickname I give each learner')}</option>}
-            </select>
+            </NSelect>
           </label>
           {names === 'nick' && (
             <div className="cs-nicks">
@@ -281,11 +282,11 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               <span className="hint">{tr('Learners can link their account to sign in with Google, and add an email for message summaries')}</span>
             </span>
             {orgEmail && <span className="hint cs-org">{emailOk.length === 1 ? `Set by ${org?.name}` : `${org?.name} chooses which you can use`}</span>}
-            <select value={emailLink} disabled={emailOk.length === 1} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
+            <NSelect value={emailLink} disabled={emailOk.length === 1} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
               {emailOk.includes('off') && <option value="off">Not for this class</option>}
               {emailOk.includes('optional') && <option value="optional">{tr('Learners can if they want')}</option>}
               {emailOk.includes('required') && <option value="required">{tr('Every learner must')}</option>}
-            </select>
+            </NSelect>
           </label>
           <div className="cs-row cs-tools-row">
             <span>

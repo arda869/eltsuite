@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
@@ -422,13 +423,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     </span>
   ) : allowed.length > 1 ? (
     <span className="cd-mode">
-      <select value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
+      <NSelect value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
         {allowed.map((m) => (
           <option key={m} value={m}>
             {MODE_LABEL[m].label}
           </option>
         ))}
-      </select>
+      </NSelect>
     </span>
   ) : (
     <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
@@ -484,13 +485,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
               <UiIcon name="lock" size={14} /> Locked
             </span>
           ) : allowed.length > 1 ? (
-            <select value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
+            <NSelect value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
               {allowed.map((m) => (
                 <option key={m} value={m}>
                   {MODE_LABEL[m].label}
                 </option>
               ))}
-            </select>
+            </NSelect>
           ) : (
             <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
           )}
@@ -529,7 +530,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           <TextColorTool editor={editor} />
           <HighlightTool editor={editor} />
           {gate('heading') !== 'hide' && (
-            <select
+            <NSelect
               className="ne-style"
               aria-label="Paragraph style"
               value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
@@ -543,7 +544,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
               <option value="h1">Heading 1</option>
               <option value="h2">Heading 2</option>
               <option value="h3">Heading 3</option>
-            </select>
+            </NSelect>
           )}
           {B('•', editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'List')}
           {B('1.', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered list')}
@@ -887,31 +888,31 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
           <b>{open === 'word' ? 'Word document' : 'PDF'}</b>
           <label>
             Font
-            <select value={o.font} onChange={(e) => setO({ ...o, font: e.target.value })}>
+            <NSelect value={o.font} onChange={(e) => setO({ ...o, font: e.target.value })}>
               {FONTS.map((f) => (
                 <option key={f}>{f}</option>
               ))}
-            </select>
+            </NSelect>
           </label>
           <label>
             Size
-            <select value={o.size} onChange={(e) => setO({ ...o, size: Number(e.target.value) })}>
+            <NSelect value={o.size} onChange={(e) => setO({ ...o, size: Number(e.target.value) })}>
               {[10, 11, 12, 14].map((n) => (
                 <option key={n} value={n}>
                   {n} pt
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
           <label>
             Line spacing
-            <select value={o.spacing} onChange={(e) => setO({ ...o, spacing: Number(e.target.value) })}>
+            <NSelect value={o.spacing} onChange={(e) => setO({ ...o, spacing: Number(e.target.value) })}>
               {[1, 1.15, 1.5, 2].map((n) => (
                 <option key={n} value={n}>
                   {n}
                 </option>
               ))}
-            </select>
+            </NSelect>
           </label>
           <label className="check-row">
             <input type="checkbox" checked={o.title} onChange={(e) => setO({ ...o, title: e.target.checked })} /> The title at the top

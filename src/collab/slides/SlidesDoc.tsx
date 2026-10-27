@@ -1,3 +1,4 @@
+import { NSelect } from '../../components/Select';
 import { BUILD } from '../guard';
 import { usePhone } from '../../lib/useMedia';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -378,13 +379,13 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
               <UiIcon name="lock" size={14} /> Locked
             </span>
           ) : allowed.length > 1 ? (
-            <select value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
+            <NSelect value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
               {allowed.map((m) => (
                 <option key={m} value={m}>
                   {MODE_LABEL[m].label}
                 </option>
               ))}
-            </select>
+            </NSelect>
           ) : (
             <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
           )}
@@ -487,12 +488,12 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
               <span className="ne-sep" aria-hidden="true" />
               {selEl.type === 'text' && (
                 <>
-                  <select className="sl-size" value={selEl.size ?? 'm'} onChange={(e) => setElProps(selEl.id, { size: e.target.value as TextSize })} aria-label="Text size">
+                  <NSelect className="sl-size" value={selEl.size ?? 'm'} onChange={(e) => setElProps(selEl.id, { size: e.target.value as TextSize })} aria-label="Text size">
                     <option value="s">Small</option>
                     <option value="m">Normal</option>
                     <option value="l">Large</option>
                     <option value="xl">Title</option>
-                  </select>
+                  </NSelect>
                   {(['left', 'center', 'right'] as const).map((al) => <span key={al} style={{ display: 'contents' }}>{B(<span className={'sl-al a-' + al} />, (selEl.align ?? 'left') === al, () => setElProps(selEl.id, { align: al }), al === 'left' ? 'Align left' : al === 'center' ? 'Centre' : 'Align right')}</span>)}
                 </>
               )}

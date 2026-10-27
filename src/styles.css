@@ -7334,3 +7334,47 @@ input.dg-cell-label:focus { outline: none; }
 .chat-editor .task-editor > .toolbar { padding-left: 6px; margin-bottom: 4px; }
 .tool .ti-h { font-weight: 700; }
 .pz-i.pz-class { background: var(--accent); }
+
+/* Our drop-down where a browser select used to be: compact in toolbars and rows, full width in fields */
+.nsel { display: inline-flex; max-width: 100%; min-width: 0; }
+.field .nsel, .field .nsel .sel { display: flex; width: 100%; }
+.adm .sel,
+.adm-new > .sel,
+.adm-row .sel,
+.adm-table .sel,
+.aud .sel,
+.bl-edit .sel,
+.block-node .sel,
+.cd-export .sel,
+.cd-mode .sel,
+.cs-row .sel,
+.disc-link .sel,
+.doc .ProseMirror .sel,
+.dp-cite .sel,
+.dp-mem .sel,
+.dp-set .sel,
+.dp-slot .cd-mode .sel,
+.fc-bar .sel,
+.fs-colmenu .sel,
+.gd-opt .sel,
+.mcq-node .sel,
+.md-set .sel,
+.nb-filters .sel,
+.nb-page-row .sel,
+.pd-style .sel,
+.pq-edit .sel,
+.pq-pair .sel,
+.r-item-head .sel,
+.r-mini .sel,
+.r-pair .sel,
+.rp-bar .sel,
+.sed-silence .sel,
+.sel,
+.sv-edit .sel,
+.sx-insp .sel,
+.sx-sil .sel,
+.tbox-tools .sel,
+.teach-view .sel,
+.tt-stages .sel { height: 30px; min-width: 0; gap: 8px; padding: 0 9px 0 11px; border-radius: 8px; font-size: 13px; }
+.tbox-tools .sel, .r-item-head .sel, .r-mini .sel, .sed-silence .sel { height: 26px; font-size: 12px; }
+.sx .sel, .daw .sel { background: rgba(255, 255, 255, .06); color: inherit; border-color: rgba(255, 255, 255, .16); }
