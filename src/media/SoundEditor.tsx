@@ -526,6 +526,11 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   };
   const recorder = useRef<MediaRecorder | null>(null);
   const [recError, setRecError] = useState('');
+  // The take as it comes in: one peak every 50 ms, drawn on the timeline straight away.
+  const [livePeaks, setLivePeaks] = useState<number[]>([]);
+  const liveStop = useRef<() => void>(() => {});
+  // Recording over a track that has a take: that track is silent while you record, and its script shows.
+  const [overTrack, setOverTrack] = useState('');
   const startRec = async () => {
     setRecError('');
     cue.current = 0;
@@ -537,6 +542,35 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       const r = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
       const chunks: Blob[] = [];
       const at = head;
+      {
+        const c = ac();
+        void c.resume();
+        const an = c.createAnalyser();
+        an.fftSize = 1024;
+        const srcN = c.createMediaStreamSource(stream);
+        srcN.connect(an);
+        const buf = new Float32Array(1024);
+        const peaks: number[] = [];
+        let pk = 0, last = performance.now(), raf = 0;
+        setLivePeaks([]);
+        const step = () => {
+          an.getFloatTimeDomainData(buf);
+          for (const v of buf) pk = Math.max(pk, Math.abs(v));
+          const now = performance.now();
+          if (now - last >= 50) {
+            while (now - last >= 50) (peaks.push(pk), (last += 50));
+            pk = 0;
+            setLivePeaks(peaks.slice());
+            setMeter(peaks[peaks.length - 1]);
+          }
+          raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+        liveStop.current = () => {
+          cancelAnimationFrame(raf);
+          srcN.disconnect();
+        };
+      }
       r.ondataavailable = (e) => e.data.size && chunks.push(e.data);
       r.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
@@ -554,7 +588,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           // Recording starts a moment after pressing; line it up with what was playing.
           const latency = Math.min(0.25, (ctx.current?.baseLatency ?? 0) + (ctx.current?.outputLatency ?? 0.05));
           const id = newId();
-          const empty = p.tracks.find((t) => t.id === recTrack.current && !t.clips.length) ?? p.tracks.find((t) => t.kind === 'voice' && !t.clips.length);
+          const empty = p.tracks.find((t) => t.id === recTrack.current) ?? p.tracks.find((t) => t.kind === 'voice' && !t.clips.length);
           const newTr = newTrack(`Recording ${p.tracks.filter((t) => t.kind === 'voice').length + 1}`);
           const into = empty ? empty.id : newTr.id;
           const n = p.tracks.filter((t) => t.kind === 'voice' && t.clips.length).length + 1;
@@ -585,8 +619,19 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               const b = Math.min(k + 1 < st.length ? st[k + 1] : at + len, a + 12);
               return { ...l, a, b: Math.max(a + 0.3, b), track: into };
             });
+            // Over an earlier take, the new one replaces just the part it covers.
+            const end = at + len;
+            const cut = (cs: Clip[]) =>
+              cs.flatMap((c): Clip[] => {
+                const s0 = c.at, e0 = c.at + (c.b - c.a);
+                if (e0 <= at || s0 >= end) return [c];
+                const out: Clip[] = [];
+                if (s0 < at) out.push({ ...c, b: c.a + (at - s0), fadeOut: 0 });
+                if (e0 > end) out.push({ ...c, id: newId(), a: c.a + (end - s0), at: end, fadeIn: 0 });
+                return out;
+              });
             const tracks = empty
-              ? x.tracks.map((t) => (t.id === empty.id ? { ...t, clips: [clip] } : t))
+              ? x.tracks.map((t) => (t.id === empty.id ? { ...t, mute: false, clips: [...cut(t.clips), clip].sort((u, v) => u.at - v.at) } : t))
               : [...x.tracks.filter((t) => t.kind === 'voice'), { ...newTr, clips: [clip] }, ...x.tracks.filter((t) => t.kind !== 'voice')];
             return { ...x, tracks, lines };
           });
@@ -594,8 +639,10 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           setRecError('The recording could not be read. Try again.');
         }
       };
-      recTrack.current = pickedTrack?.kind === 'voice' && !pickedTrack.clips.length ? pickedTrack.id : p.tracks.find((t) => t.kind === 'voice' && !t.clips.length)?.id ?? '';
-      playFrom(at);
+      recTrack.current = pickedTrack?.kind === 'voice' ? pickedTrack.id : p.tracks.find((t) => t.kind === 'voice' && !t.clips.length)?.id ?? '';
+      const over = pickedTrack?.kind === 'voice' && pickedTrack.clips.length ? pickedTrack.id : '';
+      setOverTrack(over);
+      playFrom(at, undefined, over ? mixdown({ ...heard.project, tracks: heard.project.tracks.map((t) => (t.id === over ? { ...t, mute: true } : t)) }, heard.sources, rate) : mix);
       r.start(250);
       recorder.current = r;
       setRec({ at, started: performance.now() });
@@ -604,6 +651,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     }
   };
   const stopRec = () => {
+    liveStop.current();
+    liveStop.current = () => {};
+    setOverTrack('');
     recorder.current?.stop();
     recorder.current = null;
     setRec(null);
@@ -882,6 +932,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const src = sources.current[c.src];
     const srcLen = src ? src.length / rate : c.b;
     let moved = false;
+    let cur = tr.id;
     const group = 'drag-' + c.id + '-' + Date.now();
     const mv = (ev: PointerEvent) => {
       const dt = (ev.clientX - x0) / pps;
@@ -896,7 +947,19 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         const chosen = first ? at : at2;
         // The line shows the edge it lines up with.
         setGuide(chosen === raw ? null : first ? chosen : chosen + clipLen(c));
-        setClip(tr.id, c.id, { at: chosen }, group);
+        // Over another track of the same kind, the piece moves to that track.
+        const lane = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-track]');
+        const to = lane?.dataset.track;
+        if (to && to !== cur && p.tracks.find((t) => t.id === to)?.kind === tr.kind) {
+          const from = cur;
+          cur = to;
+          setPick({ kind: 'clip', track: to, id: c.id });
+          edit((x) => {
+            const piece = x.tracks.find((t) => t.id === from)?.clips.find((k) => k.id === c.id);
+            if (!piece) return x;
+            return { ...x, tracks: x.tracks.map((t) => (t.id === from ? { ...t, clips: t.clips.filter((k) => k.id !== c.id) } : t.id === to ? { ...t, clips: [...t.clips, { ...piece, at: chosen }] } : t)) };
+          }, group);
+        } else setClip(cur, c.id, { at: chosen }, group);
       } else if (mode === 'l') {
         const a = Math.max(0, Math.min(c.b - 0.05, c.a + dt));
         const at = c.at + (a - c.a);
@@ -1135,6 +1198,24 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             {recError && <span className="sx-err">{recError}</span>}
           </div>
         )}
+        {rec && !cueLines.length && overTrack && (() => {
+          const t = rec.at + recNow;
+          const ls = p.lines.filter((l) => lineTrack(l) === overTrack && l.b > rec.at - 0.5 && l.text.trim()).sort((u, v) => u.a - v.a);
+          if (!ls.length) return null;
+          let i = ls.findIndex((l) => t < l.b);
+          if (i < 0) i = ls.length - 1;
+          return (
+            <div className="sx-prompter" aria-live="polite">
+              {ls.slice(Math.max(0, i - 1), i + 3).map((l) => (
+                <p key={l.id} className={t >= l.a && t < l.b ? 'now' : l.b <= t ? 'done' : ''}>
+                  {l.who && <b>{l.who}: </b>}
+                  {l.text}
+                </p>
+              ))}
+              <span>The script follows the old timing. Press R to stop.</span>
+            </div>
+          );
+        })()}
         {rec && cueLines.length > 0 && (
           <div className="sx-prompter" aria-live="polite">
             {cueLines.slice(Math.max(0, cue.current - 1), cue.current + 3).map((l, k) => {
@@ -1183,7 +1264,14 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                   {tr.clips.map((c) => (
                     <ClipView key={c.id} c={c} kind="voice" data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
                   ))}
-                  {rec && (recTrack.current ? recTrack.current === tr.id : voice[voice.length - 1].id === tr.id) && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, recNow * pps) }} />}
+                  {rec && (recTrack.current ? recTrack.current === tr.id : voice[voice.length - 1].id === tr.id) && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, livePeaks.length * 0.05 * pps, recNow * pps) }}>
+                      <svg width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true">
+                        {livePeaks.map((v, i) => {
+                          const h = Math.max(2, Math.min(1, v * 1.4) * 100);
+                          return <rect key={i} x={i * 0.05 * pps} y={`${50 - h / 2}%`} width={Math.max(1, 0.05 * pps - 1)} height={`${h}%`} rx={1} />;
+                        })}
+                      </svg>
+                    </span>}
                 </span>
               </div>,
             <div className="sx-row sx-script" key={'s-' + tr.id}>

@@ -18,6 +18,7 @@ import { UiIcon } from '../components/UiIcon';
 import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
 import { SoundRecordings } from '../components/SoundRecordings';
 import { SfxSettings } from '../components/SfxSettings';
+import { isOwner } from '../lib/phonAudio';
 import { StorageCard } from '../components/StorageCard';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
@@ -243,13 +244,13 @@ export function SettingsPage() {
 
         {teacher && <ToolbarSettings />}
 
-        {teacher && (
+        {teacher && !isOwner() && (
           <Section icon="music" title="Sound effects">
             <SfxSettings />
           </Section>
         )}
 
-        {teacher && (
+        {teacher && !isOwner() && (
           <Section icon="mic" title="Sound recordings">
             <SoundRecordings />
           </Section>
@@ -282,32 +283,117 @@ export function SettingsPage() {
 }
 
 // Which tools the text toolbar shows, which wait behind the › arrow, and which are hidden.
+// A model of the toolbar: drag a tool between the bar, the › tray and the shelf.
+const GLYPH: Record<string, ReactNode> = {
+  bold: <b>B</b>,
+  italic: <i style={{ fontFamily: 'Fraunces, serif' }}>I</i>,
+  underline: <u>U</u>,
+  strike: <s>S</s>,
+  color: <span className="tbs-col">A</span>,
+  highlight: <span className="tbs-hl">ab</span>,
+  heading: <span>H</span>,
+  bullets: <span>••</span>,
+  numbers: <span>1.</span>,
+  table: <span>▦</span>,
+  definition: <span style={{ fontFamily: 'Fraunces, serif' }}>Aa</span>,
+  link: <span>↗</span>,
+  questions: <span>?</span>,
+  icons: <span>◇</span>,
+  symbols: <span>§</span>,
+  pron: <span>/ə/</span>,
+  add: <span>+</span>,
+};
 function ToolbarSettings() {
   const place = useToolbarPrefs();
-  const PLACES: [ToolPlace, string][] = [
-    ['show', 'Show'],
-    ['more', 'Behind ›'],
-    ['hide', 'Hide'],
-  ];
+  const [drag, setDrag] = useState<string | null>(null);
+  const [over, setOver] = useState<ToolPlace | null>(null);
+  const ORDER: ToolPlace[] = ['show', 'more', 'hide'];
+  const NAMES: Record<ToolPlace, string> = { show: 'On the toolbar', more: 'Behind ›', hide: 'Not shown' };
+  const drop = (z: ToolPlace) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const k = e.dataTransfer.getData('text/tool') || drag;
+    if (k) setToolPlace(k, z);
+    setDrag(null);
+    setOver(null);
+  };
+  const zone = (z: ToolPlace) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!drag) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (over !== z) setOver(z);
+    },
+    onDragLeave: (e: React.DragEvent) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(null),
+    onDrop: drop(z),
+    'data-over': over === z || undefined,
+  });
+  const chip = (t: (typeof TOOLS)[number], big: boolean) => {
+    const z = place(t.k);
+    return (
+      <button
+        key={t.k}
+        type="button"
+        draggable
+        className={'tbs-chip' + (big ? '' : ' wide') + (drag === t.k ? ' dragging' : '')}
+        data-tip={big ? t.label : undefined}
+        aria-label={`${t.label}: ${NAMES[z]}. Use the up and down arrows to move it.`}
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/tool', t.k);
+          e.dataTransfer.effectAllowed = 'move';
+          setDrag(t.k);
+        }}
+        onDragEnd={() => {
+          setDrag(null);
+          setOver(null);
+        }}
+        onKeyDown={(e) => {
+          const i = ORDER.indexOf(z);
+          const to = e.key === 'ArrowDown' ? ORDER[i + 1] : e.key === 'ArrowUp' ? ORDER[i - 1] : undefined;
+          if (!to) return;
+          e.preventDefault();
+          setToolPlace(t.k, to);
+          requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-tool="${t.k}"]`)?.focus());
+        }}
+        data-tool={t.k}
+      >
+        <span className="tbs-g" aria-hidden="true">{GLYPH[t.k]}</span>
+        {!big && <span>{t.label}</span>}
+      </button>
+    );
+  };
+  const of = (z: ToolPlace) => TOOLS.filter((t) => place(t.k) === z);
+  const more = of('more');
+  const hidden = of('hide');
   return (
     <Section icon="settings" title="Text toolbar">
-      <span className="hint set-tb-intro">Choose the tools you see when you write a task. Tools behind › appear when you click the arrow at the end of the toolbar. Everything stays in + Add and the / menu.</span>
-      {TOOLS.map((t) => (
-        <Row key={t.k} title={t.label}>
-          <span className="seg small-seg" role="radiogroup" aria-label={t.label}>
-            {PLACES.map(([k, l]) => (
-              <button key={k} type="button" role="radio" aria-checked={place(t.k) === k} className={place(t.k) === k ? 'on' : ''} onClick={() => setToolPlace(t.k, k)}>
-                {l}
-              </button>
-            ))}
-          </span>
-        </Row>
-      ))}
-      <Row title="Start again" hint="Show every tool">
-        <button type="button" className="btn small-btn" onClick={resetTools}>
-          Show all
-        </button>
-      </Row>
+      <span className="hint set-tb-intro">Drag tools onto the toolbar, into the › tray, or onto the shelf to hide them. Everything stays in + Add and the / menu.</span>
+      <div className={'tbs' + (drag ? ' is-dragging' : '')}>
+        <div className="tbs-bar" {...zone('show')} aria-label="On the toolbar">
+          {of('show').map((t) => chip(t, true))}
+          {of('show').length === 0 && <span className="tbs-empty">Drop tools here</span>}
+          <span className="tbs-arrow" aria-hidden="true">›</span>
+        </div>
+        <div className="tbs-tray" {...zone('more')} aria-label="Behind the arrow">
+          <span className="tbs-cap">Behind ›</span>
+          <div className="tbs-list">
+            {more.map((t) => chip(t, false))}
+            {more.length === 0 && <span className="tbs-empty">Tools you use now and then</span>}
+          </div>
+        </div>
+        <div className="tbs-shelf" {...zone('hide')} aria-label="Not shown">
+          <span className="tbs-cap">Not shown</span>
+          <div className="tbs-list">
+            {hidden.map((t) => chip(t, false))}
+            {hidden.length === 0 && <span className="tbs-empty">Drop a tool here to hide it</span>}
+          </div>
+        </div>
+        <div className="tbs-foot">
+          <span className="hint">Or select a tool and press the up or down arrow.</span>
+          <button type="button" className="btn small-btn" onClick={resetTools}>
+            Show all
+          </button>
+        </div>
+      </div>
     </Section>
   );
 }
