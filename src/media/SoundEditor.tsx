@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { bufferOf, decodeSound, peakIndex, rangePeak, reduceEcho, toMono, type NoiseLevel, type PeakIndex } from '../lib/sound';
 import { samplesOf, sfxSamples, useMySfx, type MySfx } from '../lib/sfxAudio';
@@ -8,6 +9,7 @@ import { archiveAdd, formatBytes, saveSound, type ScriptLine } from '../lib/arch
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
 import { SuiteMark } from '../components/Wordmark';
+import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { UiIcon } from '../components/UiIcon';
 
 // The Sound editor, laid out like audio software. Voice tracks hold clips: split them (Ctrl B),
@@ -249,14 +251,15 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const pickedTrack = pick?.kind === 'clip' || pick?.kind === 'track' ? p.tracks.find((t) => t.id === (pick.kind === 'clip' ? pick.track : pick.id)) ?? null : null;
   const pickedLine = pick?.kind === 'line' ? p.lines.find((l) => l.id === pick.id) ?? null : null;
   // Ctrl B: split the chosen clip (or every clip under the playhead) at the playhead.
-  const split = () => {
-    const t = head;
+  const split = (at?: number, only?: string) => {
+    const t = at ?? head;
+    const one = only ?? pickedClip?.id;
     edit((x) => ({
       ...x,
       tracks: x.tracks.map((tr) => ({
         ...tr,
         clips: tr.clips.flatMap((c) => {
-          if (pickedClip && c.id !== pickedClip.id) return [c];
+          if (one && c.id !== one) return [c];
           if (!(t > c.at + 0.02 && t < clipEnd(c) - 0.02)) return [c];
           const cut = c.a + (t - c.at);
           return [
@@ -440,13 +443,22 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     s.start();
   };
   // A script line at the playhead, up to 3 s, never over another line.
-  const addLine = () => {
+  const addVoiceTrack = () => {
+    const tr = newTrack(`Recording ${p.tracks.filter((t) => t.kind === 'voice').length + 1}`);
+    edit((x) => ({ ...x, tracks: [...x.tracks.filter((t) => t.kind === 'voice'), tr, ...x.tracks.filter((t) => t.kind !== 'voice')] }));
+    setPick({ kind: 'track', id: tr.id });
+  };
+  const firstVoice = p.tracks.find((t) => t.kind === 'voice')?.id ?? '';
+  const lineTrack = (l: Line) => (l.track && p.tracks.some((t) => t.id === l.track) ? l.track : firstVoice);
+  const addLine = (track?: string) => {
     const a = head;
-    if (p.lines.some((l) => a >= l.a && a < l.b)) return;
-    const next = p.lines.filter((l) => l.a > a).sort((x, y) => x.a - y.a)[0];
+    const tk = track ?? (pickedTrack?.kind === 'voice' ? pickedTrack.id : firstVoice);
+    const mine = p.lines.filter((l) => lineTrack(l) === tk);
+    if (mine.some((l) => a >= l.a && a < l.b)) return;
+    const next = mine.filter((l) => l.a > a).sort((x, y) => x.a - y.a)[0];
     const b = Math.min(a + 3, next ? next.a : a + 3);
     if (b - a < 0.2) return;
-    const line: Line = { id: newId(), text: '', a, b };
+    const line: Line = { id: newId(), text: '', a, b, track: tk };
     edit((x) => ({ ...x, lines: [...x.lines, line] }));
     setPick({ kind: 'line', id: line.id });
     setTimeout(() => document.querySelector<HTMLInputElement>('.sx-line-text')?.focus(), 30);
@@ -484,6 +496,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const [rec, setRec] = useState<{ at: number; started: number } | null>(null);
   const [saveAsk, setSaveAsk] = useState<'new' | 'replace' | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const recTrack = useRef('');
   const [mic, setMic] = useState({ device: '', noise: true, echo: true, auto: false });
   const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => void navigator.mediaDevices?.enumerateDevices?.().then((l) => setMics(l.filter((d) => d.kind === 'audioinput'))).catch(() => {}), []);
@@ -541,7 +554,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           // Recording starts a moment after pressing; line it up with what was playing.
           const latency = Math.min(0.25, (ctx.current?.baseLatency ?? 0) + (ctx.current?.outputLatency ?? 0.05));
           const id = newId();
-          const empty = p.tracks.find((t) => t.kind === 'voice' && !t.clips.length);
+          const empty = p.tracks.find((t) => t.id === recTrack.current && !t.clips.length) ?? p.tracks.find((t) => t.kind === 'voice' && !t.clips.length);
+          const newTr = newTrack(`Recording ${p.tracks.filter((t) => t.kind === 'voice').length + 1}`);
+          const into = empty ? empty.id : newTr.id;
           const n = p.tracks.filter((t) => t.kind === 'voice' && t.clips.length).length + 1;
           addSource(id, d, n === 1 ? 'Recording' : `Recording ${n}`);
           const clip = { id: newId(), src: id, a: Math.min(latency, d.length / rate), b: d.length / rate, at, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 };
@@ -568,17 +583,18 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               if (k < 0) return l;
               const a = st[k];
               const b = Math.min(k + 1 < st.length ? st[k + 1] : at + len, a + 12);
-              return { ...l, a, b: Math.max(a + 0.3, b) };
+              return { ...l, a, b: Math.max(a + 0.3, b), track: into };
             });
             const tracks = empty
               ? x.tracks.map((t) => (t.id === empty.id ? { ...t, clips: [clip] } : t))
-              : [...x.tracks.filter((t) => t.kind === 'voice'), { ...newTrack(`Recording ${n}`), clips: [clip] }, ...x.tracks.filter((t) => t.kind !== 'voice')];
+              : [...x.tracks.filter((t) => t.kind === 'voice'), { ...newTr, clips: [clip] }, ...x.tracks.filter((t) => t.kind !== 'voice')];
             return { ...x, tracks, lines };
           });
         } catch {
           setRecError('The recording could not be read. Try again.');
         }
       };
+      recTrack.current = pickedTrack?.kind === 'voice' && !pickedTrack.clips.length ? pickedTrack.id : p.tracks.find((t) => t.kind === 'voice' && !t.clips.length)?.id ?? '';
       playFrom(at);
       r.start(250);
       recorder.current = r;
@@ -755,12 +771,62 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   }, [playing && Math.floor(X(head) / Math.max(1, vw * 0.7))]);
   // Snapping to the playhead and to clip edges, like other editors (hold Alt to move freely).
   const snaps = useMemo(() => [0, ...p.tracks.flatMap((t) => t.clips.flatMap((c) => [c.at, clipEnd(c)])), ...p.lines.flatMap((l) => [l.a, l.b])], [p]);
+  const [guide, setGuide] = useState<number | null>(null);
+  useEffect(() => {
+    const off = () => setGuide(null);
+    window.addEventListener('pointerup', off);
+    return () => window.removeEventListener('pointerup', off);
+  }, []);
   const snap = (t: number, alt: boolean, except?: number[]) => {
-    if (alt) return t;
+    if (alt) return setGuide(null), t;
     const near = [...snaps, head].filter((s) => !except?.includes(s)).find((s) => Math.abs(s - t) * pps < 7);
+    if (near !== undefined) setGuide(near);
     return near ?? t;
   };
 
+  // Right-click menus: on a clip, and on an empty part of a track.
+  const clipMenu = (tr: Track, c: Clip) => (e: React.MouseEvent) => {
+    const t = Math.max(0, T(e.clientX));
+    setPick({ kind: 'clip', track: tr.id, id: c.id });
+    const inside = t > c.at + 0.02 && t < clipEnd(c) - 0.02;
+    openMenu(e, [
+      { label: 'Play from here', icon: 'present', onClick: () => playFrom(t) },
+      { label: 'Play this clip', icon: 'present', onClick: () => playFrom(c.at, clipEnd(c)) },
+      'sep',
+      { label: 'Split here', icon: 'more', hint: 'Ctrl B', disabled: !inside, onClick: () => (setHead(t), split(t, c.id)) },
+      { label: 'Duplicate', icon: 'copyall', hint: 'Ctrl D', onClick: () => window.setTimeout(duplicate, 0) },
+      { label: 'Copy', icon: 'copyall', hint: 'Ctrl C', onClick: () => (clipBoard.current = { clip: c, kind: tr.kind }) },
+      { label: 'Cut', icon: 'copyall', hint: 'Ctrl X', onClick: () => ((clipBoard.current = { clip: c, kind: tr.kind }), window.setTimeout(removePicked, 0)) },
+      'sep',
+      { label: c.fadeIn ? 'No fade in' : 'Fade in', icon: 'sync', hint: 'F', onClick: () => setClip(tr.id, c.id, { fadeIn: c.fadeIn ? 0 : Math.min(0.5, clipLen(c) / 3) }) },
+      { label: c.fadeOut ? 'No fade out' : 'Fade out', icon: 'sync', hint: 'Shift F', onClick: () => setClip(tr.id, c.id, { fadeOut: c.fadeOut ? 0 : Math.min(0.5, clipLen(c) / 3) }) },
+      ...(tr.kind === 'voice' ? [{ label: 'Add 1 second of silence here', icon: 'silence', onClick: () => insertSilence(1, inside ? t : clipEnd(c), tr.id) } as MenuItem] : []),
+      { label: tr.mute ? 'Unmute the track' : 'Mute the track', icon: 'beep', hint: 'M', onClick: () => setTrack(tr.id, { mute: !tr.mute }) },
+      'sep',
+      { label: 'Delete', icon: 'trash', hint: 'Delete', danger: true, onClick: () => window.setTimeout(removePicked, 0) },
+    ]);
+  };
+  const laneMenu = (tr: Track | null) => (e: React.MouseEvent) => {
+    const t = Math.max(0, T(e.clientX));
+    const cb = clipBoard.current;
+    const into = cb ? (tr && tr.kind === cb.kind ? tr : p.tracks.find((x) => x.kind === cb.kind)) : null;
+    openMenu(e, [
+      { label: 'Play from here', icon: 'present', onClick: () => (setHead(t), playFrom(t)) },
+      { label: 'Move the playhead here', icon: 'pointer', onClick: () => setHead(t) },
+      'sep',
+      ...(cb && into
+        ? [{ label: 'Paste here', icon: 'copyall', hint: 'Ctrl V', onClick: () => { const c = { ...cb.clip, id: newId(), at: t }; edit((x) => ({ ...x, tracks: x.tracks.map((k) => (k.id === into.id ? { ...k, clips: [...k.clips, c] } : k)) })); setPick({ kind: 'clip', track: into.id, id: c.id }); } } as MenuItem]
+        : []),
+      { label: 'Add 1 second of silence here', icon: 'silence', onClick: () => insertSilence(1, t, tr?.kind === 'voice' ? tr.id : undefined) },
+      { label: 'Add silence by dragging', icon: 'silence', hint: 'G', onClick: () => setSilMode(true) },
+      { label: 'Add a script line here', icon: 'script', hint: 'T', onClick: () => (setHead(t), window.setTimeout(() => addLine(tr?.kind === 'voice' ? tr.id : undefined), 0)) },
+      { label: 'Record from here', icon: 'mic', hint: 'R', onClick: () => (setHead(t), window.setTimeout(() => void startRec(), 0)) },
+      'sep',
+      { label: 'Select everything', icon: 'pick', hint: 'Ctrl A', onClick: () => setSel({ a: 0, b: total }) },
+      ...(sel ? [{ label: 'Cut out the selection', icon: 'trash', hint: 'Delete', onClick: () => cutRange(sel.a, sel.b) } as MenuItem, { label: 'Keep only the selection', icon: 'pick', hint: 'Ctrl Shift X', onClick: () => keepRange(sel.a, sel.b) } as MenuItem] : []),
+      { label: 'Show every shortcut', icon: 'help', hint: '?', onClick: () => setKeysOpen(true) },
+    ]);
+  };
   const silenceDown = (e: React.PointerEvent, track?: string) => {
     e.stopPropagation();
     e.preventDefault();
@@ -774,6 +840,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       window.removeEventListener('pointerup', up);
       const d = Math.round(Math.max(0, (ev.clientX - x0) / pps) * 20) / 20;
       setGap(null);
+      setSilMode(false);
       if (d >= 0.05) insertSilence(Math.min(120, d), t0, track);
     };
     window.addEventListener('pointermove', mv);
@@ -820,10 +887,16 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       const dt = (ev.clientX - x0) / pps;
       if (!moved && Math.abs(ev.clientX - x0) < 3) return;
       moved = true;
+      setGuide(null);
       if (mode === 'move') {
-        const at = Math.max(0, snap(c.at + dt, ev.altKey, [c.at]));
-        const at2 = Math.max(0, snap(c.at + dt + clipLen(c), ev.altKey, [clipEnd(c)]) - clipLen(c));
-        setClip(tr.id, c.id, { at: Math.abs(at - (c.at + dt)) <= Math.abs(at2 - (c.at + dt)) ? at : at2 }, group);
+        const raw = c.at + dt;
+        const at = Math.max(0, snap(raw, ev.altKey, [c.at]));
+        const at2 = Math.max(0, snap(raw + clipLen(c), ev.altKey, [clipEnd(c)]) - clipLen(c));
+        const first = Math.abs(at - raw) <= Math.abs(at2 - raw) && (at !== raw || at2 === raw);
+        const chosen = first ? at : at2;
+        // The line shows the edge it lines up with.
+        setGuide(chosen === raw ? null : first ? chosen : chosen + clipLen(c));
+        setClip(tr.id, c.id, { at: chosen }, group);
       } else if (mode === 'l') {
         const a = Math.max(0, Math.min(c.b - 0.05, c.a + dt));
         const at = c.at + (a - c.a);
@@ -928,10 +1001,6 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             <UiIcon name="help" size={18} />
             <span>Shortcuts</span>
           </button>
-          <button type="button" className="sx-act" onClick={() => nameRef.current?.select()}>
-            <UiIcon name="edit" size={18} />
-            <span>Rename</span>
-          </button>
           <button type="button" className="sx-act" onClick={onBack} data-tip={backLabel}>
             <UiIcon name="trash" size={18} />
             <span>Discard</span>
@@ -1032,7 +1101,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         </span>
         <span style={{ flex: 1 }} />
         <span className="daw-btns">
-          <button type="button" className="daw-b" onClick={split} aria-label="Split" data-tip="Split at the playhead (Ctrl B)">
+          <button type="button" className="daw-b" onClick={() => split()} aria-label="Split" data-tip="Split at the playhead (Ctrl B)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M12 3v18" /><path d="M5 8l-3 4 3 4M19 8l3 4-3 4" /></svg>
           </button>
           <button type="button" className="daw-b" onClick={undo} disabled={!past.current.length} aria-label="Undo" data-tip="Undo (Ctrl Z)">
@@ -1095,7 +1164,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                 ))}
               </span>
             </div>
-            {voice.map((tr) => (
+            {voice.map((tr) => [
               <div key={tr.id} className={'sx-row sx-voice' + (tr.mute ? ' muted' : '') + (pickedTrack?.id === tr.id ? ' picked' : '')}>
                 <span className="sx-head-cell" onClick={() => setPick({ kind: 'track', id: tr.id })}>
                   <b className="sx-tname">{tr.name}</b>
@@ -1110,14 +1179,42 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                   </span>
                   <input className="sx-tvol" type="range" min={0} max={2} step={0.05} value={tr.gain} onClick={(e) => e.stopPropagation()} onChange={(e) => setTrack(tr.id, { gain: Number(e.target.value) }, 'tg' + tr.id)} aria-label={`${tr.name} volume`} />
                 </span>
-                <span className="sx-lane" data-track={tr.id} onPointerDown={backgroundDown}>
+                <span className="sx-lane" data-track={tr.id} onPointerDown={backgroundDown} onContextMenu={laneMenu(tr)}>
                   {tr.clips.map((c) => (
-                    <ClipView key={c.id} c={c} kind="voice" data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} />
+                    <ClipView key={c.id} c={c} kind="voice" data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
                   ))}
-                  {rec && voice[voice.length - 1].id === tr.id && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, recNow * pps) }} />}
+                  {rec && (recTrack.current ? recTrack.current === tr.id : voice[voice.length - 1].id === tr.id) && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, recNow * pps) }} />}
                 </span>
-              </div>
-            ))}
+              </div>,
+            <div className="sx-row sx-script" key={'s-' + tr.id}>
+              <span className="sx-head-cell">
+                <b className="sx-tname">Script</b>
+                <button type="button" className="sx-add" onClick={() => addLine(tr.id)} data-tip="Add a line at the playhead (T)">
+                  + Line
+                </button>
+              </span>
+              <span className="sx-lane" onPointerDown={backgroundDown}>
+                {pv.lines.filter((l) => lineTrack(l) === tr.id).map((l) => (
+                  <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' empty')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
+                    <span className="sx-edge l" onPointerDown={lineDown(l, 'l')} />
+                    <span className="sx-line-t">
+                      {l.who && <b>{l.who}</b>}
+                      {l.text || 'Type the line'}
+                    </span>
+                    <span className="sx-edge r" onPointerDown={lineDown(l, 'r')} />
+                  </span>
+                ))}
+              </span>
+            </div>
+            ])}
+            <div className="sx-row sx-addtrack">
+              <span className="sx-head-cell">
+                <button type="button" className="sx-add" onClick={addVoiceTrack} data-tip="Another recording, with its own script under it">
+                  + Recording track
+                </button>
+              </span>
+              <span className="sx-lane" onPointerDown={backgroundDown} />
+            </div>
             {sfxTracks.map((tr) => {
               const rows = stackRows(tr.clips);
               const n = Math.max(1, ...Object.values(rows).map((r) => r + 1));
@@ -1134,35 +1231,16 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                   </span>
                   <span className="sx-lane" onPointerDown={backgroundDown}>
                     {tr.clips.map((c) => (
-                      <ClipView key={c.id} c={c} kind="sfx" row={rows[c.id] ?? 0} data={sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} />
+                      <ClipView key={c.id} c={c} kind="sfx" row={rows[c.id] ?? 0} data={sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
                     ))}
                   </span>
                 </div>
               );
             })}
-            <div className="sx-row sx-script">
-              <span className="sx-head-cell">
-                <b className="sx-tname">Script</b>
-                <button type="button" className="sx-add" onClick={addLine} data-tip="Add a line at the playhead (T)">
-                  + Line
-                </button>
-              </span>
-              <span className="sx-lane" onPointerDown={backgroundDown}>
-                {pv.lines.map((l) => (
-                  <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' empty')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
-                    <span className="sx-edge l" onPointerDown={lineDown(l, 'l')} />
-                    <span className="sx-line-t">
-                      {l.who && <b>{l.who}</b>}
-                      {l.text || 'Type the line'}
-                    </span>
-                    <span className="sx-edge r" onPointerDown={lineDown(l, 'r')} />
-                  </span>
-                ))}
-              </span>
-            </div>
             {/* the selection and the playhead run through every track */}
             {sel && <span className="sx-sel" style={{ left: HEAD_W + X(sel.a), width: X(sel.b) - X(sel.a) }} />}
             <span className="sx-playhead" style={{ left: HEAD_W + X(head) }} />
+            {guide !== null && <span className="sx-guide" style={{ left: HEAD_W + X(guide) }} />}
           </div>
         </div>
 
@@ -1196,7 +1274,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               )}
               <span className="hint">Fades: drag the small corners at the top of the clip. {pickedClip.fadeIn || pickedClip.fadeOut ? `In ${pickedClip.fadeIn.toFixed(1)} s, out ${pickedClip.fadeOut.toFixed(1)} s.` : ''}</span>
               <span className="daw-row wrap">
-                <button type="button" className="btn small-btn" onClick={split}>
+                <button type="button" className="btn small-btn" onClick={() => split()}>
                   Split <kbd>Ctrl B</kbd>
                 </button>
                 <button type="button" className="btn small-btn" onClick={duplicate}>
@@ -1397,7 +1475,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 }
 
 // A clip on its track: its own wave (after its effect and volume), edges to trim, corners to fade.
-function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked, onDown }: { c: Clip; kind: 'voice' | 'sfx'; row?: number; data?: Float32Array; rate: number; pps: number; scroll: number; vw: number; label: string; picked: boolean; onDown: (m: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => void }) {
+function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked, onDown, onMenu }: { c: Clip; kind: 'voice' | 'sfx'; row?: number; data?: Float32Array; rate: number; pps: number; scroll: number; vw: number; label: string; picked: boolean; onDown: (m: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => void; onMenu?: (e: React.MouseEvent) => void }) {
   const cv = useRef<HTMLCanvasElement>(null);
   const left = c.at * pps;
   const w = Math.max(3, clipLen(c) * pps);
@@ -1431,7 +1509,7 @@ function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked
   const fi = c.fadeIn * pps;
   const fo = c.fadeOut * pps;
   return (
-    <span className={'sx-clip ' + kind + (c.src === 'silence' ? ' silence' : '') + (picked ? ' picked' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')}>
+    <span className={'sx-clip ' + kind + (c.src === 'silence' ? ' silence' : '') + (picked ? ' picked' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')} onContextMenu={(e) => (e.stopPropagation(), onMenu?.(e))}>
       <canvas ref={cv} className="sx-clip-wave" style={{ left: from, width: Math.max(0, to - from) }} />
       {w > 30 && (
         <span className="sx-clip-name">
@@ -1467,20 +1545,28 @@ function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked
 function SfxMenu({ onAdd, onHear, mine = [] }: { onAdd: (k: string) => void; onHear: (k: string) => void; mine?: MySfx[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  const pop = useRef<HTMLSpanElement>(null);
+  const [at, setAt] = useState<{ left: number; top: number; up: boolean }>({ left: 0, top: 0, up: false });
+  const place = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    const up = r.bottom > window.innerHeight * 0.55;
+    setAt({ left: Math.max(8, Math.min(r.left, window.innerWidth - 500)), top: up ? r.top - 6 : r.bottom + 6, up });
+  };
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && !pop.current?.contains(e.target as Node) && setOpen(false);
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
   const groups = [...new Set(SFX.map((s) => s.group))];
   return (
     <span className="sx-sfxmenu" ref={ref} onClick={(e) => e.stopPropagation()}>
-      <button type="button" className="sx-add" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+      <button type="button" className="sx-add" onClick={() => (place(), setOpen((v) => !v))} aria-expanded={open}>
         + Effect
       </button>
-      {open && (
-        <span className="sx-sfxpop" role="menu">
+      {open && createPortal(
+        <span ref={pop} className={'sx-sfxpop' + (at.up ? ' up' : '')} role="menu" style={at.up ? { left: at.left, bottom: window.innerHeight - at.top } : { left: at.left, top: at.top }} onMouseDown={(e) => e.stopPropagation()}>
           {mine.length > 0 && (
             <span className="sx-sfxg">
               <span className="sx-sfxh">Your sounds</span>
@@ -1513,7 +1599,8 @@ function SfxMenu({ onAdd, onHear, mine = [] }: { onAdd: (k: string) => void; onH
               ))}
             </span>
           ))}
-        </span>
+        </span>,
+        document.body,
       )}
     </span>
   );

@@ -14,7 +14,7 @@ export const VOICE_FX: { k: VoiceFx; label: string; about: string }[] = [
 
 export type Clip = { id: string; src: string; a: number; b: number; at: number; gain: number; fx: VoiceFx; fadeIn: number; fadeOut: number };
 export type Track = { id: string; name: string; kind: 'voice' | 'sfx'; clips: Clip[]; gain: number; mute: boolean; solo: boolean; noise: 0 | 1 | 2; echo: 0 | 1 | 2 };
-export type Line = { id: string; text: string; who?: string; a: number; b: number };
+export type Line = { id: string; text: string; who?: string; a: number; b: number; track?: string }; // track: the recording it is the script of
 export type Project = { tracks: Track[]; lines: Line[]; gain: number; loud: boolean };
 
 export const clipLen = (c: Clip) => Math.max(0, c.b - c.a);
