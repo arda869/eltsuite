@@ -8,7 +8,7 @@ export type FileKind = 'lesson' | 'task' | 'doc' | 'slides' | 'flash' | 'pd' | '
 const LOOK: Record<FileKind, { icon: string; label: string }> = {
   lesson: { icon: 'classes', label: 'Lesson' },
   task: { icon: 'task', label: 'Task' },
-  doc: { icon: 'discuss', label: 'Doc' },
+  doc: { icon: 'discuss', label: 'Collab' },
   slides: { icon: 'present', label: 'Slides' },
   flash: { icon: 'pick', label: 'Cards' },
   pd: { icon: 'notebook', label: 'Reading' },
@@ -36,13 +36,22 @@ export function FileIcon({ kind, size = 40, label = true }: { kind: FileKind; si
   );
 }
 
-export function FolderIcon({ size = 40, open }: { size?: number; open?: boolean }) {
+// A folder kept in step with your classes shows a padlock and a sync sign: it is changed there.
+export function FolderIcon({ size = 40, open, locked }: { size?: number; open?: boolean; locked?: boolean }) {
   return (
-    <span className={'folder-ic' + (open ? ' open' : '')} aria-hidden="true">
+    <span className={'folder-ic' + (open ? ' open' : '') + (locked ? ' locked' : '')} aria-hidden="true">
       <svg viewBox="0 0 48 40" width={size * 1.2} height={size}>
         <path className="fb" d="M3 7.5A3.5 3.5 0 0 1 6.5 4h11l4 4.5h20A3.5 3.5 0 0 1 45 12v22.5a3.5 3.5 0 0 1-3.5 3.5h-35A3.5 3.5 0 0 1 3 34.5z" />
         <path className="ft" d="M3 14.5A3.5 3.5 0 0 1 6.5 11h35a3.5 3.5 0 0 1 3.5 3.5v20a3.5 3.5 0 0 1-3.5 3.5h-35A3.5 3.5 0 0 1 3 34.5z" />
+        {locked && size >= 24 && (
+          <g className="fl">
+            <path d="M14 24.5a7 7 0 0 1 7-7h6a7 7 0 0 1 7 7" fill="none" strokeWidth="2" strokeLinecap="round" strokeDasharray="2.2 2.4" />
+            <rect x="19" y="23" width="10" height="8.5" rx="2" />
+            <path d="M21.2 23v-2.3a2.8 2.8 0 0 1 5.6 0V23" fill="none" strokeWidth="1.7" />
+          </g>
+        )}
       </svg>
+      {locked && <span className="folder-lock">{size < 24 ? <svg width="9" height="9" viewBox="0 0 12 12"><rect x="2.5" y="5.5" width="7" height="5" rx="1.2" fill="currentColor" /><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg> : null}</span>}
     </span>
   );
 }

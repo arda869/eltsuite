@@ -41,7 +41,7 @@ const KINDS = [
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -55,7 +55,7 @@ const MOVE = 'application/x-ll-media';
 const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Earlier');
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
-const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Sound', lesson: 'Lesson', doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading' })[k] ?? 'File';
+const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Recording', lesson: 'Lesson', doc: 'Collab document', pdf: 'PDF', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading' })[k] ?? 'File';
 const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, image: 6, audio: 7, video: 8 };
 
 // The space an item takes: its size in each class that has a copy.
@@ -416,7 +416,7 @@ export function MediaArchive() {
   const newMenu: MenuItem[] = [
     { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
     'sep',
-    { label: 'Document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
+    { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'PD reading', icon: 'notebook', onClick: () => void makeDoc('pd') },
     'sep',
@@ -481,7 +481,7 @@ export function MediaArchive() {
       {kidsOf(parent).map((f) => (
         <span key={f} className="ma-folder" style={{ ['--d' as string]: depth }}>
           <button type="button" className={(folder === f ? 'on' : '') + (dropOn === f ? ' drop' : '')} onClick={() => setFolder(f)} onContextMenu={(e) => openMenu(e, folderMenu(f))} {...folderDrop(f)}>
-            <FolderIcon size={15} open={folder === f || dropOn === f} />
+            <FolderIcon size={15} open={folder === f || dropOn === f} locked={inClasses(f)} />
             <span className="ma-fname">{leafOf(f) || 'Untitled folder'}</span> <b>{countIn(f)}</b>
           </button>
           {inTree(folder, f) && <Tree parent={f} depth={depth + 1} />}
@@ -824,7 +824,7 @@ export function MediaArchive() {
                   {subFolders.map((f) => (
                     <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
                       <span className="ma-lname">
-                        <FolderIcon size={18} />
+                        <FolderIcon size={18} locked={inClasses(f)} />
                         {nameOf('f:' + f, leafOf(f), 'ma-lname-t')}
                       </span>
                       <span className="hint">Folder</span>
@@ -876,7 +876,7 @@ export function MediaArchive() {
                             subFolders.map((f) => (
                               <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-card ma-fcard' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
                                 <span className="ma-thumb ma-fthumb">
-                                  <FolderIcon size={46} open={dropOn === f} />
+                                  <FolderIcon size={46} open={dropOn === f} locked={inClasses(f)} />
                                 </span>
                                 {nameOf('f:' + f, leafOf(f) || 'Untitled folder')}
                               </button>

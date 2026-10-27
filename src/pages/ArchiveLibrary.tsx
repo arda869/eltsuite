@@ -271,7 +271,7 @@ function NewButtons({ make }: { make: (k: DocKind) => void }) {
     <span className="fd-new">
       {(['doc', 'flash', 'pd'] as DocKind[]).map((k) => (
         <button key={k} type="button" className="btn" onClick={() => make(k)}>
-          + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
+          + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Collab document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
         </button>
       ))}
     </span>
@@ -415,7 +415,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
           {(
             [
               ['', 'All'],
-              ['doc', 'Documents'],
+              ['doc', 'Collab documents'],
               ['slides', 'Slides'],
             ] as const
           ).map(([k, l]) => (
@@ -459,7 +459,7 @@ export function ArchiveDocs({ uid }: { uid: string }) {
                     <i />
                     {d.className}
                   </span>
-                  <span>{d.kind === 'slides' ? 'Slides' : 'Document'}</span>
+                  <span>{d.kind === 'slides' ? 'Slides' : 'Collab document'}</span>
                   <span>{SCOPE[d.scope] ?? ''}</span>
                 </span>
                 <span className="hint">{d.uses.length ? `In ${d.uses.map((u) => `${u.itemTitle} · ${u.title}`).slice(0, 2).join('; ')}${d.uses.length > 2 ? ` and ${d.uses.length - 2} more` : ''}` : 'Not in a task now'}</span>

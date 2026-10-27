@@ -703,7 +703,7 @@ function ShareMaterial({ c, me, to, onClose }: { c: Chat; me: Person; to: string
       : tab === 'task'
         ? (lib?.tasks ?? []).map((t) => ({ id: t.classId + t.id, title: t.title, sub: `${t.className} · ${t.itemTitle}`, go: () => ({ ...base, kind: 'task', title: t.title, about: t.instructions, src: { classId: t.classId, itemId: t.itemId, taskId: t.id } }) }))
         : tab === 'doc'
-          ? (lib?.docs ?? []).map((d) => ({ id: d.classId + d.key, title: d.title, sub: `${d.className} · ${d.kind === 'slides' ? 'Slides' : 'Document'}`, go: () => ({ ...base, kind: 'doc', title: d.title, src: { classId: d.classId, docKey: d.key, docKind: d.kind } }) }))
+          ? (lib?.docs ?? []).map((d) => ({ id: d.classId + d.key, title: d.title, sub: `${d.className} · ${d.kind === 'slides' ? 'Slides' : 'Collab document'}`, go: () => ({ ...base, kind: 'doc', title: d.title, src: { classId: d.classId, docKey: d.key, docKind: d.kind } }) }))
           : (archive ?? []).map((a) => ({ id: a.id, title: a.name, sub: a.kind === 'image' ? 'Picture' : a.kind === 'audio' ? 'Sound' : 'Video', go: () => ({ ...base, kind: 'media', title: a.name, src: { archiveId: a.id }, archive: JSON.parse(JSON.stringify({ kind: a.kind, name: a.name, tags: a.tags, size: a.size, link: a.link, home: a.home, thumb: a.thumb, script: a.script, duration: a.duration })) }) }));
   const list = rows.filter((r) => !s || `${r.title} ${r.sub}`.toLowerCase().includes(s)).slice(0, 80);
   const send = async (r: Row) => {
@@ -728,7 +728,7 @@ function ShareMaterial({ c, me, to, onClose }: { c: Chat; me: Person; to: string
             [
               ['lesson', 'Lessons'],
               ['task', 'Tasks'],
-              ['doc', 'Documents'],
+              ['doc', 'Collab documents'],
               ['media', 'Media'],
             ] as const
           ).map(([k, l]) => (
