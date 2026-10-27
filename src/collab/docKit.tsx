@@ -31,6 +31,12 @@ import { DictCut } from '../editor/DictCut';
 import { TTNode } from '../training/Training';
 import { LessonLink } from '../editor/LessonLink';
 import { COMMANDS, cellAttrs, type Cmd } from '../editor/TaskEditor';
+import { Choice, Gap, Mcq } from '../editor/nodes';
+import { DropGap, Match, Order, WordBank, Writing } from '../editor/blocks';
+import { PackNode } from '../editor/PackNode';
+import { SurveyNode } from '../editor/SurveyNode';
+import { PickCard, RandomPick } from '../editor/RandomPick';
+import { Reflect } from '../editor/Reflect';
 import { imageToData } from '../lib/flash';
 
 // Everything a shared document can hold: the lesson editor's text, language and teaching
@@ -85,6 +91,20 @@ export const DOC_NODES = [
   TimelineNode,
   DictCut,
   TTNode,
+  // Questions, as in a lesson: in a document they are there to write and share, answered in a class.
+  Gap,
+  Mcq,
+  Choice,
+  DropGap,
+  WordBank,
+  Match,
+  Order,
+  Writing,
+  PackNode,
+  SurveyNode,
+  RandomPick,
+  PickCard,
+  Reflect,
 ];
 
 // Pictures in a document live in the document itself, made small enough to share live.
@@ -150,6 +170,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('dictcut', 'Language'),
   from('dialogue', 'Language'),
   from('timeline', 'Language'),
+  ...COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => ({ ...c })),
   from('tt-analysis', 'Training'),
   from('tt-plan', 'Training'),
   from('tt-observe', 'Training'),
@@ -162,6 +183,7 @@ export const DOC_GROUPS: { k: Cmd['group']; label: string }[] = [
   { k: 'Media', label: 'Pictures and media' },
   { k: 'Writing', label: 'Academic writing' },
   { k: 'Language', label: 'Language' },
+  { k: 'Questions', label: 'Questions' },
   { k: 'Training', label: 'Teacher training' },
 ];
 export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow'];
@@ -171,5 +193,6 @@ export const DOC_SECTIONS = [
   { title: 'Pictures and media', blurb: 'Pictures from your device, videos and web pages.', keys: ['image', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your PD reading and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
+  { title: 'Questions', blurb: 'Gaps, choices, matching, word order and every other question a lesson can hold.', keys: COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => c.key) },
   { title: 'Teacher training', blurb: 'Language analysis, lesson plans, observation forms and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop'] },
 ];

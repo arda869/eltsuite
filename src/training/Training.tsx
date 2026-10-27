@@ -46,7 +46,13 @@ const RATINGS = ['Not yet', 'Achieved', 'Strong'];
 
 function Area({ v, set, ph, rows = 2, ro }: { v: string; set: (v: string) => void; ph?: string; rows?: number; ro?: boolean }) {
   if (ro) return <span className="tt-ro">{v || <span className="hint">—</span>}</span>;
-  return <textarea className="tt-in" rows={rows} value={v} placeholder={ph} onChange={(e) => set(e.target.value)} onKeyDown={(e) => e.stopPropagation()} />;
+  // Grows with what is written, so a long stage never needs dragging open.
+  const fit = (el: HTMLTextAreaElement | null) => {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 2 + 'px';
+  };
+  return <textarea ref={fit} className="tt-in" rows={rows} value={v} placeholder={ph} onChange={(e) => (set(e.target.value), fit(e.target))} onKeyDown={(e) => e.stopPropagation()} />;
 }
 
 function Analysis({ v, set, ro }: { v: Data; set: (k: string, x: string) => void; ro?: boolean }) {

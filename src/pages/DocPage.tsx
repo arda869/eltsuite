@@ -59,6 +59,8 @@ export function DocIcon({ kind }: { kind: DocKind }) {
 export function DocPage() {
   const { id = '', key = '' } = useParams();
   const [qs] = useSearchParams();
+  const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
+  const [setOpen, setSetOpen] = useState(false);
   const { user, profile } = useAuth();
   const d = useSharedDoc(id || undefined);
   const uid = user?.uid ?? auth.currentUser?.uid ?? '';
@@ -100,8 +102,6 @@ export function DocPage() {
   const classId = lesson ? qs.get('c') ?? '' : '';
   const canRename = !lesson && role === 'edit';
   const others = d ? Object.keys(d.members ?? {}).length : 0;
-  const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
-  const [setOpen, setSetOpen] = useState(false);
   const props = { docKey, title, modes, teacher, me: { uid, name }, classId, display: 'inline' as const, canDownload: true };
   // The page title, large at the top of the canvas, as in Loop.
   const heading = canRename ? (

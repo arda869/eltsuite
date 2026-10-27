@@ -6323,3 +6323,7 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .cd-wc-row b { font: 600 18px var(--serif); }
 .dp.k-doc .cd-side { padding: 14px; border-radius: 16px; background: linear-gradient(180deg, color-mix(in srgb, var(--dp, var(--accent)) 11%, var(--paper)), color-mix(in srgb, var(--dp, var(--accent)) 3%, var(--paper)) 70%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--dp, var(--accent)) 22%, var(--hair)), 0 12px 30px -18px color-mix(in srgb, var(--dp, var(--accent)) 60%, transparent); }
 .dp.k-doc .cd-side .cd-card { background: var(--paper); }
+.tt-in { resize: none; overflow: hidden; min-height: 38px; }
+.tt-frames { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 12px; padding-top: 14px; border-top: 1px solid var(--hair); }
+.tt-plan .tt-grid { margin-bottom: 4px; row-gap: 14px; }
+.tt-stages .tt-table td { vertical-align: top; }
