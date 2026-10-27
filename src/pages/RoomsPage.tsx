@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
@@ -14,6 +14,9 @@ import { tell } from '../lib/ask';
 import { UiIcon } from '../components/UiIcon';
 import { PersonFace } from '../components/avatars';
 import { useDirectory, whoLine, type Directory } from '../lib/directory';
+import { CallPair, Face } from './roomsParts';
+import { CallDetail, HistoryRow, HistoryView } from './RoomsHistory';
+import { useCallLogs } from '../lib/callHistory';
 import './rooms.css';
 
 // Rooms: the next thing to join, a call to anyone in one click, recent calls, the rest of the
@@ -51,6 +54,14 @@ export function RoomsPage() {
   const [busy, setBusy] = useState(false);
   const [calling, setCalling] = useState('');
   const now = useClock();
+  // The page, its call history (?history), or one call (?call=…).
+  const [params] = useSearchParams();
+  const callId = params.get('call');
+  const view = callId ? 'call' : params.has('history') ? 'history' : 'home';
+  const logs = useCallLogs(uid, view === 'home' ? 20 : 100);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view, callId]);
   const me: Person = dir?.me ?? { key: uid, name: user?.displayName || 'Teacher', role: 'teacher' };
   const meName = user?.displayName || 'Teacher';
   const onNow = (chats ?? []).filter((c) => callOn(c)).sort((a, b) => callOn(b)!.at - callOn(a)!.at);
@@ -83,6 +94,8 @@ export function RoomsPage() {
     .filter((c) => !isSelf(c) && !callOn(c) && (callOf(c)?.at ?? 0) > now - 30 * DAY)
     .sort((a, b) => callOf(b)!.at - callOf(a)!.at)
     .slice(0, 5);
+  const history = (logs ?? []).slice(0, 5);
+  const hasHistory = history.length > 0 || recent.length > 0;
 
   const start = (o: Occurrence) => void startSession(o, classOf(o.s.classId), { uid, name: meName }, navigate);
   const joinChat = (c: Chat) => {
@@ -109,6 +122,7 @@ export function RoomsPage() {
       setCalling('');
     }
   };
+  const ctx = { uid, chats, classes: classes ?? [], dir, calling, onCall: (key: string, kind: CallKind, c?: Chat) => void call(key, kind, c) };
   const copy = () => {
     void navigator.clipboard?.writeText(link);
     setCopied(true);
@@ -121,198 +135,211 @@ export function RoomsPage() {
       <TopBar>
         <MainNav on="home" />
       </TopBar>
-      <main className="rm">
-        <header className="rm-head">
-          <span className="rm-head-t">
-            <h1 className="rm-title">Rooms</h1>
-            <span className="rm-date">{new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          </span>
-          <span className="rm-acts">
-            <Link className="btn" to="/timetable">
-              <UiIcon name="calendar" size={16} /> Timetable
-            </Link>
-            <button type="button" className="btn primary" disabled={busy} onClick={() => void instant()}>
-              <UiIcon name="video" size={16} /> Start a call now
-            </button>
-          </span>
-        </header>
+      <main className={'rm' + (view === 'home' ? '' : ' rm-sub')}>
+        {view === 'history' && <HistoryView logs={logs} ctx={ctx} now={now} />}
+        {view === 'call' && <CallDetail id={callId!} logs={logs} ctx={ctx} now={now} />}
+        {view === 'home' && (
+          <>
+            <header className="rm-head">
+              <span className="rm-head-t">
+                <h1 className="rm-title">Rooms</h1>
+                <span className="rm-date">{new Date(now).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+              </span>
+              <span className="rm-acts">
+                <Link className="btn" to="/timetable">
+                  <UiIcon name="calendar" size={16} /> Timetable
+                </Link>
+                <button type="button" className="btn primary" disabled={busy} onClick={() => void instant()}>
+                  <UiIcon name="video" size={16} /> Start a call now
+                </button>
+              </span>
+            </header>
 
-        {/* Rows that line up: what to join beside who to call, then the rest of the day beside recent calls. */}
-        <div className="rm-grid">
-          <div className="rm-stack rm-top">
-            {link && (
-              <div className="rm-link" role="status">
-                <span className="rm-link-ic" aria-hidden="true">
-                  <UiIcon name="link" size={18} />
-                </span>
-                <span className="rm-link-t">
-                  <b>Your call’s link</b>
-                  <span className="hint">Anyone with it can join, for the next few hours.</span>
-                </span>
-                <span className="rm-link-acts">
-                  <button type="button" className="btn small-btn" onClick={copy}>
-                    <UiIcon name="copyall" size={14} /> {copied ? 'Copied' : 'Copy the link'}
-                  </button>
-                  {canShare && (
-                    <button type="button" className="btn small-btn" onClick={() => void navigator.share({ url: link, title: 'Join my call' }).catch(() => {})}>
-                      Share
-                    </button>
-                  )}
-                  <button type="button" className="btn small-btn rm-ghost" onClick={() => setLink('')}>
-                    Hide
-                  </button>
-                </span>
-                <code>{link}</code>
+            {/* Rows that line up: what to join beside who to call, then the rest of the day beside recent calls. */}
+            <div className="rm-grid">
+              <div className="rm-stack rm-top">
+                {link && (
+                  <div className="rm-link" role="status">
+                    <span className="rm-link-ic" aria-hidden="true">
+                      <UiIcon name="link" size={18} />
+                    </span>
+                    <span className="rm-link-t">
+                      <b>Your call’s link</b>
+                      <span className="hint">Anyone with it can join, for the next few hours.</span>
+                    </span>
+                    <span className="rm-link-acts">
+                      <button type="button" className="btn small-btn" onClick={copy}>
+                        <UiIcon name="copyall" size={14} /> {copied ? 'Copied' : 'Copy the link'}
+                      </button>
+                      {canShare && (
+                        <button type="button" className="btn small-btn" onClick={() => void navigator.share({ url: link, title: 'Join my call' }).catch(() => {})}>
+                          Share
+                        </button>
+                      )}
+                      <button type="button" className="btn small-btn rm-ghost" onClick={() => setLink('')}>
+                        Hide
+                      </button>
+                    </span>
+                    <code>{link}</code>
+                  </div>
+                )}
+
+                <Hero
+                  session={heroSession}
+                  call={heroCall}
+                  now={now}
+                  uid={uid}
+                  cls={classOf(heroSession?.s.classId)}
+                  inSession={!!heroSession && open?.sessionId === heroSession.s.id}
+                  inCall={!!heroCall && open?.chatId === heroCall.id}
+                  onStart={start}
+                  onJoin={joinChat}
+                />
               </div>
-            )}
 
-            <Hero
-              session={heroSession}
-              call={heroCall}
-              now={now}
-              uid={uid}
-              cls={classOf(heroSession?.s.classId)}
-              inSession={!!heroSession && open?.sessionId === heroSession.s.id}
-              inCall={!!heroCall && open?.chatId === heroCall.id}
-              onStart={start}
-              onJoin={joinChat}
-            />
-          </div>
+              <CallSomeone me={me} dir={dir} chats={chats} calling={calling} onCall={call} onJoin={joinChat} />
 
-          <CallSomeone me={me} dir={dir} chats={chats} calling={calling} onCall={call} onJoin={joinChat} />
+              {mid && (
+                <div className={'rm-stack rm-mid' + (hasHistory ? '' : ' rm-span')}>
+                  {alsoOn.length > 0 && (
+                    <section className="rm-card rm-on" aria-labelledby="rm-on-h">
+                      <div className="rm-card-h">
+                        <h2 id="rm-on-h">Also on now</h2>
+                      </div>
+                      <ul className="rm-list">
+                        {alsoOn.map((c) => {
+                          const k = callOn(c)!;
+                          const inIt = open?.chatId === c.id;
+                          return (
+                            <li key={c.id} className="rm-row">
+                              <Face c={c} me={uid} />
+                              <span className="rm-row-t">
+                                <b>{chatTitle(c, uid)}</b>
+                                <span className="hint">
+                                  {k.byName} started a {k.kind} call at {timeText(k.at)}
+                                </span>
+                              </span>
+                              <button type="button" className="btn small-btn primary" disabled={inIt} onClick={() => joinChat(c)}>
+                                {inIt ? 'You are in it' : 'Join'}
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  )}
 
-          {mid && (
-            <div className={'rm-stack rm-mid' + (recent.length ? '' : ' rm-span')}>
-              {alsoOn.length > 0 && (
-                <section className="rm-card rm-on" aria-labelledby="rm-on-h">
+                  {later.length > 0 && (
+                    <section className="rm-card rm-later" aria-labelledby="rm-later-h">
+                      <div className="rm-card-h">
+                        <h2 id="rm-later-h">Coming up</h2>
+                        <Link className="rm-more" to="/timetable">
+                          The week
+                        </Link>
+                      </div>
+                      <ol className="rm-agenda">
+                        {later.slice(0, 6).map((o) => {
+                          const c = classOf(o.s.classId);
+                          const color = o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--soft)';
+                          const where = o.s.online ? 'Online' : o.s.place?.trim() || 'In person';
+                          return (
+                            <li key={o.s.id + o.week} className="rm-ag">
+                              <span className="rm-ag-time">
+                                <b>{timeText(o.start)}</b>
+                                <span>{dayKey(o.start) === dayKey(now) ? (isNow(o, 0) ? 'Now' : 'Today') : 'Tomorrow'}</span>
+                              </span>
+                              <span className="rm-ag-bar" style={{ background: color }} aria-hidden="true" />
+                              <span className="rm-row-t">
+                                <b>{o.s.title}</b>
+                                <span className="hint">
+                                  {c ? c.name : 'Meeting'} · {where}
+                                </span>
+                              </span>
+                              {joinable(o) && (
+                                <button type="button" className={'btn small-btn' + (isNow(o) ? ' primary' : '')} onClick={() => start(o)} aria-label={`${o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'} ${o.s.title}`}>
+                                  {o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'}
+                                </button>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </section>
+                  )}
+                </div>
+              )}
+
+              {hasHistory && (
+                <section className={'rm-card rm-recent' + (mid ? '' : ' rm-span')} aria-labelledby="rm-recent-h">
                   <div className="rm-card-h">
-                    <h2 id="rm-on-h">Also on now</h2>
+                    <h2 id="rm-recent-h">Call history</h2>
+                    {history.length > 0 && (
+                      <Link className="rm-more" to="/rooms?history">
+                        See all
+                      </Link>
+                    )}
                   </div>
                   <ul className="rm-list">
-                    {alsoOn.map((c) => {
-                      const k = callOn(c)!;
-                      const inIt = open?.chatId === c.id;
-                      return (
-                        <li key={c.id} className="rm-row">
-                          <Face c={c} me={uid} />
-                          <span className="rm-row-t">
-                            <b>{chatTitle(c, uid)}</b>
-                            <span className="hint">
-                              {k.byName} started a {k.kind} call at {timeText(k.at)}
-                            </span>
-                          </span>
-                          <button type="button" className="btn small-btn primary" disabled={inIt} onClick={() => joinChat(c)}>
-                            {inIt ? 'You are in it' : 'Join'}
-                          </button>
-                        </li>
-                      );
-                    })}
+                    {history.length > 0
+                      ? history.map((l) => <HistoryRow key={l.id} l={l} ctx={ctx} now={now} />)
+                      : recent.map((c) => {
+                          const k = callOf(c)!;
+                          const title = chatTitle(c, uid);
+                          return (
+                            <li key={c.id} className="rm-row">
+                              <Face c={c} me={uid} />
+                              <span className="rm-row-t">
+                                <b>{title}</b>
+                                <span className="hint">
+                                  {k.kind === 'video' ? 'Video' : 'Audio'} · {whenText(k.at)}
+                                  {k.by === uid ? '' : ` · from ${k.byName.split(' ')[0]}`}
+                                </span>
+                              </span>
+                              <CallPair name={title} busy={!!calling} onCall={(kind) => void call(c.id, kind, c)} again />
+                            </li>
+                          );
+                        })}
                   </ul>
                 </section>
               )}
-
-              {later.length > 0 && (
-                <section className="rm-card rm-later" aria-labelledby="rm-later-h">
-                  <div className="rm-card-h">
-                    <h2 id="rm-later-h">Coming up</h2>
-                    <Link className="rm-more" to="/timetable">
-                      The week
-                    </Link>
-                  </div>
-                  <ol className="rm-agenda">
-                    {later.slice(0, 6).map((o) => {
-                      const c = classOf(o.s.classId);
-                      const color = o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--soft)';
-                      const where = o.s.online ? 'Online' : o.s.place?.trim() || 'In person';
-                      return (
-                        <li key={o.s.id + o.week} className="rm-ag">
-                          <span className="rm-ag-time">
-                            <b>{timeText(o.start)}</b>
-                            <span>{dayKey(o.start) === dayKey(now) ? (isNow(o, 0) ? 'Now' : 'Today') : 'Tomorrow'}</span>
-                          </span>
-                          <span className="rm-ag-bar" style={{ background: color }} aria-hidden="true" />
-                          <span className="rm-row-t">
-                            <b>{o.s.title}</b>
-                            <span className="hint">
-                              {c ? c.name : 'Meeting'} · {where}
-                            </span>
-                          </span>
-                          {joinable(o) && (
-                            <button type="button" className={'btn small-btn' + (isNow(o) ? ' primary' : '')} onClick={() => start(o)} aria-label={`${o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'} ${o.s.title}`}>
-                              {o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'}
-                            </button>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                </section>
-              )}
             </div>
-          )}
 
-          {recent.length > 0 && (
-            <section className={'rm-card rm-recent' + (mid ? '' : ' rm-span')} aria-labelledby="rm-recent-h">
+            <section className="rm-card rm-rooms" aria-labelledby="rm-rooms-h">
               <div className="rm-card-h">
-                <h2 id="rm-recent-h">Recent calls</h2>
+                <h2 id="rm-rooms-h">Class video rooms</h2>
+                <span className="hint">Learners join from their home page, or from the lesson when you teach live.</span>
               </div>
-              <ul className="rm-list">
-                {recent.map((c) => {
-                  const k = callOf(c)!;
-                  const title = chatTitle(c, uid);
-                  return (
-                    <li key={c.id} className="rm-row">
-                      <Face c={c} me={uid} />
-                      <span className="rm-row-t">
-                        <b>{title}</b>
-                        <span className="hint">
-                          {k.kind === 'video' ? 'Video' : 'Audio'} · {whenText(k.at)}
-                          {k.by === uid ? '' : ` · from ${k.byName.split(' ')[0]}`}
+              {active.length ? (
+                <div className="rm-classes">
+                  {active.map((c) => {
+                    const ready = !!c.video?.url;
+                    const inIt = open?.classId === c.id;
+                    const next = today.find((o) => o.s.classId === c.id);
+                    const n = c.learnerCount ?? 0;
+                    return (
+                      <div key={c.id} className={'rm-class' + (inIt ? ' on' : '')} style={{ ['--ev' as string]: theme(c.themeColor).accent } as CSSProperties}>
+                        <span className="rm-class-ic" aria-hidden="true">
+                          <UiIcon name="video" size={18} />
                         </span>
-                      </span>
-                      <CallPair name={title} busy={!!calling} onCall={(kind) => void call(c.id, kind, c)} again />
-                    </li>
-                  );
-                })}
-              </ul>
+                        <span className="rm-class-t">
+                          <b>{c.name}</b>
+                          <span className="hint">{ready ? [`${n} ${n === 1 ? 'learner' : 'learners'}`, next ? (isNow(next, 0) ? 'on now' : `next ${dayKey(next.start) === dayKey(now) ? 'at' : 'tomorrow,'} ${timeText(next.start)}`) : ''].filter(Boolean).join(' · ') : 'Setting up the room'}</span>
+                        </span>
+                        <button type="button" className="btn small-btn" disabled={!ready || inIt} onClick={() => void joinClassVideo(c, true)} aria-label={inIt ? `In the room of ${c.name}` : `Open the room of ${c.name}`}>
+                          {inIt ? 'In it' : 'Open'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="rm-none">
+                  No classes yet. <Link to="/classes">Make a class</Link> and it gets its own room.
+                </p>
+              )}
             </section>
-          )}
-        </div>
-
-        <section className="rm-card rm-rooms" aria-labelledby="rm-rooms-h">
-          <div className="rm-card-h">
-            <h2 id="rm-rooms-h">Class video rooms</h2>
-            <span className="hint">Learners join from their home page, or from the lesson when you teach live.</span>
-          </div>
-          {active.length ? (
-            <div className="rm-classes">
-              {active.map((c) => {
-                const ready = !!c.video?.url;
-                const inIt = open?.classId === c.id;
-                const next = today.find((o) => o.s.classId === c.id);
-                const n = c.learnerCount ?? 0;
-                return (
-                  <div key={c.id} className={'rm-class' + (inIt ? ' on' : '')} style={{ ['--ev' as string]: theme(c.themeColor).accent } as CSSProperties}>
-                    <span className="rm-class-ic" aria-hidden="true">
-                      <UiIcon name="video" size={18} />
-                    </span>
-                    <span className="rm-class-t">
-                      <b>{c.name}</b>
-                      <span className="hint">{ready ? [`${n} ${n === 1 ? 'learner' : 'learners'}`, next ? (isNow(next, 0) ? 'on now' : `next ${dayKey(next.start) === dayKey(now) ? 'at' : 'tomorrow,'} ${timeText(next.start)}`) : ''].filter(Boolean).join(' · ') : 'Setting up the room'}</span>
-                    </span>
-                    <button type="button" className="btn small-btn" disabled={!ready || inIt} onClick={() => void joinClassVideo(c, true)} aria-label={inIt ? `In the room of ${c.name}` : `Open the room of ${c.name}`}>
-                      {inIt ? 'In it' : 'Open'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="rm-none">
-              No classes yet. <Link to="/classes">Make a class</Link> and it gets its own room.
-            </p>
-          )}
-        </section>
+          </>
+        )}
       </main>
     </div>
   );
@@ -409,33 +436,6 @@ const HeroArt = () => (
     <i />
   </span>
 );
-
-// A chat's face: the other person, or the group.
-function Face({ c, me }: { c: Chat; me: string }) {
-  if (c.kind === 'group')
-    return (
-      <span className="rm-face rm-group" aria-hidden="true">
-        <UiIcon name="groups" size={18} />
-      </span>
-    );
-  const o = otherIn(c, me);
-  return <PersonFace id={o} name={c.names[o]} size={38} status={c.roles?.[o] === 'teacher'} className="rm-face" />;
-}
-
-// Audio and video buttons, side by side.
-function CallPair({ name, busy, onCall, again }: { name: string; busy: boolean; onCall: (k: CallKind) => void; again?: boolean }) {
-  const who = again ? `${name} again` : `with ${name}`;
-  return (
-    <span className="rm-pair">
-      <button type="button" className="rm-ic" disabled={busy} onClick={() => onCall('audio')} aria-label={`Audio call ${who}`} data-tip="Audio call">
-        <UiIcon name="phone" size={17} />
-      </button>
-      <button type="button" className="rm-ic" disabled={busy} onClick={() => onCall('video')} aria-label={`Video call ${who}`} data-tip="Video call">
-        <UiIcon name="video" size={18} />
-      </button>
-    </span>
-  );
-}
 
 type Entry = { key: string; name: string; sub: string; faceId?: string; group?: boolean; teacher?: boolean; chat?: Chat; person?: Person };
 
