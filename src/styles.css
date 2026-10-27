@@ -5849,3 +5849,9 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .fk-slides { --fk: #b7791f; } .fk-flash { --fk: #8a4f9e; } .fk-pd { --fk: #3c7c8c; } .fk-lesson { --fk: #c8764a; }
 .lt-preview.dd { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 22px 14px; }
 .ld-where { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; background: var(--surface); font: 13.5px var(--sans); }
+.sfx-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 5px 8px; border-radius: 9px; }
+.sfx-row:hover { background: var(--surface); }
+.sfx-l { font: 14px var(--sans); }
+.sfx-acts { display: flex; gap: 6px; justify-content: flex-end; }
+.sfx-add { display: flex; gap: 8px; flex-wrap: wrap; }
+.sfx-add input { flex: 1; min-width: 200px; padding: 7px 10px; border: 1px solid var(--hair); border-radius: 9px; font: 14px var(--sans); }

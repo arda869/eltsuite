@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { bufferOf, decodeSound, peakIndex, rangePeak, reduceEcho, toMono, type NoiseLevel, type PeakIndex } from '../lib/sound';
-import { clipEnd, clipLen, mixdown, projectLen, renderClip, SFX, stackRows, synth, VOICE_FX, type Clip, type Line, type Project, type Track, type VoiceFx } from '../lib/mix';
+import { samplesOf, sfxSamples, useMySfx, type MySfx } from '../lib/sfxAudio';
+import { clipEnd, clipLen, mixdown, projectLen, renderClip, SFX, stackRows, VOICE_FX, type Clip, type Line, type Project, type Track, type VoiceFx } from '../lib/mix';
 import { encodeMp3, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
 import { cleanNoise } from '../lib/soundJobs';
 import { archiveAdd, formatBytes, saveSound, type ScriptLine } from '../lib/archive';
@@ -51,6 +52,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const sources = useRef<Record<string, Float32Array>>({});
   const names = useRef<Record<string, string>>({});
   const [srcVer, bumpSrc] = useState(0);
+  const mySfx = useMySfx();
   const addSource = (id: string, data: Float32Array, name: string) => {
     sources.current[id] = data;
     names.current[id] = name;
@@ -398,13 +400,19 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     setTightened(s.length - 1);
   };
   // Sound effects go on their lane at the playhead.
-  const addSfx = (k: string) => {
-    const fx = SFX.find((s) => s.k === k);
+  const addSfx = async (k: string) => {
+    const mine = k.startsWith('u:') ? mySfx.find((x) => 'u:' + x.id === k) : null;
+    const fx = mine ? { k, label: mine.label, dur: mine.dur, def: undefined as number | undefined } : SFX.find((s) => s.k === k);
     if (!fx) return;
     const id = 'sfx:' + k;
-    if (!sources.current[id]) addSource(id, synth(k, rate, fx.dur), fx.label);
+    let len = fx.def ?? fx.dur;
+    if (!sources.current[id]) {
+      const got = mine ? { data: await samplesOf(mine.data, rate), recorded: true } : await sfxSamples(k, rate, fx.dur);
+      addSource(id, got.data, fx.label);
+      if (got.recorded && !fx.def) len = got.data.length / rate;
+    } else if (!fx.def) len = sources.current[id].length / rate;
     let lane = p.tracks.find((t) => t.kind === 'sfx');
-    const clip: Clip = { id: newId(), src: id, a: 0, b: fx.def ?? fx.dur, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
+    const clip: Clip = { id: newId(), src: id, a: 0, b: len, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
     edit((x) => {
       let tracks = x.tracks;
       if (!lane) (lane = newTrack('Sound effects', 'sfx')), (tracks = [...tracks, lane]);
@@ -412,14 +420,16 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     });
     setPick({ kind: 'clip', track: lane!.id, id: clip.id });
   };
-  const hearSfx = (k: string) => {
+  const hearSfx = async (k: string) => {
+    const mine = k.startsWith('u:') ? mySfx.find((x) => 'u:' + x.id === k) : null;
     const fx = SFX.find((s) => s.k === k);
-    if (!fx) return;
+    if (!fx && !mine) return;
     stop();
     const c = ac();
     void c.resume();
     const s = c.createBufferSource();
-    s.buffer = bufferOf(synth(k, rate, fx.def ?? fx.dur), rate);
+    const data = mine ? await samplesOf(mine.data, rate) : (await sfxSamples(k, rate, fx!.def ?? fx!.dur)).data;
+    s.buffer = bufferOf(fx?.def ? data.slice(0, Math.round(fx.def * rate)) : data, rate);
     s.connect(c.destination);
     s.start();
   };
@@ -906,7 +916,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                       <button type="button" className={'sx-ms' + (tr.mute ? ' on' : '')} onClick={(e) => (e.stopPropagation(), setTrack(tr.id, { mute: !tr.mute }))} data-tip="Mute">
                         M
                       </button>
-                      <SfxMenu onAdd={addSfx} onHear={hearSfx} />
+                      <SfxMenu onAdd={(k) => void addSfx(k)} onHear={(k) => void hearSfx(k)} mine={mySfx} />
                     </span>
                   </span>
                   <span className="sx-lane" onPointerDown={backgroundDown}>
@@ -1256,7 +1266,7 @@ function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked
 }
 
 // The library of sound effects: hear one, or add it at the playhead.
-function SfxMenu({ onAdd, onHear }: { onAdd: (k: string) => void; onHear: (k: string) => void }) {
+function SfxMenu({ onAdd, onHear, mine = [] }: { onAdd: (k: string) => void; onHear: (k: string) => void; mine?: MySfx[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -1273,6 +1283,22 @@ function SfxMenu({ onAdd, onHear }: { onAdd: (k: string) => void; onHear: (k: st
       </button>
       {open && (
         <span className="sx-sfxpop" role="menu">
+          {mine.length > 0 && (
+            <span className="sx-sfxg">
+              <span className="sx-sfxh">Your sounds</span>
+              {mine.map((s) => (
+                <span key={s.id} className="sx-sfxrow">
+                  <button type="button" className="sx-hear" onClick={() => onHear('u:' + s.id)} aria-label={`Hear ${s.label}`}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor" /></svg>
+                  </button>
+                  <button type="button" className="sx-pick" onClick={() => (onAdd('u:' + s.id), setOpen(false))}>
+                    {s.label}
+                    <span className="hint">{s.dur < 1 ? `${s.dur.toFixed(1)} s` : `${Math.round(s.dur)} s`}</span>
+                  </button>
+                </span>
+              ))}
+            </span>
+          )}
           {groups.map((g) => (
             <span key={g} className="sx-sfxg">
               <span className="sx-sfxh">{g}</span>

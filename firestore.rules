@@ -508,6 +508,16 @@ service cloud.firestore {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.token.email == 'ardanurioglu@gmail.com';
     }
+    // Sound effects for the sound editor: the owner's set for everyone, and each teacher's own.
+    match /sfxAudio/{key} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.token.email == 'ardanurioglu@gmail.com';
+    }
+    match /teacherSfx/{id} {
+      allow read: if signedIn() && resource.data.by == request.auth.uid;
+      allow create: if isTeacher() && request.resource.data.by == request.auth.uid && request.resource.data.data is string && request.resource.data.data.size() < 900000;
+      allow delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
     match /teacherSounds/{key} {
       allow read: if signedIn();
       allow create, update: if isTeacher() && key.matches(request.auth.uid + '_.*') && request.resource.data.by == request.auth.uid && request.resource.data.data is string && request.resource.data.data.size() < 900000;

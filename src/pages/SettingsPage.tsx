@@ -15,6 +15,7 @@ import { pushState, type PushState } from '../lib/push';
 import { UiIcon } from '../components/UiIcon';
 import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
 import { SoundRecordings } from '../components/SoundRecordings';
+import { SfxSettings } from '../components/SfxSettings';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
 // Everything about you and how ELT Suite behaves for you, in one place.
@@ -159,6 +160,12 @@ export function SettingsPage() {
         )}
 
         {teacher && <ToolbarSettings />}
+
+        {teacher && (
+          <Section icon="music" title="Sound effects">
+            <SfxSettings />
+          </Section>
+        )}
 
         {teacher && (
           <Section icon="mic" title="Sound recordings">
