@@ -6433,3 +6433,15 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .ma-ltw { width: 14px; flex: none; display: inline-grid; place-items: center; color: var(--muted); font-size: 14px; transition: transform .15s; }
 .ma-ltw.on { transform: rotate(90deg); }
 .ma-lrow:not(.ma-lfolder) .ma-lname { padding-left: calc(var(--depth, 0) * 22px + 22px); }
+/* A PDF in Files */
+.dp.k-pdf { --dp: #b64a3c; }
+.pdff { display: flex; flex-direction: column; gap: 12px; max-width: 1000px; width: 100%; margin: 0 auto; }
+.pdff-bar { position: sticky; top: 61px; z-index: 12; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 10px; border-radius: 14px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 8px 20px -14px rgba(0, 0, 0, .3); }
+.pdff-fmt { display: inline-flex; align-items: center; gap: 2px; }
+.pdff-fmt .ne-btn { min-width: 30px; height: 30px; border-radius: 7px; }
+.pdff-fmt .ne-btn:disabled { opacity: .35; }
+.pb-sep { width: 1px; height: 22px; margin: 0 6px; background: var(--hair); }
+.pdff-page .pdf-block { margin: 0; }
+.pdf-doc { outline: none; }
+.pdff-wait { text-align: center; }
+.ma-toast { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 80; padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--paper); font: 13px var(--sans); }

@@ -1,3 +1,4 @@
+import { PdfFile } from '../pdf/PdfFile';
 import { Mark } from '../components/Wordmark';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -167,7 +168,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} page heading={heading} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} page heading={heading} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
@@ -179,7 +180,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   const dir = useDirectory();
   return (
     <SharePeople
-      teachersOnly={!['doc', 'slides'].includes(d.kind)}
+      teachersOnly={!['doc', 'slides', 'pdf'].includes(d.kind)}
       title={`Share “${d.title}”`}
       ownerName={d.ownerName}
       members={d.members ?? {}}

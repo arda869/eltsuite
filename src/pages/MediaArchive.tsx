@@ -25,8 +25,9 @@ import { ScriptEditor } from '../media/ScriptEditor';
 import { fmtTime } from '../lib/sound';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
 import { WorksheetDialog } from '../components/WorksheetDialog';
+import { MAX_PDF, openPdf, pageSizes, saveFilePdf } from '../pdf/pdfData';
 import { FileIcon, FolderIcon } from '../components/FileIcon';
-import { ask } from '../lib/ask';
+import { ask, tell } from '../lib/ask';
 import { uploadPicture, type PicQuality } from '../editor/PackNode';
 
 // The resources library: pictures, sounds, videos and tasks the teacher keeps, in folders, to use
@@ -40,8 +41,8 @@ const KINDS = [
   { k: 'audio', label: 'Recordings', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
-type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
+type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf';
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, { k: 'pdf', label: 'PDFs' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -56,7 +57,7 @@ const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { mo
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
 const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Recording', lesson: 'Lesson', doc: 'Collab document', pdf: 'PDF', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading' })[k] ?? 'File';
-const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, image: 6, audio: 7, video: 8 };
+const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, image: 7, audio: 8, video: 9 };
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
@@ -415,6 +416,28 @@ export function MediaArchive() {
     'sep',
     { label: 'Delete the folder', icon: 'trash', danger: true, onClick: () => void deleteF(f) },
   ];
+  // A PDF: uploaded into the file itself, then opened to write on.
+  const pdfIn = useRef<HTMLInputElement>(null);
+  const [pdfBusy, setPdfBusy] = useState('');
+  const makePdf = async (f: File) => {
+    if (!uid) return;
+    if (f.size > MAX_PDF) return void tell('That PDF is larger than 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    const w = window.open('about:blank', '_blank');
+    setPdfBusy('Uploading ' + f.name + '…');
+    try {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const pages = await pageSizes(await openPdf(bytes));
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'pdf', f.name.replace(/\.pdf$/i, ''));
+      await saveFilePdf(id, bytes, pages);
+      if (folder) await setDocPath(id, folder).catch(() => {});
+      if (w) w.location.href = `/doc/${id}`;
+    } catch {
+      w?.close();
+      void tell('That file could not be opened as a PDF.');
+    } finally {
+      setPdfBusy('');
+    }
+  };
   const makeDoc = async (k: DocKind) => {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
@@ -428,6 +451,7 @@ export function MediaArchive() {
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'PD reading', icon: 'notebook', onClick: () => void makeDoc('pd') },
+    { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
     'sep',
     { label: 'Recording', icon: 'mic', onClick: () => setDialog({ tab: 'record' }) },
     { label: 'Recording, with colleagues', icon: 'person', onClick: () => setTogether(true) },
@@ -1020,6 +1044,8 @@ export function MediaArchive() {
             onClose={() => {}}
           />
         )}
+        <input ref={pdfIn} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => (e.target.files?.[0] && void makePdf(e.target.files[0]), (e.target.value = ''))} />
+        {pdfBusy && <span className="ma-toast" role="status">{pdfBusy}</span>}
         {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
