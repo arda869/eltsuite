@@ -59,12 +59,13 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
   useEffect(() => {
     if (!open) return;
     const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && onClose();
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // Escape closes this panel only, and the cursor goes back to the text.
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), onClose(), editor.commands.focus());
     document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', key);
+    document.addEventListener('keydown', key, true);
     return () => {
       document.removeEventListener('mousedown', down);
-      document.removeEventListener('keydown', key);
+      document.removeEventListener('keydown', key, true);
     };
   });
 

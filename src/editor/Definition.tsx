@@ -140,12 +140,13 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
     const down = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) save();
     };
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // Escape, also from inside a field: close this panel only and go back to the text.
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), onClose(), editor.commands.focus());
     document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', key);
+    document.addEventListener('keydown', key, true);
     return () => {
       document.removeEventListener('mousedown', down);
-      document.removeEventListener('keydown', key);
+      document.removeEventListener('keydown', key, true);
     };
   });
 

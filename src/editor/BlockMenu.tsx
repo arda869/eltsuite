@@ -1,4 +1,5 @@
 import { zoomOf } from '../lib/zoom';
+import { keyLabel } from '../lib/keys';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { Editor, JSONContent } from '@tiptap/react';
@@ -38,7 +39,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
   useEffect(() => {
     const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && onClose();
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return onClose();
+      if (e.key === 'Escape') return e.preventDefault(), e.stopPropagation(), onClose(), editor.commands.focus();
       const n = editor.state.doc.nodeAt(pos);
       if (!n || !editor.isEditable) return;
       const mod = e.ctrlKey || e.metaKey;
@@ -58,9 +59,9 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
       }
     };
     document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', key);
+    document.addEventListener('keydown', key, true);
     window.addEventListener('scroll', onClose, true);
-    return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', key), window.removeEventListener('scroll', onClose, true));
+    return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', key, true), window.removeEventListener('scroll', onClose, true));
   }, [onClose, editor, pos, space]);
   if (!node) return null;
 
@@ -138,7 +139,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
       <Item
         icon={<UiIcon name="import" size={15} />}
         label={note || 'Copy'}
-        keys="Ctrl C"
+        keys={keyLabel('Mod+C')}
         onClick={() =>
           void copy().then((ok) => {
             setNote(ok ? 'Copied' : 'Could not copy');
@@ -146,7 +147,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
           })
         }
       />
-      <Item icon={<span className="bm-cut">✂</span>} label="Cut" keys="Ctrl X" onClick={() => void copy().then(() => (del(), onClose()))} />
+      <Item icon={<span className="bm-cut">✂</span>} label="Cut" keys={keyLabel('Mod+X')} onClick={() => void copy().then(() => (del(), onClose()))} />
       <span className="bm-sep" />
       <Item icon={<span className="bm-arrow">↑</span>} label="Move up" disabled={!prev} onClick={run(up)} />
       <Item icon={<span className="bm-arrow">↓</span>} label="Move down" disabled={!next} onClick={run(down)} />

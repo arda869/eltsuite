@@ -202,10 +202,10 @@ function TableMenu({ kind, anchor, s, count, ops, onClose }: { kind: 'row' | 'co
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && onClose();
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), onClose());
     document.addEventListener('mousedown', down);
-    document.addEventListener('keydown', key);
-    return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', key));
+    document.addEventListener('keydown', key, true);
+    return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', key, true));
   }, [onClose]);
   const i = kind === 'row' ? s.row : s.col;
   const go = (f: () => void) => () => (f(), onClose());

@@ -1,4 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { installImeGuard } from './keys';
+import { ShortcutsHost } from '../components/Shortcuts';
+
+// Every page loads this file: the keys typed with an input method never act half-way through a word.
+installImeGuard();
 
 // The app's own "are you sure?", notice and question boxes, in place of the browser's grey ones.
 // ask() resolves true or false, tell() when it is closed, askText() with the text or null.
@@ -50,8 +55,27 @@ export function AskHost() {
     return () => void (push = null);
   }, []);
   const cur = list[0];
-  if (!cur) return null;
-  return <AskBox key={list.length + cur.message} r={cur} done={(v) => (cur.resolve(v), setList((l) => l.slice(1)))} />;
+  // Where the cursor was before the box opened: it goes back there when the box closes.
+  const back = useRef<HTMLElement | null>(null);
+  if (cur && !back.current) back.current = document.activeElement as HTMLElement | null;
+  const done = (v: unknown) => {
+    cur.resolve(v);
+    setList((l) => {
+      const next = l.slice(1);
+      if (!next.length) {
+        const el = back.current;
+        back.current = null;
+        window.setTimeout(() => el?.isConnected && el.focus({ preventScroll: true }), 0);
+      }
+      return next;
+    });
+  };
+  return (
+    <>
+      <ShortcutsHost />
+      {cur && <AskBox key={list.length + cur.message} r={cur} done={done} />}
+    </>
+  );
 }
 
 // A small drawing for what the box is about.
@@ -87,10 +111,11 @@ function AskBox({ r, done }: { r: Req; done: (v: unknown) => void }) {
   }, [r]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') e.preventDefault(), no();
+      if (e.key === 'Escape') e.preventDefault(), e.stopPropagation(), no();
     };
-    document.addEventListener('keydown', key);
-    return () => document.removeEventListener('keydown', key);
+    // Capture: the box is on top of everything, so Escape closes it and nothing underneath.
+    document.addEventListener('keydown', key, true);
+    return () => document.removeEventListener('keydown', key, true);
   }); // eslint-disable-line react-hooks/exhaustive-deps
   // A question in the message (before the first "?") is the heading; the rest explains.
   const m = /^(.*?[?.!])\s+(.+)$/s.exec(r.message);
@@ -106,7 +131,7 @@ function AskBox({ r, done }: { r: Req; done: (v: unknown) => void }) {
         </span>
         <p className="ask-head">{head}</p>
         {rest && <p className="ask-rest">{rest}</p>}
-        {r.kind === 'text' && <input ref={inRef} className="ask-input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && yes()} />}
+        {r.kind === 'text' && <input ref={inRef} className="ask-input" aria-label={head} enterKeyHint="done" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), yes())} />}
         <span className="ask-acts">
           {r.kind !== 'tell' && (
             <button type="button" className="btn" onClick={no}>

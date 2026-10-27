@@ -8,6 +8,9 @@ import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
+import { useEditorKeys } from '../editor/editorKeys';
+import { cleanPastedHTML } from '../editor/pasteClean';
+import { keyLabel } from '../lib/keys';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
@@ -181,6 +184,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       editable: eff !== 'view',
       editorProps: {
         attributes: { class: 'cd-text', spellcheck: 'true', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Document text' },
+        // Word and Outlook: real lists and paragraphs, without Office markup or empty lines.
+        transformPastedHTML: cleanPastedHTML,
         handlePaste: (_v, e) => {
           const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
           if (!files.length || !edRef.current) return false;
@@ -206,19 +211,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   // The "/" menu: the lesson editor's elements, without learner tasks.
   const docCmds = useMemo(() => DOC_CMDS.filter((c) => (profileTeacher || !c.key.startsWith('tt-')) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
   const slash = useSlash(editor, docCmds, false, true, () => true);
-  // ⌘K: a link on the selected words.
-  useEffect(() => {
-    if (!editor) return;
-    const key = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && (!editor.state.selection.empty || editor.isActive('link'))) {
-        e.preventDefault();
-        setLinkOpen(true);
-      }
-    };
-    const dom = editor.view.dom;
-    dom.addEventListener('keydown', key);
-    return () => dom.removeEventListener('keydown', key);
-  }, [editor]);
+  // ⌘K: a link on the selected words; Alt+↑/↓ moves a paragraph, as in lessons.
+  useEditorKeys(editor, () => {
+    if (!editor || (editor.state.selection.empty && !editor.isActive('link'))) return false;
+    setLinkOpen(true);
+    return true;
+  });
 
   // Sync, the starting text, and who is here.
   useEffect(() => {
@@ -356,16 +354,16 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const PageBar = () => (
     <div className="ne-bar cd-bar cd-pagebar" role="toolbar" aria-label="Formatting">
       <span className="pb-g">
-        {B(<SV d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), 'Undo (Ctrl Z)', !editor.can().undo())}
-        {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), 'Redo (Ctrl Shift Z)', !editor.can().redo())}
+        {B(<SV d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), `Undo (${keyLabel('Mod+Z')})`, !editor.can().undo())}
+        {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
       </span>
       <span className="pb-g">
         <StyleMenu editor={editor} />
       </span>
       <span className="pb-g">
-        {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold (Ctrl B)')}
-        {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic (Ctrl I)')}
-        {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline (Ctrl U)')}
+        {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), `Bold (${keyLabel('Mod+B')})`)}
+        {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), `Italic (${keyLabel('Mod+I')})`)}
+        {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), `Underline (${keyLabel('Mod+U')})`)}
         <TextColorTool editor={editor} />
         <HighlightTool editor={editor} />
       </span>
@@ -378,7 +376,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         </button>
       </span>
       <span className="pb-g">
-        {B(<UiIcon name="link" size={15} />, editor.isActive('link'), () => setLinkOpen(true), 'Link (Ctrl K)', editor.state.selection.empty && !editor.isActive('link'))}
+        {B(<UiIcon name="link" size={15} />, editor.isActive('link'), () => setLinkOpen(true), `Link (${keyLabel('Mod+K')})`, editor.state.selection.empty && !editor.isActive('link'))}
         {B(<UiIcon name="picture" size={15} />, false, () => pickPictures(editor), 'Picture')}
         {B(<SV d="M4 5h16v14H4zM4 10h16M10 10v9" />, editor.isActive('table'), () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), 'Table')}
       </span>
@@ -702,7 +700,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
               {draft && (
                 <div className="cd-card cd-draft">
                   <span className="cd-quote">“{draft.quote}”</span>
-                  <textarea autoFocus value={draftText} placeholder="Your comment" onChange={(e) => setDraftText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? postComment() : e.stopPropagation())} />
+                  <textarea autoFocus value={draftText} placeholder="Your comment" aria-label="Your comment" onChange={(e) => setDraftText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? postComment() : e.stopPropagation())} />
                   <span className="cd-card-btns">
                     <button type="button" className="btn small-btn" onClick={() => setDraft(null)}>
                       Cancel
@@ -832,7 +830,7 @@ export function CommentCard({ t, onGo, onReply, onResolve }: { t: Thread; onGo: 
         </span>
       ))}
       <span className="cd-reply" onClick={(e) => e.stopPropagation()}>
-        <input value={text} placeholder="Reply" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' ? (onReply(text), setText('')) : e.stopPropagation())} />
+        <input value={text} placeholder="Reply" aria-label="Reply" enterKeyHint="send" onChange={(e) => setText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' ? (e.preventDefault(), text.trim() && (onReply(text.trim()), setText(''))) : e.stopPropagation())} />
         {onResolve && (
           <button type="button" className="btn small-btn" onClick={onResolve} data-tip="Mark as done and hide it">
             Resolve
@@ -946,11 +944,12 @@ function StyleMenu({ editor }: { editor: Editor }) {
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    // Escape closes the style menu only, and the cursor goes back to the text.
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), setOpen(false), editor.commands.focus());
     document.addEventListener('mousedown', away);
-    document.addEventListener('keydown', esc);
-    return () => (document.removeEventListener('mousedown', away), document.removeEventListener('keydown', esc));
-  }, [open]);
+    document.addEventListener('keydown', esc, true);
+    return () => (document.removeEventListener('mousedown', away), document.removeEventListener('keydown', esc, true));
+  }, [open, editor]);
   const cur = editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p';
   const pick = (k: string) => {
     const c = editor.chain().focus();

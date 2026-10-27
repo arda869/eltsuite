@@ -33,6 +33,12 @@ import { newPhonCard, newPhonChart } from './Phonemes';
 import { TTNode, newTT, newTTCustom, useTrainingClass } from '../training/Training';
 import { noteSlash, topSlash } from '../lib/slashUse';
 import { useToolGate } from '../lib/toolbarPrefs';
+import { composing } from '../lib/keys';
+import { useEditorKeys } from './editorKeys';
+import { cleanPastedHTML } from './pasteClean';
+import { installPopKeys } from './popKeys';
+
+installPopKeys();
 import { DictCut } from './DictCut';
 import { Ipa, newIpa, type Accent } from './Ipa';
 import { Reflect, newReflect } from './Reflect';
@@ -52,7 +58,6 @@ import { LineAdder } from './LineAdder';
 import { Picture, PictureDialog, insertPictures } from './Picture';
 import { uploadPicture } from './PackNode';
 import { EditorClassContext } from './context';
-import { Selection } from '@tiptap/pm/state';
 import { Highlight, HighlightTool } from './Highlight';
 import { TextColor, TextColorTool } from './TextColor';
 import { IconNode, IconTool } from './Icons';
@@ -228,12 +233,15 @@ setPdfQuestions(PDF_Q_KEYS.map((k) => COMMANDS.find((c) => c.key === k)).filter(
 
 // Writing that is not a task (an email): only text tools, no questions or task elements.
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
+// The order of the groups in every / menu (lessons show Questions, Text, Blocks; documents Basic to Training).
+const GROUP_RANK: Cmd['group'][] = ['Basic', 'Media', 'Writing', 'Language', 'Questions', 'Text', 'Blocks', 'Training', 'More'];
 const TEXT_ONLY = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
 export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false, only?: (c: Cmd) => boolean) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
   const [all, setAll] = useState(false);
   const startRef = useRef(-1);
+  const dismissed = useRef(-1);
 
   useEffect(() => {
     if (!editor) return;
@@ -243,8 +251,10 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
       const $from = editor.state.selection.$from;
       const before = $from.parent.textBetween(0, $from.parentOffset, undefined, '￼');
       const m = before.match(/(?:^|\s)\/([a-z0-9 -]{0,20})$/i);
-      if (!m) return setState(null);
+      if (!m) return (dismissed.current = -1), setState(null);
       const start = from - m[1].length - 1;
+      // Closed with Escape: it stays closed for this "/", until a new one is typed.
+      if (dismissed.current === start) return setState(null);
       const coords = editor.view.coordsAtPos(from);
       // Screen positions: the menu is drawn on the page itself, so a scrolling chat box or a
       // zoomed task can't cut it off.
@@ -272,10 +282,12 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
       const fit = (only ? extra.filter(only) : [...COMMANDS, ...extra]).filter((c) => training || !c.key.startsWith('tt-')).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
       const q = state.query.trim();
-      if (q) return fit.filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(q));
+      // In the order the menu shows them (by group), so the arrow keys go down the list as seen.
+      const shown = (l: Cmd[]) => l.map((c, i) => [c, i] as const).sort((a, b) => GROUP_RANK.indexOf(a[0].group) - GROUP_RANK.indexOf(b[0].group) || a[1] - b[1]).map(([c]) => c);
+      if (q) return shown(fit.filter((c) => (c.label + ' ' + c.key).toLowerCase().includes(q)));
       // Just "/": the teacher's three most used, then "Show all".
       if (!all && fit.length > 4) return [...topSlash(fit, 3), MORE];
-      return fit;
+      return shown(fit);
     },
     [state, editor, extra, textOnly, all, training, only],
   );
@@ -284,7 +296,7 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
     if (!editor || !state) return;
     if (c.key === MORE.key) {
       setAll(true);
-      setIndex(3);
+      setIndex(0);
       return;
     }
     noteSlash(c.key);
@@ -293,7 +305,7 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
     setState(null);
   };
 
-  return { state: items.length ? state : null, items, index, setIndex, choose, close: () => setState(null) };
+  return { state: items.length ? state : null, items, index, setIndex, choose, close: () => ((dismissed.current = state?.from ?? -1), setState(null)) };
 }
 
 const ICON = (d: React.ReactNode) => (
@@ -419,6 +431,65 @@ export const TrailingLine = Extension.create({
   },
 });
 
+// The toolbar is one stop for Tab: ← → Home End move between its tools (as in Google Docs),
+// Enter or Space uses one, Escape goes back to the text. A tool's panel (colours, symbols,
+// pronunciation) gets the keys while it is open: arrows move in it, Escape closes it.
+const TB_TOOL = ':scope > .tb-slot > button, :scope > .tb-slot > * > button.tool, :scope > button.tool, :scope > .tb-more-tools';
+function toolbarTools(bar: HTMLElement) {
+  return Array.from(bar.querySelectorAll<HTMLElement>(TB_TOOL)).filter((b) => b.offsetParent !== null && getComputedStyle(b).visibility !== 'hidden');
+}
+function toolbarFocus(e: React.FocusEvent<HTMLDivElement>) {
+  const bar = e.currentTarget;
+  const tools = toolbarTools(bar);
+  if (!tools.includes(e.target as HTMLElement)) return;
+  tools.forEach((b) => ((b.tabIndex = b === e.target ? 0 : -1), (b.dataset.tbStop = b === e.target ? '1' : '')));
+}
+function toolbarClick(e: React.MouseEvent<HTMLDivElement>) {
+  // From the keyboard (no pointer): a panel that opens gets the focus.
+  if (e.detail !== 0) return;
+  const slot = (e.target as HTMLElement).closest('.tb-slot');
+  window.setTimeout(() => slot?.querySelector<HTMLElement>('.hl-pop button, .hl-pop input')?.focus(), 0);
+}
+function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
+  const bar = e.currentTarget;
+  const t = e.target as HTMLElement;
+  if (t.tagName === 'INPUT' && e.key !== 'Escape') return; // "Start at" and other boxes type normally
+  const pop = t.closest('.hl-pop');
+  if (pop) {
+    const btns = Array.from(pop.querySelectorAll<HTMLElement>('button:not([disabled]), input'));
+    const i = btns.indexOf(t);
+    const go = (j: number) => (e.preventDefault(), e.stopPropagation(), btns[(j + btns.length) % btns.length]?.focus());
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') go(i + 1);
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') go(i - 1);
+    else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      const tool = pop.closest('.tb-slot')?.querySelector<HTMLElement>('button');
+      tool?.click();
+      tool?.focus();
+    }
+    return;
+  }
+  const tools = toolbarTools(bar);
+  const i = tools.indexOf(t);
+  if (i < 0) return;
+  const go = (j: number) => {
+    e.preventDefault();
+    const b = tools[Math.max(0, Math.min(tools.length - 1, j))];
+    tools.forEach((x) => ((x.tabIndex = x === b ? 0 : -1), (x.dataset.tbStop = x === b ? '1' : '')));
+    b.focus();
+  };
+  if (e.key === 'ArrowRight') go(i + 1 >= tools.length ? 0 : i + 1);
+  else if (e.key === 'ArrowLeft') go(i - 1 < 0 ? tools.length - 1 : i - 1);
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(tools.length - 1);
+  else if (e.key === 'Escape') {
+    e.preventDefault();
+    e.stopPropagation();
+    editor.commands.focus();
+  }
+}
+
 export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false }: { textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
@@ -500,7 +571,9 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     content: withPictures(content),
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
-      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Task' },
+      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': placeholder ? 'Message' : 'Task' },
+      // Word and Outlook: real lists and paragraphs, without Office markup or empty lines.
+      transformPastedHTML: cleanPastedHTML,
       // Paste or drop pictures straight into the task: they are uploaded to the class.
       handlePaste: (view, e) => {
         // Elements copied from a message or another task: with answers, pictures and sounds.
@@ -605,42 +678,12 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const mention = useMentionMenu(editor, classmates, !classId.startsWith('chat:'));
-  // Editor shortcuts: ⌘K link, Alt+↑/↓ move the current block.
-  useEffect(() => {
-    if (!editor) return;
-    const dom = editor.view.dom;
-    const key = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        if (!editor.state.selection.empty || editor.isActive('lessonLink') || editor.isActive('link')) setLinkOpen(true);
-        return;
-      }
-      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-        const { state } = editor;
-        const $f = state.selection.$from;
-        const index = $f.index(0);
-        const doc = state.doc;
-        const j = e.key === 'ArrowUp' ? index - 1 : index + 1;
-        if (j < 0 || j >= doc.childCount) return;
-        e.preventDefault();
-        const a = doc.child(Math.min(index, j));
-        const b = doc.child(Math.max(index, j));
-        let pos = 0;
-        for (let k = 0; k < Math.min(index, j); k++) pos += doc.child(k).nodeSize;
-        const tr = state.tr.replaceWith(pos, pos + a.nodeSize + b.nodeSize, [b, a]);
-        const offset = state.selection.from - (pos + (index < j ? 0 : a.nodeSize));
-        const newStart = index < j ? pos + b.nodeSize : pos;
-        try {
-          tr.setSelection(Selection.near(tr.doc.resolve(Math.max(0, Math.min(tr.doc.content.size, newStart + offset)))));
-        } catch {
-          /* keep the cursor where it lands */
-        }
-        editor.view.dispatch(tr.scrollIntoView());
-      }
-    };
-    dom.addEventListener('keydown', key);
-    return () => dom.removeEventListener('keydown', key);
-  }, [editor]);
+  // Editor shortcuts: ⌘K link, Alt+↑/↓ move the current block (the same in shared documents).
+  useEditorKeys(editor, () => {
+    if (!editor || (editor.state.selection.empty && !editor.isActive('lessonLink') && !editor.isActive('link'))) return false;
+    setLinkOpen(true);
+    return true;
+  });
   const classCtx = useMemo(() => ({ classmates, classId }), [classmates, classId]);
 
   // A narrow toolbar (in a chat): the tools that fit, and an arrow that opens the rest on new lines.
@@ -664,12 +707,24 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     ro.observe(el);
     return () => ro.disconnect();
   }, [compact, editor, toolsOpen]);
+  // One Tab stop for the whole toolbar: the tool used last, or the first.
+  useEffect(() => {
+    const bar = tbRef.current;
+    if (!bar) return;
+    const tools = toolbarTools(bar);
+    if (!tools.length) return;
+    const keep = tools.find((b) => b.tabIndex === 0 && b === document.activeElement) ?? tools.find((b) => b.dataset.tbStop === '1') ?? tools[0];
+    tools.forEach((b) => {
+      b.tabIndex = b === keep ? 0 : -1;
+      b.dataset.tbStop = b === keep ? '1' : '';
+    });
+  });
   if (!editor) return null;
 
   return (
     <EditorClassContext.Provider value={classCtx}>
     <div className={'task-editor' + (handles ? ' with-handles' : '')}>
-      <div ref={tbRef} className={'toolbar' + (compact ? ' tb-compact' + (toolsOpen ? ' open' : '') : '')} role="toolbar" aria-label="Formatting">
+      <div ref={tbRef} className={'toolbar' + (compact ? ' tb-compact' + (toolsOpen ? ' open' : '') : '')} role="toolbar" aria-label="Formatting" aria-orientation="horizontal" onKeyDown={(e) => toolbarKeys(e, editor)} onClickCapture={(e) => toolbarClick(e)} onFocus={(e) => toolbarFocus(e)}>
         {(() => {
           const tools: [string, React.ReactNode][] = [
             ['bold', BTN('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b className="ti ti-b">B</b>)],
@@ -903,21 +958,26 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
 type Slash = ReturnType<typeof useSlash>;
 // The "/" menu: arrows to move, Enter to choose, Esc to close.
 export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Slash; groups?: { k: Cmd['group']; label: string }[] }) {
+  // The mouse only takes over when it really moves, not when the list scrolls under a still pointer.
+  const mouse = useRef(false);
   useEffect(() => {
     if (!slash.state) return;
+    const n = slash.items.length;
     const onKey = (e: KeyboardEvent) => {
-      if (!slash.state) return;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        slash.setIndex((i) => (i + 1) % slash.items.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        slash.setIndex((i) => (i - 1 + slash.items.length) % slash.items.length);
-      } else if (e.key === 'Enter') {
+      if (!slash.state || composing(e)) return;
+      const go = (i: number) => (e.preventDefault(), e.stopPropagation(), (mouse.current = false), slash.setIndex(((i % n) + n) % n));
+      if (e.key === 'ArrowDown') go(slash.index + 1);
+      else if (e.key === 'ArrowUp') go(slash.index - 1);
+      else if (e.key === 'PageDown') go(Math.min(n - 1, slash.index + 6));
+      else if (e.key === 'PageUp') go(Math.max(0, slash.index - 6));
+      else if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
         e.preventDefault();
         e.stopPropagation();
         slash.choose(slash.items[slash.index]);
       } else if (e.key === 'Escape') {
+        // Only the menu closes, not the window the editor is in.
+        e.preventDefault();
+        e.stopPropagation();
         slash.close();
       }
     };
@@ -925,6 +985,15 @@ export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Sl
     dom.addEventListener('keydown', onKey, true);
     return () => dom.removeEventListener('keydown', onKey, true);
   }, [editor, slash]);
+  // Screen readers: the editor points at the highlighted choice.
+  useEffect(() => {
+    const dom = editor.view.dom;
+    if (!slash.state) {
+      if (dom.getAttribute('aria-activedescendant')?.startsWith('slash-')) dom.removeAttribute('aria-activedescendant');
+      return;
+    }
+    dom.setAttribute('aria-activedescendant', 'slash-o-' + slash.index);
+  }, [editor, slash.state, slash.index]);
 
   const slashRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -933,7 +1002,7 @@ export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Sl
 
   if (!slash.state) return null;
   return createPortal(
-          <div ref={slashRef} className="slash slash-float" role="listbox" aria-label="Insert" style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
+          <div ref={slashRef} id="slash-list" className="slash slash-float" role="listbox" aria-label="Insert" onMouseMove={() => (mouse.current = true)} style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
             {(slash.items.some((c) => c.key === '__more') ? (['Top', 'More'] as const) : (groups ? groups.map((x) => x.k) : (['Questions', 'Text', 'Blocks'] as const))).map((g) => {
               const list = g === 'Top' ? slash.items.filter((c) => c.key !== '__more') : slash.items.filter((c) => c.group === g);
               if (!list.length) return null;
@@ -945,6 +1014,7 @@ export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Sl
                     return (
                       <div
                         key={c.key}
+                        id={'slash-o-' + i}
                         role="option"
                         aria-selected={i === slash.index}
                         className={'slash-item' + (i === slash.index ? ' on' : '') + (c.key === '__more' ? ' slash-more' : '')}
@@ -952,7 +1022,7 @@ export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Sl
                           e.preventDefault();
                           slash.choose(c);
                         }}
-                        onMouseEnter={() => slash.setIndex(i)}
+                        onMouseMove={() => mouse.current && i !== slash.index && slash.setIndex(i)}
                       >
                         <strong>{c.label}</strong>
                         <span>{c.hint}</span>

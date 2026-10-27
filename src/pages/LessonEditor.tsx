@@ -88,6 +88,7 @@ import { collection } from 'firebase/firestore';
 import type { Topic } from '../lib/classes';
 import { examScope, useRuns } from '../lib/exam';
 import { type InkMode } from '../components/PresentInk';
+import { openShortcuts } from '../components/Shortcuts';
 
 const svg = (d: React.ReactNode) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -221,6 +222,11 @@ export function LessonEditor() {
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
+  // The shortcuts panel (? or Ctrl+/) opens on the teaching keys while teaching.
+  useEffect(() => {
+    document.documentElement.dataset.keys = teachingHere ? 'teaching' : 'writing';
+    return () => void delete document.documentElement.dataset.keys;
+  }, [teachingHere]);
   // Colleagues see that this teacher is in class while the lesson is live.
   useEffect(() => {
     if (!teachingHere || !c?.name) return;
@@ -370,7 +376,6 @@ export function LessonEditor() {
   const syncWho = (room: string | null) => setLive(classId, room ? { syncRoom: room, ...(live?.sync ? { roomTask: { ...(live?.roomTask ?? {}), [room]: selected } } : {}) } : { syncRoom: null, roomTask: null });
 
   // Teaching shortcuts (not while typing).
-  const [help, setHelp] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
   const [recapOpen, setRecapOpen] = useState(false);
@@ -456,8 +461,9 @@ export function LessonEditor() {
         return;
       }
       if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === '?') return setHelp((h) => !h);
-      if (e.key === 'Escape') return (setHelp(false), present && changeMode('teach'), setInkMode('off'));
+      // ? opens the app's shortcuts panel (components/Shortcuts), on the teaching keys here.
+      if (e.key === '?') return;
+      if (e.key === 'Escape') return (present && changeMode('teach'), setInkMode('off'));
       if (!teachingHere) return;
       if ((e.key === 'f' || e.key === 'F') && !editWhileTeaching) return (e.preventDefault(), changeMode(present ? 'teach' : 'present'));
       const list = tasks.filter((x) => x.kind !== 'section');
@@ -723,7 +729,7 @@ export function LessonEditor() {
                   Groups and breakout rooms
                 </button>
               )}
-              <button role="menuitem" className="hide-phone" onClick={() => (setExportOpen(false), setHelp(true))}>
+              <button role="menuitem" className="hide-phone" onClick={() => (setExportOpen(false), openShortcuts(teachingHere ? 'teaching' : 'writing'))}>
                 Keyboard shortcuts
               </button>
               <span className="menu-sep" aria-hidden="true" />
@@ -1402,44 +1408,6 @@ export function LessonEditor() {
         />
       )}
       {recapOpen && c && item && <RecapDialog c={c} item={item} items={nbItems} onClose={() => setRecapOpen(false)} />}
-      {help && (
-        <div className="scrim" role="dialog" aria-label="Keyboard shortcuts" onClick={() => setHelp(false)}>
-          <div className="dialog shortcuts" onClick={(e) => e.stopPropagation()}>
-            <h2>Keyboard shortcuts</h2>
-            <p className="hint" style={{ margin: 0 }}>While teaching. They don’t work while you are typing.</p>
-            <dl>
-              {[
-                ['← →', 'Previous or next task (moves the class when synced)'],
-                ['S', 'Sync the class to you, or stop'],
-                ['R', 'Reveal the next answer (again at the end to hide)'],
-                ['Shift + R', 'Reveal all answers, or hide them'],
-                ['H', 'Hide or show this task'],
-                ['L', 'Lock or unlock this task'],
-                ['C', 'Show or hide the class panel'],
-                ['N', tr('Teacher notes')],
-                ['T', 'Start a 2-minute timer, or stop it'],
-                ['A', 'New announcement'],
-                ['F', 'Full screen while teaching, or back'],
-                ['Esc', 'Leave full screen, close this'],
-                ['⌘ + K', 'Editor: link the selected words'],
-                ['Alt + ↑ ↓', 'Editor: move the block up or down'],
-                ['⌘ + Shift + P', tr('Preview as learner')],
-                ['?', 'Show these shortcuts'],
-              ].map(([k, d]) => (
-                <div key={k} className="sc-row">
-                  <dt>
-                    {k.split(' ').map((x, i) => (x === '+' ? <span key={i}> + </span> : <kbd key={i}>{x}</kbd>))}
-                  </dt>
-                  <dd>{d}</dd>
-                </div>
-              ))}
-            </dl>
-            <button className="btn" style={{ alignSelf: 'flex-end' }} onClick={() => setHelp(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
     </ClassAvatarsContext.Provider>
   );

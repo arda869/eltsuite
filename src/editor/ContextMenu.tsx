@@ -1,6 +1,8 @@
 import { tell } from '../lib/ask';
+import { keyLabel } from '../lib/keys';
 import type { Editor } from '@tiptap/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useMenuKeys } from '../components/menuKeys';
 import { Swatches } from './Highlight';
 import { ColorSwatches } from './TextColor';
 
@@ -59,8 +61,8 @@ export function EditorContextMenu({
       const obj = target.closest('[data-node-view-wrapper]') as HTMLElement | null;
       const inText = target.closest('[data-node-view-content]');
       if (obj && pm.contains(obj) && !(inText && obj.contains(inText))) {
-        const x0 = Math.min(e.clientX, window.innerWidth - 260);
-        const y0 = Math.min(e.clientY, window.innerHeight - 220);
+        const x0 = e.clientX;
+        const y0 = e.clientY;
         window.setTimeout(() => {
           try {
             const pos = editor.view.posAtDOM(obj, 0);
@@ -77,8 +79,8 @@ export function EditorContextMenu({
       }
       const hit = editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
       const { from, to, empty } = editor.state.selection;
-      const x = Math.min(e.clientX, window.innerWidth - 260);
-      const y = Math.max(8, Math.min(e.clientY, window.innerHeight - 560));
+      const x = e.clientX;
+      const y = e.clientY;
       // Wait for the browser to finish its own click handling, which can move the cursor.
       window.setTimeout(() => {
         if (hit && (empty || hit.pos < from || hit.pos > to)) {
@@ -92,10 +94,18 @@ export function EditorContextMenu({
     return () => host.removeEventListener('contextmenu', open);
   }, [host, editor]);
 
+  // Measured on screen: it opens at the pointer and moves in from an edge only as far as it must.
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!at || !ref.current) return setPos(null);
+    const r = ref.current.getBoundingClientRect();
+    setPos({ left: Math.max(8, Math.min(at.x, window.innerWidth - r.width - 8)), top: Math.max(8, Math.min(at.y, window.innerHeight - r.height - 8)) });
+  }, [at]);
+  useMenuKeys(ref, at, () => setAt(null));
   useEffect(() => {
     if (!at) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setAt(null);
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && setAt(null);
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), setAt(null));
     document.addEventListener('pointerdown', close, true);
     document.addEventListener('keydown', key);
     window.addEventListener('blur', () => setAt(null), { once: true });
@@ -131,7 +141,7 @@ export function EditorContextMenu({
       const text = await navigator.clipboard.readText();
       (editor.view as unknown as { pasteText: (t: string) => void }).pasteText(text);
     } catch {
-      void tell('Your browser blocked pasting from this menu. Press Ctrl+V (or ⌘V on a Mac) to paste.');
+      void tell(`Your browser blocked pasting from this menu. Press ${keyLabel('Mod+V')} to paste.`);
     }
   };
   const text = editor.state.doc.textBetween(from, to, ' ').trim();
@@ -161,9 +171,9 @@ export function EditorContextMenu({
     { label: 'Underline', run: run(() => editor.chain().focus().toggleUnderline().run()), show: has },
     { label: 'Strikethrough', run: run(() => editor.chain().focus().toggleStrike().run()), show: has },
     'sep',
-    { label: 'Cut', hint: '⌘X', run: run(cut), show: anything },
-    { label: 'Copy', hint: '⌘C', run: run(copy), show: anything },
-    { label: 'Paste', hint: '⌘V', run: run(paste) },
+    { label: 'Cut', hint: keyLabel('Mod+X'), run: run(cut), show: anything },
+    { label: 'Copy', hint: keyLabel('Mod+C'), run: run(copy), show: anything },
+    { label: 'Paste', hint: keyLabel('Mod+V'), run: run(paste) },
     { label: isObject ? 'Delete' : 'Delete', run: run(() => editor.chain().focus().deleteSelection().run()), show: anything, danger: isObject },
     'sep',
     { label: 'Remove definition', run: run(() => editor.chain().focus().extendMarkRange('definition').unsetMark('definition').run()), show: editor.isActive('definition'), danger: true },
@@ -174,13 +184,13 @@ export function EditorContextMenu({
   const clean = visible.filter((i, k) => i !== 'sep' || (k > 0 && k < visible.length - 1 && visible[k - 1] !== 'sep'));
   if (!clean.some((i) => i !== 'sep')) {
     return (
-      <div ref={ref} className="ctx-menu" style={{ position: 'fixed', left: at.x, top: at.y, maxHeight: 'calc(100vh - 16px)', overflow: 'auto' }} role="menu">
+      <div ref={ref} className="ctx-menu" style={{ position: 'fixed', ...(pos ?? { left: at.x, top: at.y, visibility: 'hidden' }), maxHeight: 'calc(100vh - 16px)', overflow: 'auto' }} role="menu">
         <span className="ctx-empty">Select a word or phrase to see options. Type / to add more.</span>
       </div>
     );
   }
   return (
-    <div ref={ref} className="ctx-menu" style={{ position: 'fixed', left: at.x, top: at.y, maxHeight: 'calc(100vh - 16px)', overflow: 'auto' }} role="menu" onMouseDown={(e) => e.preventDefault()}>
+    <div ref={ref} className="ctx-menu" style={{ position: 'fixed', ...(pos ?? { left: at.x, top: at.y, visibility: 'hidden' }), maxHeight: 'calc(100vh - 16px)', overflow: 'auto' }} role="menu" onMouseDown={(e) => e.preventDefault()}>
       {has && (
         <span className="ctx-hl">
           <span className="ctx-hl-label">Highlight</span>

@@ -1,4 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { keyLabel } from '../lib/keys';
+import { tell } from '../lib/ask';
+import { useMenuKeys } from './menuKeys';
 import { createPortal } from 'react-dom';
 import { UiIcon } from './UiIcon';
 
@@ -6,7 +9,7 @@ import { UiIcon } from './UiIcon';
 // <MenuHost/> is mounted once, next to the dialogs.
 
 export type MenuItem = { label: string; icon?: string; onClick: () => void; danger?: boolean; disabled?: boolean; hint?: string } | 'sep';
-type Open = { x: number; y: number; items: MenuItem[] } | null;
+type Open = { x: number; y: number; items: MenuItem[]; kbd?: boolean } | null;
 
 let setter: ((o: Open) => void) | null = null;
 
@@ -21,13 +24,15 @@ export function openMenu(e: React.MouseEvent | MouseEvent, items: MenuItem[]) {
 // For a button that opens the same menu (the "…" on a card): opens under the button.
 export function openMenuAt(el: HTMLElement, items: MenuItem[]) {
   const r = el.getBoundingClientRect();
-  setter?.({ x: r.left, y: r.bottom + 4, items });
+  // Opened from the keyboard (the button has focus): the first item gets it.
+  setter?.({ x: r.left, y: r.bottom + 4, items, kbd: document.activeElement === el });
 }
 
 export function MenuHost() {
   const [open, setOpen] = useState<Open>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  useMenuKeys(ref, open, () => setOpen(null), !!open?.kbd);
   useEffect(() => {
     setter = setOpen;
     // Never the browser's menu: anywhere the app has no menu of its own, this one.
@@ -41,13 +46,13 @@ export function MenuHost() {
       const copy = (v: string) => void navigator.clipboard?.writeText(v).catch(() => {});
       if (field) {
         items.push(
-          { label: 'Cut', icon: '', hint: 'Ctrl X', disabled: !text, onClick: () => document.execCommand('cut') },
-          { label: 'Copy', icon: 'copyall', hint: 'Ctrl C', disabled: !text, onClick: () => document.execCommand('copy') },
-          { label: 'Paste', icon: '', hint: 'Ctrl V', onClick: () => void navigator.clipboard?.readText().then((v) => (field.focus(), document.execCommand('insertText', false, v))).catch(() => {}) },
+          { label: 'Cut', icon: '', hint: keyLabel('Mod+X'), disabled: !text, onClick: () => document.execCommand('cut') },
+          { label: 'Copy', icon: 'copyall', hint: keyLabel('Mod+C'), disabled: !text, onClick: () => document.execCommand('copy') },
+          { label: 'Paste', icon: '', hint: keyLabel('Mod+V'), onClick: () => void (navigator.clipboard?.readText ? navigator.clipboard.readText() : Promise.reject()).then((v) => (field.focus(), document.execCommand('insertText', false, v))).catch(() => (field.focus(), void tell(`Your browser does not let menus paste. Press ${keyLabel('Mod+V')} to paste.`))) },
           'sep',
-          { label: 'Select all', icon: '', hint: 'Ctrl A', onClick: () => (field.focus(), document.execCommand('selectAll')) },
+          { label: 'Select all', icon: '', hint: keyLabel('Mod+A'), onClick: () => (field.focus(), document.execCommand('selectAll')) },
         );
-      } else if (text) items.push({ label: 'Copy', icon: 'copyall', hint: 'Ctrl C', onClick: () => copy(text) });
+      } else if (text) items.push({ label: 'Copy', icon: 'copyall', hint: keyLabel('Mod+C'), onClick: () => copy(text) });
       if (link) items.push(...(items.length ? (['sep'] as MenuItem[]) : []), { label: 'Open in a new tab', icon: 'fullscreen', onClick: () => window.open(link.href, '_blank', 'noopener') }, { label: 'Copy the link', icon: 'link', onClick: () => copy(link.href) });
       if (!items.length)
         items.push({ label: 'Back', icon: 'prev', disabled: window.history.length < 2, onClick: () => window.history.back() }, { label: 'Reload', icon: 'sync', onClick: () => window.location.reload() }, 'sep', { label: 'Copy the link to this page', icon: 'link', onClick: () => copy(window.location.href) });
