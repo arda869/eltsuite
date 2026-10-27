@@ -13,7 +13,14 @@ export function OrgLook() {
       r.setProperty('--brand', c);
       r.setProperty('--accent-text', `color-mix(in srgb, ${c} 66%, #000)`);
     } else for (const k of ['--accent', '--brand', '--accent-text']) r.removeProperty(k);
-  }, [c]);
+    // Remembered, so the loading mark has the colour before the app starts next time.
+    try {
+      if (c) localStorage.setItem('ll.brand', c);
+      else if (org) localStorage.removeItem('ll.brand');
+    } catch {
+      /* fine */
+    }
+  }, [c, org]);
   return null;
 }
 

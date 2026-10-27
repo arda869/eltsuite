@@ -7152,3 +7152,16 @@ input.dg-cell-label:focus { outline: none; }
 .hm-dates.ph-done { color: var(--soft); }
 .lib-name input { width: 280px; height: 38px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); }
 .lib-name input { width: 280px; height: 38px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); }
+.sel-q { width: calc(100% - 8px); margin: 2px 4px 6px; height: 34px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 8px; font: 14px var(--sans); background: var(--paper); color: var(--ink); box-sizing: border-box; }
+.sel-none { display: block; padding: 8px 12px; font-size: 13px; color: var(--muted); }
+.oc-form { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: end; }
+.oc-form input[type=date] { height: 40px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); }
+.adm-row > .adm-who, .adm-table .adm-who { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 10px; }
+.adm-row > .adm-who > span:last-child, .adm-table .adm-who > span:last-child { display: flex; flex-direction: column; align-items: flex-start; }
+
+.ff { display: flex; flex-direction: column; gap: 10px; }
+.ff-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 230px 28px 28px 28px; gap: 8px; align-items: center; }
+.ff-row input { height: 38px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); }
+.ff-n { font: 600 12px var(--sans); color: var(--soft); text-align: right; }
+@media (max-width: 760px) { .ff-row { grid-template-columns: 22px 1fr 28px 28px 28px; } .ff-row > :nth-child(3) { grid-column: 2 / -1; } }
+.tt-check { flex-direction: row !important; align-items: center; gap: 8px; }

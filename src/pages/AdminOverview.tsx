@@ -12,7 +12,7 @@ import type { ClassDoc } from '../lib/classes';
 const GB = 1024 ** 3;
 type Bar = { label: string; n: number; tip?: string };
 
-function Tile({ n, label, sub, tone }: { n: string | number; label: string; sub?: string; tone?: 'warn' }) {
+export function Tile({ n, label, sub, tone }: { n: string | number; label: string; sub?: string; tone?: 'warn' }) {
   return (
     <div className={'ov-tile' + (tone ? ' ' + tone : '')}>
       <b>{n}</b>
@@ -22,7 +22,7 @@ function Tile({ n, label, sub, tone }: { n: string | number; label: string; sub?
   );
 }
 
-function Bars({ data, unit }: { data: Bar[]; unit: string }) {
+export function Bars({ data, unit }: { data: Bar[]; unit: string }) {
   const max = Math.max(1, ...data.map((d) => d.n));
   if (!data.length) return <p className="hint">Nothing to show yet.</p>;
   return (

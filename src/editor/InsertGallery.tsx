@@ -15,7 +15,7 @@ const SECTIONS: Section[] = [
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a gap, a choice or any question.', keys: ['dg-mind', 'dg-venn', 'dg-compare', 'dg-cline', 'dg-flow', 'dg-cycle', 'dg-tree', 'dg-quad', 'dg-pyramid'] },
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
-  { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans, observation and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop'] },
+  { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans, observation and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Notebook and bank', blurb: 'Links to the rest of the classroom.', keys: ['grammarlink', 'vocablink', 'bankpick'] },
 ];
@@ -77,6 +77,7 @@ const ABOUT: Record<string, string> = {
   'tt-analysis': 'Meaning, form and pronunciation of the target language, concept-checking questions, and problems learners may have, with solutions. A model to read, or for trainees to complete.',
   'tt-plan': 'Main and subsidiary aims, assumptions, and the stages with aims, procedure, interaction and timing. Start from PPP, test-teach-test, task-based, ESA or a skills lesson.',
   'tt-observe': 'Criteria for planning, language, teaching and learners, rated with evidence, then strengths and action points.',
+  'tt-org': 'The forms your organisation made for its teacher training: observation, feedback, planning, with its own questions and ratings.',
   'tt-loop': 'After you model a technique, trainees open the box to see what you did and why, with questions to discuss.',
   dictcut: 'A word’s dictionary entry, as if cut out of a printed dictionary page: meaning, examples, pronunciation, collocations, only the fields you fill in.',
   subst: 'The words that can go in one place of a sentence, stacked between two lines: I want to go to | Lisbon, Istanbul, Hong Kong | this summer.',

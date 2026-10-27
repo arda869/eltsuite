@@ -129,8 +129,8 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
     { k: 'overview', label: 'Overview', icon: 'poll' },
     { k: 'teachers', label: 'Teachers', icon: 'person' },
     { k: 'orgs', label: 'Organisations', icon: 'groups' },
-    { k: 'apps', label: 'Apps', icon: 'settings' },
-    { k: 'defaults', label: 'Defaults for everyone', icon: 'music' },
+    { k: 'apps', label: 'Apps', icon: 'board' },
+    { k: 'defaults', label: 'Defaults for everyone', icon: 'settings' },
   ];
   return (
     <div className="shell">
@@ -257,7 +257,7 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
                   <td>{counts[t.uid]?.classes ?? '…'}</td>
                   <td>{counts[t.uid]?.learners ?? '…'}</td>
                   <td>
-                    <Select value={a.org ?? ''} options={[{ v: '', label: 'None' }, ...orgs.map((o) => ({ v: o.id, label: o.name }))]} onChange={(v) => void setTeacherOrg(t, orgs.find((o) => o.id === v) ?? null, inOrg)} label="Choose" />
+                    <Select value={a.org ?? ''} options={[{ v: '', label: 'None' }, ...orgs.map((o) => ({ v: o.id, label: o.name }))]} onChange={(v) => void setTeacherOrg(t, orgs.find((o) => o.id === v) ?? null, inOrg)} label="Organisation" search />
                   </td>
                   <td>
                     {inOrg ? (
@@ -373,7 +373,7 @@ function AppsTab() {
 const Switch = ({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) => <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} className={'set-toggle' + (on ? ' on' : '')} onClick={() => onChange(!on)} />;
 
 // ------------------------------------------------------------------ one organisation
-type OTab = 'overview' | 'teachers' | 'space' | 'brand' | 'rules' | 'drives' | 'classes' | 'admins';
+type OTab = 'overview' | 'forms' | 'teachers' | 'space' | 'brand' | 'rules' | 'drives' | 'classes' | 'admins';
 function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: boolean; teachers: Teacher[]; accounts: Record<string, Account>; orgs: Org[] }) {
   const [tab, setTab] = useState<OTab>(() => (new URLSearchParams(window.location.search).get('tab') as OTab) || 'overview');
   const TABS: [OTab, string][] = [
@@ -381,6 +381,7 @@ function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: b
     ['teachers', 'Teachers'],
     ['classes', 'Classes'],
     ['drives', 'Library'],
+    ...(org.allow?.trainers ? ([['forms', 'Training forms']] as [OTab, string][]) : []),
     ['rules', 'Rules'],
     ['brand', 'Branding'],
     ['space', 'Plan and space'],
@@ -414,6 +415,7 @@ function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: b
       {tab === 'teachers' && <OrgTeachers org={org} owner={owner} teachers={teachers} accounts={accounts} orgs={orgs} />}
       {tab === 'classes' && <OrgClasses org={org} />}
       {tab === 'drives' && <OrgDrives org={org} />}
+      {tab === 'forms' && <OrgForms org={org} />}
       {tab === 'rules' && <OrgRules org={org} />}
       {tab === 'brand' && <OrgBrand org={org} />}
       {tab === 'space' && <OrgSpace org={org} owner={owner} />}
@@ -467,7 +469,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
                 <TitleInput value={t.title ?? ''} onSave={(v) => void setJobTitle(org, uid, v)} />
               </td>
               <td>
-                <MultiSelect value={t.tags ?? []} options={Object.entries(org.tags ?? {}).map(([id, x]) => ({ v: id, label: x.name }))} onChange={(v) => void setTeacherTags(org, uid, v)} label={`Tags for ${t.name || t.email}`} none={Object.keys(org.tags ?? {}).length ? 'No tags' : 'Add tags above'} foot="" />
+                <MultiSelect value={t.tags ?? []} options={Object.entries(org.tags ?? {}).map(([id, x]) => ({ v: id, label: x.name }))} onChange={(v) => void setTeacherTags(org, uid, v)} label={`Tags for ${t.name || t.email}`} none="No tags" foot="" createLabel="New tag…" onCreate={async (n) => { const id = 't' + Date.now().toString(36); await saveTags(org, { ...(org.tags ?? {}), [id]: { name: n.slice(0, 40) } }); return id; }} />
               </td>
               {owner && (
                 <td>
@@ -511,42 +513,91 @@ function TitleInput({ value, onSave }: { value: string; onSave: (v: string) => v
 }
 
 function OrgClasses({ org }: { org: Org }) {
+  const [kind, setKind] = useState<'language' | 'training'>('language');
   const [who, setWho] = useState('');
+  const [co, setCo] = useState<string[]>([]);
   const [name, setName] = useState('');
   const [level, setLevel] = useState('B1');
+  const [course, setCourse] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
   const [done, setDone] = useState('');
-  const teachers = Object.entries(org.teachers);
+  const training = !!org.allow?.trainers;
+  const teachers = Object.entries(org.teachers).filter(([, t]) => kind === 'language' || t.trainer);
   const make = async () => {
     if (!who || !name.trim()) return;
     try {
-      const pol = org.policy;
-      await createClass(who, { name: name.trim(), level, themeColor: 'flame', org: org.id, extra: classDefaults(pol) });
-      setDone(`${name.trim()} is ready for ${org.teachers[who]?.name || 'the teacher'}.`);
+      const cos = co.filter((u) => u !== who);
+      await createClass(who, {
+        name: name.trim(),
+        level: kind === 'training' ? course.trim() || 'Teacher training' : level,
+        themeColor: 'flame',
+        kind,
+        org: org.id,
+        extra: {
+          ...classDefaults(org.policy),
+          ...(start || end ? { dates: { start: start || null, end: end || null } } : {}),
+          // Co-teachers teach it with the owner from the start: no invitation to answer.
+          ...(cos.length ? { coTeachers: Object.fromEntries(cos.map((u) => [u, { role: 'co', email: org.teachers[u]?.email ?? '', name: org.teachers[u]?.name || org.teachers[u]?.email || 'Teacher' }])), teacherIds: cos } : {}),
+        },
+      });
+      setDone(`${name.trim()} is ready for ${[who, ...cos].map((u) => org.teachers[u]?.name || 'a teacher').join(' and ')}.`);
       setName('');
-    } catch {
+      setCo([]);
+    } catch (e) {
+      console.error(e);
       setDone('The class could not be made. Try again.');
     }
   };
   return (
     <div className="adm-card">
-      <span className="hint">{org.policy?.createClasses === false ? 'Your teachers do not create their own classes. Create them here.' : 'Your teachers create their own classes. You can also create one for a teacher here.'}</span>
-      <div className="adm-form">
+      <span className="hint">{org.policy?.createClasses === false ? 'Your teachers do not create their own classes. Create them here.' : 'Your teachers create their own classes. You can also create one for them here.'}</span>
+      {training && (
+        <span className="seg small-seg" role="radiogroup" aria-label="What kind of class">
+          {([['language', 'A language class'], ['training', 'Teacher training']] as const).map(([k, l]) => (
+            <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => (setKind(k), setWho(''))}>
+              {l}
+            </button>
+          ))}
+        </span>
+      )}
+      <div className="adm-form oc-form">
         <label className="field">
-          <span>Teacher</span>
-          <Select value={who} options={[{ v: '', label: 'Choose…' }, ...teachers.map(([uid, t]) => ({ v: uid, label: t.name || t.email }))]} onChange={(v) => setWho(v)} label="Choose" />
+          <span>{kind === 'training' ? 'Teacher trainer' : 'Teacher'}</span>
+          <Select value={who} search options={[{ v: '', label: 'Choose…' }, ...teachers.map(([uid, t]) => ({ v: uid, label: t.name || t.email, hint: t.title }))]} onChange={(v) => setWho(v)} label={kind === 'training' ? 'Teacher trainer' : 'Teacher'} />
+        </label>
+        <label className="field">
+          <span>Co-teachers</span>
+          <MultiSelect value={co.filter((u) => u !== who)} options={Object.entries(org.teachers).filter(([u]) => u !== who).map(([uid, t]) => ({ v: uid, label: t.name || t.email }))} onChange={setCo} label="Co-teachers" none="Nobody else" foot="Co-teachers can do everything the teacher can, including teaching live." />
         </label>
         <label className="field">
           <span>Class name</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="For example: Monday B1 evening" maxLength={80} />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === 'training' ? 'For example: CELTA October' : 'For example: Monday B1 evening'} maxLength={80} />
+        </label>
+        {kind === 'language' ? (
+          <label className="field">
+            <span>Level</span>
+            <Select value={level} options={levelsFor(org).map((l) => ({ v: l, label: l }))} onChange={(v) => setLevel(v)} label="Level" />
+          </label>
+        ) : (
+          <label className="field">
+            <span>Course</span>
+            <input value={course} onChange={(e) => setCourse(e.target.value)} placeholder="CELTA, Delta, in-service" maxLength={60} />
+          </label>
+        )}
+        <label className="field">
+          <span>Starts</span>
+          <input type="date" value={start} max={end || undefined} onChange={(e) => setStart(e.target.value)} />
         </label>
         <label className="field">
-          <span>Level</span>
-          <Select value={level} options={levelsFor(org).map((l) => ({ v: l, label: l }))} onChange={(v) => setLevel(v)} label="Choose" />
+          <span>Finishes</span>
+          <input type="date" value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} />
         </label>
         <button type="button" className="btn primary" disabled={!who || !name.trim()} onClick={() => void make()}>
           Create the class
         </button>
       </div>
+      {kind === 'training' && !teachers.length && <span className="hint">Make a teacher a teacher trainer in Teachers first.</span>}
       {done && <span className="hint">{done}</span>}
       <OrgClassList org={org} />
     </div>
@@ -907,6 +958,108 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
 
 // Shared drives: each says who can edit, comment, view or not see it, for everyone, for teachers
 // with a tag and for one teacher; its folders follow it unless a folder has its own say.
+// The organisation's own teacher training forms: observation, feedback, planning. Trainers add them
+// to lessons from "Your organisation's forms"; each lesson keeps a copy of the form as it was.
+type FForm = NonNullable<Org['ttForms']>[string];
+type FField = FForm['fields'][number];
+const FIELD_KINDS: { v: FField['kind']; label: string }[] = [
+  { v: 'short', label: 'Short answer' },
+  { v: 'long', label: 'Long answer' },
+  { v: 'rating', label: 'Rating: not yet, achieved, strong' },
+  { v: 'check', label: 'Tick box' },
+];
+const STARTERS: Record<string, { name: string; about: string; fields: [string, FField['kind']][] }> = {
+  observe: { name: 'Observation form', about: 'For observed lessons', fields: [['Lesson aims were clear', 'rating'], ['Instructions and checking', 'rating'], ['Learner talking time', 'rating'], ['Strengths', 'long'], ['Action points', 'long']] },
+  feedback: { name: 'Feedback after teaching practice', about: 'The trainee reflects, then the trainer adds', fields: [['What went well', 'long'], ['What I would change', 'long'], ['Trainer comments', 'long'], ['Ready for the next stage', 'check']] },
+  blank: { name: 'New form', about: '', fields: [['Question', 'short']] },
+};
+function OrgForms({ org }: { org: Org }) {
+  const forms = Object.values(org.ttForms ?? {});
+  const [open, setOpen] = useState(forms[0]?.id ?? '');
+  const save = (f: FForm) => void saveOrg(org.id, { ttForms: { ...(org.ttForms ?? {}), [f.id]: f } });
+  const add = (k: string) => {
+    const st = STARTERS[k];
+    const id = 'f' + Date.now().toString(36);
+    save({ id, name: st.name, about: st.about, fields: st.fields.map(([label, kind], i) => ({ id: 'q' + i + Date.now().toString(36).slice(-3), label, kind })) });
+    setOpen(id);
+  };
+  const remove = async (f: FForm) => {
+    if (!(await ask(`Delete “${f.name}”? Lessons that already use it keep their copy.`, { ok: 'Delete' }))) return;
+    const next = { ...(org.ttForms ?? {}) };
+    delete next[f.id];
+    void saveOrg(org.id, { ttForms: next });
+  };
+  return (
+    <div className="adm-card">
+      <span className="hint">Forms for your teacher training: what trainers observe, how trainees reflect. Trainers add them to lessons from “Your organisation’s forms” in the Insert list. Changes apply to new copies; lessons keep the form they have.</span>
+      <span className="lib-adds">
+        <button type="button" className="btn small-btn" onClick={() => add('observe')}>+ Observation form</button>
+        <button type="button" className="btn small-btn" onClick={() => add('feedback')}>+ Feedback form</button>
+        <button type="button" className="btn small-btn" onClick={() => add('blank')}>+ Blank form</button>
+      </span>
+      {forms.map((f) => (
+        <div key={f.id} className={'lib-folder' + (open === f.id ? ' open' : '')}>
+          <span className="lib-folder-h">
+            <b>{f.name}</b>
+            <span className="hint">{plural(f.fields.length, 'question')}</span>
+            <span style={{ flex: 1 }} />
+            <button type="button" className="btn small-btn" aria-expanded={open === f.id} onClick={() => setOpen(open === f.id ? '' : f.id)}>
+              {open === f.id ? 'Done' : 'Edit'}
+            </button>
+          </span>
+          {open === f.id && <FormEditor f={f} onSave={save} onDelete={() => void remove(f)} />}
+        </div>
+      ))}
+      {!forms.length && <span className="hint">No forms yet. Start from one of the three above.</span>}
+    </div>
+  );
+}
+function FormEditor({ f, onSave, onDelete }: { f: FForm; onSave: (f: FForm) => void; onDelete: () => void }) {
+  const [d, setD] = useState(f);
+  useEffect(() => setD(f), [f]);
+  const put = (n: FForm) => (setD(n), onSave(n));
+  const field = (i: number, p: Partial<FField>) => put({ ...d, fields: d.fields.map((x, j) => (j === i ? { ...x, ...p } : x)) });
+  const move = (i: number, by: number) => {
+    const j = i + by;
+    if (j < 0 || j >= d.fields.length) return;
+    const fs = [...d.fields];
+    [fs[i], fs[j]] = [fs[j], fs[i]];
+    put({ ...d, fields: fs });
+  };
+  return (
+    <div className="lib-folder-b ff">
+      <label className="field">
+        <span>Name</span>
+        <input defaultValue={d.name} onBlur={(e) => e.target.value.trim() && e.target.value !== d.name && put({ ...d, name: e.target.value.trim().slice(0, 60) })} />
+      </label>
+      <label className="field">
+        <span>What it is for</span>
+        <input defaultValue={d.about ?? ''} placeholder="For example: CELTA teaching practice" onBlur={(e) => e.target.value !== (d.about ?? '') && put({ ...d, about: e.target.value.trim().slice(0, 100) })} />
+      </label>
+      <span className="adm-sub">Questions</span>
+      {d.fields.map((x, i) => (
+        <span key={x.id} className="ff-row">
+          <span className="ff-n">{i + 1}</span>
+          <input defaultValue={x.label} aria-label={`Question ${i + 1}`} onBlur={(e) => e.target.value.trim() && e.target.value !== x.label && field(i, { label: e.target.value.trim().slice(0, 120) })} />
+          <Select value={x.kind} options={FIELD_KINDS} onChange={(v) => field(i, { kind: v })} label={`Answer for question ${i + 1}`} />
+          <button type="button" className="lib-x" aria-label="Move up" onClick={() => move(i, -1)}>↑</button>
+          <button type="button" className="lib-x" aria-label="Move down" onClick={() => move(i, 1)}>↓</button>
+          <button type="button" className="lib-x" aria-label="Remove the question" onClick={() => put({ ...d, fields: d.fields.filter((_, j) => j !== i) })}>×</button>
+        </span>
+      ))}
+      <span className="lib-adds">
+        <button type="button" className="btn small-btn" onClick={() => put({ ...d, fields: [...d.fields, { id: 'q' + Date.now().toString(36), label: 'New question', kind: 'short' }] })}>
+          + Question
+        </button>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn link small set-danger" onClick={onDelete}>
+          Delete the form
+        </button>
+      </span>
+    </div>
+  );
+}
+
 // What the library is called in the apps menu and at the top of its pages.
 function LibName({ org }: { org: Org }) {
   const [v, setV] = useState(org.libraryName ?? '');
@@ -1281,15 +1434,9 @@ function InviteTeachers({ org, owner }: { org: Org; owner: boolean }) {
 
 // Tags: groups of teachers (a team, a site, a level), for setting drive access in one go.
 function OrgTags({ org }: { org: Org }) {
-  const [name, setName] = useState('');
   const [edit, setEdit] = useState('');
   const tags = Object.entries(org.tags ?? {}).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const count = (id: string) => Object.values(org.teachers).filter((t) => t.tags?.includes(id)).length;
-  const add = () => {
-    const n = name.trim();
-    if (!n || tags.some(([, t]) => t.name.toLowerCase() === n.toLowerCase())) return;
-    void saveTags(org, { ...(org.tags ?? {}), ['t' + Date.now().toString(36)]: { name: n.slice(0, 40) } }).then(() => setName(''));
-  };
   const remove = async (id: string) => {
     if (!(await ask(`Delete the tag ${org.tags?.[id]?.name}? Teachers keep everything else, and the organisation library stops using it.`, { ok: 'Delete' }))) return;
     const next = { ...(org.tags ?? {}) };
@@ -1300,7 +1447,7 @@ function OrgTags({ org }: { org: Org }) {
   return (
     <div className="adm-tags">
       <span className="adm-sub">Tags</span>
-      <span className="hint">Group teachers, for example by team, site or level, then decide in Organisation library what each tag can do.</span>
+      <span className="hint">{tags.length ? 'Groups of teachers, for example by team, site or level. Click a tag to rename it.' : 'Group teachers by team, site or level: type a new tag in a teacher’s Tags list below.'} The library can then be set for a whole tag.</span>
       <span className="adm-tag-list">
         {tags.map(([id, t]) =>
           edit === id ? (
@@ -1316,12 +1463,6 @@ function OrgTags({ org }: { org: Org }) {
             </span>
           ),
         )}
-        <span className="adm-tag-add">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New tag" onKeyDown={(e) => e.key === 'Enter' && add()} maxLength={40} />
-          <button type="button" className="btn small-btn" disabled={!name.trim()} onClick={add}>
-            Add
-          </button>
-        </span>
       </span>
     </div>
   );

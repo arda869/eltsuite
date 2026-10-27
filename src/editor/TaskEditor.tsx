@@ -28,7 +28,7 @@ import { Stress, newStress } from './Stress';
 import { ProsodyTool } from './Prosody';
 import { LANG_MARKS } from './langMarks';
 import { newPhonCard, newPhonChart } from './Phonemes';
-import { TTNode, newTT, useTrainingClass } from '../training/Training';
+import { TTNode, newTT, newTTCustom, useTrainingClass } from '../training/Training';
 import { noteSlash, topSlash } from '../lib/slashUse';
 import { useToolGate } from '../lib/toolbarPrefs';
 import { DictCut } from './DictCut';
@@ -69,7 +69,8 @@ import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 import { InsertGallery } from './InsertGallery';
 import { PDF_NODES, setPdfQuestions } from '../pdf/PdfNodes';
-import { openMenuAt } from '../components/ContextMenu';
+import { openMenu, openMenuAt } from '../components/ContextMenu';
+import { currentOrg } from '../lib/admin';
 import { PdfPick } from '../pdf/PdfPick';
 
 // Adds a drag-and-drop gap, and a word bank above the paragraph if the task has none yet.
@@ -190,6 +191,18 @@ export const COMMANDS: Cmd[] = [
   { key: 'tt-analysis', label: 'Language analysis', hint: 'Meaning, form, pronunciation, concept questions, problems and solutions', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('analysis'), { type: 'paragraph' }]).run() },
   { key: 'tt-plan', label: 'Lesson plan', hint: 'Aims, assumptions and stages, from a framework', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('plan'), { type: 'paragraph' }]).run() },
   { key: 'tt-observe', label: 'Observation form', hint: 'Criteria, strengths and action points', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('observe'), { type: 'paragraph' }]).run() },
+  {
+    key: 'tt-org',
+    label: 'Your organisation’s forms',
+    hint: 'Observation, feedback and planning forms your organisation made',
+    group: 'Text',
+    run: (e) => {
+      const forms = Object.values(currentOrg()?.ttForms ?? {});
+      if (!forms.length) return void tell('Your organisation has no forms of its own yet. Its admins add them in Organisation admin.');
+      const at = e.view.coordsAtPos(e.state.selection.from);
+      openMenu({ clientX: at.left, clientY: at.bottom + 4, preventDefault() {}, stopPropagation() {} } as unknown as MouseEvent, forms.map((f) => ({ label: f.name, hint: f.about, icon: '', onClick: () => e.chain().focus().insertContent([newTTCustom(f), { type: 'paragraph' }]).run() })));
+    },
+  },
   { key: 'tt-loop', label: 'Loop input: step back', hint: 'What you just modelled, and why; trainees open it after', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('loop'), { type: 'paragraph' }]).run() },
   { key: 'phonchart', label: 'Phonemic chart', hint: 'The sounds of English, British or American; tap to hear', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonChart()).run() },
   { key: 'phoncard', label: 'Sound card', hint: 'One sound, in its colour, with an example word', group: 'Text', run: (e) => e.chain().focus().insertContent(newPhonCard('sound')).run() },
@@ -334,7 +347,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', ...DG_KINDS.map((k) => 'dg-' + k)];
+const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', ...DG_KINDS.map((k) => 'dg-' + k)];
 export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;

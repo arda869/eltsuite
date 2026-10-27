@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <script>try{var t=localStorage.getItem('ll.theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}</script>
+    <script>try{var t=localStorage.getItem('ll.theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}try{var b=localStorage.getItem('ll.brand');if(/^#[0-9a-f]{6}$/i.test(b||''))document.documentElement.style.setProperty('--brand',b)}catch(e){}</script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>ELT Suite</title>
@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400,50;0,9..144,500,50;0,9..144,600,50;1,9..144,400,50&family=Karla:wght@400;500;600&family=Kalam:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=Noto+Sans:wght@400;500&display=swap" />
   </head>
   <body>
-    <div id="root"><div class="boot" role="status" aria-label="Loading"><svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#d98f63"/><rect x="14" y="12" width="5.5" height="24" rx="2.75" fill="#fff"/><rect x="14" y="12" width="21" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="21.25" width="15" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="30.5" width="21" height="5.5" rx="2.75" fill="#fff"/></svg></div></div>
+    <div id="root"><div class="boot" role="status" aria-label="Loading"><svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><rect width="48" height="48" rx="12" fill="#d98f63" style="fill:var(--brand,#d98f63)"/><rect x="14" y="12" width="5.5" height="24" rx="2.75" fill="#fff"/><rect x="14" y="12" width="21" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="21.25" width="15" height="5.5" rx="2.75" fill="#fff"/><rect x="14" y="30.5" width="21" height="5.5" rx="2.75" fill="#fff"/></svg></div></div>
     <style>.boot{position:fixed;inset:0;display:grid;place-items:center;background:#f8f8f9}[data-theme=dark] .boot{background:#1f1d1b}.boot svg{animation:boot 1.2s ease-in-out infinite}@keyframes boot{50%{opacity:.55;transform:scale(.94)}}</style>
     <script type="module" src="/src/main.tsx"></script>
   </body>

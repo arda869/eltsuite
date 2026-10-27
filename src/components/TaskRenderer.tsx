@@ -1097,7 +1097,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const id = String(node.attrs?.id ?? '');
         return (
           <div key={key} data-bk={key} className="task-upload">
-            <UploadBox classId={classId ?? ''} a={node.attrs as UploadAttrs} value={responses[id] as unknown as UploadAnswer | undefined} onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={locked} />
+            <UploadBox classId={classId ?? ''} a={node.attrs as UploadAttrs} value={responses[id] as unknown as UploadAnswer | undefined} onChange={onChange ? (v) => onChange(id, v as unknown as Response) : undefined}  disabled={locked} />
           </div>
         );
       }
@@ -1176,7 +1176,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const id = node.attrs?.id as string;
         return (
           <div key={key} className="tt-wrap">
-            <TTBlock kind={(node.attrs?.kind ?? 'analysis') as TTKind} title={String(node.attrs?.title ?? '')} mode={node.attrs?.mode === 'complete' ? 'complete' : 'model'} data={(node.attrs?.data ?? {}) as Record<string, string>} value={responses[id] as unknown as Fields | undefined} onChange={onChange && node.attrs?.mode === 'complete' ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={locked} />
+            <TTBlock kind={(node.attrs?.kind ?? 'analysis') as TTKind} title={String(node.attrs?.title ?? '')} mode={node.attrs?.mode === 'complete' ? 'complete' : 'model'} data={(node.attrs?.data ?? {}) as Record<string, string>} value={responses[id] as unknown as Fields | undefined} onChange={onChange && node.attrs?.mode === 'complete' ? (v) => onChange(id, v as unknown as Response) : undefined} disabled={locked}  def={node.attrs?.def ?? undefined} />
           </div>
         );
       }

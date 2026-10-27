@@ -179,6 +179,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('tt-plan', 'Training'),
   from('tt-observe', 'Training'),
   from('tt-loop', 'Training'),
+  from('tt-org', 'Training'),
 ];
 export const DOC_CMDS: Cmd[] = DOC_ALL.filter((c): c is Cmd => !!c);
 
@@ -199,5 +200,5 @@ export const DOC_SECTIONS = [
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },
   { title: 'Questions', blurb: 'Gaps, choices, matching, word order and every other question a lesson can hold.', keys: COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => c.key) },
-  { title: 'Teacher training', blurb: 'Language analysis, lesson plans, observation forms and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop'] },
+  { title: 'Teacher training', blurb: 'Language analysis, lesson plans, observation forms and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org'] },
 ];

@@ -13,7 +13,11 @@ import { useAuth } from '../lib/auth';
 // fills one in as a model, or leaves it for trainees to complete (their answers come back like
 // any other task). Also: comments pinned to moments in a lesson video.
 
-export type TTKind = 'analysis' | 'plan' | 'observe' | 'loop';
+export type TTKind = 'analysis' | 'plan' | 'observe' | 'loop' | 'custom';
+// An organisation's own form: its fields, in order. A copy goes into each form placed in a lesson,
+// so it stays as it was even if the admins change the form later.
+export type TTField = { id: string; label: string; kind: 'short' | 'long' | 'rating' | 'check'; hint?: string };
+export type TTFormDef = { id: string; name: string; about?: string; fields: TTField[] };
 type Data = Record<string, string>;
 export type Fields = { fields: Data };
 
@@ -257,7 +261,41 @@ function Observe({ v, set, ro }: { v: Data; set: (k: string, x: string) => void;
   );
 }
 
-function Form({ kind, v, set, setMany, ro }: { kind: TTKind; v: Data; set: (k: string, x: string) => void; setMany?: (p: Data) => void; ro?: boolean }) {
+function CustomForm({ def, v, set, ro }: { def: TTFormDef; v: Data; set: (k: string, x: string) => void; ro?: boolean }) {
+  return (
+    <div className="tt-grid">
+      {def.fields.map((f) =>
+        f.kind === 'rating' ? (
+          <div key={f.id} className="tt-f wide tt-rate">
+            <span>{f.label}</span>
+            {f.hint && <span className="hint">{f.hint}</span>}
+            <span className="seg small-seg" role="radiogroup" aria-label={f.label}>
+              {RATINGS.map((r) => (
+                <button key={r} type="button" role="radio" aria-checked={v[f.id] === r} className={v[f.id] === r ? 'on' : ''} disabled={ro} onClick={() => set(f.id, v[f.id] === r ? '' : r)}>
+                  {r}
+                </button>
+              ))}
+            </span>
+          </div>
+        ) : f.kind === 'check' ? (
+          <label key={f.id} className="tt-f wide tt-check">
+            <input type="checkbox" checked={v[f.id] === 'yes'} disabled={ro} onChange={(e) => set(f.id, e.target.checked ? 'yes' : '')} />
+            <span>{f.label}</span>
+          </label>
+        ) : (
+          <label key={f.id} className="tt-f wide">
+            <span>{f.label}</span>
+            <Area v={v[f.id] ?? ''} set={(x) => set(f.id, x)} ph={f.hint} rows={f.kind === 'long' ? 3 : 1} ro={ro} />
+          </label>
+        ),
+      )}
+      {!def.fields.length && <span className="hint">This form has no fields yet.</span>}
+    </div>
+  );
+}
+
+function Form({ kind, v, set, setMany, ro, def }: { kind: TTKind; v: Data; set: (k: string, x: string) => void; setMany?: (p: Data) => void; ro?: boolean; def?: TTFormDef }) {
+  if (kind === 'custom') return <CustomForm def={def ?? { id: '', name: 'Form', fields: [] }} v={v} set={set} ro={ro} />;
   const stagesFrom = (k: string) => {
     const f = FRAMEWORKS.find((x) => x.k === k);
     if (!f) return;
@@ -288,7 +326,7 @@ function Form({ kind, v, set, setMany, ro }: { kind: TTKind; v: Data; set: (k: s
 }
 
 // What trainees see: the trainer's model, or a form to complete.
-export function TTBlock({ kind, title, mode, data, value, onChange, disabled }: { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data; value?: Fields; onChange?: (v: Fields) => void; disabled?: boolean }) {
+export function TTBlock({ kind, title, mode, data, value, onChange, disabled, def }: { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data; value?: Fields; onChange?: (v: Fields) => void; disabled?: boolean; def?: TTFormDef }) {
   const [opened, setOpened] = useState(false);
   if (kind === 'loop')
     return (
@@ -301,10 +339,10 @@ export function TTBlock({ kind, title, mode, data, value, onChange, disabled }: 
         {opened && <Form kind="loop" v={data} set={() => {}} ro />}
       </div>
     );
-  return <TTForm kind={kind} title={title} mode={mode} data={data} value={value} onChange={onChange} disabled={disabled} />;
+  return <TTForm kind={kind} title={title} mode={mode} data={data} value={value} onChange={onChange} disabled={disabled} def={def} />;
 }
-function TTForm({ kind, title, mode, data, value, onChange, disabled }: { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data; value?: Fields; onChange?: (v: Fields) => void; disabled?: boolean }) {
-  const label = TT_KINDS.find((k) => k.k === kind)?.label ?? '';
+function TTForm({ kind, title, mode, data, value, onChange, disabled, def }: { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data; value?: Fields; onChange?: (v: Fields) => void; disabled?: boolean; def?: TTFormDef }) {
+  const label = kind === 'custom' ? def?.name ?? 'Form' : TT_KINDS.find((k) => k.k === kind)?.label ?? '';
   const model = mode === 'model';
   const cur = model ? data : { ...data, ...(value?.fields ?? {}) };
   const [local, setLocal] = useState<Data>(cur);
@@ -322,20 +360,20 @@ function TTForm({ kind, title, mode, data, value, onChange, disabled }: { kind: 
         {title && <b>{title}</b>}
         {!model && <span className="hint">Complete it. Your trainer sees your answers.</span>}
       </div>
-      <Form kind={kind} v={local} set={set} setMany={setMany} ro={model || disabled || !onChange} />
+      <Form kind={kind} v={local} set={set} setMany={setMany} ro={model || disabled || !onChange} def={def} />
     </div>
   );
 }
 
 function TTView({ node, updateAttributes, deleteNode, editor, getPos, selected }: NodeViewProps) {
-  const a = node.attrs as { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data };
+  const a = node.attrs as { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data; def?: TTFormDef };
   // In a shared document everyone writes in the same form, so the choice is only for lessons.
   const shared = editor.extensionManager.extensions.some((e) => e.name === 'collaboration');
   return (
     <NodeViewWrapper className={'block-node tt-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">
         <Grip editor={editor} getPos={getPos} />
-        <span className="block-label">{TT_KINDS.find((k) => k.k === a.kind)?.label}</span>
+        <span className="block-label">{a.kind === 'custom' ? a.def?.name ?? 'Form' : TT_KINDS.find((k) => k.k === a.kind)?.label}</span>
         {a.kind !== 'loop' && !shared && <span className="seg small-seg" role="radiogroup" aria-label="How trainees use it">
           {([
             ['model', 'A model to read'],
@@ -353,7 +391,7 @@ function TTView({ node, updateAttributes, deleteNode, editor, getPos, selected }
       <input className="tt-title" value={a.title} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
       {!shared && <span className="hint">{a.kind === 'loop' ? 'Trainees see a closed box; they open it after you model the technique.' : a.mode === 'model' ? 'Fill it in: trainees read it.' : 'Fill in what trainees start with, or leave it empty: each trainee completes their own.'}</span>}
       <div className={'tt k-' + a.kind}>
-        <Form kind={a.kind} v={a.data ?? {}} set={(k, x) => updateAttributes({ data: { ...(node.attrs.data ?? {}), [k]: x } })} setMany={(p) => updateAttributes({ data: { ...(node.attrs.data ?? {}), ...p } })} />
+        <Form kind={a.kind} def={a.def} v={a.data ?? {}} set={(k, x) => updateAttributes({ data: { ...(node.attrs.data ?? {}), [k]: x } })} setMany={(p) => updateAttributes({ data: { ...(node.attrs.data ?? {}), ...p } })} />
       </div>
     </NodeViewWrapper>
   );
@@ -364,11 +402,12 @@ export const TTNode = Node.create({
   group: 'block',
   atom: true,
   draggable: true,
-  addAttributes: () => ({ id: { default: null }, kind: { default: 'analysis' }, title: { default: '' }, mode: { default: 'model' }, data: { default: {} } }),
+  addAttributes: () => ({ id: { default: null }, kind: { default: 'analysis' }, title: { default: '' }, mode: { default: 'model' }, data: { default: {} }, def: { default: null } }),
   parseHTML: () => [{ tag: 'div[data-tt]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-tt': '' })],
   addNodeView: () => ReactNodeViewRenderer(TTView),
 });
+export const newTTCustom = (def: TTFormDef) => ({ type: 'tt', attrs: { id: newId(), kind: 'custom', title: '', mode: 'complete', data: {}, def } });
 export const newTT = (kind: TTKind) => ({ type: 'tt', attrs: { id: newId(), kind, title: '', mode: kind === 'observe' ? 'complete' : 'model', data: {} } });
 
 // ------------------------------------------------------------------ comments at moments in a video

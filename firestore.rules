@@ -597,7 +597,7 @@ service cloud.firestore {
       allow read: if isOwner() || orgAdmin() || (signedIn() && request.auth.uid in resource.data.get('teachers', {}));
       allow create, delete: if isOwner();
       // Admins choose the branding and who their teachers may work with.
-      allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives', 'tags', 'libraryName']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
+      allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives', 'tags', 'libraryName', 'ttForms']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
       // A teacher saying yes to an invitation adds themselves, and only themselves.
       allow update: if signedIn() && !(request.auth.uid in resource.data.get('teachers', {}))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teachers', 'adminEmails'])
