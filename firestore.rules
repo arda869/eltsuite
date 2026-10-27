@@ -505,7 +505,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.members[request.auth.uid].role == 'edit'
           && request.resource.data.createdBy == request.auth.uid));
       allow update: if signedIn() && (resource.data.owner == request.auth.uid
-        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle']))
+        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype']))
         // in an organisation's shared drive, its admins decide who has the files
         || (resource.data.get('folder', null) is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberIds'])
             && get(/databases/$(database)/documents/sharedFolders/$(resource.data.folder)).data.get('org', null) is string

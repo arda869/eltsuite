@@ -4,7 +4,8 @@ import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc
 import { db } from '../lib/firebase';
 import { newId, tasksCol, taskRef } from '../lib/tasks';
 import { addTask } from '../lib/tasks';
-import { addItem, type ClassDoc } from '../lib/classes';
+import { addItem, type ClassDoc, type Item } from '../lib/classes';
+import { Select } from '../components/Select';
 import { allTeacherClasses } from '../lib/coteach';
 import { lessonTaskBody } from '../lib/libtasks';
 import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
@@ -17,6 +18,12 @@ import { theme } from '../lib/themes';
 // A whole lesson kept in Files: sections and tasks, written here, then added to any class as a
 // new lesson. Answers stay with the tasks.
 
+export const LESSON_TYPES: { v: Item['type']; label: string; hint: string }[] = [
+  { v: 'lesson', label: 'Lesson', hint: 'Taught in class' },
+  { v: 'practice', label: 'Practice', hint: 'Learners work through it on their own' },
+  { v: 'homework', label: 'Homework', hint: 'With a due date' },
+  { v: 'exam', label: 'Exam', hint: 'Timed, with results released later' },
+];
 export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent };
 const rowsCol = (id: string) => collection(db, 'sharedDocs', id, 'tasks');
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
@@ -49,8 +56,8 @@ export async function saveLessonToFiles(owner: { uid: string; name: string }, cl
   return id;
 }
 
-async function addToClass(rows: LessonRow[], c: ClassDoc, title: string) {
-  const itemId = await addItem(c.id, null, title, Date.now());
+async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: Item['type'] = 'lesson') {
+  const itemId = await addItem(c.id, null, title, Date.now(), type);
   let i = 0;
   for (const r of rows) {
     const taskId = await addTask(c.id, itemId, i++, r.kind, { title: r.title, instructions: r.instructions, content: r.content ?? EMPTY });
@@ -59,7 +66,14 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string) {
   return itemId;
 }
 
-function AddToClass({ rows, title, onClose }: { rows: LessonRow[]; title: string; onClose: () => void }) {
+// From anywhere a lesson file is listed (the company library, say): its tasks, then the class.
+export function CopyToClass({ docId, title, type, onClose }: { docId: string; title: string; type?: Item['type']; onClose: () => void }) {
+  const [rows, setRows] = useState<LessonRow[] | null>(null);
+  useEffect(() => void getDocs(query(rowsCol(docId), orderBy('order'))).then((s) => setRows(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LessonRow, 'id'>) })))).catch(() => setRows([])), [docId]);
+  return rows ? <AddToClass rows={rows} title={title} type={type} onClose={onClose} /> : null;
+}
+
+function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: string; type?: Item['type']; onClose: () => void }) {
   const { user } = useAuth();
   const [classes, setClasses] = useState<ClassDoc[] | null>(null);
   const [busy, setBusy] = useState('');
@@ -67,7 +81,7 @@ function AddToClass({ rows, title, onClose }: { rows: LessonRow[]; title: string
   const go = async (c: ClassDoc) => {
     setBusy(c.id);
     try {
-      const itemId = await addToClass(rows, c, title);
+      const itemId = await addToClass(rows, c, title, type);
       window.open(`/class/${c.id}/lesson/${itemId}`, '_blank');
       onClose();
     } catch (e) {
@@ -163,6 +177,11 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             </button>
           </span>
         )}
+        {canEdit ? (
+          <Select value={d.ltype ?? 'lesson'} options={LESSON_TYPES} onChange={(v) => void updateDoc(doc(db, 'sharedDocs', d.id), { ltype: v })} label="What it becomes in a class" />
+        ) : (
+          <span className="hint">{LESSON_TYPES.find((t) => t.v === (d.ltype ?? 'lesson'))?.label}</span>
+        )}
         <button type="button" className="btn primary" disabled={!rows.length} onClick={() => setAdding(true)}>
           Add to a class…
         </button>
@@ -203,7 +222,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           </div>
         )}
       </main>
-      {adding && <AddToClass rows={rows} title={d.title} onClose={() => setAdding(false)} />}
+      {adding && <AddToClass rows={rows} title={d.title} type={d.ltype} onClose={() => setAdding(false)} />}
     </div>
   );
 }

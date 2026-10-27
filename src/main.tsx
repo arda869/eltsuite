@@ -16,6 +16,7 @@ import { TooltipLayer } from './components/Tooltip';
 import { EscapeToClose } from './components/EscapeToClose';
 import { PopupGuard } from './components/PopupGuard';
 import { PausedGate } from './components/PausedGate';
+import { OrgLook } from './components/OrgLook';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
@@ -46,6 +47,7 @@ const LearnerDiscussion = lazy(() => import('./pages/LearnerDiscussion').then((m
 const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m.PlayPage })));
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 function NoAccess() {
@@ -116,6 +118,7 @@ createRoot(document.getElementById('root')!).render(
     <AuthProvider>
       <BrowserRouter>
         <UpdateBanner />
+        <OrgLook />
         <TooltipLayer />
         <EscapeToClose />
         <PopupGuard />
@@ -139,6 +142,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/discuss/:tid" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />
           <Route path="/r/:token" element={<SharedRecap />} />
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
+          <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
           <Route path="/studio/task/:id" element={<TeacherOnly><TaskStudio /></TeacherOnly>} />

@@ -34,6 +34,7 @@ export type SharedDoc = {
   classes?: Record<string, { role: DocRole; name: string }>;
   size?: number; // bytes the document takes, counted towards the owner's space
   folder?: string; // a shared folder it is in
+  ltype?: 'lesson' | 'homework' | 'exam' | 'practice'; // a lesson file: what kind of lesson it becomes in a class
   path?: string; // the folder in the owner's files
   createdBy?: string;
   createdAt?: Timestamp;
@@ -166,7 +167,7 @@ export function useFolderDocs(f?: SharedFolder | null, uid?: string) {
   return list;
 }
 // A new file in a folder belongs to the folder's owner and is shared with everyone in it.
-export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind) {
+export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: string }, kind: DocKind, extra: { ltype?: SharedDoc['ltype']; title?: string } = {}) {
   const members = Object.fromEntries(Object.entries(f.members ?? {}).filter(([, m]) => m.kind === 'teacher' || kind === 'doc' || kind === 'slides')) as SharedDoc['members'];
   if (me.uid !== f.owner) members[me.uid] = f.members?.[me.uid] ?? { role: 'edit', name: me.name, kind: 'teacher' };
   delete members[f.owner];
@@ -175,8 +176,9 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     ownerName: f.ownerName,
     createdBy: me.uid,
     folder: f.id,
-    title: kind === 'pd' ? 'PD reading' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`,
+    title: extra.title || (kind === 'pd' ? 'PD reading' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind,
+    ...(extra.ltype ? { ltype: extra.ltype } : {}),
     docKey: 'f' + newId() + newId(),
     members,
     memberIds: Object.keys(members),

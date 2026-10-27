@@ -6,7 +6,7 @@ export const MARK = (fill = '#d98f63') =>
 export function Mark({ size = 26 }: { size?: number }) {
   return (
     <svg className="wm-mark" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
-      <rect width="48" height="48" rx="12" fill="#d98f63" />
+      <rect width="48" height="48" rx="12" fill="#d98f63" style={{ fill: 'var(--brand, #d98f63)' }} />
       <rect x="14" y="12" width="5.5" height="24" rx="2.75" fill="#fff" />
       <rect x="14" y="12" width="21" height="5.5" rx="2.75" fill="#fff" />
       <rect x="14" y="21.25" width="15" height="5.5" rx="2.75" fill="#fff" />

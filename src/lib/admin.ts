@@ -81,6 +81,7 @@ export const APP_KEYS: { k: string; name: string }[] = [
   { k: 'files', name: 'Files' },
   { k: 'messages', name: 'Messages' },
   { k: 'colleagues', name: 'Colleagues' },
+  { k: 'library', name: 'Company library' },
 ];
 
 const orgOf = (id: string, d: Record<string, unknown>): Org => {
@@ -238,7 +239,7 @@ export const savePolicy = (o: Org, p: OrgPolicy) => updateDoc(doc(db, 'orgs', o.
 // drive unless it has its own say.
 export type DriveRole = 'edit' | 'comment' | 'view' | 'none';
 export type DriveAccess = { all: DriveRole; tags?: Record<string, DriveRole>; people: Record<string, DriveRole> };
-export type DriveFolder = { id: string; name: string; org: string; drive?: string; access: DriveAccess; own?: boolean; memberIds: string[] };
+export type DriveFolder = { id: string; owner?: string; name: string; org: string; drive?: string; access: DriveAccess; own?: boolean; memberIds: string[] };
 export const DRIVE_ROLES: { v: DriveRole; label: string }[] = [
   { v: 'edit', label: 'Can edit' },
   { v: 'comment', label: 'Can comment' },

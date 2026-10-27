@@ -345,7 +345,8 @@ export function FileDocs({ uid, mode }: { uid: string; mode: 'folders' | 'shared
   const folders = useFolders(uid);
   const [qs, setQs] = useSearchParams();
   const openId = qs.get('folder') ?? '';
-  const allFolders = [...(folders.mine ?? []), ...(folders.withMe ?? [])];
+  // The organisation's folders live in the Company library app, not here.
+  const allFolders = [...(folders.mine ?? []), ...(folders.withMe ?? [])].filter((f) => !(f as { org?: string }).org);
   const open = allFolders.find((f) => f.id === openId);
   const setOpen = (id: string) => setQs((q) => (id ? q.set('folder', id) : q.delete('folder'), q), { replace: true });
   if (mode === 'shared') {

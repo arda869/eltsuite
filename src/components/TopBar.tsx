@@ -1,3 +1,4 @@
+import { OrgLogo } from './OrgLook';
 import { AppGrid } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -48,6 +49,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   return (
     <header className="topbar">
       <AppMark />
+      <OrgLogo />
       {children}
       <div className="right" ref={ref}>
         <PhoneMessagesLink />
@@ -113,6 +115,8 @@ function AppMark() {
           ? { name: 'Colleagues', to: '/colleagues', color: '#4f6b7a' }
           : pathname.startsWith('/admin')
             ? { name: 'Super Admin', to: '/admin', color: '#2f2e2d' }
+          : pathname.startsWith('/library')
+            ? { name: 'Company library', to: '/library', color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', to: '/org-admin', color: '#5d6f80' }
           : pathname.startsWith('/settings')

@@ -179,12 +179,36 @@ const J = {
     await s.p.fill('.adm-new input', 'Test School');
     await s.p.click('button:has-text("Create")');
     await s.p.click('.adm-org');
-    for (const t of ['Classes', 'Shared drives', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
+    for (const t of ['Classes', 'Company library', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
       await s.p.click(`.adm-tabs >> text=${t}`);
       await s.p.waitForTimeout(250);
     }
     await see(s.p, 'text=Invite teachers', 'the organisation');
     await axe(s.p, 'Organisation', A11Y_FOUND);
+    return s;
+  },
+  'Company library: a lesson copied to a class': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } }, brand: { color: '#2f6f8f' }, drives: {} };
+      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'o1' };
+      fs['sharedFolders/f1'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Level 1 lessons', org: 'o1', drive: 'main', access: { all: 'view', tags: {}, people: {} }, own: false, members: {}, memberIds: [] };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/library`);
+    await see(s.p, 'text=Level 1 lessons', 'the library folder');
+    await s.p.click('button:has-text("+ New")');
+    const [t] = await Promise.all([s.ctx.waitForEvent('page'), s.p.click('[role=menuitem]:has-text("Exam")')]);
+    await see(t, 'button:has-text("+ Task")', 'the new exam');
+    await t.click('button:has-text("+ Task")');
+    await t.waitForTimeout(800);
+    await t.close();
+    await see(s.p, '.lb-copy', 'the exam in the library');
+    await axe(s.p, 'Company library', A11Y_FOUND);
+    await s.p.click('.lb-copy');
+    const [c] = await Promise.all([s.ctx.waitForEvent('page', { timeout: 15000 }), s.p.click('.dialog button:has-text("Demo")')]);
+    await see(c, 'text=Exam', 'the exam in the class');
     return s;
   },
   'Super Admin is the owner’s alone': async (b) => {

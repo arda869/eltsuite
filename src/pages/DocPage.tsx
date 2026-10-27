@@ -1,3 +1,4 @@
+import { OrgLogo } from '../components/OrgLook';
 import { PdfFile } from '../pdf/PdfFile';
 import { Mark } from '../components/Wordmark';
 import { useEffect, useMemo, useState } from 'react';
@@ -93,6 +94,7 @@ export function DocPage() {
         <Link to={profile?.role === 'learner' ? '/' : '/archive?s=docs'} className="dp-home" aria-label="Back to ELT Suite">
           <Mark size={30} />
         </Link>
+        <OrgLogo />
         <span className="dp-kind" aria-hidden="true">
           <DocIcon kind={kind} />
         </span>
