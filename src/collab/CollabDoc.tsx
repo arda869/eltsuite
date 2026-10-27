@@ -5,7 +5,7 @@ import { doc as fsDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
-import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
+import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
@@ -38,6 +38,7 @@ import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggesti
 import { downloadDocx, printDoc, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
+import { ShowMarks, marksKey } from './marks';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { splitKey, type Responses } from '../lib/questions';
 
@@ -165,6 +166,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         Collaboration.configure({ document: session.doc }),
         CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color, uid: me.uid, build: BUILD } }),
         NewerGuard,
+        ShowMarks,
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -338,21 +340,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), 'Redo (Ctrl Shift Z)', !editor.can().redo())}
       </span>
       <span className="pb-g">
-        <select
-          className="ne-style pb-style"
-          aria-label="Paragraph style"
-          value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
-          onChange={(e) => {
-            const v = e.target.value;
-            const c = editor.chain().focus();
-            (v === 'p' ? c.setParagraph() : c.setHeading({ level: Number(v.slice(1)) as 1 | 2 | 3 })).run();
-          }}
-        >
-          <option value="p">Text</option>
-          <option value="h1">Heading 1</option>
-          <option value="h2">Heading 2</option>
-          <option value="h3">Heading 3</option>
-        </select>
+        <StyleMenu editor={editor} />
       </span>
       <span className="pb-g">
         {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold (Ctrl B)')}
@@ -381,6 +369,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         {gate('icons') !== 'hide' && <IconTool editor={editor} />}
       </span>
       <span className="pb-g">
+        {B(<span className="ws-ic">¶</span>, !!marksKey.getState(editor.state), () => editor.view.dispatch(editor.state.tr.setMeta(marksKey, !marksKey.getState(editor.state))), 'Show spaces and paragraph marks')}
         {profileTeacher && <CiteTool editor={editor} />}
         <span className="cd-wc-wrap">
           {B(<span className="cd-wc-ic">123</span>, wcOpen, () => setWcOpen((v) => !v), 'Word count')}
@@ -922,6 +911,49 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
 }
 
 // Someone in the document: who they are, and a message to them.
+// Paragraph styles, each shown as it looks.
+const STYLES = [
+  { k: 'p', label: 'Body', cls: 'sm-p' },
+  { k: 'h1', label: 'Heading 1', cls: 'sm-h1' },
+  { k: 'h2', label: 'Heading 2', cls: 'sm-h2' },
+  { k: 'h3', label: 'Heading 3', cls: 'sm-h3' },
+] as const;
+function StyleMenu({ editor }: { editor: Editor }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => (document.removeEventListener('mousedown', away), document.removeEventListener('keydown', esc));
+  }, [open]);
+  const cur = editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p';
+  const pick = (k: string) => {
+    const c = editor.chain().focus();
+    (k === 'p' ? c.setParagraph() : c.setHeading({ level: Number(k.slice(1)) as 1 | 2 | 3 })).run();
+    setOpen(false);
+  };
+  return (
+    <span className="sm" ref={ref}>
+      <button type="button" className="sm-btn" aria-haspopup="listbox" aria-expanded={open} aria-label="Paragraph style" onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((v) => !v)}>
+        <span>{STYLES.find((x) => x.k === cur)?.label}</span>
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+      </button>
+      {open && (
+        <span className="sm-list" role="listbox" aria-label="Paragraph style">
+          {STYLES.map((x) => (
+            <button key={x.k} type="button" role="option" aria-selected={cur === x.k} className={'sm-o ' + x.cls + (cur === x.k ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(x.k)}>
+              {x.label}
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
 // Everyone here now, as circles: their name on hover, and a click to message them.
 export function PeopleHere({ people, me, max = 5, label = 'Here now' }: { people: { name: string; color: string; uid?: string }[]; me: string; max?: number; label?: string }) {
   const [at, setAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);

@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { useAccount, useSpaceLimit, noteSpace } from '../lib/admin';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
-import { shareLesson, unshareLesson, useClassLessons, type ClassLesson } from '../lib/classFiles';
+import { shareLesson, unshareLesson, useClassLessons, useHandIns, type ClassLesson, type HandIn } from '../lib/classFiles';
 import { useDirectory } from '../lib/directory';
 import { usePhone } from '../lib/useMedia';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -64,9 +64,11 @@ const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, fla
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
 
 // One thing in the library, whatever it is.
-type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask; doc?: SharedDoc; cls?: ClassLesson };
+type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask; doc?: SharedDoc; cls?: ClassLesson; hand?: HandIn };
 const CLASSES = 'Classes';
 const entryOfLesson = (l: ClassLesson): Entry => ({ key: `l:${l.classId}/${l.itemId}`, kind: 'lesson', name: l.title, folder: `${CLASSES}/${l.className.replace(/\//g, '-')}${l.topic ? '/' + l.topic.replace(/\//g, '-') : ''}`, at: l.at, size: 0, cls: l });
+// A learner's hand-in: in the class's folder, under Handed in and the learner's name.
+const entryOfHandIn = (h: HandIn): Entry => ({ key: `h:${h.classId}/${h.id}`, kind: h.type.startsWith('image/') ? 'image' : h.type.startsWith('audio/') ? 'audio' : h.type.startsWith('video/') ? 'video' : 'pdf', name: h.name, folder: `${CLASSES}/${h.className.replace(/\//g, '-')}/Handed in/${h.learner.replace(/\//g, '-')}`, at: h.at, size: 0, hand: h });
 const inClasses = (f: string) => f === CLASSES || f.startsWith(CLASSES + '/');
 const entryOfDoc = (d: SharedDoc): Entry => ({ key: 'd:' + d.id, kind: d.kind as Kind, name: d.title, folder: d.path ?? '', at: d.updatedAt?.toMillis?.() ?? d.createdAt?.toMillis?.() ?? 0, size: d.size ?? 0, doc: d });
 const entryOfItem = (i: ArchiveItem): Entry => ({ key: i.id, kind: i.kind, name: i.name, folder: i.folder, at: i.createdAt, size: spaceOf(i), item: i });
@@ -162,7 +164,8 @@ export function MediaArchive() {
   const tasks = libTasks ?? [];
   const ownDocs = useMemo(() => (myDocsTop ?? []).filter((d) => !d.folder), [myDocsTop]);
   const classLessons = useClassLessons(uid);
-  const entries = useMemo(() => [...all.map(entryOfItem), ...ownDocs.filter((d) => d.kind !== 'lesson').map(entryOfDoc), ...(classLessons.list ?? []).map(entryOfLesson)], [all, ownDocs, classLessons.list]);
+  const handIns = useHandIns(uid);
+  const entries = useMemo(() => [...all.map(entryOfItem), ...ownDocs.filter((d) => d.kind !== 'lesson').map(entryOfDoc), ...(classLessons.list ?? []).map(entryOfLesson), ...(handIns ?? []).map(entryOfHandIn)], [all, ownDocs, classLessons.list, handIns]);
   const [sharingLesson, setSharingLesson] = useState<ClassLesson | null>(null);
   const [exporting, setExporting] = useState<ClassLesson | null>(null);
   const [lessonWarned, setLessonWarned] = useState(false);
@@ -224,6 +227,9 @@ export function MediaArchive() {
   const selEntries = shown.filter((e) => sel.has(e.key));
   const selFolders = subFolders.filter((f) => sel.has('f:' + f));
   const one = sel.size === 1 ? [...sel][0] : null;
+  // Lessons and hand-ins follow their classes: they are not moved, renamed or removed here.
+  const movable = selEntries.filter((e) => !e.cls && !e.hand);
+  const fixedOne = !!one && selEntries.some((e) => e.key === one && (e.cls || e.hand));
   const filesRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const marquee = (e: React.PointerEvent) => {
@@ -309,7 +315,7 @@ export function MediaArchive() {
     if (!list.length || !uid) return;
     const lessons = list.reduce((s, e) => s + (e.task?.uses.length ?? 0), 0);
     if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}” from the library?` : `Remove ${list.length} items from the library?`} ${lessons ? 'Lessons that use them keep their copies, no longer linked.' : 'Lessons that use them keep them.'}`, { ok: 'Remove' }))) return;
-    list = list.filter((e) => !e.cls);
+    list = list.filter((e) => !e.cls && !e.hand);
     if (!list.length) return;
     for (const e of list) {
       if (e.item) await archiveRemove(uid, e.item.id).catch(() => {});
@@ -384,7 +390,8 @@ export function MediaArchive() {
     e.dataTransfer.effectAllowed = 'move';
   };
   // Editors open full screen in their own tab: Task editor, Sound editor.
-  const openE = (en: Entry) => (en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openHand = (h: HandIn) => void import('../lib/uploads').then(({ fileUrl }) => fileUrl(h.classId, h).then((u) => window.open(u, '_blank')));
+  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
@@ -392,6 +399,8 @@ export function MediaArchive() {
         { label: `Download ${sel.size} items`, icon: 'import', onClick: () => void download(selEntries, selFolders) },
         ...(selEntries.length ? ['sep' as const, { label: `Remove ${selEntries.length} from the library`, icon: 'trash', danger: true, onClick: () => void removeE(selEntries) } as MenuItem] : []),
       ];
+    if (en.hand)
+      return [{ label: 'Open', icon: 'fullscreen', onClick: () => openE(en) }];
     if (en.cls)
       return [
         { label: 'Open', icon: 'fullscreen', onClick: () => openE(en) },
@@ -781,21 +790,21 @@ export function MediaArchive() {
             {sel.size > 0 && (
               <div className="ma-selbar">
                 <b>{sel.size} selected</b>
-                {selEntries.length > 0 && (
-                  <button type="button" className="btn small-btn" onClick={() => setMoving(selEntries)}>
+                {movable.length > 0 && (
+                  <button type="button" className="btn small-btn" onClick={() => setMoving(movable)}>
                     <UiIcon name="folder" size={14} /> Move to…
                   </button>
                 )}
                 <button type="button" className="btn small-btn" onClick={() => void download(selEntries, selFolders)}>
                   <UiIcon name="import" size={14} /> Download
                 </button>
-                {one && (
+                {one && !fixedOne && (
                   <button type="button" className="btn small-btn" onClick={() => setRenaming(one)}>
                     <UiIcon name="edit" size={14} /> Rename
                   </button>
                 )}
-                {selEntries.length > 0 && (
-                  <button type="button" className="btn small-btn" onClick={() => void removeE(selEntries)}>
+                {movable.length > 0 && (
+                  <button type="button" className="btn small-btn" onClick={() => void removeE(movable)}>
                     <UiIcon name="trash" size={14} /> Remove
                   </button>
                 )}

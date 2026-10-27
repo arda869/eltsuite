@@ -46,7 +46,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           Class name
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="For example: B1 Evening Group" />
         </label>
-        {onlyTraining ? <span className="hint">As a teacher trainer, you create teacher training classes. {currentOrg()?.name} creates the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} />}
+        {onlyTraining ? <span className="hint">As a teacher trainer, you create teacher training classes. {currentOrg()?.name} creates the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} uid={teacherId} />}
         {kind === 'language' ? (
           <LevelPicker value={level} onChange={setLevel} />
         ) : (
@@ -93,7 +93,17 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   );
 }
 
-export function ClassKindPicker({ kind, onChange }: { kind: ClassKind; onChange: (k: ClassKind) => void }) {
+// Teacher training classes are for teacher trainers in an organisation that has them switched on.
+export function trainingBlock(uid?: string): string {
+  const org = currentOrg();
+  if (!org) return 'Teacher training classes are made in an organisation. Join an organisation that has teacher training to create one.';
+  if (!org.allow?.trainers) return `${org.name} does not have teacher training classes.`;
+  if (!isTrainerIn(org, uid)) return `Ask an admin in ${org.name} to make you a teacher trainer.`;
+  return '';
+}
+export function ClassKindPicker({ kind, onChange, uid }: { kind: ClassKind; onChange: (k: ClassKind) => void; uid?: string }) {
+  // A class that is already a training class can stay one.
+  const blocked = kind === 'training' ? '' : trainingBlock(uid);
   return (
     <div className="field">
       <span>What kind of class</span>
@@ -102,9 +112,11 @@ export function ClassKindPicker({ kind, onChange }: { kind: ClassKind; onChange:
           <b>A language class</b>
           <span className="hint">Learners of English: lessons, tasks, live teaching, messages.</span>
         </button>
-        <button type="button" role="radio" aria-checked={kind === 'training'} className={'ck-o' + (kind === 'training' ? ' on' : '')} onClick={() => onChange('training')}>
-          <b>Teacher training</b>
-          <span className="hint">Everything in a language class, and tools for training teachers.</span>
+        <button type="button" role="radio" aria-checked={kind === 'training'} aria-disabled={!!blocked || undefined} className={'ck-o' + (kind === 'training' ? ' on' : '') + (blocked ? ' blocked' : '')} onClick={() => !blocked && onChange('training')}>
+          <b>
+            Teacher training {blocked && <span className="ck-lock">For organisations</span>}
+          </b>
+          <span className="hint">{blocked || 'Everything in a language class, and tools for training teachers.'}</span>
         </button>
       </div>
       {kind === 'training' && (

@@ -60,6 +60,34 @@ export function useClassLessons(uid?: string) {
   return { list, withMe };
 }
 
+// Files learners handed in for "File upload" questions, by class and learner.
+export type HandIn = { classId: string; className: string; learner: string; id: string; name: string; type: string; size: number; parts: number; at: number };
+export function useHandIns(uid?: string) {
+  const [list, setList] = useState<HandIn[] | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    let dead = false;
+    void (async () => {
+      const classes = (await allTeacherClasses(uid).catch(() => [] as ClassDoc[])).filter((c) => c.status === 'active');
+      const out: HandIn[] = [];
+      await Promise.all(
+        classes.map(async (c) => {
+          const [fs, ls] = await Promise.all([getDocs(collection(db, 'classes', c.id, 'files')).catch(() => null), getDocs(collection(db, 'classes', c.id, 'learners')).catch(() => null)]);
+          const names = new Map((ls?.docs ?? []).map((d) => [d.id, String(d.data().displayName ?? 'Learner')]));
+          for (const d of fs?.docs ?? []) {
+            const v = d.data();
+            if (typeof v.name !== 'string' || 'part' in v) continue;
+            out.push({ classId: c.id, className: c.name, learner: names.get(String(v.learnerId)) ?? 'Learner', id: d.id, name: v.name, type: String(v.type ?? ''), size: Number(v.size) || 0, parts: Number(v.parts) || 1, at: v.createdAt?.toMillis?.() ?? 0 });
+          }
+        }),
+      );
+      if (!dead) setList(out);
+    })();
+    return () => void (dead = true);
+  }, [uid]);
+  return list;
+}
+
 export const lessonLink = (l: { classId: string; itemId: string }) => `${window.location.origin}/class/${l.classId}/lesson/${l.itemId}`;
 
 // Share one lesson with colleagues: they edit the class's lesson itself.

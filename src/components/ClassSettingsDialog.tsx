@@ -10,6 +10,7 @@ import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
 import { ClassKindPicker } from './NewClassDialog';
+import { auth } from '../lib/firebase';
 import { LEARNER_WORDS, TEACHER_WORDS, termsOf, type Terms } from '../lib/terms';
 import { LEARNER_TOOLS, learnerToolOn } from '../lib/toolbarPrefs';
 import { LIVE_AUDIO, type LiveAudioMode } from '../lib/liveAudio';
@@ -109,7 +110,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           Class name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         </label>
-        <ClassKindPicker kind={kind} onChange={setKind} />
+        <ClassKindPicker kind={kind} onChange={setKind} uid={auth.currentUser?.uid} />
         {c.kind === 'training' && kind === 'language' && (
           <span className="error" role="alert">
             As a language class, the teacher training tools are hidden: language analysis cards, lesson plans, observation forms, video comments and loop input notes no longer show in lessons. They come back if you change it back.

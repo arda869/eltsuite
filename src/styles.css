@@ -6934,3 +6934,25 @@ input.dg-cell-label:focus { outline: none; }
 .pdff-fmt { gap: 4px; }
 .pdff { gap: 18px; }
 .pdff-bar:has(.pdf-sw) .pdff-fmt { display: none; }
+
+.ck-o.blocked { cursor: not-allowed; background: var(--surface); }
+.ck-o.blocked b { color: var(--muted); }
+.ck-lock { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: var(--paper); border: 1px solid var(--hair-strong); font: 600 10.5px var(--sans); letter-spacing: .03em; color: var(--muted); vertical-align: 2px; }
+
+/* Paragraph styles: a menu that shows each style as it looks. */
+.sm { position: relative; display: inline-flex; }
+.sm-btn { display: inline-flex; align-items: center; gap: 8px; height: 30px; min-width: 104px; justify-content: space-between; padding: 0 10px; border: 0; border-radius: 8px; background: var(--surface); color: var(--ink); font: 500 13px var(--sans); cursor: pointer; }
+.sm-btn:hover, .sm-btn[aria-expanded='true'] { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.sm-list { position: absolute; top: calc(100% + 6px); left: 0; z-index: 40; min-width: 200px; display: flex; flex-direction: column; padding: 6px; border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 14px 34px -12px rgba(0, 0, 0, .28); }
+.sm-o { text-align: left; border: 0; background: none; border-radius: 8px; padding: 7px 10px; color: var(--ink); cursor: pointer; line-height: 1.2; }
+.sm-o:hover { background: var(--surface); }
+.sm-o.on { background: var(--tint); color: var(--accent-text); }
+.sm-p { font: 15px var(--serif); }
+.sm-h1 { font: 500 22px var(--serif); }
+.sm-h2 { font: 500 18px var(--serif); }
+.sm-h3 { font: 600 15px var(--serif); }
+
+/* Formatting marks */
+.ws-sp { background: radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, #888) 1.3px, transparent 1.6px) center 58% / 100% 100% no-repeat; }
+.ws-pil { color: color-mix(in srgb, var(--accent) 60%, #999); font: 400 0.9em var(--sans); margin-left: 1px; user-select: none; pointer-events: none; }
+.ws-ic { font: 600 15px var(--serif); }

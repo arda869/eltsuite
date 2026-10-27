@@ -3,11 +3,7 @@ import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { CopyDialog } from './CopyDialog';
-import { ImportDialog } from './ImportDialog';
-import { classText, download } from '../lib/transfer';
-import { classBundle, downloadJson } from '../lib/fullcopy';
 import { RecapDialog } from './Recap';
-import { IconBtn } from './UiIcon';
 import { copyLesson } from '../lib/copy';
 import { addItem, addTopic, deleteItem, deleteTopic, renameTopic, updateItem, updateTopic, type ClassDoc, type Item, type Topic } from '../lib/classes';
 
@@ -360,7 +356,6 @@ const toLocal = (ms: number) => { const d = new Date(ms - new Date().getTimezone
 
 export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topics: Topic[]; items: Item[]; onResults?: (item: Item) => void }) {
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
-  const [importing, setImporting] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
       return new Set(JSON.parse(localStorage.getItem('ll.folded.' + c.id) ?? '[]'));
@@ -386,43 +381,13 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
     if (!other) return;
     await Promise.all([updateTopic(c.id, t.id, { order: other.order }), updateTopic(c.id, other.id, { order: t.order === other.order ? t.order + d : t.order })]);
   };
-  const [exporting, setExporting] = useState(false);
   const byTopic = (id: string | null) => items.filter((i) => (i.topicId ?? null) === id).sort((a, b) => a.order - b.order);
   const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId));
   const nextOrder = (list: { order: number }[]) => (list.length ? Math.max(...list.map((x) => x.order)) + 1 : 0);
 
   return (
     <div className="lessons">
-      <div className="lessons-tools">
-        <IconBtn icon="import" label="Import a lesson: text, Moodle GIFT or a full copy" onClick={() => setImporting(true)} />
-        <IconBtn
-          icon="export"
-          label={exporting ? 'Exporting…' : 'Export the class as text'}
-          disabled={exporting}
-          onClick={async () => {
-            setExporting(true);
-            try {
-              download(c.name, await classText(c.id, c.name, (await ask('Include your teacher notes in the file? Leave them out when you share it, for example.', { ok: 'Include notes', cancel: 'Leave them out' }))));
-            } finally {
-              setExporting(false);
-            }
-          }}
-        />
-        <IconBtn
-          icon="copyall"
-          label="Full copy of the class (with boards and pictures)"
-          disabled={exporting}
-          onClick={async () => {
-            setExporting(true);
-            try {
-              downloadJson(c.name, await classBundle(c.id, c.name));
-            } finally {
-              setExporting(false);
-            }
-          }}
-        />
-      </div>
-      {importing && <ImportDialog classId={c.id} topics={sortedTopics} onClose={() => setImporting(false)} />}
+      {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">
           <h2>Start with a topic</h2>

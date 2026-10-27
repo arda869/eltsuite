@@ -69,6 +69,7 @@ import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 import { InsertGallery } from './InsertGallery';
 import { PDF_NODES, setPdfQuestions } from '../pdf/PdfNodes';
+import { openMenuAt } from '../components/ContextMenu';
 import { PdfPick } from '../pdf/PdfPick';
 
 // Adds a drag-and-drop gap, and a word bank above the paragraph if the task has none yet.
@@ -673,8 +674,25 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             ['sep', <span key="sep" className="tool-sep" />],
             ...(!textOnly
               ? ([
-                  ['gap', BTN('Insert gap', false, () => editor.chain().focus().insertContent(newGap()).run(), '+ Gap')],
-                  ['choice', BTN('Insert multiple choice in line', false, () => editor.chain().focus().insertContent(newChoice('dropdown')).run(), '+ Multiple choice')],
+                  // Every question type behind one button, as pronunciation is.
+                  [
+                    'questions',
+                    <button
+                      key="q"
+                      type="button"
+                      className="tool tb-qs"
+                      aria-haspopup="menu"
+                      data-tip="Gaps, choices, matching and every other question"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => openMenuAt(e.currentTarget, COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'collab-slides', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => ({ label: c.label, hint: c.hint, icon: '', onClick: () => c.run(editor) })))}
+                    >
+                      <span className="ti-row">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 17h.01" /></svg>
+                        <span>Questions</span>
+                        <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+                      </span>
+                    </button>,
+                  ],
                 ] as [string, React.ReactNode][])
               : []),
             ['icons', <IconTool key="i" editor={editor} />],

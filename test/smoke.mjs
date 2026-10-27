@@ -60,11 +60,13 @@ async function newFile(s, label) {
   await tab.waitForLoadState();
   return tab;
 }
+// The "/" menu: wait until it lists what was typed, as a slow machine takes longer.
 async function slash(p, words) {
-  await p.keyboard.type('/' + words);
-  await p.waitForTimeout(400);
+  await p.keyboard.type('/' + words, { delay: 30 });
+  await p.locator('.slash-float').first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+  await p.waitForTimeout(600);
   await p.keyboard.press('Enter');
-  await p.waitForTimeout(500);
+  await p.waitForTimeout(800);
 }
 async function axe(p, name, out) {
   if (!A11Y) return;
@@ -103,6 +105,12 @@ const J = {
     await s.p.locator('.ProseMirror').nth(1).click();
     await s.p.keyboard.press('Control+End');
     await slash(s.p, 'Flow chart');
+    if (!(await count(s.p, '.dg-node'))) {
+      // Once more, in case the first keys went in before the editor was ready.
+      await s.p.locator('.ProseMirror').nth(1).click();
+      await s.p.keyboard.press('Control+End');
+      await slash(s.p, 'Flow chart');
+    }
     await see(s.p, '.dg-node', 'the diagram in the editor');
     await s.p.locator('.dg-node .dg-cell-body p').nth(1).click();
     await s.p.keyboard.press('End');

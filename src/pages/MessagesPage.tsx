@@ -252,22 +252,8 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const msgs = useMessages(c.id);
   // Enter sends (Shift + Enter for a new line), unless the person turned that off.
   const [enterSends] = useState(enterSendOn);
-  // Messages start as plain text; Aa shows the writing tools.
-  const [rich, setRichS] = useState(() => {
-    try {
-      return localStorage.getItem('ll.chatRich') === 'on';
-    } catch {
-      return false;
-    }
-  });
-  const setRich = (v: boolean) => {
-    setRichS(v);
-    try {
-      localStorage.setItem('ll.chatRich', v ? 'on' : 'off');
-    } catch {
-      /* fine */
-    }
-  };
+  // Every message starts as plain text; Aa shows the writing tools for this one.
+  const [rich, setRich] = useState(false);
   const [big, setBig] = useState(false);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
@@ -292,7 +278,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
     end.current?.scrollIntoView({ block: 'end' });
   }, [msgs?.length]);
 
-  const reset = () => (setContent(EMPTY), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
+  const reset = () => (setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
   // Others see that I am typing (sent at most every few seconds).
   const typedAt = useRef(0);
   const onType = (v: JSONContent) => {
