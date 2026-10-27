@@ -53,7 +53,7 @@ export async function carryMedia(fromClass: string, toClass: string, values: unk
     if (!m?.exists()) continue;
     const d = m.data();
     const r = doc(mediaCol(toClass));
-    for (let k = 0; k < (d.kind === 'audio' ? d.parts ?? 0 : 0); k++) {
+    for (let k = 0; k < (d.kind === 'audio' || d.kind === 'pdf' ? d.parts ?? 0 : 0); k++) {
       const p = await getDoc(mediaDoc(fromClass, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(mediaDoc(toClass, `${r.id}_p${k}`), p.data());
     }

@@ -41,16 +41,18 @@ export function MenuHost() {
     if (!open) return;
     const close = (e: Event) => {
       if (e.type === 'keydown' && (e as KeyboardEvent).key !== 'Escape') return;
-      if (e.type === 'mousedown' && ref.current?.contains(e.target as Node)) return;
+      if ((e.type === 'mousedown' || e.type === 'pointerdown') && ref.current?.contains(e.target as Node)) return;
       setOpen(null);
     };
     window.addEventListener('mousedown', close, true);
+    window.addEventListener('pointerdown', close, true);
     window.addEventListener('keydown', close);
     window.addEventListener('blur', close);
     window.addEventListener('resize', close);
     window.addEventListener('scroll', close, true);
     return () => {
       window.removeEventListener('mousedown', close, true);
+      window.removeEventListener('pointerdown', close, true);
       window.removeEventListener('keydown', close);
       window.removeEventListener('blur', close);
       window.removeEventListener('resize', close);

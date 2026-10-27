@@ -528,6 +528,12 @@ service cloud.firestore {
       allow create: if isTeacher() && teachesClass(request.resource.data.classId) && request.resource.data.state == 'waiting';
     }
     // Profile photos: small pictures anyone signed in may see; only the owner changes theirs.
+    // Profile pictures everyone signed in can see, by chat id (see lib/faces.ts).
+    match /faces/{key} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid && request.resource.data.avatar is string && request.resource.data.avatar.size() < 200;
+      allow update: if signedIn() && resource.data.by == request.auth.uid && request.resource.data.by == request.auth.uid && request.resource.data.avatar.size() < 200;
+    }
     match /photos/{uid} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.uid == uid && request.resource.data.data.size() < 120000;

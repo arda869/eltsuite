@@ -100,6 +100,8 @@ export function DocPage() {
   const classId = lesson ? qs.get('c') ?? '' : '';
   const canRename = !lesson && role === 'edit';
   const others = d ? Object.keys(d.members ?? {}).length : 0;
+  const [slot, setSlot] = useState<HTMLSpanElement | null>(null);
+  const [setOpen, setSetOpen] = useState(false);
   const props = { docKey, title, modes, teacher, me: { uid, name }, classId, display: 'inline' as const, canDownload: true };
   // The page title, large at the top of the canvas, as in Loop.
   const heading = canRename ? (
@@ -128,18 +130,7 @@ export function DocPage() {
           </span>
         </span>
         <span className="dp-acts">
-          {kind === 'doc' && d && (
-            <label className="dp-cite" data-tip="For citations and the reference list">
-              <span className="hint dp-hide-phone">Citations</span>
-              <select value={cite} disabled={role !== 'edit'} onChange={(e) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: e.target.value })}>
-                {CITE_STYLES.map((c) => (
-                  <option key={c.k} value={c.k}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && teacher && (
             <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
               <UiIcon name="lock" size={15} /> Share
@@ -150,10 +141,33 @@ export function DocPage() {
               <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}
+          {kind === 'doc' && d && (
+            <span className="dp-set-wrap">
+              <button type="button" className={'dp-ib' + (setOpen ? ' on' : '')} onClick={() => setSetOpen((v) => !v)} aria-label="Settings" data-tip="Document settings" aria-expanded={setOpen}>
+                <UiIcon name="settings" size={17} />
+              </button>
+              {setOpen && (
+                <span className="dp-set" role="dialog" aria-label="Document settings">
+                  <strong>Document settings</strong>
+                  <label className="field">
+                    <span>Citation style</span>
+                    <select value={cite} disabled={role !== 'edit'} onChange={(e) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: e.target.value })}>
+                      {CITE_STYLES.map((c) => (
+                        <option key={c.k} value={c.k}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="hint">Citations in the text and the reference list follow this style, and so do the Word and PDF downloads.{role !== 'edit' ? ' Only people who can edit can change it.' : ''}</span>
+                </span>
+              )}
+            </span>
+          )}
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} page heading={heading} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} page heading={heading} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>

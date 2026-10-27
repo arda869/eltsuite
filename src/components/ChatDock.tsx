@@ -5,23 +5,27 @@ import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread
 import { useDirectory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
+import { publishFace } from '../lib/faces';
 import { ChatView, NewChat } from '../pages/MessagesPage';
 import { IconLink, UiIcon } from './UiIcon';
+import { PersonFace } from './avatars';
 
-// Messages on every screen: a small button at the lower right that opens a chat window there,
-// to write without leaving the lesson. A soft chime when a message comes in.
+// Messages on every screen, at the bottom right: a Messages tab that is always there, and any
+// number of chat windows beside it. Each window can be minimised to a tab, made large, or closed;
+// all of them can be minimised or closed at once. They stay as you move between apps.
 
-const KEY = 'll.dock';
-type DockState = { open?: boolean; chat?: string; min?: boolean };
+const KEY = 'll.dock2';
+export type DockWin = { id: string; min?: boolean; max?: boolean }; // id: a chat, or 'list'
+type DockState = { wins: DockWin[] };
 const read = (): DockState => {
   try {
-    return JSON.parse(sessionStorage.getItem(KEY) || '{}') as DockState;
+    const v = JSON.parse(sessionStorage.getItem(KEY) || '{}') as DockState;
+    return { wins: Array.isArray(v.wins) ? v.wins : [] };
   } catch {
-    return {};
+    return { wins: [] };
   }
 };
-// One state for the window, shared by the top-bar button and the window itself.
-export function setDock(v: DockState) {
+function save(v: DockState) {
   try {
     sessionStorage.setItem(KEY, JSON.stringify(v));
   } catch {
@@ -29,6 +33,22 @@ export function setDock(v: DockState) {
   }
   window.dispatchEvent(new Event('ll-dock'));
 }
+const MAX_OPEN = 3;
+// Open a chat (or the list) in a window; `min` puts it straight in a tab.
+export function dockOpen(id: string, min = false) {
+  const st = read();
+  const rest = st.wins.filter((w) => w.id !== id).map((w) => (min || w.min ? w : { ...w, max: false }));
+  // At most a few open side by side: older ones fold into tabs.
+  const open = rest.filter((w) => !w.min);
+  const fold = min ? [] : open.slice(0, Math.max(0, open.length - (MAX_OPEN - 1))).map((w) => w.id);
+  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min }] });
+}
+// Kept for older callers: open the window with this chat.
+export function setDock(v: { open?: boolean; chat?: string; min?: boolean }) {
+  if (v.open) dockOpen(v.chat || 'list', !!v.min);
+}
+const patch = (id: string, p: Partial<DockWin>) => save({ wins: read().wins.map((w) => (w.id === id ? { ...w, ...p } : p.max ? { ...w, max: false } : w)) });
+const closeWin = (id: string) => save({ wins: read().wins.filter((w) => w.id !== id) });
 function useDock() {
   const [st, setSt] = useState(read);
   useEffect(() => {
@@ -48,7 +68,12 @@ export function ChatDock() {
   const dirAll = useDirectory();
   const chats = useMemo(() => withShownNames(rawChats, dirAll?.nameFor), [rawChats, dirAll]);
   const st = useDock();
-  const save = setDock;
+  const [creating, setCreating] = useState(false);
+
+  // Everyone's picture where others can see it.
+  useEffect(() => {
+    if (me && user && profile?.avatar) publishFace(me, user.uid, profile.avatar);
+  }, [me, user, profile?.avatar]);
 
   // A chime for each new message from someone else (not for the ones already there).
   const seen = useRef<Record<string, number> | null>(null);
@@ -60,197 +85,130 @@ export function ChatDock() {
     if (chats.some((c) => c.last && c.last.by !== me && c.lastAt > (prev[c.id] ?? 0))) chime('in');
   }, [chats, me]);
 
-  // The window goes with you from page to page; it is opened from Messages in the top bar.
-  const hidden = !me || isProxyTab() || phone || !st.open || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || document.body.classList.contains('presenting');
+  const hidden = !me || isProxyTab() || phone || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || document.body.classList.contains('presenting');
   if (hidden) return null;
-  if (st.min) return <DockTab me={me!} chats={chats ?? []} chatId={st.chat} onOpen={() => save({ open: true, chat: st.chat })} onClose={() => save({ open: false, chat: st.chat })} />;
-  return <DockWindow me={me!} chats={chats ?? []} chatId={st.chat} onChat={(id) => save({ open: true, chat: id })} onMin={(x) => (x !== null && (() => { try { localStorage.setItem('ll.dockTab', String(Math.round(x))); } catch { /* fine */ } })(), save({ open: true, chat: st.chat, min: true }))} onClose={() => save({ open: false, chat: st.chat })} />;
-}
-
-// Minimised: a slim tab on the bottom edge. Slide it left or right so it covers nothing; a
-// click opens the window again.
-function DockTab({ me, chats, chatId, onOpen, onClose }: { me: string; chats: Chat[]; chatId?: string; onOpen: () => void; onClose: () => void }) {
-  const cur = chats.find((c) => c.id === chatId);
-  const unread = chats.filter((c) => unreadIn(c, me)).length;
-  const [x, setX] = useState<number | null>(() => {
-    try {
-      const v = localStorage.getItem('ll.dockTab');
-      return v ? Number(v) : null;
-    } catch {
-      return null;
-    }
-  });
-  const ref = useRef<HTMLDivElement>(null);
-  const moved = useRef(false);
-  const down = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('.dock-tab-x')) return;
-    const r = ref.current?.getBoundingClientRect();
-    if (!r) return;
-    const dx = e.clientX - r.left;
-    const x0 = e.clientX;
-    moved.current = false;
-    let nx = r.left;
-    const mv = (ev: PointerEvent) => {
-      if (Math.abs(ev.clientX - x0) > 4) moved.current = true;
-      if (!moved.current) return;
-      nx = Math.max(8, Math.min(window.innerWidth - r.width - 8, ev.clientX - dx));
-      setX(nx);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', mv);
-      window.removeEventListener('pointerup', up);
-      if (!moved.current) return onOpen();
-      try {
-        localStorage.setItem('ll.dockTab', String(Math.round(nx)));
-      } catch {
-        /* fine */
-      }
-    };
-    window.addEventListener('pointermove', mv);
-    window.addEventListener('pointerup', up);
-  };
-  const left = x === null ? undefined : Math.max(8, Math.min(window.innerWidth - 240, x));
+  const list = chats ?? [];
+  const unread = list.filter((c) => unreadIn(c, me!)).length;
+  const wins = st.wins.filter((w) => w.id === 'list' || list.some((c) => c.id === w.id) || !chats);
+  const big = wins.find((w) => w.max && !w.min);
+  const anyOpen = wins.some((w) => !w.min);
   return (
-    <div ref={ref} className="dock-tab" style={left === undefined ? undefined : { left, right: 'auto' }} onPointerDown={down} role="button" tabIndex={0} aria-label="Open messages" title="Click to open, drag to move" onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}>
-      <span className="dock-tab-grip" aria-hidden="true" />
-      <UiIcon name="message" size={14} />
-      <b>{cur ? chatTitle(cur, me) : 'Messages'}</b>
-      {unread > 0 && <span className="dock-tab-n">{unread}</span>}
-      <button type="button" className="dock-tab-x" aria-label="Close" onClick={onClose}>
-        <svg width="10" height="10" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
-      </button>
-    </div>
+    <>
+      <div className="dock-bar" role="region" aria-label="Messages">
+        <span className={'dock-tab dock-launch' + (unread ? ' has-new' : '')}>
+          <button type="button" className="dock-tab-main" onClick={() => (wins.some((w) => w.id === 'list' && !w.min) ? patch('list', { min: true }) : dockOpen('list'))} aria-label={unread ? `Messages, ${unread} new` : 'Messages'}>
+            <UiIcon name="message" size={14} />
+            <b>Messages</b>
+            {unread > 0 && <span className="dock-tab-n">{unread}</span>}
+          </button>
+          <button type="button" className="dock-tab-ic" onClick={() => setCreating(true)} aria-label="New message" data-tip="New message">
+            <WinIcon d="M14.5 5.5l4 4M4 20l1-4.5L15.5 5a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L8.5 19z" size={13} />
+          </button>
+          {anyOpen && (
+            <button type="button" className="dock-tab-ic" onClick={() => save({ wins: read().wins.map((w) => ({ ...w, min: true, max: false })) })} aria-label="Minimise all" data-tip="Minimise all">
+              <WinIcon d="M5 12h14" size={13} />
+            </button>
+          )}
+          {wins.length > 0 && (
+            <button type="button" className="dock-tab-ic" onClick={() => save({ wins: [] })} aria-label="Close all" data-tip="Close all">
+              <WinIcon d="M6 6l12 12M18 6L6 18" size={13} />
+            </button>
+          )}
+        </span>
+        {[...wins].reverse().map((w) =>
+          w.min ? (
+            <DockTab key={w.id} me={me!} c={list.find((c) => c.id === w.id)} id={w.id} />
+          ) : w.max ? null : (
+            <DockWindow key={w.id} me={me!} w={w} chats={list} onNew={() => setCreating(true)} />
+          ),
+        )}
+      </div>
+      {big && (
+        <div className="dock-max-scrim" onMouseDown={(e) => e.target === e.currentTarget && patch(big.id, { max: false })}>
+          <DockWindow me={me!} w={big} chats={list} onNew={() => setCreating(true)} />
+        </div>
+      )}
+      {creating && dirAll && <NewChat dir={dirAll} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), dockOpen(id))} />}
+    </>
   );
 }
 
-function DockWindow({ me, chats, chatId, onChat, onMin, onClose }: { me: string; chats: Chat[]; chatId?: string; onChat: (id?: string) => void; onMin: (x: number | null) => void; onClose: () => void }) {
+// A minimised chat: a slim tab on the bottom edge. A click opens it again.
+function DockTab({ me, c, id }: { me: string; c?: Chat; id: string }) {
+  const title = id === 'list' ? 'All chats' : c ? chatTitle(c, me) : 'Chat';
+  const un = c ? unreadIn(c, me) : false;
+  return (
+    <span className={'dock-tab' + (un ? ' has-new' : '')}>
+      <button type="button" className="dock-tab-main" onClick={() => patch(id, { min: false })} aria-label={`Open ${title}`}>
+        {c && c.kind !== 'group' && !isSelf(c) ? <PersonFace id={c.members.find((k) => k !== me)} name={title} size={20} /> : <UiIcon name={id === 'list' ? 'message' : 'groups'} size={14} />}
+        <b>{title}</b>
+        {un && <i className="msg-dot" />}
+      </button>
+      <button type="button" className="dock-tab-ic" aria-label="Close" onClick={() => closeWin(id)}>
+        <WinIcon d="M6 6l12 12M18 6L6 18" size={12} />
+      </button>
+    </span>
+  );
+}
+
+function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Chat[]; onNew: () => void }) {
   const dir = useDirectory();
   const { profile } = useAuth();
-  const cur = chats.find((c) => c.id === chatId);
-  // Move it by its top bar, anywhere on the screen; near its corner it snaps back. Resize from
-  // the top-left corner. Remembered on this device.
-  const saved = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('ll.dockBox') || '{}') as { pos?: { x: number; y: number } | null; w?: number; h?: number };
-    } catch {
-      return {};
-    }
-  })();
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(saved.pos ?? null);
-  const [size, setSize] = useState({ w: saved.w ?? 400, h: saved.h ?? 600 });
-  const [near, setNear] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const winRef = useRef<HTMLDivElement>(null);
-  const keep = (p: { x: number; y: number } | null, sz: { w: number; h: number }) => {
-    try {
-      localStorage.setItem('ll.dockBox', JSON.stringify({ pos: p, ...sz }));
-    } catch {
-      /* fine */
-    }
+  const cur = chats.find((c) => c.id === w.id);
+  const [leaving, setLeaving] = useState<'' | 'min' | 'close'>('');
+  const title = cur ? chatTitle(cur, me) : 'Messages';
+  // Folding away: the window shrinks down into its tab, then becomes the tab.
+  const go = (what: 'min' | 'close') => {
+    setLeaving(what);
+    window.setTimeout(() => (what === 'min' ? patch(w.id, { min: true, max: false }) : closeWin(w.id)), 170);
   };
-  // Most of the window may go off screen; its top bar always stays reachable.
-  const clampPos = (x: number, y: number, w: number, _h: number) => ({ x: Math.max(100 - w, Math.min(window.innerWidth - 100, x)), y: Math.max(0, Math.min(window.innerHeight - 52, y)) });
-  const nearCorner = (x: number, y: number, w: number, h: number) => window.innerWidth - (x + w) < 90 && window.innerHeight - (y + h) < 90;
-  const drag = (e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('button, a, input')) return;
-    const r = winRef.current?.getBoundingClientRect();
-    if (!r) return;
-    e.preventDefault();
-    const dx = e.clientX - r.left;
-    const dy = e.clientY - r.top;
-    let p = { x: r.left, y: r.top };
-    document.body.classList.add('is-dragging-dock');
-    const mv = (ev: PointerEvent) => {
-      p = clampPos(ev.clientX - dx, ev.clientY - dy, r.width, r.height);
-      setPos(p);
-      setNear(nearCorner(p.x, p.y, r.width, r.height));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', mv);
-      window.removeEventListener('pointerup', up);
-      document.body.classList.remove('is-dragging-dock');
-      setNear(false);
-      const snap = nearCorner(p.x, p.y, r.width, r.height);
-      setPos(snap ? null : p);
-      keep(snap ? null : p, size);
-    };
-    window.addEventListener('pointermove', mv);
-    window.addEventListener('pointerup', up);
-  };
-  const resize = (e: React.PointerEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const r = winRef.current?.getBoundingClientRect();
-    if (!r) return;
-    const x0 = e.clientX;
-    const y0 = e.clientY;
-    let sz = size;
-    let p = pos;
-    const mv = (ev: PointerEvent) => {
-      const w = Math.round(Math.max(320, Math.min(window.innerWidth * 0.9, r.width - (ev.clientX - x0))));
-      const h = Math.round(Math.max(380, Math.min(window.innerHeight * 0.9, r.height - (ev.clientY - y0))));
-      sz = { w, h };
-      setSize(sz);
-      if (pos) {
-        p = { x: r.right - w, y: r.bottom - h };
-        setPos(p);
-      }
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', mv);
-      window.removeEventListener('pointerup', up);
-      keep(p, sz);
-    };
-    window.addEventListener('pointermove', mv);
-    window.addEventListener('pointerup', up);
-  };
-  const boxStyle: React.CSSProperties = pos ? { left: pos.x, top: pos.y, right: 'auto', bottom: 'auto', width: size.w, height: size.h } : { width: size.w, height: size.h };
+  const other = cur && cur.kind !== 'group' && !isSelf(cur) ? cur.members.find((k) => k !== me) : undefined;
   return (
-    <>
-    {near && <div className="dock-snap" style={{ width: size.w, height: size.h }} aria-hidden="true" />}
-    <div ref={winRef} className={'dock-win' + (pos ? ' moved' : '')} role="dialog" aria-label="Messages" style={boxStyle}>
-      <span className="dock-resize" onPointerDown={resize} title="Drag to resize" aria-hidden="true" />
-      <div className="dock-head" onPointerDown={drag} title="Drag to move">
+    <div className={'dock-win' + (w.max ? ' max' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
+      <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && patch(w.id, { max: !w.max })}>
         {cur ? (
-          <button type="button" className="icon-btn" onClick={() => onChat(undefined)} aria-label="All chats">
-            <UiIcon name="prev" size={15} />
-          </button>
+          <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
+            {other ? <PersonFace id={other} name={title} size={28} /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
+          </span>
         ) : null}
-        <b>{cur ? chatTitle(cur, me) : 'Messages'}</b>
+        <b>{title}</b>
         <span style={{ flex: 1 }} />
-        {/* One set of window icons, drawn alike: write a new message, then minimise, full size, close. */}
-        {dir && (
-          <button type="button" className="icon-btn dock-ic" onClick={() => setCreating(true)} aria-label="New message" data-tip="New message">
+        {!cur && dir && (
+          <button type="button" className="icon-btn dock-ic" onClick={onNew} aria-label="New message" data-tip="New message">
             <WinIcon d="M14.5 5.5l4 4M4 20l1-4.5L15.5 5a1.4 1.4 0 0 1 2 0l1.5 1.5a1.4 1.4 0 0 1 0 2L8.5 19z" />
           </button>
         )}
         <span className="dock-sep" aria-hidden="true" />
-        <button type="button" className="icon-btn dock-ic" onClick={() => onMin(pos ? pos.x : null)} aria-label="Minimise" data-tip="Minimise">
+        <button type="button" className="icon-btn dock-ic" onClick={() => go('min')} aria-label="Minimise" data-tip="Minimise">
           <WinIcon d="M5 12h14" />
         </button>
-        <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in full" data-tip="Open in full">
-          <WinIcon d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+        <button type="button" className="icon-btn dock-ic" onClick={() => patch(w.id, { max: !w.max })} aria-label={w.max ? 'Smaller' : 'Larger'} data-tip={w.max ? 'Smaller' : 'Larger'}>
+          <WinIcon d={w.max ? 'M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5' : 'M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5'} />
+        </button>
+        <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in Messages" data-tip="Open in Messages" onClick={() => closeWin(w.id)}>
+          <WinIcon d="M14 4h6v6M20 4l-8 8M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
         </Link>
-        <button type="button" className="icon-btn dock-ic" onClick={onClose} aria-label="Close" data-tip="Close">
+        <button type="button" className="icon-btn dock-ic" onClick={() => go('close')} aria-label="Close" data-tip="Close">
           <WinIcon d="M6 6l12 12M18 6L6 18" />
         </button>
       </div>
       {cur && dir ? (
         <div className="dock-chat">
-          <ChatView key={cur.id} c={cur} me={dir.me} dir={dir} teacher={profile?.role === 'teacher'} onBack={() => onChat(undefined)} />
+          <ChatView key={cur.id} c={cur} me={dir.me} dir={dir} teacher={profile?.role === 'teacher'} onBack={() => closeWin(w.id)} />
         </div>
       ) : (
         <div className="dock-list">
           {chats.length === 0 && <span className="hint dock-none">No messages yet.</span>}
           {chats.map((c) => {
             const un = unreadIn(c, me);
-            const title = chatTitle(c, me);
+            const t = chatTitle(c, me);
+            const o = c.kind !== 'group' && !isSelf(c) ? c.members.find((k) => k !== me) : undefined;
             return (
-              <button key={c.id} type="button" className={'msg-row' + (un ? ' unread' : '')} onClick={() => onChat(c.id)}>
-                <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={15} /> : isSelf(c) ? <UiIcon name="pen" size={14} /> : title.trim().slice(0, 1).toUpperCase()}</span>
+              <button key={c.id} type="button" className={'msg-row' + (un ? ' unread' : '')} onClick={() => dockOpen(c.id)}>
+                <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{o ? <PersonFace id={o} name={t} size={34} /> : c.kind === 'group' ? <UiIcon name="groups" size={15} /> : <UiIcon name="pen" size={14} />}</span>
                 <span className="msg-row-t">
                   <span className="msg-row-top">
-                    <b>{title}</b>
+                    <b>{t}</b>
                   </span>
                   <span className="msg-row-last">{c.last ? `${c.last.by === me ? 'You' : c.last.name.split(' ')[0]}: ${c.last.text}` : 'No messages yet'}</span>
                 </span>
@@ -258,45 +216,35 @@ function DockWindow({ me, chats, chatId, onChat, onMin, onClose }: { me: string;
               </button>
             );
           })}
-          <button type="button" className="btn small-btn dock-new" onClick={() => setCreating(true)}>
+          <button type="button" className="btn small-btn dock-new" onClick={onNew}>
             + New message
           </button>
         </div>
       )}
     </div>
-    {creating && dir && <NewChat dir={dir} onClose={() => setCreating(false)} onOpen={(id) => (setCreating(false), onChat(id))} />}
-    </>
   );
 }
 
-// Messages in the top bar, with the number of unread chats. On a computer it opens the small
-// messages window (lower right) over the page you are on; on a phone, the messages page.
+// On a phone: Messages in the top bar opens the messages page. On a computer the Messages tab at
+// the bottom right does this, so nothing shows here.
 export function PhoneMessagesLink() {
   const { user, profile } = useAuth();
   const phone = usePhone();
   const loc = useLocation();
-  const st = useDock();
   const me = profile?.role === 'learner' ? profile.learnerId : profile?.role === 'teacher' ? user?.uid : undefined;
   const unread = useUnread(!isProxyTab() ? me : undefined);
-  if (!me || isProxyTab() || loc.pathname.startsWith('/messages')) return null;
+  if (!me || isProxyTab() || loc.pathname.startsWith('/messages') || !phone) return null;
   const label = unread ? `Messages · ${unread} new` : 'Messages';
   const badge = unread ? <span className="icon-badge">{unread}</span> : null;
-  if (phone)
-    return (
-      <span className="pml">
-        <IconLink icon="message" label={label} to="/messages" badge={badge} />
-      </span>
-    );
   return (
-    <button type="button" className={'icon-tool' + (st.open && !st.min ? ' on' : '')} aria-label={label} data-tip={label} aria-pressed={!!st.open} onClick={() => setDock(st.open && st.min ? { open: true, chat: st.chat } : { open: !st.open, chat: st.chat })}>
-      <UiIcon name="message" />
-      {badge}
-    </button>
+    <span className="pml">
+      <IconLink icon="message" label={label} to="/messages" badge={badge} />
+    </span>
   );
 }
 
-const WinIcon = ({ d }: { d: string }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const WinIcon = ({ d, size = 16 }: { d: string; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={d} />
   </svg>
 );

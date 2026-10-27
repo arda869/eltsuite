@@ -40,8 +40,8 @@ export type SharedDoc = {
 const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
-export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson';
-export const KIND_LABEL: Record<DocKind, string> = { doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading', lesson: 'Lesson' };
+export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf';
+export const KIND_LABEL: Record<DocKind, string> = { doc: 'Document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading', lesson: 'Lesson', pdf: 'PDF' };
 export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '') {
   const r = await addDoc(col, {
     owner: owner.uid,

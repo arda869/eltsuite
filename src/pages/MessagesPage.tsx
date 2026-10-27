@@ -25,7 +25,8 @@ import { Loader } from '../components/Loader';
 import { UiIcon } from '../components/UiIcon';
 import { LearnerNav, MainNav } from './ColleaguesPage';
 import { SharedWindow } from './SharedPage';
-import { setDock } from '../components/ChatDock';
+import { dockOpen } from '../components/ChatDock';
+import { PersonFace } from '../components/avatars';
 import { AppSetupDialog } from '../components/AppSetup';
 import { setClip, writeClip, type Clip } from '../lib/clip';
 import { Icon, IconGrid, iconByKey } from '../editor/Icons';
@@ -53,6 +54,7 @@ export function MessagesPage() {
   const me = dir?.me;
   const rawChats = useChats(me?.key);
   const chats = useMemo(() => withShownNames(rawChats, dir?.nameFor), [rawChats, dir]);
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const open = params.get('c') ?? '';
   const [creating, setCreating] = useState(false);
@@ -64,7 +66,7 @@ export function MessagesPage() {
   // Leaving this page with a chat open (on a computer): the chat comes along in the small window.
   const openRef = useRef(open);
   openRef.current = open;
-  useEffect(() => () => void (openRef.current && !window.matchMedia('(max-width: 640px)').matches && setDock({ open: true, chat: openRef.current })), []);
+  useEffect(() => () => void (openRef.current && !window.matchMedia('(max-width: 640px)').matches && dockOpen(openRef.current, true)), []);
   const shown = (chats ?? []).filter((c) => !q.trim() || chatTitle(c, me?.key ?? '').toLowerCase().includes(q.trim().toLowerCase()) || Object.values(c.names).some((n) => n.toLowerCase().includes(q.trim().toLowerCase())));
   const pick = (id: string) => setParams(id ? { c: id } : {});
 
@@ -127,7 +129,7 @@ export function MessagesPage() {
           </aside>
           <main className="msg-main">
             {cur ? (
-              <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} />
+              <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} onMin={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />
             ) : (
               <div className="msg-empty">
                 <UiIcon name="discuss" size={30} />
@@ -242,7 +244,7 @@ export function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () 
   );
 }
 
-export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void }) {
+export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void; onMin?: () => void }) {
   const msgs = useMessages(c.id);
   // Enter sends (Shift + Enter for a new line), unless the person turned that off.
   const [enterSends, setEnterSendsState] = useState(enterSendOn);
@@ -318,7 +320,7 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
         <button type="button" className="icon-btn chat-back" onClick={onBack} aria-label="All chats">
           <UiIcon name="prev" size={16} />
         </button>
-        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : initial(title)}</span>
+        <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : <PersonFace id={c.members.find((k) => k !== me.key)} name={title} size={36} />}</span>
         <span className="chat-head-t">
           <b>{title}</b>
           <span className="hint">{isSelf(c) ? (teacher ? 'Only you can see this' : 'Notes for yourself. Your teacher can see class chats') : c.kind === 'group' ? `${c.members.length} people: ${c.members.map((k) => (k === me.key ? 'you' : (c.names[k] ?? '').split(' ')[0])).join(', ')}` : c.roles[c.members.find((k) => k !== me.key) ?? ''] === 'teacher' ? 'Teacher' : 'Learner'}</span>
@@ -326,6 +328,11 @@ export function ChatView({ c, me, dir, teacher, onBack }: { c: Chat; me: Person;
         {c.kind === 'group' && (
           <button type="button" className="btn small-btn" onClick={() => setSettings((s) => !s)}>
             Group
+          </button>
+        )}
+        {onMin && (
+          <button type="button" className="btn small-btn chat-min" onClick={onMin} data-tip="Keep this chat in a small window while you work in other apps">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg> Minimise
           </button>
         )}
       </header>

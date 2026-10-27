@@ -1,3 +1,4 @@
+import { useFace } from '../lib/faces';
 import { useEffect, useState, type ReactNode } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -144,4 +145,10 @@ export function Avatar({ k, name, size = 32, className = '' }: { k?: string; nam
       </g>
     </svg>
   );
+}
+
+// Someone's picture by their chat id, or their initials.
+export function PersonFace({ id, name, size = 32, className = '' }: { id?: string; name?: string; size?: number; className?: string }) {
+  const k = useFace(id);
+  return <Avatar k={k || undefined} name={name} size={size} className={className} />;
 }

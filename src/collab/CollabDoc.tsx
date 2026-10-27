@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
+import { doc as fsDoc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
 import { BubbleMenu, EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -16,6 +19,7 @@ import { BlockHandles } from '../editor/BlockMenu';
 import { TableHandles } from '../editor/TableHandles';
 import { TableInsert } from '../editor/TableInsert';
 import { LinkPop } from '../editor/LessonLink';
+import { EditorContextMenu } from '../editor/ContextMenu';
 import { TextColorTool } from '../editor/TextColor';
 import { DefinitionPop } from '../editor/Definition';
 import { newIpa } from '../editor/Ipa';
@@ -63,6 +67,7 @@ export type CollabProps = {
   head?: ReactNode; // shown above the document (who it belongs to, a picker)
   page?: boolean; // its own page, like a Loop page: a wide canvas, tools on selection and "/"
   heading?: ReactNode; // the page title, at the top of the canvas
+  toolSlot?: HTMLElement | null; // on its own page: the tools go up into the page's top bar
 };
 
 // Characters each person has written that are still in the document.
@@ -85,13 +90,13 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
   return out;
 }
 
-export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading }: CollabProps) {
+export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, toolSlot }: CollabProps) {
   const session = useCollabSession(docKey, me.uid);
   if (!session) return <div className="cd cd-wait" />;
-  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head, page, heading }} session={session} />;
+  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head, page, heading, toolSlot }} session={session} />;
 }
 
-function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, session }: CollabProps & { session: CollabSession }) {
+function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, toolSlot, session }: CollabProps & { session: CollabSession }) {
   const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   const allowed = (teacher ? (['edit', 'suggest', 'comment'] as CollabMode[]) : modes).filter(Boolean);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
@@ -108,12 +113,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [defOpen, setDefOpen] = useState(false);
   const [big, setBig] = useState(display === 'full' ? false : false);
   const [gallery, setGallery] = useState(false);
+  const [personAt, setPersonAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const citeStyle = useCiteStyle();
   const profileTeacher = useAuth().profile?.role === 'teacher';
   const [side, setSide] = useState<'none' | 'notes' | 'people'>('none');
-  const [people, setPeople] = useState<{ name: string; color: string }[]>([]);
+  const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [threads, setThreads] = useState<Record<string, Thread>>({});
   const [who, setWho] = useState<Record<string, { name: string; color: string }>>({});
   const [draft, setDraft] = useState<{ quote: string } | null>(null);
@@ -131,7 +137,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         Suggestions.configure({ get: () => live.current }),
         Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : 'Type / to add a heading, table, picture, IPA and more'), showOnlyCurrent: true }),
         Collaboration.configure({ document: session.doc }),
-        CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color } }),
+        CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color, uid: me.uid } }),
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -189,7 +195,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           .run();
     });
     const aw = session.provider.awareness;
-    const f = () => setPeople([...aw.getStates().values()].map((s) => (s as { user?: { name: string; color: string } }).user).filter((u): u is { name: string; color: string } => !!u?.name));
+    const f = () => {
+      const all = [...aw.getStates().values()].map((s) => (s as { user?: { name: string; color: string; uid?: string } }).user).filter((u): u is { name: string; color: string; uid?: string } => !!u?.name);
+      // One circle a person, however many tabs they have open.
+      setPeople(all.filter((u, i) => all.findIndex((v) => (v.uid ?? v.name) === (u.uid ?? u.name)) === i));
+    };
     aw.on('change', f);
     f();
     set(collabRef(docKey, `who/${me.uid}`), { name: author.name, color: author.color }).catch(() => {});
@@ -253,9 +263,63 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const showSide = side !== 'none' || !!draft || (!page && (sugg.length > 0 || open.length > 0));
   const counts = side === 'people' ? contributions(session.doc, session.pud) : null;
 
+  const modeCtl = locked ? (
+    <span className="cd-locked">
+      <UiIcon name="lock" size={14} /> Locked
+    </span>
+  ) : allowed.length > 1 ? (
+    <span className="cd-mode">
+      <select value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
+        {allowed.map((m) => (
+          <option key={m} value={m}>
+            {MODE_LABEL[m].label}
+          </option>
+        ))}
+      </select>
+    </span>
+  ) : (
+    <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
+  );
+  const pageTools0 = page && toolSlot
+    ? createPortal(
+        <>
+          <span className="cd-people" aria-label="In the document now">
+            {people.slice(0, 5).map((p, i) => (
+              <button key={i} type="button" className="cd-avatar" style={{ background: p.color }} title={p.name} onClick={(e) => setPersonAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
+                {p.name.trim().slice(0, 1).toUpperCase()}
+              </button>
+            ))}
+            {people.length > 5 && <span className="cd-more">+{people.length - 5}</span>}
+          </span>
+          <span className="cd-words dp-hide-phone" data-tip="Without the reference list">
+            {wordCount(editor.getJSON())} words
+          </span>
+          {writing && (
+            <button type="button" className="dp-ib" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text." aria-label="Insert">
+              <UiIcon name="plus" size={17} />
+            </button>
+          )}
+          {writing && profileTeacher && <CiteTool editor={editor} />}
+          <button type="button" className={'dp-ib cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
+            <UiIcon name="discuss" size={17} />
+            {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
+          </button>
+          {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }, editor.view.dom))} />}
+          {modeCtl}
+        </>,
+        toolSlot,
+      )
+    : null;
+  const pageTools = (
+    <>
+      {pageTools0}
+      {personAt && <PersonCard p={personAt.p} r={personAt.r} me={me.uid} onClose={() => setPersonAt(null)} />}
+    </>
+  );
   const body = (
     <div className={'cd' + (big ? ' big' : '') + ' m-' + eff + (locked ? ' is-locked' : '')}>
-      <div className="cd-top">
+      {pageTools}
+      {!(page && toolSlot) && <div className="cd-top">
         <span className="cd-title">
           <UiIcon name="task" size={16} />
           {title || 'Shared document'}
@@ -310,7 +374,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name={big ? 'fullscreenOff' : 'fullscreen'} size={16} />
           </button>
         ) : null}
-      </div>
+      </div>}
       {writing && page && (
         <BubbleMenu editor={editor} tippyOptions={{ duration: 120, maxWidth: 'none', placement: 'top-start' }} shouldShow={({ editor: ed, state }) => ed.isEditable && !state.selection.empty && !ed.isActive('picture') && !ed.isActive('image') && state.selection.constructor.name !== 'NodeSelection'} className="cd-bubble">
           <select
@@ -541,6 +605,28 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       </div>
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
       <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={[]} />
+      {page && writing && (
+        <EditorContextMenu
+          editor={editor}
+          host={host}
+          linkLabel="Add a link"
+          onDefinition={() => setDefOpen(true)}
+          onLink={() => setLinkOpen(true)}
+          actions={{
+            stress: (t) => editor.chain().focus().insertContent({ ...newStress('box'), attrs: { ...newStress('box').attrs, syllables: [t] } }).run(),
+            ipa: () => editor.chain().focus().insertContent([{ type: 'text', text: ' ' }, newIpa('RP')]).run(),
+          }}
+          extra={[
+            { label: 'Comment', hint: 'on the selection', run: startComment, show: !!quote && canComment },
+            { label: 'Turn into Heading 1', run: () => editor.chain().focus().setHeading({ level: 1 }).run(), show: !editor.isActive('heading', { level: 1 }) },
+            { label: 'Turn into Heading 2', run: () => editor.chain().focus().setHeading({ level: 2 }).run(), show: !editor.isActive('heading', { level: 2 }) },
+            { label: 'Turn into text', run: () => editor.chain().focus().setParagraph().run(), show: editor.isActive('heading') },
+            { label: 'Bulleted list', run: () => editor.chain().focus().toggleBulletList().run() },
+            { label: 'Checklist', run: () => editor.chain().focus().toggleTaskList().run() },
+            { label: 'Insert…', hint: '/', run: () => setGallery(true) },
+          ]}
+        />
+      )}
       {writing && <SlashMenu editor={editor} slash={slash} groups={DOC_GROUPS} />}
       {gallery && (
         <InsertGallery
@@ -687,5 +773,57 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
         </span>
       )}
     </span>
+  );
+}
+
+// Someone in the document: who they are, and a message to them.
+function PersonCard({ p, r, me, onClose }: { p: { name: string; color: string; uid?: string }; r: DOMRect; me: string; onClose: () => void }) {
+  const { user, profile } = useAuth();
+  const ref = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<{ email?: string; role?: string } | null>(null);
+  useEffect(() => {
+    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
+    window.setTimeout(() => document.addEventListener('mousedown', close), 0);
+    return () => document.removeEventListener('mousedown', close);
+  }, [onClose]);
+  useEffect(() => {
+    if (!p.uid) return;
+    void getDoc(fsDoc(db, 'users', p.uid))
+      .then((s) => setInfo({ email: s.data()?.email, role: s.data()?.role }))
+      .catch(() => setInfo({}));
+  }, [p.uid]);
+  const self = p.uid === me;
+  const message = async () => {
+    if (!user || !p.uid) return;
+    setBusy(true);
+    try {
+      const role = (r: string | undefined) => (r === 'learner' ? 'learner' : 'teacher') as 'teacher' | 'learner';
+      const id = await openChat({ key: user.uid, name: user.displayName || profile?.displayName || 'Me', role: role(profile?.role) }, [{ key: p.uid, name: p.name, role: role(info?.role) }]);
+      window.open('/messages?c=' + id, '_blank');
+      onClose();
+    } catch {
+      setBusy(false);
+    }
+  };
+  return createPortal(
+    <div ref={ref} className="cd-person" role="dialog" aria-label={p.name} style={{ top: r.bottom + 8, left: Math.max(8, Math.min(r.left - 120, window.innerWidth - 268)) }}>
+      <span className="cd-person-h">
+        <span className="cd-avatar big" style={{ background: p.color }}>
+          {p.name.trim().slice(0, 1).toUpperCase()}
+        </span>
+        <span>
+          <b>{p.name}{self ? ' (you)' : ''}</b>
+          <span className="hint">{info?.role === 'learner' ? 'Learner' : info?.role ? 'Teacher' : 'In this document now'}</span>
+          {info?.email && <span className="hint">{info.email}</span>}
+        </span>
+      </span>
+      {!self && p.uid && (
+        <button type="button" className="btn small-btn primary" disabled={busy} onClick={() => void message()}>
+          <UiIcon name="message" size={14} /> Send a message
+        </button>
+      )}
+    </div>,
+    document.body,
   );
 }

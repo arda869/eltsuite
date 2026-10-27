@@ -1,3 +1,6 @@
+import { PdfStack, toStack } from '../pdf/PdfStack';
+import { MARK_COLORS } from '../pdf/PdfNodes';
+import type { PageSize } from '../pdf/pdfData';
 import { createPortal } from 'react-dom';
 import { TimelineFigure, type TlAttrs } from '../editor/Timeline';
 import { LetterGap } from './LetterGap';
@@ -900,6 +903,27 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             {kids()}
           </td>
         );
+      case 'pdfBlock': {
+        const pages = (node.attrs?.pages ?? []) as PageSize[];
+        return (
+          <div key={key} className="pdf-block" data-bk={key}>
+            <PdfStack src={String(node.attrs?.src ?? '')} classId={classId ?? ''} pages={pages}>
+              <div className="pdf-layer">
+                {(node.content ?? []).map((c, i) => {
+                  const a = c.attrs ?? {};
+                  const at = toStack(pages, Number(a.page) || 0, Number(a.x) || 0, Number(a.y) || 0);
+                  if (c.type === 'pdfMark') return <span key={i} className="pdf-mark" style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0) * 100}%`, height: `${(Number(a.h) || 0) * at.pageH}%`, background: MARK_COLORS.find((m) => m.k === a.color)?.bg ?? MARK_COLORS[0].bg }} />;
+                  return (
+                    <div key={i} className={'pdf-box tone-' + (a.tone || 'paper')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0.3) * 100}%` }}>
+                      <div className="pdf-box-body">{c.content?.map((cc, j) => render(cc, key + '.' + i + '.' + j))}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </PdfStack>
+          </div>
+        );
+      }
       case 'textBox':
         return (
           <BoxFrame key={key} attrs={node.attrs as BoxAttrs}>

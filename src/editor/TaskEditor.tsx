@@ -67,6 +67,8 @@ import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 import { InsertGallery } from './InsertGallery';
+import { PDF_NODES } from '../pdf/PdfNodes';
+import { PdfPick } from '../pdf/PdfPick';
 
 // Adds a drag-and-drop gap, and a word bank above the paragraph if the task has none yet.
 function insertDropGap(e: Editor) {
@@ -150,6 +152,7 @@ export const COMMANDS: Cmd[] = [
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
+  { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
   { key: 'column', label: 'Next column', hint: 'Start the second column (two-column layout)', group: 'Text', run: (e) => e.chain().focus().insertContent([newColumnBreak(), { type: 'paragraph' }]).run() },
   { key: 'textbox', label: 'Text box', hint: 'Reading texts, model answers, emails, web pages, speech bubbles…', group: 'Text', run: (e) => e.chain().focus().insertContent([newTextBox('paper'), { type: 'paragraph' }]).run() },
@@ -325,7 +328,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
+const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
 export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -437,6 +440,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       Mention,
       ...(handles ? [TrailingLine] : []),
       RevealBox,
+      ...PDF_NODES,
       LinkCard,
       MediaBlock,
       UploadBlock,
@@ -526,6 +530,12 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     }
   }
   const [picOpen, setPicOpen] = useState(false);
+  const [pdfOpen, setPdfOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setPdfOpen(true);
+    window.addEventListener('ll:add-pdf', open);
+    return () => window.removeEventListener('ll:add-pdf', open);
+  }, []);
   useEffect(() => {
     const open = () => setPicOpen(true);
     window.addEventListener('ll:add-picture', open);
@@ -702,6 +712,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
         )}
       </div>
       {picOpen && editor && <PictureDialog editor={editor} classId={classId} onClose={() => setPicOpen(false)} />}
+      {pdfOpen && editor && <PdfPick classId={classId} onClose={() => setPdfOpen(false)} onPick={(n) => (setPdfOpen(false), editor.chain().focus().insertContent([n, { type: 'paragraph' }]).run())} />}
       {gallery && (
         <InsertGallery
           commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-'))}
