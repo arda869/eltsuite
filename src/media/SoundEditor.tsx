@@ -16,7 +16,7 @@ import { UiIcon } from '../components/UiIcon';
 // more files, or record a new track while the others play. Undo, and the usual shortcuts.
 
 // extra: more tracks to start with (a recording session: one per person), each at its own time.
-export type SoundSource = { buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
+export type SoundSource = { blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
 export type Use = { cls: string; lesson: string; task: string };
 export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress: (p: number) => void) => Promise<void> };
@@ -68,7 +68,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 
   // ------------------------------------------------------------ the project, with undo
   const initial = useMemo<Project>(() => {
-    const voice = { ...newTrack(source.extra || source.at !== undefined ? source.name : source.recorded ? 'Recording' : 'Voice'), clips: [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
+    const voice = { ...newTrack(source.blank ? 'Recording' : source.extra || source.at !== undefined ? source.name : source.recorded ? 'Recording' : 'Voice'), clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
     const marks = source.marks ?? [];
     const texts = source.script ?? [];
     const lines: Line[] = texts.map((text, i) => {
@@ -476,12 +476,42 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   };
   // Record a new track while everything else plays (wear headphones).
   const [rec, setRec] = useState<{ at: number; started: number } | null>(null);
+  const [mic, setMic] = useState({ device: '', noise: true, echo: true, auto: false });
+  const [mics, setMics] = useState<MediaDeviceInfo[]>([]);
+  useEffect(() => void navigator.mediaDevices?.enumerateDevices?.().then((l) => setMics(l.filter((d) => d.kind === 'audioinput'))).catch(() => {}), []);
+  // Reading a script: it shows large while recording, and Space starts the next line.
+  const unmarked = useRef<Set<string>>(new Set());
+  const cue = useRef(0);
+  const cueAt = useRef<(number | undefined)[]>([]);
+  const [scriptText, setScriptText] = useState('');
+  const takeScript = (text: string) => {
+    const rows = text.split(/\n+/).map((t) => t.trim()).filter(Boolean);
+    const add = rows.map((t): Line => {
+      const sp = /^\s*([A-Z][\p{L} .'-]{0,18}?)\s*:\s+(.+)$/u.exec(t);
+      return { id: newId(), text: sp ? sp[2] : t, who: sp ? sp[1] : undefined, a: 0, b: 0.3 };
+    });
+    const old = new Set(unmarked.current);
+    unmarked.current = new Set(add.map((l) => l.id));
+    edit((x) => ({ ...x, lines: [...x.lines.filter((l) => !old.has(l.id)), ...add] }));
+  };
+  const cueLines = p.lines.filter((l) => unmarked.current.has(l.id));
+  const nextCue = () => {
+    if (!rec) return;
+    const i = cue.current;
+    if (i >= cueLines.length) return;
+    cueAt.current[p.lines.indexOf(cueLines[i])] = rec.at + (performance.now() - rec.started) / 1000;
+    cue.current = i + 1;
+    tick((n) => n + 1);
+  };
   const recorder = useRef<MediaRecorder | null>(null);
   const [recError, setRecError] = useState('');
   const startRec = async () => {
     setRecError('');
+    cue.current = 0;
+    cueAt.current = [];
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: false, channelCount: 1 } });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { ...(mic.device ? { deviceId: { exact: mic.device } } : {}), noiseSuppression: mic.noise, echoCancellation: mic.echo, autoGainControl: mic.auto, channelCount: 1 } });
+      void navigator.mediaDevices.enumerateDevices().then((l) => setMics(l.filter((d) => d.kind === 'audioinput')));
       const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((t) => MediaRecorder.isTypeSupported?.(t));
       const r = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
       const chunks: Blob[] = [];
@@ -503,10 +533,40 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           // Recording starts a moment after pressing; line it up with what was playing.
           const latency = Math.min(0.25, (ctx.current?.baseLatency ?? 0) + (ctx.current?.outputLatency ?? 0.05));
           const id = newId();
-          const n = p.tracks.filter((t) => t.kind === 'voice').length + 1;
-          addSource(id, d, `Recording ${n}`);
-          const tr = { ...newTrack(`Recording ${n}`), clips: [{ id: newId(), src: id, a: Math.min(latency, d.length / rate), b: d.length / rate, at, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }] };
-          edit((x) => ({ ...x, tracks: [...x.tracks.filter((t) => t.kind === 'voice'), tr, ...x.tracks.filter((t) => t.kind !== 'voice')] }));
+          const empty = p.tracks.find((t) => t.kind === 'voice' && !t.clips.length);
+          const n = p.tracks.filter((t) => t.kind === 'voice' && t.clips.length).length + 1;
+          addSource(id, d, n === 1 ? 'Recording' : `Recording ${n}`);
+          const clip = { id: newId(), src: id, a: Math.min(latency, d.length / rate), b: d.length / rate, at, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 };
+          const len = clip.b - clip.a;
+          // Script lines not marked while reading share out the rest of the take.
+          const marked = cueAt.current;
+          const open = new Set(unmarked.current);
+          unmarked.current.clear();
+          edit((x) => {
+            // Each line starts where Space was pressed; lines not marked share out the time around them.
+            const idx = x.lines.map((l, i) => (open.has(l.id) ? i : -1)).filter((i) => i >= 0);
+            const st: number[] = idx.map((i) => marked[i] as number);
+            for (let k = 0; k < st.length; k++) {
+              if (st[k] !== undefined) continue;
+              let e = k;
+              while (e < st.length && st[e] === undefined) e++;
+              const from = k > 0 ? st[k - 1] : at;
+              const to = e < st.length ? st[e] : at + len;
+              for (let j = k; j < e; j++) st[j] = from + ((to - from) * (j - k + (k > 0 ? 1 : 0))) / (e - k + (k > 0 ? 1 : 0));
+              k = e - 1;
+            }
+            const lines = x.lines.map((l, i) => {
+              const k = idx.indexOf(i);
+              if (k < 0) return l;
+              const a = st[k];
+              const b = Math.min(k + 1 < st.length ? st[k + 1] : at + len, a + 12);
+              return { ...l, a, b: Math.max(a + 0.3, b) };
+            });
+            const tracks = empty
+              ? x.tracks.map((t) => (t.id === empty.id ? { ...t, clips: [clip] } : t))
+              : [...x.tracks.filter((t) => t.kind === 'voice'), { ...newTrack(`Recording ${n}`), clips: [clip] }, ...x.tracks.filter((t) => t.kind !== 'voice')];
+            return { ...x, tracks, lines };
+          });
         } catch {
           setRecError('The recording could not be read. Try again.');
         }
@@ -540,7 +600,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       if (el.closest('input, textarea, select, [contenteditable=true]')) return;
       const mod = e.metaKey || e.ctrlKey;
       const k = e.key.toLowerCase();
-      if (e.code === 'Space') e.preventDefault(), e.stopPropagation(), rec ? stopRec() : toggle();
+      if (e.code === 'Space') e.preventDefault(), e.stopPropagation(), rec ? (cueLines.length ? nextCue() : stopRec()) : toggle();
       else if (mod && k === 'z') e.preventDefault(), e.shiftKey ? redo() : undo();
       else if (mod && k === 'y') e.preventDefault(), redo();
       else if (mod && (k === 'b' || k === 'k')) e.preventDefault(), split();
@@ -651,7 +711,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     setVw(Math.max(200, s.clientWidth - HEAD_W));
     return () => ro.disconnect();
   }, [saving]);
-  const viewLen = Math.max(total + 4, 8);
+  const viewLen = Math.max(total + 4, rec ? rec.at + recNow + 6 : 0, source.blank && !p.tracks.some((t) => t.clips.length) ? 30 : 8);
   const width = vw * zoom;
   const pps = width / viewLen;
   const X = (t: number) => t * pps;
@@ -799,6 +859,8 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     );
 
   const voice = p.tracks.filter((t) => t.kind === 'voice');
+  const hasSound = total >= 0.2 && p.tracks.some((t) => t.clips.length);
+  const fresh = !voice.some((t) => t.clips.length);
   const sfxTracks = p.tracks.filter((t) => t.kind === 'sfx');
   const pickedLabel = pickedClip ? names.current[pickedClip.src] ?? 'Clip' : '';
   const rulerStep = STEPS.find((s) => s * pps >= 70) ?? 600;
@@ -807,6 +869,41 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 
   return (
     <div className="daw sx">
+      <div className="sx-bar">
+        <span className="sx-mark" aria-hidden="true">
+          <UiIcon name="mic" size={16} />
+        </span>
+        <input className="sx-name" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Name the sound" aria-label="Name" />
+        <span style={{ flex: 1 }} />
+        <span className="sx-q">
+          <span className="seg small-seg" role="radiogroup" aria-label="Quality">
+            {SOUND_QUALITY.map((q) => (
+              <button key={q.k} type="button" role="radio" aria-checked={quality === q.k} className={quality === q.k ? 'on' : ''} onClick={() => setQuality(q.k)}>
+                {q.label}
+              </button>
+            ))}
+          </span>
+          <span className="sx-size">{hasSound ? formatBytes(est) : ''}</span>
+        </span>
+        {error && <span className="hint warn">{error}</span>}
+        <button type="button" className="btn sx-ghost" onClick={onBack}>
+          {backLabel}
+        </button>
+        {replace ? (
+          <>
+            <button type="button" className="btn sx-ghost" onClick={save} disabled={!hasSound}>
+              Save as a new sound
+            </button>
+            <button type="button" className="btn primary" onClick={askReplace} disabled={!hasSound}>
+              Replace this sound…
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn primary" onClick={save} disabled={!hasSound}>
+            Save
+          </button>
+        )}
+      </div>
       {/* Transport */}
       <div className="daw-transport">
         <span className="daw-btns">
@@ -867,6 +964,30 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       </div>
 
       <div className="sx-main">
+        {fresh && !rec && (
+          <div className="sx-start">
+            <button type="button" className="sx-bigrec" onClick={() => void startRec()} aria-label="Start recording">
+              <i />
+            </button>
+            <strong>Ready when you are</strong>
+            <span>Press the button or R to start. Press it again, or R, to stop.{cueLines.length ? ' Space starts each line of the script.' : ''}</span>
+            {recError && <span className="sx-err">{recError}</span>}
+          </div>
+        )}
+        {rec && cueLines.length > 0 && (
+          <div className="sx-prompter" aria-live="polite">
+            {cueLines.slice(Math.max(0, cue.current - 1), cue.current + 3).map((l, k) => {
+              const idx = Math.max(0, cue.current - 1) + k;
+              return (
+                <p key={l.id} className={idx === cue.current - 1 ? 'now' : idx < cue.current - 1 ? 'done' : ''}>
+                  {l.who && <b>{l.who}: </b>}
+                  {l.text}
+                </p>
+              );
+            })}
+            <span>{cue.current < cueLines.length ? 'Space: start the next line' : 'Last line. Press R to stop.'}</span>
+          </div>
+        )}
         {/* The timeline */}
         <div className="sx-tl" ref={scroller} onScroll={(e) => setScroll((e.target as HTMLElement).scrollLeft)} onWheel={wheel}>
           <div className="sx-inner" style={{ width: width + HEAD_W }}>
@@ -1071,6 +1192,36 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                 </>
               )}
             </>
+          ) : fresh ? (
+            <>
+              <h4>Microphone</h4>
+              <label className="field">
+                <span>Input</span>
+                <select value={mic.device} onChange={(e) => setMic({ ...mic, device: e.target.value })}>
+                  <option value="">Default microphone</option>
+                  {mics.filter((d) => d.deviceId && d.deviceId !== 'default').map((d, i) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Microphone ${i + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={mic.noise} onChange={(e) => setMic({ ...mic, noise: e.target.checked })} />
+                Reduce background noise
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={mic.echo} onChange={(e) => setMic({ ...mic, echo: e.target.checked })} />
+                Reduce echo
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={mic.auto} onChange={(e) => setMic({ ...mic, auto: e.target.checked })} />
+                Set my volume automatically
+              </label>
+              <h4 style={{ marginTop: 8 }}>Script to read</h4>
+              <textarea className="sx-scriptin" value={scriptText} onChange={(e) => setScriptText(e.target.value)} onBlur={() => takeScript(scriptText)} placeholder="Optional. Paste it here, one sentence per line. While you record it shows large, and Space starts each line, so the karaoke is timed for you." rows={6} />
+              <span className="hint">Keep a hand’s width from the microphone and speak a little slower than usual. Made a mistake? Stop, click just before it and record again.</span>
+            </>
           ) : (
             <>
               <h4>The whole sound</h4>
@@ -1125,42 +1276,6 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         </aside>
       </div>
 
-      <div className="sx-save">
-        <label className="field">
-          <span>Name</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="For example: Unit 4, listening 2" />
-        </label>
-        <div className="field" style={{ gap: 6 }}>
-          <span>Quality</span>
-          <span className="seg small-seg" role="radiogroup" aria-label="Quality">
-            {SOUND_QUALITY.map((q) => (
-              <button key={q.k} type="button" role="radio" aria-checked={quality === q.k} className={quality === q.k ? 'on' : ''} onClick={() => setQuality(q.k)}>
-                {q.label}
-              </button>
-            ))}
-          </span>
-          <span className="hint">About {formatBytes(est)}.</span>
-        </div>
-        <span style={{ flex: 1 }} />
-        {error && <span className="hint warn">{error}</span>}
-        <button type="button" className="btn link" onClick={onBack}>
-          {backLabel}
-        </button>
-        {replace ? (
-          <>
-            <button type="button" className="btn" onClick={save} disabled={total < 0.2}>
-              Save as a new sound
-            </button>
-            <button type="button" className="btn primary" onClick={askReplace} disabled={total < 0.2}>
-              Replace this sound…
-            </button>
-          </>
-        ) : (
-          <button type="button" className="btn primary" onClick={save} disabled={total < 0.2}>
-            Save
-          </button>
-        )}
-      </div>
       <span className="hint daw-keys">Space play · Ctrl B split · Delete remove · Ctrl D duplicate · Ctrl C / V copy and paste · Ctrl Z undo · R record · T add a line · M mute · S solo · L loop · + − zoom · Alt while dragging: no snapping</span>
       {asking && (
         <div className="sed-replace" role="alertdialog" aria-label="Replace this sound?" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>

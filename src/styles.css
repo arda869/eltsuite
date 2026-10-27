@@ -6015,3 +6015,69 @@ select.type-pick[data-type='practice'] { --tc: #a8701f; }
   .cd-bubble { flex-wrap: wrap; max-width: calc(100vw - 24px); }
 }
 @media (max-width: 640px) { .dp.k-doc .cd-words { display: none; } .dp.k-doc .cd-mode select { max-width: 116px; } .dp.k-doc .cd-top { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } }
+/* The sound editor as one app: a dark studio from edge to edge */
+.sx-full { position: fixed; inset: 0; z-index: 90; display: flex; background: #171615; }
+.sx-full > .sx, .studio-sound > .sx { flex: 1; min-height: 0; }
+.studio-sound { padding: 0; display: flex; }
+.sx { --accent: #d98a5c; --accent-text: #e9a77d; gap: 0; height: 100%; min-height: 100dvh; background: #171615; color: var(--studio-ink); }
+.sx .hint { color: var(--studio-dim); }
+.sx-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--studio-line); background: #1b1a18; }
+.sx-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 22%, #1b1a18); color: var(--accent-text); flex: none; }
+.sx-name { min-width: 0; width: min(420px, 40vw); height: 36px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--studio-ink); font: 500 19px var(--serif); }
+.sx-name:hover { border-color: var(--studio-line); }
+.sx-name:focus { outline: none; border-color: var(--accent); background: #22201e; }
+.sx-name::placeholder { color: var(--studio-dim); }
+.sx-q { display: inline-flex; align-items: center; gap: 8px; }
+.sx-q .seg { background: #262421; }
+.sx-q .seg button { color: var(--studio-dim); }
+.sx-q .seg button.on { background: #3a3733; color: var(--studio-ink); box-shadow: none; }
+.sx-size { min-width: 52px; font: 12px ui-monospace, Menlo, monospace; color: var(--studio-dim); }
+.sx .btn.sx-ghost, .sx .sx-insp .btn { background: #2a2825; border-color: #3a3733; color: var(--studio-ink); }
+.sx .btn.sx-ghost:hover, .sx .sx-insp .btn:hover { border-color: var(--accent); }
+.sx .daw-transport { border-radius: 0; padding: 8px 16px; border-bottom: 1px solid var(--studio-line); background: #1f1d1b; }
+.sx .sx-main { flex: 1; min-height: 0; margin: 0; gap: 0; grid-template-columns: minmax(0, 1fr) 300px; position: relative; }
+.sx .sx-tl, .studio-sound .sx-tl, .sx-full .sx-tl { max-height: none; min-height: 0; height: 100%; border-radius: 0; }
+.sx .sx-insp, .studio-sound .sx-insp, .sx-full .sx-insp { max-height: none; height: 100%; box-sizing: border-box; border-radius: 0; background: #1d1c1a; box-shadow: inset 1px 0 0 var(--studio-line); color: var(--studio-ink); overflow-y: auto; }
+.sx-insp .check-row, .sx-insp .field > span, .sx-insp .daw-lab, .sx-insp .daw-val { color: var(--studio-ink); }
+.sx-insp select, .sx-insp input:not([type]), .sx-insp input[type="text"], .sx-insp input[type="number"], .sx-insp textarea, .sx-sil select { background-color: #2a2825; border: 1px solid #3a3733; color: var(--studio-ink); border-radius: 8px; }
+.sx-insp select { height: 34px; padding: 0 10px; font: 13px var(--sans); }
+.sx-scriptin { min-height: 120px; padding: 8px 10px; font: 14px/1.5 var(--serif); resize: vertical; }
+.sx-insp .sx-fx-grid button { background: #2a2825; border-color: #3a3733; color: var(--studio-ink); }
+.sx-insp .sx-fx-grid button.on { background: color-mix(in srgb, var(--accent) 26%, #2a2825); border-color: var(--accent); color: #fff; }
+.sx-adds { border-top-color: var(--studio-line); }
+.sx .daw-keys { padding: 7px 16px; border-top: 1px solid var(--studio-line); background: #1b1a18; color: var(--studio-dim); font-size: 11px; }
+.sx-start { position: absolute; z-index: 8; left: 168px; right: 300px; top: 24px; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; background: radial-gradient(ellipse at center, rgba(23, 22, 21, .78), rgba(23, 22, 21, .35) 70%); pointer-events: none; }
+.sx-start > * { pointer-events: auto; }
+.sx-start strong { font: 500 24px var(--serif); color: var(--studio-ink); }
+.sx-start span { max-width: 380px; font-size: 13.5px; color: var(--studio-dim); }
+.sx-start .sx-err { color: #f0a39f; }
+.sx-bigrec { width: 84px; height: 84px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #2a2825; box-shadow: 0 0 0 1px #3a3733, 0 12px 40px rgba(0, 0, 0, .45); cursor: pointer; transition: transform .12s; }
+.sx-bigrec:hover { transform: scale(1.05); }
+.sx-bigrec i { width: 34px; height: 34px; border-radius: 50%; background: #d64541; box-shadow: 0 0 0 6px rgba(214, 69, 65, .18); }
+.sx-prompter { position: absolute; z-index: 8; left: 168px; right: 300px; bottom: 18px; margin: 0 24px; padding: 16px 22px; border-radius: 16px; background: rgba(17, 16, 15, .92); box-shadow: 0 0 0 1px var(--studio-line), 0 16px 40px rgba(0, 0, 0, .5); display: flex; flex-direction: column; gap: 6px; }
+.sx-prompter p { margin: 0; font: 18px/1.45 var(--serif); color: var(--studio-dim); }
+.sx-prompter p.now { font-size: 24px; color: #fff; }
+.sx-prompter p.done { opacity: .45; font-size: 15px; }
+.sx-prompter > span { font-size: 11.5px; color: var(--accent-text); letter-spacing: .04em; }
+@media (max-width: 900px) {
+  .sx .sx-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
+  .sx .sx-insp { height: auto; max-height: 42vh; box-shadow: inset 0 1px 0 var(--studio-line); }
+  .sx-start, .sx-prompter { left: 0; right: 0; }
+  .sx-start { bottom: auto; height: calc(100% - 24px); }
+  .sx-bar { flex-wrap: wrap; }
+  .sx-name { width: auto; flex: 1; }
+  .sx-q { order: 5; width: 100%; }
+  .sx .daw-keys { display: none; }
+}
+.sx .sx-voice { height: 120px; }
+.sx .sx-tl { background: repeating-linear-gradient(180deg, transparent 0 59px, rgba(255, 255, 255, .025) 59px 60px), var(--studio); }
+@media (max-width: 900px) {
+  .sx-start { top: 24px; bottom: auto; height: 240px; gap: 6px; }
+  .sx-bigrec { width: 64px; height: 64px; } .sx-bigrec i { width: 26px; height: 26px; }
+  .sx-start strong { font-size: 19px; }
+  .sx-mark { display: none; }
+  .sx-name { font-size: 17px; padding: 0 6px; }
+  .sx-bar > span[style] { display: none; }
+  .sx-bar .btn { padding: 0 12px; }
+}
+@media (max-width: 900px) { .sx-start { left: 168px; } .sx-start span { display: none; } .sx-start strong { font-size: 15px; } }

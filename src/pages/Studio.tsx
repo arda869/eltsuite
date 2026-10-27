@@ -158,7 +158,6 @@ export function SoundStudio() {
   }, [item]);
   return (
     <div className="studio studio-dark">
-      <StudioBar app="Sound editor" where={item ? `Resources library${item.folder ? ` › ${item.folder.split('/').join(' › ')}` : ''} › ${item.name}` : ''} />
       <main className="studio-sound">
         {item === undefined || (item && !source && !error) ? (
           <Loader label="Opening the sound" />

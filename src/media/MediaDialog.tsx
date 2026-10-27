@@ -5,7 +5,6 @@ import { useAuth } from '../lib/auth';
 import { decodeSound } from '../lib/sound';
 import { ArchivePicker } from '../editor/Picture';
 import { UiIcon } from '../components/UiIcon';
-import { Recorder, type Take } from './Recorder';
 import { SoundEditor, type SoundSource } from './SoundEditor';
 import { isVideoUrl } from './Player';
 
@@ -20,7 +19,6 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
   const { user } = useAuth();
   const [tab, setTab] = useState<MediaTab>(start);
   const [source, setSource] = useState<SoundSource | null>(null);
-  const [take, setTake] = useState<Take | null>(null); // kept so "Record again" goes back to it
   const [busy, setBusy] = useState('');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -49,6 +47,13 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
       setBusy('That file could not be opened as a sound. Try an MP3, M4A or WAV file.');
     }
   };
+  // Recording opens the editor straight away, ready to record.
+  const blank = (): SoundSource => ({ blank: true, recorded: true, name: 'Recording', buffer: new AudioBuffer({ length: 1, sampleRate: 48000 }) });
+  const startedBlank = useRef(false);
+  useEffect(() => {
+    if (start === 'record' && !dropped) (startedBlank.current = true), setSource(blank());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (dropped) void open(dropped);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,6 +93,20 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     { k: 'link', label: 'YouTube or link', icon: 'link' },
   ];
   const editing = !!source;
+  if (source)
+    return createPortal(
+      <div className="sx-full" role="dialog" aria-label="Sound editor" onKeyDown={(e) => e.stopPropagation()}>
+        <SoundEditor
+          source={source}
+          classId={classId}
+          folder={folder}
+          backLabel="Cancel"
+          onBack={() => (source.blank && startedBlank.current ? onClose() : setSource(null))}
+          onSaved={(s) => onPick({ mediaId: s.mediaId, archiveId: s.archiveId, kind: 'audio', title: s.title })}
+        />
+      </div>,
+      document.body,
+    );
   return createPortal(
     <div className="scrim" onClick={editing ? undefined : onClose}>
       <div className="dialog md-dialog" role="dialog" aria-label="Add a sound or video" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
@@ -102,32 +121,14 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
         {!editing && (
           <span className="md-tabs" role="tablist">
             {TABS.filter((t) => !(noArchive && t.k === 'archive')).map((t) => (
-              <button key={t.k} type="button" role="tab" aria-selected={tab === t.k} className={tab === t.k ? 'on' : ''} onClick={() => (setTab(t.k), setBusy(''))}>
+              <button key={t.k} type="button" role="tab" aria-selected={tab === t.k} className={tab === t.k ? 'on' : ''} onClick={() => (t.k === 'record' ? setSource(blank()) : (setTab(t.k), setBusy('')))}>
                 <UiIcon name={t.icon} size={16} />
                 {t.label}
               </button>
             ))}
           </span>
         )}
-        {source ? (
-          <SoundEditor
-            source={source}
-            classId={classId}
-            folder={folder}
-            backLabel={source.recorded ? 'Record again' : 'Choose another file'}
-            onBack={() => setSource(null)}
-            onSaved={(s) => onPick({ mediaId: s.mediaId, archiveId: s.archiveId, kind: 'audio', title: s.title })}
-          />
-        ) : tab === 'record' ? (
-          <Recorder
-            initial={take}
-            onDone={(s, t) => {
-              setTake(t);
-              setSource(s);
-            }}
-            onCancel={onClose}
-          />
-        ) : tab === 'upload' ? (
+        {tab === 'upload' || tab === 'record' ? (
           <>
             <div
               className={'pic-drop' + (over ? ' over' : '')}
