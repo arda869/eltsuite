@@ -228,7 +228,7 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
             Open
           </button>
         )}
-        {path && !locked && (
+        {path && (
           <button type="button" className="btn small-btn" onClick={onRename}>
             <UiIcon name="edit" size={14} /> Rename
           </button>

@@ -398,7 +398,16 @@ export function MediaArchive() {
       { label: 'Remove from the library', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
     ];
   };
-  const folderMenu = (f: string): MenuItem[] => inClasses(f) ? [{ label: 'Open', icon: 'folder', onClick: () => setFolder(f) }] : [
+  // Folders in Classes follow the classes: renaming one means renaming the class or topic there.
+  const renameF = async (f: string) => {
+    if (!inClasses(f)) return setSel(new Set(['f:' + f])), setRenaming('f:' + f);
+    const parts = f.split('/');
+    const cls = entries.find((e) => e.cls && e.cls.className === parts[1])?.cls;
+    if (parts.length < 2 || !cls) return void (await ask('The Classes folder keeps your lessons in step with your classes, so it cannot be renamed here. Rename a class or a topic in the class, and its folder follows.', { ok: 'OK', cancel: '' }));
+    const what = parts.length === 2 ? `the class “${parts[1]}”` : `the topic “${parts[parts.length - 1]}” in ${parts[1]}`;
+    if (await ask(`This folder follows ${what}. To rename it, rename it in the class: the folder changes with it.`, { ok: 'Open the class', cancel: 'Cancel' })) window.open(`/class/${cls.classId}`, '_blank');
+  };
+  const folderMenu = (f: string): MenuItem[] => inClasses(f) ? [{ label: 'Open', icon: 'folder', onClick: () => setFolder(f) }, { label: 'Rename…', icon: 'edit', onClick: () => void renameF(f) }] : [
     { label: 'Open', icon: 'folder', onClick: () => setFolder(f) },
     { label: 'New folder inside', icon: 'plus', onClick: () => void newFolder(f) },
     { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => (setSel(new Set(['f:' + f])), setRenaming('f:' + f)) },
@@ -968,7 +977,7 @@ export function MediaArchive() {
             tasks={tasks.filter((t) => inTree(t.folder, oneFolder))}
             folders={allFolders.filter((f) => f.startsWith(oneFolder + '/'))}
             onOpen={() => setFolder(oneFolder)}
-            onRename={() => setRenaming('f:' + oneFolder)}
+            onRename={() => void renameF(oneFolder)}
             onDownload={() => void download([], [oneFolder])}
             onDelete={() => void deleteF(oneFolder)}
             onClose={() => setSel(new Set())}
@@ -985,7 +994,7 @@ export function MediaArchive() {
             folders={allFolders.filter((f) => (folder ? f.startsWith(folder + '/') : true))}
             extra={[['Lessons, collab documents and more', entries.filter((e) => inTree(e.folder, folder) && (e.cls || e.doc)).length]]}
             onOpen={() => {}}
-            onRename={() => setRenaming('f:' + folder)}
+            onRename={() => void renameF(folder)}
             onDownload={() => void download([], [folder])}
             onDelete={() => void deleteF(folder)}
             onClose={() => {}}

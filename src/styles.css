@@ -6327,3 +6327,11 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .tt-frames { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 12px; padding-top: 14px; border-top: 1px solid var(--hair); }
 .tt-plan .tt-grid { margin-bottom: 4px; row-gap: 14px; }
 .tt-stages .tt-table td { vertical-align: top; }
+/* Recent: one row only */
+.ma-recent-row { padding: 3px 3px 0; grid-auto-rows: 0; row-gap: 0; }
+@media (max-width: 760px) { .ma-recent-row { padding-bottom: 3px; } }
+/* The info pane: room around everything, facts in two neat columns */
+.ma-detail { padding: 18px 18px 20px; box-sizing: border-box; gap: 14px; }
+.ma-facts { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; row-gap: 9px; margin: 4px 0 0; }
+.ma-facts dt { color: var(--muted); }
+.ma-facts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }

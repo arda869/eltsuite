@@ -3,7 +3,7 @@ import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { Mark, Wordmark } from './Wordmark';
+import { Mark } from './Wordmark';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Avatar } from './avatars';
@@ -103,13 +103,19 @@ export function TopBar({ children }: { children?: ReactNode }) {
 // Top left: the app you are in, within ELT Suite.
 function AppMark() {
   const { pathname } = useLocation();
-  const app = pathname.startsWith('/archive') || pathname.startsWith('/doc') ? { name: 'Files', to: '/archive', color: '#3667a6' } : pathname.startsWith('/messages') ? { name: 'Messages', to: '/messages', color: '#7a4fa3' } : null;
-  if (!app)
-    return (
-      <Link to="/" style={{ textDecoration: 'none' }} aria-label="ELT Suite">
-        <Wordmark />
-      </Link>
-    );
+  // Every app shows its name under ELT Suite, in its own colour.
+  const app =
+    pathname.startsWith('/archive') || pathname.startsWith('/doc')
+      ? { name: 'Files', to: '/archive', color: '#3667a6' }
+      : pathname.startsWith('/messages')
+        ? { name: 'Messages', to: '/messages', color: '#7a4fa3' }
+        : pathname.startsWith('/colleague')
+          ? { name: 'Colleagues', to: '/colleagues', color: '#4f6b7a' }
+          : pathname.startsWith('/settings')
+            ? { name: 'Settings', to: '/settings', color: '#6b6560' }
+            : pathname.startsWith('/notebook')
+              ? { name: 'Notebook', to: '/notebook', color: '#a8701f' }
+              : { name: 'Classes', to: '/', color: '#c8764a' };
   return (
     <Link to={app.to} className="suite-mark" style={{ ['--app' as string]: app.color }}>
       <Mark size={26} />
