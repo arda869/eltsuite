@@ -1,3 +1,4 @@
+import { BUILD, NewerGuard, OlderCopyBanner } from '../collab/guard';
 import { useEffect, useMemo, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import Document from '@tiptap/extension-document';
@@ -47,7 +48,8 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         ...NODES,
         Placeholder.configure({ placeholder: 'Write here. Type / to add IPA, a gap, a choice and more' }),
         Collaboration.configure({ document: session.doc }),
-        CollaborationCursor.configure({ provider: session.provider, user: { name: me.name || 'Someone', color: colorOf(me.uid), uid: me.uid } }),
+        CollaborationCursor.configure({ provider: session.provider, user: { name: me.name || 'Someone', color: colorOf(me.uid), uid: me.uid, build: BUILD } }),
+        NewerGuard,
       ],
       editable: canEdit,
       editorProps: { attributes: { class: 'pdf-doc', spellcheck: 'true' } },
@@ -120,6 +122,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         </button>
       </div>
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
+      <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
       <div className="pdff-page">
         <EditorClassContext.Provider value={{ classId: '', classmates: [] }}>
           <EditorContent editor={editor} />

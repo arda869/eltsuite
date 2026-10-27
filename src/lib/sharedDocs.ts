@@ -17,6 +17,8 @@ export const ROLES: { k: DocRole; label: string; about: string }[] = [
   { k: 'comment', label: 'Can comment', about: 'Read and add comments' },
   { k: 'view', label: 'Can view', about: 'Read only' },
 ];
+// Every kind of file has the same three: edit, comment, view. Documents and slides can also suggest.
+export const rolesFor = (kind?: string) => (kind === 'doc' || kind === 'slides' || !kind ? ROLES : ROLES.filter((r) => r.k !== 'suggest'));
 export const modesFor = (r: DocRole): CollabMode[] => (r === 'edit' ? ['edit', 'suggest', 'comment'] : r === 'suggest' ? ['suggest', 'comment'] : r === 'comment' ? ['comment'] : ['view']);
 
 export type SharedDoc = {

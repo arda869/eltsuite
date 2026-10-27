@@ -15,7 +15,9 @@ export function UpdateBanner() {
         .then((r) => r.json())
         .then((v: { build: string }) => {
           if (!v.build || v.build === __BUILD__) return;
-          if (app && opening) window.location.reload();
+          // A tab nobody is looking at loads the new version straight away, so an old copy
+          // never stays open in the background, where it could undo newer things in shared files.
+          if ((app && opening) || document.visibilityState === 'hidden') window.location.reload();
           else setFresh(true);
         })
         .catch(() => {});

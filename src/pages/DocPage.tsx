@@ -14,10 +14,11 @@ import { CiteStyleContext } from '../editor/Cite';
 import { CITE_STYLES, type CiteStyle } from '../lib/cite';
 import { doc as fsDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ROLES, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
+import { ROLES, rolesFor, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
 import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
 import { UiIcon } from '../components/UiIcon';
+import { FileComments } from '../components/FileComments';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
 
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
@@ -108,6 +109,7 @@ export function DocPage() {
         </span>
         <span className="dp-acts">
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
+          {d && role && ['flash', 'pd', 'lesson', 'pdf'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
             <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
               <UiIcon name="lock" size={15} /> Share
@@ -156,6 +158,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   const dir = useDirectory();
   return (
     <SharePeople
+      roles={rolesFor(d.kind)}
       teachersOnly={!['doc', 'slides', 'pdf'].includes(d.kind)}
       title={`Share “${d.title}”`}
       ownerName={d.ownerName}
@@ -172,7 +175,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   );
 }
 
-export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles }: { teachersOnly?: boolean; noRoles?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles, roles = ROLES }: { roles?: typeof ROLES; teachersOnly?: boolean; noRoles?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
   const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
@@ -234,7 +237,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
         {picked.length > 0 && (
           <>
             {!noRoles && <span className="dp-roles" role="radiogroup" aria-label="What they can do">
-              {ROLES.map((r) => (
+              {roles.map((r) => (
                 <button key={r.k} type="button" role="radio" aria-checked={role === r.k} className={role === r.k ? 'on' : ''} onClick={() => setRole(r.k)}>
                   <b>{r.label}</b>
                   <span className="hint">{r.about}</span>
@@ -266,7 +269,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
               <span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span>
               {noRoles ? <span className="hint">Can edit</span> : onRole ? (
                 <select value={m.role} onChange={(e) => onRole(k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
-                  {ROLES.map((r) => (
+                  {roles.map((r) => (
                     <option key={r.k} value={r.k}>
                       {r.label}
                     </option>

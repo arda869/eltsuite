@@ -1,3 +1,4 @@
+import { BUILD } from '../guard';
 import { usePhone } from '../../lib/useMedia';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -158,7 +159,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
   // Who is here, and on which slide.
   useEffect(() => {
     const aw = session.provider.awareness;
-    aw.setLocalStateField('user', { name: author.name, color: author.color, uid: me.uid });
+    aw.setLocalStateField('user', { name: author.name, color: author.color, uid: me.uid, build: BUILD });
     const f = () =>
       setPeople(
         [...aw.getStates().entries()]

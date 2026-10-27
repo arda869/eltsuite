@@ -1,6 +1,6 @@
 import { ask } from '../lib/ask';
 import { useAuth } from '../lib/auth';
-import { KIND_LABEL, moveToFolder, newDocInFolder, newFolder, removeFolder, removeSharedDoc, renameFolder, sendFolderInChat, shareFolder, unshareFolder, useFolderDocs, useFolders, useMyDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
+import { KIND_LABEL, rolesFor, moveToFolder, newDocInFolder, newFolder, removeFolder, removeSharedDoc, renameFolder, sendFolderInChat, shareFolder, unshareFolder, useFolderDocs, useFolders, useMyDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { DocIcon, SharePeople } from './DocPage';
 import { useDirectory } from '../lib/directory';
 import { exportLesson } from '../lib/textformat';
@@ -322,6 +322,7 @@ function FolderView({ f, uid, onBack, folders }: { f: SharedFolder; uid: string;
       )}
       {sharing && (
         <SharePeople
+          roles={rolesFor('folder')}
           title={`Share the folder “${f.name}”`}
           ownerName={f.ownerName}
           members={f.members ?? {}}

@@ -1,3 +1,4 @@
+import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
 import { doc as fsDoc, getDoc } from 'firebase/firestore';
@@ -139,7 +140,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         Suggestions.configure({ get: () => live.current }),
         Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : 'Type / to add a heading, table, picture, IPA and more'), showOnlyCurrent: true }),
         Collaboration.configure({ document: session.doc }),
-        CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color, uid: me.uid } }),
+        CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color, uid: me.uid, build: BUILD } }),
+        NewerGuard,
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -574,6 +576,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       <div className={'cd-main' + (page && !showSide ? ' no-side' : '')}>
         <div className="cd-page">
           {!synced && <span className="cd-sync">Opening the document…</span>}
+          <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
           {heading}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
             <div className={'editor-host' + (page ? ' cd-host' : '')} ref={setHost}>

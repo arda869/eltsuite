@@ -503,6 +503,15 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.owner == request.auth.uid;
       // Flashcards and reading notes inside a file: everyone it is shared with reads; editors write.
       function fileData() { return get(/databases/$(database)/documents/sharedDocs/$(id)).data; }
+      // Comments on a file: everyone it is shared with reads; commenters and editors write their own.
+      match /comments/{cid} {
+        allow read: if signedIn() && (fileData().owner == request.auth.uid || request.auth.uid in fileData().memberIds);
+        allow create: if signedIn() && request.resource.data.by == request.auth.uid
+          && (fileData().owner == request.auth.uid || fileData().members[request.auth.uid].role in ['edit', 'comment', 'suggest']);
+        allow update: if signedIn() && (fileData().owner == request.auth.uid || fileData().members[request.auth.uid].role == 'edit')
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['done']);
+        allow delete: if signedIn() && (resource.data.by == request.auth.uid || fileData().owner == request.auth.uid);
+      }
       match /{part}/{rowId} {
         allow read: if signedIn() && (fileData().owner == request.auth.uid || request.auth.uid in fileData().memberIds);
         allow write: if signedIn() && (fileData().owner == request.auth.uid || fileData().members[request.auth.uid].role == 'edit');

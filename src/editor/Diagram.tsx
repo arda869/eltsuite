@@ -141,8 +141,8 @@ function Lines({ kind, id, stage, n }: { kind: DgKind; id: string; stage: React.
         rs.slice(1).forEach((r, i) => out.push(<path key={i} d={`M${x0} ${ym} H${r.x + r.w / 2} V${r.y - 6}`} {...arrow} />));
       } else if (kind === 'venn') {
         out.push(
-          <ellipse key="a" cx={W * 0.35} cy={H / 2} rx={W * 0.33} ry={H / 2 - 2} className="dg-ring a" />,
-          <ellipse key="b" cx={W * 0.65} cy={H / 2} rx={W * 0.33} ry={H / 2 - 2} className="dg-ring b" />,
+          <ellipse key="a" cx={W * 0.35} cy={H / 2} rx={W * 0.33} ry={Math.max(1, H / 2 - 2)} className="dg-ring a" />,
+          <ellipse key="b" cx={W * 0.65} cy={H / 2} rx={W * 0.33} ry={Math.max(1, H / 2 - 2)} className="dg-ring b" />,
         );
       } else if (kind === 'cline' && rs.length > 1) {
         const ends = Array.from(st.querySelectorAll(':scope > .dg-end')) as HTMLElement[];
