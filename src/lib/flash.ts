@@ -36,7 +36,18 @@ export const STYLES: { k: FlashStyle; label: string }[] = [
   { k: 'night', label: 'Night' },
 ];
 
+// New sets start simple: a front and a back. Columns can be added in the table.
 export const DEFAULT_CONFIG: FlashConfig = {
+  fields: [
+    { id: 'word', name: 'Front', type: 'text' },
+    { id: 'meaning', name: 'Back', type: 'text' },
+  ],
+  front: ['word'],
+  back: ['meaning'],
+  look: { style: 'classic', font: 'serif', size: 'm', pic: 'top', align: 'center' },
+};
+// Sets made before that, which never changed their fields, keep the fields they had.
+export const LEGACY_CONFIG: FlashConfig = {
   fields: [
     { id: 'word', name: 'Word', type: 'text' },
     { id: 'pic', name: 'Picture', type: 'image' },
@@ -49,7 +60,10 @@ export const DEFAULT_CONFIG: FlashConfig = {
   back: ['ipa', 'meaning', 'example', 'audio'],
   look: { style: 'classic', font: 'serif', size: 'm', pic: 'top', align: 'center' },
 };
-export const configOf = (c?: Partial<FlashConfig> | null): FlashConfig => ({ ...DEFAULT_CONFIG, ...(c ?? {}), look: { ...DEFAULT_CONFIG.look, ...(c?.look ?? {}) } });
+export const configOf = (c?: Partial<FlashConfig> | null, legacy = false): FlashConfig => {
+  const base = legacy && !c?.fields ? LEGACY_CONFIG : DEFAULT_CONFIG;
+  return { ...base, ...(c ?? {}), look: { ...base.look, ...(c?.look ?? {}) } };
+};
 
 const cardsCol = (setId: string) => collection(db, 'sharedDocs', setId, 'cards');
 

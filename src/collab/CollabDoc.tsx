@@ -4,7 +4,7 @@ import { doc as fsDoc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { openChat } from '../lib/chat';
 import { createPortal } from 'react-dom';
-import { BubbleMenu, EditorContent, useEditor, type JSONContent } from '@tiptap/react';
+import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
 import Placeholder from '@tiptap/extension-placeholder';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
@@ -113,6 +113,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [defOpen, setDefOpen] = useState(false);
   const [big, setBig] = useState(display === 'full' ? false : false);
   const [gallery, setGallery] = useState(false);
+  const [wcOpen, setWcOpen] = useState(false);
   const [personAt, setPersonAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
@@ -260,6 +261,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     </button>
   );
   const writing = eff === 'edit' || eff === 'suggest';
+  const selWords = sel.empty ? 0 : wordCount((editor.state.doc.cut(sel.from, sel.to).toJSON() ?? { type: 'doc' }) as JSONContent);
   const showSide = side !== 'none' || !!draft || (!page && (sugg.length > 0 || open.length > 0));
   const counts = side === 'people' ? contributions(session.doc, session.pud) : null;
 
@@ -280,6 +282,19 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   ) : (
     <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
   );
+  const modeSeg =
+    !locked && allowed.length > 1 ? (
+      <span className="cd-modeseg" role="radiogroup" aria-label="Mode">
+        {allowed.map((m) => (
+          <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)} data-tip={MODE_LABEL[m].about}>
+            <UiIcon name={MODE_LABEL[m].icon} size={15} />
+            <span>{MODE_LABEL[m].label}</span>
+          </button>
+        ))}
+      </span>
+    ) : (
+      modeCtl
+    );
   const pageTools0 = page && toolSlot
     ? createPortal(
         <>
@@ -291,21 +306,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             ))}
             {people.length > 5 && <span className="cd-more">+{people.length - 5}</span>}
           </span>
-          <span className="cd-words dp-hide-phone" data-tip="Without the reference list">
-            {wordCount(editor.getJSON())} words
-          </span>
-          {writing && (
-            <button type="button" className="dp-ib" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text." aria-label="Insert">
-              <UiIcon name="plus" size={17} />
-            </button>
-          )}
-          {writing && profileTeacher && <CiteTool editor={editor} />}
           <button type="button" className={'dp-ib cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
             <UiIcon name="discuss" size={17} />
             {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
           </button>
           {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : printDoc(editor.getJSON(), title, { ...o, style: citeStyle }, editor.view.dom))} />}
-          {modeCtl}
+          {modeSeg}
         </>,
         toolSlot,
       )
@@ -375,45 +381,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           </button>
         ) : null}
       </div>}
-      {writing && page && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 120, maxWidth: 'none', placement: 'top-start' }} shouldShow={({ editor: ed, state }) => ed.isEditable && !state.selection.empty && !ed.isActive('picture') && !ed.isActive('image') && state.selection.constructor.name !== 'NodeSelection'} className="cd-bubble">
-          <select
-            className="cd-bub-style"
-            aria-label="Paragraph style"
-            value={editor.isActive('heading', { level: 1 }) ? 'h1' : editor.isActive('heading', { level: 2 }) ? 'h2' : editor.isActive('heading', { level: 3 }) ? 'h3' : 'p'}
-            onChange={(e) => {
-              const v = e.target.value;
-              const c = editor.chain().focus();
-              (v === 'p' ? c.setParagraph() : c.setHeading({ level: Number(v.slice(1)) as 1 | 2 | 3 })).run();
-            }}
-          >
-            <option value="p">Text</option>
-            <option value="h1">Heading 1</option>
-            <option value="h2">Heading 2</option>
-            <option value="h3">Heading 3</option>
-          </select>
-          {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
-          {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}
-          {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
-          {B(<s>S</s>, editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), 'Strikethrough')}
-          <TextColorTool editor={editor} />
-          <HighlightTool editor={editor} />
-          <span className="ne-sep" aria-hidden="true" />
-          {B(<UiIcon name="link" size={14} />, editor.isActive('link') || editor.isActive('lessonLink'), () => setLinkOpen(true), 'Link (Ctrl K)')}
-          {gate('definition') !== 'hide' && B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition')}
-          {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
-          {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
-          <span className="ne-sep" aria-hidden="true" />
-          {canComment && B(<UiIcon name="discuss" size={15} />, false, startComment, 'Comment')}
-        </BubbleMenu>
-      )}
-      {writing && !page && (
+      {writing && (
         <div className="ne-bar cd-bar" role="toolbar" aria-label="Formatting">
           {B('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
           {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}
           {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
           <TextColorTool editor={editor} />
-          {B('▮', editor.isActive('highlight'), () => editor.chain().focus().toggleMark('highlight', { color: 'yellow' }).run(), 'Highlight')}
+          <HighlightTool editor={editor} />
           {gate('heading') !== 'hide' && (
             <select
               className="ne-style"
@@ -466,6 +440,26 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {B('↶', false, () => editor.chain().focus().undo().run(), 'Undo')}
           {B('↷', false, () => editor.chain().focus().redo().run(), 'Redo')}
           <span style={{ flex: 1 }} />
+          {page && B(<span className="ti-row"><UiIcon name="plus" size={14} /><span>Insert</span></span>, false, () => setGallery(true), 'Everything you can add. You can also type / in the text.')}
+          {page && (
+            <span className="cd-wc-wrap">
+              {B(<span className="ti-row"><span className="cd-wc-ic">123</span><span>Word count</span></span>, wcOpen, () => setWcOpen((v) => !v), 'How many words, in all and in the selection')}
+              {wcOpen && (
+                <span className="cd-wc" role="status">
+                  <b>Word count</b>
+                  <span className="cd-wc-row">
+                    <span>Document</span>
+                    <b>{wordCount(editor.getJSON())}</b>
+                  </span>
+                  <span className="cd-wc-row">
+                    <span>Selected</span>
+                    <b>{sel.empty ? '–' : selWords}</b>
+                  </span>
+                  <span className="hint">Without the reference list, as assignments count them.</span>
+                </span>
+              )}
+            </span>
+          )}
           {canComment && B(<UiIcon name="discuss" size={15} />, false, startComment, quote ? 'Comment on the selection' : 'Select some text to comment on it', !quote)}
         </div>
       )}

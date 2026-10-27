@@ -194,7 +194,7 @@ export function TaskDetail({ task, onOpen, onDownload, onRemove, onClose }: { ta
   );
 }
 
-export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, onDownload, onDelete, onClose }: { path: string; items: ArchiveItem[]; tasks: LibTask[]; folders: string[]; onOpen: () => void; onRename: () => void; onDownload: () => void; onDelete: () => void; onClose: () => void }) {
+export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, onDownload, onDelete, onClose, here, locked, extra = [] }: { path: string; items: ArchiveItem[]; tasks: LibTask[]; folders: string[]; onOpen: () => void; onRename: () => void; onDownload: () => void; onDelete: () => void; onClose: () => void; here?: boolean; locked?: boolean; extra?: [string, number][] }) {
   const size = items.reduce((s, i) => s + (i.size || 0), 0);
   const by = (k: string) => items.filter((i) => i.kind === k).length;
   const rows: [string, number][] = [
@@ -202,28 +202,37 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
     ['Recordings', by('audio')],
     ['Videos', by('video')],
     ['Tasks', tasks.length],
+    ...extra,
     ['Folders', folders.length],
   ];
+  const name = path ? leafOf(path) : 'My files';
   return (
-    <aside className="ma-detail" aria-label={leafOf(path)}>
+    <aside className="ma-detail" aria-label={name}>
       <div className="ma-detail-head">
-        <span className="pop-type">Folder</span>
-        <button type="button" className="ma-x big" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+        <span className="pop-type">{here ? 'You are in' : 'Folder'}</span>
+        {!here && (
+          <button type="button" className="ma-x big" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        )}
       </div>
-      <div className="lt-folder" onDoubleClick={onOpen}>
-        <FolderIcon size={64} />
-        <b>{leafOf(path)}</b>
-        <span className="hint">{path.includes('/') ? path.split('/').slice(0, -1).join(' › ') : 'In the resources library'}</span>
+      <div className="lt-folder" onDoubleClick={here ? undefined : onOpen}>
+        <FolderIcon size={64} locked={locked} />
+        <b>{name}</b>
+        <span className="hint">{!path ? 'Everything you keep' : path.includes('/') ? 'My files › ' + path.split('/').slice(0, -1).join(' › ') : 'In My files'}</span>
+        {locked && <span className="hint">Kept in step with your classes. Lessons are moved and renamed in the class.</span>}
       </div>
       <span className="ma-detail-acts">
-        <button type="button" className="btn small-btn primary" onClick={onOpen}>
-          Open
-        </button>
-        <button type="button" className="btn small-btn" onClick={onRename}>
-          <UiIcon name="edit" size={14} /> Rename
-        </button>
+        {!here && (
+          <button type="button" className="btn small-btn primary" onClick={onOpen}>
+            Open
+          </button>
+        )}
+        {path && !locked && (
+          <button type="button" className="btn small-btn" onClick={onRename}>
+            <UiIcon name="edit" size={14} /> Rename
+          </button>
+        )}
         <button type="button" className="btn small-btn" onClick={onDownload} disabled={!items.length && !tasks.length}>
           <UiIcon name="import" size={14} /> Download
         </button>
@@ -238,9 +247,12 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
         <dt>Space</dt>
         <dd>{formatBytes(size)}</dd>
       </dl>
-      <button type="button" className="btn link ma-remove" onClick={onDelete}>
-        <UiIcon name="trash" size={14} /> Delete the folder
-      </button>
+      {path && !locked && (
+        <button type="button" className="btn link ma-remove" onClick={onDelete}>
+          <UiIcon name="trash" size={14} /> Delete the folder
+        </button>
+      )}
+      {here && <span className="hint ma-here-tip">Click a file or folder to see it here. Double-click to open it.</span>}
     </aside>
   );
 }

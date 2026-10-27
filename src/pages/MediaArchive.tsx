@@ -974,6 +974,23 @@ export function MediaArchive() {
             onClose={() => setSel(new Set())}
           />
         )}
+        {section === 'media' && uid && !oneEntry && !oneFolder && (
+          <FolderDetail
+            key={'here-' + folder}
+            here
+            locked={inClasses(folder)}
+            path={folder}
+            items={all.filter((i) => inTree(i.folder, folder))}
+            tasks={tasks.filter((t) => inTree(t.folder, folder))}
+            folders={allFolders.filter((f) => (folder ? f.startsWith(folder + '/') : true))}
+            extra={[['Lessons, collab documents and more', entries.filter((e) => inTree(e.folder, folder) && (e.cls || e.doc)).length]]}
+            onOpen={() => {}}
+            onRename={() => setRenaming('f:' + folder)}
+            onDownload={() => void download([], [folder])}
+            onDelete={() => void deleteF(folder)}
+            onClose={() => {}}
+          />
+        )}
         {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}

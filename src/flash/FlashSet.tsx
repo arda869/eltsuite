@@ -160,8 +160,13 @@ function CardPanel({ set, cfg, card, onClose, canEdit }: { set: string; cfg: Fla
 
 // ------------------------------------------------------------------ the table
 
-function Table({ set, cfg, cards, canEdit, onOpen }: { set: string; cfg: FlashConfig; cards: Card[]; canEdit: boolean; onOpen: (c: Card) => void }) {
+// The table: like a list in SharePoint. Each column is a field; its header says whether it is on
+// the front or the back, and its menu renames it, changes its kind or moves it. + Column adds one.
+function Table({ set, cfg, cards, canEdit, onChange }: { set: string; cfg: FlashConfig; cards: Card[]; canEdit: boolean; onChange: (c: FlashConfig) => void }) {
   const textual = (f: Field) => f.type === 'text' || f.type === 'ipa';
+  const [edit, setEdit] = useState<{ card: Card; field: Field } | null>(null);
+  const [colMenu, setColMenu] = useState<{ id: string | null; r: DOMRect } | null>(null);
+  const sideOf = (id: string) => (cfg.front.includes(id) ? 'front' : cfg.back.includes(id) ? 'back' : 'none');
   // Pasting rows from a spreadsheet fills the table from this cell, adding cards as needed.
   const paste = async (e: React.ClipboardEvent, row: number, col: number) => {
     const t = e.clipboardData.getData('text/plain');
@@ -180,6 +185,7 @@ function Table({ set, cfg, cards, canEdit, onOpen }: { set: string; cfg: FlashCo
     await Promise.all(updates);
     if (fresh.length) await addRows(set, cards.length, fresh);
   };
+  const editCard = edit ? cards.find((c) => c.id === edit.card.id) ?? edit.card : null;
   return (
     <div className="fs-table-wrap">
       <table className="fs-table">
@@ -188,11 +194,21 @@ function Table({ set, cfg, cards, canEdit, onOpen }: { set: string; cfg: FlashCo
             <th className="fs-n">#</th>
             {cfg.fields.map((f) => (
               <th key={f.id}>
-                {f.name}
-                <span className="fs-side">{cfg.front.includes(f.id) ? 'Front' : cfg.back.includes(f.id) ? 'Back' : ''}</span>
+                <button type="button" className="fs-col" disabled={!canEdit} onClick={(e) => setColMenu({ id: f.id, r: e.currentTarget.getBoundingClientRect() })}>
+                  <span className="fs-col-n">{f.name}</span>
+                  <span className={'fs-side s-' + sideOf(f.id)}>{sideOf(f.id) === 'front' ? 'Front' : sideOf(f.id) === 'back' ? 'Back' : 'Hidden'}</span>
+                  {canEdit && <span className="fs-col-chev" aria-hidden="true">▾</span>}
+                </button>
               </th>
             ))}
-            <th />
+            {canEdit && cfg.fields.length < 12 && (
+              <th className="fs-addcol">
+                <button type="button" className="fs-col add" onClick={(e) => setColMenu({ id: null, r: e.currentTarget.getBoundingClientRect() })}>
+                  + Column
+                </button>
+              </th>
+            )}
+            <th className="fs-x" />
           </tr>
         </thead>
         <tbody>
@@ -204,17 +220,20 @@ function Table({ set, cfg, cards, canEdit, onOpen }: { set: string; cfg: FlashCo
                   {textual(f) && canEdit ? (
                     <Cell v={plainOf(c.f[f.id] ?? null)} ipa={f.type === 'ipa'} onSave={(v) => void setCell(set, c.id, f.id, v)} onPaste={(e) => void paste(e, r, k)} />
                   ) : (
-                    <button type="button" className="fs-cell-btn" onClick={() => onOpen(c)}>
-                      {f.type === 'rich' ? plainOf(c.f[f.id] ?? null) || <span className="hint">…</span> : <Value field={f} v={c.f[f.id] ?? null} />}
+                    <button type="button" className="fs-cell-btn" onClick={() => canEdit && setEdit({ card: c, field: f })}>
+                      {f.type === 'rich' ? plainOf(c.f[f.id] ?? null) || <span className="hint">{canEdit ? '+ Add' : ''}</span> : <Value field={f} v={c.f[f.id] ?? null} />}
                       {!c.f[f.id] && f.type !== 'rich' && <span className="hint">{canEdit ? '+ Add' : ''}</span>}
                     </button>
                   )}
                 </td>
               ))}
-              <td>
-                <button type="button" className="btn link small" onClick={() => onOpen(c)}>
-                  Open
-                </button>
+              {canEdit && cfg.fields.length < 12 && <td className="fs-addcol" />}
+              <td className="fs-x">
+                {canEdit && (
+                  <button type="button" className="fs-del" onClick={() => void removeCard(set, c.id)} aria-label={`Delete card ${r + 1}`} title="Delete the card">
+                    ×
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -228,6 +247,109 @@ function Table({ set, cfg, cards, canEdit, onOpen }: { set: string; cfg: FlashCo
           <span className="hint">Paste rows from Excel or Google Sheets into any cell: each column fills one field.</span>
         </span>
       )}
+      {colMenu && (
+        <ColumnMenu
+          at={colMenu.r}
+          field={colMenu.id ? cfg.fields.find((f) => f.id === colMenu.id) ?? null : null}
+          side={colMenu.id ? sideOf(colMenu.id) : 'back'}
+          onClose={() => setColMenu(null)}
+          onSave={(f, side) => {
+            const exists = cfg.fields.some((x) => x.id === f.id);
+            const next = { ...cfg, fields: exists ? cfg.fields.map((x) => (x.id === f.id ? f : x)) : [...cfg.fields, f] };
+            onChange({ ...next, front: side === 'front' ? [...next.front.filter((x) => x !== f.id), f.id] : next.front.filter((x) => x !== f.id), back: side === 'back' ? [...next.back.filter((x) => x !== f.id), f.id] : next.back.filter((x) => x !== f.id) });
+            setColMenu(null);
+          }}
+          onMove={(dir) => {
+            const i = cfg.fields.findIndex((x) => x.id === colMenu.id);
+            const j = i + dir;
+            if (i < 0 || j < 0 || j >= cfg.fields.length) return;
+            const fields = [...cfg.fields];
+            [fields[i], fields[j]] = [fields[j], fields[i]];
+            onChange({ ...cfg, fields });
+          }}
+          onRemove={() => {
+            const id = colMenu.id;
+            onChange({ ...cfg, fields: cfg.fields.filter((x) => x.id !== id), front: cfg.front.filter((x) => x !== id), back: cfg.back.filter((x) => x !== id) });
+            setColMenu(null);
+          }}
+        />
+      )}
+      {edit && editCard && (
+        <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && setEdit(null)}>
+          <div className="dialog fs-celldlg" role="dialog" aria-label={edit.field.name}>
+            <b>
+              {edit.field.name} <span className="hint">· card {cards.findIndex((c) => c.id === editCard.id) + 1}</span>
+            </b>
+            <FieldInput field={edit.field} v={editCard.f[edit.field.id] ?? null} onSave={(v) => void setCell(set, editCard.id, edit.field.id, v)} autoFocus />
+            <span className="pe-actions">
+              <span style={{ flex: 1 }} />
+              <button type="button" className="btn primary" onClick={() => setEdit(null)}>
+                Done
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ColumnMenu({ at, field, side, onClose, onSave, onMove, onRemove }: { at: DOMRect; field: Field | null; side: 'front' | 'back' | 'none'; onClose: () => void; onSave: (f: Field, side: 'front' | 'back' | 'none') => void; onMove: (d: number) => void; onRemove: () => void }) {
+  const [name, setName] = useState(field?.name ?? '');
+  const [type, setType] = useState<FieldType>(field?.type ?? 'text');
+  const [sd, setSd] = useState(side);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && onClose();
+    document.addEventListener('pointerdown', close, true);
+    return () => document.removeEventListener('pointerdown', close, true);
+  }, [onClose]);
+  const done = () => onSave({ id: field?.id ?? 'f' + newId().slice(0, 6), name: name.trim() || 'Column', type }, sd);
+  return (
+    <div ref={ref} className="fs-colmenu" role="dialog" aria-label={field ? 'Column' : 'New column'} style={{ top: at.bottom + 6, left: Math.max(8, Math.min(at.left, window.innerWidth - 290)) }}>
+      <label className="field">
+        <span>Name</span>
+        <input value={name} autoFocus placeholder="For example: Example sentence" onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && done()} />
+      </label>
+      <label className="field">
+        <span>Kind</span>
+        <select value={type} onChange={(e) => setType(e.target.value as FieldType)}>
+          {FIELD_TYPES.map((t) => (
+            <option key={t.k} value={t.k}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <span className="field">
+        <span>On the card</span>
+        <span className="seg small-seg" role="radiogroup" aria-label="On the card">
+          {(['front', 'back', 'none'] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={sd === k} className={sd === k ? 'on' : ''} onClick={() => setSd(k)}>
+              {k === 'front' ? 'Front' : k === 'back' ? 'Back' : 'Hidden'}
+            </button>
+          ))}
+        </span>
+      </span>
+      <span className="fs-colmenu-acts">
+        {field && (
+          <>
+            <button type="button" className="btn small-btn" onClick={() => onMove(-1)} aria-label="Move left">
+              ←
+            </button>
+            <button type="button" className="btn small-btn" onClick={() => onMove(1)} aria-label="Move right">
+              →
+            </button>
+            <button type="button" className="btn link small set-danger" onClick={onRemove}>
+              Delete column
+            </button>
+          </>
+        )}
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn small-btn primary" onClick={done}>
+          {field ? 'Save' : 'Add column'}
+        </button>
+      </span>
     </div>
   );
 }
@@ -334,8 +456,9 @@ function Design({ cfg, onChange, sample }: { cfg: FlashConfig; onChange: (c: Fla
 // ------------------------------------------------------------------ the set
 
 export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<FlashConfig> }; canEdit: boolean }) {
-  const cfg = configOf(d.flash);
   const cards = useCards(d.id);
+  const legacy = !!cards?.some((c) => ['pic', 'ipa', 'example', 'audio'].some((k) => c.f[k] !== undefined && c.f[k] !== null && c.f[k] !== ''));
+  const cfg = configOf(d.flash, legacy);
   const [view, setView] = useState<View>('cards');
   const [open, setOpen] = useState<string | null>(null);
   const [design, setDesign] = useState(false);
@@ -362,7 +485,7 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
   }, [cards, canEdit, d.id, d.size]);
   if (!cards) return <div className="dp-msg">Opening the cards…</div>;
   return (
-    <div className={'fs' + (card || design ? ' with-panel' : '')}>
+    <div className={'fs v-' + view + (view === 'cards' && (card || design) ? ' with-panel' : '')}>
       <div className="fs-bar">
         <span className="seg" role="tablist" aria-label="View">
           {([
@@ -380,13 +503,13 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
         </span>
         {view !== 'study' && <input className="ma-search fs-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the cards" />}
         <span style={{ flex: 1 }} />
-        {canEdit && (
+        {canEdit && view === 'cards' && (
           <button type="button" className={'btn' + (design ? ' on' : '')} onClick={() => (setDesign((v) => !v), setOpen(null))}>
             Design the cards
           </button>
         )}
         {canEdit && (
-          <button type="button" className="btn primary" onClick={async () => setOpen(await addCard(d.id, cards.length))}>
+          <button type="button" className="btn primary" onClick={async () => { const id = await addCard(d.id, cards.length); if (view === 'cards') setOpen(id); }}>
             + Add a card
           </button>
         )}
@@ -413,11 +536,11 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
                 <span className="hint">{cards.length ? 'Try another search.' : 'Add cards one by one, or open the table and paste rows from a spreadsheet.'}</span>
               </div>
             ))}
-          {view === 'table' && <Table set={d.id} cfg={cur} cards={cards} canEdit={canEdit} onOpen={(c) => (setOpen(c.id), setDesign(false))} />}
+          {view === 'table' && <Table set={d.id} cfg={cur} cards={shown} canEdit={canEdit} onChange={change} />}
           {view === 'study' && <Study cfg={cur} cards={cards} />}
         </div>
-        {card && <CardPanel set={d.id} cfg={cur} card={card} canEdit={canEdit} onClose={() => setOpen(null)} />}
-        {design && !card && <Design cfg={cur} onChange={change} sample={cards[0]} />}
+        {view === 'cards' && card && <CardPanel set={d.id} cfg={cur} card={card} canEdit={canEdit} onClose={() => setOpen(null)} />}
+        {view === 'cards' && design && !card && <Design cfg={cur} onChange={change} sample={cards[0]} />}
       </div>
     </div>
   );

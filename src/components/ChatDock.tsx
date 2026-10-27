@@ -15,7 +15,7 @@ import { PersonFace } from './avatars';
 // all of them can be minimised or closed at once. They stay as you move between apps.
 
 const KEY = 'll.dock2';
-export type DockWin = { id: string; min?: boolean; max?: boolean; x?: number; y?: number }; // id: a chat, or 'list'; x, y: where it floats, once moved
+export type DockWin = { id: string; min?: boolean; max?: boolean }; // id: a chat, or 'list'
 type DockState = { wins: DockWin[] };
 const read = (): DockState => {
   try {
@@ -153,16 +153,11 @@ export function ChatDock() {
         {[...wins].reverse().map((w) =>
           w.min ? (
             <DockTab key={w.id} me={me!} c={list.find((c) => c.id === w.id)} id={w.id} />
-          ) : w.max || w.x !== undefined ? null : (
+          ) : w.max ? null : (
             <DockWindow key={w.id} me={me!} w={w} chats={list} onNew={() => setCreating(w.id)} />
           ),
         )}
       </div>
-      {wins
-        .filter((w) => !w.min && !w.max && w.x !== undefined)
-        .map((w) => (
-          <DockWindow key={w.id} me={me!} w={w} chats={list} onNew={() => setCreating(w.id)} />
-        ))}
       {big && (
         <div className="dock-max-scrim" onMouseDown={(e) => e.target === e.currentTarget && patch(big.id, { max: false })}>
           <DockWindow me={me!} w={big} chats={list} onNew={() => setCreating(big.id)} />
@@ -203,41 +198,9 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
     window.setTimeout(() => (what === 'min' ? patch(w.id, { min: true, max: false }) : closeWin(w.id)), 170);
   };
   const other = cur && cur.kind !== 'group' && !isSelf(cur) ? cur.members.find((k) => k !== me) : undefined;
-  const box = useRef<HTMLDivElement>(null);
-  const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
-  // Drag the top bar to float the window anywhere; drop it back near the bottom right to dock it.
-  const down = (e: React.PointerEvent) => {
-    if (w.max || (e.target as HTMLElement).closest('button, a, input')) return;
-    const r = box.current?.getBoundingClientRect();
-    if (!r) return;
-    e.preventDefault();
-    const dx = e.clientX - r.left;
-    const dy = e.clientY - r.top;
-    const x0 = e.clientX;
-    const y0 = e.clientY;
-    let p = { x: r.left, y: r.top };
-    let moved = false;
-    const mv = (ev: PointerEvent) => {
-      if (!moved && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
-      moved = true;
-      p = { x: Math.max(60 - r.width, Math.min(window.innerWidth - 60, ev.clientX - dx)), y: Math.max(0, Math.min(window.innerHeight - 40, ev.clientY - dy)) };
-      setDrag(p);
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', mv);
-      window.removeEventListener('pointerup', up);
-      if (!moved) return;
-      setDrag(null);
-      const home = window.innerWidth - (p.x + r.width) < 120 && window.innerHeight - (p.y + r.height) < 80;
-      patch(w.id, home ? { x: undefined, y: undefined } : { x: Math.round(p.x), y: Math.round(p.y) });
-    };
-    window.addEventListener('pointermove', mv);
-    window.addEventListener('pointerup', up);
-  };
-  const at = drag ?? (w.x !== undefined && !w.max ? { x: w.x, y: w.y ?? 80 } : null);
   return (
-    <div ref={box} className={'dock-win' + (w.max ? ' max' : '') + (at ? ' floating' : '') + (drag ? ' dragging' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title} style={at ? { position: 'fixed', left: at.x, top: at.y, right: 'auto', bottom: 'auto', margin: 0 } : undefined}>
-      <div className="dock-head" onPointerDown={down} onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && patch(w.id, { max: !w.max })}>
+    <div className={'dock-win' + (w.max ? ' max' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
+      <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && patch(w.id, { max: !w.max })}>
         {cur ? (
           <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
             {other ? <PersonFace id={other} name={title} size={28} /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}

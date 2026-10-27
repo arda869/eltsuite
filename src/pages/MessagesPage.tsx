@@ -8,7 +8,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, saveEnterSend, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
+import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteMsg, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
 import type { Responses } from '../lib/tasks';
@@ -247,8 +247,23 @@ export function NewChat({ dir, onClose, onOpen }: { dir: Directory; onClose: () 
 export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: Person; dir: Directory; teacher: boolean; onBack: () => void; onMin?: () => void }) {
   const msgs = useMessages(c.id);
   // Enter sends (Shift + Enter for a new line), unless the person turned that off.
-  const [enterSends, setEnterSendsState] = useState(enterSendOn);
-  const setEnterSends = (v: boolean) => (setEnterSendsState(v), saveEnterSend(v));
+  const [enterSends] = useState(enterSendOn);
+  // Messages start as plain text; Aa shows the writing tools.
+  const [rich, setRichS] = useState(() => {
+    try {
+      return localStorage.getItem('ll.chatRich') === 'on';
+    } catch {
+      return false;
+    }
+  });
+  const setRich = (v: boolean) => {
+    setRichS(v);
+    try {
+      localStorage.setItem('ll.chatRich', v ? 'on' : 'off');
+    } catch {
+      /* fine */
+    }
+  };
   const [big, setBig] = useState(false);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
@@ -401,8 +416,8 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           </span>
         )}
         {err && <span className="error">{err}</span>}
-        <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '')}>
-          <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone; / or + Add… for a question, picture or box.`} />
+        <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (big ? ' big' : '') + (rich ? '' : ' plain')}>
+          <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
         </div>
         <span className="chat-actions">
           {teacher && colleaguesHere.length > 0 && (
@@ -421,10 +436,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
               Others see answers after answering
             </label>
           )}
-          <label className="chat-opt chat-keys">
-            <input type="checkbox" checked={enterSends} onChange={(e) => setEnterSends(e.target.checked)} />
-            Enter to send
-          </label>
+          <button type="button" className={'btn small-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} data-tip={rich ? 'Back to plain text' : 'Rich text: bold, colour, lists, IPA and more'}>
+            <span className="chat-rich-a">Aa</span>
+          </button>
           <span className="chat-spacer" />
           <button type="button" className="icon-btn chat-big" onClick={() => setBig((b) => !b)} aria-label={big ? 'Smaller writing box' : 'Larger writing box'} data-tip={big ? 'Smaller writing box' : 'Larger writing box'} aria-pressed={big}>
             <UiIcon name="fullscreen" size={15} />
