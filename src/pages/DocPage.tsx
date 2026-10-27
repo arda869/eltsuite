@@ -171,7 +171,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   );
 }
 
-export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly }: { teachersOnly?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
+export function SharePeople({ title, ownerName, members, extra = [], onShare, onRole, onRemove, onClose, chatLabel = 'Send them a message with the link', teachersOnly, noRoles }: { teachersOnly?: boolean; noRoles?: boolean; title: string; ownerName: string; members: SharedDoc['members']; extra?: { k: string; name: string; about: string }[]; onShare: (p: Person[], role: DocRole, tell: boolean, note: string) => Promise<void>; onRole?: (uid: string, r: DocRole) => void; onRemove: (uid: string) => void; onClose: () => void; chatLabel?: string }) {
   const dir = useDirectory();
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState<Person[]>([]);
@@ -232,14 +232,14 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
         </div>
         {picked.length > 0 && (
           <>
-            <span className="dp-roles" role="radiogroup" aria-label="What they can do">
+            {!noRoles && <span className="dp-roles" role="radiogroup" aria-label="What they can do">
               {ROLES.map((r) => (
                 <button key={r.k} type="button" role="radio" aria-checked={role === r.k} className={role === r.k ? 'on' : ''} onClick={() => setRole(r.k)}>
                   <b>{r.label}</b>
                   <span className="hint">{r.about}</span>
                 </button>
               ))}
-            </span>
+            </span>}
             <label className="switch-row">
               <span>
                 {chatLabel}
@@ -263,7 +263,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
             <span key={k} className="dp-mem">
               <b>{m.name}</b>
               <span className="hint">{m.kind === 'learner' ? 'Learner' : 'Teacher'}</span>
-              {onRole ? (
+              {noRoles ? <span className="hint">Can edit</span> : onRole ? (
                 <select value={m.role} onChange={(e) => onRole(k, e.target.value as DocRole)} aria-label={`What ${m.name} can do`}>
                   {ROLES.map((r) => (
                     <option key={r.k} value={r.k}>

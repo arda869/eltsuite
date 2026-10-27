@@ -1,9 +1,11 @@
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
-import { ShareDialog as DocShareDialog } from './DocPage';
+import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
+import { shareLesson, unshareLesson, useClassLessons, type ClassLesson } from '../lib/classFiles';
+import { useDirectory } from '../lib/directory';
 import { usePhone } from '../lib/useMedia';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FileDocs, ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibrary';
-import { moveLibTasks, newLibTask, removeLibTask, renameLibTask, useLibTasks, type LibTask } from '../lib/libtasks';
+import { moveLibTasks, removeLibTask, renameLibTask, useLibTasks, type LibTask } from '../lib/libtasks';
 import { ChainIcon, FolderDetail, TaskDetail, TaskWindow } from './LibraryParts';
 import { useDismiss } from '../lib/useDismiss';
 import { RecordTogether } from './StudioSession';
@@ -38,7 +40,7 @@ const KINDS = [
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
 type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'task', label: 'Tasks' }, { k: 'doc', label: 'Documents' }, { k: 'slides', label: 'Slides' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Documents' }, { k: 'slides', label: 'Slides' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'PD reading' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -59,10 +61,14 @@ const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, fla
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
 
 // One thing in the library, whatever it is.
-type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask; doc?: SharedDoc };
+type Entry = { key: string; kind: Kind; name: string; folder: string; at: number; size: number; item?: ArchiveItem; task?: LibTask; doc?: SharedDoc; cls?: ClassLesson };
+const CLASSES = 'Classes';
+const entryOfLesson = (l: ClassLesson): Entry => ({ key: `l:${l.classId}/${l.itemId}`, kind: 'lesson', name: l.title, folder: `${CLASSES}/${l.className.replace(/\//g, '-')}${l.topic ? '/' + l.topic.replace(/\//g, '-') : ''}`, at: l.at, size: 0, cls: l });
+const inClasses = (f: string) => f === CLASSES || f.startsWith(CLASSES + '/');
 const entryOfDoc = (d: SharedDoc): Entry => ({ key: 'd:' + d.id, kind: d.kind as Kind, name: d.title, folder: d.path ?? '', at: d.updatedAt?.toMillis?.() ?? d.createdAt?.toMillis?.() ?? 0, size: d.size ?? 0, doc: d });
 const entryOfItem = (i: ArchiveItem): Entry => ({ key: i.id, kind: i.kind, name: i.name, folder: i.folder, at: i.createdAt, size: spaceOf(i), item: i });
-const entryOfTask = (t: LibTask): Entry => ({ key: 't:' + t.id, kind: 'task', name: t.title, folder: t.folder, at: t.createdAt || t.updatedAt, size: 0, task: t });
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const entryOfTask = (t: LibTask): Entry => ({ key: 't:' + t.id, kind: 'task', name: t.title, folder: t.folder, at: t.createdAt || t.updatedAt, size: 0, task: t });
 
 type Section = 'media' | 'folders' | 'docs' | 'shared' | 'colleagues';
 
@@ -86,6 +92,7 @@ const store = (k: string, v: unknown) => {
 export function MediaArchive() {
   const { user } = useAuth();
   const uid = user?.uid;
+  const dir = useDirectory();
   const phone = usePhone();
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
   const [section, setSection] = useState<Section>(() => {
@@ -149,7 +156,10 @@ export function MediaArchive() {
   const all = items ?? [];
   const tasks = libTasks ?? [];
   const ownDocs = useMemo(() => (myDocsTop ?? []).filter((d) => !d.folder), [myDocsTop]);
-  const entries = useMemo(() => [...all.map(entryOfItem), ...tasks.map(entryOfTask), ...ownDocs.map(entryOfDoc)], [all, tasks, ownDocs]);
+  const classLessons = useClassLessons(uid);
+  const entries = useMemo(() => [...all.map(entryOfItem), ...ownDocs.filter((d) => d.kind !== 'lesson').map(entryOfDoc), ...(classLessons.list ?? []).map(entryOfLesson)], [all, ownDocs, classLessons.list]);
+  const [sharingLesson, setSharingLesson] = useState<ClassLesson | null>(null);
+  const [lessonWarned, setLessonWarned] = useState(false);
   const [sharing, setSharing] = useState<SharedDoc | null>(null);
   // Every folder, with the folders above it.
   const allFolders = useMemo(() => {
@@ -256,11 +266,6 @@ export function MediaArchive() {
     setSel(new Set(['f:' + path]));
     setRenaming('f:' + path); // straight into typing its name, like on a computer
   };
-  const newTask = async () => {
-    if (!uid) return;
-    const id = await newLibTask(uid, folder).catch(() => null);
-    if (id) openStudio('task', id);
-  };
   const doRename = async (key: string, name: string) => {
     setRenaming(null);
     const n = name.trim();
@@ -277,7 +282,7 @@ export function MediaArchive() {
       return;
     }
     const e = entries.find((x) => x.key === key);
-    if (!e || n === e.name) return;
+    if (!e || n === e.name || e.cls) return;
     if (e.item) await archiveUpdate(uid, e.item, { name: n }).catch(() => {});
     else if (e.task) await renameLibTask(uid, e.task.id, n).catch(() => {});
     else if (e.doc) await renameDoc(e.doc.id, n).catch(() => {});
@@ -295,6 +300,8 @@ export function MediaArchive() {
     if (!list.length || !uid) return;
     const lessons = list.reduce((s, e) => s + (e.task?.uses.length ?? 0), 0);
     if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}” from the library?` : `Remove ${list.length} items from the library?`} ${lessons ? 'Lessons that use them keep their copies, no longer linked.' : 'Lessons that use them keep them.'}`, { ok: 'Remove' }))) return;
+    list = list.filter((e) => !e.cls);
+    if (!list.length) return;
     for (const e of list) {
       if (e.item) await archiveRemove(uid, e.item.id).catch(() => {});
       else if (e.task) await removeLibTask(uid, e.task).catch(() => {});
@@ -323,6 +330,8 @@ export function MediaArchive() {
   };
   const moveTo = async (list: Entry[], to: string) => {
     if (!uid) return;
+    if (inClasses(to)) return;
+    list = list.filter((e) => !e.cls);
     const its = list.filter((e) => e.item && e.folder !== to).map((e) => e.item!);
     const ts = list.filter((e) => e.task && e.folder !== to).map((e) => e.task!.id);
     if (its.length) await moveItems(uid, its, to).catch(() => {});
@@ -349,18 +358,24 @@ export function MediaArchive() {
     },
   });
   const dragE = (en: Entry) => (e: React.DragEvent) => {
+    if (en.cls) return e.preventDefault();
     const ids = sel.has(en.key) ? selEntries.map((x) => x.key) : [en.key];
     e.dataTransfer.setData(MOVE, ids.join(','));
     e.dataTransfer.effectAllowed = 'move';
   };
   // Editors open full screen in their own tab: Task editor, Sound editor.
-  const openE = (en: Entry) => (en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openE = (en: Entry) => (en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
         ...(selEntries.length ? [{ label: `Move ${selEntries.length} items to…`, icon: 'folder', onClick: () => setMoving(selEntries) } as MenuItem] : []),
         { label: `Download ${sel.size} items`, icon: 'import', onClick: () => void download(selEntries, selFolders) },
         ...(selEntries.length ? ['sep' as const, { label: `Remove ${selEntries.length} from the library`, icon: 'trash', danger: true, onClick: () => void removeE(selEntries) } as MenuItem] : []),
+      ];
+    if (en.cls)
+      return [
+        { label: 'Open', icon: 'fullscreen', onClick: () => openE(en) },
+        { label: 'Share with a colleague…', icon: 'person', onClick: () => (setLessonWarned(false), setSharingLesson(en.cls!)) },
       ];
     if (en.doc)
       return [
@@ -380,7 +395,7 @@ export function MediaArchive() {
       { label: 'Remove from the library', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
     ];
   };
-  const folderMenu = (f: string): MenuItem[] => [
+  const folderMenu = (f: string): MenuItem[] => inClasses(f) ? [{ label: 'Open', icon: 'folder', onClick: () => setFolder(f) }] : [
     { label: 'Open', icon: 'folder', onClick: () => setFolder(f) },
     { label: 'New folder inside', icon: 'plus', onClick: () => void newFolder(f) },
     { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => (setSel(new Set(['f:' + f])), setRenaming('f:' + f)) },
@@ -398,8 +413,6 @@ export function MediaArchive() {
   const newMenu: MenuItem[] = [
     { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
     'sep',
-    { label: 'Lesson', icon: 'classes', onClick: () => void makeDoc('lesson') },
-    { label: 'Task', icon: 'task', onClick: () => void newTask() },
     { label: 'Document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
     { label: 'Slides', icon: 'present', hint: 'with learners too', onClick: () => void makeDoc('slides') },
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
@@ -621,6 +634,24 @@ export function MediaArchive() {
                 <span className="sub">Files colleagues and others share with you, and what you share.</span>
               </div>
             </div>
+            {classLessons.withMe.length > 0 && (
+              <section className="fd">
+                <h2 className="fd-h">Lessons shared with you</h2>
+                <div className="al-grid">
+                  {classLessons.withMe.map((l) => (
+                    <a key={l.classId + l.itemId} href={`/class/${l.classId}/lesson/${l.itemId}`} target="_blank" rel="noopener" className="al-doc fd-doc k-lesson">
+                      <span className="al-doc-art k-lesson">
+                        <FileIcon kind="lesson" size={40} />
+                      </span>
+                      <span className="al-doc-t">
+                        <b>{l.title}</b>
+                        <span className="al-meta">{l.className}: changes show in the class</span>
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
             <FileDocs uid={uid} mode="shared" />
             <ArchiveShared uid={uid} />
           </main>
@@ -844,6 +875,37 @@ export function MediaArchive() {
         )}
 
         {pane && oneEntry?.item && <Detail key={oneEntry.key} uid={uid!} item={oneEntry.item} folders={allFolders} shared={sharedIds.has(oneEntry.item.id)} onClose={() => setSel(new Set())} />}
+        {pane && oneEntry?.cls && (
+          <aside className="ma-detail" aria-label={oneEntry.cls.title}>
+            <div className="ma-detail-head">
+              <span className="pop-type">Lesson</span>
+              <button type="button" className="ma-x big" onClick={() => setSel(new Set())} aria-label="Close">
+                ×
+              </button>
+            </div>
+            <div className="lt-preview dd" onDoubleClick={() => openE(oneEntry)} title="Double-click to edit the lesson">
+              <FileIcon kind="lesson" size={56} />
+              <b className="lt-preview-t">{oneEntry.cls.title}</b>
+              <span className="ld-where">
+                <span className="hint">Where it is</span>
+                <span>
+                  <b>{oneEntry.cls.className}</b>
+                  {oneEntry.cls.topic && <> › {oneEntry.cls.topic}</>}
+                </span>
+              </span>
+              {Object.keys(oneEntry.cls.editors ?? {}).length > 0 && <span className="hint">Shared with {Object.values(oneEntry.cls.editors).join(', ')}</span>}
+              <span className="hint">Lessons stay where the class puts them. Move or rename them in the class.</span>
+            </div>
+            <span className="ma-detail-acts">
+              <button type="button" className="btn small-btn primary" onClick={() => openE(oneEntry)}>
+                <UiIcon name="edit" size={14} /> Edit the lesson
+              </button>
+              <button type="button" className="btn small-btn" onClick={() => (setLessonWarned(false), setSharingLesson(oneEntry.cls!))}>
+                <UiIcon name="person" size={14} /> Share with a colleague
+              </button>
+            </span>
+          </aside>
+        )}
         {pane && oneEntry?.doc && (
           <aside className="ma-detail" aria-label={oneEntry.doc.title}>
             <div className="ma-detail-head">
@@ -892,7 +954,36 @@ export function MediaArchive() {
         )}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {moving && <MoveDialog folders={allFolders} count={moving.length} from={moving.length === 1 ? moving[0].folder : null} onClose={() => setMoving(null)} onMove={(to) => (void moveTo(moving, to), setMoving(null))} />}
-        {sharing && <DocShareDialog d={sharing} onClose={() => setSharing(null)} />}
+        {sharingLesson && !lessonWarned && (
+        <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && setSharingLesson(null)}>
+          <div className="dialog" role="alertdialog" aria-label="Share the lesson">
+            <h2>Share “{sharingLesson.title}”</h2>
+            <p>The colleagues you share it with edit the lesson in {sharingLesson.className} itself. Every change they make shows straight away in the class, for you and your learners.</p>
+            <div className="row-between" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="btn" onClick={() => setSharingLesson(null)}>
+                Cancel
+              </button>
+              <button type="button" className="btn primary" onClick={() => setLessonWarned(true)}>
+                I understand, share it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sharingLesson && lessonWarned && dir && (
+        <DocSharePeople
+          teachersOnly
+          noRoles
+          title={`Share “${sharingLesson.title}” with colleagues`}
+          ownerName={user?.displayName || 'You'}
+          members={Object.fromEntries(Object.entries(sharingLesson.editors ?? {}).map(([k, n]) => [k, { role: 'edit' as const, name: n, kind: 'teacher' as const }]))}
+          chatLabel="Send them a message with the lesson"
+          onShare={(people, _r, tell, note) => shareLesson(sharingLesson, people, dir.me, tell, note)}
+          onRemove={(k) => void unshareLesson(sharingLesson, k)}
+          onClose={() => setSharingLesson(null)}
+        />
+      )}
+      {sharing && <DocShareDialog d={sharing} onClose={() => setSharing(null)} />}
       {together && <RecordTogether onClose={() => setTogether(false)} />}
         {editTask && uid && <TaskWindow uid={uid} task={editTask} onClose={() => setEditing(null)} />}
       </div>

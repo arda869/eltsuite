@@ -19,6 +19,10 @@ service cloud.firestore {
     function viewsClass(classId) { return signedIn() && (classData(classId).teacherId == request.auth.uid || coRole(classData(classId)) in ['co', 'viewer']); }
     function ownsClass(classId) { return signedIn() && classData(classId).teacherId == request.auth.uid; }
     function myEmailKey() { return request.auth.token.get('email', '').lower().replace('[.]', ','); }
+    // A colleague a lesson is shared with: they edit that lesson only.
+    function editsItem(classId, itemId) {
+      return signedIn() && request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('editors', {});
+    }
     function memberOf(classId) {
       return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
@@ -78,6 +82,7 @@ service cloud.firestore {
       allow read: if signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
         || request.auth.uid in resource.data.get('coTeachers', {})
         || request.auth.uid in resource.data.get('teacherIds', [])
+        || request.auth.uid in resource.data.get('lessonEditorIds', [])
         || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
       allow create: if isTeacher()
         && request.resource.data.teacherId == request.auth.uid
@@ -106,23 +111,23 @@ service cloud.firestore {
         allow write: if teachesClass(classId);
       }
       match /items/{itemId} {
-        allow read: if viewsClass(classId) || memberOf(classId);
-        allow write: if teachesClass(classId);
+        allow read: if viewsClass(classId) || memberOf(classId) || (signedIn() && request.auth.uid in resource.data.get('editors', {}));
+        allow write: if teachesClass(classId) || (editsItem(classId, itemId) && request.resource.data.get('editors', {}) == resource.data.get('editors', {}));
 
         match /tasks/{taskId} {
-          allow read: if viewsClass(classId) || memberOf(classId);
-          allow write: if teachesClass(classId);
+          allow read: if viewsClass(classId) || memberOf(classId) || editsItem(classId, itemId);
+          allow write: if teachesClass(classId) || editsItem(classId, itemId);
 
           // Earlier versions of the task (with answers): teacher only
           match /versions/{versionId} {
-            allow read: if viewsClass(classId);
-            allow write: if teachesClass(classId);
+            allow read: if viewsClass(classId) || editsItem(classId, itemId);
+            allow write: if teachesClass(classId) || editsItem(classId, itemId);
           }
 
           // Answer key: learners can read it only after they have checked their answers.
           // Body: the content of a task only some learners may open (groups and versions).
           match /private/{docId} {
-            allow read: if viewsClass(classId)
+            allow read: if viewsClass(classId) || editsItem(classId, itemId)
               || (docId == 'body' && memberOf(classId)
                   && get(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid)).data.learnerId
                      in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)/tasks/$(taskId)).data.get('allowed', []))
@@ -138,7 +143,7 @@ service cloud.firestore {
                           && get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('examReleased', false) == true)
                       || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealed', {}).get(taskId, 0) != 0
                       || get(/databases/$(database)/documents/classes/$(classId)/live/state).data.get('revealedQs', {}).get(taskId, []).size() > 0));
-            allow write: if teachesClass(classId);
+            allow write: if teachesClass(classId) || editsItem(classId, itemId);
           }
         }
       }
