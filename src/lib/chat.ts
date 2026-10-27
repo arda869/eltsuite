@@ -192,7 +192,7 @@ export function useTyping(chatId: string, me: string) {
 // Sounds, made in the browser: a soft two-note chime for a new message, a light tap on send.
 let ctx: AudioContext | null = null;
 export function chime(kind: 'in' | 'out') {
-  if (!soundsOn()) return;
+  if (!soundsOn() || (kind === 'in' && localStorageGet('ll.statusSet') === 'busy')) return;
   try {
     ctx ??= new AudioContext();
     const t = ctx.currentTime;
@@ -285,5 +285,13 @@ export function saveEnterSend(v: boolean) {
     localStorage.setItem('ll.enterSend', v ? '1' : '0');
   } catch {
     /* fine */
+  }
+}
+
+function localStorageGet(k: string) {
+  try {
+    return localStorage.getItem(k);
+  } catch {
+    return null;
   }
 }

@@ -7,6 +7,7 @@ import { TaskEditor } from '../editor/TaskEditor';
 import { CITE_STYLES, SOURCE_TYPES, inText, piecesText, reference, shortName, sortKey, type CiteStyle, type Person, type Source, type SourceType } from '../lib/cite';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { ask } from '../lib/ask';
+import { Select } from '../components/Select';
 
 // PD reading: the sources a teacher reads for professional development, each with its full
 // reference in the citation style they choose, and notes, page by page if they like.
@@ -43,10 +44,10 @@ export async function allSources(files: SharedDoc[]): Promise<{ file: SharedDoc;
   return out.sort((a, b) => sortKey(a.src).localeCompare(sortKey(b.src)));
 }
 
-export function Ref({ s, style }: { s: Source; style: CiteStyle }) {
+export function Ref({ s, style, n }: { s: Source; style: CiteStyle; n?: number }) {
   return (
     <span className="pd-ref">
-      {reference(s, style).map((p, i) => (p.i ? <i key={i}>{p.t}</i> : <span key={i}>{p.t}</span>))}
+      {reference(s, style, n).map((p, i) => (p.i ? <i key={i}>{p.t}</i> : <span key={i}>{p.t}</span>))}
     </span>
   );
 }
@@ -78,9 +79,13 @@ function PeopleInput({ label, list, onChange }: { label: string; list: Person[];
 function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 'id'> & { id?: string }; style: CiteStyle; onSave: (s: Omit<ReadSource, 'id'> & { id?: string }) => void; onCancel: () => void }) {
   const [s, setS] = useState(init);
   const set = (p: Partial<ReadSource>) => setS((x) => ({ ...x, ...p }));
-  const f = (k: keyof Source, label: string, ph = '', wide = false) => (
+  // Only the title is needed; everything else makes the reference complete.
+  const f = (k: keyof Source, label: string, ph = '', wide = false, need = false) => (
     <label className={'pd-f' + (wide ? ' wide' : '')}>
-      <span className="pd-k">{label}</span>
+      <span className="pd-k">
+        {label}
+        {!need && <em className="pd-opt">optional</em>}
+      </span>
       <input value={String(s[k] ?? '')} placeholder={ph} onChange={(e) => set({ [k]: e.target.value } as Partial<ReadSource>)} />
     </label>
   );
@@ -94,12 +99,14 @@ function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 
           </button>
         ))}
       </span>
+      <div className="pd-grid">
+        {f('title', t === 'chapter' ? 'Chapter title' : t === 'article' ? 'Article title' : 'Title', '', true, true)}
+        {f('year', 'Year', '2006')}
+      </div>
       <PeopleInput label="Authors" list={s.authors.length ? s.authors : [{ first: '', last: '' }]} onChange={(authors) => set({ authors })} />
       <div className="pd-grid">
         {f('org', 'Or an organisation as author', 'Cambridge Assessment English', true)}
-        {f('year', 'Year', '2006')}
         {t === 'web' && f('date', 'Day and month', '14 March')}
-        {f('title', t === 'chapter' ? 'Chapter title' : t === 'article' ? 'Article title' : 'Title', '', true)}
         {t === 'chapter' && f('bookTitle', 'Book title', '', true)}
         {(t === 'book' || t === 'chapter' || t === 'report') && f('edition', 'Edition', '3')}
         {(t === 'book' || t === 'chapter' || t === 'report') && f('publisher', 'Publisher', 'Cambridge University Press')}
@@ -120,6 +127,7 @@ function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 
         <span className="hint">In the text: {inText({ ...s, id: '' } as Source, style, '12')}</span>
       </div>
       <span className="pd-form-acts">
+        {!s.title.trim() && <span className="hint">Add a title to save</span>}
         <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
@@ -165,6 +173,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
   const [q, setQ] = useState('');
   const [copied, setCopied] = useState('');
   const [editing, setEditing] = useState<(Omit<ReadSource, 'id'> & { id?: string }) | null>(null);
+  const [fresh, setFresh] = useState('');
   useEffect(() => {
     if (list && !sel && list[0]) setSel(list[0].id);
   }, [list, sel]);
@@ -176,6 +185,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
     await setDoc(doc(srcCol(d.id), id), JSON.parse(JSON.stringify(rest)), { merge: true });
     setSel(id);
     setEditing(null);
+    setFresh('');
   };
   const patch = (p: Partial<ReadSource>) => cur && void updateDoc(doc(srcCol(d.id), cur.id), JSON.parse(JSON.stringify(p)));
   const copy = (what: string, text: string) => {
@@ -187,7 +197,15 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
   const sections = cur?.sections?.length ? cur.sections : [{ id: 's1', page: '', content: null }];
   const words = q.trim().toLowerCase();
   const shown = [...list].sort((a, b) => sortKey(a).localeCompare(sortKey(b))).filter((s) => !words || `${shortName(s)} ${s.title} ${authorLine(s)} ${s.year}`.toLowerCase().includes(words));
-  const startNew = (t: SourceType) => setEditing({ ...blank(), type: t });
+  // A new source opens at once: the details at the top, the notes ready underneath.
+  const startNew = async (t: SourceType = 'book') => {
+    const id = newId();
+    const { ...rest } = { ...blank(), type: t };
+    await setDoc(doc(srcCol(d.id), id), JSON.parse(JSON.stringify(rest)));
+    setEditing(null);
+    setSel(id);
+    setFresh(id);
+  };
   return (
     <div className="pd">
       <aside className="pd-side" aria-label="Sources">
@@ -197,7 +215,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
             <span className="hint">{list.length}</span>
           </span>
           {canEdit && (
-            <button type="button" className="btn small-btn primary" onClick={() => setEditing(blank())}>
+            <button type="button" className="btn small-btn primary" onClick={() => void startNew()}>
               + Add
             </button>
           )}
@@ -205,7 +223,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
         {list.length > 4 && <input className="pd-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your reading" aria-label="Search your reading" />}
         <nav className="pd-list">
           {shown.map((s) => (
-            <button key={s.id} type="button" className={'pd-item' + (s.id === sel && !editing ? ' on' : '')} onClick={() => (setSel(s.id), setEditing(null))}>
+            <button key={s.id} type="button" className={'pd-item' + (s.id === sel && !editing ? ' on' : '')} onClick={() => (setSel(s.id), setEditing(null), setFresh(''))}>
               <span className="pd-item-ic">
                 <TypeIcon t={s.type} />
               </span>
@@ -217,17 +235,10 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
           ))}
           {!list.length && <span className="hint pd-none">Your books, chapters, articles and web pages appear here.</span>}
         </nav>
-        <label className="pd-style">
+        <div className="pd-style">
           <span className="pd-k">Citation style</span>
-          <select value={style} disabled={!canEdit} onChange={(e) => void updateDoc(doc(db, 'sharedDocs', d.id), { pd: { style: e.target.value } })}>
-            {CITE_STYLES.map((c) => (
-              <option key={c.k} value={c.k}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <span className="hint">{CITE_STYLES.find((c) => c.k === style)?.about}</span>
-        </label>
+          <Select label="Citation style" value={style} disabled={!canEdit} search options={CITE_STYLES.map((c) => ({ v: c.k, label: c.label, hint: c.about }))} onChange={(v) => void updateDoc(doc(db, 'sharedDocs', d.id), { pd: { style: v } })} />
+        </div>
       </aside>
       <main className="pd-main">
         {editing ? (
@@ -240,6 +251,11 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
           </div>
         ) : cur ? (
           <article className="pd-reading">
+            {fresh === cur.id && canEdit ? (
+              <div className="pd-sheet pd-newsheet">
+                <SourceForm key={cur.id} init={cur} style={style} onSave={(x) => void save(x)} onCancel={() => setFresh('')} />
+              </div>
+            ) : (
             <header className="pd-cover">
               <span className="pd-type">
                 <TypeIcon t={cur.type} size={14} /> {SOURCE_TYPES.find((x) => x.k === cur.type)?.label}
@@ -271,6 +287,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
                 </span>
               </div>
             </header>
+            )}
             <section className="pd-notes">
               <span className="pd-notes-h">
                 <b>Notes</b>
@@ -320,7 +337,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
             {canEdit && (
               <span className="pd-empty-acts">
                 {(['book', 'chapter', 'article', 'web'] as SourceType[]).map((t) => (
-                  <button key={t} type="button" className="pd-start" onClick={() => startNew(t)}>
+                  <button key={t} type="button" className="pd-start" onClick={() => void startNew(t)}>
                     <TypeIcon t={t} size={22} />
                     <span>{SOURCE_TYPES.find((x) => x.k === t)?.label}</span>
                   </button>

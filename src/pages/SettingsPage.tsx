@@ -19,6 +19,14 @@ import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
 import { SoundRecordings } from '../components/SoundRecordings';
 import { SfxSettings } from '../components/SfxSettings';
 import { isOwner } from '../lib/phonAudio';
+import { useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { TOOL_FACE } from '../editor/TaskEditor';
+import { TextColorTool } from '../editor/TextColor';
+import { HighlightTool } from '../editor/Highlight';
+import { IconTool } from '../editor/Icons';
+import { SymbolTool } from '../editor/Symbols';
+import { ProsodyTool } from '../editor/Prosody';
 import { StorageCard } from '../components/StorageCard';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
@@ -283,28 +291,12 @@ export function SettingsPage() {
 }
 
 // Which tools the text toolbar shows, which wait behind the › arrow, and which are hidden.
-// A model of the toolbar: drag a tool between the bar, the › tray and the shelf.
-const GLYPH: Record<string, ReactNode> = {
-  bold: <b>B</b>,
-  italic: <i style={{ fontFamily: 'Fraunces, serif' }}>I</i>,
-  underline: <u>U</u>,
-  strike: <s>S</s>,
-  color: <span className="tbs-col">A</span>,
-  highlight: <span className="tbs-hl">ab</span>,
-  heading: <span>H</span>,
-  bullets: <span>••</span>,
-  numbers: <span>1.</span>,
-  table: <span>▦</span>,
-  definition: <span style={{ fontFamily: 'Fraunces, serif' }}>Aa</span>,
-  link: <span>↗</span>,
-  questions: <span>?</span>,
-  icons: <span>◇</span>,
-  symbols: <span>§</span>,
-  pron: <span>/ə/</span>,
-  add: <span>+</span>,
-};
+// The real toolbar, drawn with the real buttons: drag a tool between the bar, the › tray and the shelf.
 function ToolbarSettings() {
   const place = useToolbarPrefs();
+  const ed = useEditor({ extensions: [StarterKit], content: '', editable: false });
+  const face = (k: string) =>
+    !ed ? null : k === 'color' ? <TextColorTool editor={ed} /> : k === 'highlight' ? <HighlightTool editor={ed} /> : k === 'icons' ? <IconTool editor={ed} /> : k === 'symbols' ? <SymbolTool editor={ed} /> : k === 'pron' ? <ProsodyTool editor={ed} /> : <span className="tool">{TOOL_FACE[k]}</span>;
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<ToolPlace | null>(null);
   const ORDER: ToolPlace[] = ['show', 'more', 'hide'];
@@ -330,9 +322,10 @@ function ToolbarSettings() {
   const chip = (t: (typeof TOOLS)[number], big: boolean) => {
     const z = place(t.k);
     return (
-      <button
+      <span
         key={t.k}
-        type="button"
+        role="button"
+        tabIndex={0}
         draggable
         className={'tbs-chip' + (big ? '' : ' wide') + (drag === t.k ? ' dragging' : '')}
         data-tip={big ? t.label : undefined}
@@ -356,9 +349,9 @@ function ToolbarSettings() {
         }}
         data-tool={t.k}
       >
-        <span className="tbs-g" aria-hidden="true">{GLYPH[t.k]}</span>
-        {!big && <span>{t.label}</span>}
-      </button>
+        <span className="tbs-face" aria-hidden="true" {...{ inert: "" }}>{face(t.k)}</span>
+        {!big && !['heading', 'table', 'definition', 'link', 'questions', 'add'].includes(t.k) && <span className="tbs-name">{t.label}</span>}
+      </span>
     );
   };
   const of = (z: ToolPlace) => TOOLS.filter((t) => place(t.k) === z);
@@ -368,7 +361,7 @@ function ToolbarSettings() {
     <Section icon="settings" title="Text toolbar">
       <span className="hint set-tb-intro">Drag tools onto the toolbar, into the › tray, or onto the shelf to hide them. Everything stays in + Add and the / menu.</span>
       <div className={'tbs' + (drag ? ' is-dragging' : '')}>
-        <div className="tbs-bar" {...zone('show')} aria-label="On the toolbar">
+        <div className="tbs-bar toolbar" {...zone('show')} aria-label="On the toolbar">
           {of('show').map((t) => chip(t, true))}
           {of('show').length === 0 && <span className="tbs-empty">Drop tools here</span>}
           <span className="tbs-arrow" aria-hidden="true">›</span>

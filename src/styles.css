@@ -7272,3 +7272,36 @@ input.dg-cell-label:focus { outline: none; }
 .tbs.is-dragging .tbs-bar, .tbs.is-dragging .tbs-tray, .tbs.is-dragging .tbs-shelf { border-color: color-mix(in srgb, var(--accent) 35%, var(--hair-strong)); }
 .tbs [data-over] { border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); background: color-mix(in srgb, var(--accent) 4%, var(--paper)); }
 .tbs-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* PD reading: the full width, a compact cover */
+.pd-main .pd-reading, .pd-main .pd-sheet { max-width: none; }
+.pd-cover { gap: 4px; padding: 14px 18px 14px; border-radius: 14px; }
+.pd-title { font-size: 22px; }
+.pd-by { font-size: 13.5px; }
+.pd-cite-box { margin-top: 6px; padding: 10px 12px; gap: 6px; font-size: 14px; }
+.pd-opt { margin-left: 6px; font: italic 400 10.5px var(--sans); letter-spacing: 0; text-transform: none; color: var(--faint); }
+.pd-form-acts { align-items: center; }
+.pd-newsheet .pd-form { padding: 14px 16px; }
+.dp.k-pd .pd { grid-template-columns: 260px minmax(0, 1fr); }
+
+/* The toolbar settings use the real buttons; the button only shows, the chip takes the drag. */
+.tbs-face { display: inline-flex; align-items: center; pointer-events: none; }
+.tbs-face .tool { pointer-events: none; }
+.tbs-bar.toolbar { position: relative; top: auto; margin: 0; }
+.tbs-bar .tbs-chip { height: auto; min-width: 0; padding: 0; border-radius: 8px; }
+.tbs-bar .tbs-chip:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.tbs-chip.wide .tbs-face .tool { height: 28px; }
+.tbs-name { font-size: 13px; }
+
+/* Your status, in the account menu and on your picture */
+.topbar .avatar { position: relative; overflow: visible; }
+.topbar .avatar > img, .topbar .avatar > svg { border-radius: 50%; }
+.pz-busy { background: #c2463d; }
+.menu-status { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid var(--hair); margin-bottom: 4px; }
+.menu-status .menu-link { display: flex; align-items: center; gap: 10px; }
+.menu-status .menu-link.on { font-weight: 600; }
+.menu-status .menu-link.on::after { content: '✓'; margin-left: auto; color: var(--accent-text); }
+.pz-i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.pz-i.pz-online { background: #3f9a62; } .pz-i.pz-away { background: #d4a23c; } .pz-i.pz-busy { background: #c2463d; } .pz-i.pz-off { background: transparent; box-shadow: inset 0 0 0 1.5px #b9b5ad; }
+.topbar .avatar > img { width: 100%; height: 100%; object-fit: cover; }
+.topbar .avatar .avatar-pic { border-radius: 50%; overflow: hidden; }

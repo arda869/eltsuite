@@ -2,7 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePopPos } from './usePopPos';
-import { inText, refsTitle, shortName, sortKey, type CiteStyle, type Source } from '../lib/cite';
+import { CITE_STYLES, inText, isNumbered, orderFor, refsTitle, shortName, type CiteStyle, type Source } from '../lib/cite';
 import { useAuth } from '../lib/auth';
 import { useMyDocs } from '../lib/sharedDocs';
 import { allSources, Ref, type ReadSource } from '../pd/PdReading';
@@ -18,9 +18,18 @@ const strip = (s: ReadSource | Source): Source => {
   return JSON.parse(JSON.stringify(rest));
 };
 
-function CiteView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
+function CiteView({ node, updateAttributes, deleteNode, selected, editor }: NodeViewProps) {
   const style = useCiteStyle();
   const src = node.attrs.src as Source;
+  // In a numbered style, the number is the source's place among those cited so far.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!isNumbered(style)) return;
+    const f = () => tick((x) => x + 1);
+    editor.on('update', f);
+    return () => void editor.off('update', f);
+  }, [editor, style]);
+  const num = isNumbered(style) && src ? citedSources(editor.state.doc, style).findIndex((x) => (x.id || JSON.stringify(x)) === (src.id || JSON.stringify(src))) + 1 || 1 : 1;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const pos = usePopPos(ref, open, 300);
@@ -33,7 +42,7 @@ function CiteView({ node, updateAttributes, deleteNode, selected }: NodeViewProp
   return (
     <NodeViewWrapper as="span" className={'cite-node' + (selected ? ' is-selected' : '')} ref={ref}>
       <span className="cite" contentEditable={false} onClick={() => setOpen(true)} title={src?.title}>
-        {src ? inText(src, style, node.attrs.page, node.attrs.narrative) : '(source)'}
+        {src ? inText(src, style, node.attrs.page, node.attrs.narrative, num) : '(source)'}
       </span>
       {open && src && (
         <span className="gap-pop cite-pop" contentEditable={false} style={pos}>
@@ -45,7 +54,7 @@ function CiteView({ node, updateAttributes, deleteNode, selected }: NodeViewProp
           </label>
           <label className="check-row">
             <input type="checkbox" checked={!!node.attrs.narrative} onChange={(e) => updateAttributes({ narrative: e.target.checked })} />
-            The author is part of the sentence: {inText(src, style, node.attrs.page, true)}
+            The author is part of the sentence: {inText(src, style, node.attrs.page, true, num)}
           </label>
           <button type="button" className="btn link small" onClick={deleteNode}>
             Remove the citation
@@ -72,15 +81,16 @@ export const CiteNode = Node.create({
 });
 
 // Every source cited in the document, once, in reference-list order.
-export function citedSources(doc: { descendants: (f: (n: { type: { name: string }; attrs: Record<string, unknown> }) => void) => void }): Source[] {
+export function citedSources(doc: { descendants: (f: (n: { type: { name: string }; attrs: Record<string, unknown> }) => void) => void }, style: CiteStyle = 'apa'): Source[] {
   const seen = new Map<string, Source>();
   doc.descendants((n) => {
     if (n.type.name === 'cite' && n.attrs.src) {
       const s = n.attrs.src as Source;
-      seen.set(s.id || JSON.stringify(s), s);
+      const k = s.id || JSON.stringify(s);
+      if (!seen.has(k)) seen.set(k, s);
     }
   });
-  return [...seen.values()].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  return orderFor([...seen.values()], style);
 }
 
 function RefListView({ editor, selected }: NodeViewProps) {
@@ -91,14 +101,14 @@ function RefListView({ editor, selected }: NodeViewProps) {
     editor.on('update', f);
     return () => void editor.off('update', f);
   }, [editor]);
-  const list = citedSources(editor.state.doc);
+  const list = citedSources(editor.state.doc, style);
   return (
     <NodeViewWrapper className={'reflist' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <h2 className="reflist-h">{refsTitle(style)}</h2>
       {list.length ? (
-        list.map((s) => (
+        list.map((s, i) => (
           <p key={s.id} className="reflist-item">
-            <Ref s={s} style={style} />
+            <Ref s={s} style={style} n={i + 1} />
           </p>
         ))
       ) : (
@@ -186,7 +196,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
             <span>Page</span>
             <input value={page} onChange={(e) => setPage(e.target.value)} placeholder="optional" />
           </label>
-          <span className="hint">In {style === 'apa' ? 'APA 7' : style}: {all?.[0] ? inText(all[0].src, style, page || '12') : '(Thornbury, 2006, p. 12)'}</span>
+          <span className="hint">In {CITE_STYLES.find((c) => c.k === style)?.label ?? style}: {all?.[0] ? inText(all[0].src, style, page || '12') : '(Thornbury, 2006, p. 12)'}</span>
           {!hasList && (
             <button type="button" className="btn small-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => (editor.chain().focus('end').insertContent([{ type: 'refList' }, { type: 'paragraph' }]).run(), setOpen(false))}>
               Add the reference list at the end

@@ -17,7 +17,7 @@ import { DefCard, type DefData } from '../editor/Definition';
 import { speakerVars } from '../editor/Dialogue';
 import { StressedWord } from '../editor/Stress';
 import { LinkMark, prosodyAttrs } from '../editor/Prosody';
-import { SubstSlot } from '../editor/Subst';
+import { SubstSlot, type SubstLines } from '../editor/Subst';
 import { PhonView } from '../editor/Phonemes';
 import { TimeNotes, TTBlock, useTrainingClass, type Fields, type TTKind } from '../training/Training';
 import { DictCutout } from '../editor/DictCut';
@@ -1184,7 +1184,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'phonCard':
         return <PhonView key={key} type={node.type} a={(node.attrs ?? {}) as Record<string, unknown>} />;
       case 'subst':
-        return <SubstSlot key={key} options={(node.attrs?.options as string[]) ?? []} />;
+        return <SubstSlot key={key} options={(node.attrs?.options as string[]) ?? []} lines={node.attrs?.lines as SubstLines | undefined} />;
       case 'dictCut':
         return node.attrs?.word || Object.keys(node.attrs?.data ?? {}).length ? (
           <div key={key} className="dcut-wrap">

@@ -365,6 +365,27 @@ export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   e.chain().insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1).run();
 }
 
+// The face of each toolbar button, for the toolbar settings, which show the same bar.
+export const TOOL_FACE: Record<string, React.ReactNode> = {
+  bold: <b className="ti ti-b">B</b>,
+  italic: <i className="ti ti-i">I</i>,
+  underline: <u className="ti ti-u">U</u>,
+  strike: <s className="ti ti-s">S</s>,
+  heading: <span className="ti ti-h">Heading</span>,
+  bullets: ICON_LIST,
+  numbers: ICON_OL,
+  table: <span className="ti-row">{ICON_TABLE}<span>Table</span></span>,
+  definition: <span className="ti-row"><span className="ti-def">Aa</span><span>Definition</span></span>,
+  link: <span className="ti-row">{ICON_LINK}<span>Link</span></span>,
+  questions: (
+    <span className="ti-row">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 17h.01" /></svg>
+      <span>Questions</span>
+      <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+    </span>
+  ),
+  add: '+ Add…',
+};
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
   <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
     {text}

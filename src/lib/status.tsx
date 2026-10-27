@@ -6,7 +6,41 @@ import { rtdb } from './firebase';
 // Who is around: online, away (the app hidden or untouched for a while), in a class right now,
 // or on a video call. Each person's app keeps their own line up to date; others only read it.
 
-export type Status = { state: 'online' | 'away' | 'offline'; at?: number; cls?: string | null; call?: boolean | null };
+export type StatusSet = 'auto' | 'away' | 'busy' | 'hidden';
+export type Status = { state: 'online' | 'away' | 'offline'; at?: number; cls?: string | null; call?: boolean | null; set?: StatusSet };
+// What a person chose to show: automatic, away, do not disturb, or offline to others.
+export const STATUS_SETS: { k: StatusSet; label: string; hint: string }[] = [
+  { k: 'auto', label: 'Automatic', hint: 'Online, away, in class or on a call, as it happens' },
+  { k: 'away', label: 'Away', hint: 'Until you change it' },
+  { k: 'busy', label: 'Do not disturb', hint: 'Messages wait without a sound' },
+  { k: 'hidden', label: 'Appear offline', hint: 'Others see you as offline' },
+];
+const SET_KEY = 'll.statusSet';
+export const mySet = (): StatusSet => {
+  try {
+    return (localStorage.getItem(SET_KEY) as StatusSet) || 'auto';
+  } catch {
+    return 'auto';
+  }
+};
+const setListeners = new Set<(s: StatusSet) => void>();
+export function setMyStatus(v: StatusSet) {
+  try {
+    localStorage.setItem(SET_KEY, v);
+  } catch {
+    /* fine */
+  }
+  setListeners.forEach((f) => f(v));
+  put({ set: v });
+}
+export function useMySet() {
+  const [v, setV] = useState(mySet);
+  useEffect(() => {
+    setListeners.add(setV);
+    return () => void setListeners.delete(setV);
+  }, []);
+  return v;
+}
 const AWAY_AFTER = 5 * 60_000;
 let me = '';
 let activity: Pick<Status, 'cls' | 'call'> = {};
@@ -17,7 +51,7 @@ export function startStatus(uid: string) {
   me = uid;
   const r = ref(rtdb, `presence/${uid}`);
   void onDisconnect(r).update({ state: 'offline', cls: null, call: null, at: serverTimestamp() });
-  put({ state: document.hidden ? 'away' : 'online', ...activity });
+  put({ state: document.hidden ? 'away' : 'online', set: mySet(), ...activity });
   let idle = 0;
   const awake = () => {
     window.clearTimeout(idle);
@@ -66,8 +100,11 @@ const ago = (ms?: number) => {
   return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
 };
 // In words, and the dot's kind.
-export function statusOf(p?: Status): { dot: 'call' | 'class' | 'online' | 'away' | 'off'; label: string } {
+export function statusOf(p?: Status): { dot: 'call' | 'class' | 'online' | 'away' | 'off' | 'busy'; label: string } {
+  if (p?.set === 'hidden') return { dot: 'off', label: 'Offline' };
   if (!p || p.state === 'offline') return { dot: 'off', label: p?.at ? `Last seen ${ago(p.at)}` : 'Offline' };
+  if (p.set === 'busy') return { dot: 'busy', label: p.call ? 'On a call, do not disturb' : p.cls ? `In class: ${p.cls}, do not disturb` : 'Do not disturb' };
+  if (p.set === 'away') return { dot: 'away', label: 'Away' };
   if (p.call) return { dot: 'call', label: 'On a call' };
   if (p.cls) return { dot: 'class', label: `In class: ${p.cls}` };
   return p.state === 'away' ? { dot: 'away', label: 'Away' } : { dot: 'online', label: 'Online' };

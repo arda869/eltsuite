@@ -2,7 +2,7 @@ import { credit } from '../lib/brand';
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../editor/TextColor';
 import { highlightBg } from '../editor/Highlight';
-import { inText, reference, refsTitle, sortKey, type CiteStyle, type Piece, type Source } from '../lib/cite';
+import { inText, orderFor, reference, refsTitle, type CiteStyle, type Piece, type Source } from '../lib/cite';
 
 // Shared documents as files: a Word document, or a page to print or save as PDF. Suggestions
 // are shown as if accepted; comments are left out. Citations and the reference list are written
@@ -30,15 +30,20 @@ export function wordCount(json: JSONContent): number {
   walk(json);
   return n;
 }
-function cited(json: JSONContent): Source[] {
+function cited(json: JSONContent, style: CiteStyle): Source[] {
   const m = new Map<string, Source>();
   const walk = (x: JSONContent) => {
-    if (x.type === 'cite' && x.attrs?.src) m.set(x.attrs.src.id || JSON.stringify(x.attrs.src), x.attrs.src as Source);
+    const k = x.attrs?.src && (x.attrs.src.id || JSON.stringify(x.attrs.src));
+    if (x.type === 'cite' && k && !m.has(k)) m.set(k, x.attrs!.src as Source);
     x.content?.forEach(walk);
   };
   walk(json);
-  return [...m.values()].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  return orderFor([...m.values()], style);
 }
+// For numbered styles: each source's number, set for the document being written out.
+let nums = new Map<string, number>();
+const numberAll = (json: JSONContent, style: CiteStyle) => void (nums = new Map(cited(json, style).map((s, i) => [s.id || JSON.stringify(s), i + 1])));
+const numOf = (s: Source) => nums.get(s.id || JSON.stringify(s)) ?? 1;
 
 function inlineHtml(n: JSONContent, o: ExportOpts): string {
   if (n.type === 'text') {
@@ -60,7 +65,7 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
     return out;
   }
   if (n.type === 'hardBreak') return '<br>';
-  if (n.type === 'cite' && n.attrs?.src) return esc(inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative));
+  if (n.type === 'cite' && n.attrs?.src) return esc(inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative, numOf(n.attrs.src)));
   if (n.type === 'ipa') return `<span class="ipa">/${esc(String(n.attrs?.text ?? ''))}/</span>`;
   if (n.type === 'stress') {
     const syl: string[] = n.attrs?.syllables ?? [];
@@ -114,8 +119,8 @@ function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Eleme
     case 'horizontalRule':
       return '<hr>';
     case 'refList':
-      return `<h2 class="refs-h">${refsTitle(o.style)}</h2>${cited(doc)
-        .map((s) => `<p class="ref">${reference(s, o.style).map((p) => (p.i ? `<i>${esc(p.t)}</i>` : esc(p.t))).join('')}</p>`)
+      return `<h2 class="refs-h">${refsTitle(o.style)}</h2>${cited(doc, o.style)
+        .map((s, i) => `<p class="ref">${reference(s, o.style, i + 1).map((p) => (p.i ? `<i>${esc(p.t)}</i>` : esc(p.t))).join('')}</p>`)
         .join('')}`;
     default:
       return (n.content ?? []).map((c) => (c.type === 'text' ? inlineHtml(c, o) : blockHtml(c, o, doc))).join('');
@@ -135,6 +140,7 @@ const appStyles = () =>
     .join('');
 
 export function printDoc(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, liveRoot?: Element | null) {
+  numberAll(json, o.style);
   const live = liveRoot ? Array.from(liveRoot.children) : undefined;
   const needsApp = !!live && (json.content ?? []).some((c) => !plainOnly(c));
   const w = window.open('', '_blank');
@@ -175,7 +181,7 @@ function runsOf(nodes: JSONContent[] | undefined, o: ExportOpts, out: Run[] = []
       out.push(r);
       const def = marks.find((m) => m.type === 'definition')?.attrs?.data;
       if (def?.meaning) out.push({ text: ` (${def.meaning})`, color: '666666' });
-    } else if (n.type === 'cite' && n.attrs?.src) out.push({ text: inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative) });
+    } else if (n.type === 'cite' && n.attrs?.src) out.push({ text: inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative, numOf(n.attrs.src)) });
     else if (n.type === 'ipa') out.push({ text: `/${n.attrs?.text ?? ''}/`, font: 'Segoe UI' });
     else if (n.type === 'stress') (n.attrs?.syllables ?? []).forEach((s: string, i: number) => out.push(i === Number(n.attrs?.stressed ?? 0) ? { text: s, bold: true, underline: {} } : { text: s }));
     else if (n.type === 'sym') out.push({ text: ` ${n.attrs?.text ?? ''} `, bold: true });
@@ -197,6 +203,7 @@ export async function downloadDocx(json: JSONContent, title: string, o: ExportOp
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 export async function docxBlob(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, brand: BrandMark | null = null): Promise<Blob> {
+  numberAll(json, o.style);
   const D = await import('docx');
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle, Footer, PageNumber, ImageRun } = D;
   const sz = o.size * 2;
@@ -264,7 +271,7 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
       }
       case 'refList':
         out.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 360, after: 160 }, pageBreakBefore: false, children: [new TextRun({ text: refsTitle(o.style), bold: true, font: o.font, size: sz + 6, color: '000000' })] }));
-        for (const s of cited(json)) out.push(new Paragraph({ spacing: { after: 160, line }, indent: { left: 720, hanging: 720 }, children: reference(s, o.style).map((p: Piece) => new TextRun({ text: p.t, italics: !!p.i, font: o.font, size: sz })) }));
+        for (const [i, s] of cited(json, o.style).entries()) out.push(new Paragraph({ spacing: { after: 160, line }, indent: { left: 720, hanging: 720 }, children: reference(s, o.style, i + 1).map((p: Piece) => new TextRun({ text: p.t, italics: !!p.i, font: o.font, size: sz })) }));
         return;
       default:
         for (const c of n.content ?? []) await walk(c, list);
@@ -287,4 +294,4 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
 export const textHtml = (json: JSONContent) => blockHtml(json, EXPORT_DEFAULT, json);
 
 // The document as a page of HTML, for the PDF in a folder download.
-export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) => `${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}`;
+export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) => (numberAll(json, o.style), `${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}`);

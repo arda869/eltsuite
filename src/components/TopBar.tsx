@@ -12,6 +12,7 @@ import { Avatar } from './avatars';
 import { AvatarPicker } from './AvatarPicker';
 import { PhoneMessagesLink } from './ChatDock';
 import { UiIcon } from './UiIcon';
+import { STATUS_SETS, setMyStatus, statusOf, useMySet, useStatus } from '../lib/status';
 
 export function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -31,6 +32,10 @@ export function TopBar({ children }: { children?: ReactNode }) {
     return () => (u1(), u2());
   }, [user, profile?.role]);
   const ref = useRef<HTMLDivElement>(null);
+  const isTeacher = profile?.role === 'teacher';
+  const mine = useStatus(isTeacher && user ? [user.uid] : [])[user?.uid ?? ''];
+  const set = useMySet();
+  const dot = statusOf(mine ? { ...mine, set } : undefined).dot;
   const name = user?.displayName || user?.email?.split('@')[0] || '';
 
   useEffect(() => {
@@ -57,6 +62,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
         <AppGrid />
         <button className="avatar" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : initials(name)}
+          {isTeacher && mine && <span className={'pz pz-' + dot} aria-hidden="true" />}
         </button>
         {open && (
           <div className="menu" role="menu">
@@ -64,6 +70,16 @@ export function TopBar({ children }: { children?: ReactNode }) {
               <strong>{name}</strong>
               <span className="hint">{user?.email}</span>
             </div>
+            {isTeacher && (
+              <div className="menu-status" role="group" aria-label="Your status">
+                {STATUS_SETS.map((o) => (
+                  <button key={o.k} type="button" role="menuitemradio" aria-checked={set === o.k} className={'menu-link' + (set === o.k ? ' on' : '')} onClick={() => setMyStatus(o.k)} data-tip={o.hint}>
+                    <span className={'pz-i pz-' + (o.k === 'auto' ? 'online' : o.k === 'hidden' ? 'off' : o.k)} aria-hidden="true" />
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <span className="menu-apps show-phone">
               <Link role="menuitem" className="menu-link" to="/" onClick={() => setOpen(false)}>
                 <UiIcon name="classes" size={15} />

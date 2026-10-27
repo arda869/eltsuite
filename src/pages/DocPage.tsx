@@ -13,6 +13,7 @@ import { PdReading } from '../pd/PdReading';
 import { LessonFile } from '../lessons/LessonFile';
 import { CiteStyleContext } from '../editor/Cite';
 import { CITE_STYLES, type CiteStyle } from '../lib/cite';
+import { Select } from '../components/Select';
 import { doc as fsDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { ROLES, rolesFor, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameDoc, roleOf, sendDocInChat, setMemberRole, shareWith, touchDoc, unshare, useSharedDoc, type DocRole, type SharedDoc } from '../lib/sharedDocs';
@@ -111,7 +112,7 @@ export function DocPage() {
         </span>
         <span className="dp-acts">
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
-          {d && role && ['flash', 'pd', 'lesson', 'pdf'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
+          {d && role && ['flash', 'lesson', 'pdf'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
             <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
               <UiIcon name="lock" size={15} /> Share
@@ -130,16 +131,10 @@ export function DocPage() {
               {setOpen && (
                 <span className="dp-set" role="dialog" aria-label="Document settings">
                   <strong>Document settings</strong>
-                  <label className="field">
+                  <div className="field">
                     <span>Citation style</span>
-                    <select value={cite} disabled={role !== 'edit'} onChange={(e) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: e.target.value })}>
-                      {CITE_STYLES.map((c) => (
-                        <option key={c.k} value={c.k}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                    <Select label="Citation style" value={cite} disabled={role !== 'edit'} search options={CITE_STYLES.map((c) => ({ v: c.k, label: c.label, hint: c.about }))} onChange={(v) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: v })} />
+                  </div>
                   <span className="hint">Citations in the text and the reference list follow this style, and so do the Word and PDF downloads.{role !== 'edit' ? ' Only people who can edit can change it.' : ''}</span>
                 </span>
               )}

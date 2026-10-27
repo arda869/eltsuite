@@ -10,10 +10,17 @@ import '../lib/extras.css';
 //                   | Istanbul  |
 //                   | Hong Kong |
 
-export function SubstSlot({ options }: { options: string[] }) {
+export type SubstLines = 'both' | 'left' | 'right' | 'none';
+export const SUBST_LINES: [SubstLines, string][] = [
+  ['both', 'Both'],
+  ['left', 'Left'],
+  ['right', 'Right'],
+  ['none', 'None'],
+];
+export function SubstSlot({ options, lines = 'both' }: { options: string[]; lines?: SubstLines }) {
   const list = options.filter((o) => o.trim());
   return (
-    <span className="subs" role="group" aria-label={list.length ? `One of: ${list.join(', ')}` : 'Substitution slot'}>
+    <span className={'subs subs-' + lines} role="group" aria-label={list.length ? `One of: ${list.join(', ')}` : 'Substitution slot'}>
       {list.length ? list.map((o, i) => <span key={i} className="subs-o">{o}</span>) : <span className="subs-o subs-empty">options</span>}
     </span>
   );
@@ -42,7 +49,7 @@ function SubstView({ node, updateAttributes, selected }: NodeViewProps) {
   return (
     <NodeViewWrapper as="span" className={'sub-node' + (selected ? ' is-selected' : '')} ref={ref}>
       <span contentEditable={false} onClick={() => setOpen(true)} title="Edit the options">
-        <SubstSlot options={options} />
+        <SubstSlot options={options} lines={node.attrs.lines} />
       </span>
       {open && (
         <span className="gap-pop sub-pop" contentEditable={false} style={popStyle}>
@@ -51,7 +58,17 @@ function SubstView({ node, updateAttributes, selected }: NodeViewProps) {
             <span>The words that can go here, one on each line</span>
             <textarea ref={inputRef} rows={4} value={text} placeholder={'Lisbon\nIstanbul\nHong Kong'} onChange={(e) => set(e.target.value)} onKeyDown={(e) => (e.stopPropagation(), e.key === 'Escape' && setOpen(false))} />
           </label>
-          <span className="hint">Learners see them stacked between two lines, in the middle of the sentence.</span>
+          <span className="pop-field">
+            <span>Lines</span>
+            <span className="seg small-seg" role="radiogroup" aria-label="Lines">
+              {SUBST_LINES.map(([k, l]) => (
+                <button key={k} type="button" role="radio" aria-checked={(node.attrs.lines ?? 'both') === k} className={(node.attrs.lines ?? 'both') === k ? 'on' : ''} onClick={() => updateAttributes({ lines: k })}>
+                  {l}
+                </button>
+              ))}
+            </span>
+          </span>
+          <span className="hint">Learners see them stacked in the middle of the sentence.</span>
         </span>
       )}
     </NodeViewWrapper>
@@ -65,6 +82,7 @@ export const Subst = Node.create({
   atom: true,
   draggable: true,
   addAttributes: () => ({
+    lines: { default: 'both', parseHTML: (el: HTMLElement) => el.getAttribute('data-lines') || 'both', renderHTML: (a: { lines: string }) => ({ 'data-lines': a.lines }) },
     options: {
       default: [],
       parseHTML: (el: HTMLElement) => (el.getAttribute('data-options') ?? '').split('|').filter(Boolean),

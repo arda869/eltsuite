@@ -331,3 +331,6 @@
 .fs-def { grid-template-columns: 1fr 120px 28px; padding: 8px; border-radius: 10px; background: var(--surface); }
 .fs-def .fs-sides { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
 .ph-pop { z-index: 60; }
+.subs-left { border-right-color: transparent; }
+.subs-right { border-left-color: transparent; }
+.subs-none { border-left-color: transparent; border-right-color: transparent; }
