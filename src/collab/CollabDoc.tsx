@@ -700,7 +700,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
               {draft && (
                 <div className="cd-card cd-draft">
                   <span className="cd-quote">“{draft.quote}”</span>
-                  <textarea autoFocus value={draftText} placeholder="Your comment" aria-label="Your comment" onChange={(e) => setDraftText(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' && (e.metaKey || e.ctrlKey) ? postComment() : e.stopPropagation())} />
+                  <textarea autoFocus value={draftText} placeholder="Your comment" aria-label="Your comment" onChange={(e) => setDraftText(e.target.value)} enterKeyHint="send" onKeyDown={(e) => {
+                    e.stopPropagation();
+                    // Enter posts, Shift+Enter makes a new line, as in Messages.
+                    if (e.key === 'Enter' && !e.shiftKey) (e.preventDefault(), draftText.trim() && postComment());
+                  }} />
                   <span className="cd-card-btns">
                     <button type="button" className="btn small-btn" onClick={() => setDraft(null)}>
                       Cancel

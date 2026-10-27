@@ -1,4 +1,5 @@
 import { ask } from '../lib/ask';
+import { useDraft } from '../lib/drafts';
 import { useMemo, useRef, useState } from 'react';
 import { addPost, boardKey, react, removePost, usePosts, type Post } from '../lib/boards';
 import { Icon } from '../editor/Icons';
@@ -97,10 +98,11 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
   const key = me ? boardKey(me.taskId, attrs.id) : '';
   const live = usePosts(me?.classId ?? '', key, !!me && !preview && !demo);
   const posts = demo ?? live;
-  const [text, setText] = useState('');
+  // What is being written stays until it is posted, also when the page is left.
+  const [text, setText] = useDraft(me && !preview && !demo ? `board:${me.classId}:${key}` : null);
   const [color, setColor] = useState(NOTE_COLORS[0].key);
   const [replyTo, setReplyTo] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useDraft(me && !preview && !demo && replyTo ? `board:${me.classId}:${key}:re:${replyTo}` : null);
   const [busy, setBusy] = useState(false);
   const seen = useRef<Set<string>>(new Set());
   const avatars = useClassAvatars();
@@ -183,7 +185,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
   const tools = (p: Post) => (
     <span className="bd-tools">
       {attrs.replies && !p.parentId && me && !preview && (
-        <button type="button" className="bd-link" onClick={() => (setReplyTo(replyTo === p.id ? null : p.id), setReplyText(''))}>
+        <button type="button" className="bd-link" onClick={() => setReplyTo(replyTo === p.id ? null : p.id)}>
           Reply
         </button>
       )}
@@ -205,7 +207,7 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
         }}
       >
         <span className="bd-reply-wrap">
-          <input aria-label={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} ref={replyRef} autoFocus value={replyText} maxLength={500} placeholder={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} onChange={(e) => (setReplyText(e.target.value), tagReply.track(e))} onKeyUp={tagReply.track} onClick={tagReply.track} />
+          <input aria-label={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} ref={replyRef} autoFocus enterKeyHint="send" value={replyText} maxLength={500} placeholder={tagging ? 'Write a reply. Type @ to tag someone' : 'Write a reply'} onChange={(e) => (setReplyText(e.target.value), tagReply.track(e))} onKeyUp={tagReply.track} onClick={tagReply.track} />
           <TagList items={tagReply.items} onPick={(p) => tagReply.choose(p, replyRef.current)} />
         </span>
         <button type="submit" className="btn small-btn primary" disabled={!replyText.trim() || busy}>
@@ -266,8 +268,12 @@ export function Board({ attrs, me, preview, demo }: { attrs: BoardAttrs; me?: Bo
             rows={isNotes ? 3 : 2}
             placeholder={(isNotes ? 'Write on your note…' : attrs.anonymous && !me.teacher ? 'Write a message. Your name won’t be shown.' : 'Write a message to the class…') + (tagging ? ' Type @ to tag someone.' : '')}
             onChange={(e) => (setText(e.target.value), tagMain.track(e))}
+            enterKeyHint="send"
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send();
+              // Enter posts, Shift+Enter makes a new line, as in Messages. Not while choosing someone to tag.
+              if (e.key !== 'Enter' || e.shiftKey || (tagMain.items.length && !(e.metaKey || e.ctrlKey))) return;
+              e.preventDefault();
+              send();
             }}
           />
           <TagList items={tagMain.items} onPick={(p) => tagMain.choose(p, composeRef.current)} />

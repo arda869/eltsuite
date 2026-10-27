@@ -66,6 +66,20 @@ export function installDialogFocus() {
     const t = e.target as HTMLElement;
     if (!t.closest('.scrim')) lastOutside = t;
   }, true);
+  // Tab and Shift+Tab stay inside the window on top, as long as it is open.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const all = document.querySelectorAll<HTMLElement>('.scrim');
+    const top = all[all.length - 1];
+    if (!top) return;
+    const f = Array.from(top.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])')).filter((el) => el.offsetParent !== null || el === document.activeElement);
+    if (!f.length) return;
+    const a = document.activeElement as HTMLElement | null;
+    const i = a ? f.indexOf(a) : -1;
+    if (!a || !top.contains(a)) (e.preventDefault(), f[e.shiftKey ? f.length - 1 : 0].focus());
+    else if (e.shiftKey && i === 0) (e.preventDefault(), f[f.length - 1].focus());
+    else if (!e.shiftKey && i === f.length - 1) (e.preventDefault(), f[0].focus());
+  });
   new MutationObserver((list) => {
     for (const m of list) {
       m.addedNodes.forEach((n) => {

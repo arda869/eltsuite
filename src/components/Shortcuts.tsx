@@ -44,9 +44,9 @@ const PLACES: Place[] = [
     id: 'messages',
     title: 'Messages and comments',
     rows: [
-      [['Enter'], 'Send (unless you turned this off in Settings)'],
+      [['Enter'], 'Send or post: messages, discussions, boards and comments (in Messages unless you turned it off in Settings)'],
       [['Shift+Enter'], 'New line'],
-      [['Mod+Enter'], 'Send, also with formatting on and in comments'],
+      [['Mod+Enter'], 'Send a message with formatting on'],
     ],
   },
   {
@@ -77,6 +77,15 @@ const PLACES: Place[] = [
       [['Enter'], 'Choose'],
       [['Esc'], 'Close, and go back to where you were'],
       [['A–Z'], 'Jump to an item, or type to find in long lists'],
+    ],
+  },
+  {
+    id: 'calls',
+    title: 'Calls',
+    note: 'When you are not typing.',
+    rows: [
+      [['Mod+D'], 'Microphone on or off'],
+      [['Mod+E'], 'Camera on or off'],
     ],
   },
   {

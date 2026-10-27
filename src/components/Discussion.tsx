@@ -1,4 +1,5 @@
 import { NSelect } from './Select';
+import { useDraft } from '../lib/drafts';
 import { ask } from '../lib/ask';
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useDismiss } from '../lib/useDismiss';
@@ -110,8 +111,9 @@ function ReactionBar({ reactions = {}, me, onToggle, small }: { reactions?: Reac
 }
 
 // A box for writing a post, with @mention suggestions.
-function Composer({ people, placeholder, onSend, busy, autoFocus, submitLabel = 'Post', onCancel, initial = '' }: { people: Person[]; placeholder: string; onSend: (text: string, mentions: string[]) => Promise<void> | void; busy?: boolean; autoFocus?: boolean; submitLabel?: string; onCancel?: () => void; initial?: string }) {
-  const [text, setText] = useState(initial);
+function Composer({ people, placeholder, onSend, busy, autoFocus, submitLabel = 'Post', onCancel, initial = '', draftKey = null }: { draftKey?: string | null; people: Person[]; placeholder: string; onSend: (text: string, mentions: string[]) => Promise<void> | void; busy?: boolean; autoFocus?: boolean; submitLabel?: string; onCancel?: () => void; initial?: string }) {
+  // What is being written stays until it is posted, also when the page is left.
+  const [text, setText] = useDraft(draftKey, initial);
   const [sug, setSug] = useState<Person[]>([]);
   const ta = useRef<HTMLTextAreaElement>(null);
   const onChange = (v: string) => {
@@ -133,7 +135,13 @@ function Composer({ people, placeholder, onSend, busy, autoFocus, submitLabel = 
   };
   return (
     <div className="composer">
-      <textarea aria-label={placeholder} ref={ta} value={text} rows={3} placeholder={placeholder} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && send()} />
+      <textarea aria-label={placeholder} ref={ta} value={text} rows={3} placeholder={placeholder} autoFocus={autoFocus} onChange={(e) => onChange(e.target.value)} enterKeyHint="send" onKeyDown={(e) => {
+          // Enter posts, Shift+Enter makes a new line, as in Messages; with names suggested, Enter picks the first.
+          if (e.key !== 'Enter' || e.shiftKey) return;
+          e.preventDefault();
+          if (sug.length && !(e.metaKey || e.ctrlKey)) return pick(sug[0]);
+          void send();
+        }} />
       {sug.length > 0 && (
         <span className="mention-sug">
           {sug.map((p) => (
@@ -144,7 +152,7 @@ function Composer({ people, placeholder, onSend, busy, autoFocus, submitLabel = 
         </span>
       )}
       <span className="composer-foot">
-        <span className="hint">Links and picture addresses show as links and pictures. Type @ to mention someone. ⌘⏎ to post.</span>
+        <span className="hint">Links and picture addresses show as links and pictures. Type @ to mention someone. Enter posts, Shift+Enter starts a new line.</span>
         <span style={{ display: 'flex', gap: 8 }}>
           {onCancel && (
             <button type="button" className="btn small-btn" onClick={onCancel}>
@@ -261,7 +269,7 @@ export function DiscussionBoard({ c, me, people, open, onOpen, threadLink }: { c
         <div className="disc-new">
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={me.teacher ? 'Prompt title, for example: Question of the week' : 'Title'} maxLength={140} autoFocus aria-label="Title" />
           {me.teacher && <TaskLinkPicker classId={c.id} value={link} onChange={setLink} />}
-          <Composer people={people} placeholder={me.teacher ? 'What should learners discuss? You can paste a link or a picture address.' : 'What do you want to talk about?'} onSend={start} busy={busy} submitLabel={me.teacher ? 'Post prompt' : 'Start thread'} onCancel={() => setStarting(false)} />
+          <Composer draftKey={`disc:${c.id}:new`} people={people} placeholder={me.teacher ? 'What should learners discuss? You can paste a link or a picture address.' : 'What do you want to talk about?'} onSend={start} busy={busy} submitLabel={me.teacher ? 'Post prompt' : 'Start thread'} onCancel={() => setStarting(false)} />
           {!me.teacher && s.approval && <span className="hint">Your teacher will see your thread first and approve it.</span>}
         </div>
       )}
@@ -477,7 +485,7 @@ export function ThreadView({ c, me, people, tid, thread, onBack }: { c: ClassDoc
       </div>
       {feedbackFor && <span className="hint">Select words in {feedbackFor === 'thread' ? 'the first post' : 'the reply'} to add a correction code or a private comment. Only that learner sees it.</span>}
       {msg && <span className="hint">{msg}</span>}
-      {canReply ? <Composer people={people} placeholder={t.teacher && !me.teacher ? 'Your answer…' : 'Reply…'} onSend={send} busy={busy} submitLabel="Reply" /> : <span className="hint">{t.locked ? 'This thread is locked.' : 'Your teacher has paused your posting for now.'}</span>}
+      {canReply ? <Composer draftKey={`disc:${c.id}:${tid}`} people={people} placeholder={t.teacher && !me.teacher ? 'Your answer…' : 'Reply…'} onSend={send} busy={busy} submitLabel="Reply" /> : <span className="hint">{t.locked ? 'This thread is locked.' : 'Your teacher has paused your posting for now.'}</span>}
     </div>
   );
 }

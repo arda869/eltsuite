@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { typingIn } from '../lib/keys';
 import { createPortal } from 'react-dom';
 import { callLinkUrl, leaveCall, popOutCall, ringPerson, useOpenCall, type OpenCall } from '../lib/calls';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
@@ -540,11 +541,13 @@ export function CallScreen({ page }: { page?: boolean }) {
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
   }, []);
-  // Ctrl or Cmd + D: microphone; + E: camera (as in other call apps).
+  // Ctrl or Cmd + D: microphone; + E: camera (as in Google Meet), except while typing.
   useEffect(() => {
     if (!call) return;
     const key = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+      // Not while typing (a chat message, a note): the keys then belong to the text and the browser.
+      if (typingIn(e.target)) return;
       const k = e.key.toLowerCase();
       if (k === 'd') (e.preventDefault(), toggleMic());
       if (k === 'e') (e.preventDefault(), toggleCam());
