@@ -26,7 +26,7 @@ export type OrgPolicy = {
   profiles?: boolean; // teachers are asked for a profile their colleagues see
   externalTrainees?: boolean; // teacher trainers may add teachers from outside the organisation to training classes
 };
-export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number }>; brand?: Brand; outside?: 'anyone' | 'org'; policy?: OrgPolicy; createdAt?: unknown };
+export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number }>; brand?: Brand; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
 export type Teacher = { uid: string; name: string; email: string; createdAt?: number };
 
 export const APP_KEYS: { k: string; name: string }[] = [
@@ -200,7 +200,7 @@ export const saveDriveAccess = (org: Org, f: DriveFolder, me: { uid: string }, a
 export const setJobTitle = (o: Org, uid: string, title: string) => updateDoc(doc(db, 'orgs', o.id), { [`teachers.${uid}.title`]: title.trim() });
 // A teacher trainer makes teacher training classes, with the organisation's teachers in them.
 export const setTrainer = (o: Org, uid: string, on: boolean) => updateDoc(doc(db, 'orgs', o.id), { [`teachers.${uid}.trainer`]: on });
-export const isTrainerIn = (o: Org | null, uid?: string) => !!o && !!uid && !!o.teachers[uid]?.trainer;
+export const isTrainerIn = (o: Org | null, uid?: string) => !!o && !!uid && !!o.allow?.trainers && !!o.teachers[uid]?.trainer;
 
 // Teachers in an organisation are colleagues of each other, always: each teacher's app writes
 // its own side, with the organisation and the job title.

@@ -311,7 +311,7 @@ function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: b
     ['drives', 'Shared drives'],
     ['rules', 'Rules'],
     ['brand', 'Branding'],
-    ['space', 'Space'],
+    ['space', 'Plan and space'],
     ['admins', 'Admins'],
   ];
   return (
@@ -360,7 +360,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
   const free = teachers.filter((t) => !org.teachers[t.uid]);
   return (
     <div className="adm-card">
-      <span className="hint">Teachers here are colleagues of each other, always, and see each other's job titles and profiles. A teacher trainer makes teacher training classes for the others.</span>
+      <span className="hint">Teachers here are colleagues of each other, always, and see each other's job titles and profiles.{org.allow?.trainers ? ' A teacher trainer makes teacher training classes for the others.' : ''}</span>
       <InviteTeachers org={org} />
       {owner && (
         <span className="adm-new">
@@ -383,7 +383,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           <tr>
             <th>Teacher</th>
             <th>Job title</th>
-            <th title="Teacher trainers make teacher training classes for the teachers here">Teacher trainer</th>
+            {org.allow?.trainers && <th title="Teacher trainers make teacher training classes for the teachers here">Teacher trainer</th>}
             <th>Space</th>
             {owner && <th />}
           </tr>
@@ -398,9 +398,11 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
               <td>
                 <TitleInput value={t.title ?? ''} onSave={(v) => void setJobTitle(org, uid, v)} />
               </td>
-              <td>
-                <Switch on={!!t.trainer} onChange={(v) => void setTrainer(org, uid, v)} label={`${t.name || t.email} is a teacher trainer`} />
-              </td>
+              {org.allow?.trainers && (
+                <td>
+                  <Switch on={!!t.trainer} onChange={(v) => void setTrainer(org, uid, v)} label={`${t.name || t.email} is a teacher trainer`} />
+                </td>
+              )}
               <td>
                 <GbInput value={t.gb ?? org.perTeacherGb ?? 1} onSave={(gb) => void setTeacherGb(org, uid, gb)} max={org.limitGb} />
               </td>
@@ -415,7 +417,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           ))}
           {!list.length && (
             <tr>
-              <td colSpan={5} className="hint">
+              <td colSpan={org.allow?.trainers ? 5 : 4} className="hint">
                 {owner ? 'Add the teachers of this organisation.' : 'The owner of ELT Suite adds your teachers.'}
               </td>
             </tr>
@@ -545,13 +547,13 @@ function OrgRules({ org }: { org: Org }) {
         </span>
         <Switch on={!!p.profiles} onChange={(v) => set({ profiles: v })} label="Teacher profiles" />
       </label>
-      <label className="adm-row">
+      {org.allow?.trainers && <label className="adm-row">
         <span>
           <b>Trainers add teachers from outside {org.name}</b>
           <span className="hint">Teacher trainers always add teachers from here to their training classes. On: they can also add others by name</span>
         </span>
         <Switch on={!!p.externalTrainees} onChange={(v) => set({ externalTrainees: v })} label="Trainers add teachers from outside" />
-      </label>
+      </label>}
       <span className="adm-sub">Apps for these teachers</span>
       {APP_KEYS.map((k) => (
         <label key={k.k} className="adm-row">
@@ -639,6 +641,13 @@ function OrgSpace({ org, owner }: { org: Org; owner: boolean }) {
           </select>
         </label>
       )}
+      <label className="adm-row">
+        <span>
+          <b>Teacher trainers</b>
+          <span className="hint">{owner ? 'On: its admins can make teachers trainers, who run teacher training classes' : org.allow?.trainers ? 'On for your organisation. Choose the trainers in Teachers' : 'Not part of your plan. Ask ELT Suite to turn it on'}</span>
+        </span>
+        <Switch on={!!org.allow?.trainers} disabled={!owner} onChange={(v) => void saveOrg(org.id, { allow: { ...(org.allow ?? {}), trainers: v } })} label="Teacher trainers" />
+      </label>
       <label className="adm-row">
         <span>
           <b>Space for each teacher</b>
