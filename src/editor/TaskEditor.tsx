@@ -3,6 +3,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { tell } from '../lib/ask';
 import { createPortal } from 'react-dom';
 import { newTimeline, TimelineNode } from './Timeline';
+import { DG, DG_KINDS, DiagramCell, DiagramNode, newDiagram } from './Diagram';
 import { TableHandles } from './TableHandles';
 import { BlockHandles } from './BlockMenu';
 import { clipHtml, freshIds, readClip, type Clip } from '../lib/clip';
@@ -130,7 +131,8 @@ export const COMMANDS: Cmd[] = [
   { key: 'grammarlink', label: 'Grammar bank link', hint: 'A card that opens a grammar page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('grammar'), { type: 'paragraph' }]).run() },
   { key: 'vocablink', label: 'Vocabulary bank link', hint: 'A card that opens a vocabulary page in the notebook', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newBankLink('vocab'), { type: 'paragraph' }]).run() },
   { key: 'dialogue', label: 'Dialogue', hint: 'A and B (or names), one line under the other or side by side; gaps and choices work inside', group: 'Text', run: (e) => insertDialogue(e) },
-  { key: 'timeline', label: 'Timeline', hint: 'A tense timeline: events, actions in progress, periods, arrows and labels', group: 'Text', run: (e) => e.chain().focus().insertContent([newTimeline(), { type: 'paragraph' }]).run() },
+...DG_KINDS.map((k): Cmd => ({ key: 'dg-' + k, label: DG[k].label, hint: DG[k].hint, group: 'Text', run: (e) => e.chain().focus().insertContent([newDiagram(k), { type: 'paragraph' }]).run() })),
+    { key: 'timeline', label: 'Timeline', hint: 'A tense timeline: events, actions in progress, periods, arrows and labels', group: 'Text', run: (e) => e.chain().focus().insertContent([newTimeline(), { type: 'paragraph' }]).run() },
   { key: 'drawboard', label: 'Board', hint: 'A drawing board: draw, write and add pictures, live in class', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newDrawBoard(), { type: 'paragraph' }]).run() },
   { key: 'pq-fix', label: 'Find and fix the mistake', hint: 'Learners tap the wrong word, then correct it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('fix' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'pq-categorise', label: 'Categorise', hint: 'Sort words into labelled columns', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('categorise' as PackKind), { type: 'paragraph' }]).run() },
@@ -223,7 +225,7 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
       if (!empty) return setState(null);
       const $from = editor.state.selection.$from;
       const before = $from.parent.textBetween(0, $from.parentOffset, undefined, '￼');
-      const m = before.match(/(?:^|\s)\/([a-z ]{0,20})$/i);
+      const m = before.match(/(?:^|\s)\/([a-z0-9 -]{0,20})$/i);
       if (!m) return setState(null);
       const start = from - m[1].length - 1;
       const coords = editor.view.coordsAtPos(from);
@@ -328,7 +330,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline'];
+const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', ...DG_KINDS.map((k) => 'dg-' + k)];
 export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -435,6 +437,8 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       BoardNode,
       DrawBoardNode,
       jsonClip(TimelineNode, 'div', 'data-timeline'),
+      DiagramNode,
+      DiagramCell,
       DialogueNode,
       DialogueLine,
       Mention,

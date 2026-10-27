@@ -11,7 +11,7 @@ import { UiIcon } from '../components/UiIcon';
 // heading or a list, duplicate, copy, cut, move up or down, delete. Like Notion.
 
 const TEXTY = new Set(['paragraph', 'heading', 'blockquote']);
-export const HANDLED = new Set(['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'table', 'image', 'horizontalRule']);
+export const HANDLED = new Set(['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'table', 'image', 'horizontalRule', 'diagram']);
 
 export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Editor; pos: number; anchor: DOMRect; space: string; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);

@@ -109,6 +109,32 @@ function formItem(it: FormItem, i: number): string {
   }
 }
 
+// A diagram on paper: the same layout as on screen, the lines drawn for the layout's fixed places.
+const RINGP: Record<string, [number, number]> = { T: [1, 2], TR: [1, 3], R: [2, 3], BR: [3, 3], B: [3, 2], BL: [3, 1], L: [2, 1], TL: [1, 1] };
+const MINDP = ['L', 'R', 'T', 'B', 'TL', 'TR', 'BR', 'BL'];
+const CYCLEP: Record<number, string[]> = { 3: ['T', 'BR', 'BL'], 4: ['T', 'R', 'B', 'L'], 5: ['T', 'R', 'BR', 'BL', 'L'], 6: ['TL', 'TR', 'R', 'BR', 'BL', 'L'] };
+function diagramHtml(b: Extract<Block, { kind: 'diagram' }>): string {
+  const k = b.dkind;
+  const n = b.cells.length;
+  const inner = (c: { label: string; blocks: Block[] }) => `${c.label ? `<span class="dgw-l">${esc(c.label)}</span>` : ''}${c.blocks.map(block).join('')}`;
+  const at = (i: number): [number, number] | null => (k === 'mind' ? (i ? RINGP[MINDP[(i - 1) % 8]] : [2, 2]) : k === 'cycle' ? RINGP[(CYCLEP[n] ?? CYCLEP[6])[i % 6]] : null);
+  const cellsHtml = b.cells.map((c, i) => { const g = at(i); return `<div class="dgw-c c${i}${i === 0 && (k === 'mind' || k === 'tree') ? ' main' : ''}"${g ? ` style="grid-row:${g[0]};grid-column:${g[1]}"` : ''}>${inner(c)}</div>`; });
+  let body = '';
+  if (k === 'mind' || k === 'cycle') {
+    const pt = (g: [number, number]) => [(g[1] - 0.5) * 100, (g[0] - 0.5) * 100];
+    const pts = b.cells.map((_, i) => pt(at(i)!));
+    const segs = k === 'mind' ? pts.slice(1).map((q) => [pts[0], q]) : pts.map((q, i) => [q, pts[(i + 1) % n]]);
+    const lines = segs.map(([a, c]) => { const dx = c[0] - a[0]; const dy = c[1] - a[1]; const s = k === 'cycle' ? 0.3 : 0; return `<line x1="${a[0] + dx * s}" y1="${a[1] + dy * s}" x2="${c[0] - dx * s}" y2="${c[1] - dy * s}"${k === 'cycle' ? ' marker-end="url(#dgw-a)"' : ''}/>`; }).join('');
+    body = `<svg class="dgw-svg" viewBox="0 0 300 300" preserveAspectRatio="none"><defs><marker id="dgw-a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M1 1L9 5L1 9" fill="none" stroke="currentColor" stroke-width="1.6"/></marker></defs>${lines}</svg><div class="dgw-grid">${cellsHtml.join('')}</div>`;
+  } else if (k === 'flow') body = `<div class="dgw-row">${cellsHtml.join('<span class="dgw-ar">→</span>')}</div>`;
+  else if (k === 'tree') body = `<div class="dgw-root">${cellsHtml[0] ?? ''}</div><div class="dgw-kids" style="grid-template-columns:repeat(${Math.max(1, n - 1)},1fr)">${cellsHtml.slice(1).join('')}</div>`;
+  else if (k === 'cline') body = `<div class="dgw-scale"><span>${esc(b.labels[0] ?? '')}</span><i></i><span>${esc(b.labels[1] ?? '')}</span></div><div class="dgw-cols" style="grid-template-columns:repeat(${n},1fr)">${cellsHtml.join('')}</div>`;
+  else if (k === 'quad') body = `<span class="dgw-ax x0">${esc(b.labels[0] ?? '')}</span><span class="dgw-ax x2">${esc(b.labels[2] ?? '')}</span><div class="dgw-q">${cellsHtml.join('')}</div><span class="dgw-ax x3">${esc(b.labels[3] ?? '')}</span><span class="dgw-ax x1">${esc(b.labels[1] ?? '')}</span>`;
+  else if (k === 'pyramid') body = `<div class="dgw-pyr">${b.cells.map((c, i) => { const w = ((i + 0.5) / n + 0.35) / 1.35; const t = ((i / n + 0.35) / 1.35) / w; return `<div class="dgw-c" style="width:${(w * 100).toFixed(1)}%;clip-path:polygon(${((1 - t) * 50).toFixed(1)}% 0,${(100 - (1 - t) * 50).toFixed(1)}% 0,100% 100%,0 100%)">${inner(c)}</div>`; }).join('')}</div>`;
+  else body = `<div class="dgw-cols" style="grid-template-columns:${k === 'venn' ? '1fr .7fr 1fr' : `repeat(${n},1fr)`}">${cellsHtml.join('')}</div>`;
+  return `<figure class="dgw k-${k}">${b.title ? `<figcaption class="dgw-t">${esc(b.title)}</figcaption>` : ''}<div class="dgw-s">${body}</div></figure>`;
+}
+
 function block(b: Block): string {
   switch (b.kind) {
     case 'form':
@@ -133,6 +159,8 @@ function block(b: Block): string {
       if (b.list === 'bullet' && b.mark === '') return `<p class="li"><span class="mk"></span><span>${runs(b.runs)}</span></p>`;
       if (b.list) return `<p class="li ${b.list}"><span class="mk"></span><span>${runs(b.runs)}</span></p>`;
       return `<p>${runs(b.runs)}</p>`;
+    case 'diagram':
+      return diagramHtml(b);
     case 'timeline':
       return `<figure class="tl">${b.a.title ? `<figcaption class="tl-title">${esc(b.a.title)}</figcaption>` : ''}${timelineSvgString(b.a)}${b.a.sentence ? `<p class="tl-sentence">${esc(b.a.sentence)}</p>` : ''}</figure>`;
     case 'note':
@@ -269,6 +297,7 @@ ${extrasCss}
 .dcut { break-inside: avoid; } .dcut-wrap { break-inside: avoid; }
 ${opts.size && opts.size !== 'standard' ? `.cols .unit { zoom: ${opts.size === 'xl' ? 1.4 : 1.2}; }` : ''}
 ${opts.clear ? `.cols, .cols :not(svg, svg *) { font-family: 'Atkinson Hyperlegible', Verdana, sans-serif !important; } .cols { --serif: 'Atkinson Hyperlegible', Verdana, sans-serif; --sans: 'Atkinson Hyperlegible', Verdana, sans-serif; letter-spacing: .02em; } .cols p { line-height: 1.65; }` : ''}
+.dgw { margin: 3mm 0 4mm; break-inside: avoid; color: #2b2a28; } .dgw-t { font-weight: 600; font-size: 10pt; margin-bottom: 2mm; text-align: center; } .dgw-s { position: relative; } .dgw-l { display: block; font: 700 7.5pt/1.2 Karla, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 1mm; } .dgw-c p { margin: 0; } .dgw-svg { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--accent); stroke: var(--accent); stroke-width: 1.4; fill: none; z-index: 0; } .dgw-grid { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, minmax(16mm, auto)); align-items: center; justify-items: center; } .k-mind .dgw-c, .k-cycle .dgw-c, .k-flow .dgw-c, .k-tree .dgw-c { background: #fff; border: 1.2pt solid var(--accent); border-radius: 3mm; padding: 2mm 3.5mm; text-align: center; max-width: 48mm; } .dgw-c.main { background: color-mix(in srgb, var(--accent) 14%, #fff); font-weight: 600; } .dgw-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2mm 3mm; } .dgw-ar { color: var(--accent); font-size: 14pt; } .dgw-root { display: flex; justify-content: center; padding-bottom: 4mm; } .dgw-kids { display: grid; gap: 3mm; justify-items: center; border-top: 1.2pt solid var(--accent); padding-top: 4mm; } .dgw-cols { display: grid; gap: 3mm; } .k-venn .dgw-s { padding: 6mm 7%; } .k-venn .dgw-s::before, .k-venn .dgw-s::after { content: ''; position: absolute; top: 0; bottom: 0; width: 64%; border: 1.2pt solid var(--accent); border-radius: 50%; background: color-mix(in srgb, var(--accent) 7%, transparent); } .k-venn .dgw-s::before { left: 2%; } .k-venn .dgw-s::after { right: 2%; } .k-venn .dgw-cols { position: relative; z-index: 1; align-items: center; min-height: 34mm; text-align: center; } .k-compare .dgw-c { border-left: 1.2pt solid var(--accent); padding: 0 3mm; } .k-compare .dgw-c.c0 { border-left: 0; } .k-compare .dgw-l { font: 600 10pt Fraunces, serif; letter-spacing: 0; text-transform: none; color: #2b2a28; border-bottom: 1.2pt solid var(--accent); padding-bottom: 1mm; margin-bottom: 2mm; } .dgw-scale { display: flex; align-items: center; gap: 2mm; font: 600 8pt Karla, sans-serif; color: #6f6a64; margin-bottom: 2mm; } .dgw-scale i { flex: 1; height: 0; border-top: 1.2pt solid var(--accent); position: relative; } .dgw-scale i::before, .dgw-scale i::after { position: absolute; top: -6pt; color: var(--accent); font-style: normal; font-size: 9pt; } .dgw-scale i::before { content: '◀'; left: -3pt; } .dgw-scale i::after { content: '▶'; right: -3pt; } .k-cline .dgw-c { text-align: center; background: color-mix(in srgb, var(--accent) 8%, #fff); border-radius: 2mm; padding: 1.5mm; } .k-quad .dgw-s { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: '. t .' 'l q r' '. b .'; gap: 1.5mm 2mm; align-items: center; } .dgw-ax { font: 600 8pt Karla, sans-serif; color: #6f6a64; text-align: center; } .dgw-ax.x0 { grid-area: t; } .dgw-ax.x1 { grid-area: b; } .dgw-ax.x2 { grid-area: l; } .dgw-ax.x3 { grid-area: r; } .dgw-q { grid-area: q; display: grid; grid-template-columns: 1fr 1fr; } .dgw-q .dgw-c { padding: 3mm; min-height: 14mm; text-align: center; } .dgw-q .c0, .dgw-q .c1 { border-bottom: 1.2pt solid var(--accent); } .dgw-q .c0, .dgw-q .c2 { border-right: 1.2pt solid var(--accent); } .dgw-pyr { display: flex; flex-direction: column; align-items: center; gap: 1mm; } .dgw-pyr .dgw-c { background: color-mix(in srgb, var(--accent) 16%, #fff); padding: 2.5mm 6mm; text-align: center; box-sizing: border-box; }
 .tl { margin: 3mm 0 4mm; break-inside: avoid; } .tl-svg { width: 100%; height: auto; display: block; color: #2b2a28; } .tl-title { font-weight: 600; font-size: 10pt; margin-bottom: 1mm; } .tl-sentence { font-style: italic; margin: 1mm 0 0; text-align: center; }
 .tl-line { stroke: #2b2a28; stroke-width: 2.5; color: #2b2a28; } .tl-end { font: 600 11px sans-serif; letter-spacing: .1em; fill: #8a847d; } .tl-now line { stroke: #2b2a28; stroke-width: 3; } .tl-now text { font: 700 13px sans-serif; letter-spacing: .1em; fill: #2b2a28; } .tl-label { font: 15px Georgia, serif; } .tl-q { font: 700 34px Georgia, serif; } .tl-hit { display: none; }
 @font-face { font-family: Fraunces; src: url('${opts.origin ?? ''}/fonts/Fraunces.ttf') format('truetype'); font-weight: 100 900; font-display: block; }

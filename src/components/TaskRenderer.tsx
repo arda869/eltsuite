@@ -3,6 +3,7 @@ import { MARK_COLORS } from '../pdf/PdfNodes';
 import type { PageSize } from '../pdf/pdfData';
 import { createPortal } from 'react-dom';
 import { TimelineFigure, type TlAttrs } from '../editor/Timeline';
+import { DiagramFrame, cellStyle, type DgAttrs, type DgKind } from '../editor/Diagram';
 import { LetterGap } from './LetterGap';
 import { PicFrame } from '../editor/Picture';
 import { listLabel } from '../lib/listLabel';
@@ -1125,6 +1126,24 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         return <BankLinkCard key={key} bank={node.attrs?.bank ?? 'grammar'} title={node.attrs?.title} label={node.attrs?.label} onOpen={onOpenNotebook && node.attrs?.entryId ? () => onOpenNotebook(node.attrs!.entryId) : undefined} />;
       case 'timeline':
         return <TimelineFigure key={key} a={node.attrs as TlAttrs} />;
+      case 'diagram': {
+        const a = node.attrs as DgAttrs;
+        const cells = node.content ?? [];
+        return (
+          <div key={key} data-bk={key}>
+            <DiagramFrame a={a} n={cells.length}>
+              <div className="dg-cells">
+                {cells.map((c, i) => (
+                  <div key={i} className={'dg-cell c' + i + (i === 0 && (a.kind === 'mind' || a.kind === 'tree') ? ' main' : '')} style={cellStyle(a.kind as DgKind, i, cells.length)}>
+                    {c.attrs?.label ? <span className="dg-cell-label">{c.attrs.label}</span> : null}
+                    <div className="dg-cell-body">{(c.content ?? []).map((k, j) => render(k, `${key}-${i}-${j}`))}</div>
+                  </div>
+                ))}
+              </div>
+            </DiagramFrame>
+          </div>
+        );
+      }
       case 'drawBoard':
         return (
           <div key={key} className="drawboard">

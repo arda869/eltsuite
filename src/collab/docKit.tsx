@@ -27,6 +27,7 @@ import { RevealBox } from '../editor/Reveal';
 import { LinkCard } from '../editor/LinkCard';
 import { DialogueLine, DialogueNode } from '../editor/Dialogue';
 import { TimelineNode } from '../editor/Timeline';
+import { DiagramCell, DiagramNode, DG_KINDS } from '../editor/Diagram';
 import { DictCut } from '../editor/DictCut';
 import { TTNode } from '../training/Training';
 import { LessonLink } from '../editor/LessonLink';
@@ -89,6 +90,8 @@ export const DOC_NODES = [
   DialogueNode,
   DialogueLine,
   TimelineNode,
+  DiagramNode,
+  DiagramCell,
   DictCut,
   TTNode,
   // Questions, as in a lesson: in a document they are there to write and share, answered in a class.
@@ -170,6 +173,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('dictcut', 'Language'),
   from('dialogue', 'Language'),
   from('timeline', 'Language'),
+  ...DG_KINDS.map((k) => from('dg-' + k, 'Language')),
   ...COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => ({ ...c })),
   from('tt-analysis', 'Training'),
   from('tt-plan', 'Training'),
@@ -193,6 +197,7 @@ export const DOC_SECTIONS = [
   { title: 'Pictures and media', blurb: 'Pictures from your device, videos and web pages.', keys: ['image', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your PD reading and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
+  { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },
   { title: 'Questions', blurb: 'Gaps, choices, matching, word order and every other question a lesson can hold.', keys: COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => c.key) },
   { title: 'Teacher training', blurb: 'Language analysis, lesson plans, observation forms and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop'] },
 ];

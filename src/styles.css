@@ -6693,3 +6693,85 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .cp-pf-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .cp-pf-tags span { padding: 2px 9px; border-radius: 999px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); font-size: 13px; }
 .set-pf-wrap { padding: 16px 20px 12px; }
+
+/* ---------------------------------------------------------------- Diagrams */
+.dg { --dg-ink: var(--accent, #d98f63); margin: 16px 0; }
+.dg-title { margin: 0 0 8px; font: 500 18px var(--serif); text-align: center; }
+.dg-stage { position: relative; padding: 8px 2px; }
+.dg-lines { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 0; }
+.dg-cells { position: relative; z-index: 1; }
+/* In the editor, the wrappers around each box step aside so the box itself is laid out. */
+.dg-cells > [data-node-view-content-react], .dg-cells .react-renderer.node-diagramCell { display: contents; }
+.dg-cell { position: relative; min-width: 0; z-index: 1; }
+.dg-cell-body p { margin: 0; }
+.dg-cell-body > * + *, .dg-cell-body > [data-node-view-content-react] > * + * { margin-top: 6px; }
+.dg-cell-body p:only-child:has(> br:only-child)::before, .dg-cell-body > [data-node-view-content-react] > p:only-child:has(> br:only-child)::before { content: 'Type here'; color: var(--faint); pointer-events: none; float: left; height: 0; }
+.dg-cell-label { display: block; width: 100%; margin: 0 0 6px; padding: 0; border: 0; background: none; font: 700 12px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: color-mix(in srgb, var(--dg-ink) 75%, var(--ink)); text-align: inherit; }
+input.dg-cell-label::placeholder { color: var(--faint); }
+input.dg-cell-label:focus { outline: none; }
+.dg-cell-x { position: absolute; top: -9px; right: -9px; display: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--muted); font-size: 14px; line-height: 1; cursor: pointer; z-index: 3; }
+.dg-cell:hover > .dg-cell-x { display: grid; place-items: center; }
+/* Boxes as cards: mind maps, flow charts, cycles, trees */
+.k-mind .dg-cell, .k-flow .dg-cell, .k-cycle .dg-cell, .k-tree .dg-cell { padding: 10px 16px; min-width: 110px; max-width: 260px; border: 1.5px solid color-mix(in srgb, var(--dg-ink) 45%, var(--hair)); border-radius: 14px; background: var(--paper); box-shadow: 0 2px 10px color-mix(in srgb, var(--shadow) 30%, transparent); text-align: center; }
+.dg-cell.main { border-color: var(--dg-ink); background: color-mix(in srgb, var(--dg-ink) 12%, var(--paper)); font: 500 18px var(--serif); padding: 14px 20px; }
+.k-mind .dg-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(64px, auto); gap: 34px 56px; align-items: center; justify-items: center; padding: 6px 0; }
+.k-cycle .dg-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto minmax(30px, auto) auto; gap: 30px 40px; align-items: center; justify-items: center; }
+.k-flow .dg-cells { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px 54px; padding: 4px 0; }
+.k-tree .dg-cells { display: grid; grid-template-columns: repeat(var(--dg-n), minmax(0, 1fr)); row-gap: 44px; column-gap: 14px; justify-items: center; align-items: start; }
+/* Venn */
+.k-venn .dg-stage { padding: 14px 0; }
+.k-venn .dg-cells { display: grid; grid-template-columns: 1fr .62fr 1fr; gap: 10px; align-items: center; min-height: 190px; padding: 26px 7%; }
+.k-venn .dg-cell { text-align: center; }
+.k-venn .dg-cell.c1 .dg-cell-label { color: var(--muted); }
+.dg-ring { fill: color-mix(in srgb, var(--dg-ink) 9%, transparent); stroke: var(--dg-ink); stroke-width: 2; }
+.dg-ring.b { fill: color-mix(in srgb, #5d7fa8 9%, transparent); stroke: color-mix(in srgb, #5d7fa8 80%, var(--dg-ink)); }
+/* T-chart */
+.k-compare .dg-cells { display: grid; grid-template-columns: repeat(var(--dg-n), minmax(0, 1fr)); }
+.k-compare .dg-cell { padding: 4px 18px 14px; border-left: 2px solid var(--dg-ink); }
+.k-compare .dg-cell.c0 { border-left: 0; }
+.k-compare .dg-cell-label { padding: 0 0 8px; margin: 0 -18px 10px; padding-left: 18px; border-bottom: 2px solid var(--dg-ink); font: 600 16px var(--serif); letter-spacing: 0; text-transform: none; color: var(--ink); width: calc(100% + 36px); }
+/* Cline */
+.k-cline .dg-stage { padding-top: 48px; }
+.k-cline .dg-cells { display: grid; grid-template-columns: repeat(var(--dg-n), minmax(0, 1fr)); gap: 10px; padding: 0 64px; }
+.k-cline .dg-cell { text-align: center; padding: 6px 8px; border-radius: 10px; background: color-mix(in srgb, var(--dg-ink) 7%, transparent); }
+.dg-end { position: absolute; top: 4px; font: 600 13px var(--sans); color: var(--muted); max-width: 120px; }
+.dg-end.e0 { left: 0; } .dg-end.e1 { right: 0; text-align: right; }
+.dg-end-in { border: 0; border-bottom: 1px dashed var(--hair-strong); background: none; font: 600 13px var(--sans); color: var(--ink); padding: 2px 0; text-align: inherit; max-width: 120px; }
+.dg-end-in:focus { outline: none; border-bottom-color: var(--dg-ink); }
+/* Four squares */
+.k-quad .dg-stage { padding: 30px 92px; }
+.k-quad .dg-cells { display: grid; grid-template-columns: 1fr 1fr; }
+.k-quad .dg-cell { padding: 18px 20px; min-height: 90px; text-align: center; display: grid; align-content: center; }
+.k-quad .dg-cell.c0, .k-quad .dg-cell.c1 { border-bottom: 2px solid var(--dg-ink); }
+.k-quad .dg-cell.c0, .k-quad .dg-cell.c2 { border-right: 2px solid var(--dg-ink); }
+.dg-axis { position: absolute; font: 600 13px var(--sans); color: var(--muted); }
+.dg-axis.x0 { top: 4px; left: 50%; transform: translateX(-50%); }
+.dg-axis.x1 { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.dg-axis.x2 { left: 0; top: 50%; transform: translateY(-50%); width: 86px; text-align: right; }
+.dg-axis.x3 { right: 0; top: 50%; transform: translateY(-50%); width: 86px; }
+.dg-axis .dg-end-in { text-align: inherit; width: 86px; }
+/* Pyramid */
+.k-pyramid .dg-cells { display: flex; flex-direction: column; gap: 4px; }
+.k-pyramid .dg-cell { width: 100%; margin: 0 auto; padding: 12px 10px; text-align: center; min-height: 48px; display: grid; align-content: center; }
+.dg-band { stroke: var(--paper); stroke-width: 3; }
+.dg-band.b0 { fill: color-mix(in srgb, var(--dg-ink) 30%, var(--paper)); }
+.dg-band.b1 { fill: color-mix(in srgb, var(--dg-ink) 18%, var(--paper)); }
+.dg-band.b2 { fill: color-mix(in srgb, var(--dg-ink) 10%, var(--paper)); }
+/* In the editor */
+.dg-node { position: relative; margin: 14px 0; padding: 0 0 8px; border-radius: 14px; }
+.dg-node.is-selected, .dg-node:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--dg-ink) 30%, transparent); }
+.dg-ed-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--hair); }
+.dg-ed-head .sel { height: 32px; min-width: 150px; }
+.dg-title-in { flex: 1 1 160px; min-width: 120px; height: 32px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: none; font: 500 16px var(--serif); color: var(--ink); }
+.dg-title-in:hover, .dg-title-in:focus { border-color: var(--hair-strong); outline: none; background: var(--paper); }
+.dg-node .dg { margin: 0; }
+@media (max-width: 640px) {
+  .k-mind .dg-cells, .k-cycle .dg-cells { gap: 20px 14px; }
+  .k-mind .dg-cell, .k-flow .dg-cell, .k-cycle .dg-cell, .k-tree .dg-cell { min-width: 80px; padding: 8px 10px; }
+  .k-quad .dg-stage { padding: 30px 8px; }
+  .dg-axis.x2, .dg-axis.x3 { display: none; }
+  .k-cline .dg-cells { padding: 0 8px; }
+  .k-venn .dg-cells { padding: 26px 3%; }
+}
+@media print { .dg-cell-x, .dg-ed-head { display: none !important; } }
+.gl-tl { --gl-tint: color-mix(in srgb, var(--accent) 14%, #fff); }

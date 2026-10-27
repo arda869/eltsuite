@@ -54,6 +54,7 @@ export type Block =
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
   | { kind: 'draw'; prompt?: string }
   | { kind: 'timeline'; a: TlAttrs }
+  | { kind: 'diagram'; dkind: string; title: string; labels: string[]; cells: { label: string; blocks: Block[] }[] }
   | { kind: 'media'; id: string; title: string; video: boolean; mode: string };
 
 // Self-reflection, peer feedback and surveys on paper.
@@ -389,6 +390,19 @@ export function flattenTask(t: ExportTask): WsTask {
       case 'timeline':
         cur.push({ kind: 'timeline', a: a as TlAttrs });
         return;
+      case 'diagram': {
+        // Each box keeps what is in it, gaps and all; the drawing is made around them.
+        const prev = cur;
+        const cells = (node.content ?? []).map((c) => {
+          const inner: Block[] = [];
+          cur = inner;
+          (c.content ?? []).forEach((k) => walk(k));
+          return { label: String(c.attrs?.label ?? ''), blocks: inner };
+        });
+        cur = prev;
+        cur.push({ kind: 'diagram', dkind: String(a.kind ?? 'mind'), title: String(a.title ?? ''), labels: Array.isArray(a.labels) ? a.labels.map(String) : [], cells });
+        return;
+      }
       case 'drawBoard':
         cur.push({ kind: 'draw', prompt: String(a.prompt ?? '') });
         return;
@@ -629,6 +643,8 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
               }),
           ),
         );
+      else if (b.kind === 'diagram')
+        out.push(shaded(ACC_TINT, [...(b.title ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.title)], spacing: { after: 80 } })] : []), ...b.cells.flatMap((c, i) => [new Paragraph({ keepNext: kn, keepLines: true, children: [label(`${i + 1}${c.label ? '  ' + c.label : ''}`)], spacing: { before: 60 } }), ...(toParas(c.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'timeline') {
         const t = b.a;
         out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('TIMELINE  '), new TextRun({ text: [t.title, (t.items ?? []).map((i) => i.label).filter(Boolean).join(' · '), t.sentence].filter(Boolean).join(' — '), font: SERIF })], spacing: { after: 100 } }));
