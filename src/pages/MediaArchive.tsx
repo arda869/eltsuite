@@ -513,9 +513,39 @@ export function MediaArchive() {
   const kindsLabel = !kinds.length ? 'Everything' : kinds.length === 1 ? ALL_KINDS.find((k) => k.k === kinds[0])!.label : `${kinds.length} kinds`;
 
   const tile = (en: Entry) => <Card key={en.key} entry={en} chosen={sel.has(en.key)} shared={!!en.item && sharedIds.has(en.item.id)} onClick={clickE(en)} onDoubleClick={() => openE(en)} onDragStart={dragE(en)} onMenu={menuE(en)} name={nameOf(en.key, en.name)} />;
-  const row = (en: Entry) => (
+  // In the list, a folder opens in place with a click: what is in it shows below, indented.
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const folderRows = (f: string, depth: number): React.ReactNode[] => {
+    const open = expanded.has(f);
+    const head = (
+      <button
+        key={'f-' + f}
+        type="button"
+        data-sel={'f:' + f}
+        className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '') + (open ? ' open' : '')}
+        onClick={(e) => (clickFolder(f)(e), !e.shiftKey && !e.metaKey && !e.ctrlKey && setExpanded((x) => (x.has(f) ? new Set([...x].filter((y) => y !== f)) : new Set([...x, f]))))}
+        onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)}
+        onContextMenu={menuF(f)}
+        {...folderDrop(f)}
+      >
+        <span className="ma-lname" style={{ ['--depth' as string]: depth }}>
+          <span className={'ma-ltw' + (open ? ' on' : '')} aria-hidden="true">›</span>
+          <FolderIcon size={18} locked={inClasses(f)} />
+          {nameOf('f:' + f, leafOf(f), 'ma-lname-t')}
+        </span>
+        <span className="hint">Folder</span>
+        <span className="hint">{nItems(countIn(f))}</span>
+        <span />
+        <span />
+      </button>
+    );
+    if (!open) return [head];
+    const files = entries.filter((e) => e.folder === f).sort((a, b) => a.name.localeCompare(b.name));
+    return [head, ...kidsOf(f).flatMap((k) => folderRows(k, depth + 1)), ...files.map((en) => row(en, depth + 1))];
+  };
+  const row = (en: Entry, depth = 0) => (
     <button key={en.key} type="button" data-sel={en.key} draggable={renaming !== en.key} onDragStart={dragE(en)} className={'ma-lrow' + (sel.has(en.key) ? ' chosen' : '')} onClick={clickE(en)} onDoubleClick={() => openE(en)} onContextMenu={menuE(en)}>
-      <span className="ma-lname">
+      <span className="ma-lname" style={{ ['--depth' as string]: depth }}>
         {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} />}
         {nameOf(en.key, en.name, 'ma-lname-t')}
         {en.item && sharedIds.has(en.item.id) && <SharedMark />}
@@ -830,22 +860,11 @@ export function MediaArchive() {
                     <span>Folder</span>
                     <span>Added</span>
                   </span>
-                  {subFolders.map((f) => (
-                    <button key={'f-' + f} type="button" data-sel={'f:' + f} className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '')} onClick={clickFolder(f)} onDoubleClick={() => renaming !== 'f:' + f && setFolder(f)} onContextMenu={menuF(f)} {...folderDrop(f)}>
-                      <span className="ma-lname">
-                        <FolderIcon size={18} locked={inClasses(f)} />
-                        {nameOf('f:' + f, leafOf(f), 'ma-lname-t')}
-                      </span>
-                      <span className="hint">Folder</span>
-                      <span className="hint">{nItems(countIn(f))}</span>
-                      <span />
-                      <span />
-                    </button>
-                  ))}
+                  {subFolders.flatMap((f) => folderRows(f, 0))}
                   {groups.map(([g, list]) => (
                     <span key={g || 'all'} style={{ display: 'contents' }}>
                       {g && <span className="ma-group-h list">{g}</span>}
-                      {list.map(row)}
+                      {list.map((en) => row(en))}
                     </span>
                   ))}
                 </div>
@@ -972,6 +991,7 @@ export function MediaArchive() {
         {pane && oneFolder && (
           <FolderDetail
             key={oneFolder}
+            locked={inClasses(oneFolder)}
             path={oneFolder}
             items={all.filter((i) => inTree(i.folder, oneFolder))}
             tasks={tasks.filter((t) => inTree(t.folder, oneFolder))}

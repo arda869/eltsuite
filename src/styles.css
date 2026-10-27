@@ -6428,3 +6428,8 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 @media (max-width: 900px) { .dp.k-pd { height: auto; overflow: visible; } .dp.k-pd .pd { grid-template-columns: 1fr; height: auto; } .pd-side { height: auto; max-height: 50vh; } .pd-empty-acts { grid-template-columns: 1fr 1fr; } }
 .pd-note .task-editor .ProseMirror { padding: 14px 18px; }
 .pd-note .task-editor .toolbar { padding: 6px 10px; }
+/* List view: folders open in place, their contents indented */
+.ma-lname { padding-left: calc(var(--depth, 0) * 22px); }
+.ma-ltw { width: 14px; flex: none; display: inline-grid; place-items: center; color: var(--muted); font-size: 14px; transition: transform .15s; }
+.ma-ltw.on { transform: rotate(90deg); }
+.ma-lrow:not(.ma-lfolder) .ma-lname { padding-left: calc(var(--depth, 0) * 22px + 22px); }
