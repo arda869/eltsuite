@@ -62,6 +62,7 @@ export function classDefaults(p?: OrgPolicy | null) {
   return { ...(n.length < NAME_CHOICES.length ? { profile: { names: n.includes('full') ? 'full' : n[0] } } : {}), ...(e.length < EMAIL_CHOICES.length ? { accounts: { email: e.includes('optional') ? 'optional' : e[0] } } : {}) };
 }
 export type OrgPolicy = {
+  levels?: { cefr?: boolean; custom?: string[] }; // the levels classes can have: CEFR, the organisation's own, or both
   createClasses?: boolean; // false: admins make the classes for their teachers
   seeEmails?: boolean; // whether teachers see their learners' emails
   learnerEmails?: 'none' | 'optional' | 'required'; // learners join with a PIN, and an email when asked for
@@ -89,6 +90,13 @@ const orgOf = (id: string, d: Record<string, unknown>): Org => {
   return { ...x, id, name: x.name ?? 'Organisation', plan: x.plan ?? 'school', limitGb: x.limitGb ?? 50, adminEmails: x.adminEmails ?? [], teachers: x.teachers ?? {} } as Org;
 };
 const lower = (s?: string | null) => (s ?? '').trim().toLowerCase();
+// The levels a class can have here: the organisation's choice, or CEFR.
+export const CEFR = ['Pre-A1', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+export function levelsFor(o: Org | null | undefined): string[] {
+  const l = o?.policy?.levels;
+  const list = [...(l?.cefr === false ? [] : CEFR), ...(l?.custom ?? [])];
+  return list.length ? [...list, 'Mixed'] : [...CEFR, 'Mixed'];
+}
 export const isOwnerEmail = (e?: string | null) => lower(e) === OWNER_EMAIL;
 
 // This account's own settings: its plan, its space and whether it is paused.

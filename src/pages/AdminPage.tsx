@@ -5,6 +5,8 @@ import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { UiIcon } from '../components/UiIcon';
 import { Avatar } from '../components/avatars';
+import { FolderIcon } from '../components/FileIcon';
+import { OrgOverview, SuperOverview } from './AdminOverview';
 import { Loader } from '../components/Loader';
 import { MultiSelect, Select } from '../components/Select';
 import { PROFILE_ICONS, ProfileIcon } from '../components/ProfileIcons';
@@ -71,6 +73,9 @@ import {
   type Plan,
   type Teacher,
   useOrgPictures,
+  roleFor,
+  levelsFor,
+  CEFR,
 } from '../lib/admin';
 
 // Super Admin: for the app's owner, every teacher, organisation and switch; for an organisation's
@@ -78,7 +83,7 @@ import {
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-type Tab = 'teachers' | 'orgs' | 'apps' | 'defaults';
+type Tab = 'overview' | 'teachers' | 'orgs' | 'apps' | 'defaults';
 
 // Super Admin (/admin) is the app's owner's alone: every teacher, organisation and switch.
 // Organisation admin (/org-admin) is for an organisation's admins: their organisation only.
@@ -89,7 +94,7 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
   const orgs = useOrgs(owner, user?.email);
   const teachers = useTeachers(owner);
   const accounts = useAccounts(owner);
-  const [tab, setTab] = useState<Tab>('teachers');
+  const [tab, setTab] = useState<Tab>('overview');
   const [orgId, setOrgId] = useState('');
   useEffect(() => {
     if (!owner && orgs?.length && !orgId) setOrgId(orgs[0].id);
@@ -120,6 +125,7 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
       </div>
     );
   const NAV: { k: Tab; label: string; icon: string }[] = [
+    { k: 'overview', label: 'Overview', icon: 'poll' },
     { k: 'teachers', label: 'Teachers', icon: 'person' },
     { k: 'orgs', label: 'Organisations', icon: 'groups' },
     { k: 'apps', label: 'Apps', icon: 'settings' },
@@ -150,6 +156,14 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
         <main className="adm-main">
           {org ? (
             <OrgPanel key={org.id} org={org} owner={owner} teachers={teachers ?? []} accounts={accounts} orgs={orgs} />
+          ) : tab === 'overview' ? (
+            <section className="adm-sec">
+              <span className="adm-head">
+                <h1 className="page-title">Overview</h1>
+                <span className="hint">All of ELT Suite</span>
+              </span>
+              <SuperOverview teachers={teachers} accounts={accounts} orgs={orgs} onOpen={setOrgId} />
+            </section>
           ) : tab === 'teachers' ? (
             <TeachersTab teachers={teachers} accounts={accounts} orgs={orgs} />
           ) : tab === 'orgs' ? (
@@ -179,6 +193,8 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
 // ------------------------------------------------------------------ teachers (owner)
 function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null; accounts: Record<string, Account>; orgs: Org[] }) {
   const [q, setQ] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [sort, setSort] = useState('new');
   const [counts, setCounts] = useState<Record<string, { classes: number; learners: number }>>({});
   useEffect(() => {
     for (const t of teachers ?? []) if (counts[t.uid] === undefined) void classCount(t.uid).then((n) => setCounts((c) => ({ ...c, [t.uid]: n })));
@@ -186,7 +202,21 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
   }, [teachers]);
   if (!teachers) return <Loader label="Opening the teachers" />;
   const s = q.trim().toLowerCase();
-  const shown = teachers.filter((t) => !s || `${t.name} ${t.email}`.toLowerCase().includes(s));
+  const FILTERS: Record<string, (t: Teacher) => boolean> = {
+    all: () => true,
+    paused: (t) => !!accounts[t.uid]?.suspended,
+    full: (t) => !!accounts[t.uid]?.over,
+    org: (t) => !!accounts[t.uid]?.org,
+    alone: (t) => !accounts[t.uid]?.org,
+    empty: (t) => counts[t.uid]?.classes === 0,
+  };
+  const SORTS: Record<string, (a: Teacher, b: Teacher) => number> = {
+    new: (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+    name: (a, b) => (a.name || a.email).localeCompare(b.name || b.email),
+    learners: (a, b) => (counts[b.uid]?.learners ?? 0) - (counts[a.uid]?.learners ?? 0),
+    space: (a, b) => (accounts[b.uid]?.usedBytes ?? b.usedBytes ?? 0) - (accounts[a.uid]?.usedBytes ?? a.usedBytes ?? 0),
+  };
+  const shown = teachers.filter((t) => (!s || `${t.name} ${t.email}`.toLowerCase().includes(s)) && FILTERS[filter](t)).sort(SORTS[sort]);
   return (
     <section className="adm-sec">
       <span className="adm-head">
@@ -194,6 +224,11 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
         <span className="hint">{plural(teachers.length, 'account')}</span>
         <span style={{ flex: 1 }} />
         <input className="adm-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email" />
+      </span>
+      <span className="adm-filters">
+        <Select value={filter} options={[{ v: 'all', label: 'Every teacher' }, { v: 'alone', label: 'On their own' }, { v: 'org', label: 'In an organisation' }, { v: 'empty', label: 'No classes yet' }, { v: 'full', label: 'Space full' }, { v: 'paused', label: 'Paused' }]} onChange={setFilter} label="Show" />
+        <Select value={sort} options={[{ v: 'new', label: 'Newest first' }, { v: 'name', label: 'By name' }, { v: 'learners', label: 'Most learners' }, { v: 'space', label: 'Most space' }]} onChange={setSort} label="Order" />
+        <span className="hint">{shown.length === teachers.length ? '' : `${shown.length} shown`}</span>
       </span>
       <div className="adm-table-wrap">
         <table className="adm-table">
@@ -337,10 +372,11 @@ function AppsTab() {
 const Switch = ({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) => <button type="button" role="switch" aria-checked={on} aria-label={label} disabled={disabled} className={'set-toggle' + (on ? ' on' : '')} onClick={() => onChange(!on)} />;
 
 // ------------------------------------------------------------------ one organisation
-type OTab = 'teachers' | 'space' | 'brand' | 'rules' | 'drives' | 'classes' | 'admins';
+type OTab = 'overview' | 'teachers' | 'space' | 'brand' | 'rules' | 'drives' | 'classes' | 'admins';
 function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: boolean; teachers: Teacher[]; accounts: Record<string, Account>; orgs: Org[] }) {
-  const [tab, setTab] = useState<OTab>(() => (new URLSearchParams(window.location.search).get('tab') as OTab) || 'teachers');
+  const [tab, setTab] = useState<OTab>(() => (new URLSearchParams(window.location.search).get('tab') as OTab) || 'overview');
   const TABS: [OTab, string][] = [
+    ['overview', 'Overview'],
     ['teachers', 'Teachers'],
     ['classes', 'Classes'],
     ['drives', 'Organisation library'],
@@ -373,6 +409,7 @@ function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: b
           </button>
         ))}
       </span>
+      {tab === 'overview' && <OrgOverview org={org} onTab={(t) => setTab(t as OTab)} />}
       {tab === 'teachers' && <OrgTeachers org={org} owner={owner} teachers={teachers} accounts={accounts} orgs={orgs} />}
       {tab === 'classes' && <OrgClasses org={org} />}
       {tab === 'drives' && <OrgDrives org={org} />}
@@ -503,7 +540,7 @@ function OrgClasses({ org }: { org: Org }) {
         </label>
         <label className="field">
           <span>Level</span>
-          <Select value={level} options={[...['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((l) => ({ v: l, label: l }))]} onChange={(v) => setLevel(v)} label="Choose" />
+          <Select value={level} options={levelsFor(org).map((l) => ({ v: l, label: l }))} onChange={(v) => setLevel(v)} label="Choose" />
         </label>
         <button type="button" className="btn primary" disabled={!who || !name.trim()} onClick={() => void make()}>
           Create the class
@@ -583,6 +620,48 @@ function ClassLearners({ c, teacher, onBack }: { c: ClassDoc; teacher: string; o
   );
 }
 
+// The levels classes can have: CEFR, the organisation's own names, or both.
+function Levels({ org }: { org: Org }) {
+  const l = org.policy?.levels ?? {};
+  const custom = l.custom ?? [];
+  const [add, setAdd] = useState('');
+  const save = (x: { cefr?: boolean; custom?: string[] }) => void savePolicy(org, { levels: { cefr: l.cefr !== false, custom, ...x } });
+  const put = () => {
+    const v = add.trim();
+    if (!v || custom.includes(v) || CEFR.includes(v)) return setAdd('');
+    save({ custom: [...custom, v] });
+    setAdd('');
+  };
+  return (
+    <div className="adm-levels">
+      <span className="adm-row">
+        <span>
+          <b>Levels</b>
+          <span className="hint">What teachers choose from when they create a class. Classes keep the level they have.</span>
+        </span>
+      </span>
+      <span className="adm-row sub">
+        <span>
+          CEFR levels
+          <span className="hint"> {CEFR.join(', ')}</span>
+        </span>
+        <Switch on={l.cefr !== false} onChange={(v) => save({ cefr: v })} label="CEFR levels" disabled={l.cefr !== false && !custom.length} />
+      </span>
+      <span className="lv-chips">
+        {custom.map((c, i) => (
+          <span key={c} className="lv-chip">
+            {c}
+            {i > 0 && <button type="button" aria-label={`Move ${c} earlier`} onClick={() => save({ custom: custom.map((x, j) => (j === i - 1 ? c : j === i ? custom[i - 1] : x)) })}>‹</button>}
+            <button type="button" aria-label={`Remove ${c}`} onClick={() => save({ custom: custom.filter((x) => x !== c), ...(custom.length === 1 ? { cefr: true } : {}) })}>×</button>
+          </span>
+        ))}
+        <input value={add} onChange={(e) => setAdd(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), put())} onBlur={put} placeholder="+ Add your own, for example: Beginner 1" aria-label="Add a level" />
+      </span>
+      {l.cefr !== false && !custom.length && <span className="hint">Add a level of your own before switching CEFR off.</span>}
+    </div>
+  );
+}
+
 function OrgRules({ org }: { org: Org }) {
   const p = org.policy ?? {};
   const set = (x: Parameters<typeof savePolicy>[1]) => void savePolicy(org, x);
@@ -607,6 +686,7 @@ function OrgRules({ org }: { org: Org }) {
       <Row title="Teachers create their own classes" about="When this is off, only admins create classes, from the Classes tab here.">
         <Switch on={p.createClasses !== false} onChange={(v) => set({ createClasses: v })} label="Teachers create their own classes" />
       </Row>
+      <Levels org={org} />
       <span className="adm-sub">Learners</span>
       <Row title="Learner email addresses" about="Tick the settings teachers can choose from. Learners always sign in with the class code and their PIN.">
         <MultiSelect value={emailChoicesOf(p)} options={EMAIL_CHOICES} onChange={(v) => set({ emailChoices: v, learnerEmails: undefined })} label="Learner email addresses" all="Each teacher decides" />
@@ -830,14 +910,14 @@ function OrgDrives({ org }: { org: Org }) {
   const { user } = useAuth();
   const folders = useDrive(org);
   const drives = useMemo(() => ({ main: { name: 'Organisation library', quotaGb: 5 }, ...(org.drives ?? {}) }) as Record<string, { name: string; quotaGb: number; access?: DriveAccess }>, [org.drives]);
-  const [newDrive, setNewDrive] = useState('');
+  const [newDrive, setNewDrive] = useState<string | null>(null);
   const [open, setOpen] = useState('');
   const [use, setUse] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!folders) return;
     for (const k of Object.keys(drives)) void driveUse(folders.filter((f) => (f.drive ?? 'main') === k).map((f) => f.id)).then((n) => setUse((u) => ({ ...u, [k]: n })));
   }, [folders, drives]);
-  // Who is in each folder follows the teachers, their tags and the drives' settings.
+  // Who is in each folder follows the teachers, their tags and the sections' settings.
   const sig = JSON.stringify([org.teachers, org.drives]);
   useEffect(() => {
     if (folders?.length) void syncDrive(org, folders);
@@ -845,113 +925,188 @@ function OrgDrives({ org }: { org: Org }) {
   if (!user) return null;
   const saveDrive = (k: string, d: { name: string; quotaGb: number; access?: DriveAccess }) => saveDrives(org, { ...drives, [k]: d });
   const addDrive = () => {
+    if (!newDrive?.trim()) return;
     const id = 'd' + Date.now().toString(36);
-    void saveDrives(org, { ...drives, [id]: { name: newDrive.trim(), quotaGb: 5, access: { all: 'view', tags: {}, people: {} } } }).then(() => setNewDrive(''));
+    void saveDrives(org, { ...drives, [id]: { name: newDrive.trim(), quotaGb: 5, access: { all: 'view', tags: {}, people: {} } } }).then(() => setNewDrive(null));
   };
   return (
     <div className="adm-drives">
-      <span className="hint">Teachers in {org.name} find these in the Organisation library app. Lessons there can be copied into their classes. Hidden sections and folders do not show for them at all.</span>
+      <ol className="lib-steps">
+        <li><b>Sections</b> hold folders, for example one for each team or level.</li>
+        <li><b>Decide who can see</b> each section, or one folder on its own.</li>
+        <li>
+          <b>Add lessons and files</b> in the <a href="/library">Organisation library</a> app. Teachers copy lessons into their classes from there.
+        </li>
+      </ol>
       {Object.entries(drives).map(([k, d]) => {
         const list = (folders ?? []).filter((f) => (f.drive ?? 'main') === k);
         const access = d.access ?? { all: 'view', tags: {}, people: {} };
+        const usedGb = (use[k] ?? 0) / 1024 ** 3;
         return (
-          <div key={k} className="adm-card adm-drive">
-            <span className="adm-drive-h">
-              <UiIcon name="archive" size={18} />
+          <section key={k} className="adm-card lib-sec">
+            <header className="lib-sec-h">
+              <span className="lib-sec-ic" aria-hidden="true">
+                <UiIcon name="archive" size={18} />
+              </span>
               <DriveName value={d.name} onSave={(name) => void saveDrive(k, { ...d, name })} />
               <span style={{ flex: 1 }} />
-              <span className="hint">{formatBytes(use[k] ?? 0)} of</span>
-              <GbInput value={d.quotaGb} onSave={(gb) => void saveDrive(k, { ...d, quotaGb: gb })} max={org.limitGb} />
-            </span>
-            <AccessEditor org={org} access={access} onSave={(a) => void saveDrive(k, { ...d, access: a })} />
-            <span className="adm-sub">Folders</span>
-            {list.map((f) => (
-              <DriveFolderRow key={f.id} org={org} f={f} driveAccess={access} me={user.uid} open={open === f.id} onToggle={() => setOpen(open === f.id ? '' : f.id)} />
-            ))}
-            {!list.length && <span className="hint">No folders yet.</span>}
-            <NewFolder onMake={(name, all) => void newDriveFolder({ ...org, drives }, { uid: user.uid }, name, all, k)} />
-          </div>
+              <span className="lib-space" data-tip={`${formatBytes(use[k] ?? 0)} used`}>
+                <span className="lib-space-bar"><i style={{ width: `${Math.min(100, (usedGb / Math.max(0.1, d.quotaGb)) * 100)}%` }} /></span>
+                <span className="hint">{formatBytes(use[k] ?? 0)} of</span>
+                <GbInput value={d.quotaGb} onSave={(gb) => void saveDrive(k, { ...d, quotaGb: gb })} max={org.limitGb} />
+              </span>
+            </header>
+            <div className="lib-block">
+              <h3>Who can see this section</h3>
+              <AccessEditor org={org} access={access} onSave={(a) => void saveDrive(k, { ...d, access: a })} />
+            </div>
+            <div className="lib-block">
+              <h3>Folders</h3>
+              {list.length ? (
+                <div className="lib-folders">
+                  {list.map((f) => (
+                    <DriveFolderRow key={f.id} org={org} f={f} driveAccess={access} me={user.uid} open={open === f.id} onToggle={() => setOpen(open === f.id ? '' : f.id)} />
+                  ))}
+                </div>
+              ) : (
+                <span className="hint">No folders yet. Add one, then put lessons in it from the Organisation library.</span>
+              )}
+              <NewFolder onMake={(name) => void newDriveFolder({ ...org, drives }, { uid: user.uid }, name, 'drive', k)} />
+            </div>
+          </section>
         );
       })}
-      <span className="adm-new">
-        <input value={newDrive} onChange={(e) => setNewDrive(e.target.value)} placeholder="Another section, for example: Exams team" />
-        <button type="button" className="btn" disabled={!newDrive.trim()} onClick={addDrive}>
-          + Add a section
+      {newDrive === null ? (
+        <button type="button" className="btn lib-add" onClick={() => setNewDrive('')}>
+          <UiIcon name="plus" size={14} /> Add another section
         </button>
-      </span>
+      ) : (
+        <span className="adm-new">
+          <input autoFocus value={newDrive} onChange={(e) => setNewDrive(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' ? addDrive() : e.key === 'Escape' && setNewDrive(null))} placeholder="Name, for example: Exams team" aria-label="Name of the section" />
+          <button type="button" className="btn primary" disabled={!newDrive.trim()} onClick={addDrive}>
+            Add section
+          </button>
+          <button type="button" className="btn link small" onClick={() => setNewDrive(null)}>
+            Cancel
+          </button>
+        </span>
+      )}
     </div>
   );
 }
 
-// Who can do what: everyone, each tag, and exceptions for one teacher.
+const ROLE_WORD: Record<DriveRole, string> = { edit: 'can edit', comment: 'can comment', view: 'can view', none: 'cannot see it' };
+// Who can do what, as a few plain rows: everyone, then any tag or teacher who differs.
 function AccessEditor({ org, access, onSave, inherit }: { org: Org; access: DriveAccess; onSave: (a: DriveAccess) => void; inherit?: { on: boolean; set: (on: boolean) => void } }) {
-  const [more, setMore] = useState(false);
+  const [adding, setAdding] = useState<'' | 'tag' | 'person'>('');
   const tags = Object.entries(org.tags ?? {});
   const people = Object.entries(org.teachers);
-  const roles = (extra?: string) => [...(extra ? [{ v: '', label: extra }] : []), ...DRIVE_ROLES];
-  const exceptions = Object.keys(access.people ?? {}).length;
+  const tagRows = Object.entries(access.tags ?? {}).filter(([id]) => org.tags?.[id]);
+  const personRows = Object.entries(access.people ?? {}).filter(([uid]) => org.teachers[uid]);
+  // How it works out, for each teacher.
+  const counts = people.reduce<Record<DriveRole, number>>((m, [uid, t]) => ((m[roleFor(access, uid, t.tags)] += 1), m), { edit: 0, comment: 0, view: 0, none: 0 });
+  const summary = (Object.keys(counts) as DriveRole[]).filter((r) => counts[r]).map((r) => `${counts[r]} ${ROLE_WORD[r]}`).join(' · ');
   if (inherit?.on)
     return (
-      <div className="adm-access">
-        <span className="adm-row sub">
-          <span className="hint">Follows the drive</span>
+      <div className="lib-access">
+        <span className="lib-follow">
+          <span>Same as its section</span>
           <button type="button" className="btn link small" onClick={() => inherit.set(false)}>
-            Give it its own settings
+            Set it on its own
           </button>
         </span>
       </div>
     );
+  const setTag = (id: string, v: DriveRole | '') => {
+    const n = { ...(access.tags ?? {}) };
+    if (v) n[id] = v;
+    else delete n[id];
+    onSave({ ...access, tags: n });
+  };
+  const setPerson = (uid: string, v: DriveRole | '') => {
+    const n = { ...(access.people ?? {}) };
+    if (v) n[uid] = v;
+    else delete n[uid];
+    onSave({ ...access, people: n });
+  };
   return (
-    <div className="adm-access">
-      <span className="adm-row sub">
-        <b>Everyone in {org.name}</b>
+    <div className="lib-access">
+      <span className="lib-rule">
+        <span className="lib-who">
+          <UiIcon name="groups" size={15} /> Everyone in {org.name}
+        </span>
         <Select value={access.all} options={DRIVE_ROLES} onChange={(v) => onSave({ ...access, all: v })} label="Everyone" />
       </span>
-      {tags.map(([id, t]) => (
-        <span key={id} className="adm-row sub">
-          <span className="adm-tag">{t.name}</span>
-          <Select value={access.tags?.[id] ?? ''} options={roles('Like everyone')} onChange={(v) => { const n = { ...(access.tags ?? {}) }; if (v) n[id] = v as DriveRole; else delete n[id]; onSave({ ...access, tags: n }); }} label={`Teachers tagged ${t.name}`} />
+      {tagRows.map(([id, r]) => (
+        <span key={id} className="lib-rule">
+          <span className="lib-who">
+            <span className="adm-tag">{org.tags?.[id]?.name}</span> teachers
+          </span>
+          <Select value={r} options={DRIVE_ROLES} onChange={(v) => setTag(id, v)} label={`Teachers tagged ${org.tags?.[id]?.name}`} />
+          <button type="button" className="lib-x" aria-label="Back to everyone's setting" data-tip="Back to everyone's setting" onClick={() => setTag(id, '')}>×</button>
         </span>
       ))}
-      <span className="adm-row sub">
-        <button type="button" className="btn link small" onClick={() => setMore((m) => !m)}>
-          {more ? 'Hide one-by-one settings' : `One teacher at a time${exceptions ? ` (${exceptions})` : ''}`}
+      {personRows.map(([uid, r]) => (
+        <span key={uid} className="lib-rule">
+          <span className="lib-who">
+            <UiIcon name="person" size={15} /> {org.teachers[uid].name || org.teachers[uid].email}
+          </span>
+          <Select value={r} options={DRIVE_ROLES} onChange={(v) => setPerson(uid, v)} label={org.teachers[uid].name || org.teachers[uid].email} />
+          <button type="button" className="lib-x" aria-label="Back to their tags and everyone's setting" data-tip="Back to their tags and everyone's setting" onClick={() => setPerson(uid, '')}>×</button>
+        </span>
+      ))}
+      {adding === 'tag' && (
+        <span className="lib-rule">
+          <Select value="" placeholder="Choose a tag…" options={tags.filter(([id]) => !access.tags?.[id]).map(([id, t]) => ({ v: id, label: t.name }))} onChange={(v) => (setTag(v, access.all === 'edit' ? 'view' : 'edit'), setAdding(''))} label="Tag" />
+          <button type="button" className="btn link small" onClick={() => setAdding('')}>Cancel</button>
+        </span>
+      )}
+      {adding === 'person' && (
+        <span className="lib-rule">
+          <Select value="" placeholder="Choose a teacher…" options={people.filter(([uid]) => !access.people?.[uid]).map(([uid, t]) => ({ v: uid, label: t.name || t.email, hint: t.email }))} onChange={(v) => (setPerson(v, access.all === 'edit' ? 'view' : 'edit'), setAdding(''))} label="Teacher" />
+          <button type="button" className="btn link small" onClick={() => setAdding('')}>Cancel</button>
+        </span>
+      )}
+      <span className="lib-adds">
+        {tags.length > 0 && tagRows.length < tags.length && (
+          <button type="button" className="btn small-btn" onClick={() => setAdding('tag')}>
+            + A different setting for a tag
+          </button>
+        )}
+        <button type="button" className="btn small-btn" onClick={() => setAdding('person')}>
+          + A different setting for one teacher
         </button>
         {inherit && (
           <button type="button" className="btn link small" onClick={() => inherit.set(true)}>
-            Follow the drive again
+            Same as its section again
           </button>
         )}
       </span>
-      {more &&
-        people.map(([uid, t]) => (
-          <span key={uid} className="adm-row sub indent">
-            <span>
-              {t.name || t.email}
-              {t.tags?.length ? <span className="hint"> · {t.tags.map((x) => org.tags?.[x]?.name).filter(Boolean).join(', ')}</span> : null}
-            </span>
-            <Select value={access.people?.[uid] ?? ''} options={roles('Like their tags')} onChange={(v) => { const n = { ...(access.people ?? {}) }; if (v) n[uid] = v as DriveRole; else delete n[uid]; onSave({ ...access, people: n }); }} label={`${t.name || t.email}`} />
-          </span>
-        ))}
-      {!tags.length && <span className="hint">Add tags in Teachers to set a group of teachers at once.</span>}
+      <span className="hint lib-sum">{summary ? `So: ${summary}.` : ''}{!tags.length ? ' Tags in Teachers set a group at once.' : ''}</span>
     </div>
   );
 }
 
 function DriveName({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [v, setV] = useState(value);
-  return <input className="adm-drivename" value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() && v !== value && onSave(v.trim())} />;
+  return <input className="adm-drivename" value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() && v !== value && onSave(v.trim())} aria-label="Name of the section" data-tip="Click to rename" />;
 }
 
-function NewFolder({ onMake }: { onMake: (name: string, all: DriveRole | 'drive') => void }) {
-  const [name, setName] = useState('');
-  const [all, setAll] = useState<DriveRole | 'drive'>('drive');
-  return (
+function NewFolder({ onMake }: { onMake: (name: string) => void }) {
+  const [name, setName] = useState<string | null>(null);
+  const go = () => name?.trim() && (onMake(name.trim()), setName(null));
+  return name === null ? (
+    <button type="button" className="btn small-btn lib-newf" onClick={() => setName('')}>
+      <UiIcon name="plus" size={13} /> New folder
+    </button>
+  ) : (
     <span className="adm-new">
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New folder, for example: Exam papers" />
-      <Select value={all} options={[{ v: 'drive', label: 'Like the section' }, ...DRIVE_ROLES.map((r) => ({ v: r.v, label: `Everyone: ${r.label.toLowerCase()}` }))]} onChange={(v) => setAll(v)} label="Who can use it" />
-      <button type="button" className="btn small-btn primary" disabled={!name.trim()} onClick={() => (onMake(name, all), setName(''))}>
+      <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => (e.key === 'Enter' ? go() : e.key === 'Escape' && setName(null))} placeholder="Folder name, for example: Exam papers" aria-label="Folder name" />
+      <button type="button" className="btn small-btn primary" disabled={!name.trim()} onClick={go}>
         Add folder
+      </button>
+      <button type="button" className="btn link small" onClick={() => setName(null)}>
+        Cancel
       </button>
     </span>
   );
@@ -960,18 +1115,23 @@ function NewFolder({ onMake }: { onMake: (name: string, all: DriveRole | 'drive'
 function DriveFolderRow({ org, f, driveAccess, me, open, onToggle }: { org: Org; f: DriveFolder & { owner?: string }; driveAccess: DriveAccess; me: string; open: boolean; onToggle: () => void }) {
   const own = !!f.own;
   const access = own ? f.access : driveAccess;
-  const label = own ? `Own settings · everyone ${DRIVE_ROLES.find((r) => r.v === access.all)?.label.toLowerCase()}` : 'Like the section';
   return (
-    <div className={'adm-folder' + (open ? ' open' : '')}>
-      <button type="button" className="adm-folder-h" onClick={onToggle}>
-        <span className="adm-ch" aria-hidden="true">›</span>
+    <div className={'lib-folder' + (open ? ' open' : '')}>
+      <span className="lib-folder-h">
+        <FolderIcon size={20} />
         <b>{f.name}</b>
-        <span className="hint">
-          {label} · {plural(f.memberIds.length, 'teacher')}
-        </span>
-      </button>
+        <span className={'lib-pill' + (own ? ' own' : '')}>{own ? 'Its own settings' : 'Same as the section'}</span>
+        <span className="hint">{plural(f.memberIds.length, 'teacher')} can see it</span>
+        <span style={{ flex: 1 }} />
+        <a className="btn link small" href={`/library?f=${f.id}`}>
+          Open
+        </a>
+        <button type="button" className="btn small-btn" aria-expanded={open} onClick={onToggle}>
+          {open ? 'Done' : 'Who can see it'}
+        </button>
+      </span>
       {open && (
-        <div className="adm-folder-b">
+        <div className="lib-folder-b">
           <AccessEditor org={org} access={access} onSave={(a) => void saveDriveAccess(org, f, { uid: me }, { tags: {}, ...a }, true)} inherit={{ on: !own, set: (on) => void saveDriveAccess(org, f, { uid: me }, on ? driveAccess : { tags: {}, ...driveAccess }, !on) }} />
         </div>
       )}

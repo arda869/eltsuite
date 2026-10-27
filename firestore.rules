@@ -561,7 +561,8 @@ service cloud.firestore {
     // Profile photos: small pictures anyone signed in may see; only the owner changes theirs.
     // Accounts: the plan, space, pause and apps of each teacher. The owner sets them.
     match /accounts/{uid} {
-      allow read: if isSelf(uid) || isOwner();
+      // an organisation's admins see its teachers' space, for their overview
+      allow read: if isSelf(uid) || isOwner() || (resource.data.get('org', null) is string && adminOfOrg(resource.data.org));
       allow write: if isOwner();
       // A teacher saying yes to an organisation's invitation sets their own organisation.
       allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
