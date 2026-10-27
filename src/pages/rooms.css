@@ -20,9 +20,15 @@
 .rm-link-acts .btn { display: inline-flex; align-items: center; gap: 6px; }
 .rm-ghost { border-color: transparent; background: transparent; color: var(--muted); }
 
-/* Two columns: what to join, and who to call */
-.rm-cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(330px, 1fr); gap: 18px; align-items: start; }
-.rm-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+/* Rows that line up: what to join beside who to call, then the rest of the day beside recent
+   calls. Each row is as tall as its taller side and the other side fills it, so no gaps open. */
+.rm-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(330px, 1fr); gap: 18px; align-items: stretch; }
+.rm-stack { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.rm-stack > :last-child { flex: 1 1 auto; }
+.rm-span { grid-column: 1 / -1; }
+.rm-call { min-height: 420px; }
+.rm-span.rm-recent .rm-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); column-gap: 32px; }
+.rm-span.rm-recent .rm-row { border-top: 0; border-bottom: 1px solid var(--hair); }
 
 /* Next up */
 .rm-hero { --hero: var(--ev, var(--accent)); position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; min-height: 236px; padding: 34px 38px; border-radius: 24px; background: linear-gradient(130deg, color-mix(in srgb, var(--hero) 17%, var(--paper)) 0%, color-mix(in srgb, var(--hero) 7%, var(--paper)) 52%, var(--paper) 100%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--hero) 18%, var(--hair)), 0 26px 60px -40px color-mix(in srgb, var(--hero) 70%, #000); }
@@ -114,13 +120,12 @@
 
 /* Narrower: one column, the next thing first and calling right after it */
 @media (max-width: 980px) {
-  .rm-cols { display: flex; flex-direction: column; align-items: stretch; }
-  .rm-col { display: contents; }
-  .rm-hero { order: 1; }
-  .rm-call { order: 2; }
-  .rm-on { order: 3; }
-  .rm-later { order: 4; }
-  .rm-recent { order: 5; }
+  .rm-grid { grid-template-columns: minmax(0, 1fr); }
+  .rm-call { min-height: 0; }
+  .rm-hero { min-height: 0; }
+  .rm-span.rm-recent .rm-list { display: flex; }
+  .rm-span.rm-recent .rm-row { border-bottom: 0; border-top: 1px solid var(--hair); }
+  .rm-span.rm-recent .rm-row:first-child { border-top: 0; }
 }
 /* A phone */
 @media (max-width: 640px) {

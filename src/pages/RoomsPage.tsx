@@ -78,6 +78,7 @@ export function RoomsPage() {
   const heroSession = nowSession ?? (heroCall ? undefined : today.find(joinable));
   const alsoOn = onNow.filter((c) => c.id !== heroCall?.id);
   const later = today.filter((o) => !sameOcc(o, heroSession));
+  const mid = alsoOn.length > 0 || later.length > 0;
   const recent = (chats ?? [])
     .filter((c) => !isSelf(c) && !callOn(c) && (callOf(c)?.at ?? 0) > now - 30 * DAY)
     .sort((a, b) => callOf(b)!.at - callOf(a)!.at)
@@ -136,8 +137,9 @@ export function RoomsPage() {
           </span>
         </header>
 
-        <div className="rm-cols">
-          <div className="rm-col rm-col-main">
+        {/* Rows that line up: what to join beside who to call, then the rest of the day beside recent calls. */}
+        <div className="rm-grid">
+          <div className="rm-stack rm-top">
             {link && (
               <div className="rm-link" role="status">
                 <span className="rm-link-ic" aria-hidden="true">
@@ -175,104 +177,106 @@ export function RoomsPage() {
               onStart={start}
               onJoin={joinChat}
             />
+          </div>
 
-            {alsoOn.length > 0 && (
-              <section className="rm-card rm-on" aria-labelledby="rm-on-h">
-                <div className="rm-card-h">
-                  <h2 id="rm-on-h">Also on now</h2>
-                </div>
-                <ul className="rm-list">
-                  {alsoOn.map((c) => {
-                    const k = callOn(c)!;
-                    const inIt = open?.chatId === c.id;
-                    return (
-                      <li key={c.id} className="rm-row">
-                        <Face c={c} me={uid} />
-                        <span className="rm-row-t">
-                          <b>{chatTitle(c, uid)}</b>
-                          <span className="hint">
-                            {k.byName} started a {k.kind} call at {timeText(k.at)}
-                          </span>
-                        </span>
-                        <button type="button" className="btn small-btn primary" disabled={inIt} onClick={() => joinChat(c)}>
-                          {inIt ? 'You are in it' : 'Join'}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            )}
+          <CallSomeone me={me} dir={dir} chats={chats} calling={calling} onCall={call} onJoin={joinChat} />
 
-            {later.length > 0 && (
-              <section className="rm-card rm-later" aria-labelledby="rm-later-h">
-                <div className="rm-card-h">
-                  <h2 id="rm-later-h">Coming up</h2>
-                  <Link className="rm-more" to="/timetable">
-                    The week
-                  </Link>
-                </div>
-                <ol className="rm-agenda">
-                  {later.slice(0, 6).map((o) => {
-                    const c = classOf(o.s.classId);
-                    const color = o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--soft)';
-                    const where = o.s.online ? 'Online' : o.s.place?.trim() || 'In person';
-                    return (
-                      <li key={o.s.id + o.week} className="rm-ag">
-                        <span className="rm-ag-time">
-                          <b>{timeText(o.start)}</b>
-                          <span>{dayKey(o.start) === dayKey(now) ? (isNow(o, 0) ? 'Now' : 'Today') : 'Tomorrow'}</span>
-                        </span>
-                        <span className="rm-ag-bar" style={{ background: color }} aria-hidden="true" />
-                        <span className="rm-row-t">
-                          <b>{o.s.title}</b>
-                          <span className="hint">
-                            {c ? c.name : 'Meeting'} · {where}
+          {mid && (
+            <div className={'rm-stack rm-mid' + (recent.length ? '' : ' rm-span')}>
+              {alsoOn.length > 0 && (
+                <section className="rm-card rm-on" aria-labelledby="rm-on-h">
+                  <div className="rm-card-h">
+                    <h2 id="rm-on-h">Also on now</h2>
+                  </div>
+                  <ul className="rm-list">
+                    {alsoOn.map((c) => {
+                      const k = callOn(c)!;
+                      const inIt = open?.chatId === c.id;
+                      return (
+                        <li key={c.id} className="rm-row">
+                          <Face c={c} me={uid} />
+                          <span className="rm-row-t">
+                            <b>{chatTitle(c, uid)}</b>
+                            <span className="hint">
+                              {k.byName} started a {k.kind} call at {timeText(k.at)}
+                            </span>
                           </span>
-                        </span>
-                        {joinable(o) && (
-                          <button type="button" className={'btn small-btn' + (isNow(o) ? ' primary' : '')} onClick={() => start(o)} aria-label={`${o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'} ${o.s.title}`}>
-                            {o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'}
+                          <button type="button" className="btn small-btn primary" disabled={inIt} onClick={() => joinChat(c)}>
+                            {inIt ? 'You are in it' : 'Join'}
                           </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
-            )}
-          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+              )}
 
-          <div className="rm-col rm-col-side">
-            <CallSomeone me={me} dir={dir} chats={chats} calling={calling} onCall={call} onJoin={joinChat} />
-
-            {recent.length > 0 && (
-              <section className="rm-card rm-recent" aria-labelledby="rm-recent-h">
-                <div className="rm-card-h">
-                  <h2 id="rm-recent-h">Recent calls</h2>
-                </div>
-                <ul className="rm-list">
-                  {recent.map((c) => {
-                    const k = callOf(c)!;
-                    const title = chatTitle(c, uid);
-                    return (
-                      <li key={c.id} className="rm-row">
-                        <Face c={c} me={uid} />
-                        <span className="rm-row-t">
-                          <b>{title}</b>
-                          <span className="hint">
-                            {k.kind === 'video' ? 'Video' : 'Audio'} · {whenText(k.at)}
-                            {k.by === uid ? '' : ` · from ${k.byName.split(' ')[0]}`}
+              {later.length > 0 && (
+                <section className="rm-card rm-later" aria-labelledby="rm-later-h">
+                  <div className="rm-card-h">
+                    <h2 id="rm-later-h">Coming up</h2>
+                    <Link className="rm-more" to="/timetable">
+                      The week
+                    </Link>
+                  </div>
+                  <ol className="rm-agenda">
+                    {later.slice(0, 6).map((o) => {
+                      const c = classOf(o.s.classId);
+                      const color = o.s.kind === 'class' ? theme(c?.themeColor).accent : 'var(--soft)';
+                      const where = o.s.online ? 'Online' : o.s.place?.trim() || 'In person';
+                      return (
+                        <li key={o.s.id + o.week} className="rm-ag">
+                          <span className="rm-ag-time">
+                            <b>{timeText(o.start)}</b>
+                            <span>{dayKey(o.start) === dayKey(now) ? (isNow(o, 0) ? 'Now' : 'Today') : 'Tomorrow'}</span>
                           </span>
+                          <span className="rm-ag-bar" style={{ background: color }} aria-hidden="true" />
+                          <span className="rm-row-t">
+                            <b>{o.s.title}</b>
+                            <span className="hint">
+                              {c ? c.name : 'Meeting'} · {where}
+                            </span>
+                          </span>
+                          {joinable(o) && (
+                            <button type="button" className={'btn small-btn' + (isNow(o) ? ' primary' : '')} onClick={() => start(o)} aria-label={`${o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'} ${o.s.title}`}>
+                              {o.s.kind === 'class' ? 'Start' : o.s.live ? 'Join' : 'Start'}
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
+              )}
+            </div>
+          )}
+
+          {recent.length > 0 && (
+            <section className={'rm-card rm-recent' + (mid ? '' : ' rm-span')} aria-labelledby="rm-recent-h">
+              <div className="rm-card-h">
+                <h2 id="rm-recent-h">Recent calls</h2>
+              </div>
+              <ul className="rm-list">
+                {recent.map((c) => {
+                  const k = callOf(c)!;
+                  const title = chatTitle(c, uid);
+                  return (
+                    <li key={c.id} className="rm-row">
+                      <Face c={c} me={uid} />
+                      <span className="rm-row-t">
+                        <b>{title}</b>
+                        <span className="hint">
+                          {k.kind === 'video' ? 'Video' : 'Audio'} · {whenText(k.at)}
+                          {k.by === uid ? '' : ` · from ${k.byName.split(' ')[0]}`}
                         </span>
-                        <CallPair name={title} busy={!!calling} onCall={(kind) => void call(c.id, kind, c)} again />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            )}
-          </div>
+                      </span>
+                      <CallPair name={title} busy={!!calling} onCall={(kind) => void call(c.id, kind, c)} again />
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
         </div>
 
         <section className="rm-card rm-rooms" aria-labelledby="rm-rooms-h">
