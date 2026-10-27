@@ -51,3 +51,40 @@ export function typingIn(t: EventTarget | null): boolean {
 // A mouse or trackpad (not only a touch screen): fields may take the focus when a panel opens.
 // On phones and tablets that would pop the keyboard up over what people came to see.
 export const autoFocusOk = typeof window === 'undefined' || !window.matchMedia?.('(pointer: coarse)').matches;
+
+// Every window (a .scrim with its dialog): when it closes, the cursor goes back to what opened it,
+// so keyboard users carry on where they were instead of starting again at the top of the page.
+let watching = false;
+const scrimIn = (n: Node) => (n instanceof HTMLElement ? (n.matches('.scrim') ? n : n.firstElementChild?.matches('.scrim') ? n.firstElementChild : null) : null);
+export function installDialogFocus() {
+  if (watching || typeof MutationObserver === 'undefined' || !document.body) return;
+  watching = true;
+  const from = new WeakMap<Element, HTMLElement>();
+  let lastOutside: HTMLElement | null = null;
+  // Where focus was just before a window opened (the click that opens it can move focus first).
+  document.addEventListener('focusin', (e) => {
+    const t = e.target as HTMLElement;
+    if (!t.closest('.scrim')) lastOutside = t;
+  }, true);
+  new MutationObserver((list) => {
+    for (const m of list) {
+      m.addedNodes.forEach((n) => {
+        const w = scrimIn(n);
+        if (w) {
+          const a = document.activeElement as HTMLElement | null;
+          const at = a && a !== document.body && !a.closest('.scrim') ? a : lastOutside;
+          if (at) from.set(w, at);
+        }
+      });
+      m.removedNodes.forEach((n) => {
+        const w = scrimIn(n);
+        if (!w) return;
+        const back = from.get(w);
+        window.setTimeout(() => {
+          const now = document.activeElement;
+          if (back?.isConnected && (!now || now === document.body) && !document.querySelector('.scrim')) back.focus({ preventScroll: true });
+        }, 0);
+      });
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+}

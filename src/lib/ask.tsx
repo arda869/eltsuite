@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { installImeGuard } from './keys';
+import { installDialogFocus, installImeGuard } from './keys';
 import { ShortcutsHost } from '../components/Shortcuts';
 
 // Every page loads this file: the keys typed with an input method never act half-way through a word.
 installImeGuard();
+if (typeof document !== 'undefined') queueMicrotask(installDialogFocus);
 
 // The app's own "are you sure?", notice and question boxes, in place of the browser's grey ones.
 // ask() resolves true or false, tell() when it is closed, askText() with the text or null.
