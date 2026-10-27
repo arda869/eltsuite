@@ -1,5 +1,6 @@
 import { VideoButton } from '../components/VideoCall';
 import { isNow, occurrences, useClassSessions, whenText as sessionWhen } from '../lib/sessions';
+import { external, joinText, joinUrl, videoLabel } from '../lib/meetings';
 import { tr, useClassTerms } from '../lib/terms';
 import { AccountNudge } from './SettingsPage';
 import { ThemeChoice } from '../lib/theme';
@@ -221,11 +222,25 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                 <span className="eyebrow accent">{isNow(nextSession, 0) ? 'Class now' : 'Next class'}</span>
                 <span style={{ fontFamily: 'var(--serif)', fontSize: 16 }}>{nextSession.s.title}</span>
                 <span className="hint">
-                  {sessionWhen(nextSession.start)} · {nextSession.s.online ? 'Online' : nextSession.s.place || 'In person'}
+                  {sessionWhen(nextSession.start)} · {nextSession.s.online ? (external(nextSession.s) ? `Online, ${videoLabel(nextSession.s.video?.kind)}` : 'Online') : nextSession.s.place || 'In person'}
                 </span>
               </span>
-              {nextSession.s.online && c?.video?.url && isNow(nextSession, 15) && <VideoButton c={c} name={name} />}
-              {nextSession.s.online && c?.video?.url && !isNow(nextSession, 15) && <span className="hint">The video opens 15 minutes before</span>}
+              {joinUrl(nextSession.s) ? (
+                isNow(nextSession, 15) ? (
+                  <a className="btn primary small-btn" href={joinUrl(nextSession.s)!} target="_blank" rel="noopener noreferrer">
+                    {joinText(nextSession.s)}
+                  </a>
+                ) : (
+                  <span className="hint">The link opens 15 minutes before</span>
+                )
+              ) : (
+                !external(nextSession.s) && (
+                  <>
+                    {nextSession.s.online && c?.video?.url && isNow(nextSession, 15) && <VideoButton c={c} name={name} />}
+                    {nextSession.s.online && c?.video?.url && !isNow(nextSession, 15) && <span className="hint">The video opens 15 minutes before</span>}
+                  </>
+                )
+              )}
             </section>
           ) : nextLesson && !liveNow && (
             <section className="live-card next-card">

@@ -9,6 +9,7 @@ import { theme } from '../lib/themes';
 import { addSession, isNow, occurrences, removeSession, restoreSession, saveMyZone, saveSession, setSessionLive, setSessionZone, skipWeek, useTeacherSessions, whenText, zoneOf, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
 import { fromFields, localZone, shiftInZone } from '../lib/tz';
 import { useGcalSetting, useGcalSync } from '../lib/gcal';
+import { external, joinUrl, useVideoPrefs, videoLabel } from '../lib/meetings';
 import { NoRoomError, openCall, takeRoom } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
 import { useDirectory } from '../lib/directory';
@@ -31,6 +32,14 @@ import './timetable.css';
 // Starting, or joining, a session.
 export async function startSession(o: Occurrence, c: ClassDoc | undefined, me: { uid: string; name: string }, go: (to: string) => void) {
   const s = o.s;
+  // In Google Meet, Teams, Zoom or another tool: that opens in its own tab (the lesson here).
+  const link = joinUrl(s);
+  if (link) {
+    window.open(link, '_blank', 'noopener');
+    if (s.kind === 'class' && s.classId) go(s.itemId ? `/class/${s.classId}/lesson/${s.itemId}?teach=1` : `/class/${s.classId}`);
+    return;
+  }
+  if (external(s)) return void tell('The link for this session is not ready yet. It is made when the session is saved, or for Google Meet when Google Calendar is connected.');
   if (s.kind === 'class' && s.classId) {
     if (s.online && c) await joinClassVideo(c, true);
     go(s.itemId ? `/class/${s.classId}/lesson/${s.itemId}?teach=1` : `/class/${s.classId}`);
@@ -127,12 +136,23 @@ export function TimetablePage() {
   const cls = (id?: string | null) => active.find((c) => c.id === id);
   // Google Calendar: everything in this timetable, kept up to date while it is open.
   const gset = useGcalSetting(uid);
+  const vprefs = useVideoPrefs(uid);
   const lessonOf = (s: Session) => (s.itemId ? (items[s.classId ?? ''] ?? []).find((i) => i.id === s.itemId)?.title : undefined);
   const sync = useGcalSync(
     uid,
     sessions.map((s) => {
       const c = cls(s.classId);
-      return { s, extras: { className: c?.name, lessonTitle: lessonOf(s), video: s.kind === 'class' && s.online && c?.video?.url ? { url: c.video.url, label: 'Class video room' } : null } };
+      const link = joinUrl(s);
+      const meet = s.online && s.video?.kind === 'meet' && s.video.by === uid && !s.video.url;
+      return {
+        s,
+        extras: {
+          className: c?.name,
+          lessonTitle: lessonOf(s),
+          video: link ? { url: link, label: videoLabel(s.video?.kind) } : s.kind === 'class' && s.online && !external(s) && c?.video?.url ? { url: c.video.url, label: 'Class video room' } : null,
+          conference: meet ? { createRequest: { requestId: `elt-${s.id}`, conferenceSolutionKey: { type: 'hangoutsMeet' } } } : null,
+        },
+      };
     }),
     gset,
   );
@@ -373,6 +393,7 @@ export function TimetablePage() {
             colleagues={colleagues}
             lastClass={lastClass}
             me={me}
+            prefs={vprefs}
             onDone={(t, c) => {
               sync.wake();
               setPending(null);

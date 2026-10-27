@@ -3,6 +3,8 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { ask } from '../../lib/ask';
 import { askToken, forgetToken, googleClientId, ourEvents, prepareGoogle, removeAll, saveGcalSetting, setGoogleClientIdLocal, useGcalSetting } from '../../lib/gcal';
+import { cleanUrl, microsoftClientId, prepareMicrosoft, saveVideoPrefs, setMicrosoftClientIdLocal, useVideoPrefs, VIDEO_KINDS, warmTeams, type VideoKind } from '../../lib/meetings';
+import { Select } from '../../components/Select';
 
 // Settings, Calendar: the switch for Google Calendar, and (for the owner) the app's Client ID.
 type RowT = ComponentType<{ title: string; hint?: string; children: ReactNode }>;
@@ -59,29 +61,71 @@ export function CalendarSettings({ uid, owner, Row, Toggle }: { uid: string; own
           {note}
         </p>
       )}
-      {owner && <ClientIdRow Row={Row} onSaved={() => void prepareGoogle().then(setReady, () => setReady(false))} />}
+      <VideoRows uid={uid} Row={Row} googleOn={!!g?.on} />
+      {owner && <ClientIdRow Row={Row} doc_="google" label="Google Client ID (owner only)" hint="From Google Cloud, project lesson-lit. It is public and safe here. Never paste the client secret anywhere." pattern={/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/} placeholder="1234-abc.apps.googleusercontent.com" read={googleClientId} onSaved={(id) => (setGoogleClientIdLocal(id), void prepareGoogle().then(setReady, () => setReady(false)))} />}
+      {owner && <ClientIdRow Row={Row} doc_="microsoft" label="Microsoft Client ID (owner only)" hint="The Application (client) ID from Microsoft Entra, for Teams meetings. Public too; never paste a client secret." pattern={/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i} placeholder="00000000-0000-0000-0000-000000000000" read={microsoftClientId} onSaved={(id) => (setMicrosoftClientIdLocal(id), void prepareMicrosoft())} />}
     </>
   );
 }
 
-function ClientIdRow({ Row, onSaved }: { Row: RowT; onSaved: () => void }) {
+// Which video tool new online sessions use, and the teacher's own Zoom or meeting link.
+function VideoRows({ uid, Row, googleOn }: { uid: string; Row: RowT; googleOn: boolean }) {
+  const p = useVideoPrefs(uid);
+  const kind = p.kind ?? 'eltsuite';
+  const [url, setUrl] = useState('');
+  const [msg, setMsg] = useState('');
+  useEffect(() => setUrl(kind === 'zoom' ? p.zoom ?? '' : kind === 'link' ? p.link ?? '' : ''), [kind, p.zoom, p.link]);
+  useEffect(() => void (kind === 'teams' && prepareMicrosoft()), [kind]);
+  const hint: Record<VideoKind, string> = {
+    eltsuite: 'Classes use their own video room, and meetings get one when they start.',
+    meet: googleOn ? 'Each new session gets a Google Meet link, made in your Google Calendar.' : 'Google Meet links are made with Google Calendar: turn on the switch above too.',
+    teams: 'Each new session gets a Teams meeting. It needs a work or school Microsoft account.',
+    zoom: 'Every new session uses your Zoom link below.',
+    link: 'Every new session uses the link below.',
+  };
+  return (
+    <>
+      <Row title="Video for new online sessions" hint={hint[kind]}>
+        <Select label="Video for new online sessions" value={kind} options={VIDEO_KINDS.map((v) => ({ v: v.k, label: v.label }))} onChange={(k) => void saveVideoPrefs(uid, { ...p, kind: k })} />
+      </Row>
+      {(kind === 'zoom' || kind === 'link') && (
+        <Row title={kind === 'zoom' ? 'Your Zoom link' : 'Your meeting link'} hint={kind === 'zoom' ? 'Your personal meeting room link, from the Zoom app (Meetings, Personal Room).' : 'A link that always opens your meeting room.'}>
+          <span className="set-email">
+            <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" aria-label={kind === 'zoom' ? 'Your Zoom link' : 'Your meeting link'} inputMode="url" spellCheck={false} />
+            <button type="button" className="btn small-btn" disabled={!cleanUrl(url) || cleanUrl(url) === (kind === 'zoom' ? p.zoom : p.link)} onClick={() => void saveVideoPrefs(uid, { ...p, [kind]: cleanUrl(url) })}>
+              Save
+            </button>
+          </span>
+        </Row>
+      )}
+      {kind === 'teams' && (
+        <Row title="Microsoft Teams" hint={msg || 'Sign in once to check that your account can make Teams meetings.'}>
+          <button type="button" className="btn small-btn" onClick={() => warmTeams().then(() => setMsg('Signed in. New sessions get a Teams meeting.'), (e: Error) => setMsg(e.message))}>
+            Sign in to Microsoft
+          </button>
+        </Row>
+      )}
+    </>
+  );
+}
+
+function ClientIdRow({ Row, doc_, label, hint, pattern, placeholder, read, onSaved }: { Row: RowT; doc_: string; label: string; hint: string; pattern: RegExp; placeholder: string; read: () => Promise<string | null>; onSaved: (id: string) => void }) {
   const [v, setV] = useState('');
   const [saved, setSaved] = useState(false);
-  useEffect(() => void googleClientId().then((id) => setV(id ?? '')), []);
-  const ok = /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(v.trim());
+  useEffect(() => void read().then((id) => setV(id ?? '')), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const ok = pattern.test(v.trim());
   return (
-    <Row title="Google Client ID (owner only)" hint="From Google Cloud, project lesson-lit. It is public and safe here. Never paste the client secret anywhere.">
+    <Row title={label} hint={hint}>
       <span className="set-email">
-        <input value={v} onChange={(e) => (setV(e.target.value), setSaved(false))} placeholder="1234-abc.apps.googleusercontent.com" aria-label="Google Client ID" spellCheck={false} />
+        <input value={v} onChange={(e) => (setV(e.target.value), setSaved(false))} placeholder={placeholder} aria-label={label} spellCheck={false} />
         <button
           type="button"
           className="btn small-btn"
           disabled={!ok}
           onClick={async () => {
-            await setDoc(doc(db, 'admin', 'google'), { clientId: v.trim() }, { merge: true });
-            setGoogleClientIdLocal(v.trim());
+            await setDoc(doc(db, 'admin', doc_), { clientId: v.trim() }, { merge: true });
             setSaved(true);
-            onSaved();
+            onSaved(v.trim());
           }}
         >
           {saved ? 'Saved' : 'Save'}

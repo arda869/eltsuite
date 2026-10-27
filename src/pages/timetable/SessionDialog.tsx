@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { addSession, saveSession, useZones, zoneOf, type Session } from '../../lib/sessions';
 import { allZones, cityOf, clockIn, fromFields, localZone, sameClock, toFields, zoneLabel } from '../../lib/tz';
 import { Select, MultiSelect } from '../../components/Select';
@@ -6,6 +6,8 @@ import { useDirectory } from '../../lib/directory';
 import { tell } from '../../lib/ask';
 import type { ClassDoc } from '../../lib/classes';
 import { clock, lengthText, niceStart, shortDay } from './dates';
+import { cleanUrl, defaultVideo, looksZoom, makeTeamsMeeting, prepareMicrosoft, saveVideoPrefs, useVideoPrefs, VIDEO_KINDS, warmTeams, type VideoKind } from '../../lib/meetings';
+import { useGcalSetting } from '../../lib/gcal';
 
 // The full form, for everything: a class or a meeting, the lesson, when and in which time zone,
 // how often, where. The day and time are on the session's own clock.
@@ -29,10 +31,30 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
   const [repeat, setRepeat] = useState((init.weeks ?? 1) > 1);
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<Session>) => setS((x) => ({ ...x, ...p }));
+  // The video: ELT Suite's own room, or Meet, Teams, Zoom or another link.
+  const prefs = useVideoPrefs(me.uid);
+  const google = useGcalSetting(me.uid);
+  const [vk, setVk] = useState<VideoKind>(init.video?.kind ?? 'eltsuite');
+  const [vurl, setVurl] = useState(init.video?.url ?? '');
+  const [picked, setPicked] = useState(!!init.id || !!init.video);
+  useEffect(() => {
+    if (picked || !prefs.kind) return;
+    const d = defaultVideo(prefs, me.uid);
+    setVk(prefs.kind);
+    setVurl(d?.url ?? (prefs.kind === 'zoom' ? prefs.zoom ?? '' : prefs.kind === 'link' ? prefs.link ?? '' : ''));
+  }, [prefs, picked, me.uid]);
+  useEffect(() => void (vk === 'teams' && prepareMicrosoft()), [vk]);
+  const pickVideo = (k: VideoKind) => {
+    setPicked(true);
+    setVk(k);
+    setVurl(k === init.video?.kind ? init.video?.url ?? '' : k === 'zoom' ? prefs.zoom ?? '' : k === 'link' ? prefs.link ?? '' : '');
+  };
+  const needsUrl = s.online && (vk === 'zoom' || vk === 'link');
+  const goodUrl = !needsUrl || !!cleanUrl(vurl);
   const c = classes.find((x) => x.id === s.classId);
   const lessons = (items[s.classId ?? ''] ?? []).filter((i) => i.type === 'lesson');
   const title = s.title?.trim() || (s.kind === 'class' ? lessons.find((l) => l.id === s.itemId)?.title || c?.name || '' : '');
-  const ok = !!title && !!date && !!time && (s.kind === 'meeting' || !!c);
+  const ok = !!title && !!date && !!time && (s.kind === 'meeting' || !!c) && goodUrl;
   const mins = s.mins ?? 60;
   const lengths = [...new Set([...MINS, mins])].sort((a, b) => a - b);
   const at = date && time ? fromFields(date, time, tz) : NaN;
@@ -44,9 +66,26 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
         .map((a) => `${clockIn(at, others[a])} for ${colleagues.find((p) => p.key === a)?.name ?? s.names?.[a] ?? 'a colleague'}, ${cityOf(others[a])}`)
     : [];
   const save = async () => {
+    // A new Teams meeting: Microsoft's window opens from this click, if it is needed.
+    const teams = s.online && vk === 'teams' && !(init.video?.kind === 'teams' && init.video.url) ? warmTeams() : null;
     setBusy(true);
     const start = fromFields(date, time, tz);
-    const base = { ...s, tz, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
+    let video: Session['video'] = null;
+    if (s.online && vk !== 'eltsuite') {
+      if (vk === 'zoom' || vk === 'link') video = { kind: vk, url: cleanUrl(vurl), by: me.uid };
+      else if (vk === init.video?.kind && init.video?.url) video = init.video;
+      else video = { kind: vk, by: me.uid };
+    }
+    if (teams && video) {
+      try {
+        await teams;
+        video = { kind: 'teams', url: await makeTeamsMeeting({ title, start, mins: s.mins ?? 60, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1 }), by: me.uid };
+      } catch (e) {
+        setBusy(false);
+        return void tell(e instanceof Error ? e.message : 'The Teams meeting could not be made.');
+      }
+    }
+    const base = { ...s, video, tz, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
     try {
       if (s.id) await saveSession(base as Session);
       else await addSession({ ...base, owner: me.uid, ownerName: me.name, live: null } as Omit<Session, 'id'>);
@@ -141,7 +180,23 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
             </button>
           </span>
           {s.online ? (
-            <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page; no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : 'A video room opens when it starts. No link to send.'}</span>
+            <div className="ttb-video">
+              <Select label="Video" value={vk} options={VIDEO_KINDS.map((v) => ({ v: v.k, label: v.label }))} onChange={pickVideo} />
+              {vk === 'eltsuite' && <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page; no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : 'A video room opens when it starts. No link to send.'}</span>}
+              {vk === 'meet' && <span className="hint">{init.video?.kind === 'meet' && init.video.url ? `Google Meet: ${init.video.url.replace('https://', '')}` : google?.on ? 'A Google Meet link is made in your Google Calendar when you save, and learners see it on their home page.' : 'Google Meet links are made with your Google Calendar: turn on Add my timetable to Google Calendar in Settings.'}</span>}
+              {vk === 'teams' && <span className="hint">{init.video?.kind === 'teams' && init.video.url ? 'The Teams meeting is ready. Learners see its link on their home page.' : 'A Teams meeting is made when you save. It needs a work or school Microsoft account.'}</span>}
+              {(vk === 'zoom' || vk === 'link') && (
+                <>
+                  <input value={vurl} onChange={(e) => setVurl(e.target.value)} placeholder={vk === 'zoom' ? 'Your Zoom link, for example https://zoom.us/j/1234567890' : 'https://'} aria-label={vk === 'zoom' ? 'Zoom link' : 'Link'} inputMode="url" spellCheck={false} />
+                  {vk === 'zoom' && vurl && cleanUrl(vurl) && !looksZoom(cleanUrl(vurl)) && <span className="hint">That does not look like a Zoom link, but it will work if it opens your meeting.</span>}
+                  {cleanUrl(vurl) && cleanUrl(vurl) !== (vk === 'zoom' ? prefs.zoom : prefs.link) && (
+                    <button type="button" className="btn link small ttb-keep" onClick={() => void saveVideoPrefs(me.uid, { ...prefs, kind: vk, [vk]: cleanUrl(vurl) })}>
+                      Use this for my new sessions
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           ) : (
             <input value={s.place ?? ''} onChange={(e) => set({ place: e.target.value })} placeholder="Room 4, or the address" aria-label="Where" />
           )}

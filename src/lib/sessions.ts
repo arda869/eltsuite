@@ -22,6 +22,7 @@ export type Session = {
   tz?: string; // the time zone a weekly session keeps its time in (IANA name)
   weeks?: number; // weekly, this many times in all (1 = once)
   online: boolean;
+  video?: { kind: 'eltsuite' | 'meet' | 'teams' | 'zoom' | 'link'; url?: string; by?: string } | null; // online in another tool (lib/meetings.ts)
   place?: string; // in person: where
   attendees?: string[]; // meeting: colleagues' uids
   names?: Record<string, string>;

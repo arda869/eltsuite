@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { theme } from '../../lib/themes';
 import { addSession, isNow, useZones, zoneOf, type Occurrence, type Session, type SessionKind } from '../../lib/sessions';
 import { cityOf, clockIn, localZone, sameClock } from '../../lib/tz';
+import { defaultVideo, external, joinText, joinUrl, makeTeamsMeeting, videoLabel, warmTeams, type VideoPrefs } from '../../lib/meetings';
 import { Select, MultiSelect } from '../../components/Select';
 import { IconBtn, UiIcon } from '../../components/UiIcon';
 import { tell } from '../../lib/ask';
@@ -21,7 +22,7 @@ function otherClocks(t: number, people: { name: string; tz?: string }[], own?: s
 }
 
 // Quick add: the title, the time you dragged, a class or a meeting. More options opens the full form.
-export function QuickCreate({ start, end, classes, colleagues, lastClass, me, onDone, onMore, onTitle }: { start: number; end: number; classes: ClassDoc[]; colleagues: Person[]; lastClass: string | null; me: { uid: string; name: string }; onDone: (saved?: string, classId?: string) => void; onMore: (init: Partial<Session>) => void; onTitle?: (t: string) => void }) {
+export function QuickCreate({ start, end, classes, colleagues, lastClass, me, prefs, onDone, onMore, onTitle }: { start: number; end: number; classes: ClassDoc[]; colleagues: Person[]; lastClass: string | null; me: { uid: string; name: string }; prefs: VideoPrefs; onDone: (saved?: string, classId?: string) => void; onMore: (init: Partial<Session>) => void; onTitle?: (t: string) => void }) {
   const [kind, setKind] = useState<SessionKind>(classes.length ? 'class' : 'meeting');
   const [title, setTitle] = useState('');
   const [classId, setClassId] = useState(lastClass && classes.some((c) => c.id === lastClass) ? lastClass : classes[0]?.id ?? '');
@@ -33,12 +34,25 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, on
   const c = classes.find((x) => x.id === classId);
   const name = title.trim() || (kind === 'class' ? c?.name ?? '' : 'Meeting');
   const ok = kind === 'meeting' || !!c;
-  const init = (): Partial<Session> => ({ kind, title: title.trim(), start, mins, weeks: 1, online: true, classId: kind === 'class' ? classId || null : null, attendees: kind === 'meeting' ? who : [] });
+  const video = defaultVideo(prefs, me.uid);
+  const init = (): Partial<Session> => ({ kind, title: title.trim(), start, mins, weeks: 1, online: true, video: video ?? null, classId: kind === 'class' ? classId || null : null, attendees: kind === 'meeting' ? who : [] });
   const save = async () => {
     if (!ok || busy) return;
+    // Teams by default: Microsoft's window may open from this click.
+    const teams = video?.kind === 'teams' ? warmTeams() : null;
     setBusy(true);
+    let v: Session['video'] = video ?? null;
+    if (teams) {
+      try {
+        await teams;
+        v = { kind: 'teams', url: await makeTeamsMeeting({ title: name, start, mins, weeks: 1 }), by: me.uid };
+      } catch (e) {
+        v = null;
+        void tell(`${e instanceof Error ? e.message : 'The Teams meeting could not be made.'} The session uses the ELT Suite video room for now.`);
+      }
+    }
     try {
-      await addSession({ owner: me.uid, ownerName: me.name, kind, title: name, start, mins, weeks: 1, online: true, classId: kind === 'class' ? classId : null, itemId: null, attendees: kind === 'meeting' ? who : [], names: Object.fromEntries(colleagues.filter((p) => who.includes(p.key)).map((p) => [p.key, p.name])), live: null });
+      await addSession({ owner: me.uid, ownerName: me.name, kind, title: name, start, mins, weeks: 1, online: true, video: v, classId: kind === 'class' ? classId : null, itemId: null, attendees: kind === 'meeting' ? who : [], names: Object.fromEntries(colleagues.filter((p) => who.includes(p.key)).map((p) => [p.key, p.name])), live: null });
       onDone(name, kind === 'class' ? classId : undefined);
     } catch (e) {
       console.error(e);
@@ -67,6 +81,12 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, on
           {longDay(start)}
           <br />
           <b>{clockRange(start, end)}</b> <span className="hint">· {lengthText(mins)}</span>
+          {video && (
+            <>
+              <br />
+              <span className="hint">Online, {videoLabel(video.kind)}</span>
+            </>
+          )}
           {theirs.length > 0 && (
             <>
               <br />
@@ -149,7 +169,18 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
         )}
         <li>
           <UiIcon name={s.online ? 'video' : 'classes'} size={16} />
-          <span>{s.online ? (s.kind === 'class' ? (c?.video?.url ? 'Online, in the class video room' : 'Online: the class video room is on its way') : s.live ? `On now: ${s.live.byName} started it` : 'Online: the room opens when it starts') : s.place || 'In person'}</span>
+          {joinUrl(s) ? (
+            <span className="ttb-link">
+              {videoLabel(s.video?.kind)}
+              <a href={joinUrl(s)!} target="_blank" rel="noopener noreferrer">
+                {joinUrl(s)!.replace(/^https:\/\//, '').replace(/\?.*$/, '')}
+              </a>
+            </span>
+          ) : external(s) ? (
+            <span>{videoLabel(s.video?.kind)}: {s.video?.kind === 'meet' ? 'the link is made in Google Calendar, once it is connected in Settings' : 'the link is not ready yet'}</span>
+          ) : (
+            <span>{s.online ? (s.kind === 'class' ? (c?.video?.url ? 'Online, in the class video room' : 'Online: the class video room is on its way') : s.live ? `On now: ${s.live.byName} started it` : 'Online: the room opens when it starts') : s.place || 'In person'}</span>
+          )}
         </li>
         {clocks.length > 0 && (
           <li>
@@ -169,7 +200,7 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
       </ul>
       {(s.online || s.kind === 'class') && (
         <button type="button" className={'btn ttb-go ' + (now ? 'primary' : '')} onClick={onStart} data-autofocus>
-          {s.kind === 'class' ? (s.itemId ? 'Start teaching' : 'Open the class') : s.live ? 'Join' : 'Start now'}
+          {s.kind === 'class' ? (s.itemId ? 'Start teaching' : 'Open the class') : joinUrl(s) ? joinText(s) : s.live ? 'Join' : 'Start now'}
         </button>
       )}
     </div>

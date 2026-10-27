@@ -263,6 +263,9 @@ export function useGcalSync(uid: string, items: Item[], setting: GcalSetting | n
         try {
           const r = await putEvent(it.s, uid, it.body, it.mark);
           await mark(it.s.id, uid, { id: r.id, h: it.h });
+          // A Google Meet asked for: its link goes on the session, for the learners and the others.
+          const meet = String(r.event.hangoutLink ?? '');
+          if (it.extras.conference && meet.startsWith('https://')) await updateDoc(doc(db, 'sessions', it.s.id), { 'video.url': meet }).catch(() => {});
         } catch (e) {
           await mark(it.s.id, uid, it.mark).catch(() => {});
           throw e;
