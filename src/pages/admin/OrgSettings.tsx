@@ -67,6 +67,11 @@ export function OrgRules({ d }: { d: OrgData }) {
           </Setting>
         )}
       </Panel>
+      <Panel title="Calls">
+        <Setting title="Keep microphone and camera records in call attendance" about="When off, calls still record who joined and when, but not microphone or camera.">
+          <Switch on={p.recordCallMedia !== false} onChange={(v) => set({ recordCallMedia: v }, `Microphone and camera records: ${on(v)}`)} label="Keep microphone and camera records in call attendance" />
+        </Setting>
+      </Panel>
       <Panel title="Apps">
         <p className="hint">The apps your teachers have. What is not part of your plan is shown off.</p>
         {APP_LIST.map((k) => {

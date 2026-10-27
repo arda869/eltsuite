@@ -73,6 +73,7 @@ export type OrgPolicy = {
   profiles?: boolean; // teachers are asked for a profile their colleagues see
   profileFields?: ProfileField[]; // what the profile asks for, in order
   externalTrainees?: boolean; // teacher trainers may add teachers from outside the organisation to training classes
+  recordCallMedia?: boolean; // false: call attendance keeps who joined and when, but not microphone or camera
 };
 export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; libraryName?: string; ttForms?: Record<string, { id: string; name: string; about?: string; fields: { id: string; label: string; kind: 'short' | 'long' | 'rating' | 'check'; hint?: string }[] }>; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
 export type Teacher = { uid: string; name: string; email: string; avatar?: string; createdAt?: number; usedBytes?: number }; // usedBytes: what their files take, as their app last measured
