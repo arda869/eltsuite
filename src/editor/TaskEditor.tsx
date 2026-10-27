@@ -1,3 +1,5 @@
+import { auth } from '../lib/firebase';
+import { imageToData } from '../lib/flash';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { tell } from '../lib/ask';
@@ -566,7 +568,15 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     if (!ed) return;
     try {
       const srcs: string[] = [];
-      for (const f of files) srcs.push(await uploadPicture(classRef.current, f));
+      const uid = auth.currentUser?.uid;
+      // Outside a class (notes, documents) the picture sits in the page; a copy goes into My files.
+      for (const f of files) {
+        if (classRef.current) srcs.push(await uploadPicture(classRef.current, f));
+        else {
+          srcs.push(await imageToData(f, 1100));
+          if (uid) void uploadPicture('user:' + uid, f).catch(() => {});
+        }
+      }
       insertPictures(ed, srcs);
     } catch {
       void tell('The picture could not be uploaded. Try a smaller one.');

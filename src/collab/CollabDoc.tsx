@@ -12,7 +12,8 @@ import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
 import { onValue, push, set, update } from 'firebase/database';
 import { HighlightTool } from '../editor/Highlight';
-import { DOC_CMDS, DOC_GROUPS, DOC_SECTIONS, DOC_NODES, PRON_KEYS, addPictures, pickPictures } from './docKit';
+import { DOC_CMDS, DOC_GROUPS, DOC_SECTIONS, DOC_NODES, PRON_KEYS, PIC_EVENT, addPictures, pickPictures } from './docKit';
+import { PictureDialog } from '../editor/Picture';
 import { SlashMenu, useSlash } from '../editor/TaskEditor';
 import { InsertGallery } from '../editor/InsertGallery';
 import { LineAdder } from '../editor/LineAdder';
@@ -155,6 +156,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [draftText, setDraftText] = useState('');
   const [, tick] = useState(0);
   const gate = useToolGate();
+  const [picFor, setPicFor] = useState<Editor | null>(null);
+  useEffect(() => {
+    const f = (e: Event) => setPicFor((e as CustomEvent<Editor>).detail);
+    window.addEventListener(PIC_EVENT, f);
+    return () => window.removeEventListener(PIC_EVENT, f);
+  }, []);
 
   const editor = useEditor(
     {
@@ -457,6 +464,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     <>
       {pageTools0}
       {personAt && <PersonCard p={personAt.p} r={personAt.r} me={me.uid} onClose={() => setPersonAt(null)} />}
+      {picFor && <PictureDialog editor={picFor} classId="" onClose={() => setPicFor(null)} />}
       {pdfPrev && <PdfPreview bytes={pdfPrev.bytes} name={pdfPrev.name} onClose={() => setPdfPrev(null)} />}
     </>
   );

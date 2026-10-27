@@ -1,3 +1,6 @@
+import { auth } from '../lib/firebase';
+import { isLearnerEmail } from '../lib/learners';
+import { uploadPicture } from '../editor/PackNode';
 import type { Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -111,7 +114,12 @@ export const DOC_NODES = [
 ];
 
 // Pictures in a document live in the document itself, made small enough to share live.
+// The picture button opens the picture window: upload, paste, or choose from My files.
+export const PIC_EVENT = 'll-pictures';
 export function pickPictures(editor: Editor) {
+  window.dispatchEvent(new CustomEvent(PIC_EVENT, { detail: editor }));
+}
+export function pickPictureFiles(editor: Editor) {
   const inp = document.createElement('input');
   inp.type = 'file';
   inp.accept = 'image/*';
@@ -121,7 +129,12 @@ export function pickPictures(editor: Editor) {
 }
 export async function addPictures(editor: Editor, files: File[], at?: number) {
   const nodes = [];
-  for (const f of files.filter((x) => x.type.startsWith('image/'))) nodes.push({ type: 'paragraph', content: [{ type: 'picture', attrs: { src: await imageToData(f, 1100), alt: f.name.replace(/\.[a-z0-9]+$/i, ''), size: 'l' } }] });
+  const u = auth.currentUser;
+  for (const f of files.filter((x) => x.type.startsWith('image/'))) {
+    // A copy goes into My files, to use again.
+    if (u && !isLearnerEmail(u.email)) void uploadPicture('user:' + u.uid, f).catch(() => {});
+    nodes.push({ type: 'paragraph', content: [{ type: 'picture', attrs: { src: await imageToData(f, 1100), alt: f.name.replace(/\.[a-z0-9]+$/i, ''), size: 'l' } }] });
+  }
   if (!nodes.length) return;
   const c = editor.chain().focus();
   (at != null ? c.insertContentAt(at, nodes) : c.insertContent(nodes)).run();
@@ -148,7 +161,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('info', 'Basic', { label: 'Callout', hint: 'A coloured box for a rule, a tip or useful language' }),
   from('textbox', 'Basic'),
   from('reveal', 'Basic', { label: 'Toggle', hint: 'Hidden until someone opens it' }),
-  { key: 'image', label: 'Picture', hint: 'Upload pictures from your device', group: 'Media', run: (e) => pickPictures(e) },
+  { key: 'image', label: 'Picture', hint: 'Upload, paste or choose from My files', group: 'Media', run: (e) => pickPictures(e) },
   from('linkcard', 'Media', { label: 'Video or web page', hint: 'A YouTube video, a sound file or a web page' }),
   { key: 'cite', label: 'Citation', hint: 'Cite a source from your PD reading', group: 'Writing', run: () => void window.dispatchEvent(new CustomEvent('ll:cite')) },
   {

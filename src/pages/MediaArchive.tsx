@@ -156,6 +156,22 @@ export function MediaArchive() {
       setUpBusy('A picture could not be added. Try a smaller one.');
     }
   };
+  // A picture copied anywhere (a screenshot, a map) can be pasted straight into the folder.
+  const picIn = useRef<HTMLInputElement>(null);
+  const addRef = useRef(addPictures);
+  addRef.current = addPictures;
+  useEffect(() => {
+    const paste = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest('input, textarea, [contenteditable="true"]')) return;
+      const pics = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+      if (!pics.length) return;
+      e.preventDefault();
+      void addRef.current(pics.map((f, i) => (f.name && f.name !== 'image.png' ? f : new File([f], `Pasted picture ${new Date().toLocaleDateString()}${pics.length > 1 ? ' ' + (i + 1) : ''}.png`, { type: f.type }))));
+    };
+    document.addEventListener('paste', paste);
+    return () => document.removeEventListener('paste', paste);
+  }, []);
   // Pictures go straight in; a sound opens the editor first.
   const addFiles = (list: FileList | File[]) => {
     const files = Array.from(list);
@@ -496,7 +512,8 @@ export function MediaArchive() {
     'sep',
     { label: 'Recording', icon: 'mic', onClick: () => setDialog({ tab: 'record' }) },
     { label: 'Recording, with colleagues', icon: 'person', onClick: () => setTogether(true) },
-    { label: 'Pictures, recordings or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
+    { label: 'Pictures…', icon: 'picture', hint: 'or paste one here', onClick: () => picIn.current?.click() },
+    { label: 'Recordings or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
   ];
   const emptyMenu: MenuItem[] = [
     ...newMenu,
@@ -1100,6 +1117,7 @@ export function MediaArchive() {
             onClose={() => {}}
           />
         )}
+        <input ref={picIn} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && void addPictures(Array.from(e.target.files)), (e.target.value = ''))} />
         <input ref={pdfIn} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => (e.target.files?.[0] && void makePdf(e.target.files[0]), (e.target.value = ''))} />
         {pdfBusy && <span className="ma-toast" role="status">{pdfBusy}</span>}
         {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}

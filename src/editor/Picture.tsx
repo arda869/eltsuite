@@ -10,6 +10,8 @@ import { cropStyles, filterCss, PicCover, PictureEditor, type CoverMode, type Co
 import { useAuth } from '../lib/auth';
 import { formatBytes, mediaIn, useArchive, useFolders, type ArchiveItem } from '../lib/archive';
 import { newId } from '../lib/tasks';
+import { imageToData } from '../lib/flash';
+import { audioUrl as mediaUrl } from '../lib/media';
 import { UiIcon } from '../components/UiIcon';
 
 // A picture in a task: uploaded from the computer (or pasted), or from a web address. Pictures sit in
@@ -384,11 +386,18 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
   const upload = async (files: FileList | File[]) => {
     const list = Array.from(files).filter((f) => f.type.startsWith('image/'));
     if (!list.length) return;
-    if (!classId) return setBusy('Pictures can be uploaded inside a class.');
     setBusy(list.length > 1 ? `Uploading ${list.length} pictures…` : 'Uploading…');
     try {
       const srcs: string[] = [];
-      for (const f of list) srcs.push(await uploadPicture(classId, f, quality));
+      // In a class the picture is stored with the class. Elsewhere (a document, notes) it sits in the
+      // page itself; either way a copy is kept in My files.
+      for (const f of list) {
+        if (classId) srcs.push(await uploadPicture(classId, f, quality));
+        else {
+          srcs.push(await imageToData(f, 1100));
+          if (user) void uploadPicture('user:' + user.uid, f, quality).catch(() => {});
+        }
+      }
       insertPictures(editor, srcs, { size, mark, alt });
       onClose();
     } catch {
@@ -400,13 +409,30 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
     setBusy(items.length > 1 ? `Adding ${items.length} pictures…` : 'Adding…');
     try {
       const srcs: string[] = [];
-      for (const it of items) srcs.push(it.link ? it.link : 'media:' + (await mediaIn(user.uid, it, classId)));
+      for (const it of items) {
+        if (it.link) srcs.push(it.link);
+        else if (classId) srcs.push('media:' + (await mediaIn(user.uid, it, classId)));
+        else if (it.home) srcs.push(await imageToData(await (await fetch(await mediaUrl(it.home.classId, it.home.mediaId))).blob(), 1100));
+      }
       insertPictures(editor, srcs, { size, mark, alt });
       onClose();
     } catch {
       setBusy('That picture could not be added.');
     }
   };
+  // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.
+  const uploadRef = useRef(upload);
+  uploadRef.current = upload;
+  useEffect(() => {
+    const paste = (e: ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+      if (!files.length) return;
+      e.preventDefault();
+      void uploadRef.current(files);
+    };
+    document.addEventListener('paste', paste);
+    return () => document.removeEventListener('paste', paste);
+  }, []);
   const look = (
     <>
       <div className="field" style={{ gap: 6 }}>
@@ -422,7 +448,12 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
   );
   return (
     <div className="scrim" onClick={onClose}>
-      <div className="dialog pic-dialog" role="dialog" aria-label="Add pictures" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="dialog pic-dialog"
+        role="dialog"
+        aria-label="Add pictures"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="pic-dialog-head">
           <h2 style={{ margin: 0 }}>Add pictures</h2>
           <span className="seg" role="tablist" aria-label="Where from">
@@ -430,7 +461,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               Upload
             </button>
             <button type="button" role="tab" aria-selected={tab === 'archive'} className={tab === 'archive' ? 'on' : ''} onClick={() => setTab('archive')}>
-              Resources library
+              My files
             </button>
           </span>
         </div>
@@ -450,7 +481,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               tabIndex={0}
             >
               <strong>Choose pictures from your computer</strong>
-              <span className="hint">or drop them here. You can choose several at once; they sit side by side. Each one is kept in your resources library.</span>
+              <span className="hint">or drop them here, or paste one you copied. You can choose several at once; they sit side by side. Each one is kept in My files.</span>
               <input ref={file} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
             </div>
             <div className="field" style={{ gap: 6 }}>
@@ -516,8 +547,8 @@ export function ArchivePicker({ uid, kind, multiple, onPick, busy }: { uid?: str
     [all, kind, folder, q],
   );
   const used = [...new Set([...(all ?? []).map((i) => i.folder).filter(Boolean), ...folders])].sort();
-  if (!uid) return <p className="hint">Sign in to use your resources library.</p>;
-  if (all === null) return <p className="hint">Opening your resources library…</p>;
+  if (!uid) return <p className="hint">Sign in to use your files.</p>;
+  if (all === null) return <p className="hint">Opening your files…</p>;
   const toggle = (it: ArchiveItem) => (multiple ? setPicked((p) => (p.includes(it.id) ? p.filter((x) => x !== it.id) : [...p, it.id])) : onPick([it]));
   return (
     <div className="ap">
