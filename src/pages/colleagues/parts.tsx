@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Avatar } from '../../components/avatars';
+import { dockOpen } from '../../components/ChatDock';
 import { CallButtons } from '../../components/Rooms';
 import { FileIcon, FolderIcon } from '../../components/FileIcon';
 import { UiIcon } from '../../components/UiIcon';
@@ -9,6 +10,7 @@ import { openChat, type Chat, type Person } from '../../lib/chat';
 import { useFace } from '../../lib/faces';
 import { StatusDot, type Status } from '../../lib/status';
 import { theme } from '../../lib/themes';
+import { PHONE } from '../../lib/useMedia';
 import { when, type Mate, type Thing } from './book';
 
 // A colleague's picture, with the dot for online, away, in class or on a call.
@@ -24,8 +26,9 @@ export function Face({ m, size, st, dot = true }: { m: Pick<Mate, 'id' | 'name' 
   );
 }
 
-// Message, audio call and video call, one click each. A call needs the chat with them, so the
-// first call makes the chat and then presses the call button for it.
+// Message, audio call and video call, one click each. Message opens the chat in a small window
+// from the bottom (the Messages page on a phone). A call needs the chat with them, so the first
+// call makes the chat and then presses the call button for it.
 export function Reach({ m, me, chat, look }: { m: Mate; me: Person; chat?: Chat; look: 'row' | 'tiles' }) {
   const nav = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -36,11 +39,13 @@ export function Reach({ m, me, chat, look }: { m: Mate; me: Person; chat?: Chat;
     if (busy) return;
     setBusy(true);
     try {
-      nav(`/messages?c=${encodeURIComponent(chat?.id ?? (await openChat(me, [them])))}`);
+      const id = chat?.id ?? (await openChat(me, [them]));
+      if (window.matchMedia(PHONE).matches) return nav(`/messages?c=${encodeURIComponent(id)}`);
+      dockOpen(id);
     } catch {
-      setBusy(false);
       void tell('The chat could not be opened. Please try again.');
     }
+    setBusy(false);
   };
   const call = async (kind: 'audio' | 'video') => {
     if (pending) return;

@@ -232,8 +232,10 @@ const J = {
     await s.p.fill('.clg-search input', 'spanish');
     await see(s.p, '.clg-row:has-text("Tomás Rivera") .clg-mark', 'a search by language');
     await s.p.click('.clg-row-main:has-text("Tomás Rivera")');
+    // Message opens the chat in a window from the bottom, on the same page.
     await s.p.click('.clg-tiles .clg-tile-msg');
-    await s.p.waitForURL(/\/messages\?c=dm_/, { timeout: 10000 });
+    await see(s.p, '.dock-win[data-win^="dm_"]', 'the chat window from the bottom');
+    if (!new URL(s.p.url()).pathname.startsWith('/colleagues')) throw new Error('Message left the Colleagues page');
     return s;
   },
   'Super Admin and an organisation': async (b) => {
