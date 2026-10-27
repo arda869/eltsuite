@@ -1,3 +1,5 @@
+import { answerOf, profileFieldsOf, saveProfileAnswer, useMyOrg, useTeacherProfile, type ProfileField } from '../lib/admin';
+import { ProfileIcon } from '../components/ProfileIcons';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
@@ -178,6 +180,8 @@ export function SettingsPage() {
             </button>
           </div>
         </Section>
+
+        {teacher && user && <OrgProfile uid={user.uid} />}
 
         <Section icon="message" title="Messages">
           <Row title="Enter to send" hint="Off: Enter starts a new line, and you send with the button">
@@ -391,5 +395,43 @@ export function AccountNudge({ uid, required }: { uid: string; required: boolean
       </span>
       <span className="lh-nudge-go">Link it ›</span>
     </Link>
+  );
+}
+
+// The profile an organisation asks its teachers for: the fields its admins chose, saved as you type.
+function OrgProfile({ uid }: { uid: string }) {
+  const org = useMyOrg();
+  const mine = useTeacherProfile(uid);
+  if (!org?.policy?.profiles) return null;
+  const fields = profileFieldsOf(org.policy).filter((f) => f.on);
+  return (
+    <Section icon="person" title={`Your profile in ${org.name}`}>
+      <div className="set-pf-wrap">
+        <p className="hint set-pf-intro">Teachers in {org.name} see this on your page in Colleagues.</p>
+        {mine === undefined ? (
+          <span className="hint">Opening your profile…</span>
+        ) : (
+          fields.map((f) => <ProfileAnswer key={f.id} f={f} value={answerOf(mine, f.id)} onSave={(v) => void saveProfileAnswer(uid, org.id, f.id, v)} />)
+        )}
+      </div>
+    </Section>
+  );
+}
+function ProfileAnswer({ f, value, onSave }: { f: ProfileField; value: string; onSave: (v: string) => void }) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  const save = () => v !== value && onSave(v);
+  return (
+    <label className="set-pf">
+      <span className="set-pf-h">
+        <ProfileIcon name={f.icon} size={16} />
+        {f.label}
+      </span>
+      {f.kind === 'long' ? (
+        <textarea rows={3} value={v} onChange={(e) => setV(e.target.value)} onBlur={save} maxLength={1200} />
+      ) : (
+        <input value={v} onChange={(e) => setV(e.target.value)} onBlur={save} maxLength={300} placeholder={f.kind === 'list' ? 'Separate them with commas' : ''} />
+      )}
+    </label>
   );
 }

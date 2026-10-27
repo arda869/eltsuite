@@ -81,7 +81,8 @@ export function Select<T extends string>({ value, options, onChange, label, plac
 }
 
 // Several choices at once: ticks beside each, the list stays open while you choose.
-export function MultiSelect<T extends string>({ value, options, onChange, label, all = 'Any', className = '' }: { value: T[]; options: Option<T>[]; onChange: (v: T[]) => void; label: string; all?: string; className?: string }) {
+// none: when set, nothing ticked is allowed and shows this; otherwise nothing ticked means all.
+export function MultiSelect<T extends string>({ value, options, onChange, label, all = 'Any', none, foot = 'Teachers choose from the ticked ones.', className = '' }: { value: T[]; options: Option<T>[]; onChange: (v: T[]) => void; label: string; all?: string; none?: string; foot?: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -104,10 +105,10 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
     window.addEventListener('scroll', away, true);
     return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', esc), window.removeEventListener('scroll', away, true));
   }, [open]);
-  const shown = value.length === 0 || value.length === options.length ? all : options.filter((o) => value.includes(o.v)).map((o) => o.label).join(', ');
+  const shown = none !== undefined && value.length === 0 ? none : none === undefined && (value.length === 0 || value.length === options.length) ? all : options.filter((o) => value.includes(o.v)).map((o) => o.label).join(', ');
   const flip = (v: T) => {
     const next = value.includes(v) ? value.filter((x) => x !== v) : options.map((o) => o.v).filter((x) => x === v || value.includes(x));
-    if (next.length) onChange(next); // at least one stays chosen
+    if (next.length || none !== undefined) onChange(next); // without none, at least one stays chosen
   };
   return (
     <>
@@ -121,7 +122,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
         createPortal(
           <div ref={list} className="sel-list" role="listbox" aria-multiselectable="true" aria-label={label} style={{ left: at.left, top: at.top, minWidth: at.width }}>
             {options.map((o) => {
-              const on = value.length === 0 || value.includes(o.v);
+              const on = (none === undefined && value.length === 0) || value.includes(o.v);
               return (
                 <button key={o.v} type="button" role="option" aria-selected={on} className={'sel-o multi' + (on ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => flip(o.v)}>
                   <span className={'sel-box' + (on ? ' on' : '')} aria-hidden="true">
@@ -138,7 +139,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
                 </button>
               );
             })}
-            <span className="sel-foot hint">Teachers choose from the ticked ones.</span>
+            {foot && <span className="sel-foot hint">{foot}</span>}
           </div>,
           document.body,
         )}

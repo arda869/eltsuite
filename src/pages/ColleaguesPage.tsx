@@ -1,3 +1,5 @@
+import { answerOf, profileFieldsOf, useMyOrg, useTeacherProfile } from '../lib/admin';
+import { ProfileIcon } from '../components/ProfileIcons';
 import { ask } from '../lib/ask';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -160,6 +162,7 @@ export function ColleaguesPage() {
                     Remove colleague
                   </button>}
                 </header>
+                {cur.org && <ColleagueProfile uid={cur.id} />}
                 <div className="cp-cols">
                   <div className="cp-col">
                     <span className="eyebrow">You shared with {cur.name.split(' ')[0]}</span>
@@ -208,6 +211,39 @@ export function ColleaguesPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// A colleague's profile, as their organisation asks for it.
+function ColleagueProfile({ uid }: { uid: string }) {
+  const org = useMyOrg();
+  const p = useTeacherProfile(uid);
+  if (!org?.policy?.profiles || !p) return null;
+  const fields = profileFieldsOf(org.policy).filter((f) => f.on && answerOf(p, f.id).trim());
+  if (!fields.length) return null;
+  return (
+    <div className="cp-profile">
+      {fields.map((f) => {
+        const v = answerOf(p, f.id);
+        return (
+          <div key={f.id} className={'cp-pf' + (f.kind === 'long' ? ' long' : '')}>
+            <ProfileIcon name={f.icon} size={18} />
+            <span>
+              <b>{f.label}</b>
+              {f.kind === 'list' ? (
+                <span className="cp-pf-tags">
+                  {v.split(',').map((x) => x.trim()).filter(Boolean).map((x) => (
+                    <span key={x}>{x}</span>
+                  ))}
+                </span>
+              ) : (
+                <p>{v}</p>
+              )}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

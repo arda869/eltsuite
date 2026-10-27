@@ -6648,3 +6648,48 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .adm-class:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--hair)); }
 .adm-class > span:first-child { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .adm-class-t { font: 500 20px var(--serif); }
+.adm-tags { display: flex; flex-direction: column; gap: 8px; padding: 14px 0 4px; }
+.adm-tag-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.adm-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 11%, transparent); color: var(--ink); font: 500 13px var(--sans); }
+.adm-tag.big { padding: 0 4px 0 0; }
+.adm-tag.big > button:first-child { padding: 5px 4px 5px 12px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.adm-tag-x { width: 22px; height: 22px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; }
+.adm-tag-x:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.adm-tag-add { display: inline-flex; gap: 6px; align-items: center; }
+.adm .adm-tag-add input, .adm .adm-tag-in { height: 30px; width: 140px; border-radius: 999px; padding: 0 12px; }
+.adm-access { display: flex; flex-direction: column; padding: 4px 0 6px; }
+.adm-row.sub.indent { padding-left: 16px; }
+.adm-row.sub > .sel { min-width: 170px; }
+.adm-table .sel { min-width: 140px; height: 34px; }
+.adm-use-row { flex-wrap: nowrap; white-space: nowrap; }
+.adm-table .adm-chips { min-width: 170px; }
+.adm-pf { display: flex; flex-direction: column; gap: 6px; margin: -4px 0 8px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 4%, var(--paper)); border: 1px solid var(--hair); }
+.adm-pf-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) 170px auto auto 30px; align-items: center; gap: 8px; }
+.adm-pf-row.off .adm-pf-ic, .adm-pf-row.off .adm-pf-label { opacity: .5; }
+.adm-pf-ic { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--hair-strong); background: var(--paper); color: var(--accent-text); cursor: pointer; }
+.adm-pf-ic:hover { border-color: var(--accent); }
+.adm-pf-move { display: inline-flex; gap: 2px; }
+.adm-pf-move .icon-btn:disabled { opacity: .3; }
+.adm-pf-gap { width: 30px; }
+.adm-pf-add { align-self: flex-start; margin-top: 4px; }
+.adm-icons { position: fixed; z-index: 210; display: grid; grid-template-columns: repeat(7, 36px); gap: 4px; padding: 8px; border-radius: 12px; background: var(--card, #fff); box-shadow: 0 0 0 1px var(--hair), 0 14px 36px rgba(40, 30, 20, .16); }
+.adm-icons button { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: none; color: var(--ink); cursor: pointer; }
+.adm-icons button:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.adm-icons button.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-text); }
+@media (max-width: 760px) { .adm-pf-row { grid-template-columns: 38px minmax(0, 1fr) auto; } .adm-pf-row .sel, .adm-pf-move { display: none; } }
+.set-pf-intro { margin: 0 0 6px; }
+.set-pf { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.set-pf-h { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.set-pf-h .ui-icon { color: var(--accent-text); }
+.set-pf input, .set-pf textarea { width: 100%; padding: 9px 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--sans); }
+.set-pf input:focus, .set-pf textarea:focus { outline: none; border-color: var(--ink); }
+/* A colleague's profile */
+.cp-profile { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; margin: 4px 0 14px; }
+.cp-pf { display: flex; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--page, #f4f4f5); }
+.cp-pf.long { grid-column: 1 / -1; }
+.cp-pf > .ui-icon { flex: none; margin-top: 2px; color: var(--accent-text); }
+.cp-pf b { display: block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.cp-pf p { margin: 0; line-height: 1.55; }
+.cp-pf-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.cp-pf-tags span { padding: 2px 9px; border-radius: 999px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair); font-size: 13px; }
+.set-pf-wrap { padding: 16px 20px 12px; }

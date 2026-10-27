@@ -509,9 +509,10 @@ service cloud.firestore {
       }
     }
     match /sharedFolders/{id} {
-      allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
+      allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds || (resource.data.get('org', null) is string && adminOfOrg(resource.data.org)));
       allow create: if isTeacher() && request.resource.data.owner == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.owner == request.auth.uid;
+      // an organisation's drive folders: any of its admins keeps them
+      allow update, delete: if signedIn() && (resource.data.owner == request.auth.uid || (resource.data.get('org', null) is string && adminOfOrg(resource.data.org)));
     }
     // Recordings of the sounds of English. The default set, for everyone, is kept by the app's
     // owner; each teacher can add their own, which learners hear in that teacher's tasks.
@@ -576,7 +577,7 @@ service cloud.firestore {
       allow read: if isOwner() || orgAdmin() || (signedIn() && request.auth.uid in resource.data.get('teachers', {}));
       allow create, delete: if isOwner();
       // Admins choose the branding and who their teachers may work with.
-      allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
+      allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives', 'tags']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
       // A teacher saying yes to an invitation adds themselves, and only themselves.
       allow update: if signedIn() && !(request.auth.uid in resource.data.get('teachers', {}))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teachers', 'adminEmails'])

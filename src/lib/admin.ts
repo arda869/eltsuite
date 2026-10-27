@@ -66,9 +66,10 @@ export type OrgPolicy = {
   emailChoices?: EmailChoice[]; // the learner-email settings teachers may choose from (none: all)
   apps?: Record<string, boolean>; // apps on or off for its teachers
   profiles?: boolean; // teachers are asked for a profile their colleagues see
+  profileFields?: ProfileField[]; // what the profile asks for, in order
   externalTrainees?: boolean; // teacher trainers may add teachers from outside the organisation to training classes
 };
-export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number }>; brand?: Brand; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
+export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
 export type Teacher = { uid: string; name: string; email: string; createdAt?: number; usedBytes?: number }; // usedBytes: what their files take, as their app last measured
 
 export const APP_KEYS: { k: string; name: string }[] = [
@@ -228,9 +229,27 @@ export const saveOutside = (o: Org, outside: 'anyone' | 'org') => updateDoc(doc(
 // Keys set to undefined are dropped, so a setting can go back to the teacher.
 export const savePolicy = (o: Org, p: OrgPolicy) => updateDoc(doc(db, 'orgs', o.id), { policy: JSON.parse(JSON.stringify({ ...(o.policy ?? {}), ...p })) });
 
-// The organisation's shared drive: folders its admins keep, open to its teachers to view or edit.
-export type DriveAccess = { all: 'view' | 'edit' | 'none'; people: Record<string, 'view' | 'edit' | 'none'> };
-export type DriveFolder = { id: string; name: string; org: string; drive?: string; access: DriveAccess; memberIds: string[] };
+// The organisation's shared drives: folders its admins keep. Each drive says who can edit,
+// comment, view or not see it: everyone, teachers with a tag, or one teacher. A folder follows its
+// drive unless it has its own say.
+export type DriveRole = 'edit' | 'comment' | 'view' | 'none';
+export type DriveAccess = { all: DriveRole; tags?: Record<string, DriveRole>; people: Record<string, DriveRole> };
+export type DriveFolder = { id: string; name: string; org: string; drive?: string; access: DriveAccess; own?: boolean; memberIds: string[] };
+export const DRIVE_ROLES: { v: DriveRole; label: string }[] = [
+  { v: 'edit', label: 'Can edit' },
+  { v: 'comment', label: 'Can comment' },
+  { v: 'view', label: 'Can view' },
+  { v: 'none', label: 'Hidden' },
+];
+const RANK: Record<DriveRole, number> = { none: 0, view: 1, comment: 2, edit: 3 };
+// One teacher's role: their own setting first, then the best their tags give, then everyone's.
+export function roleFor(access: DriveAccess, uid: string, tags: string[] = []): DriveRole {
+  if (access.people?.[uid]) return access.people[uid];
+  const byTag = tags.map((t) => access.tags?.[t]).filter((r): r is DriveRole => !!r);
+  if (byTag.length) return byTag.sort((a, b) => RANK[b] - RANK[a])[0];
+  return access.all;
+}
+export const driveAccessOf = (org: Org, drive = 'main'): DriveAccess => org.drives?.[drive]?.access ?? { all: 'view', tags: {}, people: {} };
 export function useDrive(org?: Org | null) {
   const [list, setList] = useState<DriveFolder[] | null>(null);
   useEffect(() => {
@@ -243,20 +262,36 @@ export function useDrive(org?: Org | null) {
   }, [org?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return list;
 }
-const membersFor = (org: Org, access: DriveAccess, me: string) => {
-  const members: Record<string, { role: 'edit' | 'view'; name: string; kind: 'teacher' }> = {};
+const membersFor = (org: Org, access: DriveAccess, owner: string) => {
+  const members: Record<string, { role: Exclude<DriveRole, 'none'>; name: string; kind: 'teacher' }> = {};
   for (const [uid, t] of Object.entries(org.teachers)) {
-    if (uid === me) continue;
-    const r = access.people[uid] ?? access.all;
+    if (uid === owner) continue;
+    const r = roleFor(access, uid, t.tags);
     if (r !== 'none') members[uid] = { role: r, name: t.name || t.email, kind: 'teacher' };
   }
   return { members, memberIds: Object.keys(members) };
 };
-export async function newDriveFolder(org: Org, me: { uid: string }, name: string, all: DriveAccess['all'] = 'view', drive = 'main') {
-  const access: DriveAccess = { all, people: {} };
-  await addDoc(collection(db, 'sharedFolders'), { owner: me.uid, ownerName: org.name, name: name.trim() || 'Folder', org: org.id, drive, access, ...membersFor(org, access, me.uid), createdAt: serverTimestamp() });
+const accessOfFolder = (org: Org, f: { drive?: string; access: DriveAccess; own?: boolean }) => (f.own ? f.access : driveAccessOf(org, f.drive));
+export async function newDriveFolder(org: Org, me: { uid: string }, name: string, all: DriveRole | 'drive' = 'drive', drive = 'main') {
+  const own = all !== 'drive';
+  const access: DriveAccess = own ? { all, tags: {}, people: {} } : driveAccessOf(org, drive);
+  await addDoc(collection(db, 'sharedFolders'), { owner: me.uid, ownerName: org.name, name: name.trim() || 'Folder', org: org.id, drive, access, own, ...membersFor(org, access, me.uid), createdAt: serverTimestamp() });
 }
-export const saveDriveAccess = (org: Org, f: DriveFolder, me: { uid: string }, access: DriveAccess) => updateDoc(doc(db, 'sharedFolders', f.id), { access, ...membersFor(org, access, me.uid) });
+type FolderLike = { id: string; drive?: string; access: DriveAccess; own?: boolean; owner?: string };
+export const saveDriveAccess = (org: Org, f: FolderLike, me: { uid: string }, access: DriveAccess, own = true) => updateDoc(doc(db, 'sharedFolders', f.id), { access, own, ...membersFor(org, own ? access : driveAccessOf(org, f.drive), f.owner ?? me.uid) });
+// After tags, teachers or a drive's access change: every folder's people again.
+export async function syncDrive(org: Org, folders: (FolderLike & { owner?: string; memberIds: string[] })[]) {
+  await Promise.all(
+    folders.map((f) => {
+      const next = membersFor(org, accessOfFolder(org, f), f.owner ?? '');
+      if (next.memberIds.sort().join() === [...f.memberIds].sort().join() && !f.own) return Promise.resolve();
+      return updateDoc(doc(db, 'sharedFolders', f.id), next).catch(() => {});
+    }),
+  );
+}
+// Tags: groups of teachers, for drive access.
+export const saveTags = (o: Org, tags: Record<string, { name: string }>) => updateDoc(doc(db, 'orgs', o.id), { tags });
+export const setTeacherTags = (o: Org, uid: string, tags: string[]) => updateDoc(doc(db, 'orgs', o.id), { [`teachers.${uid}.tags`]: tags });
 export const setJobTitle = (o: Org, uid: string, title: string) => updateDoc(doc(db, 'orgs', o.id), { [`teachers.${uid}.title`]: title.trim() });
 // A teacher trainer makes teacher training classes, with the organisation's teachers in them.
 export const setTrainer = (o: Org, uid: string, on: boolean) => updateDoc(doc(db, 'orgs', o.id), { [`teachers.${uid}.trainer`]: on });
@@ -285,7 +320,25 @@ export function useOrgColleagues() {
 }
 
 // A teacher's profile for their organisation.
-export type TeacherProfile = { about?: string; hobbies?: string; languages?: string; teaching?: string; org?: string };
+// A teacher's profile: answers by field id. The organisation's admins choose the fields.
+export type TeacherProfile = { org?: string; fields?: Record<string, string>; about?: string; hobbies?: string; languages?: string; teaching?: string };
+export type ProfileField = { id: string; label: string; icon: string; kind: 'short' | 'long' | 'list'; on: boolean; custom?: boolean };
+export const DEFAULT_PROFILE_FIELDS: ProfileField[] = [
+  { id: 'about', label: 'About me', icon: 'quote', kind: 'long', on: true },
+  { id: 'teaching', label: 'Teaching since', icon: 'calendar', kind: 'short', on: true },
+  { id: 'languages', label: 'Languages I speak', icon: 'globe', kind: 'list', on: true },
+  { id: 'hobbies', label: 'Hobbies and interests', icon: 'heart', kind: 'list', on: true },
+  { id: 'love', label: 'What I love teaching', icon: 'star', kind: 'list', on: false },
+  { id: 'qualifications', label: 'Qualifications', icon: 'cap', kind: 'list', on: false },
+  { id: 'from', label: 'Where I am from', icon: 'pin', kind: 'short', on: false },
+  { id: 'fun', label: 'A fun fact', icon: 'lightbulb', kind: 'short', on: false },
+];
+export const profileFieldsOf = (p?: OrgPolicy | null): ProfileField[] => {
+  const mine = p?.profileFields ?? [];
+  // Fields the app adds later still show, switched off, for the admins to choose.
+  return [...mine, ...DEFAULT_PROFILE_FIELDS.filter((d) => !mine.some((m) => m.id === d.id)).map((d) => (mine.length ? { ...d, on: false } : d))];
+};
+export const answerOf = (t: TeacherProfile | null | undefined, id: string) => t?.fields?.[id] ?? (t as Record<string, string> | null | undefined)?.[id] ?? '';
 export function useTeacherProfile(uid?: string) {
   const [p, setP] = useState<TeacherProfile | null | undefined>(undefined);
   useEffect(() => {
@@ -299,6 +352,7 @@ export function useTeacherProfile(uid?: string) {
   return p;
 }
 export const saveTeacherProfile = (uid: string, p: TeacherProfile) => setDoc(doc(db, 'teacherProfiles', uid), p, { merge: true });
+export const saveProfileAnswer = (uid: string, org: string, id: string, v: string) => setDoc(doc(db, 'teacherProfiles', uid), { org, fields: { [id]: v.trim().slice(0, 1200) } }, { merge: true });
 
 // How much space a teacher has: their organisation decides for its teachers, otherwise their plan.
 export function useSpaceLimit() {

@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
 import { MultiSelect, Select } from '../components/Select';
+import { PROFILE_ICONS, ProfileIcon } from '../components/ProfileIcons';
 import { ask } from '../lib/ask';
 import { createClass, type ClassDoc } from '../lib/classes';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -28,6 +30,10 @@ import {
   saveAccount,
   saveBrand,
   saveDriveAccess,
+  syncDrive,
+  DRIVE_ROLES,
+  type DriveRole,
+  type DriveFolder,
   saveDrives,
   saveOrg,
   saveOutside,
@@ -38,6 +44,10 @@ import {
   setTeacherGb,
   setTeacherOrg,
   setTrainer,
+  saveTags,
+  setTeacherTags,
+  profileFieldsOf,
+  type ProfileField,
   classDefaults,
   NAME_CHOICES,
   EMAIL_CHOICES,
@@ -179,7 +189,7 @@ function TeachersTab({ teachers, accounts, orgs }: { teachers: Teacher[] | null;
     <section className="adm-sec">
       <span className="adm-head">
         <h1 className="page-title">Teachers</h1>
-        <span className="hint">{teachers.length} accounts</span>
+        <span className="hint">{plural(teachers.length, 'account')}</span>
         <span style={{ flex: 1 }} />
         <input className="adm-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email" />
       </span>
@@ -386,6 +396,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
     <div className="adm-card">
       <span className="hint">Teachers here are colleagues of each other, always, and see each other's job titles and profiles.{org.allow?.trainers ? ' A teacher trainer creates teacher training classes for the others.' : ''}</span>
       <InviteTeachers org={org} owner={owner} />
+      <OrgTags org={org} />
       {owner && (
         <span className="adm-new">
           <Select value={add} placeholder="Add a teacher who already has an account…" options={free.map((t) => ({ v: t.uid, label: t.name || t.email, hint: t.email + (accounts[t.uid]?.org ? ` · now in ${orgs.find((o) => o.id === accounts[t.uid]?.org)?.name ?? 'another organisation'}` : '') }))} onChange={(v) => setAdd(v)} label="Teacher to add" className="grow" />
@@ -399,6 +410,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           <tr>
             <th>Teacher</th>
             <th>Job title</th>
+            <th>Tags</th>
             {owner && <th>Admin</th>}
             {org.allow?.trainers && <th title="Teacher trainers create teacher training classes for the teachers here">Teacher trainer</th>}
             <th>Space</th>
@@ -414,6 +426,9 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
               </td>
               <td>
                 <TitleInput value={t.title ?? ''} onSave={(v) => void setJobTitle(org, uid, v)} />
+              </td>
+              <td>
+                <MultiSelect value={t.tags ?? []} options={Object.entries(org.tags ?? {}).map(([id, x]) => ({ v: id, label: x.name }))} onChange={(v) => void setTeacherTags(org, uid, v)} label={`Tags for ${t.name || t.email}`} none={Object.keys(org.tags ?? {}).length ? 'No tags' : 'Add tags above'} foot="" />
               </td>
               {owner && (
                 <td>
@@ -439,7 +454,7 @@ function OrgTeachers({ org, owner, teachers, accounts, orgs }: { org: Org; owner
           ))}
           {!list.length && (
             <tr>
-              <td colSpan={4 + (org.allow?.trainers ? 1 : 0) + (owner ? 1 : 0)} className="hint">
+              <td colSpan={5 + (org.allow?.trainers ? 1 : 0) + (owner ? 1 : 0)} className="hint">
                 {owner ? 'Add the teachers of this organisation.' : 'The owner of ELT Suite adds your teachers.'}
               </td>
             </tr>
@@ -608,6 +623,7 @@ function OrgRules({ org }: { org: Org }) {
       <Row title="Ask teachers for a profile" about={`Teachers introduce themselves: a short bio, hobbies and languages. Only teachers in ${org.name} can see it.`}>
         <Switch on={!!p.profiles} onChange={(v) => set({ profiles: v })} label="Ask teachers for a profile" />
       </Row>
+      {p.profiles && <ProfileFields org={org} />}
       {org.allow?.trainers && (
         <Row title="Trainers can add teachers from outside" about={`Teacher trainers can always add teachers from ${org.name}. When this is on, they can also add others by name.`}>
           <Switch on={!!p.externalTrainees} onChange={(v) => set({ externalTrainees: v })} label="Trainers can add teachers from outside" />
@@ -796,12 +812,12 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
   );
 }
 
-// Shared drives: each holds folders; each folder is open to all teachers to view or edit, or to
-// none, with exceptions for chosen teachers.
+// Shared drives: each says who can edit, comment, view or not see it, for everyone, for teachers
+// with a tag and for one teacher; its folders follow it unless a folder has its own say.
 function OrgDrives({ org }: { org: Org }) {
   const { user } = useAuth();
   const folders = useDrive(org);
-  const drives = useMemo(() => ({ main: { name: 'Shared drive', quotaGb: 5 }, ...(org.drives ?? {}) }), [org.drives]);
+  const drives = useMemo(() => ({ main: { name: 'Shared drive', quotaGb: 5 }, ...(org.drives ?? {}) }) as Record<string, { name: string; quotaGb: number; access?: DriveAccess }>, [org.drives]);
   const [newDrive, setNewDrive] = useState('');
   const [open, setOpen] = useState('');
   const [use, setUse] = useState<Record<string, number>>({});
@@ -809,29 +825,39 @@ function OrgDrives({ org }: { org: Org }) {
     if (!folders) return;
     for (const k of Object.keys(drives)) void driveUse(folders.filter((f) => (f.drive ?? 'main') === k).map((f) => f.id)).then((n) => setUse((u) => ({ ...u, [k]: n })));
   }, [folders, drives]);
+  // Who is in each folder follows the teachers, their tags and the drives' settings.
+  const sig = JSON.stringify([org.teachers, org.drives]);
+  useEffect(() => {
+    if (folders?.length) void syncDrive(org, folders);
+  }, [sig, folders?.length]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!user) return null;
+  const saveDrive = (k: string, d: { name: string; quotaGb: number; access?: DriveAccess }) => saveDrives(org, { ...drives, [k]: d });
   const addDrive = () => {
     const id = 'd' + Date.now().toString(36);
-    void saveDrives(org, { ...(org.drives ?? {}), main: drives.main, [id]: { name: newDrive.trim(), quotaGb: 5 } }).then(() => setNewDrive(''));
+    void saveDrives(org, { ...drives, [id]: { name: newDrive.trim(), quotaGb: 5, access: { all: 'view', tags: {}, people: {} } } }).then(() => setNewDrive(''));
   };
   return (
     <div className="adm-drives">
-      <span className="hint">Every teacher in {org.name} finds these folders in Files, under Shared folders. You decide who can open and change each one. Files in them use the drive's space.</span>
+      <span className="hint">Teachers in {org.name} find these in Files, under Shared folders. Hidden drives and folders do not show for them at all.</span>
       {Object.entries(drives).map(([k, d]) => {
         const list = (folders ?? []).filter((f) => (f.drive ?? 'main') === k);
+        const access = d.access ?? { all: 'view', tags: {}, people: {} };
         return (
           <div key={k} className="adm-card adm-drive">
             <span className="adm-drive-h">
               <UiIcon name="archive" size={18} />
-              <DriveName value={d.name} onSave={(name) => void saveDrives(org, { ...drives, [k]: { ...d, name } })} />
+              <DriveName value={d.name} onSave={(name) => void saveDrive(k, { ...d, name })} />
               <span style={{ flex: 1 }} />
               <span className="hint">{formatBytes(use[k] ?? 0)} of</span>
-              <GbInput value={d.quotaGb} onSave={(gb) => void saveDrives(org, { ...drives, [k]: { ...d, quotaGb: gb } })} max={org.limitGb} />
+              <GbInput value={d.quotaGb} onSave={(gb) => void saveDrive(k, { ...d, quotaGb: gb })} max={org.limitGb} />
             </span>
+            <AccessEditor org={org} access={access} onSave={(a) => void saveDrive(k, { ...d, access: a })} />
+            <span className="adm-sub">Folders</span>
             {list.map((f) => (
-              <DriveFolderRow key={f.id} org={org} f={f} me={user.uid} open={open === f.id} onToggle={() => setOpen(open === f.id ? '' : f.id)} />
+              <DriveFolderRow key={f.id} org={org} f={f} driveAccess={access} me={user.uid} open={open === f.id} onToggle={() => setOpen(open === f.id ? '' : f.id)} />
             ))}
-            <NewFolder onMake={(name, all) => void newDriveFolder(org, { uid: user.uid }, name, all, k)} />
+            {!list.length && <span className="hint">No folders yet.</span>}
+            <NewFolder onMake={(name, all) => void newDriveFolder({ ...org, drives }, { uid: user.uid }, name, all, k)} />
           </div>
         );
       })}
@@ -845,18 +871,73 @@ function OrgDrives({ org }: { org: Org }) {
   );
 }
 
+// Who can do what: everyone, each tag, and exceptions for one teacher.
+function AccessEditor({ org, access, onSave, inherit }: { org: Org; access: DriveAccess; onSave: (a: DriveAccess) => void; inherit?: { on: boolean; set: (on: boolean) => void } }) {
+  const [more, setMore] = useState(false);
+  const tags = Object.entries(org.tags ?? {});
+  const people = Object.entries(org.teachers);
+  const roles = (extra?: string) => [...(extra ? [{ v: '', label: extra }] : []), ...DRIVE_ROLES];
+  const exceptions = Object.keys(access.people ?? {}).length;
+  if (inherit?.on)
+    return (
+      <div className="adm-access">
+        <span className="adm-row sub">
+          <span className="hint">Follows the drive</span>
+          <button type="button" className="btn link small" onClick={() => inherit.set(false)}>
+            Give it its own settings
+          </button>
+        </span>
+      </div>
+    );
+  return (
+    <div className="adm-access">
+      <span className="adm-row sub">
+        <b>Everyone in {org.name}</b>
+        <Select value={access.all} options={DRIVE_ROLES} onChange={(v) => onSave({ ...access, all: v })} label="Everyone" />
+      </span>
+      {tags.map(([id, t]) => (
+        <span key={id} className="adm-row sub">
+          <span className="adm-tag">{t.name}</span>
+          <Select value={access.tags?.[id] ?? ''} options={roles('Like everyone')} onChange={(v) => { const n = { ...(access.tags ?? {}) }; if (v) n[id] = v as DriveRole; else delete n[id]; onSave({ ...access, tags: n }); }} label={`Teachers tagged ${t.name}`} />
+        </span>
+      ))}
+      <span className="adm-row sub">
+        <button type="button" className="btn link small" onClick={() => setMore((m) => !m)}>
+          {more ? 'Hide one-by-one settings' : `One teacher at a time${exceptions ? ` (${exceptions})` : ''}`}
+        </button>
+        {inherit && (
+          <button type="button" className="btn link small" onClick={() => inherit.set(true)}>
+            Follow the drive again
+          </button>
+        )}
+      </span>
+      {more &&
+        people.map(([uid, t]) => (
+          <span key={uid} className="adm-row sub indent">
+            <span>
+              {t.name || t.email}
+              {t.tags?.length ? <span className="hint"> · {t.tags.map((x) => org.tags?.[x]?.name).filter(Boolean).join(', ')}</span> : null}
+            </span>
+            <Select value={access.people?.[uid] ?? ''} options={roles('Like their tags')} onChange={(v) => { const n = { ...(access.people ?? {}) }; if (v) n[uid] = v as DriveRole; else delete n[uid]; onSave({ ...access, people: n }); }} label={`${t.name || t.email}`} />
+          </span>
+        ))}
+      {!tags.length && <span className="hint">Add tags in Teachers to set a group of teachers at once.</span>}
+    </div>
+  );
+}
+
 function DriveName({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [v, setV] = useState(value);
   return <input className="adm-drivename" value={v} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() && v !== value && onSave(v.trim())} />;
 }
 
-function NewFolder({ onMake }: { onMake: (name: string, all: DriveAccess['all']) => void }) {
+function NewFolder({ onMake }: { onMake: (name: string, all: DriveRole | 'drive') => void }) {
   const [name, setName] = useState('');
-  const [all, setAll] = useState<DriveAccess['all']>('view');
+  const [all, setAll] = useState<DriveRole | 'drive'>('drive');
   return (
     <span className="adm-new">
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New folder, for example: Exam papers" />
-      <Select value={all} options={[{ v: 'view', label: 'Everyone can view' }, { v: 'edit', label: 'Everyone can edit' }, { v: 'none', label: 'Only chosen teachers' }]} onChange={(v) => setAll(v as DriveAccess['all'])} label="Everyone can" />
+      <Select value={all} options={[{ v: 'drive', label: 'Like the drive' }, ...DRIVE_ROLES.map((r) => ({ v: r.v, label: `Everyone: ${r.label.toLowerCase()}` }))]} onChange={(v) => setAll(v)} label="Who can use it" />
       <button type="button" className="btn small-btn primary" disabled={!name.trim()} onClick={() => (onMake(name, all), setName(''))}>
         Add folder
       </button>
@@ -864,43 +945,22 @@ function NewFolder({ onMake }: { onMake: (name: string, all: DriveAccess['all'])
   );
 }
 
-function DriveFolderRow({ org, f, me, open, onToggle }: { org: Org; f: { id: string; name: string; access: DriveAccess; memberIds: string[]; org: string; drive?: string }; me: string; open: boolean; onToggle: () => void }) {
-  const save = (a: DriveAccess) => void saveDriveAccess(org, f as never, { uid: me }, a);
-  const label = { view: 'Everyone can view', edit: 'Everyone can edit', none: 'Only chosen teachers' }[f.access.all];
-  const exceptions = Object.keys(f.access.people).length;
+function DriveFolderRow({ org, f, driveAccess, me, open, onToggle }: { org: Org; f: DriveFolder & { owner?: string }; driveAccess: DriveAccess; me: string; open: boolean; onToggle: () => void }) {
+  const own = !!f.own;
+  const access = own ? f.access : driveAccess;
+  const label = own ? `Own settings · everyone ${DRIVE_ROLES.find((r) => r.v === access.all)?.label.toLowerCase()}` : 'Like the drive';
   return (
     <div className={'adm-folder' + (open ? ' open' : '')}>
       <button type="button" className="adm-folder-h" onClick={onToggle}>
         <span className="adm-ch" aria-hidden="true">›</span>
         <b>{f.name}</b>
         <span className="hint">
-          {label}
-          {exceptions ? ` · ${exceptions} ${exceptions === 1 ? 'exception' : 'exceptions'}` : ''}
+          {label} · {plural(f.memberIds.length, 'teacher')}
         </span>
       </button>
       {open && (
         <div className="adm-folder-b">
-          <label className="adm-row">
-            <b>Everyone in {org.name}</b>
-            <Select value={f.access.all} options={[{ v: 'view', label: 'Can view' }, { v: 'edit', label: 'Can edit' }, { v: 'none', label: 'No access' }]} onChange={(v) => save({ ...f.access, all: v as DriveAccess['all'] })} label="Choose" />
-          </label>
-          {Object.entries(org.teachers).map(([uid, t]) => {
-            const r = f.access.people[uid];
-            return (
-              <label key={uid} className="adm-row sub">
-                <span>
-                  {t.name || t.email}
-                  {t.title && <span className="hint"> · {t.title}</span>}
-                </span>
-                <Select value={r ?? ''} options={[{ v: '', label: 'Like everyone' }, { v: 'view', label: 'Can view' }, { v: 'edit', label: 'Can edit' }, { v: 'none', label: 'No access' }]} onChange={(v) => {
-                    const people = { ...f.access.people };
-                    if (v) people[uid] = v as 'view' | 'edit' | 'none';
-                    else delete people[uid];
-                    save({ ...f.access, people });
-                  }} label="Choose" />
-              </label>
-            );
-          })}
+          <AccessEditor org={org} access={access} onSave={(a) => void saveDriveAccess(org, f, { uid: me }, { tags: {}, ...a }, true)} inherit={{ on: !own, set: (on) => void saveDriveAccess(org, f, { uid: me }, on ? driveAccess : { tags: {}, ...driveAccess }, !on) }} />
         </div>
       )}
     </div>
@@ -1028,5 +1088,134 @@ function InviteTeachers({ org, owner }: { org: Org; owner: boolean }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Tags: groups of teachers (a team, a site, a level), for setting drive access in one go.
+function OrgTags({ org }: { org: Org }) {
+  const [name, setName] = useState('');
+  const [edit, setEdit] = useState('');
+  const tags = Object.entries(org.tags ?? {}).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const count = (id: string) => Object.values(org.teachers).filter((t) => t.tags?.includes(id)).length;
+  const add = () => {
+    const n = name.trim();
+    if (!n || tags.some(([, t]) => t.name.toLowerCase() === n.toLowerCase())) return;
+    void saveTags(org, { ...(org.tags ?? {}), ['t' + Date.now().toString(36)]: { name: n.slice(0, 40) } }).then(() => setName(''));
+  };
+  const remove = async (id: string) => {
+    if (!(await ask(`Delete the tag ${org.tags?.[id]?.name}? Teachers keep everything else, and drives stop using it.`, { ok: 'Delete' }))) return;
+    const next = { ...(org.tags ?? {}) };
+    delete next[id];
+    await saveTags(org, next);
+    await Promise.all(Object.entries(org.teachers).filter(([, t]) => t.tags?.includes(id)).map(([uid, t]) => setTeacherTags(org, uid, (t.tags ?? []).filter((x) => x !== id))));
+  };
+  return (
+    <div className="adm-tags">
+      <span className="adm-sub">Tags</span>
+      <span className="hint">Group teachers, for example by team, site or level, then decide in Shared drives what each tag can do.</span>
+      <span className="adm-tag-list">
+        {tags.map(([id, t]) =>
+          edit === id ? (
+            <input key={id} className="adm-tag-in" autoFocus defaultValue={t.name} onBlur={(e) => (e.target.value.trim() && e.target.value !== t.name && void saveTags(org, { ...(org.tags ?? {}), [id]: { name: e.target.value.trim().slice(0, 40) } }), setEdit(''))} onKeyDown={(e) => (e.key === 'Enter' || e.key === 'Escape') && (e.target as HTMLInputElement).blur()} />
+          ) : (
+            <span key={id} className="adm-tag big">
+              <button type="button" onClick={() => setEdit(id)} data-tip="Rename">
+                {t.name} <span className="hint">{count(id)}</span>
+              </button>
+              <button type="button" className="adm-tag-x" onClick={() => void remove(id)} aria-label={`Delete ${t.name}`}>
+                ×
+              </button>
+            </span>
+          ),
+        )}
+        <span className="adm-tag-add">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New tag" onKeyDown={(e) => e.key === 'Enter' && add()} maxLength={40} />
+          <button type="button" className="btn small-btn" disabled={!name.trim()} onClick={add}>
+            Add
+          </button>
+        </span>
+      </span>
+    </div>
+  );
+}
+
+// The fields of a teacher's profile: switch them on or off, rename them, pick an icon, add more.
+function ProfileFields({ org }: { org: Org }) {
+  const fields = profileFieldsOf(org.policy);
+  const [pick, setPick] = useState<{ id: string; r: DOMRect } | null>(null);
+  const save = (next: ProfileField[]) => void savePolicy(org, { profileFields: next });
+  const set = (id: string, patch: Partial<ProfileField>) => save(fields.map((f) => (f.id === id ? { ...f, ...patch } : f)));
+  const move = (i: number, d: number) => {
+    const j = i + d;
+    if (j < 0 || j >= fields.length) return;
+    const n = [...fields];
+    [n[i], n[j]] = [n[j], n[i]];
+    save(n);
+  };
+  const KINDS: { v: ProfileField['kind']; label: string; hint: string }[] = [
+    { v: 'short', label: 'Short answer', hint: 'A line' },
+    { v: 'long', label: 'Paragraph', hint: 'A few sentences' },
+    { v: 'list', label: 'List', hint: 'Several items, shown as tags' },
+  ];
+  return (
+    <div className="adm-pf">
+      <span className="hint">Teachers see these in Settings, in this order. Colleagues see the answers on their profile.</span>
+      {fields.map((f, i) => (
+        <span key={f.id} className={'adm-pf-row' + (f.on ? '' : ' off')}>
+          <button type="button" className="adm-pf-ic" onClick={(e) => setPick({ id: f.id, r: e.currentTarget.getBoundingClientRect() })} aria-label={`Icon for ${f.label}`} data-tip="Choose an icon">
+            <ProfileIcon name={f.icon} size={18} />
+          </button>
+          <FieldLabel value={f.label} onSave={(label) => set(f.id, { label })} />
+          <Select value={f.kind} options={KINDS} onChange={(kind) => set(f.id, { kind })} label={`Kind of answer for ${f.label}`} />
+          <span className="adm-pf-move">
+            <button type="button" className="icon-btn" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
+              ↑
+            </button>
+            <button type="button" className="icon-btn" disabled={i === fields.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
+              ↓
+            </button>
+          </span>
+          <Switch on={f.on} onChange={(on) => set(f.id, { on })} label={`Ask for ${f.label}`} />
+          {f.custom ? (
+            <button type="button" className="icon-btn" onClick={() => save(fields.filter((x) => x.id !== f.id))} aria-label={`Delete ${f.label}`} data-tip="Delete the field">
+              ×
+            </button>
+          ) : (
+            <span className="adm-pf-gap" />
+          )}
+        </span>
+      ))}
+      <button type="button" className="btn small-btn adm-pf-add" onClick={() => save([...fields, { id: 'c' + Date.now().toString(36), label: 'New field', icon: 'star', kind: 'short', on: true, custom: true }])}>
+        + Add a field
+      </button>
+      {pick && <IconPicker at={pick.r} value={fields.find((f) => f.id === pick.id)?.icon ?? ''} onPick={(icon) => (set(pick.id, { icon }), setPick(null))} onClose={() => setPick(null)} />}
+    </div>
+  );
+}
+
+function FieldLabel({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  return <input className="adm-pf-label" value={v} maxLength={50} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() && v !== value && onSave(v.trim())} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} aria-label="Field name" />;
+}
+
+function IconPicker({ at, value, onPick, onClose }: { at: DOMRect; value: string; onPick: (v: string) => void; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const down = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('mousedown', down);
+    document.addEventListener('keydown', esc);
+    return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', esc));
+  }, [onClose]);
+  return createPortal(
+    <div ref={ref} className="adm-icons" role="listbox" aria-label="Icons" style={{ left: Math.min(at.left, window.innerWidth - 300), top: at.bottom + 6 }}>
+      {PROFILE_ICONS.map((k) => (
+        <button key={k} type="button" role="option" aria-selected={k === value} className={k === value ? 'on' : ''} onClick={() => onPick(k)} aria-label={k}>
+          <ProfileIcon name={k} size={18} />
+        </button>
+      ))}
+    </div>,
+    document.body,
   );
 }
