@@ -1,4 +1,4 @@
-import { arrayUnion, collection, doc, getDoc, getDocs, limit, query, runTransaction, setDoc, updateDoc, where } from 'firebase/firestore';
+import { arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, query, runTransaction, setDoc, updateDoc, where } from 'firebase/firestore';
 import { onEngineEnded, startEngine, stopEngine } from './callEngine';
 import { setActivity } from './status';
 import { useEffect, useState } from 'react';
@@ -182,4 +182,23 @@ export const callLinkUrl = (code: string) => `${location.origin}/call/${code}`;
 export async function readCallLink(code: string): Promise<CallLink | null> {
   const s = await getDoc(doc(db, 'callLinks', code)).catch(() => null);
   return s?.exists() ? (s.data() as CallLink) : null;
+}
+
+// Calling someone into a call that is already on (a class's video room): their device rings
+// wherever they are in ELT Suite. key: a teacher's uid, or a learner's learner id.
+export type CallRing = { url: string; title: string; kind: CallKind; classId?: string | null; code?: string | null; by: string; byName: string; at: number };
+export const ringPerson = (key: string, r: Omit<CallRing, 'by' | 'at'>) =>
+  setDoc(doc(db, 'callRings', key), JSON.parse(JSON.stringify({ ...r, by: auth.currentUser?.uid ?? '', at: Date.now() })));
+export const clearRing = (key: string) => deleteDoc(doc(db, 'callRings', key)).catch(() => {});
+export function useMyRing(key?: string) {
+  const [r, setR] = useState<CallRing | null>(null);
+  useEffect(() => {
+    if (!key) return;
+    return onSnapshot(
+      doc(db, 'callRings', key),
+      (s) => setR(s.exists() ? (s.data() as CallRing) : null),
+      () => setR(null),
+    );
+  }, [key]);
+  return r;
 }

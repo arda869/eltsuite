@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { DailyCall, DailyParticipant } from '@daily-co/daily-js';
 import type { OpenCall } from './calls';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db } from './firebase';
+import { currentOrg } from './admin';
 
 async function hostKeyFor(url: string): Promise<string | undefined> {
   const room = url.split('/').filter(Boolean).pop() ?? '';
@@ -28,6 +29,7 @@ export type Tile = {
   screenTrack?: MediaStreamTrack;
   screenAudioTrack?: MediaStreamTrack;
   network?: 'good' | 'warning' | 'bad' | 'unknown';
+  joinedAt?: number;
   key?: string; // their ELT Suite id, for their picture
   role?: 'teacher' | 'learner' | 'guest';
   avatar?: string;
@@ -100,6 +102,7 @@ const tileOf = (p: DailyParticipant): Tile => ({
   screenTrack: track(p, 'screenVideo'),
   screenAudioTrack: p.local ? undefined : track(p, 'screenAudio'),
   network: p.networkQualityState,
+  joinedAt: p.joined_at ? new Date(p.joined_at).getTime() : undefined,
 });
 const refresh = () => {
   if (!co) return;
@@ -108,6 +111,7 @@ const refresh = () => {
   const tiles = all.map(tileOf).sort((a, b) => Number(b.local) - Number(a.local));
   const me = tiles.find((t) => t.local);
   emit({ tiles, mic: co.localAudio(), cam: co.localVideo(), sharing: !!me?.screen });
+  void logTick();
 };
 
 async function devices() {
@@ -220,6 +224,7 @@ export function startEngine(call: OpenCall) {
 }
 
 async function stopNow() {
+  await logFinal().catch(() => {});
   const c = co;
   co = null;
   if (!c) return;
@@ -344,3 +349,196 @@ export const turnOn = (what: 'mic' | 'cam') => {
   emit({ ask: null });
   refresh();
 };
+
+// ---- Attendance: who was in a call, when, and (unless the organisation turns it off) when
+// their microphone and camera were on. One person records each call, at most once a minute and
+// once on leaving: whoever started it (for a class, a meeting or a link, the first teacher in
+// it). When they leave, the next one takes over. Nobody records who spoke, or for how long.
+
+export type LogSpan = { in: number; out?: number };
+export type LogPerson = { name: string; role: 'teacher' | 'learner' | 'guest'; spans: LogSpan[]; mic?: [number, boolean][]; cam?: [number, boolean][] };
+export type CallLog = {
+  kind: 'chat' | 'class' | 'meeting' | 'link';
+  title: string;
+  room: string;
+  chatId: string | null;
+  classId: string | null;
+  sessionId: string | null;
+  code: string | null;
+  startedBy: string;
+  startedByName: string;
+  startedAt: number;
+  endedAt: number | null;
+  savedAt: number;
+  recorder: string;
+  readers: string[];
+  media: boolean;
+  people: Record<string, LogPerson>;
+};
+const MAX_MARKS = 300;
+let log: { id: string; data: CallLog; dirty: boolean; timer: number } | null = null;
+let logOpening = false;
+const roomOf = (url: string) => url.split('?')[0].split('/').filter(Boolean).pop() ?? '';
+const kindOf = (c: OpenCall): CallLog['kind'] => (c.classId ? 'class' : c.chatId ? 'chat' : c.sessionId ? 'meeting' : 'link');
+const keyOf = (t: Tile) => (t.key && t.role !== 'guest' ? t.key : 'guest:' + t.id);
+// An organisation can turn off the microphone and camera part: orgs/{id}.policy.recordCallMedia = false.
+const mediaOn = () => (currentOrg()?.policy as { recordCallMedia?: boolean } | undefined)?.recordCallMedia !== false;
+
+// The recorder: the first person in the call with an ELT Suite account; for a class, a meeting
+// or a link, the first teacher. Everyone works this out the same way, so only one records.
+function amRecorder() {
+  const c = st.call;
+  if (!c || st.status !== 'joined') return false;
+  const chat = kindOf(c) === 'chat';
+  const who = st.tiles.filter((t) => t.key && t.role !== 'guest' && (chat || t.role === 'teacher')).sort((a, b) => (a.joinedAt ?? 0) - (b.joinedAt ?? 0) || String(a.key).localeCompare(String(b.key)));
+  return !!who[0]?.local;
+}
+// Who may read the record: the class's teachers; the chat's teachers; the meeting's people; the
+// link's maker.
+async function readersFor(c: OpenCall): Promise<string[]> {
+  const uid = auth.currentUser?.uid ?? '';
+  try {
+    if (c.classId) {
+      const d = (await getDoc(doc(db, 'classes', c.classId))).data() ?? {};
+      return [...new Set([String(d.teacherId ?? uid), ...Object.keys(d.coTeachers ?? {})])];
+    }
+    if (c.chatId) {
+      const d = (await getDoc(doc(db, 'chats', c.chatId))).data() ?? {};
+      return (d.members as string[] ?? []).filter((k) => (d.roles ?? {})[k] === 'teacher');
+    }
+    if (c.sessionId) {
+      const d = (await getDoc(doc(db, 'sessions', c.sessionId))).data() ?? {};
+      return [...new Set([String(d.owner ?? uid), ...((d.attendees as string[]) ?? [])])];
+    }
+    if (c.code) {
+      const d = (await getDoc(doc(db, 'callLinks', c.code))).data();
+      if (d?.by) return [String(d.by)];
+    }
+  } catch {
+    /* fall through */
+  }
+  return uid && me.role === 'teacher' ? [uid] : [];
+}
+async function openLog() {
+  if (log || logOpening || !co || !st.call) return;
+  logOpening = true;
+  try {
+    const c = st.call;
+    const sid = co.meetingSessionSummary?.()?.id;
+    if (!sid || !me.key) return;
+    const id = `${roomOf(c.url)}_${sid}`;
+    const now = Date.now();
+    const old = await getDoc(doc(db, 'callLogs', id)).catch(() => null);
+    let data: CallLog;
+    if (old?.exists()) {
+      data = old.data() as CallLog;
+      // Taking over: anyone the last recorder had in the call who is gone now left at its last save.
+      const here = new Set(st.tiles.map(keyOf));
+      for (const [k, p] of Object.entries(data.people ?? {})) {
+        const last = p.spans[p.spans.length - 1];
+        if (last && last.out === undefined && !here.has(k)) last.out = data.savedAt;
+      }
+      data.endedAt = null;
+    } else {
+      data = {
+        kind: kindOf(c),
+        title: c.title,
+        room: roomOf(c.url),
+        chatId: c.chatId ?? null,
+        classId: c.classId ?? null,
+        sessionId: c.sessionId ?? null,
+        code: c.code ?? null,
+        startedBy: me.key,
+        startedByName: me.name,
+        startedAt: Math.min(now, ...st.tiles.map((t) => t.joinedAt ?? now)),
+        endedAt: null,
+        savedAt: now,
+        recorder: me.key,
+        readers: await readersFor(c),
+        media: mediaOn(),
+        people: {},
+      };
+    }
+    data.recorder = me.key;
+    log = { id, data, dirty: true, timer: window.setInterval(() => void saveLog(), 60_000) };
+    markPeople();
+    void saveLog();
+  } finally {
+    logOpening = false;
+  }
+}
+// What the recorder sees now: who came, who went, microphones and cameras.
+function markPeople() {
+  if (!log) return;
+  const now = Date.now();
+  const d = log.data;
+  const here = new Map(st.tiles.map((t) => [keyOf(t), t]));
+  for (const [k, t] of here) {
+    const p = (d.people[k] ??= { name: t.name, role: t.role ?? 'guest', spans: [], ...(d.media ? { mic: [], cam: [] } : {}) });
+    if (p.name !== t.name) p.name = t.name;
+    const last = p.spans[p.spans.length - 1];
+    if (!last || last.out !== undefined) {
+      p.spans.push({ in: !last && t.joinedAt && t.joinedAt > d.startedAt - 60_000 ? Math.min(t.joinedAt, now) : now });
+      log.dirty = true;
+    }
+    if (d.media) {
+      for (const [list, on] of [
+        [(p.mic ??= []), t.audio],
+        [(p.cam ??= []), t.video],
+      ] as [[number, boolean][], boolean][]) {
+        if (!list.length || list[list.length - 1][1] !== on) {
+          list.push([now, on]);
+          if (list.length > MAX_MARKS) list.splice(0, list.length - MAX_MARKS);
+          log.dirty = true;
+        }
+      }
+    }
+  }
+  for (const [k, p] of Object.entries(d.people)) {
+    const last = p.spans[p.spans.length - 1];
+    if (last && last.out === undefined && !here.has(k)) {
+      last.out = now;
+      log.dirty = true;
+    }
+  }
+}
+async function saveLog() {
+  if (!log || !log.dirty) return;
+  log.data.savedAt = Date.now();
+  log.dirty = false;
+  await setDoc(doc(db, 'callLogs', log.id), JSON.parse(JSON.stringify(log.data))).catch((e) => {
+    console.warn('The attendance record could not be saved', e);
+    if (log) log.dirty = true;
+  });
+}
+async function logTick() {
+  if (amRecorder()) {
+    if (!log) return void openLog();
+    markPeople();
+    return;
+  }
+  // Someone else records now (an earlier teacher came in): hand over with a last save.
+  if (log) {
+    const l = log;
+    window.clearInterval(l.timer);
+    await saveLog();
+    if (log === l) log = null;
+  }
+}
+// Leaving: my own time ends now; if nobody is left, the call has ended.
+async function logFinal() {
+  if (!log) return;
+  const l = log;
+  window.clearInterval(l.timer);
+  const now = Date.now();
+  const d = l.data;
+  const others = st.tiles.filter((t) => !t.local).map(keyOf);
+  for (const [k, p] of Object.entries(d.people)) {
+    const last = p.spans[p.spans.length - 1];
+    if (last && last.out === undefined && (k === me.key || !others.includes(k))) last.out = now;
+  }
+  if (!others.length) d.endedAt = now;
+  l.dirty = true;
+  await saveLog();
+  log = null;
+}

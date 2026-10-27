@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
 import { chatTitle, useChats, type Chat, type Person } from '../lib/chat';
-import { callOn, declineCall, NoRoomError, openCall, ringing, startChatCall, useCallElsewhere, useOpenCall, type CallKind } from '../lib/calls';
+import { callOn, clearRing, declineCall, NoRoomError, openCall, RING_MS, ringing, startChatCall, useCallElsewhere, useMyRing, useOpenCall, type CallKind } from '../lib/calls';
 import { setCallMe } from '../lib/callEngine';
 import { CallScreen } from './CallScreen';
 import { useLocation } from 'react-router-dom';
@@ -38,7 +38,10 @@ export function CallHost() {
   const sessions = useTeacherSessions(profile?.role === 'teacher' ? user?.uid : undefined);
   const [waved, setWaved] = useState<string[]>([]);
   const meetings = sessions.filter((x) => x.live && x.live.by !== user?.uid && Date.now() - x.live.at < 60_000 && open?.sessionId !== x.id && !waved.includes(x.id + x.live.at));
-  useRing(incoming.length > 0 || meetings.length > 0);
+  // Called into a class's video room by a teacher.
+  const ring = useMyRing(me);
+  const rung = ring && Date.now() - ring.at < RING_MS && open?.url !== ring.url ? ring : null;
+  useRing(incoming.length > 0 || meetings.length > 0 || !!rung);
   // A call for a chat that has ended closes for everyone still in it.
   const openChat = open?.chatId ? chats?.find((c) => c.id === open.chatId) : undefined;
   useEffect(() => {
@@ -60,6 +63,27 @@ export function CallHost() {
     <>
       {open && !loc.pathname.startsWith('/call/') && <CallScreen />}
       {!open && <CallElsewhere />}
+      {rung &&
+        me &&
+        createPortal(
+          <div className="ring" role="alertdialog" aria-label={`${rung.byName} is calling you to ${rung.title}`}>
+            <span className="ring-face">
+              <PersonFace id={rung.by} name={rung.byName} size={44} />
+              <i />
+            </span>
+            <span className="ring-t">
+              <b>{rung.title}</b>
+              <span className="hint">{rung.byName} is calling you to join</span>
+            </span>
+            <button type="button" className="ring-no" onClick={() => void clearRing(me)} aria-label="Not now" data-tip="Not now">
+              <UiIcon name="phone" size={17} />
+            </button>
+            <button type="button" className="ring-yes" onClick={() => (void clearRing(me), openCall({ url: rung.url, title: rung.title, kind: rung.kind, classId: rung.classId ?? undefined, code: rung.code ?? undefined, sub: rung.classId ? 'Class video room' : undefined }))} aria-label="Join" data-tip="Join">
+              <UiIcon name={rung.kind === 'video' ? 'video' : 'phone'} size={17} />
+            </button>
+          </div>,
+          document.body,
+        )}
       {meetings.slice(0, 1).map((x) =>
         createPortal(
           <div key={x.id} className="ring" role="alertdialog" aria-label={`${x.title} has started`}>

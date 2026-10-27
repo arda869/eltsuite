@@ -204,3 +204,27 @@ body.ks-dragging, body.ks-dragging * { user-select: none !important; cursor: gra
 .ks-menu .ks-bg.blur { background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 60%), var(--ks-btn); backdrop-filter: blur(2px); }
 .ks-bg.own span { font-size: 18px; font-weight: 400; }
 .ks-bg-hint { padding: 0 8px 6px; font-size: 11.5px; color: var(--ks-soft); }
+
+/* Not here yet (classes), and the attendance note */
+.ks-nothere { border-top: 1px solid var(--ks-line); padding: 6px 6px 8px; max-height: 45%; overflow: auto; }
+.ks-nh-h { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 2px 8px; }
+.ks-nh-all { border: 0; background: none; color: var(--accent); font: 600 12.5px var(--sans); cursor: pointer; padding: 4px 6px; border-radius: 8px; }
+.ks-nh-all:hover { background: var(--ks-btn); }
+.ks-nothere ul { list-style: none; margin: 0; padding: 0; }
+.ks-nothere li { display: flex; align-items: center; gap: 9px; padding: 6px; border-radius: 10px; opacity: 0.85; }
+.ks-nothere li:hover { opacity: 1; background: rgba(255, 255, 255, 0.04); }
+.ks-nh-call { flex: none; height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--ks-btn-h); color: var(--ks-text); font: 600 12.5px var(--sans); cursor: pointer; }
+.ks-nh-call:hover { background: var(--accent); color: #fff; }
+.ks-nh-call.on { background: color-mix(in srgb, var(--accent) 85%, #000); color: #fff; animation: ks-calling 1.2s ease-in-out infinite; }
+@keyframes ks-calling { 50% { opacity: 0.7; } }
+.ks-rec { flex: none; display: block; text-align: center; font-size: 11px; color: var(--ks-soft); padding: 0 12px 8px; margin-top: -6px; }
+.ks-mini .ks-rec { display: none; }
+.kp-rec { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+/* A narrow window: the people list covers the stage instead of squeezing it */
+.ks { container-type: inline-size; container-name: ks; }
+@container ks (max-width: 720px) {
+  .ks-people { position: absolute; inset: 0 8px; width: auto; z-index: 3; }
+  .ks-alone { font-size: 11.5px; padding: 5px 10px; }
+}
+.ks-people > ul { flex: 0 1 auto; }
+.ks-people > .ks-nothere { flex: 1 1 auto; max-height: none; min-height: 90px; }

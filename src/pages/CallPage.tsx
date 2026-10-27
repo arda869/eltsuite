@@ -168,6 +168,7 @@ function Lobby({ link, name: known, signedIn, onJoin }: { link: CallLink; name: 
         <button type="submit" className="btn primary kp-go" disabled={!name.trim()}>
           Join the call
         </button>
+        <p className="kp-rec">This call keeps an attendance record.</p>
       </form>
     </div>
   );

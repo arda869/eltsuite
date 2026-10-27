@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { callLinkUrl, leaveCall, popOutCall, useOpenCall, type OpenCall } from '../lib/calls';
+import { callLinkUrl, leaveCall, popOutCall, ringPerson, useOpenCall, type OpenCall } from '../lib/calls';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { BACKGROUNDS, callMe, clearAsk, clearError, host, raiseHand, removeOther, setBackground, setNoise, toggleCam, toggleMic, toggleShare, turnOn, useDevice, useEngine, type EngineState, type HostCmd, type Tile } from '../lib/callEngine';
 import { Avatar } from './avatars';
 import { useDismiss } from '../lib/useDismiss';
@@ -253,7 +255,73 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
 }
 
 // The people in the call, hands first; for teachers, everyone's microphone and camera.
-function People({ s, teacher, onClose }: { s: EngineState; teacher: boolean; onClose: () => void }) {
+// A class's people who are not in the call yet, for teachers: call them in (their device rings).
+type Member = { key: string; name: string; role: 'teacher' | 'learner' };
+function useClassMembers(classId?: string, on = true) {
+  const [list, setList] = useState<Member[]>([]);
+  useEffect(() => {
+    if (!classId || !on) return;
+    let dead = false;
+    void (async () => {
+      const c = (await getDoc(doc(db, 'classes', classId)).catch(() => null))?.data() ?? {};
+      const ls = await getDocs(collection(db, 'classes', classId, 'learners')).catch(() => null);
+      const teachers: Member[] = [
+        ...(c.teacherId ? [{ key: String(c.teacherId), name: String(c.teacherName ?? 'Class teacher'), role: 'teacher' as const }] : []),
+        ...Object.entries((c.coTeachers ?? {}) as Record<string, { name?: string; role?: string }>).filter(([, t]) => t.role === 'co').map(([k, t]) => ({ key: k, name: t.name || 'Co-teacher', role: 'teacher' as const })),
+      ];
+      const learners: Member[] = (ls?.docs ?? []).map((d) => ({ key: d.id, name: String(d.data().displayName ?? 'Learner'), role: 'learner' as const })).sort((a, b) => a.name.localeCompare(b.name));
+      if (!dead) setList([...teachers, ...learners]);
+    })();
+    return () => void (dead = true);
+  }, [classId, on]);
+  return list;
+}
+function NotHere({ s, call }: { s: EngineState; call: OpenCall }) {
+  const members = useClassMembers(call.classId);
+  const [rang, setRang] = useState<Record<string, number>>({});
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => tick((n) => n + 1), 5000);
+    return () => window.clearInterval(t);
+  }, []);
+  const here = new Set(s.tiles.map((t) => t.key).filter(Boolean));
+  const missing = members.filter((m) => !here.has(m.key) && m.key !== callMe().key);
+  if (!missing.length) return null;
+  const ring = (list: Member[]) => {
+    const at = Date.now();
+    setRang((r) => ({ ...r, ...Object.fromEntries(list.map((m) => [m.key, at])) }));
+    list.forEach((m) => void ringPerson(m.key, { url: call.url, title: call.title, kind: call.kind, classId: call.classId ?? null, code: call.code ?? null, byName: callMe().name }).catch(() => {}));
+  };
+  const calling = (k: string) => Date.now() - (rang[k] ?? 0) < 45_000;
+  return (
+    <div className="ks-nothere">
+      <span className="ks-nh-h">
+        <span className="ks-k">Not here yet · {missing.length}</span>
+        <button type="button" className="ks-nh-all" onClick={() => ring(missing.filter((m) => !calling(m.key)))}>
+          Call everyone
+        </button>
+      </span>
+      <ul>
+        {missing.map((m) => (
+          <li key={m.key}>
+            <span className="ks-p-face">
+              <Avatar name={m.name} size={32} />
+            </span>
+            <span className="ks-p-t">
+              <b>{m.name}</b>
+              <span className="hint">{m.role === 'teacher' ? 'Teacher' : 'Learner'}</span>
+            </span>
+            <button type="button" className={'ks-nh-call' + (calling(m.key) ? ' on' : '')} onClick={() => ring([m])} aria-label={`Call ${m.name}`}>
+              {calling(m.key) ? 'Calling…' : 'Call'}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function People({ s, teacher, onClose, call }: { s: EngineState; teacher: boolean; onClose: () => void; call: OpenCall }) {
   const list = [...s.tiles].sort((a, b) => (s.hands[b.id] ? 1 : 0) - (s.hands[a.id] ? 1 : 0) || Number(b.local) - Number(a.local));
   return (
     <aside className="ks-people" aria-label="People in the call">
@@ -330,6 +398,7 @@ function People({ s, teacher, onClose }: { s: EngineState; teacher: boolean; onC
           </li>
         ))}
       </ul>
+      {teacher && call.classId && <NotHere s={s} call={call} />}
     </aside>
   );
 }
@@ -451,7 +520,8 @@ export function CallScreen({ page }: { page?: boolean }) {
   ownerNow = !!s.tiles.find((t) => t.local)?.owner;
   const [mode, setMode] = useState<Mode>(() => (phoneNow() ? 'full' : 'float'));
   const [rect, setRect] = useState<Rect>(savedRect);
-  const [people, setPeople] = useState(false);
+  // A teacher opening a class's room sees who is not there yet, to call them in.
+  const [people, setPeople] = useState(() => teacher && !!call?.classId && !phoneNow());
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState(false);
   useEffect(() => {
@@ -575,7 +645,7 @@ export function CallScreen({ page }: { page?: boolean }) {
           </header>
           <div className="ks-body">
             <Stage s={s} teacher={teacher} />
-            {people && <People s={s} teacher={teacher} onClose={() => setPeople(false)} />}
+            {people && <People s={s} teacher={teacher} call={call} onClose={() => setPeople(false)} />}
           </div>
           {s.ask && (
             <div className="ks-ask" role="alertdialog" aria-label="A request from your teacher">
@@ -596,6 +666,7 @@ export function CallScreen({ page }: { page?: boolean }) {
             </div>
           )}
           <Controls s={s} call={call} people={people} setPeople={setPeople} />
+          <span className="ks-rec">This call keeps an attendance record.</span>
           {m === 'float' && ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((d) => <span key={d} className={'ks-rz ks-rz-' + d} onPointerDown={(e) => dragFrom(e, d)} aria-hidden="true" />)}
         </>
       )}

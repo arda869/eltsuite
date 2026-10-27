@@ -521,6 +521,35 @@ service cloud.firestore {
       allow write: if isSelf(uid) && !learnerAccount() && request.resource.data.keys().hasOnly(['tz', 'at'])
         && request.resource.data.tz is string && request.resource.data.tz.size() < 64;
     }
+    // Calling someone into a call (a class's video room): their device rings. Teachers ring;
+    // each person reads and clears only their own.
+    match /callRings/{key} {
+      allow read, delete: if signedIn() && chatKey() == key;
+      allow create, update: if isTeacher() && request.resource.data.by == request.auth.uid;
+    }
+    // Attendance for calls: who was in a call and when (and, unless the organisation turns it
+    // off, their microphone and camera). Written by one person in the call; read only by the
+    // teachers it belongs to (readers), never by learners.
+    function logReaders(d) {
+      return d.kind == 'class' ? d.readers.toSet().difference([classData(d.classId).teacherId].toSet().union(classData(d.classId).get('coTeachers', {}).keys().toSet())).size() == 0
+        : d.kind == 'chat' ? d.readers.hasOnly(chatOf(d.chatId).members)
+        : d.kind == 'meeting' ? d.readers.toSet().difference([get(/databases/$(database)/documents/sessions/$(d.sessionId)).data.owner].toSet().union(get(/databases/$(database)/documents/sessions/$(d.sessionId)).data.get('attendees', []).toSet())).size() == 0
+        : d.readers.hasOnly([get(/databases/$(database)/documents/callLinks/$(d.code)).data.by]);
+    }
+    function logWriter(d) {
+      return signedIn() && chatKey() in d.people && d.recorder == chatKey()
+        && (d.kind != 'class' || viewsClass(d.classId))
+        && (d.kind != 'chat' || chatKey() in chatOf(d.chatId).members)
+        && (d.kind == 'chat' || isTeacher())
+        && logReaders(d);
+    }
+    match /callLogs/{id} {
+      allow read: if isTeacher() && request.auth.uid in resource.data.get('readers', []);
+      allow create: if logWriter(request.resource.data);
+      allow update: if logWriter(request.resource.data) && request.resource.data.kind == resource.data.kind
+        && request.resource.data.get('classId', null) == resource.data.get('classId', null)
+        && request.resource.data.get('chatId', null) == resource.data.get('chatId', null);
+    }
     // The timetable: classes, meetings and one-to-ones. A class's sessions are seen by its
     // teachers and learners; a meeting by the people invited.
     function sessionReader(d) {
