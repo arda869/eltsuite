@@ -1,6 +1,6 @@
 import { OrgLogo } from './OrgLook';
 import { currentOrg, libName } from '../lib/admin';
-import { AppGrid } from './AppGrid';
+import { AppGrid, HOME_COLOR } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -128,36 +128,36 @@ export function TopBar({ children }: { children?: ReactNode }) {
   );
 }
 
-// Top left: the app you are in, within ELT Suite.
+// Top left: the app you are in, within ELT Suite. It always goes home.
 function AppMark() {
   const { pathname } = useLocation();
   // Every app shows its name under ELT Suite, in its own colour.
   const app =
     pathname.startsWith('/archive') || pathname.startsWith('/doc')
-      ? { name: 'Files', to: '/archive', color: '#3667a6' }
+      ? { name: 'Files', color: '#3667a6' }
       : pathname.startsWith('/messages')
-        ? { name: 'Messages', to: '/messages', color: '#7a4fa3' }
+        ? { name: 'Messages', color: '#7a4fa3' }
         : pathname.startsWith('/colleague')
-          ? { name: 'Colleagues', to: '/colleagues', color: '#4f6b7a' }
+          ? { name: 'Colleagues', color: '#4f6b7a' }
           : pathname.startsWith('/admin')
-            ? { name: 'Super Admin', to: '/admin', color: '#2f2e2d' }
+            ? { name: 'Super Admin', color: '#2f2e2d' }
           : pathname.startsWith('/library')
-            ? { name: libName(currentOrg()), to: '/library', color: '#7a5a3a' }
+            ? { name: libName(currentOrg()), color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
-            ? { name: 'Organisation admin', to: '/org-admin', color: '#5d6f80' }
+            ? { name: 'Organisation admin', color: '#5d6f80' }
           : pathname.startsWith('/timetable')
-            ? { name: 'Timetable', to: '/timetable', color: '#8a6a4a' }
+            ? { name: 'Timetable', color: '#8a6a4a' }
           : pathname.startsWith('/rooms')
-            ? { name: 'Rooms', to: '/rooms', color: '#3b7f7a' }
+            ? { name: 'Rooms', color: '#3b7f7a' }
           : pathname.startsWith('/settings')
-            ? { name: 'Settings', to: '/settings', color: '#6b6560' }
+            ? { name: 'Settings', color: '#6b6560' }
             : pathname.startsWith('/notebook')
-              ? { name: 'Notebook', to: '/notebook', color: '#a8701f' }
+              ? { name: 'Notebook', color: '#a8701f' }
               : pathname === '/'
-                ? { name: 'Home', to: '/', color: '#c8764a' }
-                : { name: 'Classes', to: '/classes', color: '#c8764a' };
+                ? { name: 'Home', color: HOME_COLOR }
+                : { name: 'Classes', color: '#c8764a' };
   return (
-    <Link to={app.to} className="suite-mark" style={{ ['--app' as string]: app.color }}>
+    <Link to="/" className="suite-mark" style={{ ['--app' as string]: app.color }} aria-label={`ELT Suite ${app.name}: Home`} data-tip="Home">
       <Mark size={26} />
       <span>
         <span className="suite-k">ELT Suite</span>

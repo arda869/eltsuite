@@ -11,8 +11,11 @@ const I = (d: string) => (
     <path d={d} />
   </svg>
 );
+// Home has its own colour, used by the top bar's mark on the home page too.
+export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
-  { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', color: '#c8764a', icon: I('M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z') },
+  { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, icon: I('M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z') },
+  { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', icon: I('M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z') },
   { k: 'files', group: 'work', name: 'Files', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', icon: I('M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z') },
   { k: 'messages', group: 'work', name: 'Messages', about: 'Chats with learners and colleagues', to: '/messages', color: '#7a4fa3', icon: I('M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z') },
   { k: 'colleagues', group: 'work', name: 'Colleagues', about: 'The teachers you work with, and what you share', to: '/colleagues', teacher: true, color: '#4f6b7a', icon: I('M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2') },
@@ -48,7 +51,7 @@ export function AppGrid() {
   const owner = isOwnerEmail(user?.email);
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const myOrg = useMyOrg();
-  const show = (k: string) => (k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : k === 'library' ? !!myOrg && on(k) : on(k));
+  const show = (k: string) => (k === 'home' ? true : k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : k === 'library' ? !!myOrg && on(k) : on(k));
   const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k)).map((a) => (a.k === 'library' ? { ...a, name: libName(myOrg) } : a));
   return (
     <div className="apps" ref={ref}>
@@ -62,9 +65,10 @@ export function AppGrid() {
           {GROUPS.map(([g, label]) => {
             const list = apps.filter((a) => a.group === g && a.to);
             if (!list.length) return null;
+            const head = g === 'teach' && !teacher ? 'Learning' : label;
             return (
-              <section key={g} className="apps-g" aria-label={label}>
-                <span className="apps-h">{label}</span>
+              <section key={g} className="apps-g" aria-label={head}>
+                <span className="apps-h">{head}</span>
                 <div className="apps-row">
                   {list.map((a) => (
                     <Link key={a.k} to={a.to!} role="menuitem" className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.short && a.short !== a.name ? a.name : undefined} onClick={() => setOpen(false)}>

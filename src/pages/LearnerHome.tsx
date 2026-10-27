@@ -133,7 +133,9 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
       <AnnouncementCards classId={classId} learnerId={profile?.role === 'learner' ? profile.learnerId : ''} />
       <NoticeToasts classId={classId} to={profile?.role === 'learner' ? profile.learnerId : ''} link={(i, tk) => (i === 'disc' ? `/discuss/${tk}` : `/learn/${i}?task=${tk}`)} />
       <header className="topbar">
-        <Wordmark />
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <Wordmark />
+        </Link>
         <span className="sub">{c?.name ?? ''}</span>
         <LearnerNav on="home" unreadMsgs={unreadMsgs} unreadThreads={unreadThreads} />
         <span className="icon-row">
