@@ -69,6 +69,17 @@ for (const d of all.docs) {
   const u = await api('/rooms/' + d.id, { properties: { enable_chat: false } });
   if (u.ok) await d.ref.set({ noChat: true }, { merge: true }).catch(() => {});
 }
+// Each ready room has a host key, kept where only the teacher who takes the room can read it:
+// with it, Daily turns others' microphones and cameras off when that teacher asks.
+async function hostKey(name) {
+  const tok = await api('/meeting-tokens', { properties: { room_name: name, is_owner: true, exp: Math.floor((Date.now() + 30 * DAY) / 1000) } });
+  if (tok.ok) await pool.doc(name).collection('host').doc('key').set({ token: tok.j.token });
+  return tok.ok;
+}
+for (const d of all.docs) {
+  if (d.data().state !== 'free' || d.data().hostKey) continue;
+  if (await hostKey(d.id)) await d.ref.set({ hostKey: true }, { merge: true }).catch(() => {});
+}
 const free = all.docs.filter((d) => d.data().state === 'free' && Date.now() - (d.data().at ?? 0) <= 25 * DAY).length;
 let added = 0;
 for (let i = free; i < POOL; i++) {
@@ -79,6 +90,7 @@ for (let i = free; i < POOL; i++) {
     break;
   }
   await pool.doc(name).set({ name, url: room.j.url, state: 'free', at: Date.now(), noChat: true });
+  if (await hostKey(name)) await pool.doc(name).set({ hostKey: true }, { merge: true });
   added++;
 }
 console.log(`Call rooms: ${added} added, ${gone} cleared, ${free + added} ready.`);

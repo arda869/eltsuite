@@ -194,3 +194,13 @@ body.ks-dragging, body.ks-dragging * { user-select: none !important; cursor: gra
 
 .ks .avatar-fallback { background: color-mix(in srgb, var(--accent) 60%, #1b1a18); color: #fff; }
 .ks-pip .ks-role { display: none; }
+
+/* Background and sound, in the More menu */
+.ks-menu:has(.ks-bgs) { min-width: 300px; }
+.ks-bgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 4px 4px 6px; }
+.ks-menu .ks-bg { min-height: 0; aspect-ratio: 16 / 10; border: 0; border-radius: 9px; background: var(--ks-btn) center / cover no-repeat; color: var(--ks-text); font: 600 11.5px var(--sans); cursor: pointer; box-shadow: inset 0 0 0 1px var(--ks-line); display: grid; place-items: center; padding: 0; transition: box-shadow 0.15s, transform 0.15s; }
+.ks-menu .ks-bg:hover { transform: translateY(-1px); }
+.ks-menu .ks-bg.on { box-shadow: 0 0 0 2px var(--accent), inset 0 0 0 1px var(--ks-line); }
+.ks-menu .ks-bg.blur { background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.06) 60%), var(--ks-btn); backdrop-filter: blur(2px); }
+.ks-bg.own span { font-size: 18px; font-weight: 400; }
+.ks-bg-hint { padding: 0 8px 6px; font-size: 11.5px; color: var(--ks-soft); }

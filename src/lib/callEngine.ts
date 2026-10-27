@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { DailyCall, DailyParticipant } from '@daily-co/daily-js';
 import type { OpenCall } from './calls';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from './firebase';
+
+async function hostKeyFor(url: string): Promise<string | undefined> {
+  const room = url.split('/').filter(Boolean).pop() ?? '';
+  if (!room.startsWith('r-')) return undefined;
+  const s = await getDoc(doc(db, 'callRooms', room, 'host', 'key')).catch(() => null);
+  return (s?.data()?.token as string | undefined) || undefined;
+}
 
 // The call itself, on Daily's call object: no Daily screen, only the camera and microphone
 // streams, which our own call screen draws. One call at a time; it lives outside React, so it
@@ -37,7 +46,8 @@ export type EngineState = {
   mic: boolean;
   cam: boolean;
   sharing: boolean;
-  blur: boolean;
+  bg: string; // 'none', 'blur', a picture's address, or 'own' for one the person chose
+  noise: boolean; // background noise taken out
   hands: Record<string, number>; // raised hands: participant id → when
   startedAt?: number;
   devices: Device[];
@@ -47,7 +57,7 @@ export type EngineState = {
   note?: string | null; // a short note: "Your teacher turned off your microphone"
 };
 
-const blank = (): EngineState => ({ status: 'idle', call: null, tiles: [], mic: true, cam: false, sharing: false, blur: false, hands: {}, devices: [] });
+const blank = (): EngineState => ({ status: 'idle', call: null, tiles: [], mic: true, cam: false, sharing: false, bg: 'none', noise: true, hands: {}, devices: [] });
 let st: EngineState = blank();
 let co: DailyCall | null = null;
 let queue: Promise<unknown> = Promise.resolve();
@@ -191,10 +201,16 @@ export function startEngine(call: OpenCall) {
         emit({ ...blank() });
         ended?.();
       });
-      await co.join({ url: call.url, userName: me.name, userData: { key: me.key, role: me.role, avatar: me.avatar, photo: me.photo }, ...(call.token ? { token: call.token } : {}), startVideoOff: call.kind === 'audio' || !!call.camOff, startAudioOff: !!call.micOff });
+      // A call room you took yourself comes with its host key: Daily then turns microphones and
+      // cameras off for you, and you can remove someone.
+      const token = call.token ?? (await hostKeyFor(call.url));
+      await co.join({ url: call.url, userName: me.name, userData: { key: me.key, role: me.role, avatar: me.avatar, photo: me.photo }, ...(token ? { token } : {}), startVideoOff: call.kind === 'audio' || !!call.camOff, startAudioOff: !!call.micOff });
       emit({ status: 'joined', startedAt: Date.now() });
       refresh();
       void devices();
+      if (recall('ll.callNoise', '1') === '1') void setNoise(true);
+      const bg = recall('ll.callBg', 'none');
+      if (bg !== 'none' && call.kind === 'video') void setBackground(bg);
     } catch (e) {
       console.error(e);
       emit({ status: 'error', error: 'The call could not be joined. Check your connection, then try again.' });
@@ -235,13 +251,51 @@ export function toggleShare() {
   if (st.sharing) co.stopScreenShare();
   else co.startScreenShare();
 }
-export async function setBlur(on: boolean) {
+// Backgrounds: none, blurred, one of ours, or a picture of your own. Remembered for next time
+// (not a picture of your own, which is only kept for this call).
+export const BACKGROUNDS = [
+  { k: 'study', label: 'Study' },
+  { k: 'classroom', label: 'Classroom' },
+  { k: 'sage', label: 'Sage' },
+  { k: 'paper', label: 'Paper' },
+  { k: 'harbour', label: 'Harbour' },
+  { k: 'evening', label: 'Evening' },
+];
+export const bgUrl = (k: string) => `${location.origin}/backgrounds/${k}.jpg`;
+const remember = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {
+    /* fine */
+  }
+};
+const recall = (k: string, d: string) => {
+  try {
+    return localStorage.getItem(k) ?? d;
+  } catch {
+    return d;
+  }
+};
+export async function setBackground(bg: string, own?: ArrayBuffer) {
+  if (!co) return;
+  const processor = bg === 'blur' ? { type: 'background-blur' as const, config: { strength: 0.6 } } : bg === 'none' ? { type: 'none' as const } : bg === 'own' && own ? { type: 'background-image' as const, config: { source: own } } : { type: 'background-image' as const, config: { url: bgUrl(bg) } };
+  try {
+    await co.updateInputSettings({ video: { processor } });
+    emit({ bg });
+    if (bg !== 'own') remember('ll.callBg', bg);
+  } catch {
+    emit({ error: 'Backgrounds do not work on this device or browser.' });
+  }
+}
+// Background noise (keyboards, traffic, a fan) taken out of your microphone. On unless turned off.
+export async function setNoise(on: boolean) {
   if (!co) return;
   try {
-    await co.updateInputSettings({ video: { processor: on ? { type: 'background-blur', config: { strength: 0.6 } } : { type: 'none' } } });
-    emit({ blur: on });
+    await co.updateInputSettings({ audio: { processor: { type: on ? 'noise-cancellation' : 'none' } } });
+    emit({ noise: on });
+    remember('ll.callNoise', on ? '1' : '0');
   } catch {
-    emit({ error: 'Background blur does not work on this device.' });
+    emit({ noise: false, error: on ? 'Noise reduction does not work on this device or browser.' : undefined });
   }
 }
 export function raiseHand(up: boolean) {
@@ -264,7 +318,16 @@ export async function useDevice(kind: 'audioinput' | 'videoinput', id: string) {
 // host, so Daily itself turns them off too.
 export function host(cmd: HostCmd, to: string | '*' = '*') {
   if (!co) return;
-  co.sendAppMessage({ cmd, to }, to === '*' ? '*' : to);
+  // Sent to everyone, with who it is for inside: each screen picks out its own.
+  co.sendAppMessage({ cmd, to }, '*');
+  // If it has not worked in a few seconds, say so (an old copy of the page, most likely).
+  if (cmd === 'mute' || cmd === 'camOff') {
+    const ids = to === '*' ? st.tiles.filter((t) => !t.local).map((t) => t.id) : [to];
+    window.setTimeout(() => {
+      const still = st.tiles.filter((t) => ids.includes(t.id) && (cmd === 'mute' ? t.audio : t.video));
+      if (still.length) emit({ note: `${still.map((t) => t.name).join(', ')} still ${still.length > 1 ? 'have' : 'has'} the ${cmd === 'mute' ? 'microphone' : 'camera'} on. Ask them to reload the call page.` });
+    }, 3500);
+  }
   const meTile = st.tiles.find((t) => t.local);
   if (meTile?.owner && (cmd === 'mute' || cmd === 'camOff')) {
     const ids = to === '*' ? st.tiles.filter((t) => !t.local).map((t) => t.id) : [to];

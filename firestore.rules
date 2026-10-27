@@ -501,6 +501,10 @@ service cloud.firestore {
       allow update: if signedIn() && resource.data.state == 'free' && request.resource.data.state == 'used'
         && request.resource.data.by == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'by', 'usedAt', 'for']);
+      // The room's host key: only for the teacher who took the room.
+      match /host/{k} {
+        allow read: if isTeacher() && get(/databases/$(database)/documents/callRooms/$(id)).data.get('by', '') == request.auth.uid;
+      }
     }
     // A call's own link (eltsuite.com/call/<code>): anyone with the code opens it, nobody can list
     // them; the person who made it can change or remove it.

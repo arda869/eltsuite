@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { callLinkUrl, leaveCall, popOutCall, useOpenCall, type OpenCall } from '../lib/calls';
-import { callMe, clearAsk, clearError, host, raiseHand, removeOther, setBlur, toggleCam, toggleMic, toggleShare, turnOn, useDevice, useEngine, type EngineState, type HostCmd, type Tile } from '../lib/callEngine';
+import { BACKGROUNDS, callMe, clearAsk, clearError, host, raiseHand, removeOther, setBackground, setNoise, toggleCam, toggleMic, toggleShare, turnOn, useDevice, useEngine, type EngineState, type HostCmd, type Tile } from '../lib/callEngine';
 import { Avatar } from './avatars';
 import { useDismiss } from '../lib/useDismiss';
 import './call.css';
@@ -336,6 +336,7 @@ function People({ s, teacher, onClose }: { s: EngineState; teacher: boolean; onC
 
 function Controls({ s, call, people, setPeople, compact }: { s: EngineState; call: OpenCall; people: boolean; setPeople: (v: boolean) => void; compact?: boolean }) {
   const [more, setMore] = useState(false);
+  const ownRef = useRef<HTMLInputElement>(null);
   const moreRef = useDismiss<HTMLSpanElement>(more, () => setMore(false));
   const me = s.tiles.find((t) => t.local);
   const hand = !!(me && s.hands[me.id]);
@@ -387,11 +388,38 @@ function Controls({ s, call, people, setPeople, compact }: { s: EngineState; cal
                   {d.label}
                 </button>
               ))}
-              <span className="ks-k">Video</span>
-              <button role="menuitemcheckbox" aria-checked={s.blur} onClick={() => void setBlur(!s.blur)}>
-                <span className="ks-tick">{s.blur && <I n="check" s={14} />}</span>
-                Blur my background
+              <span className="ks-k">Sound</span>
+              <button role="menuitemcheckbox" aria-checked={s.noise} onClick={() => void setNoise(!s.noise)}>
+                <span className="ks-tick">{s.noise && <I n="check" s={14} />}</span>
+                Reduce background noise
               </button>
+              <span className="ks-k">Background</span>
+              <div className="ks-bgs" role="radiogroup" aria-label="Background">
+                <button type="button" role="radio" aria-checked={s.bg === 'none'} className={'ks-bg none' + (s.bg === 'none' ? ' on' : '')} onClick={() => void setBackground('none')} data-tip="No background">
+                  <span>None</span>
+                </button>
+                <button type="button" role="radio" aria-checked={s.bg === 'blur'} className={'ks-bg blur' + (s.bg === 'blur' ? ' on' : '')} onClick={() => void setBackground('blur')} data-tip="Blur">
+                  <span>Blur</span>
+                </button>
+                {BACKGROUNDS.map((b) => (
+                  <button key={b.k} type="button" role="radio" aria-checked={s.bg === b.k} aria-label={b.label} data-tip={b.label} className={'ks-bg' + (s.bg === b.k ? ' on' : '')} style={{ backgroundImage: `url(/backgrounds/${b.k}.jpg)` }} onClick={() => void setBackground(b.k)} />
+                ))}
+                <button type="button" role="radio" aria-checked={s.bg === 'own'} className={'ks-bg own' + (s.bg === 'own' ? ' on' : '')} onClick={() => ownRef.current?.click()} data-tip="A picture of your own">
+                  <span>+</span>
+                </button>
+                <input
+                  ref={ownRef}
+                  type="file"
+                  accept="image/jpeg,image/png"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = '';
+                    if (f) void f.arrayBuffer().then((buf) => setBackground('own', buf));
+                  }}
+                />
+              </div>
+              {!s.cam && <span className="ks-bg-hint">Turn on your camera to see it.</span>}
               {call.code && (
                 <>
                   <span className="ks-k">Link</span>
