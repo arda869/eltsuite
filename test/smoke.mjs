@@ -194,9 +194,11 @@ const J = {
     await s.p.keyboard.type('Reading group');
     await s.p.keyboard.press('Enter');
     await see(s.p, '.ttb-ev:has-text("Reading group")', 'the dragged session in the day');
+    await s.p.waitForTimeout(700); // the cards and the note fade in: check the colours once they are in
     await axe(s.p, 'Timetable', A11Y_FOUND);
     await s.p.click('.ttb-ev:has-text("Reading group")');
     await see(s.p, '.ttb-card', 'the session card');
+    await s.p.waitForTimeout(700);
     await axe(s.p, 'Timetable card', A11Y_FOUND);
     await s.p.keyboard.press('Escape');
     await s.p.goto(`${BASE}/rooms`);
