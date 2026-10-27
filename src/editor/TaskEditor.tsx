@@ -672,12 +672,6 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             ['icons', <IconTool key="i" editor={editor} />],
             ['symbols', <SymbolTool key="s" editor={editor} />],
             ['pron', <ProsodyTool key="p" editor={editor} />],
-            ...(textOnly
-              ? ([
-                  ['stress', BTN('Word stress', false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Stress')],
-                  ['ipa', BTN('IPA transcription', false, () => COMMANDS.find((c) => c.key === 'ipa')?.run(editor), '/ IPA /')],
-                ] as [string, React.ReactNode][])
-              : []),
             ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery(true), '+ Add…')]] as [string, React.ReactNode][]) : []),
           ];
           const shown = tools.filter(([k]) => toolPlace(k) === 'show');

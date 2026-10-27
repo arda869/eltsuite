@@ -6445,3 +6445,8 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .pdf-doc { outline: none; }
 .pdff-wait { text-align: center; }
 .ma-toast { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); z-index: 80; padding: 10px 16px; border-radius: 12px; background: var(--ink); color: var(--paper); font: 13px var(--sans); }
+/* Pronunciation menu: what can be added first, then the marks */
+.pro-adds { display: grid !important; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pro-adds .pro-b { justify-content: flex-start; gap: 8px; }
+.pro-ic { min-width: 26px; height: 22px; display: inline-grid; place-items: center; border-radius: 6px; background: var(--surface); font: 600 12px var(--sans); color: var(--accent-text); }
+.pro-ic.ipa { font-family: 'Doulos SIL', 'Charis SIL', 'Lucida Sans Unicode', 'Segoe UI', serif; }

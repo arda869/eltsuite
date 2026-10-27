@@ -1,3 +1,5 @@
+import { newIpa, type Accent } from './Ipa';
+import { newStress } from './Stress';
 import { Mark, mergeAttributes, Node } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
@@ -302,6 +304,26 @@ export function ProsodyTool({ editor }: { editor: Editor }) {
       {open && (
         <span className="hl-pop pro-pop" style={popStyle} role="dialog" aria-label="Pronunciation">
           <span className="pro-sec">
+            <span className="pro-h">Add</span>
+            <span className="pro-row pro-adds">
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (setOpen(false), addIpa(editor))}>
+                <span className="pro-ic ipa">/ə/</span> IPA
+              </button>
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (setOpen(false), addStress(editor))}>
+                <span className="pro-ic">Oo</span> Word stress
+              </button>
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (setOpen(false), editor.chain().focus().insertContent(newPhonCard('sound')).run())}>
+                <span className="pro-ic">æ</span> Sound card
+              </button>
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (setOpen(false), editor.chain().focus().insertContent(newPhonCard('how')).run())}>
+                <span className="pro-ic">◐</span> How it is made
+              </button>
+              <button type="button" className="pro-b" onMouseDown={keep} onClick={() => (setOpen(false), editor.chain().focus().insertContent(newPhonChart()).run())}>
+                <span className="pro-ic">▦</span> Phonemic chart
+              </button>
+            </span>
+          </span>
+          <span className="pro-sec">
             <span className="pro-h">
               Sentence stress <span className="hint">{empty ? 'Select a word or syllable' : ''}</span>
             </span>
@@ -404,4 +426,19 @@ export function ProsodyTool({ editor }: { editor: Editor }) {
       )}
     </span>
   );
+}
+
+// IPA after the cursor, in the accent used last; word stress on the selected word.
+function addIpa(editor: Editor) {
+  let last: Accent | undefined;
+  editor.state.doc.descendants((n) => {
+    if (n.type.name === 'ipa') last = n.attrs.accent;
+  });
+  editor.chain().focus().insertContent(newIpa(last ?? 'RP')).run();
+}
+function addStress(editor: Editor) {
+  const { from, to, empty } = editor.state.selection;
+  const word = empty ? '' : editor.state.doc.textBetween(from, to, ' ').trim();
+  const base = newStress('box');
+  editor.chain().focus().insertContent(word && !/\s/.test(word) ? { ...base, attrs: { ...base.attrs, syllables: [word] } } : base).run();
 }

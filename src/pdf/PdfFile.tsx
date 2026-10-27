@@ -17,7 +17,6 @@ import { TextColorTool } from '../editor/TextColor';
 import { HighlightTool } from '../editor/Highlight';
 import { ProsodyTool } from '../editor/Prosody';
 import { SymbolTool } from '../editor/Symbols';
-import { newIpa } from '../editor/Ipa';
 import { DefinitionPop } from '../editor/Definition';
 import { UiIcon } from '../components/UiIcon';
 import { PDF_NODES, ToolButtons } from './PdfNodes';
@@ -104,7 +103,6 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
             <HighlightTool editor={editor} />
             <span className="pb-sep" />
             {B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition', !inBox || editor.state.selection.empty)}
-            {B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa('RP')).run(), 'IPA', !inBox)}
             <ProsodyTool editor={editor} />
             <SymbolTool editor={editor} />
           </span>

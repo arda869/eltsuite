@@ -319,8 +319,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       </span>
       <span className="pb-g">
         {gate('definition') !== 'hide' && B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition: select a word, then add its meaning', editor.state.selection.empty && !editor.isActive('definition'))}
-        {gate('pron') !== 'hide' && B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa('RP')).run(), 'IPA')}
-        {gate('pron') !== 'hide' && B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress')}
         {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
         {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
         {gate('icons') !== 'hide' && <IconTool editor={editor} />}
@@ -520,8 +518,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             'Definition: select a word, then add its meaning',
             editor.state.selection.empty && !editor.isActive('definition'),
           )}
-          {gate('pron') !== 'hide' && B(<span className="ne-ipa">/ə/</span>, false, () => editor.chain().focus().insertContent(newIpa('RP')).run(), 'IPA: phonemic symbols')}
-          {gate('pron') !== 'hide' && B(<span className="ne-stress">Oo</span>, false, () => editor.chain().focus().insertContent(newStress('box')).run(), 'Word stress')}
           {gate('icons') !== 'hide' && <IconTool editor={editor} />}
           {gate('symbols') !== 'hide' && <SymbolTool editor={editor} />}
           {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
