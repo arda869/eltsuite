@@ -28,6 +28,7 @@ export type Session = {
   notes?: string;
   skip?: number[]; // weeks (0-based) taken out of a weekly session
   live?: { url: string; room: string; at: number; by: string; byName: string } | null;
+  gcal?: Record<string, { id: string; h: string; at?: number } | null>; // each teacher's Google Calendar event (see lib/gcal.ts)
   at?: number;
 };
 export type Occurrence = { s: Session; start: number; end: number; week: number };
@@ -42,7 +43,8 @@ export async function addSession(s: Omit<Session, 'id'>) {
   return ref.id;
 }
 export async function saveSession(s: Session) {
-  const { id, ...rest } = s;
+  // gcal is each teacher's own, written only by lib/gcal.ts.
+  const { id, gcal: _g, ...rest } = s;
   await updateDoc(doc(col, id), JSON.parse(JSON.stringify(rest)));
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
 }
@@ -51,7 +53,7 @@ export const removeSession = (s: Session) => deleteDoc(doc(col, s.id));
 export const setSessionZone = (s: Session, tz: string) => updateDoc(doc(col, s.id), { tz });
 // Undo for a session taken out: back, as it was, with the same id.
 export function restoreSession(s: Session) {
-  const { id, ...rest } = s;
+  const { id, gcal: _g, ...rest } = s;
   return setDoc(doc(col, id), JSON.parse(JSON.stringify(rest)));
 }
 export const skipWeek = (s: Session, week: number) => updateDoc(doc(col, s.id), { skip: [...new Set([...(s.skip ?? []), week])] });

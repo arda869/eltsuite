@@ -30,6 +30,7 @@ import { SymbolTool } from '../editor/Symbols';
 import { ProsodyTool } from '../editor/Prosody';
 import { StorageCard } from '../components/StorageCard';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
+import { CalendarSettings } from './timetable/CalendarSettings';
 
 // Everything about you and how ELT Suite behaves for you, in one place.
 
@@ -192,6 +193,12 @@ export function SettingsPage() {
         </Section>
 
         {teacher && user && <OrgProfile uid={user.uid} />}
+
+        {teacher && user && (
+          <Section icon="calendar" title="Calendar">
+            <CalendarSettings uid={user.uid} owner={isOwner()} Row={Row} Toggle={Toggle} />
+          </Section>
+        )}
 
         <Section icon="message" title="Messages">
           <Row title="Enter to send" hint="Off: Enter starts a new line, and you send with the button">

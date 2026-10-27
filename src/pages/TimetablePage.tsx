@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
@@ -7,7 +7,8 @@ import { useTeacherClasses } from '../lib/coteach';
 import { useClassDetails } from './TeacherHome';
 import { theme } from '../lib/themes';
 import { addSession, isNow, occurrences, removeSession, restoreSession, saveMyZone, saveSession, setSessionLive, setSessionZone, skipWeek, useTeacherSessions, whenText, zoneOf, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
-import { localZone, shiftInZone } from '../lib/tz';
+import { fromFields, localZone, shiftInZone } from '../lib/tz';
+import { useGcalSetting, useGcalSync } from '../lib/gcal';
 import { NoRoomError, openCall, takeRoom } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
 import { useDirectory } from '../lib/directory';
@@ -75,7 +76,7 @@ function useNarrow() {
   return n;
 }
 const copyOf = (s: Session): Omit<Session, 'id'> => {
-  const { id: _id, at: _at, ...rest } = s;
+  const { id: _id, at: _at, gcal: _g, ...rest } = s;
   return { ...rest, live: null, skip: [] };
 };
 
@@ -91,14 +92,18 @@ export function TimetablePage() {
   const dirx = useDirectory();
   const colleagues = dirx?.groups.find((g) => g.id === 'colleagues')?.people ?? [];
 
-  const [view, setViewNow] = useState<View>(() => (store.get('view') as View) || (narrowNow() ? 'day' : 'week'));
-  const [anchor, setAnchor] = useState(() => startOfDay(Date.now()));
+  // eltsuite.com/timetable?day=2026-10-29 (the link in Google Calendar) opens that day.
+  const [params] = useSearchParams();
+  const linked = /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') ?? '') ? startOfDay(fromFields(params.get('day')!, '12:00', localZone())) : null;
+  const [view, setViewNow] = useState<View>(() => (linked ? 'day' : (store.get('view') as View) || (narrowNow() ? 'day' : 'week')));
+  const [anchor, setAnchor] = useState(() => linked ?? startOfDay(Date.now()));
   const [dir, setDir] = useState(0);
   const [side, setSide] = useState(() => store.get('side') !== '0');
   const [drawer, setDrawer] = useState(false);
   const [hidden, setHidden] = useState<string[]>(() => (store.get('hidden') ?? '').split(',').filter(Boolean));
   const [lastClass, setLastClass] = useState(() => store.get('class'));
   const [pending, setPending] = useState<{ start: number; end: number; at: Anchor; title?: string } | null>(null);
+  const [reveal, setReveal] = useState<number | null>(null);
   const [hold, setHold] = useState<{ key: string; start: number; mins: number } | null>(null);
   const [picked, setPicked] = useState<{ ev: GridEv; at: Anchor } | null>(null);
   const [more, setMore] = useState<{ day: number; list: GridEv[]; at: Anchor } | null>(null);
@@ -120,6 +125,17 @@ export function TimetablePage() {
   }, []);
 
   const cls = (id?: string | null) => active.find((c) => c.id === id);
+  // Google Calendar: everything in this timetable, kept up to date while it is open.
+  const gset = useGcalSetting(uid);
+  const lessonOf = (s: Session) => (s.itemId ? (items[s.classId ?? ''] ?? []).find((i) => i.id === s.itemId)?.title : undefined);
+  const sync = useGcalSync(
+    uid,
+    sessions.map((s) => {
+      const c = cls(s.classId);
+      return { s, extras: { className: c?.name, lessonTitle: lessonOf(s), video: s.kind === 'class' && s.online && c?.video?.url ? { url: c.video.url, label: 'Class video room' } : null } };
+    }),
+    gset,
+  );
   const mine = (o: Occurrence) => o.s.owner === uid || !!cls(o.s.classId);
   const colorOf = (o: Occurrence) => (o.s.kind === 'class' ? theme(cls(o.s.classId)?.themeColor).accent : 'var(--ink)');
   const subOf = (o: Occurrence) => (o.s.kind === 'class' ? cls(o.s.classId)?.name ?? '' : (o.s.attendees ?? []).length ? `Meeting with ${[o.s.owner !== uid ? o.s.ownerName : '', ...(o.s.attendees ?? []).filter((a) => a !== uid).map((a) => o.s.names?.[a] ?? 'a colleague')].filter(Boolean).join(', ')}` : 'Meeting');
@@ -153,7 +169,7 @@ export function TimetablePage() {
     store.set('hidden', n.join(','));
     return n;
   });
-  const say = (text: string, undo?: Toast['undo']) => setToast({ id: Date.now(), text, undo });
+  const say = (text: string, undo?: Toast['undo']) => setToast({ id: Date.now(), text, undo: undo && (() => (sync.wake(), undo())) });
   const fresh = (): Partial<Session> => ({ kind: active.length ? 'class' : 'meeting', start: niceStart(anchor), mins: 60, weeks: 1, online: true, classId: (lastClass && cls(lastClass) ? lastClass : active[0]?.id) ?? null });
   const askScope = (verb: string, ev: GridEv) => new Promise<'one' | 'all' | null>((resolve) => setScope({ verb, title: ev.o.s.title || 'Untitled', day: shortDay(ev.o.start), resolve }));
   const edit = (ev: GridEv) => {
@@ -164,6 +180,7 @@ export function TimetablePage() {
 
   // Moving a session, or making it longer or shorter. A weekly one asks: this one, or every week?
   const change = async (ev: GridEv, start: number, mins: number) => {
+    sync.wake();
     closeAll();
     const o = ev.o;
     const s = o.s;
@@ -200,6 +217,7 @@ export function TimetablePage() {
   const takeOut = async (ev: GridEv) => {
     const s = ev.o.s;
     if (!ev.edit || s.id.startsWith('i:')) return;
+    sync.wake();
     closeAll();
     try {
       if ((s.weeks ?? 1) > 1) {
@@ -301,6 +319,7 @@ export function TimetablePage() {
               <span>Meetings</span>
             </label>
           </div>
+          <GcalStatus sync={sync} />
         </aside>
         {drawer && <div className="ttb-drawer-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
         <section className="ttb-main" aria-label="Timetable">
@@ -333,7 +352,7 @@ export function TimetablePage() {
           </header>
           <div className="ttb-view" key={view}>
             {view === 'day' || view === 'week' ? (
-              <TimeGrid days={days} evs={evs} pending={pending} hold={hold} picked={pickedKey} dir={dir} onCreate={onCreate} onPick={onPick} onChange={(ev, s, m) => void change(ev, s, m)} onDay={(d) => (jump(d), setView('day'))} />
+              <TimeGrid days={days} evs={evs} reveal={reveal} pending={pending} hold={hold} picked={pickedKey} dir={dir} onCreate={onCreate} onPick={onPick} onChange={(ev, s, m) => void change(ev, s, m)} onDay={(d) => (jump(d), setView('day'))} />
             ) : view === 'month' ? (
               <MonthGrid days={days} month={monthStart(anchor)} evs={evs} hold={hold} picked={pickedKey} dir={dir} onDay={(d) => (jump(d), setView('day'))} onCreate={(d, at) => { const st = niceStart(d); onCreate(st, st + 3600e3, at); }} onPick={onPick} onMore={(day, list, at) => (setPicked(null), setPending(null), setMore({ day, list, at }))} onMove={(ev, st) => void change(ev, st, Math.round((ev.o.end - ev.o.start) / 60000))} />
             ) : (
@@ -355,6 +374,7 @@ export function TimetablePage() {
             lastClass={lastClass}
             me={me}
             onDone={(t, c) => {
+              sync.wake();
               setPending(null);
               if (c) (setLastClass(c), store.set('class', c));
               if (t) say(`Added “${t}”`);
@@ -394,7 +414,10 @@ export function TimetablePage() {
           items={items}
           me={me}
           onClose={() => setEditing(null)}
-          onSaved={(t) => {
+          onSaved={(t, st) => {
+            sync.wake();
+            if (st < from || st >= to) jump(startOfDay(st));
+            setReveal(st);
             if (editing.classId) (setLastClass(editing.classId), store.set('class', editing.classId));
             say(editing.id ? `Saved “${t}”` : `Added “${t}”`);
           }}
@@ -403,6 +426,32 @@ export function TimetablePage() {
       {scope && <ScopeAsk req={scope} onDone={() => setScope(null)} />}
       {help && <Shortcuts onClose={() => setHelp(false)} />}
       {toast && <ToastBar toast={toast} onDone={() => setToast(null)} />}
+    </div>
+  );
+}
+
+// Where Google Calendar stands, at the foot of the side.
+function GcalStatus({ sync }: { sync: ReturnType<typeof useGcalSync> }) {
+  if (sync.state === 'unset') return null;
+  if (sync.state === 'off')
+    return (
+      <Link to="/settings#set-calendar" className="ttb-gcal off">
+        <UiIcon name="calendar" size={15} /> Add to Google Calendar
+      </Link>
+    );
+  const text = sync.state === 'busy' ? 'Updating Google Calendar…' : sync.state === 'waiting' ? `${sync.waiting} ${sync.waiting === 1 ? 'change' : 'changes'} for Google Calendar` : sync.state === 'error' ? sync.error || 'Google Calendar could not be updated.' : 'Google Calendar is up to date';
+  return (
+    <div className={'ttb-gcal ' + sync.state} role="status">
+      <i aria-hidden="true" />
+      <span>
+        {text}
+        {sync.email && sync.state === 'idle' && <span className="hint">{sync.email}</span>}
+      </span>
+      {(sync.state === 'waiting' || sync.state === 'error') && (
+        <button type="button" className="btn small-btn" onClick={sync.wake}>
+          {sync.state === 'error' ? 'Try again' : 'Send now'}
+        </button>
+      )}
     </div>
   );
 }

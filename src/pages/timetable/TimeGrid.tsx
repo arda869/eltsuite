@@ -29,6 +29,7 @@ export function TimeGrid({
   onPick,
   onChange,
   onDay,
+  reveal,
 }: {
   days: number[];
   evs: GridEv[];
@@ -40,6 +41,7 @@ export function TimeGrid({
   onPick: (ev: GridEv, at: Anchor) => void;
   onChange: (ev: GridEv, start: number, mins: number) => void;
   onDay: (day: number) => void;
+  reveal?: number | null;
 }) {
   const scroll = useRef<HTMLDivElement>(null);
   const cols = useRef<(HTMLDivElement | null)[]>([]);
@@ -71,6 +73,13 @@ export function TimeGrid({
     el.scrollTop = Math.max(0, h * HOUR);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A session just added out of sight: the hours scroll to it.
+  useEffect(() => {
+    const el = scroll.current;
+    if (!el || !reveal) return;
+    const y = minutesOf(reveal) * PX;
+    if (y < el.scrollTop || y > el.scrollTop + el.clientHeight - HOUR) el.scrollTo({ top: Math.max(0, y - HOUR), behavior: 'smooth' });
+  }, [reveal]);
   const set = (d: Drag | null) => ((dragRef.current = d), setDrag(d));
   const colAt = (x: number) => {
     let best = 0;

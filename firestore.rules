@@ -527,13 +527,20 @@ service cloud.firestore {
       return signedIn() && (d.owner == request.auth.uid || request.auth.uid in d.get('attendees', [])
         || (d.get('classId', null) is string && (viewsClass(d.classId) || (learnerAccount() && myClass() == d.classId))));
     }
+    // gcal holds each teacher's Google Calendar event for the session: everyone sets only their own.
+    function gcalOwnOnly() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['gcal'])
+        || request.resource.data.get('gcal', {}).diff(resource.data.get('gcal', {})).affectedKeys().hasOnly([request.auth.uid]);
+    }
     match /sessions/{id} {
       allow read: if sessionReader(resource.data);
       allow create: if isTeacher() && request.resource.data.owner == request.auth.uid
-        && (request.resource.data.get('classId', null) == null || teachesClass(request.resource.data.classId));
-      allow update: if signedIn() && (resource.data.owner == request.auth.uid
+        && (request.resource.data.get('classId', null) == null || teachesClass(request.resource.data.classId))
+        && request.resource.data.get('gcal', {}).keys().hasOnly([request.auth.uid]);
+      allow update: if signedIn() && gcalOwnOnly() && (resource.data.owner == request.auth.uid
         || (resource.data.get('classId', null) is string && teachesClass(resource.data.classId))
-        || (request.auth.uid in resource.data.get('attendees', []) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['live'])));
+        || (request.auth.uid in resource.data.get('attendees', []) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['live', 'gcal']))
+        || (isTeacher() && sessionReader(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gcal'])));
       allow delete: if signedIn() && (resource.data.owner == request.auth.uid || (resource.data.get('classId', null) is string && teachesClass(resource.data.classId)));
     }
 

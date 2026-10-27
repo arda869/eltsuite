@@ -16,7 +16,7 @@ const wallText = (hm: string) => {
 };
 const MINS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
 
-export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { init: Partial<Session>; classes: ClassDoc[]; items: Record<string, { id: string; title: string; type: string }[]>; me: { uid: string; name: string }; onClose: () => void; onSaved?: (title: string) => void }) {
+export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { init: Partial<Session>; classes: ClassDoc[]; items: Record<string, { id: string; title: string; type: string }[]>; me: { uid: string; name: string }; onClose: () => void; onSaved?: (title: string, start: number) => void }) {
   const dir = useDirectory();
   const colleagues = dir?.groups.find((g) => g.id === 'colleagues')?.people ?? [];
   const first = init.start ?? niceStart(Date.now());
@@ -50,7 +50,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
     try {
       if (s.id) await saveSession(base as Session);
       else await addSession({ ...base, owner: me.uid, ownerName: me.name, live: null } as Omit<Session, 'id'>);
-      onSaved?.(title);
+      onSaved?.(title, start);
       onClose();
     } catch (e) {
       console.error(e);
