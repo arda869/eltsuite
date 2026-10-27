@@ -1,112 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
 import { chatTitle, useChats, type Chat, type Person } from '../lib/chat';
-import { callOn, declineCall, endChatCall, NoRoomError, openCall, ringing, startChatCall, useOpenCall, type CallKind, type OpenCall } from '../lib/calls';
-import { setActivity, quietNow } from '../lib/status';
+import { callOn, declineCall, NoRoomError, openCall, ringing, startChatCall, useCallElsewhere, useOpenCall, type CallKind } from '../lib/calls';
+import { setCallMe } from '../lib/callEngine';
+import { CallScreen } from './CallScreen';
+import { useLocation } from 'react-router-dom';
+import { quietNow } from '../lib/status';
 import { tell } from '../lib/ask';
-import { setSessionLive, useTeacherSessions, type Session } from '../lib/sessions';
+import { useTeacherSessions } from '../lib/sessions';
 import { UiIcon } from './UiIcon';
 import { PersonFace } from './avatars';
 
 // Rooms: the call window (beside the work, or the whole screen), the ringing card for a call
 // coming in, and the call buttons in a chat.
 
-type Size = 'side' | 'full' | 'small';
-type Frame = { destroy: () => Promise<void>; on: (e: string, f: (ev?: unknown) => void) => void; join: (o: object) => Promise<unknown>; participantCounts?: () => { present: number } };
-
-export function CallWindow({ call, onLeave, onAlone }: { call: OpenCall; onLeave: () => void; onAlone?: () => void }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState<Size>(() => (window.innerWidth < 700 ? 'full' : 'side'));
-  const [err, setErr] = useState('');
-  const others = useRef(0);
-  const leave = useRef(onLeave);
-  leave.current = onLeave;
-  const alone = useRef(onAlone);
-  alone.current = onAlone;
-  useEffect(() => {
-    let frame: Frame | null = null;
-    let dead = false;
-    setActivity({ call: true });
-    void (async () => {
-      try {
-        const Daily = (await import('@daily-co/daily-js')).default;
-        if (dead || !box.current) return;
-        // Daily's own screen, in the app's colours, so no lines or corners of another look show.
-        const css = getComputedStyle(document.documentElement);
-        const v = (k: string, d: string) => css.getPropertyValue(k).trim() || d;
-        const paper = v('--paper', '#ffffff');
-        frame = Daily.createFrame(box.current, {
-          showLeaveButton: true,
-          showFullscreenButton: false,
-          iframeStyle: { width: '100%', height: '100%', border: '0', display: 'block', background: paper },
-          theme: {
-            colors: {
-              accent: v('--accent', '#d98f63'),
-              accentText: '#ffffff',
-              background: paper,
-              backgroundAccent: v('--surface', '#f4f4f3'),
-              baseText: v('--ink', '#33302c'),
-              border: paper,
-              mainAreaBg: '#1f1d1b',
-              mainAreaBgAccent: '#2b2926',
-              mainAreaText: '#ffffff',
-              supportiveText: v('--muted', '#696969'),
-            },
-          },
-        } as object) as unknown as Frame;
-        frame.on('participant-counts-updated', (ev) => (others.current = Math.max(0, ((ev as { participantCounts?: { present?: number } })?.participantCounts?.present ?? 1) - 1)));
-        frame.on('left-meeting', () => {
-          if (others.current === 0) alone.current?.();
-          leave.current();
-        });
-        await frame.join({ url: call.url, userName: auth0Name(), ...(call.token ? { token: call.token } : {}), startVideoOff: call.kind === 'audio', startAudioOff: false });
-      } catch (e) {
-        console.error(e);
-        setErr('The call could not be opened. Check your connection and allow the microphone, then try again.');
-      }
-    })();
-    return () => {
-      setActivity({ call: null });
-      dead = true;
-      void frame?.destroy();
-    };
-  }, [call.url]); // eslint-disable-line react-hooks/exhaustive-deps
-  const next: Record<Size, Size> = { side: 'full', full: 'small', small: 'side' };
-  return createPortal(
-    <div className={'vc vc-' + size} role="dialog" aria-label={`Call: ${call.title}`}>
-      <header className="vc-bar">
-        <span className="vc-live" aria-hidden="true" />
-        <span className="vc-t">
-          <b>{call.title}</b>
-          {call.sub && <span className="hint">{call.sub}</span>}
-        </span>
-        <span style={{ flex: 1 }} />
-        <button type="button" className="dp-ib" onClick={() => setSize(size === 'small' ? 'side' : 'small')} aria-label={size === 'small' ? 'Larger' : 'Smaller'} data-tip={size === 'small' ? 'Larger' : 'Smaller, in the corner'}>
-          <UiIcon name={size === 'small' ? 'fullscreen' : 'fullscreenOff'} size={15} />
-        </button>
-        {size !== 'small' && (
-          <button type="button" className="dp-ib" onClick={() => setSize(next[size])} aria-label={size === 'full' ? 'Beside your work' : 'Whole screen'} data-tip={size === 'full' ? 'Beside your work' : 'Whole screen'}>
-            <UiIcon name="present" size={15} />
-          </button>
-        )}
-        <button type="button" className="vc-hang" onClick={() => (others.current === 0 && alone.current?.(), leave.current())} aria-label="Leave the call" data-tip="Leave the call">
-          <UiIcon name="phone" size={15} />
-        </button>
-      </header>
-      {err ? <p className="hint vc-err">{err}</p> : <div className="vc-frame" ref={box} />}
-    </div>,
-    document.body,
-  );
-}
-let nameNow = '';
-const auth0Name = () => nameNow || 'Guest';
-
 // Everywhere in the app: the call you have open, and calls coming in to you.
 export function CallHost() {
   const { user, profile } = useAuth();
+  const loc = useLocation();
   const me = profile?.role === 'learner' ? profile.learnerId : user?.uid;
-  nameNow = (profile?.role === 'learner' ? profile.displayName : user?.displayName) || user?.email?.split('@')[0] || 'Guest';
+  // In a call, everyone shows by their name and picture as they are in ELT Suite.
+  useEffect(() => {
+    if (!user) return;
+    const learner = profile?.role === 'learner';
+    setCallMe({ name: (learner ? profile?.displayName : user.displayName) || user.email?.split('@')[0] || 'Guest', key: me, role: learner ? 'learner' : 'teacher', avatar: profile?.avatar, photo: user.photoURL ?? undefined });
+  }, [user, profile, me]);
   const chats = useChats(me);
   const open = useOpenCall();
   const [, tick] = useState(0);
@@ -139,7 +58,8 @@ export function CallHost() {
   }, [first?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
-      {open && <CallWindow call={open} onLeave={() => openCall(null)} onAlone={openChat ? () => void endChatCall(openChat) : open.sessionId ? () => endMeeting(sessions, open.sessionId!) : undefined} />}
+      {open && !loc.pathname.startsWith('/call/') && <CallScreen />}
+      {!open && <CallElsewhere />}
       {meetings.slice(0, 1).map((x) =>
         createPortal(
           <div key={x.id} className="ring" role="alertdialog" aria-label={`${x.title} has started`}>
@@ -154,7 +74,7 @@ export function CallHost() {
             <button type="button" className="ring-no" onClick={() => setWaved((w) => [...w, x.id + x.live!.at])} aria-label="Not now" data-tip="Not now">
               <UiIcon name="phone" size={17} />
             </button>
-            <button type="button" className="ring-yes" onClick={() => openCall({ url: x.live!.url, title: x.title, kind: 'video', sessionId: x.id, sub: 'Meeting' })} aria-label="Join" data-tip="Join">
+            <button type="button" className="ring-yes" onClick={() => openCall({ url: x.live!.url, title: x.title, kind: 'video', sessionId: x.id, sub: 'Meeting', code: (x.live as { code?: string }).code })} aria-label="Join" data-tip="Join">
               <UiIcon name="video" size={17} />
             </button>
           </div>,
@@ -177,7 +97,7 @@ export function CallHost() {
               <button type="button" className="ring-no" onClick={() => void declineCall(c, me)} aria-label="Decline" data-tip="Decline">
                 <UiIcon name="phone" size={17} />
               </button>
-              <button type="button" className="ring-yes" onClick={() => openCall({ url: k.url, title: chatTitle(c, me), kind: k.kind, chatId: c.id })} aria-label="Answer" data-tip="Answer">
+              <button type="button" className="ring-yes" onClick={() => openCall({ url: k.url, title: chatTitle(c, me), kind: k.kind, chatId: c.id, code: k.code })} aria-label="Answer" data-tip="Answer">
                 <UiIcon name={k.kind === 'video' ? 'video' : 'phone'} size={17} />
               </button>
             </div>,
@@ -188,10 +108,23 @@ export function CallHost() {
   );
 }
 
-const endMeeting = (list: Session[], id: string) => {
-  const x = list.find((m) => m.id === id);
-  if (x) void setSessionLive(x, null).catch(() => {});
-};
+// In another tab of ELT Suite while the call is open here or there: a handle at the right edge
+// brings the call over (it leaves the other tab and joins here).
+function CallElsewhere() {
+  const r = useCallElsewhere();
+  if (!r) return null;
+  return createPortal(
+    <button type="button" className="ks-edge" onClick={() => openCall(r)} aria-label={`Bring the call “${r.title}” to this tab`}>
+      <span className="ks-live" aria-hidden="true" />
+      <UiIcon name={r.kind === 'video' ? 'video' : 'phone'} size={17} />
+      <span className="ks-edge-t">
+        <b>{r.title}</b>
+        <span>Bring the call here</span>
+      </span>
+    </button>,
+    document.body,
+  );
+}
 
 // A soft two-note ring while a call comes in; silent while teaching or not to be disturbed.
 function useRing(on: boolean) {
@@ -233,7 +166,7 @@ export function CallButtons({ c, me, compact }: { c: Chat; me: Person; compact?:
     setBusy(true);
     try {
       const k = await startChatCall(c, me, kind);
-      openCall({ url: k.url, title: chatTitle(c, me.key), kind: k.kind, chatId: c.id });
+      openCall({ url: k.url, title: chatTitle(c, me.key), kind: k.kind, chatId: c.id, code: k.code });
       if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {});
     } catch (e) {
       void tell(e instanceof NoRoomError ? e.message : 'The call could not be started. Please try again.');
@@ -243,7 +176,7 @@ export function CallButtons({ c, me, compact }: { c: Chat; me: Person; compact?:
   };
   if (on && open?.chatId !== c.id)
     return (
-      <button type="button" className={'btn small-btn call-join' + (compact ? ' compact' : '')} onClick={() => openCall({ url: on.url, title: chatTitle(c, me.key), kind: on.kind, chatId: c.id })} data-tip={`${on.byName} started a call`}>
+      <button type="button" className={'btn small-btn call-join' + (compact ? ' compact' : '')} onClick={() => openCall({ url: on.url, title: chatTitle(c, me.key), kind: on.kind, chatId: c.id, code: on.code })} data-tip={`${on.byName} started a call`}>
         <span className="vc-live" aria-hidden="true" /> Join
       </button>
     );

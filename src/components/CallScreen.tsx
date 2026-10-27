@@ -4,6 +4,7 @@ import { callLinkUrl, leaveCall, popOutCall, useOpenCall, type OpenCall } from '
 import { callMe, clearAsk, clearError, host, raiseHand, removeOther, setBlur, toggleCam, toggleMic, toggleShare, turnOn, useDevice, useEngine, type EngineState, type HostCmd, type Tile } from '../lib/callEngine';
 import { Avatar } from './avatars';
 import { useDismiss } from '../lib/useDismiss';
+import './call.css';
 
 // Rooms: our own call screen. A window you can move and size anywhere, a small strip in the
 // corner, the whole screen, or a page of its own. Video tiles, names and pictures as in ELT Suite,
@@ -74,7 +75,7 @@ function Video({ track, mirror, fit = 'cover' }: { track?: MediaStreamTrack; mir
     v.srcObject = track ? new MediaStream([track]) : null;
     if (track) void v.play().catch(() => {});
   }, [track]);
-  return <video ref={ref} className={'cs-v' + (mirror ? ' mirror' : '')} style={{ objectFit: fit }} autoPlay playsInline muted />;
+  return <video ref={ref} className={'ks-v' + (mirror ? ' mirror' : '')} style={{ objectFit: fit }} autoPlay playsInline muted />;
 }
 // The others' voices: a call object leaves playing them to us.
 function Voices({ tiles }: { tiles: Tile[] }) {
@@ -98,33 +99,33 @@ function Voice({ track }: { track: MediaStreamTrack }) {
 }
 
 // One person: their video, or their picture; their name as it is in ELT Suite.
-function TileView({ t, s, big, teacher }: { t: Tile; s: EngineState; big?: boolean; teacher: boolean }) {
+function TileView({ t, s, big, teacher, small }: { t: Tile; s: EngineState; big?: boolean; teacher: boolean; small?: boolean }) {
   const [menu, setMenu] = useState(false);
   const menuRef = useDismiss<HTMLSpanElement>(menu, () => setMenu(false));
   const hand = !!s.hands[t.id];
   const speaking = s.speaker === t.id && t.audio && !t.local;
   return (
-    <div className={'cs-tile' + (speaking ? ' speaking' : '') + (big ? ' big' : '') + (t.video ? '' : ' novideo')}>
+    <div className={'ks-tile' + (speaking ? ' speaking' : '') + (big ? ' big' : '') + (t.video ? '' : ' novideo')}>
       {t.video && t.videoTrack ? <Video track={t.videoTrack} mirror={t.local} /> : <Face t={t} big={big} />}
-      <span className="cs-name">
+      <span className="ks-name">
         {!t.audio && (
-          <span className="cs-muted" aria-label="Microphone off">
+          <span className="ks-muted" aria-label="Microphone off">
             <I n="micOff" s={13} />
           </span>
         )}
-        <b>{t.local ? `${t.name} (you)` : t.name}</b>
-        {t.role === 'teacher' && <i className="cs-role">Teacher</i>}
-        {t.role === 'guest' && <i className="cs-role">Guest</i>}
+        <b>{t.local ? (small ? 'You' : `${t.name} (you)`) : t.name}</b>
+        {t.role === 'teacher' && !small && <i className="ks-role">Teacher</i>}
+        {t.role === 'guest' && <i className="ks-role">Guest</i>}
       </span>
       {hand && (
-        <span className="cs-hand" aria-label="Hand raised">
+        <span className="ks-hand" aria-label="Hand raised">
           <I n="hand" s={15} />
         </span>
       )}
-      {t.network === 'bad' && <span className="cs-net" data-tip="Weak connection" aria-label="Weak connection" />}
+      {t.network === 'bad' && <span className="ks-net" data-tip="Weak connection" aria-label="Weak connection" />}
       {teacher && !t.local && (
-        <span className="cs-tmenu" ref={menuRef}>
-          <button type="button" className="cs-tbtn" aria-label={`Options for ${t.name}`} onClick={() => setMenu((m) => !m)}>
+        <span className="ks-tmenu" ref={menuRef}>
+          <button type="button" className="ks-tbtn" aria-label={`Options for ${t.name}`} onClick={() => setMenu((m) => !m)}>
             <I n="more" s={16} />
           </button>
           {menu && <HostMenu t={t} close={() => setMenu(false)} />}
@@ -136,7 +137,7 @@ function TileView({ t, s, big, teacher }: { t: Tile; s: EngineState; big?: boole
 function Face({ t, big }: { t: Tile; big?: boolean }) {
   const size = big ? 96 : 64;
   return (
-    <span className="cs-face">
+    <span className="ks-face">
       {t.photo && !t.avatar ? <img src={t.photo} alt="" referrerPolicy="no-referrer" width={size} height={size} /> : <Avatar k={t.avatar} name={t.name} size={size} />}
     </span>
   );
@@ -144,7 +145,7 @@ function Face({ t, big }: { t: Tile; big?: boolean }) {
 function HostMenu({ t, close }: { t: Tile; close: () => void }) {
   const go = (cmd: HostCmd) => (host(cmd, t.id), close());
   return (
-    <span className="cs-menu" role="menu">
+    <span className="ks-menu" role="menu">
       {t.audio ? (
         <button role="menuitem" onClick={() => go('mute')}>
           <I n="micOff" s={16} /> Turn off their microphone
@@ -191,19 +192,19 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
   const remote = tiles.filter((t) => !t.local);
   const me = tiles.find((t) => t.local);
   let body: ReactNode;
-  if (!tiles.length) body = <div className="cs-wait">{s.status === 'error' ? s.error : 'Joining…'}</div>;
+  if (!tiles.length) body = <div className="ks-wait">{s.status === 'error' ? s.error : 'Joining…'}</div>;
   else if (sharer) {
     const wide = size.w > size.h * 1.2;
     body = (
-      <div className={'cs-share' + (wide ? ' wide' : '')}>
-        <div className="cs-screen">
+      <div className={'ks-share' + (wide ? ' wide' : '')}>
+        <div className="ks-screen">
           <Video track={sharer.screenTrack} fit="contain" />
-          <span className="cs-name">
+          <span className="ks-name">
             <b>{sharer.local ? 'You are sharing your screen' : `${sharer.name}’s screen`}</b>
           </span>
         </div>
         {!compact && (
-          <div className="cs-strip">
+          <div className="ks-strip">
             {tiles.map((t) => (
               <TileView key={t.id} t={t} s={s} teacher={teacher} />
             ))}
@@ -213,17 +214,17 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
     );
   } else if (remote.length === 0 && me) {
     body = (
-      <div className="cs-solo">
+      <div className="ks-solo">
         <TileView t={me} s={s} big teacher={teacher} />
-        <div className="cs-alone">Waiting for others to join</div>
+        <div className="ks-alone">Waiting for others to join</div>
       </div>
     );
   } else if (remote.length === 1 && me) {
     body = (
-      <div className="cs-pair">
+      <div className="ks-pair">
         <TileView t={remote[0]} s={s} big teacher={teacher} />
-        <div className="cs-pip">
-          <TileView t={me} s={s} teacher={teacher} />
+        <div className="ks-pip">
+          <TileView t={me} s={s} teacher={teacher} small />
         </div>
       </div>
     );
@@ -237,7 +238,7 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
       if (w * w > best.area) best = { cols, area: w * w };
     }
     body = (
-      <div className="cs-grid" style={{ gridTemplateColumns: `repeat(${best.cols}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${Math.ceil(n / best.cols)}, minmax(0, 1fr))` }}>
+      <div className="ks-grid" style={{ ['--cols' as string]: best.cols, ['--rows' as string]: Math.ceil(n / best.cols) }}>
         {tiles.map((t) => (
           <TileView key={t.id} t={t} s={s} teacher={teacher} />
         ))}
@@ -245,7 +246,7 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
     );
   }
   return (
-    <div className="cs-stage" ref={box}>
+    <div className="ks-stage" ref={box}>
       {body}
     </div>
   );
@@ -255,19 +256,19 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
 function People({ s, teacher, onClose }: { s: EngineState; teacher: boolean; onClose: () => void }) {
   const list = [...s.tiles].sort((a, b) => (s.hands[b.id] ? 1 : 0) - (s.hands[a.id] ? 1 : 0) || Number(b.local) - Number(a.local));
   return (
-    <aside className="cs-people" aria-label="People in the call">
+    <aside className="ks-people" aria-label="People in the call">
       <header>
         <b>People</b>
-        <span className="cs-count">{s.tiles.length}</span>
+        <span className="ks-count">{s.tiles.length}</span>
         <span style={{ flex: 1 }} />
-        <button type="button" className="cs-x" onClick={onClose} aria-label="Close">
+        <button type="button" className="ks-x" onClick={onClose} aria-label="Close">
           ×
         </button>
       </header>
       {teacher && s.tiles.length > 1 && (
-        <div className="cs-everyone">
-          <span className="cs-k">Everyone</span>
-          <span className="cs-ev-row">
+        <div className="ks-everyone">
+          <span className="ks-k">Everyone</span>
+          <span className="ks-ev-row">
             <button type="button" onClick={() => host('mute')}>
               <I n="micOff" s={15} /> Microphones off
             </button>
@@ -275,7 +276,7 @@ function People({ s, teacher, onClose }: { s: EngineState; teacher: boolean; onC
               <I n="camOff" s={15} /> Cameras off
             </button>
           </span>
-          <span className="cs-ev-row">
+          <span className="ks-ev-row">
             <button type="button" onClick={() => host('askMic')}>
               <I n="mic" s={15} /> Ask to turn on microphones
             </button>
@@ -288,24 +289,24 @@ function People({ s, teacher, onClose }: { s: EngineState; teacher: boolean; onC
       <ul>
         {list.map((t) => (
           <li key={t.id}>
-            <span className="cs-p-face">{t.photo && !t.avatar ? <img src={t.photo} alt="" referrerPolicy="no-referrer" width={32} height={32} /> : <Avatar k={t.avatar} name={t.name} size={32} />}</span>
-            <span className="cs-p-t">
+            <span className="ks-p-face">{t.photo && !t.avatar ? <img src={t.photo} alt="" referrerPolicy="no-referrer" width={32} height={32} /> : <Avatar k={t.avatar} name={t.name} size={32} />}</span>
+            <span className="ks-p-t">
               <b>{t.local ? `${t.name} (you)` : t.name}</b>
               <span className="hint">{t.role === 'teacher' ? 'Teacher' : t.role === 'learner' ? 'Learner' : 'Guest'}</span>
             </span>
             {s.hands[t.id] && (
-              <span className="cs-p-hand" aria-label="Hand raised">
+              <span className="ks-p-hand" aria-label="Hand raised">
                 <I n="hand" s={16} />
               </span>
             )}
-            <span className={'cs-p-st' + (t.audio ? '' : ' off')} aria-label={t.audio ? 'Microphone on' : 'Microphone off'}>
+            <span className={'ks-p-st' + (t.audio ? '' : ' off')} aria-label={t.audio ? 'Microphone on' : 'Microphone off'}>
               <I n={t.audio ? 'mic' : 'micOff'} s={16} />
             </span>
-            <span className={'cs-p-st' + (t.video ? '' : ' off')} aria-label={t.video ? 'Camera on' : 'Camera off'}>
+            <span className={'ks-p-st' + (t.video ? '' : ' off')} aria-label={t.video ? 'Camera on' : 'Camera off'}>
               <I n={t.video ? 'cam' : 'camOff'} s={16} />
             </span>
             {teacher && !t.local && (
-              <span className="cs-p-acts">
+              <span className="ks-p-acts">
                 {t.audio ? (
                   <button type="button" onClick={() => host('mute', t.id)} data-tip="Turn off their microphone" aria-label={`Turn off ${t.name}’s microphone`}>
                     <I n="micOff" s={15} />
@@ -342,60 +343,60 @@ function Controls({ s, call, people, setPeople, compact }: { s: EngineState; cal
   const cams = s.devices.filter((d) => d.kind === 'videoinput');
   const canShare = !!navigator.mediaDevices?.getDisplayMedia && !phoneNow();
   return (
-    <div className="cs-ctrl" role="toolbar" aria-label="Call controls">
-      <button type="button" className={'cs-b' + (s.mic ? '' : ' off')} onClick={toggleMic} aria-pressed={!s.mic} aria-label={s.mic ? 'Turn off your microphone' : 'Turn on your microphone'} data-tip={s.mic ? 'Microphone off (Ctrl D)' : 'Microphone on (Ctrl D)'}>
+    <div className="ks-ctrl" role="toolbar" aria-label="Call controls">
+      <button type="button" className={'ks-b' + (s.mic ? '' : ' off')} onClick={toggleMic} aria-pressed={!s.mic} aria-label={s.mic ? 'Turn off your microphone' : 'Turn on your microphone'} data-tip={s.mic ? 'Microphone off (Ctrl D)' : 'Microphone on (Ctrl D)'}>
         <I n={s.mic ? 'mic' : 'micOff'} />
       </button>
-      <button type="button" className={'cs-b' + (s.cam ? '' : ' off')} onClick={toggleCam} aria-pressed={!s.cam} aria-label={s.cam ? 'Turn off your camera' : 'Turn on your camera'} data-tip={s.cam ? 'Camera off (Ctrl E)' : 'Camera on (Ctrl E)'}>
+      <button type="button" className={'ks-b' + (s.cam ? '' : ' off')} onClick={toggleCam} aria-pressed={!s.cam} aria-label={s.cam ? 'Turn off your camera' : 'Turn on your camera'} data-tip={s.cam ? 'Camera off (Ctrl E)' : 'Camera on (Ctrl E)'}>
         <I n={s.cam ? 'cam' : 'camOff'} />
       </button>
       {!compact && canShare && (
-        <button type="button" className={'cs-b' + (s.sharing ? ' on' : '')} onClick={toggleShare} aria-pressed={s.sharing} aria-label={s.sharing ? 'Stop sharing your screen' : 'Share your screen'} data-tip={s.sharing ? 'Stop sharing' : 'Share your screen'}>
+        <button type="button" className={'ks-b' + (s.sharing ? ' on' : '')} onClick={toggleShare} aria-pressed={s.sharing} aria-label={s.sharing ? 'Stop sharing your screen' : 'Share your screen'} data-tip={s.sharing ? 'Stop sharing' : 'Share your screen'}>
           <I n="share" />
         </button>
       )}
       {!compact && (
-        <button type="button" className={'cs-b' + (hand ? ' on' : '')} onClick={() => raiseHand(!hand)} aria-pressed={hand} aria-label={hand ? 'Lower your hand' : 'Raise your hand'} data-tip={hand ? 'Lower your hand' : 'Raise your hand'}>
+        <button type="button" className={'ks-b' + (hand ? ' on' : '')} onClick={() => raiseHand(!hand)} aria-pressed={hand} aria-label={hand ? 'Lower your hand' : 'Raise your hand'} data-tip={hand ? 'Lower your hand' : 'Raise your hand'}>
           <I n="hand" />
         </button>
       )}
       {!compact && (
-        <button type="button" className={'cs-b' + (people ? ' on' : '')} onClick={() => setPeople(!people)} aria-pressed={people} aria-label="People" data-tip="People">
+        <button type="button" className={'ks-b' + (people ? ' on' : '')} onClick={() => setPeople(!people)} aria-pressed={people} aria-label="People" data-tip="People">
           <I n="people" />
-          {Object.keys(s.hands).length > 0 && <i className="cs-dot" />}
+          {Object.keys(s.hands).length > 0 && <i className="ks-dot" />}
         </button>
       )}
       {!compact && (
-        <span className="cs-moreanchor" ref={moreRef}>
-          <button type="button" className={'cs-b' + (more ? ' on' : '')} onClick={() => setMore((m) => !m)} aria-haspopup="menu" aria-expanded={more} aria-label="More" data-tip="More">
+        <span className="ks-moreanchor" ref={moreRef}>
+          <button type="button" className={'ks-b' + (more ? ' on' : '')} onClick={() => setMore((m) => !m)} aria-haspopup="menu" aria-expanded={more} aria-label="More" data-tip="More">
             <I n="more" />
           </button>
           {more && (
-            <span className="cs-menu up" role="menu">
-              {mics.length > 0 && <span className="cs-k">Microphone</span>}
+            <span className="ks-menu up" role="menu">
+              {mics.length > 0 && <span className="ks-k">Microphone</span>}
               {mics.map((d) => (
                 <button key={d.id} role="menuitemradio" aria-checked={s.mics === d.id} onClick={() => void useDevice('audioinput', d.id)}>
-                  <span className="cs-tick">{s.mics === d.id && <I n="check" s={14} />}</span>
+                  <span className="ks-tick">{s.mics === d.id && <I n="check" s={14} />}</span>
                   {d.label}
                 </button>
               ))}
-              {cams.length > 0 && <span className="cs-k">Camera</span>}
+              {cams.length > 0 && <span className="ks-k">Camera</span>}
               {cams.map((d) => (
                 <button key={d.id} role="menuitemradio" aria-checked={s.cams === d.id} onClick={() => void useDevice('videoinput', d.id)}>
-                  <span className="cs-tick">{s.cams === d.id && <I n="check" s={14} />}</span>
+                  <span className="ks-tick">{s.cams === d.id && <I n="check" s={14} />}</span>
                   {d.label}
                 </button>
               ))}
-              <span className="cs-k">Video</span>
+              <span className="ks-k">Video</span>
               <button role="menuitemcheckbox" aria-checked={s.blur} onClick={() => void setBlur(!s.blur)}>
-                <span className="cs-tick">{s.blur && <I n="check" s={14} />}</span>
+                <span className="ks-tick">{s.blur && <I n="check" s={14} />}</span>
                 Blur my background
               </button>
               {call.code && (
                 <>
-                  <span className="cs-k">Link</span>
+                  <span className="ks-k">Link</span>
                   <button role="menuitem" onClick={() => (void navigator.clipboard?.writeText(callLinkUrl(call.code!)), setMore(false))}>
-                    <span className="cs-tick">
+                    <span className="ks-tick">
                       <I n="link" s={14} />
                     </span>
                     Copy the call’s link
@@ -406,7 +407,7 @@ function Controls({ s, call, people, setPeople, compact }: { s: EngineState; cal
           )}
         </span>
       )}
-      <button type="button" className="cs-b cs-leave" onClick={() => leaveCall()} aria-label="Leave the call" data-tip="Leave the call">
+      <button type="button" className="ks-b ks-leave" onClick={() => leaveCall()} aria-label="Leave the call" data-tip="Leave the call">
         <I n="leave" />
         {!compact && <span>Leave</span>}
       </button>
@@ -480,9 +481,9 @@ export function CallScreen({ page }: { page?: boolean }) {
     const up = () => {
       window.removeEventListener('pointermove', mv);
       window.removeEventListener('pointerup', up);
-      document.body.classList.remove('cs-dragging');
+      document.body.classList.remove('ks-dragging');
     };
-    document.body.classList.add('cs-dragging');
+    document.body.classList.add('ks-dragging');
     window.addEventListener('pointermove', mv);
     window.addEventListener('pointerup', up);
   };
@@ -499,25 +500,25 @@ export function CallScreen({ page }: { page?: boolean }) {
   const style = m === 'float' ? { left: rect.x, top: rect.y, width: rect.w, height: rect.h } : undefined;
   const speaker = s.tiles.find((t) => t.id === s.speaker && !t.local);
   const ui = (
-    <div className={'cs cs-' + m + (people && m !== 'mini' ? ' with-people' : '')} style={style} role="dialog" aria-label={`Call: ${call.title}`}>
+    <div className={'ks ks-' + m + (people && m !== 'mini' ? ' with-people' : '')} style={style} role="dialog" aria-label={`Call: ${call.title}`}>
       <Voices tiles={s.tiles} />
       {m === 'mini' ? (
-        <div className="cs-minibar" onDoubleClick={() => setMode('float')}>
-          <span className="cs-live" aria-hidden="true" />
-          <span className="cs-mini-t">
+        <div className="ks-minibar" onDoubleClick={() => setMode('float')}>
+          <span className="ks-live" aria-hidden="true" />
+          <span className="ks-mini-t">
             <b>{call.title}</b>
             <span>{speaker ? `${speaker.name} is speaking` : sub}</span>
           </span>
           <Controls s={s} call={call} people={false} setPeople={() => {}} compact />
-          <button type="button" className="cs-h" onClick={() => setMode(phoneNow() ? 'full' : 'float')} aria-label="Larger" data-tip="Larger">
+          <button type="button" className="ks-h" onClick={() => setMode(phoneNow() ? 'full' : 'float')} aria-label="Larger" data-tip="Larger">
             <I n="float" s={17} />
           </button>
         </div>
       ) : (
         <>
-          <header className="cs-head" onPointerDown={(e) => dragFrom(e, 'move')} onDoubleClick={(e) => !page && !(e.target as HTMLElement).closest('button') && setMode(mode === 'full' ? 'float' : 'full')}>
-            <span className="cs-live" aria-hidden="true" />
-            <span className="cs-title">
+          <header className="ks-head" onPointerDown={(e) => dragFrom(e, 'move')} onDoubleClick={(e) => !page && !(e.target as HTMLElement).closest('button') && setMode(mode === 'full' ? 'float' : 'full')}>
+            <span className="ks-live" aria-hidden="true" />
+            <span className="ks-title">
               <b>{call.title}</b>
               <span>
                 {call.sub ? `${call.sub} · ` : ''}
@@ -526,48 +527,48 @@ export function CallScreen({ page }: { page?: boolean }) {
             </span>
             <span style={{ flex: 1 }} />
             {call.code && (
-              <button type="button" className="cs-h" onClick={copy} aria-label="Copy the call’s link" data-tip={copied ? 'Copied' : 'Copy the call’s link'}>
+              <button type="button" className="ks-h" onClick={copy} aria-label="Copy the call’s link" data-tip={copied ? 'Copied' : 'Copy the call’s link'}>
                 <I n={copied ? 'check' : 'link'} s={17} />
               </button>
             )}
             {!page && (
               <>
-                <button type="button" className="cs-h" onClick={() => popOutCall()} aria-label="Open in a tab of its own" data-tip="Open in a tab of its own">
+                <button type="button" className="ks-h" onClick={() => popOutCall()} aria-label="Open in a tab of its own" data-tip="Open in a tab of its own">
                   <I n="tab" s={17} />
                 </button>
-                <button type="button" className="cs-h" onClick={() => setMode(mode === 'full' ? 'float' : 'full')} aria-label={mode === 'full' ? 'Smaller window' : 'Whole screen'} data-tip={mode === 'full' ? 'Smaller window' : 'Whole screen'}>
+                <button type="button" className="ks-h" onClick={() => setMode(mode === 'full' ? 'float' : 'full')} aria-label={mode === 'full' ? 'Smaller window' : 'Whole screen'} data-tip={mode === 'full' ? 'Smaller window' : 'Whole screen'}>
                   <I n={mode === 'full' ? 'float' : 'full'} s={17} />
                 </button>
-                <button type="button" className="cs-h" onClick={() => setMode('mini')} aria-label="Shrink to the corner" data-tip="Shrink to the corner">
+                <button type="button" className="ks-h" onClick={() => setMode('mini')} aria-label="Shrink to the corner" data-tip="Shrink to the corner">
                   <I n="mini" s={17} />
                 </button>
               </>
             )}
           </header>
-          <div className="cs-body">
+          <div className="ks-body">
             <Stage s={s} teacher={teacher} />
             {people && <People s={s} teacher={teacher} onClose={() => setPeople(false)} />}
           </div>
           {s.ask && (
-            <div className="cs-ask" role="alertdialog" aria-label="A request from your teacher">
+            <div className="ks-ask" role="alertdialog" aria-label="A request from your teacher">
               <span>
                 <b>{s.ask.by}</b> asks you to turn on your {s.ask.what === 'mic' ? 'microphone' : 'camera'}
               </span>
-              <button type="button" className="cs-pill" onClick={() => clearAsk()}>
+              <button type="button" className="ks-pill" onClick={() => clearAsk()}>
                 Not now
               </button>
-              <button type="button" className="cs-pill primary" onClick={() => turnOn(s.ask!.what)}>
+              <button type="button" className="ks-pill primary" onClick={() => turnOn(s.ask!.what)}>
                 Turn it on
               </button>
             </div>
           )}
           {(note || (s.error && s.status === 'joined')) && (
-            <div className="cs-note" role="status" onClick={() => (clearAsk(), clearError())}>
+            <div className="ks-note" role="status" onClick={() => (clearAsk(), clearError())}>
               {note || s.error}
             </div>
           )}
           <Controls s={s} call={call} people={people} setPeople={setPeople} />
-          {m === 'float' && ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((d) => <span key={d} className={'cs-rz cs-rz-' + d} onPointerDown={(e) => dragFrom(e, d)} aria-hidden="true" />)}
+          {m === 'float' && ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map((d) => <span key={d} className={'ks-rz ks-rz-' + d} onPointerDown={(e) => dragFrom(e, d)} aria-hidden="true" />)}
         </>
       )}
     </div>

@@ -502,6 +502,14 @@ service cloud.firestore {
         && request.resource.data.by == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'by', 'usedAt', 'for']);
     }
+    // A call's own link (eltsuite.com/call/<code>): anyone with the code opens it, nobody can list
+    // them; the person who made it can change or remove it.
+    match /callLinks/{code} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn() && request.resource.data.by == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
+    }
     // The timetable: classes, meetings and one-to-ones. A class's sessions are seen by its
     // teachers and learners; a meeting by the people invited.
     function sessionReader(d) {

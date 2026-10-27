@@ -146,7 +146,7 @@ export function ChatDock() {
     if (chats.some((c) => c.last && c.last.by !== me && c.lastAt > (prev[c.id] ?? 0))) chime('in');
   }, [chats, me]);
 
-  const hidden = !me || isProxyTab() || phone || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || document.body.classList.contains('presenting');
+  const hidden = !me || isProxyTab() || phone || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || loc.pathname.startsWith('/call/') || document.body.classList.contains('presenting');
   if (hidden) return null;
   const list = chats ?? [];
   const unread = list.filter((c) => unreadIn(c, me!)).length;

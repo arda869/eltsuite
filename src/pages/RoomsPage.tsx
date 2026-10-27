@@ -5,7 +5,7 @@ import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { useTeacherClasses } from '../lib/coteach';
 import { chatTitle, useChats } from '../lib/chat';
-import { callOn, NoRoomError, openCall, takeRoom, useOpenCall } from '../lib/calls';
+import { callLinkUrl, callOn, makeCallLink, NoRoomError, openCall, takeRoom, useOpenCall } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
 import { isNow, occurrences, timeText, useTeacherSessions, whenText } from '../lib/sessions';
 import { startSession } from './TimetablePage';
@@ -32,8 +32,11 @@ export function RoomsPage() {
     setBusy(true);
     try {
       const r = await takeRoom('instant:' + uid);
-      setLink(r.url);
-      openCall({ url: r.url, title: 'Your call', kind: 'video', sub: 'Anyone with the link can join' });
+      // The link people get is ours: eltsuite.com/call/<code>.
+      const title = `${(user?.displayName || 'Teacher').split(' ')[0]}’s call`;
+      const code = await makeCallLink({ url: r.url, title, kind: 'video', byName: user?.displayName || 'Teacher' });
+      setLink(callLinkUrl(code));
+      openCall({ url: r.url, title, kind: 'video', sub: 'Anyone with the link can join', code });
     } catch (e) {
       void tell(e instanceof NoRoomError ? e.message : 'The call could not be started. Please try again.');
     } finally {

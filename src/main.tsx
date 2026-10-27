@@ -28,6 +28,7 @@ const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.D
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
 const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
 const LiveStartWatch = lazy(() => import('./components/LiveVideo').then((m) => ({ default: m.LiveStartWatch })));
+const CallPage = lazy(() => import('./pages/CallPage').then((m) => ({ default: m.CallPage })));
 const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
 const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
 const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
@@ -157,6 +158,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
+          <Route path="/call/:code" element={<CallPage />} />
           <Route path="/studio/task/:id" element={<TeacherOnly><TaskStudio /></TeacherOnly>} />
           <Route path="/studio/session/:id" element={<TeacherOnly><StudioSession /></TeacherOnly>} />
           <Route path="/studio/sound/:id" element={<TeacherOnly><SoundStudio /></TeacherOnly>} />

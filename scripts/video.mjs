@@ -82,3 +82,8 @@ for (let i = free; i < POOL; i++) {
   added++;
 }
 console.log(`Call rooms: ${added} added, ${gone} cleared, ${free + added} ready.`);
+
+// Call links point at a room for as long as a call lasts: old ones go.
+const links = await db.collection('callLinks').where('at', '<', Date.now() - 10 * 3600e3).get();
+for (const d of links.docs) await d.ref.delete();
+console.log(`Call links: ${links.size} old ones cleared.`);

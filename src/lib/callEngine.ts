@@ -110,7 +110,35 @@ async function devices() {
   }
 }
 
+declare const __BUILD__: string;
+// For the screenshots and tests in development only: a pretend call, with painted video.
+function pretend(call: OpenCall) {
+  const paint = (hue: number) => {
+    const c = document.createElement('canvas');
+    c.width = 640;
+    c.height = 400;
+    const g = c.getContext('2d')!;
+    const grad = g.createLinearGradient(0, 0, 640, 400);
+    grad.addColorStop(0, `hsl(${hue} 30% 42%)`);
+    grad.addColorStop(1, `hsl(${hue + 40} 35% 22%)`);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 640, 400);
+    g.fillStyle = 'rgba(255,255,255,.18)';
+    g.beginPath();
+    g.arc(320, 170, 70, 0, Math.PI * 2);
+    g.fill();
+    g.fillRect(200, 260, 240, 140);
+    return c.captureStream(5).getVideoTracks()[0];
+  };
+  const n = Number(new URLSearchParams(call.url.split('?')[1] ?? '').get('n') ?? 4);
+  const names = ['Mia Chan', 'Leo Wong', 'Sara Lopez', 'Ken Ito', 'Ana Silva', 'Tom Reed', 'Ivy Ho', 'Max Lee'];
+  const tiles: Tile[] = [{ id: 'me', name: me.name, local: true, owner: true, audio: true, video: true, screen: false, videoTrack: paint(30), role: me.role, avatar: me.avatar }];
+  for (let i = 0; i < n - 1; i++) tiles.push({ id: 'p' + i, name: names[i % names.length], local: false, owner: false, audio: i % 3 !== 1, video: i % 2 === 0, screen: false, videoTrack: i % 2 === 0 ? paint(180 + i * 40) : undefined, role: 'learner' });
+  emit({ ...blank(), status: 'joined', call, tiles, startedAt: Date.now() - 754000, speaker: n > 1 ? 'p0' : undefined, hands: n > 2 ? { p1: Date.now() } : {}, mic: true, cam: true });
+}
+
 export function startEngine(call: OpenCall) {
+  if (__BUILD__ === 'dev' && call.url.startsWith('mock:')) return (pretend(call), Promise.resolve());
   queue = queue.then(async () => {
     await stopNow();
     emit({ ...blank(), status: 'joining', call });

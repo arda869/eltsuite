@@ -1,5 +1,6 @@
 import { arrayUnion, collection, doc, getDoc, getDocs, limit, query, runTransaction, setDoc, updateDoc, where } from 'firebase/firestore';
 import { onEngineEnded, startEngine, stopEngine } from './callEngine';
+import { setActivity } from './status';
 import { useEffect, useState } from 'react';
 import { auth, db } from './firebase';
 import { chatTitle, sendMsg, type Chat, type Person } from './chat';
@@ -74,6 +75,8 @@ const bc: BroadcastChannel | null = typeof BroadcastChannel !== 'undefined' ? ne
 const say = (m: object) => bc?.postMessage({ ...m, tab });
 const set = (c: OpenCall | null) => {
   current = c;
+  // Colleagues see "On a call" while it lasts.
+  setActivity({ call: c ? true : null });
   subs.forEach((f) => f(c));
 };
 export function openCall(c: OpenCall | null) {
@@ -100,6 +103,8 @@ onEngineEnded(() => {
   say({ t: 'gone' });
 });
 export const openCallNow = () => current;
+declare const __BUILD__: string;
+if (__BUILD__ === 'dev') (window as unknown as { __openCall: typeof openCall }).__openCall = openCall;
 export function useOpenCall() {
   const [c, setC] = useState(current);
   useEffect(() => {
