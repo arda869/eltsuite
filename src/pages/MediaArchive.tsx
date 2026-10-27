@@ -321,11 +321,12 @@ export function MediaArchive() {
   const removeE = async (list: Entry[]) => {
     if (!list.length || !uid) return;
     const lessons = list.reduce((s, e) => s + (e.task?.uses.length ?? 0), 0);
-    if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}” from the library?` : `Remove ${list.length} items from the library?`} ${lessons ? 'Lessons that use them keep their copies, no longer linked.' : 'Lessons that use them keep them.'}`, { ok: 'Remove' }))) return;
+    const media = list.some((e) => e.item);
+    if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}”?` : `Remove ${list.length} items?`} ${media ? 'Pictures, recordings and videos are removed from the lessons that use them too, so they take no more space.' : ''}${lessons ? ' Tasks already in lessons stay there, no longer linked.' : ''}`.trim(), { ok: 'Remove' }))) return;
     list = list.filter((e) => !e.cls && !e.hand);
     if (!list.length) return;
     for (const e of list) {
-      if (e.item) await archiveRemove(uid, e.item.id).catch(() => {});
+      if (e.item) await archiveRemove(uid, e.item.id, e.item).catch(() => {});
       else if (e.task) await removeLibTask(uid, e.task).catch(() => {});
       else if (e.doc) await removeSharedDoc(e.doc.id).catch(() => {});
     }
@@ -1402,7 +1403,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
           <button type="button" className="btn small-btn" onClick={() => setConfirm(false)}>
             Keep
           </button>
-          <button type="button" className="btn small-btn danger" onClick={() => (archiveRemove(uid, item.id).catch(() => {}), onClose())}>
+          <button type="button" className="btn small-btn danger" onClick={() => (archiveRemove(uid, item.id, item).catch(() => {}), onClose())}>
             Remove
           </button>
         </span>

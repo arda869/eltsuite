@@ -20,12 +20,14 @@ jobs:
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           MAIL_REPLY: ${{ secrets.MAIL_REPLY }}
           IMAP_URL: ${{ secrets.IMAP_URL }}
+          DAILY_API_KEY: ${{ secrets.DAILY_API_KEY }}
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/space.mjs "$RUNNER_TEMP/d/" && cd "$RUNNER_TEMP/d"
           npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 nodemailer@6 imapflow@1 mailparser@3 >/dev/null
           node space.mjs || echo "Space could not be measured this time."
+          node video.mjs || echo "Video rooms could not be made this time."
           node push.mjs || echo "Notifications could not be sent this time."
           if [ -n "$SMTP_URL" ]; then node mail.mjs || echo "Class emails could not be sent this time."; node digest.mjs; else echo "No SMTP_URL secret yet: no emails."; fi
           rm -f "$RUNNER_TEMP/sa.json"

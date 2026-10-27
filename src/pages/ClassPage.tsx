@@ -15,6 +15,7 @@ import { AnnounceDialog } from '../components/AnnounceDialog';
 import { useClassmates } from '../lib/learners';
 import { LearnersTab } from '../components/LearnersTab';
 import { PortfolioTab } from '../components/Portfolio';
+import { VideoButton } from '../components/VideoCall';
 import { ClassSettingsDialog } from '../components/ClassSettingsDialog';
 import { DiscussionBoard, DiscussionSettingsPanel } from '../components/Discussion';
 import { CoverArt } from '../components/Covers';
@@ -173,6 +174,7 @@ export function ClassPage() {
                     {copied ? 'Copied' : 'Copy'}
                   </button>
                 </span>
+                <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />
                 {c.meeting?.url && (
                   <a className="meet-link" href={c.meeting.url} target="_blank" rel="noopener noreferrer">
                     Open call

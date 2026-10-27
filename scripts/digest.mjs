@@ -15,8 +15,8 @@ if (!SMTP) {
 initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit' });
 const db = getFirestore();
 const mail = nodemailer.createTransport(SMTP);
-const FROM = process.env.MAIL_FROM || 'ELT Suite <no-reply@lesson-lit.web.app>';
-const SITE = 'https://lesson-lit.web.app';
+const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
+const SITE = 'https://eltsuite.com';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const now = Date.now();
 

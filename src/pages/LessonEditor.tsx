@@ -1,3 +1,4 @@
+import { VideoButton } from '../components/VideoCall';
 import { tr, useClassTerms } from '../lib/terms';
 import { LIVE_BEAT } from '../lib/live';
 import { ask, askText, tell } from '../lib/ask';
@@ -701,6 +702,7 @@ export function LessonEditor() {
           <span className="here">{item?.title ?? '…'}</span>
         </nav>
         <span className="icon-row tb-icons">
+        {c && !viewer && <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />}
         <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />

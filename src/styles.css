@@ -7196,3 +7196,17 @@ input.dg-cell-label:focus { outline: none; }
 .pf-skills { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
 .pf-skill { grid-template-columns: minmax(0, 1fr) 130px; }
 .pf-skill .sel { width: 100%; min-width: 0; box-sizing: border-box; }
+
+/* Video room */
+.vc { position: fixed; z-index: 70; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 24px 60px -20px rgba(0, 0, 0, .4); }
+.vc-side { right: 16px; bottom: 16px; top: 76px; width: min(460px, calc(100vw - 32px)); border-radius: 20px; }
+.vc-full { inset: 0; border-radius: 0; }
+.vc-bar { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.vc-bar b { font: 500 15px var(--serif); }
+.vc-live { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.vc-frame { flex: 1; min-height: 0; border-radius: 14px; overflow: hidden; background: #1f1d1b; }
+.vc-err { padding: 20px; }
+.vc-join { display: inline-flex; align-items: center; gap: 6px; }
+.vc-soon { font-size: 12px; }
+/* Name boxes that edit in place grow with what is typed. */
+.adm-drivename, .adm-orgname, .fd-name, .adm-tag-in, .pv-names .dp-title, input.dp-title { field-sizing: content; min-width: 6ch; max-width: 100%; width: auto; }

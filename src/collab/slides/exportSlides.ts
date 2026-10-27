@@ -1,6 +1,7 @@
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../../editor/TextColor';
 import { credit } from '../../lib/brand';
+import { auth } from '../../lib/firebase';
 import { textHtml as blockHtml } from '../export';
 import { BGS, H, PT, W, textJSON, type El, type Slide } from './model';
 
@@ -60,7 +61,7 @@ async function buildPptx(slides: Slide[], title: string, accent: string) {
   pptx.layout = 'LAYOUT_16x9'; // 10 × 5.625 inches
   pptx.title = title;
   const cr = credit();
-  pptx.author = cr.by.replace(/^Created by /, '').replace(/ with ELT Suite$/, '');
+  pptx.author = (auth.currentUser?.displayName ?? '').trim() || 'ELT Suite';
   pptx.subject = cr.note;
   const inch = (u: number) => +(u / 100).toFixed(3);
   for (const s of slides) {

@@ -73,7 +73,19 @@ export async function archiveUpdate(uid: string, item: ArchiveItem, patch: Parti
 }
 
 // Removing from the archive leaves the media in the lessons that already use it.
-export const archiveRemove = (uid: string, id: string) => deleteDoc(doc(col(uid), id));
+// Removing a file removes it everywhere: from the library and from every class that uses it, so it
+// takes no space any more. Lessons that showed it say the file was removed.
+export async function archiveRemove(uid: string, id: string, item?: ArchiveItem) {
+  const places = item ? [...(item.home ? [[item.home.classId, item.home.mediaId] as const] : []), ...Object.entries(item.copies ?? {})] : [];
+  await Promise.all(
+    places.map(async ([classId, mediaId]) => {
+      const head = await getDoc(mediaRef(classId, mediaId)).catch(() => null);
+      const parts = Number(head?.data()?.parts) || 0;
+      await Promise.all([...Array.from({ length: parts }, (_, k) => deleteDoc(mediaRef(classId, `${mediaId}_p${k}`)).catch(() => {})), deleteDoc(mediaRef(classId, mediaId)).catch(() => {})]);
+    }),
+  );
+  await deleteDoc(doc(col(uid), id));
+}
 
 export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`);
 

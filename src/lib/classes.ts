@@ -24,7 +24,8 @@ export type ClassDoc = {
   classCode: string;
   status: 'active' | 'archived' | 'deleted';
   learnerCount?: number;
-  dates?: { start?: string | null; end?: string | null }; // the course's first and last day, as YYYY-MM-DD
+  dates?: { start?: string | null; end?: string | null };
+  video?: { url: string; room: string; at?: number } | null; // the class's own video room (Daily), made by scripts/video.mjs // the course's first and last day, as YYYY-MM-DD
   meeting?: Meeting | null;
   createdAt?: Timestamp;
   deletedAt?: Timestamp | null;

@@ -250,6 +250,10 @@ service cloud.firestore {
       }
 
       // Attendance: learners add their own minutes while a lesson is live; the teacher corrects
+      // The class's video host key: only its teachers read it; the scheduled script writes it.
+      match /video/{k} {
+        allow read: if viewsClass(classId);
+      }
       // Each learner's portfolio: the teachers keep it; the learner reads their own.
       match /portfolio/{pid} {
         allow read: if viewsClass(classId) || (signedIn() && resource.data.get('learnerUid', '') == request.auth.uid);

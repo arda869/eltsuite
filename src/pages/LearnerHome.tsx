@@ -1,3 +1,4 @@
+import { VideoButton } from '../components/VideoCall';
 import { tr, useClassTerms } from '../lib/terms';
 import { AccountNudge } from './SettingsPage';
 import { ThemeChoice } from '../lib/theme';
@@ -207,6 +208,7 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
                   Join call
                 </a>
               )}
+              {c?.video?.url && <VideoButton c={c} name={name} />}
               <Link className="btn primary" to={`/learn/${liveNow.id}`}>
                 Join lesson
               </Link>

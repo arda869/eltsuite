@@ -14,10 +14,10 @@ if (!SMTP) {
   console.log('No SMTP_URL secret: class emails are off until it is added.');
   process.exit(0);
 }
-const FROM = process.env.MAIL_FROM || 'ELT Suite <no-reply@lesson-lit.web.app>';
+const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
 const REPLY = process.env.MAIL_REPLY || '';
 const IMAP = process.env.IMAP_URL || '';
-const SITE = 'https://lesson-lit.web.app';
+const SITE = 'https://eltsuite.com';
 initializeApp({ credential: applicationDefault() });
 const db = getFirestore();
 const mail = nodemailer.createTransport(SMTP);
