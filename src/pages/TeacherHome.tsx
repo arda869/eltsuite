@@ -110,15 +110,24 @@ export function TeacherHome() {
   const featured = useMemo(() => {
     if (liveClass) {
       const it = items[liveClass.id]?.find((i) => i.id === live[liveClass.id]?.itemId);
-      if (it) return { c: liveClass, item: it, isLive: true };
+      if (it) return { c: liveClass, item: it, isLive: true, at: 0 };
     }
+    // The next scheduled lesson comes first.
+    const now = Date.now();
+    let next: { c: ClassDoc; item: ItemWithTime; at: number } | null = null;
+    for (const c of active)
+      for (const it of items[c.id] ?? []) {
+        const at = it.type === 'lesson' ? it.schedule?.at : undefined;
+        if (at && at > now - 3600000 && (!next || at < next.at)) next = { c, item: it, at };
+      }
+    if (next) return { c: next.c, item: next.item, isLive: false, at: next.at };
     let best: { c: ClassDoc; item: ItemWithTime; t: number } | null = null;
     for (const c of active)
       for (const it of items[c.id] ?? []) {
         const t = it.createdAt?.toMillis?.() ?? 0;
         if (!best || t > best.t) best = { c, item: it, t };
       }
-    return best ? { c: best.c, item: best.item, isLive: false } : null;
+    return best ? { c: best.c, item: best.item, isLive: false, at: 0 } : null;
   }, [active, items, live, liveClass]);
 
   const attention = active.flatMap((c) => {
@@ -212,9 +221,9 @@ export function TeacherHome() {
             >
               <span className="lc-text">
                 <span className="eyebrow accent" style={{ letterSpacing: '0.2em' }}>
-                  {featured.isLive ? 'Teaching now' : 'Latest lesson'}
+                  {featured.isLive ? 'Teaching now' : featured.at ? whenLabel(featured.at) : 'Latest lesson'}
                 </span>
-                <span style={{ fontFamily: 'var(--serif)', fontSize: 16, fontWeight: 500 }}>{featured.item.title}</span>
+                <span style={{ fontFamily: 'var(--serif)', fontSize: 19, fontWeight: 500 }}>{featured.item.title}</span>
                 <span className="hint">
                   {featured.c.name} · {featured.c.learnerCount ?? 0} {(featured.c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'}
                 </span>
@@ -335,17 +344,14 @@ export function TeacherHome() {
 
         {active.length > 0 && (
           <aside className="attention" aria-label="Needs your attention">
-            <h2>Needs your attention</h2>
-            {attention.length === 0 ? (
-              <span className="hint">Nothing right now.</span>
-            ) : (
+            {attention.length > 0 && <h2>Needs your attention</h2>}
+            {attention.length > 0 &&
               attention.slice(0, 6).map((a, i) => (
                 <Link key={i} to={a.to} className="attention-item">
                   <strong>{a.title}</strong>
                   <span className="hint">{a.sub}</span>
                 </Link>
-              ))
-            )}
+              ))}
             <LearnerActivity classes={active} items={items} />
           </aside>
         )}
@@ -363,4 +369,15 @@ export function TeacherHome() {
       )}
     </div>
   );
+}
+
+// "Today, 14:30", "Tomorrow, 09:00" or "Thu 30 Oct, 18:00".
+function whenLabel(at: number) {
+  const d = new Date(at);
+  const t = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(d) - day(new Date())) / 86400000);
+  if (diff === 0) return 'Today, ' + t;
+  if (diff === 1) return 'Tomorrow, ' + t;
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t;
 }

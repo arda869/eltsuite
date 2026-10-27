@@ -216,6 +216,21 @@ export function LessonEditor() {
 
   useEffect(() => onSnapshot(liveRef(classId), (s) => setLiveState(s.exists() ? (s.data() as LiveState) : null), () => {}), [classId]);
   const teachingHere = isLive(live) && live?.itemId === itemId;
+  const [fold, setFoldS] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ll.taskFold') ?? 'who';
+    } catch {
+      return 'who';
+    }
+  });
+  const setFold = (v: string) => {
+    setFoldS(v);
+    try {
+      localStorage.setItem('ll.taskFold', v);
+    } catch {
+      /* fine */
+    }
+  };
   useLiveAudioSetup(classId, teachingHere, true);
   // While this screen teaches, it checks in every minute, so the lesson stays live for the class.
   const mineLive = teachingHere && (!live?.teacherUid || live.teacherUid === user?.uid);
@@ -1124,6 +1139,7 @@ export function LessonEditor() {
                 <div className="frame-body">
                   <TaskEditor
                     key={editorKey}
+                    compact
                     content={draft.content}
                     onChange={(content) => change({ content })}
                     classmates={classmates}
@@ -1210,11 +1226,11 @@ export function LessonEditor() {
             </aside>
           )}
           {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
-            <aside className="task-side" aria-label="Task settings">
-              <button type="button" className="btn link small" onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
-                Save task to my bank
-              </button>
+            <aside className="task-side folds" aria-label="Task settings">
+              <Fold id="who" title="Who sees this" open={fold} setOpen={setFold}>
               <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
+              </Fold>
+              <Fold id="layout" title="Layout" open={fold} setOpen={setFold}>
               {(() => {
                 const hasCols = JSON.stringify(draft.content).includes('"columnBreak"');
                 return (
@@ -1267,6 +1283,8 @@ export function LessonEditor() {
                   </div>
                 );
               })()}
+              </Fold>
+              <Fold id="check" title="Checking" open={fold} setOpen={setFold}>
               <div className="field" style={{ gap: 6 }}>
                 <span>After checking</span>
                 <span className="seg" role="radiogroup" aria-label="After checking">
@@ -1288,15 +1306,24 @@ export function LessonEditor() {
                 </span>
                 <input type="checkbox" checked={task.showScore !== false} onChange={() => setTaskFlags(classId, itemId, task.id, { showScore: task.showScore === false })} />
               </label>
-              {item && <ExamSettings classId={classId} item={item} task={task} />}
-              <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
-                Version history
-              </button>
-              <h2>Tips</h2>
-              <p className="hint" style={{ margin: 0 }}>
-                Type <strong>/</strong> in the text for a gap or a multiple-choice question. In a gap, separate other accepted answers with |, for example
-                “have been | ’ve been”. Capitals, curly apostrophes and a final full stop are ignored when checking.
-              </p>
+              </Fold>
+              {item && (
+                <Fold id="exam" title="Exam" open={fold} setOpen={setFold}>
+                  <ExamSettings classId={classId} item={item} task={task} />
+                </Fold>
+              )}
+              <Fold id="more" title="History and tips" open={fold} setOpen={setFold}>
+                <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
+                  Version history
+                </button>
+                <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
+                  Save task to my bank
+                </button>
+                <p className="hint" style={{ margin: 0 }}>
+                  Type <strong>/</strong> in the text for a gap or a multiple-choice question. In a gap, separate other accepted answers with |, for example
+                  “have been | ’ve been”. Capitals, curly apostrophes and a final full stop are ignored when checking.
+                </p>
+              </Fold>
             </aside>
           )}
         </div>
@@ -1453,5 +1480,19 @@ function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: strin
     >
       <UiIcon name="archive" size={13} /> {busy ? 'Saving…' : 'Save to the library'}
     </button>
+  );
+}
+
+// One part of the task settings; one opens at a time.
+function Fold({ id, title, open, setOpen, children }: { id: string; title: string; open: string; setOpen: (v: string) => void; children: React.ReactNode }) {
+  const on = open === id;
+  return (
+    <section className={'fold' + (on ? ' on' : '')}>
+      <button type="button" className="fold-h" aria-expanded={on} onClick={() => setOpen(on ? '' : id)}>
+        {title}
+        <span className="fold-chev" aria-hidden="true">›</span>
+      </button>
+      {on && <div className="fold-b">{children}</div>}
+    </section>
   );
 }

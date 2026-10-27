@@ -16,19 +16,51 @@ import { UiIcon } from '../components/UiIcon';
 import { PIC_QUALITY, type PicQuality } from '../editor/PackNode';
 import { SoundRecordings } from '../components/SoundRecordings';
 import { SfxSettings } from '../components/SfxSettings';
+import { StorageCard } from '../components/StorageCard';
 import { TOOLS, resetTools, setToolPlace, useToolbarPrefs, type ToolPlace } from '../lib/toolbarPrefs';
 
 // Everything about you and how ELT Suite behaves for you, in one place.
 
+const slug = (t: string) => 'set-' + t.toLowerCase().replace(/[^a-z]+/g, '-');
+const narrow = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 700px)').matches;
+// One part of settings. On a phone each part folds, so the page is a short list.
 function Section({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(() => !narrow() || title === 'Profile');
   return (
-    <section className="set-sec">
+    <section className={'set-sec' + (open ? ' open' : '')} id={slug(title)} data-title={title} data-icon={icon}>
       <h2 className="set-h">
-        <UiIcon name={icon} size={16} />
-        {title}
+        <button type="button" className="set-h-btn" onClick={() => narrow() && setOpen((o) => !o)} aria-expanded={open}>
+          <UiIcon name={icon} size={16} />
+          {title}
+          <span className="set-chev" aria-hidden="true">›</span>
+        </button>
       </h2>
-      <div className="set-card">{children}</div>
+      {open && <div className="set-card">{children}</div>}
     </section>
+  );
+}
+
+// On a computer: the parts of settings in a list on the left.
+function SettingsNav() {
+  const [list, setList] = useState<{ id: string; title: string; icon: string }[]>([]);
+  const [on, setOn] = useState('');
+  useEffect(() => {
+    const read = () => setList([...document.querySelectorAll<HTMLElement>('.set-sec')].map((e) => ({ id: e.id, title: e.dataset.title ?? '', icon: e.dataset.icon ?? '' })));
+    read();
+    const t = window.setTimeout(read, 800);
+    const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && setOn(e.target.id)), { rootMargin: '-20% 0px -70% 0px' });
+    document.querySelectorAll('.set-sec').forEach((e) => io.observe(e));
+    return () => (window.clearTimeout(t), io.disconnect());
+  }, []);
+  return (
+    <nav className="set-nav" aria-label="Settings">
+      {list.map((x) => (
+        <a key={x.id} href={'#' + x.id} className={on === x.id ? 'on' : ''} onClick={(e) => (e.preventDefault(), document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))}>
+          <UiIcon name={x.icon} size={15} />
+          {x.title}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -91,6 +123,8 @@ export function SettingsPage() {
   return (
     <div className="shell">
       <TopBar>{teacher ? <MainNav on="" /> : <LearnerNav on="home" phoneOnly />}</TopBar>
+      <div className="set-layout">
+      <SettingsNav />
       <main className="set-page">
         <h1 className="page-title">Settings</h1>
 
@@ -159,6 +193,12 @@ export function SettingsPage() {
           </Section>
         )}
 
+        {teacher && user && (
+          <Section icon="archive" title="Storage">
+            <StorageCard uid={user.uid} />
+          </Section>
+        )}
+
         {teacher && <ToolbarSettings />}
 
         {teacher && (
@@ -190,6 +230,7 @@ export function SettingsPage() {
           )}
         </Section>
       </main>
+      </div>
       {picking && <AvatarPicker classIds={classIds} onClose={() => setPicking(false)} />}
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
       {deleting && <DeleteAccountDialog onClose={() => setDeleting(false)} />}

@@ -34,6 +34,7 @@ export function LearnerActivity({ classes, items }: { classes: ClassDoc[]; items
     .sort((a, b) => a.name.localeCompare(b.name));
   const day = recent.filter((a) => Date.now() - a.at < 7 * 86400000);
   const handedIn = day.filter((a) => a.kind === 'submit' && Date.now() - a.at < 86400000).length;
+  if (!online.length && !day.length) return null;
   return (
     <section className="la" aria-label="Learner activity">
       <h2>Learner activity</h2>

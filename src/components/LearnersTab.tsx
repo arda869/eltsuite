@@ -1,4 +1,5 @@
 import { tr } from '../lib/terms';
+import { openMenu } from './ContextMenu';
 import { ask, tell } from '../lib/ask';
 import { openAsLearner } from '../lib/proxy';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -174,13 +175,21 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button className="btn small-btn" disabled={!pins[l.id]} title={tr('Open a new tab signed in as this learner')} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
                         View as {l.displayName.split(' ')[0]}
-                      </button>{' '}
-                      <button className="btn small-btn" disabled={busy === l.id || !!own[l.id]} title={own[l.id] ? tr('The learner set their own, so it can only be changed by them') : undefined} onClick={() => reset(l)}>
-                        {busy === l.id ? 'Working…' : 'Reset PIN'}
-                      </button>{' '}
-                      <button className="btn link small" disabled={busy === l.id} onClick={() => remove(l)}>
-                        Remove
                       </button>
+                      <button
+                        type="button"
+                        className="icon-btn lt-more"
+                        aria-label={`More for ${l.displayName}`}
+                        disabled={busy === l.id}
+                        onClick={(e) =>
+                          openMenu(e, [
+                            { label: busy === l.id ? 'Working…' : 'Reset PIN', icon: 'lock', disabled: !!own[l.id], hint: own[l.id] ? 'They set their own' : undefined, onClick: () => void reset(l) },
+                            'sep',
+                            { label: tr('Remove from the class'), icon: 'trash', danger: true, onClick: () => void remove(l) },
+                          ])
+                        }
+                      >
+                        ⋯                      </button>
                     </td>
                   </tr>
                 ))}

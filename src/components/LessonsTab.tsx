@@ -232,7 +232,7 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
     <li className={'item' + (item.hidden ? ' is-hidden' : '')}>
       {sharing && <ShareDialog what={{ kind: 'lesson', title: item.title, src: { classId: c.id, itemId: item.id }, item: Object.fromEntries(Object.entries(item).filter(([k, v]) => v !== undefined && !['id', 'createdAt', 'updatedAt', 'teachingAt'].includes(k))) }} onClose={() => setSharing(false)} />}
       {copying && <CopyDialog kind="lesson" fromClass={c.id} itemId={item.id} title={item.title} onClose={() => setCopying(false)} onDone={setMsg} />}
-      <select className="type type-pick" value={item.type} aria-label="Type" title="Lesson, homework, exam or practice" onChange={(e) => updateItem(c.id, item.id, { type: e.target.value as Item['type'] })}>
+      <select className="type type-pick" data-type={item.type} value={item.type} aria-label="Type" title="Lesson, homework, exam or practice" onChange={(e) => updateItem(c.id, item.id, { type: e.target.value as Item['type'] })}>
         <option value="lesson">Lesson</option>
         <option value="homework">Homework</option>
         <option value="exam">Exam</option>
@@ -240,6 +240,7 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
       </select>
       <Link to={`/class/${c.id}/lesson/${item.id}`} className="title">
         {item.title}
+        {(item.taskCount ?? 0) > 0 && <span className="item-meta">{item.taskCount} {item.taskCount === 1 ? 'task' : 'tasks'}</span>}
       </Link>
       <span className="item-move">
         <button type="button" className="icon-btn" aria-label="Move up" title="Move up" disabled={i <= 0} onClick={() => move(-1)}>

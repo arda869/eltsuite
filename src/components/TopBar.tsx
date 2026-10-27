@@ -61,6 +61,22 @@ export function TopBar({ children }: { children?: ReactNode }) {
               <strong>{name}</strong>
               <span className="hint">{user?.email}</span>
             </div>
+            <span className="menu-apps show-phone">
+              <Link role="menuitem" className="menu-link" to="/" onClick={() => setOpen(false)}>
+                <UiIcon name="classes" size={15} />
+                Classes
+              </Link>
+              <Link role="menuitem" className="menu-link" to="/messages" onClick={() => setOpen(false)}>
+                <UiIcon name="message" size={15} />
+                Messages
+              </Link>
+              {profile?.role === 'teacher' && (
+                <Link role="menuitem" className="menu-link" to="/archive" onClick={() => setOpen(false)}>
+                  <UiIcon name="archive" size={15} />
+                  Files
+                </Link>
+              )}
+            </span>
             <Link role="menuitem" className="menu-link" to="/settings" onClick={() => setOpen(false)}>
               <UiIcon name="settings" size={15} />
               Settings

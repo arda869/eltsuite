@@ -610,7 +610,7 @@ export function MediaArchive() {
                   <b>{docBytes ? formatBytes(docBytes) : '0'}</b>
                 </span>
               </span>
-              <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space; documents, slides, flashcards and reading notes count.</span>
+              <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space; documents, flashcards and reading notes count.</span>
             </div>
           </aside>
 
@@ -782,6 +782,22 @@ export function MediaArchive() {
                   ))}
                 </span>
               </div>
+            )}
+            {folder === '' && !filtering && view !== 'time' && entries.length > 4 && (
+              <section className="ma-recent" aria-label="Recent files">
+                <span className="ma-group-h">Recent</span>
+                <div className="ma-recent-row">
+                  {[...entries]
+                    .sort((x, y) => y.at - x.at)
+                    .slice(0, 6)
+                    .map((en) => (
+                      <button key={'r-' + en.key} type="button" className="ma-recent-it" onClick={() => select(en.key, { shiftKey: false, metaKey: false, ctrlKey: false })} onDoubleClick={() => openE(en)}>
+                        <FileIcon kind={en.kind} size={26} label={false} />
+                        <span className="ma-recent-t">{en.name}</span>
+                      </button>
+                    ))}
+                </div>
+              </section>
             )}
             <div ref={filesRef} className={'ma-files' + (box ? ' boxing' : '')} onPointerDown={marquee} onContextMenu={(e) => !(e.target as HTMLElement).closest('[data-sel]') && openMenu(e, emptyMenu)}>
               {items === null || libTasks === null ? (

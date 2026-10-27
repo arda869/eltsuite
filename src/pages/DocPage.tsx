@@ -120,7 +120,7 @@ export function DocPage() {
         <span className="dp-acts">
           {kind === 'doc' && d && (
             <label className="dp-cite" data-tip="For citations and the reference list">
-              <span className="hint">Citations</span>
+              <span className="hint dp-hide-phone">Citations</span>
               <select value={cite} disabled={role !== 'edit'} onChange={(e) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: e.target.value })}>
                 {CITE_STYLES.map((c) => (
                   <option key={c.k} value={c.k}>
@@ -137,7 +137,7 @@ export function DocPage() {
           )}
           {d && (
             <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(docLink(d.id))} data-tip="Only people it is shared with can open it">
-              <UiIcon name="link" size={14} /> Copy link
+              <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}
         </span>
