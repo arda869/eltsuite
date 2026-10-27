@@ -121,7 +121,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/invite/:id" element={<InvitePage />} />
-          <Route path="/admin" element={<TeacherOnly><AdminPage /></TeacherOnly>} />
+          <Route path="/admin" element={<TeacherOnly><AdminPage mode="super" /></TeacherOnly>} />
+          <Route path="/org-admin" element={<TeacherOnly><AdminPage mode="org" /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />

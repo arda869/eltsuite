@@ -76,15 +76,22 @@ export function SfxSettings() {
   );
   return (
     <div className="snd">
+      {/* The owner keeps the set for everyone, so has no sounds of their own here. */}
+      {owner ? (
+        <p className="hint snd-intro">The sound editor comes with {SFX.length} sound effects. What you add or record here is for every teacher.</p>
+      ) : (
+        <>
       <p className="hint snd-intro">The sound editor comes with {SFX.length} sound effects for everyone. Add your own here: they appear under “Your sounds” when you add an effect, in your projects only.</p>
-      <div className="sfx-add">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, for example: School canteen" maxLength={40} aria-label="Name of the sound" />
-        <button type="button" className="btn small-btn primary" onClick={() => ref.current?.click()}>
-          Upload a sound
-        </button>
-        <input ref={ref} type="file" accept="audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void addMySfx(name || f.name.replace(/\.[^.]+$/, ''), f).then(() => setName('')).catch(() => tell('That file is too big. Keep sound effects under 650 KB, a few seconds long.')); }} />
-      </div>
-      {own.length > 0 && (
+          <div className="sfx-add">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name, for example: School canteen" maxLength={40} aria-label="Name of the sound" />
+            <button type="button" className="btn small-btn primary" onClick={() => ref.current?.click()}>
+              Upload a sound
+            </button>
+            <input ref={ref} type="file" accept="audio/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void addMySfx(name || f.name.replace(/\.[^.]+$/, ''), f).then(() => setName('')).catch(() => tell('That file is too big. Keep sound effects under 650 KB, a few seconds long.')); }} />
+          </div>
+        </>
+      )}
+      {!owner && own.length > 0 && (
         <div className="snd-group">
           <span className="snd-h">Your sounds</span>
           {own.map((s) => row(s, true))}

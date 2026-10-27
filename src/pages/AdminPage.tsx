@@ -51,16 +51,19 @@ import {
   type Teacher,
 } from '../lib/admin';
 
-// Admin: for the app's owner, every teacher, organisation and switch; for an organisation's
+// Super Admin: for the app's owner, every teacher, organisation and switch; for an organisation's
 // admins, their organisation: its teachers, branding, rules, shared drives and classes.
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 type Tab = 'teachers' | 'orgs' | 'apps' | 'defaults';
 
-export function AdminPage() {
+// Super Admin (/admin) is the app's owner's alone: every teacher, organisation and switch.
+// Organisation admin (/org-admin) is for an organisation's admins: their organisation only.
+export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
   const { user } = useAuth();
-  const owner = isOwnerEmail(user?.email);
+  const isOwner = isOwnerEmail(user?.email);
+  const owner = mode === 'super' && isOwner;
   const orgs = useOrgs(owner, user?.email);
   const teachers = useTeachers(owner);
   const accounts = useAccounts(owner);
@@ -70,7 +73,18 @@ export function AdminPage() {
     if (!owner && orgs?.length && !orgId) setOrgId(orgs[0].id);
   }, [owner, orgs, orgId]);
   const org = orgs?.find((o) => o.id === orgId) ?? null;
-  if (!user || orgs === null) return <Loader full label="Opening Admin" />;
+  if (user && mode === 'super' && !isOwner)
+    return (
+      <div className="shell">
+        <TopBar>
+          <MainNav on="" />
+        </TopBar>
+        <div className="adm-none">
+          <strong>Super Admin is only for the owner of ELT Suite</strong>
+        </div>
+      </div>
+    );
+  if (!user || orgs === null) return <Loader full label={mode === 'super' ? 'Opening Super Admin' : 'Opening Organisation admin'} />;
   if (!owner && !orgs.length)
     return (
       <div className="shell">
@@ -78,7 +92,7 @@ export function AdminPage() {
           <MainNav on="" />
         </TopBar>
         <div className="adm-none">
-          <strong>Admin is for organisation admins</strong>
+          <strong>Organisation admin is for an organisation's admins</strong>
           <span className="hint">Ask the person who runs your organisation in ELT Suite to add you as an admin.</span>
         </div>
       </div>
@@ -95,7 +109,7 @@ export function AdminPage() {
         <MainNav on="" />
       </TopBar>
       <div className="adm">
-        <aside className="adm-nav" aria-label="Admin">
+        <aside className="adm-nav" aria-label={owner ? 'Super Admin' : 'Organisation admin'}>
           {owner &&
             NAV.map((n) => (
               <button key={n.k} type="button" className={!org && tab === n.k ? 'on' : ''} onClick={() => (setTab(n.k), setOrgId(''))}>
@@ -669,7 +683,7 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
   const [email, setEmail] = useState('');
   return (
     <div className="adm-card">
-      <span className="hint">Admins run this organisation in Admin: its teachers' classes, rules, branding and shared drives. They sign in with these emails.</span>
+      <span className="hint">Admins run this organisation in Organisation admin: its teachers' classes, rules, branding and shared drives. They sign in with these emails.</span>
       {org.adminEmails.map((e) => (
         <span key={e} className="adm-row">
           <b>{e}</b>

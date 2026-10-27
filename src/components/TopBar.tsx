@@ -112,7 +112,9 @@ function AppMark() {
         : pathname.startsWith('/colleague')
           ? { name: 'Colleagues', to: '/colleagues', color: '#4f6b7a' }
           : pathname.startsWith('/admin')
-            ? { name: 'Admin', to: '/admin', color: '#2f2e2d' }
+            ? { name: 'Super Admin', to: '/admin', color: '#2f2e2d' }
+          : pathname.startsWith('/org-admin')
+            ? { name: 'Organisation admin', to: '/org-admin', color: '#5d6f80' }
           : pathname.startsWith('/settings')
             ? { name: 'Settings', to: '/settings', color: '#6b6560' }
             : pathname.startsWith('/notebook')

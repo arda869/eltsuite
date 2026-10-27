@@ -5853,8 +5853,8 @@ input.fd-name:hover { box-shadow: 0 0 0 1px var(--hair); }
 .sfx-row:hover { background: var(--surface); }
 .sfx-l { font: 14px var(--sans); }
 .sfx-acts { display: flex; gap: 6px; justify-content: flex-end; }
-.sfx-add { display: flex; gap: 8px; flex-wrap: wrap; }
-.sfx-add input { flex: 1; min-width: 200px; padding: 7px 10px; border: 1px solid var(--hair); border-radius: 9px; font: 14px var(--sans); }
+.sfx-add { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sfx-add input { flex: 1; min-width: 200px; height: 36px; padding: 0 12px; border: 1px solid var(--hair); border-radius: 9px; font: 14px var(--sans); }
 
 /* ---- UX pass: phones ---- */
 .show-phone { display: none; }
