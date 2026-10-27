@@ -510,6 +510,13 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.by == request.auth.uid;
       allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
     }
+    // A teacher's time zone (IANA name), so the colleagues who have them in their list can see
+    // a meeting's time on their clock. Only the teacher writes it; nothing else is kept here.
+    match /zones/{uid} {
+      allow read: if isSelf(uid) || (isTeacher() && exists(/databases/$(database)/documents/users/$(uid)/colleagues/$(request.auth.uid)));
+      allow write: if isSelf(uid) && !learnerAccount() && request.resource.data.keys().hasOnly(['tz', 'at'])
+        && request.resource.data.tz is string && request.resource.data.tz.size() < 64;
+    }
     // The timetable: classes, meetings and one-to-ones. A class's sessions are seen by its
     // teachers and learners; a meeting by the people invited.
     function sessionReader(d) {

@@ -1,21 +1,18 @@
-import { useState } from 'react';
-import { addSession, saveSession, type Session } from '../../lib/sessions';
+import { useMemo, useState } from 'react';
+import { addSession, saveSession, useZones, zoneOf, type Session } from '../../lib/sessions';
+import { allZones, cityOf, clockIn, fromFields, localZone, sameClock, toFields, zoneLabel } from '../../lib/tz';
 import { Select, MultiSelect } from '../../components/Select';
 import { useDirectory } from '../../lib/directory';
 import { tell } from '../../lib/ask';
 import type { ClassDoc } from '../../lib/classes';
-import { lengthText, niceStart } from './dates';
+import { clock, lengthText, niceStart, shortDay } from './dates';
 
-// The full form, for everything: a class or a meeting, the lesson, when, how often, where.
+// The full form, for everything: a class or a meeting, the lesson, when and in which time zone,
+// how often, where. The day and time are on the session's own clock.
 
-const pad = (n: number) => String(n).padStart(2, '0');
-const dateIn = (t: number) => {
-  const d = new Date(t);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-const timeIn = (t: number) => {
-  const d = new Date(t);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const wallText = (hm: string) => {
+  const [h, m] = hm.split(':').map(Number);
+  return new Date(Date.UTC(2020, 0, 1, h || 0, m || 0)).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
 };
 const MINS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
 
@@ -24,8 +21,11 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
   const colleagues = dir?.groups.find((g) => g.id === 'colleagues')?.people ?? [];
   const first = init.start ?? niceStart(Date.now());
   const [s, setS] = useState<Partial<Session>>({ kind: 'class', mins: 60, weeks: 1, online: true, ...init });
-  const [date, setDate] = useState(dateIn(first));
-  const [time, setTime] = useState(timeIn(first));
+  const [tz, setTz] = useState(init.tz ? zoneOf(init) : localZone());
+  const [date, setDate] = useState(toFields(first, tz).date);
+  const [time, setTime] = useState(toFields(first, tz).time);
+  const zones = useMemo(() => allZones().map((z) => ({ v: z, label: zoneLabel(z, first) })), [first]);
+  const others = useZones(s.kind === 'meeting' ? s.attendees ?? [] : []);
   const [repeat, setRepeat] = useState((init.weeks ?? 1) > 1);
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<Session>) => setS((x) => ({ ...x, ...p }));
@@ -35,10 +35,18 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
   const ok = !!title && !!date && !!time && (s.kind === 'meeting' || !!c);
   const mins = s.mins ?? 60;
   const lengths = [...new Set([...MINS, mins])].sort((a, b) => a - b);
+  const at = date && time ? fromFields(date, time, tz) : NaN;
+  const here = localZone();
+  const away = !sameClock(tz, here, at || Date.now());
+  const theirs = Number.isFinite(at)
+    ? (s.attendees ?? [])
+        .filter((a) => others[a] && !sameClock(others[a], here, at))
+        .map((a) => `${clockIn(at, others[a])} for ${colleagues.find((p) => p.key === a)?.name ?? s.names?.[a] ?? 'a colleague'}, ${cityOf(others[a])}`)
+    : [];
   const save = async () => {
     setBusy(true);
-    const start = new Date(`${date}T${time}`).getTime();
-    const base = { ...s, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
+    const start = fromFields(date, time, tz);
+    const base = { ...s, tz, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
     try {
       if (s.id) await saveSession(base as Session);
       else await addSession({ ...base, owner: me.uid, ownerName: me.name, live: null } as Omit<Session, 'id'>);
@@ -81,7 +89,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
         ) : (
           <div className="field">
             <span>Who</span>
-            <MultiSelect label="Colleagues" value={s.attendees ?? []} options={colleagues.map((p) => ({ v: p.key, label: p.name }))} onChange={(v) => set({ attendees: v })} all="Nobody yet" foot="" />
+            <MultiSelect label="Colleagues" value={s.attendees ?? []} options={colleagues.map((p) => ({ v: p.key, label: p.name }))} onChange={(v) => set({ attendees: v })} none="Nobody yet" foot="" />
             <span className="hint">They see it in their timetable, and are called when it starts.</span>
           </div>
         )}
@@ -112,6 +120,16 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
             </span>
           )}
         </label>
+        <div className="field ttb-tzf">
+          <span>Time zone</span>
+          <Select label="Time zone" value={tz} options={zones} onChange={setTz} search />
+          {Number.isFinite(at) && (away || theirs.length > 0) && (
+            <span className="hint ttb-yours">
+              {[away ? `${shortDay(at)}, ${clock(at)} your time` : '', ...theirs].filter(Boolean).join(' · ')}
+            </span>
+          )}
+          {repeat && <span className="hint">Every week it stays at {wallText(time)} on this clock, also when the clocks change.</span>}
+        </div>
         <div className="field">
           <span>Where</span>
           <span className="seg small-seg" role="radiogroup" aria-label="Where">

@@ -1,7 +1,8 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot, query, setDoc, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { updateItem } from './classes';
+import { addDaysInZone, localZone, validZone } from './tz';
 
 // Timetable: the classes, meetings and one-to-ones a teacher has, with their times. A class
 // session uses the class's own video room, so its link is there from the start; a meeting gets
@@ -18,6 +19,7 @@ export type Session = {
   itemId?: string | null; // the lesson to teach
   start: number; // the first time, ms
   mins: number;
+  tz?: string; // the time zone a weekly session keeps its time in (IANA name)
   weeks?: number; // weekly, this many times in all (1 = once)
   online: boolean;
   place?: string; // in person: where
@@ -34,7 +36,7 @@ const col = collection(db, 'sessions');
 const WEEK = 7 * 864e5;
 
 export async function addSession(s: Omit<Session, 'id'>) {
-  const ref = await addDoc(col, JSON.parse(JSON.stringify({ ...s, at: Date.now() })));
+  const ref = await addDoc(col, JSON.parse(JSON.stringify({ tz: localZone(), ...s, at: Date.now() })));
   // The lesson shows its time on the class page and the learners' home too.
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
   return ref.id;
@@ -45,6 +47,8 @@ export async function saveSession(s: Session) {
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
 }
 export const removeSession = (s: Session) => deleteDoc(doc(col, s.id));
+// A session made before time zones were kept gets its owner's, once.
+export const setSessionZone = (s: Session, tz: string) => updateDoc(doc(col, s.id), { tz });
 // Undo for a session taken out: back, as it was, with the same id.
 export function restoreSession(s: Session) {
   const { id, ...rest } = s;
@@ -53,16 +57,23 @@ export function restoreSession(s: Session) {
 export const skipWeek = (s: Session, week: number) => updateDoc(doc(col, s.id), { skip: [...new Set([...(s.skip ?? []), week])] });
 export const setSessionLive = (s: Session, live: Session['live']) => updateDoc(doc(col, s.id), { live });
 
-// Every time a session happens between two moments.
+// Every time a session happens between two moments. Each week is at the same wall-clock time
+// in the session's own time zone, so a weekly class does not drift when the clocks change.
+export const zoneOf = (s: Pick<Session, 'tz'>) => (s.tz && validZone(s.tz) ? s.tz : localZone());
 export function occurrences(list: Session[], from: number, to: number): Occurrence[] {
   const out: Occurrence[] = [];
+  const slack = 3 * 3600e3;
   for (const s of list) {
     const n = Math.max(1, s.weeks ?? 1);
+    const len = s.mins * 60000;
+    const tz = n > 1 ? zoneOf(s) : '';
     for (let w = 0; w < n; w++) {
-      const start = s.start + w * WEEK;
-      if (start > to) break;
-      const end = start + s.mins * 60000;
-      if (end < from || s.skip?.includes(w)) continue;
+      const rough = s.start + w * WEEK;
+      if (rough - slack > to) break;
+      if (rough + len + slack < from || s.skip?.includes(w)) continue;
+      const start = w ? addDaysInZone(s.start, 7 * w, tz) : s.start;
+      const end = start + len;
+      if (start > to || end < from) continue;
       out.push({ s, start, end, week: w });
     }
   }
@@ -115,4 +126,45 @@ export function whenText(t: number) {
   const tomorrow = new Date(Date.now() + 864e5);
   const day = d.toDateString() === today.toDateString() ? 'Today' : d.toDateString() === tomorrow.toDateString() ? 'Tomorrow' : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
   return `${day}, ${timeText(t)}`;
+}
+
+// Each teacher's time zone, kept on their profile and in zones/{uid}, which colleagues can read
+// (so a meeting can show "12:00 PM for Sam, London"). Written only when it changes.
+export function saveMyZone(uid: string) {
+  const tz = localZone();
+  const key = `${uid}:${tz}`;
+  try {
+    if (localStorage.getItem('ll.tz.saved') === key) return;
+  } catch {
+    /* private window */
+  }
+  void Promise.all([updateDoc(doc(db, 'users', uid), { tz }), setDoc(doc(db, 'zones', uid), { tz, at: Date.now() })])
+    .then(() => {
+      try {
+        localStorage.setItem('ll.tz.saved', key);
+      } catch {
+        /* private window */
+      }
+    })
+    .catch(() => {});
+}
+const zoneCache = new Map<string, Promise<string | null>>();
+export function useZones(uids: string[]) {
+  const [z, setZ] = useState<Record<string, string>>({});
+  const key = [...new Set(uids)].sort().join(',');
+  useEffect(() => {
+    if (!key) return;
+    let live = true;
+    const ids = key.split(',');
+    void Promise.all(
+      ids.map((id) => {
+        if (!zoneCache.has(id)) zoneCache.set(id, getDoc(doc(db, 'zones', id)).then((d) => (d.exists() && validZone(d.data().tz) ? String(d.data().tz) : null), () => null));
+        return zoneCache.get(id)!.then((tz) => [id, tz] as const);
+      }),
+    ).then((all) => live && setZ(Object.fromEntries(all.filter(([, tz]) => tz)) as Record<string, string>));
+    return () => {
+      live = false;
+    };
+  }, [key]);
+  return z;
 }

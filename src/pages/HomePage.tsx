@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { isNow, occurrences, useTeacherSessions } from '../lib/sessions';
+import { isNow, occurrences, saveMyZone, useTeacherSessions } from '../lib/sessions';
 import { startSession } from './TimetablePage';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
@@ -52,6 +52,8 @@ const CREATE: { k: DocKind; label: string; about: string }[] = [
 export function HomePage() {
   const { user, profile } = useAuth();
   const uid = user?.uid ?? '';
+  // The teacher's time zone, so colleagues see meeting times on their clock too.
+  useEffect(() => void (uid && saveMyZone(uid)), [uid]);
   const name = (profile?.displayName || user?.displayName || '').split(' ')[0];
   const org = useMyOrg();
   const { classes } = useTeacherClasses(uid);

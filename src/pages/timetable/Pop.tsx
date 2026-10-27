@@ -30,7 +30,9 @@ export function Pop({ at, onClose, label, className = '', children, width = 360 
     const gap = 10;
     let left: number;
     let top: number;
-    if (at.right + gap + w <= vw - 8) left = at.right + gap;
+    // Beside what was clicked; for something wide, like a row in the schedule, under it.
+    if (at.right - at.left > 420) left = Math.max(8, Math.min(vw - w - 8, at.left + 120));
+    else if (at.right + gap + w <= vw - 8) left = at.right + gap;
     else if (at.left - gap - w >= 8) left = at.left - gap - w;
     else left = Math.max(8, Math.min(vw - w - 8, (at.left + at.right) / 2 - w / 2));
     const beside = left >= at.right || left + w <= at.left;
@@ -49,7 +51,8 @@ export function Pop({ at, onClose, label, className = '', children, width = 360 
       close.current();
     };
     const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('.scrim')) return;
+      // Escape closes an open drop-down first, then the card.
+      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('.scrim, .sel-list')) return;
       e.preventDefault();
       close.current();
     };

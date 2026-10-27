@@ -1,14 +1,24 @@
 import { useState, type CSSProperties } from 'react';
 import { theme } from '../../lib/themes';
-import { addSession, isNow, type Occurrence, type Session, type SessionKind } from '../../lib/sessions';
+import { addSession, isNow, useZones, zoneOf, type Occurrence, type Session, type SessionKind } from '../../lib/sessions';
+import { cityOf, clockIn, localZone, sameClock } from '../../lib/tz';
 import { Select, MultiSelect } from '../../components/Select';
 import { IconBtn, UiIcon } from '../../components/UiIcon';
 import { tell } from '../../lib/ask';
 import type { ClassDoc } from '../../lib/classes';
-import { clockRange, lengthText, longDay } from './dates';
+import { clock, clockRange, lengthText, longDay } from './dates';
 import type { GridEv } from './TimeGrid';
 
 type Person = { key: string; name: string };
+
+// The same moment on other clocks: the session's own zone, and each colleague's.
+function otherClocks(t: number, people: { name: string; tz?: string }[], own?: string) {
+  const here = localZone();
+  const out: string[] = [];
+  if (own && !sameClock(own, here, t)) out.push(`${clockIn(t, own)} in ${cityOf(own)}`);
+  for (const p of people) if (p.tz && !sameClock(p.tz, here, t)) out.push(`${clockIn(t, p.tz)} for ${p.name}, ${cityOf(p.tz)}`);
+  return [...new Set(out)];
+}
 
 // Quick add: the title, the time you dragged, a class or a meeting. More options opens the full form.
 export function QuickCreate({ start, end, classes, colleagues, lastClass, me, onDone, onMore, onTitle }: { start: number; end: number; classes: ClassDoc[]; colleagues: Person[]; lastClass: string | null; me: { uid: string; name: string }; onDone: (saved?: string, classId?: string) => void; onMore: (init: Partial<Session>) => void; onTitle?: (t: string) => void }) {
@@ -17,6 +27,8 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, on
   const [classId, setClassId] = useState(lastClass && classes.some((c) => c.id === lastClass) ? lastClass : classes[0]?.id ?? '');
   const [who, setWho] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const zones = useZones(kind === 'meeting' ? who : []);
+  const theirs = kind === 'meeting' ? otherClocks(start, who.map((k) => ({ name: colleagues.find((p) => p.key === k)?.name ?? 'a colleague', tz: zones[k] }))) : [];
   const mins = Math.round((end - start) / 60000);
   const c = classes.find((x) => x.id === classId);
   const name = title.trim() || (kind === 'class' ? c?.name ?? '' : 'Meeting');
@@ -55,6 +67,12 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, on
           {longDay(start)}
           <br />
           <b>{clockRange(start, end)}</b> <span className="hint">· {lengthText(mins)}</span>
+          {theirs.length > 0 && (
+            <>
+              <br />
+              <span className="hint">{theirs.join(' · ')}</span>
+            </>
+          )}
         </span>
       </div>
       {kind === 'class' ? (
@@ -69,7 +87,7 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, on
       ) : (
         <div className="ttb-quick-row">
           <UiIcon name="person" size={16} />
-          <MultiSelect label="Who" value={who} options={colleagues.map((p) => ({ v: p.key, label: p.name }))} onChange={setWho} all={colleagues.length ? 'Invite colleagues' : 'No colleagues yet'} foot="" />
+          <MultiSelect label="Who" value={who} options={colleagues.map((p) => ({ v: p.key, label: p.name }))} onChange={setWho} none={colleagues.length ? 'Invite colleagues' : 'No colleagues yet'} foot="" />
         </div>
       )}
       <div className="ttb-quick-foot">
@@ -85,8 +103,11 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, on
 }
 
 // A session, beside where it was clicked: when, where, who, and Start or Join.
-export function SessionPop({ o, c, lessonTitle, mine, onClose, onStart, onEdit, onDelete }: { o: Occurrence; c?: ClassDoc; lessonTitle?: string; mine: boolean; onClose: () => void; onStart: () => void; onEdit: () => void; onDelete: () => void }) {
+export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onEdit, onDelete }: { o: Occurrence; c?: ClassDoc; uid: string; lessonTitle?: string; mine: boolean; onClose: () => void; onStart: () => void; onEdit: () => void; onDelete: () => void }) {
   const s = o.s;
+  const people = s.kind === 'meeting' ? [s.owner, ...(s.attendees ?? [])].filter((k) => k && k !== uid) : [];
+  const zones = useZones(people);
+  const clocks = otherClocks(o.start, people.map((k) => ({ name: k === s.owner ? s.ownerName || 'the organiser' : s.names?.[k] ?? 'a colleague', tz: zones[k] })), s.tz ? zoneOf(s) : undefined);
   const now = isNow(o) || !!s.live;
   const lone = s.id.startsWith('i:');
   return (
@@ -130,6 +151,14 @@ export function SessionPop({ o, c, lessonTitle, mine, onClose, onStart, onEdit, 
           <UiIcon name={s.online ? 'video' : 'classes'} size={16} />
           <span>{s.online ? (s.kind === 'class' ? (c?.video?.url ? 'Online, in the class video room' : 'Online: the class video room is on its way') : s.live ? `On now: ${s.live.byName} started it` : 'Online: the room opens when it starts') : s.place || 'In person'}</span>
         </li>
+        {clocks.length > 0 && (
+          <li>
+            <UiIcon name="timer" size={16} />
+            <span>
+              {clock(o.start)} your time · {clocks.join(' · ')}
+            </span>
+          </li>
+        )}
         {s.kind === 'meeting' && (
           <li>
             <UiIcon name="person" size={16} />

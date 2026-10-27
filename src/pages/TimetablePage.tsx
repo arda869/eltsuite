@@ -6,14 +6,15 @@ import { MainNav } from './ColleaguesPage';
 import { useTeacherClasses } from '../lib/coteach';
 import { useClassDetails } from './TeacherHome';
 import { theme } from '../lib/themes';
-import { addSession, isNow, occurrences, removeSession, restoreSession, saveSession, setSessionLive, skipWeek, useTeacherSessions, whenText, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
+import { addSession, isNow, occurrences, removeSession, restoreSession, saveMyZone, saveSession, setSessionLive, setSessionZone, skipWeek, useTeacherSessions, whenText, zoneOf, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
+import { localZone, shiftInZone } from '../lib/tz';
 import { NoRoomError, openCall, takeRoom } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
 import { useDirectory } from '../lib/directory';
 import { tell } from '../lib/ask';
 import { IconBtn, UiIcon } from '../components/UiIcon';
 import type { ClassDoc } from '../lib/classes';
-import { addDays, addMonths, atMinutes, dayDiff, minutesOf, monthStart, niceStart, shortDay, span, spanTitle, startOfDay, step, VIEWS, type View } from './timetable/dates';
+import { addMonths, monthStart, niceStart, shortDay, span, spanTitle, startOfDay, step, VIEWS, type View } from './timetable/dates';
 import { TimeGrid, type GridEv } from './timetable/TimeGrid';
 import { MonthGrid } from './timetable/MonthGrid';
 import { MiniMonth, Schedule } from './timetable/Schedule';
@@ -106,6 +107,12 @@ export function TimetablePage() {
   const [scope, setScope] = useState<ScopeReq | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const narrow = useNarrow();
+  // The teacher's time zone; and sessions from before time zones were kept get theirs, once.
+  useEffect(() => void (uid && saveMyZone(uid)), [uid]);
+  const zoned = useRef(new Set<string>());
+  useEffect(() => {
+    for (const s of sessions) if (s.owner === uid && !s.tz && !zoned.current.has(s.id)) (zoned.current.add(s.id), void setSessionZone(s, localZone()).catch(() => {}));
+  }, [sessions, uid]);
   const [, tick] = useState(0);
   useEffect(() => {
     const t = window.setInterval(() => tick((n) => n + 1), 30000);
@@ -175,9 +182,7 @@ export function TimetablePage() {
         which = r;
       }
       if (which === 'all') {
-        const dd = dayDiff(o.start, start);
-        const dm = minutesOf(start) - minutesOf(o.start);
-        await saveSession({ ...s, start: atMinutes(addDays(startOfDay(s.start), dd), minutesOf(s.start) + dm), mins });
+        await saveSession({ ...s, start: shiftInZone(s.start, o.start, start, zoneOf(s)), mins });
         say((s.weeks ?? 1) > 1 ? done + ', every week' : done, () => saveSession(s));
       } else {
         await skipWeek(s, o.week);
@@ -219,7 +224,7 @@ export function TimetablePage() {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target as HTMLElement;
     const typing = t instanceof HTMLInputElement ? !['checkbox', 'radio', 'button'].includes(t.type) : !!t.closest?.('textarea, select, [contenteditable="true"], .sel-list');
-    if (typing || editing || scope || help || document.querySelector('.scrim')) return;
+    if (typing || editing || scope || help || document.querySelector('.scrim, .sel-list')) return;
     const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>('[data-occ]')?.dataset.occ;
     const target = picked?.ev ?? evs.find((x) => x.key === focused);
     const k = e.key;
@@ -233,7 +238,8 @@ export function TimetablePage() {
       c: () => (closeAll(), setEditing(fresh())),
       ...Object.fromEntries(VIEWS.map((v) => [v.key, () => setView(v.k)])),
       ...(target ? { e: () => target.edit && edit(target), Delete: () => void takeOut(target), Backspace: () => void takeOut(target) } : {}),
-      ...(pending || picked || more ? { Escape: closeAll } : {}),
+      // Inside a card, the card handles Escape itself (an open drop-down closes first).
+      ...((pending || picked || more) && !t.closest?.('.ttb-pop') ? { Escape: closeAll } : {}),
     };
     const f = act[k] ?? act[k.toLowerCase()];
     if (!f || (k.length === 1 && k !== k.toLowerCase() && k !== '?')) return;
@@ -366,6 +372,7 @@ export function TimetablePage() {
           <SessionPop
             o={picked.ev.o}
             c={cls(ps.classId)}
+            uid={uid}
             lessonTitle={ps.itemId ? (items[ps.classId ?? ''] ?? []).find((i) => i.id === ps.itemId)?.title : undefined}
             mine={picked.ev.edit}
             onClose={() => setPicked(null)}

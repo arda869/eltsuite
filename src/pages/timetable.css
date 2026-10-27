@@ -300,3 +300,5 @@
   .ttb, .ttb-side { transition: none; }
 }
 .ttb-ev.ic { padding-right: 22px; }
+.ttb-tzf .sel { max-width: 340px; }
+.ttb-yours { color: var(--ink); }
