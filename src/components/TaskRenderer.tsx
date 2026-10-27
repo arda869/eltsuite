@@ -1,5 +1,5 @@
 import { PdfStack, toStack } from '../pdf/PdfStack';
-import { MARK_COLORS } from '../pdf/PdfNodes';
+import { InkSvg, MARK_COLORS } from '../pdf/PdfNodes';
 import type { PageSize } from '../pdf/pdfData';
 import { createPortal } from 'react-dom';
 import { TimelineFigure, type TlAttrs } from '../editor/Timeline';
@@ -913,6 +913,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
                 {(node.content ?? []).map((c, i) => {
                   const a = c.attrs ?? {};
                   const at = toStack(pages, Number(a.page) || 0, Number(a.x) || 0, Number(a.y) || 0);
+                  if (c.type === 'pdfInk') return <InkSvg key={i} pages={pages} page={Number(a.page) || 0} pts={(a.pts ?? []) as [number, number][]} color={String(a.color ?? 'ink')} />;
                   if (c.type === 'pdfMark') return <span key={i} className="pdf-mark" style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0) * 100}%`, height: `${(Number(a.h) || 0) * at.pageH}%`, background: MARK_COLORS.find((m) => m.k === a.color)?.bg ?? MARK_COLORS[0].bg }} />;
                   return (
                     <div key={i} className={'pdf-box tone-' + (a.tone || 'paper')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0.3) * 100}%` }}>

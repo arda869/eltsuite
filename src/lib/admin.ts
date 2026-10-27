@@ -81,7 +81,7 @@ export const APP_KEYS: { k: string; name: string }[] = [
   { k: 'files', name: 'Files' },
   { k: 'messages', name: 'Messages' },
   { k: 'colleagues', name: 'Colleagues' },
-  { k: 'library', name: 'Company library' },
+  { k: 'library', name: 'Organisation library' },
 ];
 
 const orgOf = (id: string, d: Record<string, unknown>): Org => {

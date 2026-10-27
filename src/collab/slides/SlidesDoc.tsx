@@ -18,7 +18,7 @@ import { newId } from '../../lib/tasks';
 import { UiIcon } from '../../components/UiIcon';
 import { claimStart, collabRef, readState, setLock, watchFlags } from '../provider';
 import { useCollabSession, type CollabSession } from '../session';
-import { colorOf, CommentCard, MODE_LABEL } from '../CollabDoc';
+import { colorOf, CommentCard, MODE_LABEL, PeopleHere } from '../CollabDoc';
 import type { CollabMode } from '../suggest';
 import { BGS, FILLS, fillOf, H, LAYOUTS, makeEl, makeSlide, PT, readSlides, slideMap, slidesOf, W, type El, type Shape, type Slide, type TextSize } from './model';
 import { downloadPptx, elHtml, printSlides } from './exportSlides';
@@ -371,14 +371,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
           {title || 'Shared slides'}
         </span>
         {head}
-        <span className="cd-people" aria-label="In the slides now">
-          {people.slice(0, 6).map((p, i) => (
-            <span key={i} className="cd-avatar" style={{ background: p.color }} title={p.name}>
-              {p.name.trim().slice(0, 1).toUpperCase()}
-            </span>
-          ))}
-          {people.length > 6 && <span className="cd-more">+{people.length - 6}</span>}
-        </span>
+        <PeopleHere people={people} me={me.uid} max={6} label="In the slides now" />
         <span className="cd-mode">
           {locked ? (
             <span className="cd-locked">

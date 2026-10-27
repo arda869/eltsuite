@@ -66,7 +66,7 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: I
   return itemId;
 }
 
-// From anywhere a lesson file is listed (the company library, say): its tasks, then the class.
+// From anywhere a lesson file is listed (the organisation library, say): its tasks, then the class.
 export function CopyToClass({ docId, title, type, onClose }: { docId: string; title: string; type?: Item['type']; onClose: () => void }) {
   const [rows, setRows] = useState<LessonRow[] | null>(null);
   useEffect(() => void getDocs(query(rowsCol(docId), orderBy('order'))).then((s) => setRows(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LessonRow, 'id'>) })))).catch(() => setRows([])), [docId]);

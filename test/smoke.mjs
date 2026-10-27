@@ -179,7 +179,7 @@ const J = {
     await s.p.fill('.adm-new input', 'Test School');
     await s.p.click('button:has-text("Create")');
     await s.p.click('.adm-org');
-    for (const t of ['Classes', 'Company library', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
+    for (const t of ['Classes', 'Organisation library', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
       await s.p.click(`.adm-tabs >> text=${t}`);
       await s.p.waitForTimeout(250);
     }
@@ -187,7 +187,7 @@ const J = {
     await axe(s.p, 'Organisation', A11Y_FOUND);
     return s;
   },
-  'Company library: a lesson copied to a class': async (b) => {
+  'Organisation library: a lesson copied to a class': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => {
       const fs = JSON.parse(localStorage.getItem('mockfs'));
@@ -205,7 +205,7 @@ const J = {
     await t.waitForTimeout(800);
     await t.close();
     await see(s.p, '.lb-copy', 'the exam in the library');
-    await axe(s.p, 'Company library', A11Y_FOUND);
+    await axe(s.p, 'Organisation library', A11Y_FOUND);
     await s.p.click('.lb-copy');
     const [c] = await Promise.all([s.ctx.waitForEvent('page', { timeout: 15000 }), s.p.click('.dialog button:has-text("Demo")')]);
     await see(c, 'text=Exam', 'the exam in the class');

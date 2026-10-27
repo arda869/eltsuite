@@ -50,10 +50,10 @@ export function FolderIcon({ size = 40, open, locked }: { size?: number; open?: 
         <path className="fb" d="M3 7.5A3.5 3.5 0 0 1 6.5 4h11l4 4.5h20A3.5 3.5 0 0 1 45 12v22.5a3.5 3.5 0 0 1-3.5 3.5h-35A3.5 3.5 0 0 1 3 34.5z" />
         <path className="ft" d="M3 14.5A3.5 3.5 0 0 1 6.5 11h35a3.5 3.5 0 0 1 3.5 3.5v20a3.5 3.5 0 0 1-3.5 3.5h-35A3.5 3.5 0 0 1 3 34.5z" />
         {locked && size >= 24 && (
+          // A class folder: a small badge with the class book, as the folder follows the class.
           <g className="fl">
-            <path d="M14 24.5a7 7 0 0 1 7-7h6a7 7 0 0 1 7 7" fill="none" strokeWidth="2" strokeLinecap="round" strokeDasharray="2.2 2.4" />
-            <rect x="19" y="23" width="10" height="8.5" rx="2" />
-            <path d="M21.2 23v-2.3a2.8 2.8 0 0 1 5.6 0V23" fill="none" strokeWidth="1.7" />
+            <circle cx="36" cy="30" r="8.5" />
+            <path d="M31.8 26.6h3.1c.6 0 1.1.5 1.1 1.1v6.1c0-.6-.5-1.1-1.1-1.1h-3.1zM40.2 26.6h-3.1c-.6 0-1.1.5-1.1 1.1v6.1c0-.6.5-1.1 1.1-1.1h3.1z" fill="none" strokeWidth="1.4" strokeLinejoin="round" />
           </g>
         )}
       </svg>

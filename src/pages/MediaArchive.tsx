@@ -93,7 +93,7 @@ const store = (k: string, v: unknown) => {
 };
 
 export function MediaArchive() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const uid = user?.uid;
   const quota = useSpaceLimit();
   const acct = useAccount(uid);
@@ -874,7 +874,7 @@ export function MediaArchive() {
                 </span>
               </div>
             </div>
-            {folder === '' && !filtering && view !== 'time' && entries.length > 4 && (
+            {folder === '' && !filtering && view !== 'time' && entries.length > 4 && profile?.showRecent !== false && (
               <section className="ma-recent" aria-label="Recent files">
                 <span className="ma-group-h">Recent</span>
                 <div className="ma-recent-row">

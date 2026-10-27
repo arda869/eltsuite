@@ -68,7 +68,7 @@ import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
 import { InsertGallery } from './InsertGallery';
-import { PDF_NODES } from '../pdf/PdfNodes';
+import { PDF_NODES, setPdfQuestions } from '../pdf/PdfNodes';
 import { PdfPick } from '../pdf/PdfPick';
 
 // Adds a drag-and-drop gap, and a word bank above the paragraph if the task has none yet.
@@ -208,6 +208,9 @@ export const COMMANDS: Cmd[] = [
   { key: 'quote', label: 'Quote', hint: 'Set a passage apart', group: 'Text', run: (e) => e.chain().focus().toggleBlockquote().run() },
   ...BLOCK_CMDS,
 ];
+// The questions that can sit on a PDF page, in a box of their own.
+export const PDF_Q_KEYS = ['gap', 'lettergap', 'wordform', 'radio', 'dropdown', 'truefalse', 'notgiven', 'match', 'drop', 'order', 'writing'];
+setPdfQuestions(PDF_Q_KEYS.map((k) => COMMANDS.find((c) => c.key === k)).filter((c): c is Cmd => !!c));
 
 // Writing that is not a task (an email): only text tools, no questions or task elements.
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };

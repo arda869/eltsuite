@@ -222,7 +222,10 @@ export function SettingsPage() {
         </Section>
 
         {teacher && (
-          <Section icon="archive" title="Resources library">
+          <Section icon="archive" title="Files">
+            <Row title="Recent files" hint="A row of the files you used last, at the top of My files">
+              <Toggle on={profile?.showRecent !== false} label="Recent files" onChange={(v) => user && void updateDoc(doc(db, 'users', user.uid), { showRecent: v })} />
+            </Row>
             <Row title="Picture quality" hint={PIC_QUALITY.find((p) => p.k === quality)?.about}>
               <span className="seg small-seg">
                 {PIC_QUALITY.map((p) => (

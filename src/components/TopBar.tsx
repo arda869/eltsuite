@@ -116,7 +116,7 @@ function AppMark() {
           : pathname.startsWith('/admin')
             ? { name: 'Super Admin', to: '/admin', color: '#2f2e2d' }
           : pathname.startsWith('/library')
-            ? { name: 'Company library', to: '/library', color: '#7a5a3a' }
+            ? { name: 'Organisation library', to: '/library', color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', to: '/org-admin', color: '#5d6f80' }
           : pathname.startsWith('/settings')

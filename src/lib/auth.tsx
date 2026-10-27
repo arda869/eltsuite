@@ -8,7 +8,7 @@ export type TextSize = 'S' | 'M' | 'L' | 'XL';
 export type Profile = (
   | { role: 'teacher'; displayName?: string }
   | { role: 'learner'; classId: string; learnerId: string; displayName: string }
-) & { textSize?: TextSize; avatar?: string; reading?: Reading };
+) & { textSize?: TextSize; avatar?: string; reading?: Reading; showRecent?: boolean };
 
 // Reading comfort settings: a clearer font, line focus, spacing and high contrast.
 export type Reading = { font?: 'default' | 'clear'; focus?: boolean; letter?: 0 | 1 | 2; line?: 0 | 1 | 2; contrast?: boolean };

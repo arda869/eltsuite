@@ -343,7 +343,7 @@ function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: b
   const TABS: [OTab, string][] = [
     ['teachers', 'Teachers'],
     ['classes', 'Classes'],
-    ['drives', 'Company library'],
+    ['drives', 'Organisation library'],
     ['rules', 'Rules'],
     ['brand', 'Branding'],
     ['space', 'Plan and space'],
@@ -759,7 +759,7 @@ function OrgSpace({ org, owner }: { org: Org; owner: boolean }) {
         <span style={{ width: `${Math.min(100, (given / Math.max(1, org.limitGb)) * 100)}%` }} />
       </div>
       <span className={'hint' + (given > org.limitGb ? ' warn' : '')}>
-        {given} GB given out of {org.limitGb} GB: teachers and the company library together.{given > org.limitGb ? ' That is more than the organisation has.' : ''}
+        {given} GB given out of {org.limitGb} GB: teachers and the organisation library together.{given > org.limitGb ? ' That is more than the organisation has.' : ''}
       </span>
     </div>
   );
@@ -799,7 +799,7 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
   };
   return (
     <div className="adm-card">
-      <span className="hint">Admins are teachers in {org.name} with one more app, Organisation admin, for its teachers, classes, rules, branding and company library.</span>
+      <span className="hint">Admins are teachers in {org.name} with one more app, Organisation admin, for its teachers, classes, rules, branding and organisation library.</span>
       {org.adminEmails.map((e) => (
         <span key={e} className="adm-row">
           <Who name={teacherOf(e)?.name || e} email={teacherOf(e) ? e : `${e} · not a teacher here yet`} pic={teacherOf(e) ? pics[Object.entries(org.teachers).find(([, t]) => t.email.toLowerCase() === e.toLowerCase())?.[0] ?? ''] : undefined} />
@@ -829,7 +829,7 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
 function OrgDrives({ org }: { org: Org }) {
   const { user } = useAuth();
   const folders = useDrive(org);
-  const drives = useMemo(() => ({ main: { name: 'Company library', quotaGb: 5 }, ...(org.drives ?? {}) }) as Record<string, { name: string; quotaGb: number; access?: DriveAccess }>, [org.drives]);
+  const drives = useMemo(() => ({ main: { name: 'Organisation library', quotaGb: 5 }, ...(org.drives ?? {}) }) as Record<string, { name: string; quotaGb: number; access?: DriveAccess }>, [org.drives]);
   const [newDrive, setNewDrive] = useState('');
   const [open, setOpen] = useState('');
   const [use, setUse] = useState<Record<string, number>>({});
@@ -850,7 +850,7 @@ function OrgDrives({ org }: { org: Org }) {
   };
   return (
     <div className="adm-drives">
-      <span className="hint">Teachers in {org.name} find these in the Company library app. Lessons there can be copied into their classes. Hidden sections and folders do not show for them at all.</span>
+      <span className="hint">Teachers in {org.name} find these in the Organisation library app. Lessons there can be copied into their classes. Hidden sections and folders do not show for them at all.</span>
       {Object.entries(drives).map(([k, d]) => {
         const list = (folders ?? []).filter((f) => (f.drive ?? 'main') === k);
         const access = d.access ?? { all: 'view', tags: {}, people: {} };
@@ -1115,7 +1115,7 @@ function OrgTags({ org }: { org: Org }) {
     void saveTags(org, { ...(org.tags ?? {}), ['t' + Date.now().toString(36)]: { name: n.slice(0, 40) } }).then(() => setName(''));
   };
   const remove = async (id: string) => {
-    if (!(await ask(`Delete the tag ${org.tags?.[id]?.name}? Teachers keep everything else, and the company library stops using it.`, { ok: 'Delete' }))) return;
+    if (!(await ask(`Delete the tag ${org.tags?.[id]?.name}? Teachers keep everything else, and the organisation library stops using it.`, { ok: 'Delete' }))) return;
     const next = { ...(org.tags ?? {}) };
     delete next[id];
     await saveTags(org, next);
@@ -1124,7 +1124,7 @@ function OrgTags({ org }: { org: Org }) {
   return (
     <div className="adm-tags">
       <span className="adm-sub">Tags</span>
-      <span className="hint">Group teachers, for example by team, site or level, then decide in Company library what each tag can do.</span>
+      <span className="hint">Group teachers, for example by team, site or level, then decide in Organisation library what each tag can do.</span>
       <span className="adm-tag-list">
         {tags.map(([id, t]) =>
           edit === id ? (

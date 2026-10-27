@@ -13,7 +13,7 @@ import { useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
 import { KIND_LABEL, newDocInFolder, removeSharedDoc, renameDoc, useFolderDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { CopyToClass, LESSON_TYPES } from '../lessons/LessonFile';
 
-// The company library: the organisation's own lessons and materials, kept by its admins and
+// The organisation library: the organisation's own lessons and materials, kept by its admins and
 // the teachers they let edit. Teachers copy a lesson into one of their classes in one step.
 
 type LType = NonNullable<SharedDoc['ltype']>;
@@ -35,7 +35,7 @@ export function LibraryPage() {
   // Admins see every folder; teachers the ones they may use.
   const mine = useMemo(() => (folders ?? []).filter((f) => admin || f.owner === uid || f.memberIds.includes(uid)).sort((a, b) => a.name.localeCompare(b.name)), [folders, admin, uid]);
   const sections = useMemo(() => {
-    const d = { main: { name: 'Company library' }, ...(org?.drives ?? {}) } as Record<string, { name: string }>;
+    const d = { main: { name: 'Organisation library' }, ...(org?.drives ?? {}) } as Record<string, { name: string }>;
     return Object.entries(d)
       .map(([k, x]) => ({ k, name: x.name, folders: mine.filter((f) => (f.drive ?? 'main') === k) }))
       .filter((s) => s.folders.length);
@@ -48,8 +48,8 @@ export function LibraryPage() {
     return (
       <Shell>
         <div className="lb-empty">
-          <h1 className="page-title">Company library</h1>
-          <span className="hint">The company library is for teachers in an organisation. Your organisation’s admins keep it.</span>
+          <h1 className="page-title">Organisation library</h1>
+          <span className="hint">The organisation library is for teachers in an organisation. Your organisation’s admins keep it.</span>
         </div>
       </Shell>
     );
@@ -82,7 +82,7 @@ export function LibraryPage() {
             <FolderPane key={open.id} f={open} uid={uid} me={{ uid, name: profile?.displayName || user?.displayName || 'Teacher' }} />
           ) : (
             <div className="lb-empty">
-              <h1 className="page-title">Company library</h1>
+              <h1 className="page-title">Organisation library</h1>
               <span className="hint">{admin ? 'Add folders in Organisation admin, then lessons, documents and flashcards here.' : 'Nothing here yet. Your organisation’s admins add the folders.'}</span>
             </div>
           )}

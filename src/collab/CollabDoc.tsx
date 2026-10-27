@@ -441,14 +441,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const pageTools0 = page && toolSlot
     ? createPortal(
         <>
-          <span className="cd-people" aria-label="In the document now">
-            {people.slice(0, 5).map((p, i) => (
-              <button key={i} type="button" className="cd-avatar" style={{ background: p.color }} title={p.name} onClick={(e) => setPersonAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
-                {p.name.trim().slice(0, 1).toUpperCase()}
-              </button>
-            ))}
-            {people.length > 5 && <span className="cd-more">+{people.length - 5}</span>}
-          </span>
+          <PeopleHere people={people} me={me.uid} label="In the document now" />
           <button type="button" className={'dp-ib cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
             <UiIcon name="discuss" size={17} />
             {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
@@ -474,14 +467,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {title || 'Shared document'}
         </span>
         {head}
-        <span className="cd-people" aria-label="In the document now">
-          {people.slice(0, 6).map((p, i) => (
-            <span key={i} className="cd-avatar" style={{ background: p.color }} title={p.name}>
-              {p.name.trim().slice(0, 1).toUpperCase()}
-            </span>
-          ))}
-          {people.length > 6 && <span className="cd-more">+{people.length - 6}</span>}
-        </span>
+        <PeopleHere people={people} me={me.uid} max={6} label="In the document now" />
         <span className="cd-mode">
           {locked ? (
             <span className="cd-locked">
@@ -936,6 +922,22 @@ function DownloadMenu({ onExport }: { onExport: (kind: 'word' | 'pdf', o: Export
 }
 
 // Someone in the document: who they are, and a message to them.
+// Everyone here now, as circles: their name on hover, and a click to message them.
+export function PeopleHere({ people, me, max = 5, label = 'Here now' }: { people: { name: string; color: string; uid?: string }[]; me: string; max?: number; label?: string }) {
+  const [at, setAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);
+  return (
+    <span className="cd-people" aria-label={label}>
+      {people.slice(0, max).map((p, i) => (
+        <button key={i} type="button" className="cd-avatar" style={{ background: p.color }} data-tip={p.uid === me ? `${p.name} (you)` : p.name} aria-label={p.name} onClick={(e) => setAt({ p, r: (e.currentTarget as HTMLElement).getBoundingClientRect() })}>
+          {p.name.trim().slice(0, 1).toUpperCase()}
+        </button>
+      ))}
+      {people.length > max && <span className="cd-more" data-tip={people.slice(max).map((p) => p.name).join(', ')}>+{people.length - max}</span>}
+      {at && <PersonCard p={at.p} r={at.r} me={me} onClose={() => setAt(null)} />}
+    </span>
+  );
+}
+
 function PersonCard({ p, r, me, onClose }: { p: { name: string; color: string; uid?: string }; r: DOMRect; me: string; onClose: () => void }) {
   const { user, profile } = useAuth();
   const ref = useRef<HTMLDivElement>(null);

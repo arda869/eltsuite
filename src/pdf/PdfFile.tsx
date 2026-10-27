@@ -10,7 +10,7 @@ import { useAuth } from '../lib/auth';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { useCollabSession, type CollabSession } from '../collab/session';
 import { claimStart } from '../collab/provider';
-import { colorOf } from '../collab/CollabDoc';
+import { colorOf, PeopleHere } from '../collab/CollabDoc';
 import { DOC_CMDS, DOC_GROUPS, DOC_NODES } from '../collab/docKit';
 import { SlashMenu, useSlash } from '../editor/TaskEditor';
 import { EditorClassContext } from '../editor/context';
@@ -37,7 +37,7 @@ export function PdfFile({ d, canEdit, me }: { d: SharedDoc; canEdit: boolean; me
 
 function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me: { uid: string; name: string }; session: CollabSession }) {
   const { profile } = useAuth();
-  const [people, setPeople] = useState<{ name: string; color: string }[]>([]);
+  const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [ready, setReady] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const editor = useEditor(
@@ -110,13 +110,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </span>
         )}
         <span style={{ flex: 1 }} />
-        <span className="cd-people" aria-label="Here now">
-          {people.slice(0, 6).map((p, i) => (
-            <span key={i} className="cd-avatar" style={{ background: p.color }} title={p.name}>
-              {p.name.trim().slice(0, 1).toUpperCase()}
-            </span>
-          ))}
-        </span>
+        <PeopleHere people={people} me={me.uid} max={6} />
         <button type="button" className="btn small-btn" onClick={() => printPdf()} data-tip="Print it, or save it as a PDF, with the notes on the pages">
           <UiIcon name="import" size={14} /> Print or save
         </button>
