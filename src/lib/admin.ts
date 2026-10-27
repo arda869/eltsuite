@@ -16,7 +16,9 @@ export const PLANS: { k: Plan; label: string; gb: number; about: string }[] = [
 ];
 export type Account = {
   over?: boolean; // over its space, as measured by scripts/space.mjs
-  usedBytes?: number; plan?: Plan; limitGb?: number; suspended?: boolean; org?: string | null; features?: Record<string, boolean>; name?: string; email?: string; note?: string };
+  usedBytes?: number;
+  lessonBytes?: number; // what the teacher's lessons take, as measured
+  plan?: Plan; limitGb?: number; suspended?: boolean; org?: string | null; features?: Record<string, boolean>; name?: string; email?: string; note?: string };
 // logo: the square mark, for small places; wide: the long logo, for worksheets and invitations.
 export type Brand = { color?: string; logo?: string; wide?: string };
 // A logo as a PNG data URL, transparency kept, no bigger than max on its longest side.

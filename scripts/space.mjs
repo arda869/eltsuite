@@ -29,11 +29,24 @@ for (const t of teachers.docs) {
     used += (Number(x.size) || 0) * (1 + copies) + (typeof x.thumb === 'string' ? x.thumb.length : 0);
   }
   for (const d of docs.docs) used += Number(d.data().size) || 0;
+  // Lessons take space too: every task in the teacher's classes, and lessons kept in Files.
+  let lessons = 0;
+  const classes = await db.collection('classes').where('teacherId', '==', uid).get();
+  for (const c of classes.docs) {
+    if (c.data().status === 'deleted') continue;
+    for (const item of (await c.ref.collection('items').get()).docs) {
+      lessons += JSON.stringify(item.data()).length;
+      for (const t of (await item.ref.collection('tasks').get()).docs) lessons += JSON.stringify(t.data()).length;
+    }
+  }
+  const lessonFiles = await db.collection('sharedDocs').where('owner', '==', uid).where('kind', '==', 'lesson').get();
+  for (const f of lessonFiles.docs) for (const t of (await f.ref.collection('tasks').get()).docs) lessons += JSON.stringify(t.data()).length;
+  used += lessons;
   const o = a.org ? org.get(a.org) : null;
   const gb = o ? Number(o.teachers?.[uid]?.gb ?? o.perTeacherGb ?? 1) : Number(a.limitGb ?? PLAN_GB[a.plan] ?? 1);
   const over = used > gb * GB;
-  if (a.over === over && Math.abs((a.usedBytes ?? 0) - used) < 100_000) continue;
-  await db.collection('accounts').doc(uid).set({ over, usedBytes: used, measuredAt: FieldValue.serverTimestamp() }, { merge: true });
+  if (a.over === over && Math.abs((a.usedBytes ?? 0) - used) < 100_000 && Math.abs((a.lessonBytes ?? 0) - lessons) < 50_000) continue;
+  await db.collection('accounts').doc(uid).set({ over, usedBytes: used, lessonBytes: lessons, measuredAt: FieldValue.serverTimestamp() }, { merge: true });
   changed++;
 }
 console.log(`Space measured for ${teachers.size} teachers; ${changed} updated.`);

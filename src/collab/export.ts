@@ -184,7 +184,18 @@ function runsOf(nodes: JSONContent[] | undefined, o: ExportOpts, out: Run[] = []
   return out;
 }
 
+// The brand at the top of every page: the organisation's logo, or ELT Suite's. See lib/brand.ts.
+export type BrandMark = { png: Uint8Array; w: number; h: number; name: string };
 export async function downloadDocx(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) {
+  const { brandMark } = await import('../lib/brand');
+  const blob = await docxBlob(json, title, o, await brandMark().catch(() => null));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${(title || 'Document').replace(/[^\w\- ]+/g, '').trim() || 'Document'}.docx`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+export async function docxBlob(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, brand: BrandMark | null = null): Promise<Blob> {
   const D = await import('docx');
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle, Footer, PageNumber, ImageRun } = D;
   const sz = o.size * 2;
@@ -260,18 +271,19 @@ export async function downloadDocx(json: JSONContent, title: string, o: ExportOp
   };
   await walk(json);
   if (o.wordCount) out.push(new Paragraph({ spacing: { before: 360 }, children: [new TextRun({ text: `Word count: ${wordCount(json)} (without the reference list)`, font: o.font, size: sz - 2, color: '555555' })] }));
-  const footers = o.pageNumbers ? { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 })] })] }) } : undefined;
+  const mark = (t: string) => new TextRun({ text: t, font: o.font, size: sz - 4, color: '8A847D' });
+  const footers = { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [...(o.pageNumbers ? [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 }), mark('   ·   ')] : []), mark(brand && brand.name !== 'ELT Suite' ? `${brand.name} · made with ELT Suite` : 'Made with ELT Suite')] })] }) };
+  const { Header } = D;
+  const headers = brand ? { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: brand.png, transformation: { width: Math.round((brand.w / brand.h) * 28), height: 28 }, type: 'png' } as never)] })] }) } : undefined;
   const doc = new Document({
     styles: { default: { document: { run: { font: o.font, size: sz } } } },
-    sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } } }, footers, children: out }],
+    sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } } }, headers, footers, children: out }],
   });
-  const blob = await Packer.toBlob(doc);
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${(title || 'Document').replace(/[^\w\- ]+/g, '').trim() || 'Document'}.docx`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return Packer.toBlob(doc);
 }
 
 // For slides: one text box as HTML, in the default style.
 export const textHtml = (json: JSONContent) => blockHtml(json, EXPORT_DEFAULT, json);
+
+// The document as a page of HTML, for the PDF in a folder download.
+export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) => `${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}`;

@@ -17,7 +17,7 @@ export function Mark({ size = 26 }: { size?: number }) {
 
 export function Wordmark({ big = false }: { big?: boolean }) {
   return (
-    <span className={'wordmark' + (big ? ' big' : '')} aria-label="ELT Suite">
+    <span className={'wordmark' + (big ? ' big' : '')} role="img" aria-label="ELT Suite">
       <Mark size={big ? 64 : 26} />
       <span aria-hidden="true" className="wm-name">
         <b>ELT</b> Suite

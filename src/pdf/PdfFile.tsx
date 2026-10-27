@@ -52,7 +52,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         NewerGuard,
       ],
       editable: canEdit,
-      editorProps: { attributes: { class: 'pdf-doc', spellcheck: 'true' } },
+      editorProps: { attributes: { class: 'pdf-doc', spellcheck: 'true', 'aria-label': 'Notes on the PDF' } },
     },
     [session],
   );

@@ -279,7 +279,7 @@ function GbInput({ value, onSave, max = 1000 }: { value: number; onSave: (gb: nu
   useEffect(() => setV(String(value)), [value]);
   return (
     <span className="adm-gb">
-      <input type="number" min={0} max={max} step={1} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => Number(v) !== value && Number(v) >= 0 && onSave(Math.min(max, Number(v)))} />
+      <input type="number" aria-label="Space in GB" min={0} max={max} step={1} value={v} onChange={(e) => setV(e.target.value)} onBlur={() => Number(v) !== value && Number(v) >= 0 && onSave(Math.min(max, Number(v)))} />
       GB
     </span>
   );

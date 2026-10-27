@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { doc, getDoc } from 'firebase/firestore';
@@ -220,7 +220,7 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
         <FolderIcon size={64} locked={locked} />
         <b>{name}</b>
         <span className="hint">{!path ? 'Everything you keep' : path.includes('/') ? 'My files › ' + path.split('/').slice(0, -1).join(' › ') : 'In My files'}</span>
-        {locked && <span className="hint">Kept in step with your classes. Lessons are moved and renamed in the class.</span>}
+        {locked && <span className="hint">This folder follows your class. To move or rename a lesson, do it in the class itself.</span>}
       </div>
       <span className="ma-detail-acts">
         {!here && (
@@ -239,10 +239,10 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
       </span>
       <dl className="ma-facts">
         {rows.map(([l, n]) => (
-          <span key={l} style={{ display: 'contents' }}>
+          <Fragment key={l}>
             <dt>{l}</dt>
             <dd>{n}</dd>
-          </span>
+          </Fragment>
         ))}
         <dt>Space</dt>
         <dd>{formatBytes(size)}</dd>

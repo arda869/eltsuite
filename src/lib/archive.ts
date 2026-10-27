@@ -342,7 +342,8 @@ export async function downloadItem(item: ArchiveItem) {
   a.click();
 }
 // Several items (or whole folders) as one zip, with the folders inside it. Links go in a text file.
-export async function downloadZip(items: ArchiveItem[], zipName: string, base = '', onProgress?: (done: number, total: number) => void, extra: { folder: string; name: string; text: string }[] = []) {
+// files: anything else made for the download (documents as Word and PDF, flashcards as Excel…).
+export async function downloadZip(items: ArchiveItem[], zipName: string, base = '', onProgress?: (done: number, total: number) => void, extra: { folder: string; name: string; text: string }[] = [], made: { folder: string; name: string; data: Uint8Array }[] = []) {
   const { zipSync, strToU8 } = await import('fflate');
   const files: Record<string, Uint8Array> = {};
   const links: string[] = [];
@@ -370,6 +371,13 @@ export async function downloadZip(items: ArchiveItem[], zipName: string, base = 
     let p = `${dir}${safeName(x.name) || 'Task'}.md`;
     for (let k = 2; files[p]; k++) p = `${dir}${safeName(x.name) || 'Task'} (${k}).md`;
     files[p] = strToU8(x.text);
+  }
+  for (const x of made) {
+    const rel = base && x.folder.startsWith(base) ? x.folder.slice(base.length).replace(/^\//, '') : base ? '' : x.folder;
+    const dir = rel ? rel.split('/').map(safeName).join('/') + '/' : '';
+    let p = dir + x.name;
+    for (let k = 2; files[p]; k++) p = dir + x.name.replace(/(\.[a-z0-9]+)$/i, ` (${k})$1`);
+    files[p] = x.data;
   }
   if (!Object.keys(files).length && !links.length) return;
   if (links.length) files['Links.txt'] = strToU8(links.join('\n') + '\n');

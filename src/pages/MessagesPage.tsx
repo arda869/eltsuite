@@ -105,7 +105,7 @@ export function MessagesPage() {
               </span>
             </div>
             <input className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
-            <div className="msg-list" role="listbox" aria-label="Chats">
+            <div className="msg-list" role={shown.length ? 'listbox' : undefined} aria-label="Chats">
               {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
                 const un = unreadIn(c, me.key);

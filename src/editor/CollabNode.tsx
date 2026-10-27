@@ -38,7 +38,11 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
     setDoc(doc(registryCol(classId), a.docKey), { title: a.title || 'Shared document', kind: a.kind, scope: a.scope, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
   }, [classId, a.docKey, a.title, a.kind, a.scope]);
   const modes = a.modes ?? [];
-  const toggleMode = (m: CollabMode) => updateAttributes({ modes: modes.includes(m) ? modes.filter((x) => x !== m) : [...modes, m] });
+  // Suggesting and commenting go together.
+  const toggleMode = (m: CollabMode) => {
+    const both: CollabMode[] = m === 'suggest' ? ['suggest', 'comment'] : [m];
+    updateAttributes({ modes: modes.includes(m) ? modes.filter((x) => !both.includes(x)) : [...new Set([...modes, ...both])] });
+  };
   const seg = <K extends string>(list: [K, string][], cur: K, set: (k: K) => void, aria: string) => (
     <span className="seg small-seg" role="radiogroup" aria-label={aria}>
       {list.map(([k, l]) => (
@@ -94,8 +98,7 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
             {(
               [
                 ['edit', 'Edit'],
-                ['suggest', 'Suggest'],
-                ['comment', 'Comment'],
+                ['suggest', 'Suggest and comment'],
               ] as [CollabMode, string][]
             ).map(([m, l]) => (
               <button key={m} type="button" className={'ap-chip' + (modes.includes(m) ? ' on' : '')} onClick={() => toggleMode(m)}>

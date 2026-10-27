@@ -463,6 +463,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     content: withPictures(content),
     onUpdate: ({ editor }) => changeRef.current(editor.getJSON()),
     editorProps: {
+      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Task' },
       // Paste or drop pictures straight into the task: they are uploaded to the class.
       handlePaste: (view, e) => {
         // Elements copied from a message or another task: with answers, pictures and sounds.

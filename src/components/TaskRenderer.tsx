@@ -864,7 +864,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       case 'heading':
         return (
-          <h3 key={key} data-bk={key}>
+          <h3 key={key} data-bk={key} data-level={node.attrs?.level ?? 1}>
             {kids()}
           </h3>
         );

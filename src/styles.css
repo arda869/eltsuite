@@ -9,7 +9,7 @@
   --selected: #efefee;
   --track: #ececeb;
   --accent: #d98f63;
-  --accent-text: #b8744e;
+  --accent-text: #975f40;
   --right: #4e6b55;
   --wrong: #9a5148;
   --serif: 'Fraunces', Georgia, serif;
@@ -6807,3 +6807,57 @@ input.dg-cell-label:focus { outline: none; }
 .ma-full { padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, #b64a3c 8%, var(--paper)); border: 1px solid color-mix(in srgb, #b64a3c 30%, var(--hair)); font-size: 14px; }
 .adm-over { margin-left: 6px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, #b64a3c 12%, transparent); color: #9a3d31; font: 700 11px var(--sans); }
 .dock-new-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Readable contrast (WCAG AA): text in the accent or grey is a shade deeper than the colour itself,
+   and the main buttons carry white text on a deeper accent. */
+:root { --soft: #6b6b6b; }
+:root[data-theme='dark'] { --soft: #a19b93; }
+.btn.primary:not(:disabled) { background: color-mix(in srgb, var(--accent) 72%, #000); border-color: color-mix(in srgb, var(--accent) 72%, #000); }
+.btn.primary:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 64%, #000); }
+:root[data-theme='dark'] .btn.primary:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #1b1a18; }
+.suite-mark b { color: color-mix(in srgb, var(--app) 80%, #000); }
+.set-h { color: var(--accent-text) !important; }
+.ma-bar .k-lesson, .ma-legend i.k-lesson { background: #c8764a; }
+
+/* Contents of a document: a button in the left margin, opening the headings. */
+.cd-page { position: relative; }
+.cd-toc { position: absolute; left: 0; top: 14px; z-index: 30; }
+.dp.k-doc .cd-toc { left: 6px; top: 2px; }
+.cd-toc-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--hair-strong); border-radius: 9px; background: var(--paper); color: var(--muted); cursor: pointer; }
+.cd-toc-btn:hover, .cd-toc.open .cd-toc-btn { color: var(--dp, var(--accent-text)); border-color: var(--dp, var(--accent)); }
+.cd-toc-list { position: absolute; left: 0; top: 40px; width: 240px; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; padding: 10px 8px; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .25); }
+.cd-toc-list b { font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--soft); padding: 2px 8px 6px; }
+.cd-toc-list button { text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 7px; font: 500 13.5px/1.35 var(--sans); color: var(--ink); cursor: pointer; }
+.cd-toc-list button:hover { background: var(--surface); }
+.cd-toc-list .l2 { padding-left: 20px; font-weight: 400; }
+.cd-toc-list .l3 { padding-left: 32px; font-weight: 400; color: var(--muted); font-size: 13px; }
+.cd:not(.dp *) .cd-page:has(.cd-toc) { padding-left: 48px; }
+@media (max-width: 900px) { .dp.k-doc .cd-toc { left: 0; top: 6px; } .dp.k-doc .cd-page:has(.cd-toc) { padding-top: 46px; } }
+
+/* Viewing: the document as it looks when a lesson is presented. */
+.cd-view { min-height: 200px; }
+.cd-view.cd-doc { font: 17px/1.7 var(--serif); }
+.cd-view.cd-doc h3[data-level='1'] { font: 500 30px/1.25 var(--serif); margin: 1.1em 0 .35em; }
+.cd-view.cd-doc h3[data-level='2'] { font: 500 23px/1.3 var(--serif); margin: 1em 0 .3em; }
+.cd-view.cd-doc h3[data-level='3'] { font: 600 18px/1.35 var(--serif); margin: .9em 0 .3em; }
+.cd-view > :first-child { margin-top: 0; }
+
+/* The top bar of a file: every control the same height. */
+.dp-acts .btn, .dp-acts .dp-ib, .dp-slot .cd-dl > button, .dp-slot .cd-icon, .dp-slot .cd-mode select { height: 36px; min-height: 36px; box-sizing: border-box; }
+.dp-acts .btn { padding-top: 0; padding-bottom: 0; display: inline-flex; align-items: center; gap: 6px; }
+.dp-slot .cd-dl > button, .dp-slot .cd-icon, .dp-acts .dp-ib { width: 36px; min-width: 36px; }
+.dp-acts .dp-ib.cd-cmt { width: auto; }
+.dp-acts .cd-modeseg { height: 36px; box-sizing: border-box; padding: 3px; align-items: stretch; }
+.dp-acts .cd-modeseg button { height: auto; }
+
+/* The bar over selected files: one compact row. */
+.ma-selbar { flex-wrap: wrap; row-gap: 6px; white-space: nowrap; }
+.ma-selbar b { white-space: nowrap; font-weight: 600; }
+.ma-selbar .btn.small-btn { height: 30px; padding: 0 10px; font-size: 13px; }
+.ma-selbar .btn.link { white-space: nowrap; }
+
+.ma-toolwrap { position: relative; container-type: inline-size; }
+.ma-toolwrap > .ma-selbar, .ma-main > .ma-toolwrap > .ma-selbar { position: absolute; inset: 0 0 auto 0; min-height: 44px; height: 100%; max-height: 100%; margin: 0; z-index: 7; flex-wrap: nowrap; overflow: hidden; padding: 0 10px 0 16px; box-sizing: border-box; }
+.ma-tools.under { visibility: hidden; }
+.ma-toolwrap .ma-selbar > * { flex: 0 0 auto; }
+@container (max-width: 640px) { .ma-selbar .btn.small-btn { font-size: 0; gap: 0; width: 32px; padding: 0; justify-content: center; } .ma-selbar .btn.small-btn .ui-icon { font-size: 13px; } }

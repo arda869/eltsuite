@@ -329,12 +329,14 @@ function TTForm({ kind, title, mode, data, value, onChange, disabled }: { kind: 
 
 function TTView({ node, updateAttributes, deleteNode, editor, getPos, selected }: NodeViewProps) {
   const a = node.attrs as { kind: TTKind; title: string; mode: 'model' | 'complete'; data: Data };
+  // In a shared document everyone writes in the same form, so the choice is only for lessons.
+  const shared = editor.extensionManager.extensions.some((e) => e.name === 'collaboration');
   return (
     <NodeViewWrapper className={'block-node tt-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">
         <Grip editor={editor} getPos={getPos} />
         <span className="block-label">{TT_KINDS.find((k) => k.k === a.kind)?.label}</span>
-        {a.kind !== 'loop' && <span className="seg small-seg" role="radiogroup" aria-label="How trainees use it">
+        {a.kind !== 'loop' && !shared && <span className="seg small-seg" role="radiogroup" aria-label="How trainees use it">
           {([
             ['model', 'A model to read'],
             ['complete', 'For trainees to complete'],
@@ -349,7 +351,7 @@ function TTView({ node, updateAttributes, deleteNode, editor, getPos, selected }
         </button>
       </div>
       <input className="tt-title" value={a.title} placeholder="Title (optional)" onChange={(e) => updateAttributes({ title: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
-      <span className="hint">{a.kind === 'loop' ? 'Trainees see a closed box; they open it after you model the technique.' : a.mode === 'model' ? 'Fill it in: trainees read it.' : 'Fill in what trainees start with, or leave it empty: each trainee completes their own.'}</span>
+      {!shared && <span className="hint">{a.kind === 'loop' ? 'Trainees see a closed box; they open it after you model the technique.' : a.mode === 'model' ? 'Fill it in: trainees read it.' : 'Fill in what trainees start with, or leave it empty: each trainee completes their own.'}</span>}
       <div className={'tt k-' + a.kind}>
         <Form kind={a.kind} v={a.data ?? {}} set={(k, x) => updateAttributes({ data: { ...(node.attrs.data ?? {}), [k]: x } })} setMany={(p) => updateAttributes({ data: { ...(node.attrs.data ?? {}), ...p } })} />
       </div>

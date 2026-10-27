@@ -48,6 +48,9 @@ export function PaneResizer({ side, width, onWidth, onReset }: { side: 'left' | 
       role="separator"
       aria-orientation="vertical"
       aria-label={side === 'left' ? 'Resize the task list' : 'Resize the side panel'}
+      aria-valuenow={Math.round(width)}
+      aria-valuemin={0}
+      aria-valuemax={2000}
       tabIndex={0}
       data-tip="Drag to resize · double-click to reset"
       onPointerDown={start}

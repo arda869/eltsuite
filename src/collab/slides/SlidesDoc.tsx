@@ -85,7 +85,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
   // Slides have no suggestions: suggesting becomes commenting.
   const allowed = useMemo<CollabMode[]>(() => {
     const list = teacher ? (['edit', 'comment'] as CollabMode[]) : modes.map((m) => (m === 'suggest' ? 'comment' : m));
-    return [...new Set(list)].filter(Boolean);
+    return [...new Set([...list.filter((m) => m !== 'view'), 'view' as CollabMode])].filter(Boolean);
   }, [teacher, modes]);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
   useEffect(() => {

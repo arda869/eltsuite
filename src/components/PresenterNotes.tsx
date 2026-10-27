@@ -57,7 +57,7 @@ export function PresenterNotes({ pane, hasNotes, children }: { pane: ReturnType<
   };
   return (
     <section className={'pn' + (drag ? ' dragging' : '')} style={{ height: pane.h }} aria-label="Teacher notes">
-      <div className="pn-grip" role="separator" aria-orientation="horizontal" aria-label="Resize the notes" tabIndex={0} onPointerDown={start} onKeyDown={(e) => (e.key === 'ArrowUp' ? pane.setH(pane.h + 20) : e.key === 'ArrowDown' ? pane.setH(pane.h - 20) : null)} data-tip="Drag to resize" />
+      <div className="pn-grip" role="separator" aria-orientation="horizontal" aria-label="Resize the notes" aria-valuenow={Math.round(pane.h)} aria-valuemin={0} aria-valuemax={2000} tabIndex={0} onPointerDown={start} onKeyDown={(e) => (e.key === 'ArrowUp' ? pane.setH(pane.h + 20) : e.key === 'ArrowDown' ? pane.setH(pane.h - 20) : null)} data-tip="Drag to resize" />
       <div className="pn-head">
         <span className="pn-label">Notes</span>
         <span className="hint">Only you see these</span>

@@ -211,6 +211,16 @@ const J = {
 // ------------------------------------------------------------------ run
 const vite = await up();
 const browser = await chromium.launch();
+// A first visit, so the server has prepared every page before the journeys start.
+{
+  const c = await browser.newContext();
+  const p = await c.newPage();
+  await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
+  await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 }).catch(() => {});
+  for (const u of ['/archive', '/admin', '/messages', '/settings']) await p.goto(BASE + u, { timeout: 120000 }).catch(() => {});
+  await p.waitForTimeout(1500);
+  await c.close();
+}
 const results = [];
 try {
   for (const [name, run] of Object.entries(J)) {
@@ -243,4 +253,6 @@ if (A11Y) {
 }
 const bad = results.filter((r) => !r.ok);
 console.log(`\n${results.length - bad.length} of ${results.length} journeys passed`);
-process.exit(bad.length ? 1 : 0);
+const a11yBad = A11Y ? A11Y_FOUND.filter((v) => v.impact === 'critical' || v.impact === 'serious').length : 0;
+if (a11yBad) console.log(`${a11yBad} serious accessibility problems: fix them before deploying.`);
+process.exit(bad.length || a11yBad ? 1 : 0);

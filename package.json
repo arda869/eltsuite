@@ -31,6 +31,8 @@
     "exceljs": "^4.4.0",
     "fflate": "^0.8.3",
     "firebase": "^11.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2",
     "pdfjs-dist": "^4.10.38",
     "perfect-freehand": "^1.2.2",
     "pptxgenjs": "^4.0.1",

@@ -199,8 +199,10 @@ export function MediaArchive() {
   const groups: [string, Entry[]][] = group === 'type' ? ALL_KINDS.map((k) => [k.label, shown.filter((e) => e.kind === k.k)] as [string, Entry[]]).filter(([, l]) => l.length) : [['', shown]];
   const myDocs = myDocsTop;
   const docBytes = (myDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
-  const total = all.reduce((s, i) => s + spaceOf(i), 0) + docBytes;
-  useEffect(() => void (uid && items !== null && myDocs !== null && noteSpace(uid, total)), [uid, items, myDocs, total]);
+  // Lessons are measured a few times an hour (scripts/space.mjs) and count too.
+  const lessonBytes = acct?.lessonBytes ?? 0;
+  const total = all.reduce((s, i) => s + spaceOf(i), 0) + docBytes + lessonBytes;
+  useEffect(() => void (uid && items !== null && myDocs !== null && noteSpace(uid, total - lessonBytes)), [uid, items, myDocs, total, lessonBytes]);
 
   // ---------------------------------------------------------------- selecting
   // Click selects one, Ctrl/Cmd or Shift click adds, and dragging on the empty space draws a box
@@ -319,16 +321,27 @@ export function MediaArchive() {
   const download = async (list: Entry[], folders: string[] = []) => {
     const every = [...new Map([...list, ...entries.filter((e) => folders.some((f) => inTree(e.folder, f)))].map((e) => [e.key, e])).values()];
     if (!every.length) return;
-    if (every.length === 1 && !folders.length) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
+    if (every.length === 1 && !folders.length && (every[0].item || every[0].task)) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
     setBusy('Putting the files together…');
     const base = folders.length === 1 && !list.length ? folders[0] : folder;
     try {
+      // Documents, slides, flashcards, reading, PDFs and lessons, each in the form used outside the app.
+      const { sharedDocFiles, classLessonFiles } = await import('../lib/folderExport');
+      const others = every.filter((e) => e.doc || e.cls);
+      const made: { folder: string; name: string; data: Uint8Array }[] = [];
+      for (let i = 0; i < others.length; i++) {
+        const e = others[i];
+        setBusy(`Making the files… ${i + 1} of ${others.length}`);
+        const out = await (e.doc ? sharedDocFiles(e.doc) : classLessonFiles(e.cls!)).catch((err) => (console.error(err), []));
+        made.push(...out.map((f) => ({ folder: e.folder, name: f.name, data: f.data })));
+      }
       await downloadZip(
         every.filter((e) => e.item).map((e) => e.item!),
         folders.length === 1 && !list.length ? leafOf(folders[0]) : folder ? leafOf(folder) : 'Resources',
         base,
         (d, t) => setBusy(`Putting the files together… ${d} of ${t}`),
         every.filter((e) => e.task).map((e) => ({ folder: e.folder, name: e.name, text: taskMd(e.task!) })),
+        made,
       );
       setBusy('');
     } catch {
@@ -659,6 +672,7 @@ export function MediaArchive() {
                   return <span key={k.k} className={'k-' + k.k} style={{ width: `${Math.max(bytes ? 0.8 : 0, (bytes / quota.bytes) * 100)}%` }} />;
                 })}
                 <span className="k-docs" style={{ width: `${Math.max(docBytes ? 0.8 : 0, (docBytes / quota.bytes) * 100)}%` }} />
+                <span className="k-lesson" style={{ width: `${Math.max(lessonBytes ? 0.8 : 0, (lessonBytes / quota.bytes) * 100)}%` }} />
               </span>
               <span className="ma-legend">
                 {KINDS.map((k) => {
@@ -678,8 +692,13 @@ export function MediaArchive() {
                   Collaborative files
                   <b>{docBytes ? formatBytes(docBytes) : '0'}</b>
                 </span>
+                <span>
+                  <i className="k-lesson" />
+                  Lessons
+                  <b>{acct?.lessonBytes === undefined ? 'Measuring' : formatBytes(lessonBytes)}</b>
+                </span>
               </span>
-              <span className="hint small">{quota.org ? `${quota.org} gives you ${quota.gb} GB.` : `Your plan has ${quota.gb} GB for the whole app.`} Links and tasks take no space; documents, flashcards and reading notes count.</span>
+              <span className="hint small">{quota.org ? `${quota.org} gives you ${quota.gb} GB.` : `Your plan has ${quota.gb} GB for the whole app.`} Lessons, documents, flashcards, reading notes, pictures and recordings all count. Links take no space.</span>
             </div>
           </aside>
 
@@ -757,7 +776,9 @@ export function MediaArchive() {
             </div>
             {acct?.over && <div className="ma-full" role="status"><b>Your space is full.</b> New pictures, recordings and files cannot be added until you delete some, or {quota.org ? `${quota.org} gives you more` : 'ask for more space'}.</div>}
             {(upBusy || busy) && <BusyToast text={upBusy || busy} onClose={() => (setBusy(''), setUpBusy(''))} />}
-            {sel.size > 0 ? (
+            {/* The selection bar sits over the tools, so nothing below moves when files are picked. */}
+            <div className="ma-toolwrap">
+            {sel.size > 0 && (
               <div className="ma-selbar">
                 <b>{sel.size} selected</b>
                 {selEntries.length > 0 && (
@@ -780,14 +801,14 @@ export function MediaArchive() {
                 )}
                 <span style={{ flex: 1 }} />
                 <button type="button" className="btn link small" onClick={() => setSel(new Set(order))}>
-                  Select everything
+                  Select all
                 </button>
                 <button type="button" className="btn link small" onClick={() => setSel(new Set())}>
                   Clear
                 </button>
               </div>
-            ) : (
-              <div className="ma-bar-row ma-tools">
+            )}
+              <div className={'ma-bar-row ma-tools' + (sel.size ? ' under' : '')} aria-hidden={sel.size > 0 || undefined}>
                 {searching || q ? (
                   <span className="ma-search-wrap">
                     <UiIcon name="search" size={15} />
@@ -852,7 +873,7 @@ export function MediaArchive() {
                   ))}
                 </span>
               </div>
-            )}
+            </div>
             {folder === '' && !filtering && view !== 'time' && entries.length > 4 && (
               <section className="ma-recent" aria-label="Recent files">
                 <span className="ma-group-h">Recent</span>

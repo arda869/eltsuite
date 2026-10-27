@@ -22,6 +22,7 @@ export function NotesEditor({ doc, text, onChange, placeholder, className = '' }
   const editor = useEditor({
     extensions: [StarterKit.configure({ heading: { levels: [3, 4] }, codeBlock: false, code: false }), Underline, Highlight, TextColor, Link.configure({ openOnClick: true, autolink: true }), Placeholder.configure({ placeholder })],
     content: doc ?? textToDoc(text),
+    editorProps: { attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Notes' } },
     onUpdate: ({ editor }) => onChange(editor.getJSON(), editor.getText({ blockSeparator: '\n' })),
   });
   // A different task: load its notes.

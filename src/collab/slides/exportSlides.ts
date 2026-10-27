@@ -46,6 +46,14 @@ function runsOf(json: JSONContent, base: Record<string, unknown>): PRun[] {
 }
 
 export async function downloadPptx(slides: Slide[], title: string, accent: string) {
+  const pptx = await buildPptx(slides, title, accent);
+  await pptx.writeFile({ fileName: `${(title || 'Slides').replace(/[^\w\- ]+/g, '').trim() || 'Slides'}.pptx` });
+}
+export async function pptxBlob(slides: Slide[], title: string, accent: string): Promise<Blob> {
+  const pptx = await buildPptx(slides, title, accent);
+  return (await pptx.write({ outputType: 'blob' })) as Blob;
+}
+async function buildPptx(slides: Slide[], title: string, accent: string) {
   const { default: PptxGenJS } = await import('pptxgenjs');
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_16x9'; // 10 × 5.625 inches
@@ -70,7 +78,7 @@ export async function downloadPptx(slides: Slide[], title: string, accent: strin
       }
     }
   }
-  await pptx.writeFile({ fileName: `${(title || 'Slides').replace(/[^\w\- ]+/g, '').trim() || 'Slides'}.pptx` });
+  return pptx;
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

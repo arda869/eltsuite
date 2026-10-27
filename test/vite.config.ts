@@ -42,5 +42,7 @@ export default defineConfig({
   plugins: [react(), harness()],
   define: { __BUILD__: '"dev"' },
   resolve: { alias: { 'firebase/app': m('app.ts'), 'firebase/auth': m('auth.ts'), 'firebase/database': m('database.ts'), 'firebase/firestore': m('firestore.ts') } },
+  // Every page's packages are found at the start, so the app never reloads itself in the middle of a test.
+  optimizeDeps: { entries: ['index.html', 'src/**/*.tsx'] },
   server: { port: 5184, strictPort: true, fs: { allow: [root] } },
 });

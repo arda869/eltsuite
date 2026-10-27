@@ -38,6 +38,8 @@ import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggesti
 import { downloadDocx, printDoc, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
+import { TaskRenderer } from '../components/TaskRenderer';
+import { splitKey, type Responses } from '../lib/questions';
 
 // A document the class writes together, live: everyone's cursor and name, editing,
 // suggesting (changes others accept or reject) and comments, as in Google Docs.
@@ -50,9 +52,27 @@ export const colorOf = (uid: string) => {
 };
 export const MODE_LABEL: Record<CollabMode, { label: string; about: string; icon: string }> = {
   edit: { label: 'Editing', about: 'Change the text directly', icon: 'edit' },
-  suggest: { label: 'Suggesting', about: 'Changes show as suggestions to accept or reject', icon: 'pen' },
-  comment: { label: 'Commenting', about: 'Add comments; the text stays as it is', icon: 'discuss' },
-  view: { label: 'Viewing', about: 'Read only', icon: 'revealAll' },
+  suggest: { label: 'Suggesting', about: 'Suggest changes and add comments. Others accept or reject them.', icon: 'discuss' },
+  comment: { label: 'Commenting', about: 'Add comments. The text stays as it is.', icon: 'discuss' },
+  view: { label: 'Viewing', about: 'See it as learners do when you present it', icon: 'revealAll' },
+};
+// The modes offered: editing, then suggesting and commenting as one, then viewing.
+export function modeChoices(modes: CollabMode[], teacher?: boolean): CollabMode[] {
+  const base = (teacher ? (['edit', 'suggest'] as CollabMode[]) : modes).filter(Boolean);
+  const one = base.includes('suggest') ? base.filter((m) => m !== 'comment') : base;
+  return [...new Set([...one.filter((m) => m !== 'view'), 'view' as CollabMode])];
+}
+// The text as it stands: suggested additions left out, suggested deletions kept, no comment marks.
+function withoutSuggestions(n: JSONContent): JSONContent {
+  const marks = n.marks?.filter((m) => m.type !== 'suggestDel' && m.type !== 'comment');
+  const content = n.content?.filter((c) => !c.marks?.some((m) => m.type === 'suggestIns')).map(withoutSuggestions);
+  return { ...n, ...(n.marks ? { marks } : {}), ...(n.content ? { content } : {}) };
+}
+type Heading = { level: number; text: string; pos: number };
+const headingsOf = (d: { forEach: (f: (n: { type: { name: string }; attrs: Record<string, unknown>; textContent: string; nodeSize: number }, off: number) => void) => void }) => {
+  const out: Heading[] = [];
+  d.forEach((n, off) => n.type.name === 'heading' && n.textContent.trim() && out.push({ level: Number(n.attrs.level) || 1, text: n.textContent.trim(), pos: off }));
+  return out;
 };
 
 type Thread = { by: string; name: string; color: string; text: string; at: number; quote?: string; resolved?: boolean; r?: Record<string, { by: string; name: string; color: string; text: string; at: number }> };
@@ -100,8 +120,11 @@ export function CollabDoc({ docKey, title, template, modes, teacher, me, classId
 
 function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, toolSlot, session }: CollabProps & { session: CollabSession }) {
   const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
-  const allowed = (teacher ? (['edit', 'suggest', 'comment'] as CollabMode[]) : modes).filter(Boolean);
+  const allowed = modeChoices(modes, teacher);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
+  const [viewResp, setViewResp] = useState<Responses>({});
+  const [toc, setToc] = useState(false);
+  const [viewEl, setViewEl] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!allowed.includes(mode)) setMode(allowed[0] ?? 'view');
   }, [allowed.join(), mode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -145,7 +168,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       ],
       editable: eff !== 'view',
       editorProps: {
-        attributes: { class: 'cd-text', spellcheck: 'true' },
+        attributes: { class: 'cd-text', spellcheck: 'true', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Document text' },
         handlePaste: (_v, e) => {
           const files = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
           if (!files.length || !edRef.current) return false;
@@ -212,6 +235,15 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   useEffect(() => onValue(collabRef(docKey, 'c'), (s) => setThreads((s.val() as Record<string, Thread>) ?? {})), [docKey]);
   useEffect(() => onValue(collabRef(docKey, 'who'), (s) => setWho((s.val() as Record<string, { name: string; color: string }>) ?? {})), [docKey]);
   useEffect(() => {
+    if (!wcOpen) return;
+    const f = () => tick((n) => n + 1);
+    // A click anywhere else closes it.
+    const away = (e: MouseEvent) => !(e.target as HTMLElement).closest?.('.cd-wc-wrap') && setWcOpen(false);
+    document.addEventListener('selectionchange', f);
+    document.addEventListener('mousedown', away);
+    return () => (document.removeEventListener('selectionchange', f), document.removeEventListener('mousedown', away));
+  }, [wcOpen]);
+  useEffect(() => {
     if (!big) return;
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setBig(false);
     window.addEventListener('keydown', esc);
@@ -219,6 +251,21 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   }, [big]);
 
   if (!editor) return <div className="cd cd-wait" />;
+  // Viewing: the document as learners see it when it is presented, without suggestions still open.
+  const viewing = eff === 'view';
+  const viewDoc = viewing ? splitKey(withoutSuggestions(editor.getJSON())).content : null;
+  const heads = headingsOf(editor.state.doc);
+  const goHeading = (h: Heading, i: number) => {
+    if (viewing) {
+      const same = heads.slice(0, i).filter((x) => x.text === h.text).length;
+      const el = [...(viewEl?.querySelectorAll('h1, h2, h3') ?? [])].filter((x) => x.textContent?.trim() === h.text)[same];
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const dom = editor.view.nodeDOM(h.pos) as HTMLElement | null;
+    editor.chain().setTextSelection(h.pos + 1).run();
+    dom?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   const sugg = listSuggestions(editor.state.doc);
   const spots = commentSpots(editor.state.doc);
   const open = Object.entries(threads).filter(([, t]) => !t.resolved);
@@ -264,7 +311,15 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     </button>
   );
   const writing = eff === 'edit' || eff === 'suggest';
-  const selWords = sel.empty ? 0 : wordCount((editor.state.doc.cut(sel.from, sel.to).toJSON() ?? { type: 'doc' }) as JSONContent);
+  // Words selected in the text, or anywhere else on the page (the title, say).
+  const fieldSel = (() => {
+    const a = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+    return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.selectionStart != null && a.selectionEnd != null ? a.value.slice(a.selectionStart, a.selectionEnd).trim() : '';
+  })();
+  const pageSel = fieldSel || (window.getSelection()?.toString().trim() ?? '');
+  const inEditor = !sel.empty && editor.view.hasFocus();
+  const selWords = inEditor || (!sel.empty && !pageSel) ? wordCount((editor.state.doc.cut(sel.from, sel.to).toJSON() ?? { type: 'doc' }) as JSONContent) : pageSel ? pageSel.split(/\s+/).filter(Boolean).length : 0;
+  const anySel = selWords > 0;
   const showSide = side !== 'none' || !!draft || (!page && (sugg.length > 0 || open.length > 0));
   const counts = side === 'people' ? contributions(session.doc, session.pud) : null;
 
@@ -338,7 +393,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
               </span>
               <span className="cd-wc-row">
                 <span>Selected</span>
-                <b>{sel.empty ? '–' : selWords}</b>
+                <b>{anySel ? selWords : '–'}</b>
               </span>
               <span className="hint">Without the reference list, as assignments count them.</span>
             </span>
@@ -374,7 +429,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     !locked && allowed.length > 1 ? (
       <span className="cd-modeseg" role="radiogroup" aria-label="Mode">
         {allowed.map((m) => (
-          <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)} data-tip={MODE_LABEL[m].about}>
+          <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)} aria-label={MODE_LABEL[m].label} data-tip={MODE_LABEL[m].about}>
             <UiIcon name={MODE_LABEL[m].icon} size={15} />
             <span>{MODE_LABEL[m].label}</span>
           </button>
@@ -540,7 +595,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
                   </span>
                   <span className="cd-wc-row">
                     <span>Selected</span>
-                    <b>{sel.empty ? '–' : selWords}</b>
+                    <b>{anySel ? selWords : '–'}</b>
                   </span>
                   <span className="hint">Without the reference list, as assignments count them.</span>
                 </span>
@@ -575,11 +630,33 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       )}
       <div className={'cd-main' + (page && !showSide ? ' no-side' : '')}>
         <div className="cd-page">
+          {heads.length > 0 && (
+            <div className={'cd-toc' + (toc ? ' open' : '')}>
+              <button type="button" className="cd-toc-btn" onClick={() => setToc((v) => !v)} aria-expanded={toc} aria-label={toc ? 'Hide the contents' : 'Show the contents'} data-tip={toc ? 'Hide the contents' : 'Contents'}>
+                <SV d="M4 6h16M4 12h11M4 18h13" size={16} />
+              </button>
+              {toc && (
+                <nav className="cd-toc-list" aria-label="Contents">
+                  <b>Contents</b>
+                  {heads.map((h, i) => (
+                    <button key={i} type="button" className={'l' + Math.min(3, h.level)} onClick={() => goHeading(h, i)}>
+                      {h.text}
+                    </button>
+                  ))}
+                </nav>
+              )}
+            </div>
+          )}
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
           {heading}
+          {viewing && (
+            <div className={'cd-view' + (page ? ' doc cd-doc' : ' doc')} ref={setViewEl}>
+              <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
+            </div>
+          )}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
-            <div className={'editor-host' + (page ? ' cd-host' : '')} ref={setHost}>
+            <div className={'editor-host' + (page ? ' cd-host' : '')} ref={setHost} hidden={viewing}>
               <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
               {page && writing && <LineAdder editor={editor} host={host} />}
               {page && writing && <BlockHandles editor={editor} host={host} space={classId} />}
