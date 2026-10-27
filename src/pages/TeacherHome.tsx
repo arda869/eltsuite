@@ -1,3 +1,4 @@
+import { isTrainerIn, useMyOrg } from '../lib/admin';
 import { ask } from '../lib/ask';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -65,6 +66,9 @@ export function TeacherHome() {
   }
 
   const mine = useTeacherClasses(user?.uid);
+  const myOrg = useMyOrg();
+  const trainer = isTrainerIn(myOrg, user?.uid);
+  const canCreate = myOrg?.policy?.createClasses !== false || trainer; // a teacher trainer makes training classes
   const classes = mine.classes;
   const invites = useInvites(user?.email);
   const [inviteMsg, setInviteMsg] = useState('');
@@ -163,12 +167,12 @@ export function TeacherHome() {
                   {showArchived ? 'Hide archived classes' : `Archived classes (${archived.length})`}
                 </button>
               )}
-              {active.length > 0 && !active.some((c) => c.name === 'Demo class') && (
+              {active.length > 0 && canCreate && !active.some((c) => c.name === 'Demo class') && (
                 <button className="btn link small" disabled={!!demoStep} onClick={makeDemo}>
                   {demoStep ? demoStep + '…' : 'Add a demo class'}
                 </button>
               )}
-              {active.length > 0 && (
+              {active.length > 0 && canCreate && (
                 <button className="btn" onClick={() => setCreating(true)}>
                   + New class
                 </button>
@@ -246,16 +250,16 @@ export function TeacherHome() {
             <Loader label="Loading your classes" />
           ) : active.length === 0 ? (
             <div className="empty">
-              <h2>Create your first class</h2>
-              <p>A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.</p>
-              <span style={{ display: 'flex', gap: 8 }}>
+              <h2>{canCreate ? 'Create your first class' : 'Your classes are on their way'}</h2>
+              <p>{canCreate ? 'A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.' : `${myOrg?.name} makes the classes for its teachers. They appear here as soon as they are ready.`}</p>
+              {canCreate && <span style={{ display: 'flex', gap: 8 }}>
                 <button className="btn primary" onClick={() => setCreating(true)}>
                   + New class
                 </button>
                 <button className="btn" disabled={!!demoStep} onClick={makeDemo}>
                   {demoStep ? demoStep + '…' : 'Try a demo class'}
                 </button>
-              </span>
+              </span>}
               <span className="hint">The demo class has 6 learners and a sample lesson that uses every question type.</span>
             </div>
           ) : (

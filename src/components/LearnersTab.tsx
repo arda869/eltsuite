@@ -11,6 +11,9 @@ import type { Item } from '../lib/classes';
 import { isOnline, usePresence } from '../lib/presence';
 import { ago } from '../lib/activity';
 import { LearnerDetail } from './LearnerDetail';
+import { useAuth } from '../lib/auth';
+import { useMyOrg } from '../lib/admin';
+import { openChat, sendMsg, type Chat } from '../lib/chat';
 
 export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = '', onOpen }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string>; items?: Item[]; openId?: string; onOpen?: (id: string) => void }) {
   const presence = usePresence(c.id);
@@ -20,6 +23,17 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const { user, profile } = useAuth();
+  const myOrg = useMyOrg();
+  // A teacher training class in an organisation: its trainees are the organisation's teachers,
+  // and others by name only when the organisation allows it.
+  const org = c.kind === 'training' && c.org && myOrg?.id === c.org ? myOrg : null;
+  const outsideOk = !org || !!org.policy?.externalTrainees;
+  const inClass = new Set(learners.map((l) => l.teacherUid).filter(Boolean));
+  const pickable = org ? Object.entries(org.teachers).filter(([uid]) => uid !== user?.uid && !inClass.has(uid)) : [];
+  const [picked, setPicked] = useState<Record<string, boolean>>({});
+  const nPicked = Object.values(picked).filter(Boolean).length;
+  const nTyped = outsideOk ? names.split('\n').filter((n) => n.trim()).length : 0;
 
   const sorted = [...learners]
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
@@ -30,7 +44,9 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
 
   async function add(e: FormEvent) {
     e.preventDefault();
-    const list = names.split('\n').map((n) => n.trim()).filter(Boolean);
+    const chosen = pickable.filter(([uid]) => picked[uid]);
+    const from = Object.fromEntries(chosen.map(([uid, t]) => [t.name || t.email, uid]));
+    const list = [...(outsideOk ? names.split('\n').map((n) => n.trim()).filter(Boolean) : []), ...Object.keys(from)];
     const existing = new Set(learners.map((l) => l.displayName.toLowerCase()));
     const dupes = list.filter((n) => existing.has(n.toLowerCase()));
     if (dupes.length) return setError(`Already in the class: ${dupes.join(', ')}. Use a surname initial to tell them apart.`);
@@ -38,8 +54,23 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
     setBusy('add');
     setError('');
     try {
-      await addLearners(c, list);
+      const added = await addLearners(c, list, from);
+      // Each teacher added from the organisation gets their sign-in in Messages.
+      if (user && chosen.length) {
+        const me = { key: user.uid, name: profile?.displayName || user.displayName || 'Your trainer', role: 'teacher' as const };
+        for (const a of added) {
+          const uid = from[a.name];
+          if (!uid) continue;
+          try {
+            const id = await openChat(me, [{ key: uid, name: a.name, role: 'teacher' }]);
+            await sendMsg({ id } as Chat, me, { text: `I have added you to ${c.name}, my teacher training class. Sign in at ${window.location.origin}/join with the class code ${c.classCode}, your name (${a.name}) and the PIN ${a.pin}.` });
+          } catch {
+            /* the PIN is still in the table */
+          }
+        }
+      }
       setNames('');
+      setPicked({});
       setAdding(false);
     } catch (err) {
       console.error(err);
@@ -206,17 +237,40 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                 ×
               </button>
             </div>
-            <label className="field">
-              One name per line
-              <textarea rows={6} value={names} onChange={(e) => setNames(e.target.value)} placeholder={'Sofia Rossi\nTariq Aziz'} />
-            </label>
+            {org && (
+              <div className="field lt-org">
+                Teachers in {org.name}
+                {pickable.length ? (
+                  <span className="lt-pick">
+                    {pickable.map(([uid, t]) => (
+                      <label key={uid} className="lt-pick-o">
+                        <input type="checkbox" checked={!!picked[uid]} onChange={(e) => setPicked((p) => ({ ...p, [uid]: e.target.checked }))} />
+                        <span>
+                          {t.name || t.email}
+                          {t.title && <span className="hint"> · {t.title}</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="hint">Every teacher in {org.name} is in this class.</span>
+                )}
+                <span className="hint">Each one gets the class code and their PIN in Messages.</span>
+              </div>
+            )}
+            {outsideOk && (
+              <label className="field">
+                {org ? `Teachers from outside ${org.name}, one name per line` : 'One name per line'}
+                <textarea rows={org ? 3 : 6} value={names} onChange={(e) => setNames(e.target.value)} placeholder={'Sofia Rossi\nTariq Aziz'} />
+              </label>
+            )}
             <span className="hint">{tr('Each learner gets a 4-digit PIN. They sign in with the class code, their name and the PIN. No email needed.')}</span>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="btn" onClick={() => setAdding(false)}>
                 Cancel
               </button>
-              <button className="btn primary" disabled={busy === 'add' || !names.trim()}>
-                {busy === 'add' ? 'Adding…' : tr(`Add ${names.split('\n').filter((n) => n.trim()).length || ''} learners`).replace('  ', ' ')}
+              <button className="btn primary" disabled={busy === 'add' || nTyped + nPicked === 0}>
+                {busy === 'add' ? 'Adding…' : tr(`Add ${nTyped + nPicked || ''} learners`).replace('  ', ' ')}
               </button>
             </div>
           </form>

@@ -18,41 +18,16 @@ import { ROLES, docLink, measureDoc, KIND_LABEL, type DocKind, modesFor, renameD
 import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
 import { UiIcon } from '../components/UiIcon';
+import { FileIcon, setFileFavicon } from '../components/FileIcon';
 
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
 // sharing, and the whole window for writing.
 
+// The same page icon the file has in Files, so the tab and the file look alike.
 export function DocIcon({ kind }: { kind: DocKind }) {
   return (
-    <span className={'dp-icon k-' + kind} aria-hidden="true">
-      {kind === 'lesson' ? (
-        <svg width="22" height="22" viewBox="0 0 24 24">
-          <rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="currentColor" />
-          <path d="M7.5 8.5h9M7.5 12h9M7.5 15.5h5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
-        </svg>
-      ) : kind === 'flash' ? (
-        <svg width="22" height="22" viewBox="0 0 24 24">
-          <rect x="7" y="3" width="13" height="16" rx="2.2" fill="currentColor" opacity="0.45" transform="rotate(8 13 11)" />
-          <rect x="4" y="5" width="13" height="16" rx="2.2" fill="currentColor" />
-          <path d="M7.5 11h6M7.5 14h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-      ) : kind === 'pd' ? (
-        <svg width="22" height="22" viewBox="0 0 24 24">
-          <path d="M3 5.5C6 4.5 9 4.6 12 6.2v13.3c-3-1.6-6-1.7-9-.7z" fill="currentColor" />
-          <path d="M21 5.5c-3-1-6-.9-9 .7v13.3c3-1.6 6-1.7 9-.7z" fill="currentColor" opacity="0.6" />
-        </svg>
-      ) : kind === 'slides' ? (
-        <svg width="22" height="22" viewBox="0 0 24 24">
-          <rect x="3" y="4" width="18" height="16" rx="2.5" fill="currentColor" />
-          <rect x="6.5" y="8" width="11" height="7" rx="1" fill="#fff" opacity="0.9" />
-        </svg>
-      ) : (
-        <svg width="22" height="22" viewBox="0 0 24 24">
-          <path d="M6 2.5h8l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V4A1.5 1.5 0 0 1 6 2.5z" fill="currentColor" />
-          <path d="M14 2.5V7a.5.5 0 0 0 .5.5H19" fill="#fff" opacity="0.5" />
-          <path d="M8 11.5h8M8 14.5h8M8 17.5h5" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
-        </svg>
-      )}
+    <span className="dp-icon" aria-hidden="true">
+      <FileIcon kind={kind} size={24} label={false} />
     </span>
   );
 }
@@ -78,6 +53,7 @@ export function DocPage() {
   useEffect(() => {
     document.title = `${title || 'Document'} · ELT Suite`;
   }, [title]);
+  useEffect(() => setFileFavicon(kind), [kind]);
   useEffect(() => {
     if (d && d.owner === uid) {
       const m = () => void measureDoc(d);

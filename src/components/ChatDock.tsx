@@ -6,6 +6,7 @@ import { useDirectory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
 import { publishFace } from '../lib/faces';
+import { useOrgColleagues } from '../lib/admin';
 import { ChatView, NewChat } from '../pages/MessagesPage';
 import { IconLink, UiIcon } from './UiIcon';
 import { PersonFace } from './avatars';
@@ -76,6 +77,7 @@ export function ChatDock() {
   const dirAll = useDirectory();
   const chats = useMemo(() => withShownNames(rawChats, dirAll?.nameFor), [rawChats, dirAll]);
   const st = useDock();
+  useOrgColleagues();
   const [creating, setCreating] = useState<string | false>(false); // the window it was started from
   // The Messages tab can be dragged narrower (just its icon) or wider.
   const [launchW, setLaunchW] = useState(() => {

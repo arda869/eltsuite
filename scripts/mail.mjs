@@ -235,3 +235,43 @@ for (const c of threads.docs) {
   await c.ref.update({ [`mailed.${learner}`]: Date.now() });
   console.log('Emailed a reply to', d.names?.[learner]);
 }
+
+// ------------------------------------------------------------------ 4. invitations to an organisation
+// A new teacher gets a link to finish making their account; a teacher who already has one gets an
+// invitation to join, with what the organisation's admins can set and see.
+
+const ADMIN_CAN = [
+  'which apps you have, and how much space',
+  'whether you make your own classes, or they make them for you',
+  'class settings for learners: emails, and how names show',
+  'whether you can add colleagues from outside the organisation',
+  'which shared folders you can view or change',
+  'your job title, and whether you are a teacher trainer',
+];
+const ADMIN_SEE = 'Your name, email, job title and the profile you write, if they ask for one. Not your lessons, files or messages, unless you share them.';
+const invites = await db.collection('orgInvites').where('status', '==', 'pending').get();
+const { getAuth } = await import('firebase-admin/auth');
+for (const i of invites.docs) {
+  const d = i.data();
+  if (d.mailed) continue;
+  try {
+    const existing = await getAuth().getUserByEmail(d.email).then(() => true).catch(() => false);
+    const link = `${SITE}/invite/${i.id}`;
+    const first = (d.name || '').split(' ')[0];
+    const btn = (t) => `<p style="margin:18px 0"><a href="${link}" style="display:inline-block;background:${esc(d.color || '#b8744e')};color:#fff;text-decoration:none;font:600 15px Arial,sans-serif;padding:11px 20px;border-radius:9px">${t}</a></p>`;
+    const can = `<p style="margin:14px 0 6px;font:600 14px Arial,sans-serif">In ${esc(d.orgName)}, its admins can set</p><ul style="margin:0 0 12px;padding-left:20px;font:14px/1.6 Arial,sans-serif;color:#3b3935">${ADMIN_CAN.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p style="margin:0 0 6px;font:600 14px Arial,sans-serif">What they see</p><p style="margin:0 0 12px;font:14px/1.6 Arial,sans-serif;color:#3b3935">${esc(ADMIN_SEE)} The teachers in ${esc(d.orgName)} become your colleagues.</p>`;
+    const intro = existing
+      ? `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} would like you to join <b>${esc(d.orgName)}</b> in ELT Suite. Your account, classes and files stay yours. You can say no.</p>${btn('See the invitation')}${can}`
+      : `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} has made a place for you at <b>${esc(d.orgName)}</b> in ELT Suite, for planning lessons and teaching your classes. Choose a password, or use Google, to finish your account.</p>${btn('Finish your account')}${can}`;
+    await mail.sendMail({
+      from: FROM,
+      to: d.email,
+      subject: existing ? `Join ${d.orgName} in ELT Suite` : `Your ELT Suite account at ${d.orgName}`,
+      html: frame(existing ? `An invitation from ${d.orgName}` : `Welcome to ${d.orgName}`, intro, `You get this because an admin of ${esc(d.orgName)} added ${esc(d.email)}. Not expecting it? Ignore this email.`),
+    });
+    await i.ref.update({ mailed: Date.now(), existing });
+    console.log('Invitation emailed for', d.orgName);
+  } catch (e) {
+    console.error('Invitation email failed', i.id, e?.message);
+  }
+}

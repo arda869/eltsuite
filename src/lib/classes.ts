@@ -44,6 +44,7 @@ export type ClassDoc = {
   langs?: string[]; // languages the learners speak, for translations
   liveAudio?: 'self' | 'together' | 'teacher'; // who plays sounds and videos in live lessons
   kind?: ClassKind; // a language class, or a teacher training course
+  org?: string; // the organisation it belongs to
   terms?: { learner?: string; learners?: string; teacher?: string; teachers?: string }; // what the class calls its people
 };
 
@@ -84,7 +85,7 @@ export function makeClassCode(name: string) {
 
 // Creates the class and reserves a unique class code in one transaction.
 export type ClassKind = 'language' | 'training';
-export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey; kind?: ClassKind }) {
+export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey; kind?: ClassKind; org?: string; extra?: Record<string, unknown> }) {
   const classRef = doc(collection(db, 'classes'));
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = makeClassCode(input.name);
@@ -102,9 +103,11 @@ export async function createClass(teacherId: string, input: { name: string; leve
         status: 'active',
         learnerCount: 0,
         meeting: null,
+        ...(input.org ? { org: input.org } : {}),
+        ...(input.extra ?? {}),
         createdAt: serverTimestamp(),
       });
-      tx.set(codeRef, { classId: classRef.id, teacherId, className: input.name, roster: [], createdAt: serverTimestamp() });
+      tx.set(codeRef, { classId: classRef.id, teacherId, className: input.name, roster: [], ...(input.org ? { org: input.org } : {}), createdAt: serverTimestamp() });
       return true;
     });
     if (ok) return classRef.id;

@@ -1567,10 +1567,10 @@ function SfxMenu({ onAdd, onHear, mine = [] }: { onAdd: (k: string) => void; onH
       </button>
       {open && createPortal(
         <span ref={pop} className={'sx-sfxpop' + (at.up ? ' up' : '')} role="menu" style={at.up ? { left: at.left, bottom: window.innerHeight - at.top } : { left: at.left, top: at.top }} onMouseDown={(e) => e.stopPropagation()}>
-          {mine.length > 0 && (
-            <span className="sx-sfxg">
-              <span className="sx-sfxh">Your sounds</span>
-              {mine.map((s) => (
+          {[['Your sounds', mine.filter((s) => !s.everyone)], ['More sounds', mine.filter((s) => s.everyone)]].map(([h, list]) => (list as MySfx[]).length > 0 && (
+            <span key={h as string} className="sx-sfxg">
+              <span className="sx-sfxh">{h as string}</span>
+              {(list as MySfx[]).map((s) => (
                 <span key={s.id} className="sx-sfxrow">
                   <button type="button" className="sx-hear" onClick={() => onHear('u:' + s.id)} aria-label={`Hear ${s.label}`}>
                     <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z" fill="currentColor" /></svg>
@@ -1582,7 +1582,7 @@ function SfxMenu({ onAdd, onHear, mine = [] }: { onAdd: (k: string) => void; onH
                 </span>
               ))}
             </span>
-          )}
+          ))}
           {groups.map((g) => (
             <span key={g} className="sx-sfxg">
               <span className="sx-sfxh">{g}</span>

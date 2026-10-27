@@ -24,14 +24,44 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
     const top = anchor.bottom + 6 + r.height > window.innerHeight - 8 ? Math.max(8, anchor.top - 6 - r.height) : anchor.bottom + 6;
     setAt({ left: Math.max(8, Math.min(anchor.left, window.innerWidth - r.width - 8)), top });
   }, [anchor]);
+  // Opening the menu selects the part, so it shows what Delete, Ctrl+C and Ctrl+X act on.
+  useEffect(() => {
+    const n = editor.state.doc.nodeAt(pos);
+    if (n && !(editor.state.selection instanceof NodeSelection && editor.state.selection.from === pos)) {
+      try {
+        editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
+      } catch {
+        /* not selectable */
+      }
+    }
+  }, [editor, pos]);
   useEffect(() => {
     const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && onClose();
-    const key = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose();
+      const n = editor.state.doc.nodeAt(pos);
+      if (!n || !editor.isEditable) return;
+      const mod = e.ctrlKey || e.metaKey;
+      const gone = () => editor.view.dispatch(editor.state.tr.delete(pos, pos + n.nodeSize).scrollIntoView());
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        gone();
+        onClose();
+        editor.view.focus();
+      } else if (mod && (e.key === 'c' || e.key === 'x')) {
+        e.preventDefault();
+        void writeClip({ v: 1, space, content: [n.toJSON() as JSONContent] }, n.textContent).then(() => {
+          if (e.key === 'x') gone();
+          onClose();
+          editor.view.focus();
+        });
+      }
+    };
     document.addEventListener('mousedown', down);
     document.addEventListener('keydown', key);
     window.addEventListener('scroll', onClose, true);
     return () => (document.removeEventListener('mousedown', down), document.removeEventListener('keydown', key), window.removeEventListener('scroll', onClose, true));
-  }, [onClose]);
+  }, [onClose, editor, pos, space]);
   if (!node) return null;
 
   const $p = editor.state.doc.resolve(pos);
@@ -108,6 +138,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
       <Item
         icon={<UiIcon name="import" size={15} />}
         label={note || 'Copy'}
+        keys="Ctrl C"
         onClick={() =>
           void copy().then((ok) => {
             setNote(ok ? 'Copied' : 'Could not copy');
@@ -115,7 +146,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
           })
         }
       />
-      <Item icon={<span className="bm-cut">✂</span>} label="Cut" onClick={() => void copy().then(() => (del(), onClose()))} />
+      <Item icon={<span className="bm-cut">✂</span>} label="Cut" keys="Ctrl X" onClick={() => void copy().then(() => (del(), onClose()))} />
       <span className="bm-sep" />
       <Item icon={<span className="bm-arrow">↑</span>} label="Move up" disabled={!prev} onClick={run(up)} />
       <Item icon={<span className="bm-arrow">↓</span>} label="Move down" disabled={!next} onClick={run(down)} />

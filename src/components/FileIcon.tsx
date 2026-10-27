@@ -55,3 +55,33 @@ export function FolderIcon({ size = 40, open, locked }: { size?: number; open?: 
     </span>
   );
 }
+
+// The tab's icon, drawn like the file's icon in Files: the page in the kind's colour and its symbol.
+const FK: Partial<Record<FileKind, string>> = { lesson: '#c8764a', task: '#8b6f4e', doc: '#7c6aa6', slides: '#b7791f', flash: '#8a4f9e', pd: '#3c7c8c', pdf: '#b64a3c', image: '#b8873a', audio: '#a3607f', video: '#4f7192', link: '#6b7480', media: '#b8873a' };
+export function setFileFavicon(kind: FileKind) {
+  const c = FK[kind] ?? '#c8764a';
+  // The symbol comes from the same icon set, drawn off screen and copied in.
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-9999px;top:0;color:' + c;
+  document.body.append(holder);
+  void Promise.all([import('react-dom/client'), import('react-dom')]).then(([{ createRoot }, { flushSync }]) => {
+    const root = createRoot(holder);
+    flushSync(() => root.render(<UiIcon name={(LOOK[kind] ?? LOOK.media).icon} size={20} />));
+    {
+      const g = holder.querySelector('svg');
+      const inner = g ? g.innerHTML.replace(/currentColor/g, c) : '';
+      const vb = g?.getAttribute('viewBox') ?? '0 0 24 24';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 48"><path d="M6 1.5h20L38.5 14v30A2.5 2.5 0 0 1 36 46.5H6A2.5 2.5 0 0 1 3.5 44V4A2.5 2.5 0 0 1 6 1.5z" fill="${c}1f" stroke="${c}" stroke-width="2.4"/><path d="M26 1.5V11a3 3 0 0 0 3 3h9.5" fill="${c}40" stroke="${c}" stroke-width="2.4" stroke-linejoin="round"/><svg x="7" y="15" width="26" height="26" viewBox="${vb}" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg></svg>`;
+      let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.append(link);
+      }
+      link.type = 'image/svg+xml';
+      link.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+      root.unmount();
+      holder.remove();
+    }
+  });
+}

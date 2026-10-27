@@ -1,10 +1,11 @@
+import { useSpaceLimit } from '../lib/admin';
 import { useArchive } from '../lib/archive';
 import { useMyDocs } from '../lib/sharedDocs';
 import { formatBytes } from '../lib/archive';
 
 // The space this account uses, out of the free plan's 1 GB.
-const FREE = 1024 * 1024 * 1024;
 export function StorageCard({ uid }: { uid: string }) {
+  const space = useSpaceLimit();
   const items = useArchive(uid) ?? [];
   const { mine } = useMyDocs(uid);
   const media = (k: string) => items.filter((i) => i.kind === k).reduce((s, i) => s + (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0), 0);
@@ -19,11 +20,11 @@ export function StorageCard({ uid }: { uid: string }) {
     <div className="ma-space st-card">
       <span className="ma-space-row">
         <b>{formatBytes(total)}</b>
-        <span className="hint">used of 1 GB</span>
+        <span className="hint">used of {space.gb} GB</span>
       </span>
       <span className="ma-bar" aria-hidden="true">
         {parts.map(([l, b, k]) => (
-          <span key={l} className={k} style={{ width: `${Math.max(b ? 0.8 : 0, (b / FREE) * 100)}%` }} />
+          <span key={l} className={k} style={{ width: `${Math.max(b ? 0.8 : 0, (b / space.bytes) * 100)}%` }} />
         ))}
       </span>
       <span className="ma-legend">
@@ -35,7 +36,7 @@ export function StorageCard({ uid }: { uid: string }) {
           </span>
         ))}
       </span>
-      <span className="hint small">The free plan has 1 GB for the whole app. Lessons and links take no space.</span>
+      <span className="hint small">{space.org ? `${space.org} gives you ${space.gb} GB.` : `Your plan has ${space.gb} GB for the whole app.`} Lessons and links take no space.</span>
     </div>
   );
 }

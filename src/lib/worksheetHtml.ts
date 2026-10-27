@@ -1,5 +1,6 @@
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { MARK } from '../components/Wordmark';
+import { currentOrg } from './admin';
 import appCss from '../styles.css?raw';
 import extrasCss from './extras.css?raw';
 import { translationsFor } from './langs';
@@ -179,7 +180,11 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
   SOUNDS = opts.sounds ?? {};
   QR_ON = opts.qr !== false;
-  const accent = opts.accent || '#d98f63';
+  // An organisation's teachers print with its logo and colour.
+  const org = currentOrg();
+  const brandLogo = org?.brand?.logo || '';
+  const accent = org?.brand?.color || opts.accent || '#d98f63';
+  const brandName = org?.name ?? '';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;
   const small = opts.paper === 'A5';
   const cols = opts.columns ?? 2;
@@ -252,10 +257,10 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
       </div>
       <div class="band-right">
         <div class="band-cover">${plainColours(opts.cover ?? '', accent)}</div>
-        <div class="brand">${logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
+        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
-  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ELT Suite</span><span class="pn"></span></footer>`;
+  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(brandLogo ? brandName : 'ELT Suite')}</span><span class="pn"></span></footer>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
 <style>
@@ -292,7 +297,7 @@ h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12
 .band-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--band) 0%, rgba(236,235,231,0) 28%); }
 .brand { background: rgba(255,255,255,.88); padding: 1.6mm 2.6mm 1.4mm; border-radius: 1.6mm; }
 .brand { position: absolute; right: var(--side); bottom: ${small ? 2.5 : 3.2}mm; display: flex; flex-direction: column; align-items: flex-end; gap: .6mm; }
-.logo-mark svg { width: 1em; height: 1em; vertical-align: -0.12em; margin-right: .3em; } .logo b { font-weight: 700; } .logo { font: 600 ${small ? 14 : 18}pt/1 Fraunces, serif; letter-spacing: -.015em; color: var(--ink); white-space: nowrap; }
+.org-logo { display: block; max-height: ${small ? 26 : 36}pt; max-width: ${small ? 90 : 130}pt; object-fit: contain; margin-left: auto; } .logo-mark svg { width: 1em; height: 1em; vertical-align: -0.12em; margin-right: .3em; } .logo b { font-weight: 700; } .logo { font: 600 ${small ? 14 : 18}pt/1 Fraunces, serif; letter-spacing: -.015em; color: var(--ink); white-space: nowrap; }
 .li-i { position: relative; display: inline-block; } .li-i svg { position: absolute; left: 50%; top: .08em; transform: translateX(-50%); width: .32em; height: auto; }
 .kicker { font: 700 7.5pt Karla, sans-serif; letter-spacing: .04em; color: #3d3a36; }
 

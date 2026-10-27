@@ -319,7 +319,7 @@ function ChartView({ node, updateAttributes, selected }: NodeViewProps) {
           <span className="seg small-seg" role="radiogroup" aria-label="Which sounds">
             {([
               ['all', 'All'],
-              ['vowels', 'Single vowels'],
+              ['vowels', 'Vowels'],
               ['diphs', 'Diphthongs'],
               ['cons', 'Consonants'],
             ] as const).map(([k, l]) => (

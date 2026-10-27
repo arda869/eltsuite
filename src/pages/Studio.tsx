@@ -13,6 +13,7 @@ import { findUses, loadManifest, replaceSound, soundUrl, useArchive } from '../l
 import { decodeSound } from '../lib/sound';
 import { SoundEditor, type SoundSource } from '../media/SoundEditor';
 import { ChainIcon } from './LibraryParts';
+import { setFileFavicon } from '../components/FileIcon';
 
 // The studios: full-screen editors that open in their own tab, with room to work.
 // Task editor (a task in the resources library) and Sound editor (a sound in the library).
@@ -21,6 +22,7 @@ function StudioBar({ app, where, status, children }: { app: string; where: React
   useEffect(() => {
     const old = document.title;
     document.title = `${app} · ELT Suite`;
+    setFileFavicon(/sound|record/i.test(app) ? 'audio' : 'task');
     return () => void (document.title = old);
   }, [app]);
   return (

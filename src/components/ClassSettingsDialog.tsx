@@ -1,3 +1,4 @@
+import { useMyOrg } from '../lib/admin';
 import { tr } from '../lib/terms';
 import { useEffect, useState, type FormEvent } from 'react';
 import { LevelPicker } from './LevelPicker';
@@ -36,9 +37,12 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [learnerElements, setLearnerElements] = useState(c.messaging?.learnerElements !== false);
   const [msgMode, setMsgMode] = useState<MessagingMode>(c.messaging?.mode ?? 'free');
   const [photos, setPhotos] = useState(c.profile?.photos === true);
-  const [names, setNames] = useState<NameShow>(c.profile?.names ?? 'full');
+  const org = useMyOrg();
+  const orgNames = org?.policy?.names;
+  const orgEmail = org?.policy?.learnerEmails ? ({ none: 'off', optional: 'optional', required: 'required' } as const)[org.policy.learnerEmails] : undefined;
+  const [names, setNames] = useState<NameShow>(orgNames ?? c.profile?.names ?? 'full');
   const [nicks, setNicks] = useState<Record<string, string>>(c.nicknames ?? {});
-  const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(c.accounts?.email ?? 'optional');
+  const [emailLink, setEmailLink] = useState<'off' | 'optional' | 'required'>(orgEmail ?? c.accounts?.email ?? 'optional');
   const [tools, setTools] = useState<Record<string, boolean>>(() => Object.fromEntries(LEARNER_TOOLS.map((t) => [t.k, learnerToolOn(t.k, c.learnerTools)])));
   const [showTools, setShowTools] = useState(false);
   const [kind, setKind] = useState<'language' | 'training'>(c.kind ?? 'language');
@@ -237,9 +241,9 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           <label className="cs-row">
             <span>
               Names other learners see
-              <span className="hint">You always see full names</span>
+              <span className="hint">{orgNames ? `Set by ${org?.name}` : 'You always see full names'}</span>
             </span>
-            <select value={names} onChange={(e) => setNames(e.target.value as NameShow)}>
+            <select value={names} disabled={!!orgNames} onChange={(e) => setNames(e.target.value as NameShow)}>
               <option value="first">First name only (Anna)</option>
               <option value="initial">First name and initial (Anna S.)</option>
               <option value="full">Full name (Anna Silva)</option>
@@ -268,7 +272,8 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
               Email and Google sign-in
               <span className="hint">{tr('Learners can link their account to sign in with Google, and add an email for message summaries')}</span>
             </span>
-            <select value={emailLink} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
+            {orgEmail && <span className="hint cs-org">Set by {org?.name}</span>}
+            <select value={emailLink} disabled={!!orgEmail} onChange={(e) => setEmailLink(e.target.value as 'off' | 'optional' | 'required')}>
               <option value="off">Not for this class</option>
               <option value="optional">{tr('Learners can if they want')}</option>
               <option value="required">{tr('Every learner must')}</option>

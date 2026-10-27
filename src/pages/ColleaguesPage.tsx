@@ -151,13 +151,14 @@ export function ColleaguesPage() {
                   <span className="sh-pt">
                     <h2>{cur.name}</h2>
                     <span className="hint">
-                      Colleague
-                      {cur.at ? ` · since ${new Date(cur.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
+                      {cur.title || 'Colleague'}
+                      {cur.org ? ` · ${cur.orgName ?? ''}` : ''}
+                      {!cur.org && cur.at ? ` · since ${new Date(cur.at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}` : ''}
                     </span>
                   </span>
-                  <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${cur.name}? What you have shared stays shared until you stop sharing it.`).then((ok) => { if (ok) (removeColleague(uid, cur.id), setPick('')); })}>
+                  {cur.org ? <span className="hint">In {cur.orgName || 'your organisation'}: colleagues always</span> : <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${cur.name}? What you have shared stays shared until you stop sharing it.`).then((ok) => { if (ok) (removeColleague(uid, cur.id), setPick('')); })}>
                     Remove colleague
-                  </button>
+                  </button>}
                 </header>
                 <div className="cp-cols">
                   <div className="cp-col">

@@ -23,13 +23,21 @@ service cloud.firestore {
     function editsItem(classId, itemId) {
       return signedIn() && request.auth.uid in get(/databases/$(database)/documents/classes/$(classId)/items/$(itemId)).data.get('editors', {});
     }
+    // The app's owner: runs accounts, organisations and switches (see lib/admin.ts).
+    function isOwner() { return signedIn() && request.auth.token.get('email', '').lower() == 'ardanurioglu@gmail.com'; }
+    // An organisation's admin, making a class for one of its teachers.
+    function orgAdminFor(orgId, teacher) {
+      return signedIn() && orgId is string
+        && request.auth.token.get('email', '').lower() in get(/databases/$(database)/documents/orgs/$(orgId)).data.adminEmails
+        && teacher in get(/databases/$(database)/documents/orgs/$(orgId)).data.teachers;
+    }
     function memberOf(classId) {
       return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
 
     // Profiles: teachers create their own; teachers create learner profiles for their class
     match /users/{uid} {
-      allow read: if isSelf(uid)
+      allow read: if isSelf(uid) || isOwner()
         || (signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId));
       allow create: if (isSelf(uid) && !learnerAccount() && request.resource.data.role == 'teacher')
         || (request.resource.data.role == 'learner' && isTeacher() && teachesClass(request.resource.data.classId));
@@ -79,13 +87,12 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
-      allow read: if signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
+      allow read: if isOwner() || signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
         || request.auth.uid in resource.data.get('coTeachers', {})
         || request.auth.uid in resource.data.get('teacherIds', [])
         || request.auth.uid in resource.data.get('lessonEditorIds', [])
         || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
-      allow create: if isTeacher()
-        && request.resource.data.teacherId == request.auth.uid
+      allow create: if ((isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId))
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 80;
@@ -514,8 +521,8 @@ service cloud.firestore {
       allow write: if signedIn() && request.auth.token.email == 'ardanurioglu@gmail.com';
     }
     match /teacherSfx/{id} {
-      allow read: if signedIn() && resource.data.by == request.auth.uid;
-      allow create: if isTeacher() && request.resource.data.by == request.auth.uid && request.resource.data.data is string && request.resource.data.data.size() < 900000;
+      allow read: if signedIn() && (resource.data.by == request.auth.uid || resource.data.get('everyone', false) == true);
+      allow create: if isTeacher() && request.resource.data.by == request.auth.uid && request.resource.data.data is string && request.resource.data.data.size() < 900000 && (request.resource.data.get('everyone', false) == false || isOwner());
       allow delete: if signedIn() && resource.data.by == request.auth.uid;
     }
     match /teacherSounds/{key} {
@@ -528,6 +535,60 @@ service cloud.firestore {
       allow create: if isTeacher() && teachesClass(request.resource.data.classId) && request.resource.data.state == 'waiting';
     }
     // Profile photos: small pictures anyone signed in may see; only the owner changes theirs.
+    // Accounts: the plan, space, pause and apps of each teacher. The owner sets them.
+    match /accounts/{uid} {
+      allow read: if isSelf(uid) || isOwner();
+      allow write: if isOwner();
+      // A teacher saying yes to an organisation's invitation sets their own organisation.
+      allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
+      allow update: if isSelf(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
+    }
+    // An invitation for this teacher's email to this organisation, not yet answered.
+    function invitedTo(inviteId, orgId) {
+      return signedIn() && inviteId is string && orgId is string
+        && exists(/databases/$(database)/documents/orgInvites/$(inviteId))
+        && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.org == orgId
+        && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.email == request.auth.token.get('email', '').lower()
+        && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.status == 'pending';
+    }
+    function adminOfOrg(orgId) {
+      return signedIn() && orgId is string && exists(/databases/$(database)/documents/orgs/$(orgId))
+        && request.auth.token.get('email', '').lower() in get(/databases/$(database)/documents/orgs/$(orgId)).data.adminEmails;
+    }
+    // Invitations to join an organisation. The link carries the id, so anyone with it can read it.
+    match /orgInvites/{id} {
+      allow get: if true;
+      allow list: if isOwner() || adminOfOrg(resource.data.org);
+      allow create: if (isOwner() || adminOfOrg(request.resource.data.org)) && request.resource.data.status == 'pending' && request.resource.data.email is string && request.resource.data.by == request.auth.uid;
+      allow update: if isOwner() || adminOfOrg(resource.data.org)
+        || (signedIn() && resource.data.status == 'pending' && resource.data.email == request.auth.token.get('email', '').lower()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'uid', 'answeredAt'])
+            && request.resource.data.status in ['accepted', 'declined'] && request.resource.data.uid == request.auth.uid);
+      allow delete: if isOwner() || adminOfOrg(resource.data.org);
+    }
+    // Organisations and their admins (by email). The owner makes them; admins see theirs.
+    match /orgs/{id} {
+      function orgAdmin() { return signedIn() && request.auth.token.get('email', '').lower() in resource.data.adminEmails; }
+      allow read: if isOwner() || orgAdmin() || (signedIn() && request.auth.uid in resource.data.get('teachers', {}));
+      allow create, delete: if isOwner();
+      // Admins choose the branding and who their teachers may work with.
+      allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
+      // A teacher saying yes to an invitation adds themselves, and only themselves.
+      allow update: if signedIn() && !(request.auth.uid in resource.data.get('teachers', {}))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teachers'])
+        && request.resource.data.teachers.diff(resource.data.get('teachers', {})).affectedKeys().hasOnly([request.auth.uid])
+        && invitedTo(request.resource.data.teachers[request.auth.uid].get('invite', null), id);
+    }
+    // A teacher's profile for the colleagues in their organisation.
+    match /teacherProfiles/{uid} {
+      allow read: if isSelf(uid) || isOwner() || (signedIn() && resource.data.org is string && request.auth.uid in get(/databases/$(database)/documents/orgs/$(resource.data.org)).data.get('teachers', {}));
+      allow write: if isSelf(uid);
+    }
+    // Switches for the whole app.
+    match /admin/{key} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
     // Profile pictures everyone signed in can see, by chat id (see lib/faces.ts).
     match /faces/{key} {
       allow read: if signedIn();
@@ -609,7 +670,7 @@ service cloud.firestore {
     match /classCodes/{code} {
       allow get: if true;
       allow list: if false;
-      allow create: if isTeacher() && request.resource.data.teacherId == request.auth.uid;
+      allow create: if (isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId);
       allow update: if signedIn() && (resource.data.teacherId == request.auth.uid || teachesClass(resource.data.classId))
         && request.resource.data.teacherId == resource.data.teacherId;
       allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;

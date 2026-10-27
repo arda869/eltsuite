@@ -1,3 +1,4 @@
+import { currentOrg, isTrainerIn } from '../lib/admin';
 import { LevelPicker } from './LevelPicker';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
@@ -7,7 +8,9 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   const [name, setName] = useState('');
   const [level, setLevel] = useState('B1');
   const [themeColor, setThemeColor] = useState<ThemeKey>('flame');
-  const [kind, setKind] = useState<ClassKind>('language');
+  // In an organisation where admins make the classes, a teacher trainer still makes training classes.
+  const onlyTraining = currentOrg()?.policy?.createClasses === false && isTrainerIn(currentOrg(), teacherId);
+  const [kind, setKind] = useState<ClassKind>(onlyTraining ? 'training' : 'language');
   const [course, setCourse] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +27,9 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     setBusy(true);
     setError('');
     try {
-      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind });
+      const org = currentOrg();
+      const pol = org?.policy;
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...(pol?.names ? { profile: { names: pol.names } } : {}), ...(pol?.learnerEmails ? { accounts: { email: pol.learnerEmails === 'none' ? 'off' : pol.learnerEmails } } : {}) } });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -41,7 +46,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           Class name
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="For example: B1 Evening Group" />
         </label>
-        <ClassKindPicker kind={kind} onChange={setKind} />
+        {onlyTraining ? <span className="hint">As a teacher trainer, you make teacher training classes. {currentOrg()?.name} makes the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} />}
         {kind === 'language' ? (
           <LevelPicker value={level} onChange={setLevel} />
         ) : (

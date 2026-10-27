@@ -35,6 +35,9 @@ import { ProxyGate } from './components/ProxyGate';
 import { TooltipLayer } from './components/Tooltip';
 import { EscapeToClose } from './components/EscapeToClose';
 import { PopupGuard } from './components/PopupGuard';
+import { AdminPage } from './pages/AdminPage';
+import { PausedGate } from './components/PausedGate';
+import { InvitePage } from './pages/InvitePage';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import './styles.css';
@@ -71,7 +74,7 @@ function Home() {
   } catch {
     /* fine */
   }
-  if (after.startsWith('/s/') || after.startsWith('/colleague/')) return <Navigate to={after} replace />;
+  if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
   return <TeacherHome />;
 }
 
@@ -112,10 +115,13 @@ createRoot(document.getElementById('root')!).render(
         <PopupGuard />
         <ConnectionBanner />
         <ProxyGate>
+        <PausedGate>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
+          <Route path="/invite/:id" element={<InvitePage />} />
+          <Route path="/admin" element={<TeacherOnly><AdminPage /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
@@ -140,6 +146,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/terms" element={<Legal kind="terms" />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </PausedGate>
         <ChatDock />
         <AskHost />
         <MenuHost />

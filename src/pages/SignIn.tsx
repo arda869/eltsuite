@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -31,10 +32,11 @@ const TITLES: Record<Mode, string> = {
   link: 'Sign in with an email link',
 };
 
-export function SignIn() {
-  const [mode, setMode] = useState<Mode>('signin');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+// intro: what shows beside the form, for example an organisation's invitation; start: the form filled in.
+export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mode?: Mode; name?: string; email?: string } } = {}) {
+  const [mode, setMode] = useState<Mode>(start?.mode ?? 'signin');
+  const [name, setName] = useState(start?.name ?? '');
+  const [email, setEmail] = useState(start?.email ?? '');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -101,12 +103,14 @@ export function SignIn() {
 
   return (
     <div className="signin">
-      <div className="intro">
-        <Wordmark big />
-        <p>Plan your lessons, teach them live and see every answer as it arrives.</p>
-        <div className="rule" />
-        <span className="eyebrow">For teachers</span>
-      </div>
+      {intro ?? (
+        <div className="intro">
+          <Wordmark big />
+          <p>Plan your lessons, teach them live and see every answer as it arrives.</p>
+          <div className="rule" />
+          <span className="eyebrow">For teachers</span>
+        </div>
+      )}
 
       <form className="card" onSubmit={submit} noValidate>
         <h1>{TITLES[mode]}</h1>

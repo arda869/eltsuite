@@ -26,20 +26,25 @@ export async function removeDefaultSfx(k: string) {
   cache.set(k, null);
 }
 
-export type MySfx = { id: string; label: string; data: string; dur: number; by: string };
+// everyone: a sound the app's owner added for every teacher.
+export type MySfx = { id: string; label: string; data: string; dur: number; by: string; everyone?: boolean };
 export function useMySfx() {
   const uid = auth.currentUser?.uid;
-  const [list, setList] = useState<MySfx[]>([]);
+  const [mine, setMine] = useState<MySfx[]>([]);
+  const [all, setAll] = useState<MySfx[]>([]);
   useEffect(() => {
     if (!uid) return;
-    return onSnapshot(query(collection(db, 'teacherSfx'), where('by', '==', uid)), (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MySfx, 'id'>) })).sort((a, b) => a.label.localeCompare(b.label))), () => setList([]));
+    const of = (s: { docs: { id: string; data: () => unknown }[] }) => s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MySfx, 'id'>) })).sort((a, b) => a.label.localeCompare(b.label));
+    const a = onSnapshot(query(collection(db, 'teacherSfx'), where('by', '==', uid)), (s) => setMine(of(s).filter((x) => !x.everyone)), () => setMine([]));
+    const b = onSnapshot(query(collection(db, 'teacherSfx'), where('everyone', '==', true)), (s) => setAll(of(s)), () => setAll([]));
+    return () => (a(), b());
   }, [uid]);
-  return list;
+  return [...mine, ...all];
 }
-export async function addMySfx(label: string, f: Blob) {
+export async function addMySfx(label: string, f: Blob, everyone = false) {
   const data = await fileToData(f);
   const dur = await durationOf(data).catch(() => 2);
-  await addDoc(collection(db, 'teacherSfx'), { label: label.trim().slice(0, 40) || 'My sound', data, dur, by: auth.currentUser?.uid ?? '', at: Date.now() });
+  await addDoc(collection(db, 'teacherSfx'), { label: label.trim().slice(0, 40) || 'My sound', data, dur, by: auth.currentUser?.uid ?? '', at: Date.now(), ...(everyone ? { everyone: true } : {}) });
 }
 export const removeMySfx = (id: string) => deleteDoc(doc(db, 'teacherSfx', id));
 

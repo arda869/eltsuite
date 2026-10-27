@@ -394,7 +394,7 @@ export function ColleagueJoin() {
   const { token = '' } = useParams();
   const { user, ready } = useAuth();
   const [from, setFrom] = useState<{ name: string; email?: string; from: string } | null | undefined>(undefined);
-  const [state, setState] = useState<'' | 'busy' | 'done' | 'self' | 'error'>('');
+  const [state, setState] = useState<'' | 'busy' | 'done' | 'self' | 'org' | 'error'>('');
   const teacher = !!user && !isLearnerEmail(user.email);
   useEffect(() => {
     if (teacher) readColleagueLink(token).then(setFrom, () => setFrom(null));
@@ -418,7 +418,7 @@ export function ColleagueJoin() {
       await acceptColleague(token, { uid: user!.uid, name: user!.displayName || user!.email?.split('@')[0] || 'A colleague', email: user!.email ?? '' });
       setState('done');
     } catch (e) {
-      setState((e as Error).message === 'self' ? 'self' : 'error');
+      setState((e as Error).message === 'self' ? 'self' : (e as Error).message === 'org' ? 'org' : 'error');
     }
   };
   return (
@@ -438,6 +438,7 @@ export function ColleagueJoin() {
             <h1 className="page-title">{from.name} invites you to be colleagues</h1>
             <p className="hint">Colleagues can share lessons, tasks, documents and media with each other, as read-only copies. Nothing is shared until one of you chooses to share it.</p>
             {state === 'self' && <span className="error">This is your own invitation link. Send it to a colleague.</span>}
+            {state === 'org' && <span className="error">Your organisation, or theirs, keeps colleagues within the organisation, so you cannot add each other.</span>}
             {state === 'error' && <span className="error">That didn’t work. The link may have ended; ask for a new one.</span>}
             <span style={{ display: 'flex', gap: 8 }}>
               <Link className="btn" to="/">

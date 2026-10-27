@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom';
+import { useSpaceLimit } from '../lib/admin';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './DocPage';
 import { shareLesson, unshareLesson, useClassLessons, type ClassLesson } from '../lib/classFiles';
@@ -35,7 +37,6 @@ import { uploadPicture, type PicQuality } from '../editor/PackNode';
 // double-click to open, drag a box to select several, drag onto a folder to move, right-click for
 // more, type over a name to rename it. The pane on the right shows whatever is selected.
 
-const FREE = 1024 * 1024 * 1024;
 const KINDS = [
   { k: 'image', label: 'Pictures', icon: 'picture' },
   { k: 'audio', label: 'Recordings', icon: 'music' },
@@ -94,6 +95,7 @@ const store = (k: string, v: unknown) => {
 export function MediaArchive() {
   const { user } = useAuth();
   const uid = user?.uid;
+  const quota = useSpaceLimit();
   const dir = useDirectory();
   const phone = usePhone();
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
@@ -503,9 +505,7 @@ export function MediaArchive() {
         aria-label="New name"
       />
     ) : (
-      <span className={cls} onDoubleClick={(e) => one === key && (e.stopPropagation(), setRenaming(key))}>
-        {text}
-      </span>
+      <span className={cls}>{text}</span>
     );
 
   // ---------------------------------------------------------------- the folder tree
@@ -649,14 +649,14 @@ export function MediaArchive() {
             <div className="ma-space small">
               <span className="ma-space-row">
                 <b>{formatBytes(total)}</b>
-                <span className="hint">used of 1 GB</span>
+                <span className="hint">used of {quota.gb} GB</span>
               </span>
               <span className="ma-bar" aria-hidden="true">
                 {KINDS.map((k) => {
                   const bytes = all.filter((i) => i.kind === k.k).reduce((s, i) => s + spaceOf(i), 0);
-                  return <span key={k.k} className={'k-' + k.k} style={{ width: `${Math.max(bytes ? 0.8 : 0, (bytes / FREE) * 100)}%` }} />;
+                  return <span key={k.k} className={'k-' + k.k} style={{ width: `${Math.max(bytes ? 0.8 : 0, (bytes / quota.bytes) * 100)}%` }} />;
                 })}
-                <span className="k-docs" style={{ width: `${Math.max(docBytes ? 0.8 : 0, (docBytes / FREE) * 100)}%` }} />
+                <span className="k-docs" style={{ width: `${Math.max(docBytes ? 0.8 : 0, (docBytes / quota.bytes) * 100)}%` }} />
               </span>
               <span className="ma-legend">
                 {KINDS.map((k) => {
@@ -677,7 +677,7 @@ export function MediaArchive() {
                   <b>{docBytes ? formatBytes(docBytes) : '0'}</b>
                 </span>
               </span>
-              <span className="hint small">The free plan has 1 GB for the whole app. Links and tasks take no space; documents, flashcards and reading notes count.</span>
+              <span className="hint small">{quota.org ? `${quota.org} gives you ${quota.gb} GB.` : `Your plan has ${quota.gb} GB for the whole app.`} Links and tasks take no space; documents, flashcards and reading notes count.</span>
             </div>
           </aside>
 
@@ -753,7 +753,7 @@ export function MediaArchive() {
                 </button>
               </span>
             </div>
-            {(upBusy || busy) && <span className="hint">{upBusy || busy}</span>}
+            {(upBusy || busy) && <BusyToast text={upBusy || busy} onClose={() => (setBusy(''), setUpBusy(''))} />}
             {sel.size > 0 ? (
               <div className="ma-selbar">
                 <b>{sel.size} selected</b>
@@ -1371,5 +1371,32 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
       )}
       {script && item.home && <ScriptEditor classId={item.home.classId} mediaId={item.home.mediaId} title={item.name} onClose={() => setScript(false)} onSave={(lines) => archiveUpdate(uid, item, { script: lines })} />}
     </aside>
+  );
+}
+
+// Work in progress, floating at the foot of the screen so nothing on the page moves: a spinner,
+// and a bar when the work is counted ("3 of 8"). A message that is not work in progress can be closed.
+function BusyToast({ text, onClose }: { text: string; onClose: () => void }) {
+  const m = text.match(/(\d+) of (\d+)/);
+  const working = text.includes('…');
+  const label = text.replace(/\s*\d+ of \d+$/, '');
+  const pct = m ? Math.min(100, (Number(m[1]) / Math.max(1, Number(m[2]))) * 100) : null;
+  return createPortal(
+    <div className={'busy-toast' + (working ? '' : ' done')} role="status" aria-live="polite">
+      {working && <span className="busy-spin" aria-hidden="true" />}
+      <span className="busy-body">
+        <span className="busy-row">
+          <b>{label}</b>
+          {m && <span className="hint">{m[1]} of {m[2]}</span>}
+        </span>
+        {working && <span className={'busy-bar' + (pct === null ? ' loose' : '')}><i style={pct === null ? undefined : { width: `${pct}%` }} /></span>}
+      </span>
+      {!working && (
+        <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      )}
+    </div>,
+    document.body,
   );
 }

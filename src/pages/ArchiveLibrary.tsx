@@ -641,12 +641,12 @@ export function ArchiveColleagues({ uid, me, inviteOnly }: { uid: string; me: { 
               <span className="sh-pt">
                 <b>{c.name}</b>
                 <span className="hint">
-                  {c.at ? `Colleague since ${when(c.at)}` : 'Colleague'}
+                  {c.title || 'Colleague'}{c.org ? ` · ${c.orgName ?? ''}` : c.at ? ` · since ${when(c.at)}` : ''}
                 </span>
               </span>
-              <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${c.name}? Things already shared stay shared until you stop sharing them.`).then((ok) => { if (ok) removeColleague(uid, c.id); })}>
+{!c.org && (              <button type="button" className="btn link small" onClick={() => void ask(`Stop being colleagues with ${c.name}? Things already shared stay shared until you stop sharing them.`).then((ok) => { if (ok) removeColleague(uid, c.id); })}>
                 Remove
-              </button>
+              </button>)}
             </div>
           ))}
         </div>

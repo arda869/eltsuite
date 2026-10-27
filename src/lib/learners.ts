@@ -26,7 +26,7 @@ import type { ClassDoc } from './classes';
 
 export const LEARNER_DOMAIN = 'learners.lesson-lit.firebaseapp.com';
 
-export type Learner = { id: string; displayName: string; authUid: string; langs?: string[] };
+export type Learner = { id: string; displayName: string; authUid: string; langs?: string[]; teacherUid?: string }; // teacherUid: a teacher in a training class
 
 const ID_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
 export const newLearnerId = () => Array.from({ length: 12 }, () => ID_CHARS[Math.floor(Math.random() * ID_CHARS.length)]).join('');
@@ -51,8 +51,9 @@ async function withSecondaryAuth<T>(fn: (auth: ReturnType<typeof getAuth>) => Pr
   }
 }
 
-export async function addLearners(c: ClassDoc, names: string[]) {
-  const added: { name: string; pin: string }[] = [];
+// from: for a teacher training class, the sign-in id of the teacher each name belongs to.
+export async function addLearners(c: ClassDoc, names: string[], from: Record<string, string> = {}) {
+  const added: { name: string; pin: string; id: string }[] = [];
   for (const raw of names) {
     const displayName = raw.trim().slice(0, 60);
     if (!displayName) continue;
@@ -63,14 +64,14 @@ export async function addLearners(c: ClassDoc, names: string[]) {
       return cred.user.uid;
     });
     const batch = writeBatch(db);
-    batch.set(doc(db, 'classes', c.id, 'learners', learnerId), { displayName, authUid, createdAt: serverTimestamp() });
+    batch.set(doc(db, 'classes', c.id, 'learners', learnerId), { displayName, authUid, ...(from[raw] ? { teacherUid: from[raw] } : {}), createdAt: serverTimestamp() });
     batch.set(doc(db, 'classes', c.id, 'secrets', learnerId), { pin });
     batch.set(doc(db, 'classes', c.id, 'members', authUid), { learnerId, displayName });
     batch.set(doc(db, 'users', authUid), { role: 'learner', classId: c.id, learnerId, displayName });
     batch.update(doc(db, 'classCodes', c.classCode), { roster: arrayUnion({ id: learnerId, name: displayName }) });
     batch.update(doc(db, 'classes', c.id), { learnerCount: increment(1) });
     await batch.commit();
-    added.push({ name: displayName, pin });
+    added.push({ name: displayName, pin, id: learnerId });
   }
   return added;
 }

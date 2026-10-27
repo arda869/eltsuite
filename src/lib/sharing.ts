@@ -1,3 +1,4 @@
+import { currentOrg } from './admin';
 import { useEffect, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch, type DocumentData } from 'firebase/firestore';
 import { db } from './firebase';
@@ -12,7 +13,7 @@ import { newId } from './tasks';
 // read-only copy: with chosen colleagues, or with anyone who has the link. Whoever receives
 // it can look at it, and make their own copy to change.
 
-export type Colleague = { id: string; name: string; email?: string; at?: number };
+export type Colleague = { id: string; name: string; email?: string; at?: number; org?: string; orgName?: string; title?: string }; // org: colleagues through an organisation, who cannot be removed
 export type ShareKind = 'lesson' | 'task' | 'doc' | 'media';
 export type Share = {
   id: string;
@@ -48,7 +49,8 @@ export function useColleagues(uid?: string) {
 }
 export async function makeColleagueLink(me: { uid: string; name: string; email: string }) {
   const token = newId() + newId();
-  await setDoc(doc(db, 'colleagueLinks', token), { from: me.uid, name: me.name, email: me.email, at: Date.now() });
+  const org = currentOrg();
+  await setDoc(doc(db, 'colleagueLinks', token), { from: me.uid, name: me.name, email: me.email, at: Date.now(), ...(org ? { org: org.id, orgOnly: org.outside === 'org' } : {}) });
   return token;
 }
 export function useMyLinks(uid?: string) {
@@ -69,6 +71,10 @@ export async function acceptColleague(token: string, me: { uid: string; name: st
   const l = await readColleagueLink(token);
   if (!l) throw new Error('gone');
   if (l.from === me.uid) throw new Error('self');
+  // An organisation may keep its teachers' colleagues inside it.
+  const org = currentOrg();
+  const link = l as { org?: string; orgOnly?: boolean };
+  if ((org?.outside === 'org' && link.org !== org.id) || (link.orgOnly && link.org !== org?.id)) throw new Error('org');
   await setDoc(doc(db, 'users', l.from, 'colleagues', me.uid), { name: me.name, email: me.email, at: Date.now(), via: token });
   await setDoc(doc(db, 'users', me.uid, 'colleagues', l.from), { name: l.name, email: l.email ?? '', at: Date.now(), via: token });
   return l;

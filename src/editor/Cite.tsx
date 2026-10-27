@@ -179,7 +179,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
                 </button>
               ))
             ) : (
-              <span className="hint">{all.length ? 'Nothing matches.' : 'No sources yet. Add them in a PD reading file, in the resources library.'}</span>
+              <span className="hint cite-empty">{all.length ? 'Nothing matches.' : 'No sources yet. Add them in a PD reading file, in the resources library.'}</span>
             )}
           </span>
           <label className="cite-page">
