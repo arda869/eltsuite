@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { updateClass, type ClassDoc, type Item } from '../lib/classes';
+import { classDates, updateClass, type ClassDoc, type Item } from '../lib/classes';
 import { isLive, liveRef, type LiveState } from '../lib/live';
 import { theme } from '../lib/themes';
 import { DELETE_AFTER_DAYS, purgeClass, restoreClass } from '../lib/deletion';
@@ -279,6 +279,7 @@ export function TeacherHome() {
                     </span>
                     <span className="meta">
                       {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'}
+                      {classDates(c) ? ` · ${classDates(c)}` : ''}
                     </span>
                     <span className="meta">
                       {teaching ? <span style={{ color: t.text, fontWeight: 600 }}>Teaching now</span> : lessons ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : 'No lessons yet'}

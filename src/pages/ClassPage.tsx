@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { collection, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { updateClass, type ClassDoc, type Item, type Topic } from '../lib/classes';
+import { updateClass, type ClassDoc, type Item, type Topic, classDates } from '../lib/classes';
 import type { Learner } from '../lib/learners';
 import { theme } from '../lib/themes';
 import { TopBar } from '../components/TopBar';
@@ -163,6 +163,7 @@ export function ClassPage() {
               <div className="class-meta">
                 <span>
                   {c.level} · {learners.length} {tr(learners.length === 1 ? 'learner' : 'learners')}
+                  {classDates(c) ? ` · ${classDates(c)}` : ''}
                   {c.status === 'archived' ? ' · archived' : ''}
                 </span>
                 <span className="code-chip">

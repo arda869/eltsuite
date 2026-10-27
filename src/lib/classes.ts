@@ -24,6 +24,7 @@ export type ClassDoc = {
   classCode: string;
   status: 'active' | 'archived' | 'deleted';
   learnerCount?: number;
+  dates?: { start?: string | null; end?: string | null }; // the course's first and last day, as YYYY-MM-DD
   meeting?: Meeting | null;
   createdAt?: Timestamp;
   deletedAt?: Timestamp | null;
@@ -115,7 +116,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('Could not find a free class code. Please try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });
@@ -162,3 +163,14 @@ export const TRAINING_ADDS = [
   'Comments pinned to moments in a lesson video, for feedback',
   'Loop input: a step-back note you reveal after modelling a technique',
 ];
+
+// A class's dates, for showing: "1 Sep – 20 Dec 2026", or what there is.
+export function classDates(c: Pick<ClassDoc, 'dates'>): string {
+  const f = (s?: string | null, year = true) => (s ? new Date(s + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}) }) : '');
+  const a = c.dates?.start, b = c.dates?.end;
+  if (a && b) return `${f(a, a.slice(0, 4) !== b.slice(0, 4))} – ${f(b)}`;
+  return a ? `From ${f(a)}` : b ? `Until ${f(b)}` : '';
+}
+// Whether the course is on today: before it starts, running, or finished.
+export const classPhase = (c: Pick<ClassDoc, 'dates'>, today = new Date().toISOString().slice(0, 10)): 'soon' | 'on' | 'done' | '' =>
+  !c.dates?.start && !c.dates?.end ? '' : c.dates?.start && today < c.dates.start ? 'soon' : c.dates?.end && today > c.dates.end ? 'done' : 'on';

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { isOwnerEmail, useAppOn, useMyOrg, useOrgs } from '../lib/admin';
+import { isOwnerEmail, libName, useAppOn, useMyOrg, useOrgs } from '../lib/admin';
 
 // The apps in the suite, from the nine-dot button: one account, every app.
 
@@ -43,7 +43,7 @@ export function AppGrid() {
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const myOrg = useMyOrg();
   const show = (k: string) => (k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : k === 'library' ? !!myOrg && on(k) : on(k));
-  const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k));
+  const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k)).map((a) => (a.k === 'library' ? { ...a, name: libName(myOrg) } : a));
   return (
     <div className="apps" ref={ref}>
       <button type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} data-tip="Apps" onClick={() => setOpen((o) => !o)}>

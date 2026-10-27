@@ -73,6 +73,7 @@ import {
   type Plan,
   type Teacher,
   useOrgPictures,
+  libName,
   roleFor,
   levelsFor,
   CEFR,
@@ -379,7 +380,7 @@ function OrgPanel({ org, owner, teachers, accounts, orgs }: { org: Org; owner: b
     ['overview', 'Overview'],
     ['teachers', 'Teachers'],
     ['classes', 'Classes'],
-    ['drives', 'Organisation library'],
+    ['drives', 'Library'],
     ['rules', 'Rules'],
     ['brand', 'Branding'],
     ['space', 'Plan and space'],
@@ -906,10 +907,24 @@ function OrgAdmins({ org, owner }: { org: Org; owner: boolean }) {
 
 // Shared drives: each says who can edit, comment, view or not see it, for everyone, for teachers
 // with a tag and for one teacher; its folders follow it unless a folder has its own say.
+// What the library is called in the apps menu and at the top of its pages.
+function LibName({ org }: { org: Org }) {
+  const [v, setV] = useState(org.libraryName ?? '');
+  return (
+    <label className="adm-row lib-name">
+      <span>
+        <b>Name of the library</b>
+        <span className="hint">What teachers see in the apps menu. Leave it empty for “{org.name} library”.</span>
+      </span>
+      <input value={v} placeholder={`${org.name} library`} maxLength={40} onChange={(e) => setV(e.target.value)} onBlur={() => v.trim() !== (org.libraryName ?? '') && void saveOrg(org.id, { libraryName: v.trim() })} />
+    </label>
+  );
+}
+
 function OrgDrives({ org }: { org: Org }) {
   const { user } = useAuth();
   const folders = useDrive(org);
-  const drives = useMemo(() => ({ main: { name: 'Organisation library', quotaGb: 5 }, ...(org.drives ?? {}) }) as Record<string, { name: string; quotaGb: number; access?: DriveAccess }>, [org.drives]);
+  const drives = useMemo(() => ({ main: { name: 'General', quotaGb: 5 }, ...(org.drives ?? {}) }) as Record<string, { name: string; quotaGb: number; access?: DriveAccess }>, [org.drives]);
   const [newDrive, setNewDrive] = useState<string | null>(null);
   const [open, setOpen] = useState('');
   const [use, setUse] = useState<Record<string, number>>({});
@@ -935,9 +950,10 @@ function OrgDrives({ org }: { org: Org }) {
         <li><b>Sections</b> hold folders, for example one for each team or level.</li>
         <li><b>Decide who can see</b> each section, or one folder on its own.</li>
         <li>
-          <b>Add lessons and files</b> in the <a href="/library">Organisation library</a> app. Teachers copy lessons into their classes from there.
+          <b>Add lessons and files</b> in the <a href="/library">{libName(org)}</a> app. Teachers copy lessons into their classes from there.
         </li>
       </ol>
+      <LibName org={org} />
       {Object.entries(drives).map(([k, d]) => {
         const list = (folders ?? []).filter((f) => (f.drive ?? 'main') === k);
         const access = d.access ?? { all: 'view', tags: {}, people: {} };

@@ -74,7 +74,7 @@ export type OrgPolicy = {
   profileFields?: ProfileField[]; // what the profile asks for, in order
   externalTrainees?: boolean; // teacher trainers may add teachers from outside the organisation to training classes
 };
-export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
+export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; libraryName?: string; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
 export type Teacher = { uid: string; name: string; email: string; avatar?: string; createdAt?: number; usedBytes?: number }; // usedBytes: what their files take, as their app last measured
 
 export const APP_KEYS: { k: string; name: string }[] = [
@@ -97,6 +97,8 @@ export function levelsFor(o: Org | null | undefined): string[] {
   const list = [...(l?.cefr === false ? [] : CEFR), ...(l?.custom ?? [])];
   return list.length ? [...list, 'Mixed'] : [...CEFR, 'Mixed'];
 }
+// The organisation library's name: the admins' choice, or the organisation's name.
+export const libName = (o: Org | null | undefined) => (o ? o.libraryName?.trim() || `${o.name} library` : 'Organisation library');
 export const isOwnerEmail = (e?: string | null) => lower(e) === OWNER_EMAIL;
 
 // This account's own settings: its plan, its space and whether it is paused.

@@ -191,7 +191,7 @@ const J = {
     await s.p.fill('.adm-new input', 'Test School');
     await s.p.click('button:has-text("Create")');
     await s.p.click('.adm-org');
-    for (const t of ['Classes', 'Organisation library', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
+    for (const t of ['Classes', 'Library', 'Rules', 'Branding', 'Plan and space', 'Admins', 'Teachers']) {
       await s.p.click(`.adm-tabs >> text=${t}`);
       await s.p.waitForTimeout(250);
     }

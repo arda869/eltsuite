@@ -9,7 +9,7 @@ import { db } from '../lib/firebase';
 import { THEMES, type ThemeKey } from '../lib/themes';
 import { TeachersPanel } from './TeachersPanel';
 import { CoverPicker } from './Covers';
-import { ClassKindPicker } from './NewClassDialog';
+import { ClassDatesFields, ClassKindPicker } from './NewClassDialog';
 import { auth } from '../lib/firebase';
 import { LEARNER_WORDS, TEACHER_WORDS, termsOf, type Terms } from '../lib/terms';
 import { LEARNER_TOOLS, learnerToolOn } from '../lib/toolbarPrefs';
@@ -26,6 +26,8 @@ export function meetingProvider(url: string) {
 export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () => void }) {
   const [name, setName] = useState(c.name);
   const [level, setLevel] = useState(c.level);
+  const [start, setStart] = useState(c.dates?.start ?? '');
+  const [end, setEnd] = useState(c.dates?.end ?? '');
   const [themeColor, setThemeColor] = useState<ThemeKey>(c.themeColor);
   const [url, setUrl] = useState(c.meeting?.url ?? '');
   const [meetingId, setMeetingId] = useState(c.meeting?.meetingId ?? '');
@@ -79,6 +81,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
       await updateClass(c, {
         name: name.trim() || c.name,
         level,
+        dates: { start: start || null, end: end || null },
         themeColor,
         cover,
         teaching: { showMarker, seeLearners },
@@ -111,6 +114,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         </label>
         <ClassKindPicker kind={kind} onChange={setKind} uid={auth.currentUser?.uid} />
+        <ClassDatesFields start={start} end={end} setStart={setStart} setEnd={setEnd} />
         {c.kind === 'training' && kind === 'language' && (
           <span className="error" role="alert">
             As a language class, the teacher training tools are hidden: language analysis cards, lesson plans, observation forms, video comments and loop input notes no longer show in lessons. They come back if you change it back.

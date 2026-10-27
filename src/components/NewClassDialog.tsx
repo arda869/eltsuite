@@ -12,6 +12,8 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   const onlyTraining = currentOrg()?.policy?.createClasses === false && isTrainerIn(currentOrg(), teacherId);
   const [kind, setKind] = useState<ClassKind>(onlyTraining ? 'training' : 'language');
   const [course, setCourse] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,7 +31,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     try {
       const org = currentOrg();
       const pol = org?.policy;
-      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: classDefaults(pol) });
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...classDefaults(pol), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -60,6 +62,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
             </datalist>
           </label>
         )}
+        <ClassDatesFields start={start} end={end} setStart={setStart} setEnd={setEnd} />
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">
@@ -101,6 +104,27 @@ export function trainingBlock(uid?: string): string {
   if (!isTrainerIn(org, uid)) return `Ask an admin in ${org.name} to make you a teacher trainer.`;
   return '';
 }
+// The course's first and last day, both optional.
+export function ClassDatesFields({ start, end, setStart, setEnd }: { start: string; end: string; setStart: (v: string) => void; setEnd: (v: string) => void }) {
+  return (
+    <div className="field cdates">
+      <span>Course dates</span>
+      <span className="cdates-row">
+        <label>
+          <span className="hint">Starts</span>
+          <input type="date" value={start} max={end || undefined} onChange={(e) => setStart(e.target.value)} />
+        </label>
+        <span aria-hidden="true">–</span>
+        <label>
+          <span className="hint">Finishes</span>
+          <input type="date" value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} />
+        </label>
+      </span>
+      <span className="hint">Optional. They show on the class, and on the home page while the course runs.</span>
+    </div>
+  );
+}
+
 export function ClassKindPicker({ kind, onChange, uid }: { kind: ClassKind; onChange: (k: ClassKind) => void; uid?: string }) {
   // A class that is already a training class can stay one.
   const blocked = kind === 'training' ? '' : trainingBlock(uid);

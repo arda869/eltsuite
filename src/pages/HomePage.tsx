@@ -8,11 +8,12 @@ import { FileIcon, type FileKind } from '../components/FileIcon';
 import { useTeacherClasses } from '../lib/coteach';
 import { useClassDetails } from './TeacherHome';
 import { theme } from '../lib/themes';
+import { classDates, classPhase } from '../lib/classes';
 import { isLive } from '../lib/live';
 import { useMyDocs, newSharedDoc, KIND_LABEL, type DocKind } from '../lib/sharedDocs';
 import { useChats, unreadIn } from '../lib/chat';
 import { useHandIns } from '../lib/classFiles';
-import { useAccount, useMyOrg, useSpaceLimit } from '../lib/admin';
+import { libName, useAccount, useMyOrg, useSpaceLimit } from '../lib/admin';
 import { formatBytes } from '../lib/archive';
 
 // The first screen of ELT Suite: today, the classes, what is new, and a way into everything.
@@ -192,6 +193,7 @@ export function HomePage() {
                       <span className="hint">
                         {c.level} · {c.learnerCount ?? 0} {(c.learnerCount ?? 0) === 1 ? 'learner' : 'learners'} · {(items[c.id] ?? []).length} {(items[c.id] ?? []).length === 1 ? 'lesson' : 'lessons'}
                       </span>
+                      {classDates(c) && <span className={'hm-dates ph-' + classPhase(c)}>{classPhase(c) === 'soon' ? 'Starts soon · ' : classPhase(c) === 'done' ? 'Finished · ' : ''}{classDates(c)}</span>}
                       {isLive(live[c.id] ?? null) && <span className="hm-live-pill">Live</span>}
                     </Link>
                   ))}
@@ -314,7 +316,7 @@ export function HomePage() {
               <Link to="/library" className="hm-card hm-lib">
                 <UiIcon name="archive" size={18} />
                 <span>
-                  <b>Organisation library</b>
+                  <b>{libName(org)}</b>
                   <span className="hint">{org.name}’s lessons and materials, ready to copy into your classes</span>
                 </span>
               </Link>

@@ -9,7 +9,7 @@ import { FolderIcon } from '../components/FileIcon';
 import { Loader } from '../components/Loader';
 import { openMenu, openMenuAt, type MenuItem } from '../components/ContextMenu';
 import { ask, askText } from '../lib/ask';
-import { useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
+import { libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
 import { KIND_LABEL, newDocInFolder, removeSharedDoc, renameDoc, useFolderDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { CopyToClass, LESSON_TYPES } from '../lessons/LessonFile';
 import { copyFile } from '../lib/copyFile';
@@ -36,7 +36,7 @@ export function LibraryPage() {
   // Admins see every folder; teachers the ones they may use.
   const mine = useMemo(() => (folders ?? []).filter((f) => admin || f.owner === uid || f.memberIds.includes(uid)).sort((a, b) => a.name.localeCompare(b.name)), [folders, admin, uid]);
   const sections = useMemo(() => {
-    const d = { main: { name: 'Organisation library' }, ...(org?.drives ?? {}) } as Record<string, { name: string }>;
+    const d = { main: { name: 'General' }, ...(org?.drives ?? {}) } as Record<string, { name: string }>;
     return Object.entries(d)
       .map(([k, x]) => ({ k, name: x.name, folders: mine.filter((f) => (f.drive ?? 'main') === k) }))
       .filter((s) => s.folders.length);
@@ -83,7 +83,7 @@ export function LibraryPage() {
             <FolderPane key={open.id} f={open} uid={uid} me={{ uid, name: profile?.displayName || user?.displayName || 'Teacher' }} />
           ) : (
             <div className="lb-empty">
-              <h1 className="page-title">Organisation library</h1>
+              <h1 className="page-title">{libName(org)}</h1>
               <span className="hint">{admin ? 'Add folders in Organisation admin, then lessons, documents and flashcards here.' : 'Nothing here yet. Your organisation’s admins add the folders.'}</span>
             </div>
           )}

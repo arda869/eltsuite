@@ -7143,3 +7143,12 @@ input.dg-cell-label:focus { outline: none; }
 .pv-page { background: #fff; box-shadow: 0 8px 26px rgba(0, 0, 0, .14); height: auto; }
 .lb-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lb-note { padding: 4px 0; }
+
+.cdates-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.cdates-row label { display: flex; flex-direction: column; gap: 3px; }
+.cdates-row input { height: 38px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); color: var(--ink); }
+.cdates-row > span { padding-bottom: 9px; color: var(--soft); }
+.hm-dates { font: 500 12px var(--sans); color: color-mix(in srgb, var(--cc) 70%, #000); }
+.hm-dates.ph-done { color: var(--soft); }
+.lib-name input { width: 280px; height: 38px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); }
+.lib-name input { width: 280px; height: 38px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); font: 14px var(--sans); }
