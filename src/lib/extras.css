@@ -334,3 +334,30 @@
 .subs-left { border-right-color: transparent; }
 .subs-right { border-left-color: transparent; }
 .subs-none { border-left-color: transparent; border-right-color: transparent; }
+
+/* Flashcards: tags, groups, dragging, and editing a card where it is */
+.fc-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.fc-tag { padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--fc-acc) 16%, transparent); color: var(--fc-ink); font: 600 11px var(--sans); }
+.fs-board { display: flex; flex-direction: column; gap: 16px; }
+.fs-board-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fs-group.tagged { padding: 12px 14px 16px; border: 1px solid var(--hair); border-radius: 16px; background: color-mix(in srgb, var(--ink) 2%, var(--paper)); }
+.fs-group-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.fs-group-h b { font: 600 16px var(--serif); }
+.fs-cell-card[draggable='true'] { cursor: grab; }
+.fs-cell-card.dragging { opacity: .35; }
+.fs-cell-card.over::before { content: ''; position: absolute; left: -11px; top: 8px; bottom: 8px; width: 4px; border-radius: 4px; background: var(--accent, #c8764a); }
+.fs-cardedit { grid-column: span 1; display: flex; flex-direction: column; gap: 10px; min-height: 168px; padding: 12px 14px; border-radius: 14px; background: var(--paper); border: 2px solid var(--accent, #c8764a); box-shadow: 0 16px 34px -20px rgba(0, 0, 0, .45); animation: fs-open .25s ease both; }
+@keyframes fs-open { from { transform: scale(.96); } }
+@media (prefers-reduced-motion: reduce) { .fs-cardedit { animation: none; } }
+.fs-ce-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fs-ce-sides { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface); }
+.fs-ce-sides button { padding: 4px 12px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
+.fs-ce-sides button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.fs-ce-face { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent, #c8764a) 6%, var(--paper)); }
+.side-back .fs-ce-face { background: color-mix(in srgb, #3667a6 6%, var(--paper)); }
+.fs-ce-field { display: flex; flex-direction: column; gap: 3px; font: 600 11.5px var(--sans); color: var(--muted); }
+.fs-ce-field .fs-in { width: 100%; }
+.fs-ce-field.small { flex-direction: row; align-items: center; gap: 8px; }
+.fs-ce-field.small > span { min-width: 54px; }
+.fs-ce-more { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--hair-strong); }
+.fs-ce-acts { display: flex; align-items: center; gap: 6px; }

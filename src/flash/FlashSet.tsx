@@ -9,7 +9,7 @@ import { fileToData } from '../lib/phonAudio';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { sizeOfCards, addCard, addRows, configOf, FIELD_TYPES, imageToData, plainOf, removeCard, saveConfig, setCell, STYLES, useCards, type Card, type CardValue, type Field, type FieldType, type FlashConfig, type FlashLook } from '../lib/flash';
+import { sizeOfCards, addCard, addRows, configOf, FIELD_TYPES, imageToData, plainOf, removeCard, reorder, saveConfig, setCell, STYLES, tagsOf, useCards, type Card, type CardValue, type Field, type FieldType, type FlashConfig, type FlashLook } from '../lib/flash';
 import { newId } from '../lib/tasks';
 import '../lib/extras.css';
 
@@ -29,6 +29,7 @@ function Value({ field, v, big }: { field: Field; v: CardValue; big?: boolean })
         </svg>
       </button>
     ) : null;
+  if (field.type === 'tag') return <span className="fc-tags">{tagsOf(v).map((t) => <span key={t} className="fc-tag">{t}</span>)}</span>;
   if (field.type === 'ipa') return <span className="fc-ipa">/{String(v).replace(/^\/|\/$/g, '')}/</span>;
   if (field.type === 'rich' && typeof v === 'object') return <span className="fc-rich"><TaskRenderer content={v as JSONContent} responses={{}} disabled /></span>;
   return <span className={'fc-text f-' + field.id}>{plainOf(v)}</span>;
@@ -130,32 +131,66 @@ function FieldInput({ field, v, onSave, autoFocus }: { field: Field; v: CardValu
         <TaskEditor content={(typeof v === 'object' && v) || { type: 'doc', content: [{ type: 'paragraph', content: typeof v === 'string' && v ? [{ type: 'text', text: v }] : [] }] }} onChange={(c) => onSave(c)} handles={false} compact textOnly placeholder="Write here. Bold, colour, word stress, IPA…" />
       </span>
     );
-  return <input className="fs-in" value={t} autoFocus={autoFocus} onChange={(e) => setT(e.target.value)} onBlur={() => t !== (typeof v === 'string' ? v : '') && onSave(t)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />;
+  return <input className="fs-in" value={t} autoFocus={autoFocus} placeholder={field.type === 'tag' ? 'Unit 3, verbs' : undefined} onChange={(e) => setT(e.target.value)} onBlur={() => t !== (typeof v === 'string' ? v : '') && onSave(t)} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()} />;
 }
 
-function CardPanel({ set, cfg, card, onClose, canEdit }: { set: string; cfg: FlashConfig; card: Card; onClose: () => void; canEdit: boolean }) {
+// Editing a card right where it is: the card opens up with its fields, front or back, in place.
+function CardEditor({ set, cfg, card, n, onClose }: { set: string; cfg: FlashConfig; card: Card; n: number; onClose: () => void }) {
+  const [side, setSide] = useState<'front' | 'back'>('front');
+  const ids = side === 'front' ? cfg.front : cfg.back;
+  const on = ids.map((id) => cfg.fields.find((f) => f.id === id)).filter(Boolean) as Field[];
+  const off = cfg.fields.filter((f) => !cfg.front.includes(f.id) && !cfg.back.includes(f.id));
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, []);
   return (
-    <aside className="fs-panel" aria-label="Edit the card">
-      <div className="fs-panel-head">
-        <b>Card {card.order + 1}</b>
-        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
-          ×
-        </button>
+    <div ref={ref} className={'fs-cardedit side-' + side} role="group" aria-label={`Card ${n}, ${side}`} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
+      <span className="fs-ce-top">
+        <span className="fs-ce-sides" role="tablist" aria-label="Side">
+          {(['front', 'back'] as const).map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={side === k} className={side === k ? 'on' : ''} onClick={() => setSide(k)}>
+              {k === 'front' ? 'Front' : 'Back'}
+            </button>
+          ))}
+        </span>
+        <span className="hint">Card {n}</span>
+      </span>
+      <div className="fs-ce-face" key={side}>
+        {on.length ? (
+          on.map((f, i) => (
+            <label key={f.id} className="fs-ce-field">
+              <span>{f.name}</span>
+              <FieldInput field={f} v={card.f[f.id] ?? null} onSave={(v) => void setCell(set, card.id, f.id, v)} autoFocus={i === 0} />
+            </label>
+          ))
+        ) : (
+          <span className="hint">Nothing on this side yet: choose in Design the cards, or in the table.</span>
+        )}
       </div>
-      {cfg.fields.map((f, i) => (
-        <label key={f.id} className="fs-field">
-          <span>
-            {f.name} <span className="hint">{cfg.front.includes(f.id) ? 'front' : cfg.back.includes(f.id) ? 'back' : 'not shown'}</span>
-          </span>
-          {canEdit ? <FieldInput field={f} v={card.f[f.id] ?? null} onSave={(v) => void setCell(set, card.id, f.id, v)} autoFocus={i === 0} /> : <Value field={f} v={card.f[f.id] ?? null} />}
-        </label>
-      ))}
-      {canEdit && (
-        <button type="button" className="btn link small set-danger" onClick={() => (void removeCard(set, card.id), onClose())}>
-          Delete this card
-        </button>
+      {off.length > 0 && (
+        <div className="fs-ce-more">
+          {off.map((f) => (
+            <label key={f.id} className="fs-ce-field small">
+              <span>{f.name}</span>
+              <FieldInput field={f} v={card.f[f.id] ?? null} onSave={(v) => void setCell(set, card.id, f.id, v)} />
+            </label>
+          ))}
+        </div>
       )}
-    </aside>
+      <span className="fs-ce-acts">
+        <button type="button" className="btn link small set-danger" onClick={() => (void removeCard(set, card.id), onClose())}>
+          Delete
+        </button>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn small-btn" onClick={() => setSide(side === 'front' ? 'back' : 'front')}>
+          Turn over
+        </button>
+        <button type="button" className="btn small-btn primary" onClick={onClose}>
+          Done
+        </button>
+      </span>
+    </div>
   );
 }
 
@@ -164,7 +199,7 @@ function CardPanel({ set, cfg, card, onClose, canEdit }: { set: string; cfg: Fla
 // The table: like a list in SharePoint. Each column is a field; its header says whether it is on
 // the front or the back, and its menu renames it, changes its kind or moves it. + Column adds one.
 function Table({ set, cfg, cards, canEdit, onChange }: { set: string; cfg: FlashConfig; cards: Card[]; canEdit: boolean; onChange: (c: FlashConfig) => void }) {
-  const textual = (f: Field) => f.type === 'text' || f.type === 'ipa';
+  const textual = (f: Field) => f.type === 'text' || f.type === 'ipa' || f.type === 'tag';
   const [edit, setEdit] = useState<{ card: Card; field: Field } | null>(null);
   const [colMenu, setColMenu] = useState<{ id: string | null; r: DOMRect } | null>(null);
   const sideOf = (id: string) => (cfg.front.includes(id) ? 'front' : cfg.back.includes(id) ? 'back' : 'none');
@@ -474,7 +509,6 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
     saveT.current = window.setTimeout(() => void saveConfig(d.id, c).then(() => setLocal(null)), 500);
   };
   const shown = useMemo(() => (cards ?? []).filter((c) => !q.trim() || Object.values(c.f).some((v) => plainOf(v).toLowerCase().includes(q.trim().toLowerCase()))), [cards, q]);
-  const card = cards?.find((c) => c.id === open) ?? null;
   // The space the set takes, for the owner's storage.
   useEffect(() => {
     if (!cards || !canEdit) return;
@@ -486,7 +520,7 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
   }, [cards, canEdit, d.id, d.size]);
   if (!cards) return <div className="dp-msg">Opening the cards…</div>;
   return (
-    <div className={'fs v-' + view + (view === 'cards' && (card || design) ? ' with-panel' : '')}>
+    <div className={'fs v-' + view + (view === 'cards' && design ? ' with-panel' : '')}>
       <div className="fs-bar">
         <span className="seg" role="tablist" aria-label="View">
           {([
@@ -519,18 +553,7 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
         <div className="fs-main">
           {view === 'cards' &&
             (shown.length ? (
-              <div className="fs-grid">
-                {shown.map((c) => (
-                  <span key={c.id} className="fs-cell-card">
-                    <FlashCard cfg={cur} card={c} flipped={!!flipped[c.id]} onFlip={() => setFlipped((f) => ({ ...f, [c.id]: !f[c.id] }))} />
-                    {canEdit && (
-                      <button type="button" className="fs-edit" onClick={() => (setOpen(c.id), setDesign(false))}>
-                        Edit
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
+              <Board set={d.id} cfg={cur} cards={shown} all={cards} canEdit={canEdit} flipped={flipped} onFlip={(id) => setFlipped((f) => ({ ...f, [id]: !f[id] }))} open={open} setOpen={(id) => (setOpen(id), id && setDesign(false))} />
             ) : (
               <div className="ma-empty">
                 <strong>{cards.length ? 'Nothing matches' : 'No cards yet'}</strong>
@@ -540,9 +563,127 @@ export function FlashSet({ d, canEdit }: { d: SharedDoc & { flash?: Partial<Flas
           {view === 'table' && <Table set={d.id} cfg={cur} cards={shown} canEdit={canEdit} onChange={change} />}
           {view === 'study' && <Study cfg={cur} cards={cards} />}
         </div>
-        {view === 'cards' && card && <CardPanel set={d.id} cfg={cur} card={card} canEdit={canEdit} onClose={() => setOpen(null)} />}
-        {view === 'cards' && design && !card && <Design cfg={cur} onChange={change} sample={cards[0]} />}
+        {view === 'cards' && design && <Design cfg={cur} onChange={change} sample={cards[0]} />}
       </div>
+    </div>
+  );
+}
+
+// The cards, as a board: grouped by a tag column if you like, and dragged into the order you want.
+// Dropping a card into another group gives it that group's tag.
+function Board({ set, cfg, cards, all, canEdit, flipped, onFlip, open, setOpen }: { set: string; cfg: FlashConfig; cards: Card[]; all: Card[]; canEdit: boolean; flipped: Record<string, boolean>; onFlip: (id: string) => void; open: string | null; setOpen: (id: string | null) => void }) {
+  const tagFields = cfg.fields.filter((f) => f.type === 'tag');
+  const [by, setBy] = useState<string>(() => {
+    try {
+      return localStorage.getItem('ll.fsGroup.' + set) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const group = tagFields.find((f) => f.id === by) ?? null;
+  const pickBy = (v: string) => {
+    setBy(v);
+    try {
+      localStorage.setItem('ll.fsGroup.' + set, v);
+    } catch {
+      /* fine */
+    }
+  };
+  const [drag, setDrag] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  // While a new order is saved, show it at once.
+  const [local, setLocal] = useState<string[] | null>(null);
+  useEffect(() => {
+    setLocal(null);
+  }, [all]);
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  const ordered = local ? (local.map((id) => byId.get(id)).filter(Boolean) as Card[]) : cards;
+  const groups: [string, Card[]][] = group
+    ? (() => {
+        const m = new Map<string, Card[]>();
+        for (const c of ordered) {
+          const t = tagsOf(c.f[group.id] ?? null)[0] ?? '';
+          if (!m.has(t)) m.set(t, []);
+          m.get(t)!.push(c);
+        }
+        const keys = [...m.keys()].filter(Boolean).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }));
+        return [...keys.map((k) => [k, m.get(k)!] as [string, Card[]]), ...(m.has('') ? [['', m.get('')!] as [string, Card[]]] : [])];
+      })()
+    : [['', ordered]];
+  const drop = (target: string | null, tag: string | null) => {
+    const id = drag;
+    setDrag(null);
+    setOver(null);
+    if (!id) return;
+    const ids = all.map((c) => c.id).filter((x) => x !== id);
+    let at = target ? ids.indexOf(target) : -1;
+    if (at < 0) {
+      // The end of the group, or of the set.
+      const inGroup = groups.find(([k]) => k === tag)?.[1].filter((c) => c.id !== id) ?? [];
+      const last = inGroup[inGroup.length - 1];
+      at = last ? ids.indexOf(last.id) + 1 : ids.length;
+    }
+    ids.splice(at, 0, id);
+    setLocal(ids);
+    void reorder(set, ids);
+    if (group && tag !== null) {
+      const c = all.find((x) => x.id === id);
+      const tags = tagsOf(c?.f[group.id] ?? null);
+      if ((tags[0] ?? '') !== tag) void setCell(set, id, group.id, [tag, ...tags.slice(1)].filter(Boolean).join(', '));
+    }
+  };
+  const cell = (c: Card, tag: string) => {
+    const n = all.findIndex((x) => x.id === c.id) + 1;
+    if (open === c.id && canEdit) return <CardEditor key={c.id} set={set} cfg={cfg} card={c} n={n} onClose={() => setOpen(null)} />;
+    return (
+      <span
+        key={c.id}
+        className={'fs-cell-card' + (drag === c.id ? ' dragging' : '') + (over === c.id ? ' over' : '')}
+        draggable={canEdit}
+        onDragStart={(e) => (setDrag(c.id), (e.dataTransfer.effectAllowed = 'move'), e.dataTransfer.setData('text/plain', c.id))}
+        onDragEnd={() => (setDrag(null), setOver(null))}
+        onDragOver={(e) => drag && (e.preventDefault(), setOver(c.id))}
+        onDrop={(e) => (e.preventDefault(), e.stopPropagation(), drop(c.id, group ? tag : null))}
+      >
+        <FlashCard cfg={cfg} card={c} flipped={!!flipped[c.id]} onFlip={() => onFlip(c.id)} />
+        {canEdit && (
+          <button type="button" className="fs-edit" onClick={() => setOpen(c.id)}>
+            Edit
+          </button>
+        )}
+      </span>
+    );
+  };
+  return (
+    <div className="fs-board">
+      {(tagFields.length > 0 || canEdit) && (
+        <span className="fs-board-bar">
+          {tagFields.length > 0 && (
+            <span className="seg small-seg" role="radiogroup" aria-label="Group the cards">
+              <button type="button" role="radio" aria-checked={!group} className={!group ? 'on' : ''} onClick={() => pickBy('')}>
+                All cards
+              </button>
+              {tagFields.map((f) => (
+                <button key={f.id} type="button" role="radio" aria-checked={group?.id === f.id} className={group?.id === f.id ? 'on' : ''} onClick={() => pickBy(f.id)}>
+                  By {f.name.toLowerCase()}
+                </button>
+              ))}
+            </span>
+          )}
+          <span className="hint">{canEdit ? (tagFields.length ? 'Drag cards to put them in order, or into another group to change their tag.' : 'Drag cards to put them in order. Add a Tag column in the table to group them.') : ''}</span>
+        </span>
+      )}
+      {groups.map(([tag, list]) => (
+        <section key={tag || '-'} className={'fs-group' + (group ? ' tagged' : '')} onDragOver={(e) => drag && e.preventDefault()} onDrop={(e) => (e.preventDefault(), drop(null, group ? tag : null))} aria-label={group ? tag || 'No tag' : undefined}>
+          {group && (
+            <span className="fs-group-h">
+              <b>{tag || 'No tag'}</b>
+              <span className="hint">{list.length}</span>
+            </span>
+          )}
+          <div className="fs-grid">{list.map((c) => cell(c, tag))}</div>
+        </section>
+      ))}
     </div>
   );
 }
