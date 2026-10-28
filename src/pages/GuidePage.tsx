@@ -11,7 +11,7 @@ import './guide.css';
 type Topic = { id: string; title: string; short: string; body: () => JSX.Element };
 
 const TOPICS: Topic[] = [
-  { id: 'start', title: 'One place for all your teaching', short: 'Start here', body: Start },
+  { id: 'start', title: 'One place for all your teaching', short: 'Start here', body: () => <Start /> },
   { id: 'blend', title: 'Teach your way: choose your blend', short: 'Your blend', body: Blend },
   { id: 'lessons', title: 'Lessons and tasks', short: 'Lessons', body: Lessons },
   { id: 'questions', title: 'Question types', short: 'Questions', body: Questions },
