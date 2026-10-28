@@ -105,7 +105,7 @@ export function TimetablePage() {
   // eltsuite.com/timetable?day=2026-10-29 (the link in Google Calendar) opens that day.
   const [params] = useSearchParams();
   const linked = /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') ?? '') ? startOfDay(fromFields(params.get('day')!, '12:00', localZone())) : null;
-  const [view, setViewNow] = useState<View>(() => (linked ? 'day' : (store.get('view') as View) || (narrowNow() ? 'day' : 'week')));
+  const [view, setViewNow] = useState<View>(() => (linked ? 'day' : narrowNow() ? (store.get('view') === 'schedule' ? 'schedule' : 'day') : (store.get('view') as View) || 'week'));
   const [anchor, setAnchor] = useState(() => linked ?? startOfDay(Date.now()));
   const [dir, setDir] = useState(0);
   const [side, setSide] = useState(() => store.get('side') !== '0');
@@ -122,6 +122,10 @@ export function TimetablePage() {
   const [scope, setScope] = useState<ScopeReq | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const narrow = useNarrow();
+  // Phones show a day, or the schedule: weeks and months need a bigger screen.
+  useEffect(() => {
+    if (narrow && (view === 'week' || view === 'month')) setViewNow('day');
+  }, [narrow, view]);
   // The teacher's time zone; and sessions from before time zones were kept get theirs, once.
   useEffect(() => void (uid && saveMyZone(uid)), [uid]);
   const zoned = useRef(new Set<string>());
@@ -362,7 +366,7 @@ export function TimetablePage() {
             </h2>
             <span className="ttb-bar-r">
               <span className="seg ttb-views" role="radiogroup" aria-label="View">
-                {VIEWS.map((v) => (
+                {VIEWS.filter((v) => !narrow || v.k === 'day' || v.k === 'schedule').map((v) => (
                   <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} data-tip={`${v.label} (${v.key})`}>
                     {v.label}
                   </button>
