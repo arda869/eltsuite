@@ -17,13 +17,19 @@ export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' = 'A4'):
     const t0 = Date.now();
     while (!w.__laidOut && Date.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 120));
     await Promise.all([...d.images].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = r), (i.onerror = r))))));
+    // The pages sit centred on a grey desk on screen; for the picture each is taken on its own, with
+    // no margin around it, or the PDF page would start with a strip of white and lose its right edge.
+    const st = d.createElement('style');
+    st.textContent = 'body { padding: 0 !important; background: #fff !important; } .page { margin: 0 !important; box-shadow: none !important; } .toolbar { display: none !important; }';
+    d.head.append(st);
     const pages = [...d.querySelectorAll<HTMLElement>('.page')];
     if (!pages.length) throw new Error('The worksheet has no pages yet.');
     const size: [number, number] = paper === 'Letter' ? [215.9, 279.4] : [210, 297];
     const pdf = new jsPDF({ unit: 'mm', format: paper === 'Letter' ? 'letter' : 'a4' });
     for (let i = 0; i < pages.length; i++) {
       // The browser draws the page itself (through SVG), so every colour and font comes out as on screen.
-      const jpg = await h2i.toJpeg(pages[i], { pixelRatio: 2, quality: 0.92, backgroundColor: '#ffffff', cacheBust: false });
+      const r = pages[i].getBoundingClientRect();
+      const jpg = await h2i.toJpeg(pages[i], { pixelRatio: 2, quality: 0.92, backgroundColor: '#ffffff', cacheBust: false, width: Math.round(r.width), height: Math.round(r.height), style: { margin: '0', boxShadow: 'none', transform: 'none' } });
       if (i) pdf.addPage();
       pdf.addImage(jpg, 'JPEG', 0, 0, size[0], size[1]);
     }
