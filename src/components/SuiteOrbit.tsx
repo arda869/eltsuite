@@ -1,5 +1,6 @@
 import { SUITE_APPS } from './AppGrid';
 import { Mark } from './Wordmark';
+import '../lib/extras.css';
 
 // The sign-in page's picture of the suite: the apps turning slowly around the ELT Suite mark, on
 // two rings, some bigger than others. Hover over one (or tab to it) and everything stops while it
@@ -59,5 +60,38 @@ export function SuiteOrbit() {
       <Ring items={OUTER} r={150} cls="out" />
       <Ring items={INNER} r={86} cls="in" />
     </div>
+  );
+}
+
+// "Your whole job in one account.", marked up the way a teacher would on the board: stress boxes,
+// a noun shape over "job", linking from "job" into "in" and from "one" into "account", and the schwa in "account". Hover (or tab)
+// to read what it means.
+const Link = () => (
+  <span className="pr-pl" data-k="link" data-s="under" role="img" aria-label="linking">
+    <span className="pr-pl-arc">
+      <svg viewBox="0 0 20 10" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M1 2.5C4 9 16 9 19 2.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </span>
+  </span>
+);
+
+export function Tagline() {
+  return (
+    <p className="si-tag" tabIndex={0} aria-describedby="si-tag-tip">
+      <span className="si-tag-line">
+        Your <span className="pr-ss" data-l="strong" data-s="box">whole</span>{' '}
+        <span className="pr-gl" data-text="noun" data-shape="mont" data-tone="ink" data-at="above">
+          <span className="pr-ss" data-l="strong" data-s="box">job</span>
+        </span>
+        <Link />
+        in one
+        <Link />
+        <span className="pr-sd" data-k="schwa">a</span>c<span className="pr-ss" data-l="main" data-s="box">count</span>.
+      </span>
+      <span className="si-tag-tip" id="si-tag-tip" role="tooltip">
+        <b>Made by English teachers, for English teachers.</b> The board, the coursebook, the worksheets and your marking pen: everything you reach for in the classroom, now online and together in one place.
+      </span>
+    </p>
   );
 }
