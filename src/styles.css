@@ -4794,6 +4794,10 @@ li > .dialogue, li > .dialogue-node { margin: 0 0 6px; }
 html[data-standalone] { touch-action: manipulation; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
 html[data-standalone] body { -webkit-tap-highlight-color: transparent; }
 /* Light: the top bar is white, so it runs on from the white status bar */
+html, body { overflow-x: clip; }
+/* The top bar (ELT Suite, the app's name, your picture) stays in view as the page scrolls, on every screen. */
+.topbar { position: sticky; top: 0; z-index: 40; background: var(--page); margin-top: -12px; padding-top: 10px; }
+.topbar::before { content: ''; position: absolute; inset: 0 -100vmax; z-index: -1; background: var(--page); border-bottom: 1px solid var(--hair); pointer-events: none; }
 html[data-standalone]:not([data-theme='dark']) .topbar { position: sticky; top: 0; z-index: 40; background: #fff; margin-top: -12px; padding-top: 10px; }
 html[data-standalone]:not([data-theme='dark']) .topbar::before { content: ''; position: absolute; inset: 0 -100vmax; z-index: -1; background: #fff; border-bottom: 1px solid var(--hair); pointer-events: none; }
 /* Dark: the status bar is see-through, so leave room under it */
