@@ -7513,3 +7513,6 @@ input.dg-cell-label:focus { outline: none; }
 body.sf-dragging { user-select: none; cursor: move; }
 body.sf-dragging iframe { pointer-events: none; }
 @media print { .sf-tab, .sf-win { display: none; } }
+
+/* No double-tap zoom on touch screens (see index.html for pinch and Ctrl/Cmd zoom). */
+html { touch-action: manipulation; }
