@@ -1,7 +1,8 @@
 name: Support tickets
 
-# Copies the support tickets not done yet (with their screenshots) to the support-tickets branch,
-# where they are read and worked on. Run by hand with a ticket id to answer it first.
+# Copies the support tickets and the conversations with Claude (with their screenshots) to the
+# support-tickets branch, where Claude's scheduled run picks them up (see CLAUDE.md). Run by hand
+# with a ticket id to answer a ticket first, or with a conversation id to give Claude's answer.
 on:
   schedule:
     - cron: '23 * * * *'
@@ -17,7 +18,15 @@ on:
         options: ['', 'open', 'doing', 'done']
         default: ''
       note:
-        description: 'Answer, shown under the ticket in ELT Suite'
+        description: 'Answer, shown under the ticket (or in the conversation) in ELT Suite'
+        required: false
+        default: ''
+      thread:
+        description: 'Conversation id (Super Admin → Claude) to give Claude''s answer to, in note'
+        required: false
+        default: ''
+      pr:
+        description: 'Pull request with Claude''s changes, for the conversation'
         required: false
         default: ''
 
@@ -44,12 +53,15 @@ jobs:
           TICKET: ${{ inputs.ticket }}
           STATUS: ${{ inputs.status }}
           NOTE: ${{ inputs.note }}
+          THREAD: ${{ inputs.thread }}
+          PR: ${{ inputs.pr }}
         run: |
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           mkdir -p "$RUNNER_TEMP/t" && cp scripts/tickets.mjs "$RUNNER_TEMP/t/"
           cd "$RUNNER_TEMP/t" && npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 >/dev/null
           if [ -n "$TICKET" ]; then node tickets.mjs answer "$TICKET" "$STATUS" "$NOTE"; fi
+          if [ -n "$THREAD" ]; then node tickets.mjs reply "$THREAD" "$PR" "$NOTE"; fi
           node tickets.mjs export "$RUNNER_TEMP/out"
           rm -f "$RUNNER_TEMP/sa.json"
       # One commit on its own branch, replaced each time, so old screenshots do not pile up.

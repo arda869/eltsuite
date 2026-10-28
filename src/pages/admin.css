@@ -268,7 +268,7 @@ textarea.hq-in { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
 .hq-form.hq-two > .field:first-child { grid-column: auto; }
 
 .hq-toast { position: fixed; left: 50%; bottom: 26px; z-index: 90; max-width: calc(100vw - 32px); padding: 10px 18px; border-radius: 12px; background: var(--ink); color: var(--on-ink); font-size: 14px; box-shadow: 0 12px 34px rgba(20, 18, 16, .28); transform: translateX(-50%); animation: hq-toast .2s ease-out; }
-@keyframes hq-toast { from { opacity: 0; transform: translate(-50%, 8px); } }
+@keyframes hq-toast { from { transform: translate(-50%, 12px); } }
 .hq-toast-slot { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* ------------------------------------------------------------------ people */

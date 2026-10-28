@@ -11,10 +11,10 @@ import { ShotPicker, Shots } from './shots';
 import type { Go } from './types';
 
 // Super Admin → Claude: conversations with Claude, who works in ELT Suite's code (see lib/claude.ts).
-// A message waits until the Claude workflow runs; then Claude reads the
+// A message waits until Claude's hourly run (see CLAUDE.md); then Claude reads the
 // whole conversation, does the work and answers here, with a pull request for anything it changed.
 
-const WAIT_NOTE = 'Waiting for Claude to pick this up. A change can take a while.';
+const WAIT_NOTE = 'Claude looks at new messages every hour, and answers here.';
 
 export function ClaudeArea({ threads, params, go }: { threads: Thread[] | null; params: URLSearchParams; go: Go }) {
   const c = params.get('c');
@@ -199,7 +199,7 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
     }
     setBusy(false);
   };
-  const late = t.state === 'waiting' && Date.now() - t.updatedAt > 40 * 60 * 1000;
+  const late = t.state === 'waiting' && Date.now() - t.updatedAt > 3 * 60 * 60 * 1000;
   const lede: ReactNode = (
     <>
       <StateTag s={t.state} /> Started by {t.byName}, {ago(t.at)}
@@ -250,7 +250,7 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
           )}
         </ol>
       )}
-      {late && <span className="hint hq-tk-err">Claude has not picked this up yet. If it stays like this, check that the Claude workflow is set up (see Settings in the GitHub repository: the ANTHROPIC_API_KEY secret).</span>}
+      {late && <span className="hint hq-tk-err">Claude has not answered yet. It looks every hour; if it stays like this, check the "ELT Suite support" routine in Claude.</span>}
       <div className="cl-compose">
         <label className="field">
           <span>Write to Claude</span>
