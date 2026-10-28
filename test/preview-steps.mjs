@@ -37,6 +37,13 @@ export default async function steps({ p, shot, say, demo, BASE }) {
   await wait(1200);
   await shot('gap-added');
 
+  // only on screen: the task leaves the page
+  await p.locator('.sh-paperbar select').first().selectOption('screen');
+  await wait(1800);
+  await shot('screen-only');
+  await p.locator('.sh-paperbar select').first().selectOption('both');
+  await wait(1200);
+
   // pick a task from the list on the left of the screen
   await p.locator('.task-row').nth(1).click().catch((e) => say('list click', e.message));
   await wait(1500);

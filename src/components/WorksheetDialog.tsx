@@ -106,7 +106,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   }, [classId, itemId]);
   const isExam = item?.type === 'exam';
   const look = () => ({ header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
-  const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden);
+  const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden && t.print?.show !== 'screen');
   const ids = picked ?? new Set(visible.map((x) => x.i));
   const chosen = () => flattenWithSections(lesson!.tasks, ids);
 

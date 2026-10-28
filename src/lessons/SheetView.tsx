@@ -187,13 +187,21 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus }: { par
 }
 
 // How the task being edited looks on paper: its gaps, its writing space and an instruction for paper.
-export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string };
+export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen' };
 export function PaperBar({ look, onChange, gaps, writing, online }: { look: Paper; onChange: (p: Paper) => void; gaps: boolean; writing: boolean; online: string[] }) {
   const [instrOn, setInstrOn] = useState(!!look.instr);
   const set = (p: Partial<Paper>) => onChange({ ...look, ...p });
   return (
     <div className="sh-paperbar" aria-label="On paper">
       <b className="sh-pb-k">On paper</b>
+      <label className="sh-pb-f">
+        <span>Show it</span>
+        <select value={look.show ?? 'both'} onChange={(e) => set({ show: e.target.value as Paper['show'] })}>
+          <option value="both">On paper and on screen</option>
+          <option value="paper">Only on paper</option>
+          <option value="screen">Only on screen</option>
+        </select>
+      </label>
       {gaps && (
         <label className="sh-pb-f">
           <span>Gaps</span>
