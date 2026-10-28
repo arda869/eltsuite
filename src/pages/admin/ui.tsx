@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar } from '../../components/avatars';
 import { UiIcon } from '../../components/UiIcon';
@@ -7,6 +7,9 @@ import { UiIcon } from '../../components/UiIcon';
 // teacher or class, meters for space, filter pills and the bar for working on many rows at once.
 
 export const GB = 1024 ** 3;
+// Where side panels and dialogs open: the page, or a window they belong to (the floating Support
+// window gives its own element, so a ticket opens inside it rather than over the whole page).
+export const PortalHost = createContext<HTMLElement | null>(null);
 export const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 export function fmtBytes(n: number) {
   if (!n) return '0 MB';
@@ -194,6 +197,7 @@ export function Setting({ title, about, children, sub }: { title: string; about?
 
 // The side panel for one teacher or class: from the right on a computer, the whole screen on a phone.
 export function Drawer({ title, sub, pic, onClose, children, foot }: { title: string; sub?: ReactNode; pic?: ReactNode; onClose: () => void; children: ReactNode; foot?: ReactNode }) {
+  const host = useContext(PortalHost);
   const ref = useRef<HTMLDivElement>(null);
   const hid = useId();
   useEffect(() => {
@@ -229,7 +233,7 @@ export function Drawer({ title, sub, pic, onClose, children, foot }: { title: st
         {foot && <footer className="hq-drawer-f">{foot}</footer>}
       </div>
     </div>,
-    document.body,
+    host ?? document.body,
   );
 }
 
@@ -244,6 +248,7 @@ export function DrawerPart({ title, children }: { title: string; children: React
 
 // A small dialog for one form, in the app's own look.
 export function Sheet({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const host = useContext(PortalHost);
   const hid = useId();
   useEffect(() => {
     const key = (e: KeyboardEvent) => e.key === 'Escape' && !document.querySelector('.sel-list') && onClose();
@@ -264,7 +269,7 @@ export function Sheet({ title, onClose, children, wide }: { title: string; onClo
         {children}
       </div>
     </div>,
-    document.body,
+    host ?? document.body,
   );
 }
 

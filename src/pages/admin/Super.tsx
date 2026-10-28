@@ -5,7 +5,9 @@ import { Avatar } from '../../components/avatars';
 import { SfxSettings } from '../../components/SfxSettings';
 import { SoundRecordings } from '../../components/SoundRecordings';
 import { ask } from '../../lib/ask';
-import { APP_LIST, PLANS, newOrg, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, type Plan, type Teacher } from '../../lib/admin';
+import { APP_LIST, PLANS, addSuperAdmin, newOrg, removeSuperAdmin, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, useSuperAdmins, type Plan, type Teacher } from '../../lib/admin';
+import { useAuth } from '../../lib/auth';
+import { OWNER_EMAIL } from '../../lib/phonAudio';
 import { GB, BulkBar, Check, Drawer, DrawerPart, Empty, GbInput, Meter, PageHead, Panel, Pills, Search, Setting, Sheet, Switch, Who, ago, dateStr, daysSince, fmtBytes, fmtGb, plural, useNote, useSelection } from './ui';
 import { WAIT_DAYS, givenGb, limitGbOf, teachesIn, usedOf } from './attention';
 import { saveSuperWorkbook } from './sheets';
@@ -231,6 +233,35 @@ function BulkOrg({ d, list, onClose, onDone }: { d: SuperData; list: Teacher[]; 
   );
 }
 
+// Making a teacher a super admin, or no longer one, from their side panel (the same list as Super admins).
+function SuperSwitch({ t }: { t: Teacher }) {
+  const { user, profile } = useAuth();
+  const list = useSuperAdmins(true);
+  const email = (t.email ?? '').trim().toLowerCase();
+  if (!email || list === null) return null;
+  const owner = email === OWNER_EMAIL;
+  const on = owner || list.some((s) => s.email === email);
+  const name = t.name || email;
+  const me = { uid: user?.uid ?? '', name: (profile?.role === 'teacher' ? profile.displayName : '') || user?.displayName || user?.email || 'A super admin' };
+  const flip = async () => {
+    if (on) {
+      const self = email === (user?.email ?? '').toLowerCase();
+      if (!(await ask(self ? 'Stop being a super admin yourself? You will lose Super Admin at once.' : `Stop ${name} being a super admin?`, { ok: 'Remove', danger: true }))) return;
+      await removeSuperAdmin(email);
+    } else {
+      if (!(await ask(`Make ${name} a super admin? They will see and change everything in ELT Suite: every teacher, organisation, ticket and switch, and they can make other super admins. They need a verified email (Google, or a confirmed one).`, { ok: 'Make them a super admin' }))) return;
+      await addSuperAdmin(email, t.name ?? '', me);
+    }
+  };
+  return (
+    <DrawerPart title="Super admin">
+      <Setting title={on ? 'A super admin' : 'Not a super admin'} about={owner ? 'The owner of ELT Suite is always one.' : on ? 'They run all of ELT Suite with you.' : 'Super admins run all of ELT Suite: every teacher, organisation, ticket and switch.'}>
+        {!owner && <Switch on={on} onChange={() => void flip()} label={`${name} is a super admin`} />}
+      </Setting>
+    </DrawerPart>
+  );
+}
+
 function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go; onClose: () => void }) {
   const a = d.accounts[t.uid] ?? {};
   const org = d.orgs.find((o) => o.id === a.org) ?? null;
@@ -286,6 +317,7 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
           </>
         )}
       </DrawerPart>
+      <SuperSwitch t={t} />
       <DrawerPart title="Space used">
         <div className="hq-dspace">
           <Meter used={used} of={of * GB} />

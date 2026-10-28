@@ -49,25 +49,29 @@ export function SupportPage() {
 }
 
 // The tickets themselves: every ticket for a super admin (owner), an organisation's for its admins.
-export function SupportTickets({ owner, orgs }: { owner: boolean; orgs: Org[] }) {
+// local: in the floating Support window, which keeps its filter and open ticket to itself rather
+// than in the page's address.
+export function SupportTickets({ owner, orgs, local }: { owner: boolean; orgs: Org[]; local?: boolean }) {
   const { user, profile } = useAuth();
   // A super admin opens tickets as themselves; an admin, for one of their organisations.
   const mine = owner ? orgs.filter((o) => o.adminEmails.includes((user?.email ?? '').toLowerCase())) : orgs;
   const tickets = useTickets(owner, owner ? null : orgs.map((o) => o.id));
   const [params, setParams] = useSearchParams();
-  const f = params.get('f') || 'active';
-  const open = params.get('t') || '';
+  const [here, setHere] = useState<{ f: string; t: string }>({ f: 'active', t: '' });
+  const f = (local ? here.f : params.get('f')) || 'active';
+  const open = (local ? here.t : params.get('t')) || '';
   const [q, setQ] = useState('');
   const [making, setMaking] = useState(false);
   const [toast, say] = useNote();
   const go = useCallback(
     (to: { f?: string; t?: string }) => {
+      if (local) return setHere((h) => ({ f: to.f === undefined ? h.f : to.f || 'active', t: to.t === undefined ? h.t : to.t }));
       const n = new URLSearchParams(params);
       for (const [k, v] of Object.entries(to)) if (v) n.set(k, v); else n.delete(k);
       if (n.get('f') === 'active') n.delete('f');
       setParams(n, { replace: true });
     },
-    [params, setParams],
+    [params, setParams, local],
   );
   if (!user) return null;
 

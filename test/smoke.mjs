@@ -411,6 +411,19 @@ const J = {
     await see(s.p, '.hq-nav-i:has-text("Super admins")', 'Super Admin, for a super admin');
     return s;
   },
+  'Support tickets in a window, from any page': async (b) => {
+    const s = await session(b, { owner: true });
+    await s.p.goto(`${BASE}/classes`);
+    await s.p.click('.sf-tab');
+    await see(s.p, '.sf-win h1:has-text("Support tickets")', 'the support window');
+    await s.p.click('.sf-win button:has-text("New ticket")');
+    await see(s.p, '.sf-win .hq-sheet', 'the new ticket form, inside the window');
+    await axe(s.p, 'Support window', A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
+    await s.p.click('.sf-x');
+    await see(s.p, '.sf-tab', 'the tab again');
+    return s;
+  },
   'Invitation codes: a super admin makes one': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => {
