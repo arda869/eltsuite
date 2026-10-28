@@ -10,7 +10,9 @@ import { allTeacherClasses } from '../lib/coteach';
 import { lessonTaskBody } from '../lib/libtasks';
 import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
 import { TaskEditor } from '../editor/TaskEditor';
-import { InstrEditor } from '../editor/InstrEditor';
+import { InstrEditor, InstrView } from '../editor/InstrEditor';
+import { TaskRenderer } from '../components/TaskRenderer';
+import { SheetTop, SheetView } from './SheetView';
 import { useAuth } from '../lib/auth';
 import { ask, tell } from '../lib/ask';
 import { theme } from '../lib/themes';
@@ -123,6 +125,22 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
 export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const rows = useRows(d.id);
   const [sel, setSel] = useState('');
+  // Worksheet view: the lesson as A4 pages, as in a class lesson. Remembered on this device.
+  const [sheet, setSheetState] = useState(() => {
+    try {
+      return localStorage.getItem('ll.sheetView') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setSheet = (on: boolean) => {
+    setSheetState(on);
+    try {
+      localStorage.setItem('ll.sheetView', on ? '1' : '');
+    } catch {
+      /* fine */
+    }
+  };
   const [adding, setAdding] = useState(false);
   const saveT = useRef<Record<string, number>>({});
   useEffect(() => {
@@ -153,6 +171,35 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     list.forEach((r, k) => b.update(doc(rowsCol(d.id), r.id), { order: k }));
     await b.commit();
   };
+  const taskBlock = cur ? (
+          <div className="lf-task" key={cur.id}>
+            <div className="lf-head">
+              <input className="lf-title" defaultValue={cur.title} disabled={!canEdit} onChange={(e) => patch(cur.id, { title: e.target.value })} aria-label="Title" />
+              {canEdit && (
+                <span className="lf-acts">
+                  <button type="button" className="icon-btn" aria-label="Move up" onClick={() => void move(cur.id, -1)}>
+                    ↑
+                  </button>
+                  <button type="button" className="icon-btn" aria-label="Move down" onClick={() => void move(cur.id, 1)}>
+                    ↓
+                  </button>
+                  <button type="button" className="btn link small" onClick={() => void ask(`Delete “${cur.title}”?`).then((ok) => ok && void deleteDoc(doc(rowsCol(d.id), cur.id)))}>
+                    Delete
+                  </button>
+                </span>
+              )}
+            </div>
+            {cur.kind === 'task' && (
+              <>
+                {canEdit ? <InstrEditor doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <p className="task-instr">{cur.instructions}</p>}
+                <div className="lf-body">
+                  <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} />
+                </div>
+              </>
+            )}
+            {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
+          </div>
+  ) : null;
   let n = 0;
   return (
     <div className="lf">
@@ -187,34 +234,40 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         </button>
       </aside>
       <main className="lf-main">
-        {cur ? (
-          <div className="lf-task" key={cur.id}>
-            <div className="lf-head">
-              <input className="lf-title" defaultValue={cur.title} disabled={!canEdit} onChange={(e) => patch(cur.id, { title: e.target.value })} aria-label="Title" />
-              {canEdit && (
-                <span className="lf-acts">
-                  <button type="button" className="icon-btn" aria-label="Move up" onClick={() => void move(cur.id, -1)}>
-                    ↑
-                  </button>
-                  <button type="button" className="icon-btn" aria-label="Move down" onClick={() => void move(cur.id, 1)}>
-                    ↓
-                  </button>
-                  <button type="button" className="btn link small" onClick={() => void ask(`Delete “${cur.title}”?`).then((ok) => ok && void deleteDoc(doc(rowsCol(d.id), cur.id)))}>
-                    Delete
-                  </button>
-                </span>
-              )}
-            </div>
-            {cur.kind === 'task' && (
-              <>
-                {canEdit ? <InstrEditor doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <p className="task-instr">{cur.instructions}</p>}
-                <div className="lf-body">
-                  <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} />
-                </div>
-              </>
-            )}
-            {cur.kind === 'section' && <span className="hint">A section groups the tasks under it, as in a class lesson.</span>}
-          </div>
+        <span className="sh-switch lf-view" role="radiogroup" aria-label="View">
+          <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)}>
+            Digital
+          </button>
+          <button type="button" role="radio" aria-checked={sheet} className={sheet ? 'on' : ''} onClick={() => setSheet(true)}>
+            Worksheet
+          </button>
+        </span>
+        {sheet && rows.length ? (
+          <SheetView
+            title={d.title}
+            blocks={[
+              { id: '_top', node: <SheetTop title={d.title} /> },
+              ...rows.map((r) =>
+                r.kind === 'section'
+                  ? { id: r.id, heading: true, node: <h2 className="sh-sec">{r.title}</h2>, onClick: r.id === sel ? undefined : () => setSel(r.id), on: r.id === sel }
+                  : r.id === sel && cur
+                    ? { id: r.id, on: true, node: taskBlock }
+                    : {
+                        id: r.id,
+                        onClick: () => setSel(r.id),
+                        node: (
+                          <div className="sh-task">
+                            <b className="sh-task-h">{r.title}</b>
+                            <InstrView doc={r.instrDoc ?? null} text={r.instructions ?? ''} />
+                            {r.content && <TaskRenderer content={r.content} responses={{}} onChange={() => {}} disabled />}
+                          </div>
+                        ),
+                      },
+              ),
+            ]}
+          />
+        ) : cur ? (
+          taskBlock
         ) : (
           <div className="ma-empty">
             <strong>Start the lesson</strong>

@@ -59,21 +59,8 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   };
   const [cls, setCls] = useState<ClassDoc | null>(null);
   const [item, setItem] = useState<Item | null>(null);
-  const [columns, setColumnsState] = useState<1 | 2>(() => {
-    try {
-      return localStorage.getItem('ll.wsCols') === '1' ? 1 : 2;
-    } catch {
-      return 2;
-    }
-  });
-  const setColumns = (c: 1 | 2) => {
-    setColumnsState(c);
-    try {
-      localStorage.setItem('ll.wsCols', String(c));
-    } catch {
-      /* ignore */
-    }
-  };
+  // One column, like the worksheet view in the lesson editor.
+  const columns = 1 as const;
   const [marks, setMarks] = useState(true);
   // Text size and a clearer (dyslexia-friendly) font for the print and Word file, remembered here.
   const keep = (k: string, v: string) => {
@@ -229,7 +216,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
           <Loader label="Getting the tasks ready" />
         ) : (
           <>
-            <span className="hint">Laid out like a coursebook page: your sections as headings, each task as a numbered exercise (its instruction is the heading), and no exercise split across columns or pages. Hidden tasks are left out.</span>
+            <span className="hint">Laid out like a coursebook page: your sections as headings, each task as a numbered exercise (its instruction is the heading), and no exercise split across pages. Hidden tasks are left out.</span>
             {visible.length === 0 && <span className="load-error">{lesson.tasks.some((t) => t.kind !== 'section') ? 'Every task here is hidden from learners, so there’s nothing to print. Show a task first.' : 'This lesson has no tasks yet.'}</span>}
             <div className="field" style={{ gap: 6 }}>
               <span>Tasks</span>
@@ -249,16 +236,6 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
                 {(['A4', 'Letter', 'A5'] as const).map((p) => (
                   <button key={p} type="button" role="radio" aria-checked={paper === p} className={paper === p ? 'on' : ''} onClick={() => setPaper(p)}>
                     {p === 'Letter' ? 'US Letter' : p}
-                  </button>
-                ))}
-              </span>
-            </div>
-            <div className="field" style={{ gap: 6 }}>
-              <span>Layout</span>
-              <span className="seg small-seg" role="radiogroup" aria-label="Columns" style={{ width: '100%' }}>
-                {([1, 2] as const).map((c) => (
-                  <button key={c} type="button" role="radio" aria-checked={columns === c} className={columns === c ? 'on' : ''} onClick={() => setColumns(c)}>
-                    {c === 1 ? 'One column' : 'Two columns'}
                   </button>
                 ))}
               </span>
