@@ -362,6 +362,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
       </span>
       <span className="pb-g">
+        <PageTools editor={editor} layout={layout} setLayout={setLayout} />
+      </span>
+      <span className="pb-g">
         <StyleMenu editor={editor} />
       </span>
       <span className="pb-g">
