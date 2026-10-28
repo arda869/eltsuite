@@ -59,10 +59,13 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
     await p.keyboard.type('She has lived here for ten years.', { delay: 15 });
     await wait(300);
     await shot('typing');
+    await p.keyboard.press('Enter');
     await p.keyboard.type('/gap', { delay: 40 });
     await wait(900);
     await shot('slash-menu');
-    await p.keyboard.press('Escape');
+    await p.keyboard.press('Enter');
+    await wait(800);
+    await shot('gap-added');
     await wait(2500);
     await shot('typed-2s');
   } else say('NO EDITOR on the page');

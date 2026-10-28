@@ -57,6 +57,19 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
   const [pages, setPages] = useState(1);
   // While a task is edited, the page it is on stretches to fit the editor; the rest keep their size.
   const [stretch, setStretch] = useState<{ page: number; extra: number }>({ page: -1, extra: 0 });
+  // On a narrower screen the page is shown smaller, never cut off. (A transform, so the layout,
+  // which is measured in the page's own size, stays the same.)
+  const desk = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useLayoutEffect(() => {
+    const el = desk.current;
+    if (!el) return;
+    const fit = () => setScale(Math.min(1, Math.max(0.5, (el.clientWidth - 24) / PAGE.w)));
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const inner = areaBottom(0) - areaTop(0);
   // The task you click stays where it was on screen while the page around it settles: the one you
   // leave shrinks back to its printed size, which would otherwise move everything below it.
@@ -119,8 +132,9 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
   }, [inner, blocks.map((b) => b.id + (b.html?.length ?? 0)).join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="sh-desk">
-      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra }}>
+    <div className="sh-desk" ref={desk}>
+      <div className="sh-fit" style={{ width: PAGE.w * scale, height: (pages * P - PAGE.gap + stretch.extra) * scale }}>
+      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale < 1 ? `scale(${scale})` : undefined }}>
         {Array.from({ length: pages }, (_, i) => (
           <div key={i} className={'sh-sheet' + (i === stretch.page && stretch.extra > 0 ? ' stretched' : '')} style={{ top: i * P + (i > stretch.page ? stretch.extra : 0), height: PAGE.h + (i === stretch.page ? stretch.extra : 0) }} aria-hidden="true">
             <Piece css={css} html={parts.band} />
@@ -147,6 +161,7 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
           ))}
           {after && <div className="sh-after">{after}</div>}
         </div>
+      </div>
       </div>
     </div>
   );
