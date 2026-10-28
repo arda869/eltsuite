@@ -275,3 +275,34 @@ for (const i of invites.docs) {
     console.error('Invitation email failed', i.id, e?.message);
   }
 }
+
+// ------------------------------------------------------------------ invitation codes for one email
+// ELT Suite is open by invitation for now. A code made for one email (inviteCodes/{code}.email) is
+// sent there, with a link that opens the sign-in page with the code filled in.
+const codes = await db.collection('inviteCodes').get();
+for (const r of codes.docs) {
+  const d = r.data();
+  if (!d.email || d.mailed || d.off || (d.uses ?? 0) >= (d.maxUses ?? 1) || (d.expires && d.expires < Date.now())) continue;
+  try {
+    const link = `${SITE}/?code=${encodeURIComponent(r.id)}`;
+    const first = (d.name || '').split(' ')[0];
+    const who = esc(d.byName || 'The ELT Suite team');
+    const where = d.orgName ? ` to join <b>${esc(d.orgName)}</b>` : '';
+    const until = d.expires ? ` It works until ${new Date(d.expires).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.` : '';
+    const intro = `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${who} has invited you to ELT Suite${where}: everything an English teacher needs, in one place, to plan the lesson, teach it live and follow every learner’s progress.</p>
+<p style="font:15px/1.6 Georgia,serif">ELT Suite is open by invitation for now. Your invitation code is:</p>
+<p style="margin:14px 0;font:700 26px/1 Menlo,Consolas,monospace;letter-spacing:4px;color:#2b2a28">${esc(r.id)}</p>
+<p style="margin:18px 0"><a href="${link}" style="display:inline-block;background:#b8744e;color:#fff;text-decoration:none;font:600 15px Arial,sans-serif;padding:11px 20px;border-radius:9px">Make your account</a></p>
+<p style="font:14px/1.6 Arial,sans-serif;color:#3b3935">Or go to ${SITE.replace('https://', '')}, choose <b>I have an invitation</b> and type the code. Use this email, ${esc(d.email)}, with a password or Google.${until}</p>`;
+    await mail.sendMail({
+      from: FROM,
+      to: d.email,
+      subject: d.orgName ? `Your invitation to ${d.orgName} in ELT Suite` : 'Your invitation to ELT Suite',
+      html: frame('Welcome to ELT Suite', intro, `You get this because ${who} invited ${esc(d.email)}. Not expecting it? Ignore this email.`),
+    });
+    await r.ref.update({ mailed: Date.now() });
+    console.log('Invitation code emailed');
+  } catch (e) {
+    console.error('Invitation code email failed', e?.message);
+  }
+}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
 import { chatTitle, useChats, type Chat, type Person } from '../lib/chat';
-import { callOn, clearRing, declineCall, NoRoomError, openCall, RING_MS, ringing, startChatCall, useCallElsewhere, useMyRing, useOpenCall, type CallKind } from '../lib/calls';
+import { callOn, clearRing, declineCall, callStartError, openCall, RING_MS, ringing, startChatCall, useCallElsewhere, useMyRing, useOpenCall, type CallKind } from '../lib/calls';
 import { setCallMe } from '../lib/callEngine';
 import { CallScreen } from './CallScreen';
 import { useLocation } from 'react-router-dom';
@@ -193,7 +193,7 @@ export function CallButtons({ c, me, compact }: { c: Chat; me: Person; compact?:
       openCall({ url: k.url, title: chatTitle(c, me.key), kind: k.kind, chatId: c.id, code: k.code });
       if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {});
     } catch (e) {
-      void tell(e instanceof NoRoomError ? e.message : 'The call could not be started. Please try again.');
+      void tell(callStartError(e, 'The call could not be started. Please try again.'));
     } finally {
       setBusy(false);
     }

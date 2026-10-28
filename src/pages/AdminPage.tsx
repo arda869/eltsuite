@@ -14,6 +14,8 @@ import { OrgDrives, OrgForms } from './admin/OrgLibrary';
 import { OrgActivity } from './admin/OrgActivity';
 import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Super';
 import { SuperAdmins } from './admin/SuperAdmins';
+import { InviteCodes } from './admin/InviteCodes';
+import { codeState, useCodes } from '../lib/codes';
 import { ClaudeArea } from './admin/Claude';
 import { SupportTickets } from './SupportPage';
 import { useTickets } from '../lib/tickets';
@@ -146,10 +148,12 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
   const invites = useAllInvites(true);
   const tickets = useTickets(true, null);
   const threads = useThreads(true);
+  const codes = useCodes(true);
   const d: SuperData = { teachers: teachers ?? [], accounts, orgs, classes: classes ?? [], invites, loading: teachers === null || classes === null };
   const items: NavItem[] = [
     { k: 'overview', label: 'Overview', icon: 'poll' },
     { k: 'teachers', label: 'Teachers', icon: 'person', n: teachers?.length },
+    { k: 'codes', label: 'Invitation codes', icon: 'plus', n: codes?.filter((c) => codeState(c) === 'open').length || undefined },
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
@@ -195,6 +199,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
         <main className="hq-main" ref={mainRef}>
           {known === 'overview' && <SuperOverview d={d} go={go} />}
           {known === 'teachers' && <SuperTeachers d={d} go={go} params={params} />}
+          {known === 'codes' && <InviteCodes orgs={orgs} />}
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
           {known === 'apps' && <SuperApps d={d} />}
           {known === 'defaults' && <SuperDefaults />}
@@ -238,6 +243,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
       [
         { k: 'teachers', label: 'Teachers', icon: 'person', n: Object.keys(org.teachers).length },
         { k: 'invites', label: 'Invitations', icon: 'message', n: waiting.length, badge: old },
+        { k: 'codes', label: 'Invitation codes', icon: 'plus' },
         { k: 'admins', label: 'Admins', icon: 'lock', n: org.adminEmails.length },
       ],
     ],
@@ -254,7 +260,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
       [
         { k: 'rules', label: 'Rules', icon: 'settings' },
         { k: 'brand', label: 'Branding', icon: 'picture' },
-        { k: 'space', label: 'Plan and space', icon: 'archive' },
+        { k: 'space', label: 'Plan and limits', icon: 'archive' },
       ],
     ],
   ];
@@ -296,6 +302,7 @@ function OrgArea({ org, orgs, owner, tab, params, go, mainRef }: { org: Org; org
           {known === 'activity' && <OrgActivity d={d} params={params} go={go} />}
           {known === 'teachers' && <OrgTeachers d={d} params={params} go={go} />}
           {known === 'invites' && <OrgInvites d={d} params={params} go={go} />}
+          {known === 'codes' && <InviteCodes org={org} />}
           {known === 'admins' && <OrgAdmins d={d} />}
           {known === 'classes' && <OrgClasses d={d} params={params} go={go} />}
           {known === 'library' && <OrgDrives d={d} />}

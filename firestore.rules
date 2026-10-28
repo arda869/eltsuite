@@ -51,8 +51,12 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSelf(uid) || isOwner()
         || (signedIn() && resource.data.role == 'learner' && teachesClass(resource.data.classId));
-      allow create: if (isSelf(uid) && !learnerAccount() && request.resource.data.role == 'teacher')
-        || (request.resource.data.role == 'learner' && isTeacher() && (teachesClass(request.resource.data.classId) || runsClass(request.resource.data.classId)));
+      // Teachers join by invitation for now: an invitation code (used up by one in the same write),
+      // an organisation's invitation (its id comes with the profile), or they run ELT Suite.
+      allow create: if (isSelf(uid) && !learnerAccount() && request.resource.data.role == 'teacher'
+          && (codeUsedNow(request.resource.data.get('code', null)) || invitedHere(request.resource.data.get('invite', null)) || isOwner()))
+        || (request.resource.data.role == 'learner' && isTeacher() && (teachesClass(request.resource.data.classId) || runsClass(request.resource.data.classId))
+            && countedIn(classData(request.resource.data.classId).get('org', null), 'learners'));
       allow update: if isSelf(uid) && request.resource.data.role == resource.data.role
         && request.resource.data.get('classId', null) == resource.data.get('classId', null);
       allow delete: if signedIn() && resource.data.role == 'learner' && (teachesClass(resource.data.classId) || runsClass(resource.data.classId));
@@ -108,7 +112,9 @@ service cloud.firestore {
       allow create: if ((isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId))
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
-        && request.resource.data.name.size() <= 80;
+        && request.resource.data.name.size() <= 80
+        // within the organisation's limit of classes, counted in the same write
+        && countedIn(request.resource.data.get('org', null), 'classes');
       allow update: if signedIn()
         && request.resource.data.teacherId == resource.data.teacherId
         && request.resource.data.classCode == resource.data.classCode
@@ -505,6 +511,8 @@ service cloud.firestore {
       allow read: if signedIn();
       allow update: if signedIn() && resource.data.state == 'free' && request.resource.data.state == 'used'
         && request.resource.data.by == request.auth.uid
+        // a teacher whose organisation has used its call minutes this month starts no new call
+        && orgHasRoom(acct(request.auth.uid).get('org', null), 'callMinutes')
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'by', 'usedAt', 'for']);
       // The room's host key: only for the teacher who took the room.
       match /host/{k} {
@@ -659,6 +667,8 @@ service cloud.firestore {
       allow write: if isOwner();
       // A teacher saying yes to an organisation's invitation sets their own organisation.
       allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
+      // A new teacher making their account with an organisation's invitation code.
+      allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['org', 'code']) && codeForOrg(request.resource.data.code, request.resource.data.org);
       allow update: if isSelf(uid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['org', 'invite']) && invitedTo(request.resource.data.invite, request.resource.data.org);
     }
     // An invitation for this teacher's email to this organisation, not yet answered.
@@ -668,6 +678,70 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.org == orgId
         && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.email == request.auth.token.get('email', '').lower()
         && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.status == 'pending';
+    }
+    // An organisation's invitation for this email, not yet answered (by its id).
+    function invitedHere(inviteId) {
+      return signedIn() && inviteId is string
+        && exists(/databases/$(database)/documents/orgInvites/$(inviteId))
+        && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.email == request.auth.token.get('email', '').lower()
+        && get(/databases/$(database)/documents/orgInvites/$(inviteId)).data.status == 'pending';
+    }
+    // Invitation codes (inviteCodes/{code}): made by a super admin, or by an organisation's admins for
+    // their organisation. A new teacher types one in to make their account. A code can be used a set
+    // number of times, until a date, and only by one email if it names one.
+    function codeData(c) { return get(/databases/$(database)/documents/inviteCodes/$(c)).data; }
+    function codeOpen(c) {
+      return signedIn() && c is string && exists(/databases/$(database)/documents/inviteCodes/$(c))
+        && codeData(c).get('off', false) != true
+        && codeData(c).get('uses', 0) < codeData(c).get('maxUses', 1)
+        && (codeData(c).get('expires', 0) == 0 || codeData(c).get('expires', 0) > request.time.toMillis())
+        && (codeData(c).get('email', '') == '' || codeData(c).get('email', '') == request.auth.token.get('email', '').lower());
+    }
+    // The code is open and this same write takes one of its uses, for this account.
+    function codeUsedNow(c) {
+      return codeOpen(c)
+        && getAfter(/databases/$(database)/documents/inviteCodes/$(c)).data.get('uses', 0) == codeData(c).get('uses', 0) + 1
+        && request.auth.uid in getAfter(/databases/$(database)/documents/inviteCodes/$(c)).data.get('usedBy', {});
+    }
+    function codeForOrg(c, orgId) { return codeOpen(c) && codeData(c).get('org', '') == orgId; }
+    match /inviteCodes/{code} {
+      // The code is the secret: anyone who has it can look it up, before they have an account.
+      allow get: if true;
+      allow list: if isOwner() || adminOfOrg(resource.data.org);
+      allow create: if (isOwner() || (adminOfOrg(request.resource.data.get('org', null)) && orgHasRoom(request.resource.data.org, 'teachers')))
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.get('uses', 0) == 0 && request.resource.data.get('usedBy', {}).size() == 0
+        && request.resource.data.maxUses is int && request.resource.data.maxUses >= 1 && request.resource.data.maxUses <= 500
+        && code.size() >= 8 && code.size() <= 24;
+      // Its makers turn it off, change how many uses or the date, or delete it; an organisation's admins, only theirs.
+      allow update: if (isOwner() || (adminOfOrg(resource.data.get('org', null)) && request.resource.data.get('org', null) == resource.data.get('org', null)))
+        && request.resource.data.get('uses', 0) == resource.data.get('uses', 0);
+      allow delete: if isOwner() || adminOfOrg(resource.data.get('org', null));
+      // A new teacher using it: one more use, by them, with the account made in the same write.
+      allow update: if signedIn() && !learnerAccount() && codeOpen(code)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uses', 'usedBy'])
+        && request.resource.data.uses == resource.data.get('uses', 0) + 1
+        && request.resource.data.usedBy.diff(resource.data.get('usedBy', {})).affectedKeys().hasOnly([request.auth.uid])
+        && !(request.auth.uid in resource.data.get('usedBy', {}))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('code', '') == code;
+    }
+    // An organisation's limits (orgs/{id}.limits, set by a super admin) and what it uses
+    // (orgs/{id}.usage: counted every 15 minutes by scripts/space.mjs, and counted up at once by the
+    // app as classes and learners are added). A limit that is not set means no limit.
+    function orgDoc(orgId) { return get(/databases/$(database)/documents/orgs/$(orgId)).data; }
+    function limitOf(orgId, k) { return orgDoc(orgId).get('limits', {}).get(k, -1); }
+    function usedOf(orgId, k) { return orgDoc(orgId).get('usage', {}).get(k, 0); }
+    function orgHasRoom(orgId, k) {
+      return !(orgId is string) || !exists(/databases/$(database)/documents/orgs/$(orgId))
+        || limitOf(orgId, k) < 0
+        || (k == 'teachers' ? orgDoc(orgId).get('teachers', {}).size() : usedOf(orgId, k)) < limitOf(orgId, k);
+    }
+    // A class or learner added to a limited organisation: the same write counts it, within the limit.
+    function countedIn(orgId, k) {
+      return !(orgId is string) || !exists(/databases/$(database)/documents/orgs/$(orgId))
+        || limitOf(orgId, k) < 0
+        || (getAfter(/databases/$(database)/documents/orgs/$(orgId)).data.get('usage', {}).get(k, 0) == usedOf(orgId, k) + 1
+            && usedOf(orgId, k) + 1 <= limitOf(orgId, k));
     }
     function adminOfOrg(orgId) {
       return signedIn() && orgId is string && exists(/databases/$(database)/documents/orgs/$(orgId))
@@ -691,15 +765,34 @@ service cloud.firestore {
       allow create, delete: if isOwner();
       // Admins choose the branding and who their teachers may work with.
       allow update: if isOwner() || (orgAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['brand', 'outside', 'policy', 'teachers', 'perTeacherGb', 'drives', 'tags', 'libraryName', 'ttForms']) && request.resource.data.teachers.keys().hasOnly(resource.data.teachers.keys()));
-      // A teacher saying yes to an invitation adds themselves, and only themselves.
+      // A teacher saying yes to an invitation, or making their account with the organisation's
+      // invitation code, adds themselves, and only themselves, within its limit of teachers.
       allow update: if signedIn() && !(request.auth.uid in resource.data.get('teachers', {}))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teachers', 'adminEmails'])
         && request.resource.data.teachers.diff(resource.data.get('teachers', {})).affectedKeys().hasOnly([request.auth.uid])
-        && invitedTo(request.resource.data.teachers[request.auth.uid].get('invite', null), id)
-        // invited as an admin: they add their own email to the admins, and nothing else
-        && (request.resource.data.get('adminEmails', []) == resource.data.get('adminEmails', [])
-            || (get(/databases/$(database)/documents/orgInvites/$(request.resource.data.teachers[request.auth.uid].invite)).data.get('admin', false) == true
-                && request.resource.data.adminEmails == resource.data.get('adminEmails', []).concat([request.auth.token.get('email', '').lower()])));
+        && (resource.data.get('limits', {}).get('teachers', -1) < 0 || request.resource.data.teachers.size() <= resource.data.get('limits', {}).get('teachers', -1))
+        && (
+          (codeForOrg(request.resource.data.teachers[request.auth.uid].get('code', null), id)
+            && request.resource.data.get('adminEmails', []) == resource.data.get('adminEmails', []))
+          || (invitedTo(request.resource.data.teachers[request.auth.uid].get('invite', null), id)
+            // invited as an admin: they add their own email to the admins, and nothing else
+            && (request.resource.data.get('adminEmails', []) == resource.data.get('adminEmails', [])
+                || (get(/databases/$(database)/documents/orgInvites/$(request.resource.data.teachers[request.auth.uid].invite)).data.get('admin', false) == true
+                    && request.resource.data.adminEmails == resource.data.get('adminEmails', []).concat([request.auth.token.get('email', '').lower()]))))
+        );
+      // Counting a class or learner as it is added (see countedIn): its teachers and admins add one
+      // at a time, within the limit. scripts/space.mjs recounts every 15 minutes.
+      allow update: if signedIn() && (request.auth.uid in resource.data.get('teachers', {}) || request.auth.token.get('email', '').lower() in resource.data.get('adminEmails', []))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usage'])
+        && request.resource.data.usage.diff(resource.data.get('usage', {})).affectedKeys().size() == 1
+        && (
+          (request.resource.data.usage.diff(resource.data.get('usage', {})).affectedKeys().hasOnly(['classes'])
+            && request.resource.data.usage.classes == resource.data.get('usage', {}).get('classes', 0) + 1
+            && (resource.data.get('limits', {}).get('classes', -1) < 0 || request.resource.data.usage.classes <= resource.data.get('limits', {}).get('classes', -1)))
+          || (request.resource.data.usage.diff(resource.data.get('usage', {})).affectedKeys().hasOnly(['learners'])
+            && request.resource.data.usage.learners == resource.data.get('usage', {}).get('learners', 0) + 1
+            && (resource.data.get('limits', {}).get('learners', -1) < 0 || request.resource.data.usage.learners <= resource.data.get('limits', {}).get('learners', -1)))
+        );
       // What its admins changed (see logOrg in lib/admin.ts): the owner and the organisation's
       // admins read it and add to it, each entry signed with their own uid. Nobody edits or deletes one.
       match /log/{entry} {

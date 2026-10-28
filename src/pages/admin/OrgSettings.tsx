@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { OrgLimitsPanel } from './OrgLimits';
 import { MultiSelect, Select } from '../../components/Select';
 import { PROFILE_ICONS, ProfileIcon } from '../../components/ProfileIcons';
 import { ask } from '../../lib/ask';
@@ -351,7 +352,8 @@ export function OrgSpace({ d, go }: { d: OrgData; go: Go }) {
   const allowed = APP_LIST.filter((a) => org.allow?.apps?.[a.k] !== false);
   return (
     <div className="hq-page">
-      <PageHead title="Plan and space" lede={`What ${org.name} has from ELT Suite, and how its space is shared out.`} />
+      <PageHead title="Plan and limits" lede={`What ${org.name} has from ELT Suite, what it uses, and how its space is shared out.`} />
+      <OrgLimitsPanel org={org} owner={owner} usedBytes={used} note={d.note} />
       <Panel title="Space">
         <div className="hq-stack" role="img" aria-label={`${bought} GB in all: ${toTeachers} GB given to teachers, ${toLibrary} GB to the library, ${free} GB not given out. ${fmtBytes(used)} used by teachers.`}>
           <i className="t" style={{ width: pct(toTeachers) }}>

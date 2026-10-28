@@ -11,6 +11,26 @@ deploys.
 The owner (a fixed email) is always a super admin; others are in `superAdmins/{email}` and need a verified
 email. `isOwner()` in `firestore.rules` and `useSuper()` in `src/lib/admin.ts` mean "a super admin".
 
+## Teachers join by invitation, and organisations' limits
+
+For now a new teacher account needs an invitation. Either an invitation code (`inviteCodes/{code}`,
+`src/lib/codes.ts`), typed in on the sign-in page ("I have an invitation", or the `/?code=` link),
+made by a super admin in Super Admin → Invitation codes or by an organisation's admins in Organisation
+admin → Invitation codes (`src/pages/admin/InviteCodes.tsx`); a code for an organisation also makes the
+teacher one of its teachers. Or an organisation's emailed invitation (`orgInvites`, whose id comes with the
+new profile as `invite`). `firestore.rules` (`users` create, `codeUsedNow`) enforces it: the account, one
+use of the code and the place in the organisation are one write (`loadProfile` in `src/lib/auth.tsx`).
+Without an invitation the new sign-in account is taken back and the sign-in page says why.
+`scripts/mail.mjs` emails a code made for one email.
+
+A super admin sets each organisation's limits (`orgs/{id}.limits`: teachers, classes, learners,
+callMinutes a month; space is `limitGb`) in its Plan and limits page (`src/pages/admin/OrgLimits.tsx`);
+its admins see them there. `orgs/{id}.usage` holds what it uses: classes and learners are counted up in
+the same write that adds them (`countOne` in `src/lib/limitError.ts`, `countedIn` in the rules) and
+recounted every 15 minutes by `scripts/space.mjs`; call minutes come from Daily in `scripts/video.mjs`,
+which also pauses the organisation's class rooms past the limit (`video.paused`); the rules stop new
+calls (`callRooms`), new teachers joining and codes being made past the limits.
+
 ## Support tickets and Claude
 
 Organisation admins open tickets with screenshots at `/support` (`src/pages/SupportPage.tsx`,

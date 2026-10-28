@@ -10,7 +10,7 @@ import { addSession, isNow, occurrences, removeSession, restoreSession, saveMyZo
 import { fromFields, localZone, shiftInZone } from '../lib/tz';
 import { useGcalSetting, useGcalSync } from '../lib/gcal';
 import { external, joinUrl, useVideoPrefs, videoLabel } from '../lib/meetings';
-import { NoRoomError, openCall, takeRoom } from '../lib/calls';
+import { callStartError, openCall, takeRoom } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
 import { useDirectory } from '../lib/directory';
 import { tell } from '../lib/ask';
@@ -51,7 +51,7 @@ export async function startSession(o: Occurrence, c: ClassDoc | undefined, me: {
     await setSessionLive(s, { url: r.url, room: r.name, at: Date.now(), by: me.uid, byName: me.name });
     openCall({ url: r.url, title: s.title, kind: 'video', sessionId: s.id, sub: 'Meeting' });
   } catch (e) {
-    void tell(e instanceof NoRoomError ? e.message : 'The meeting could not be started. Please try again.');
+    void tell(callStartError(e, 'The meeting could not be started. Please try again.'));
   }
 }
 

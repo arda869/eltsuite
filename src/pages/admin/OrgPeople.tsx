@@ -13,6 +13,9 @@ import {
   cancelInvite,
   inviteLink,
   inviteTeachers,
+  limitMessage,
+  orgLimit,
+  orgUsed,
   profileFieldsOf,
   removeOrgAdmin,
   resendInvite,
@@ -630,6 +633,10 @@ function InviteSheet({ d, onClose, onSent }: { d: OrgData; onClose: () => void; 
     });
   })();
   const ready = checked.filter((r) => !r.why);
+  // The organisation's limit of teachers: its admins cannot invite past it (joining is held to it too).
+  const limit = orgLimit(org, 'teachers');
+  const room = limit === null ? Infinity : Math.max(0, limit - orgUsed(org, 'teachers'));
+  const overLimit = !owner && ready.length > room;
   const set = (i: number, k: keyof Row, v: string | boolean) =>
     setRows((r) => {
       const n = r.map((x, j) => (j === i ? { ...x, [k]: v } : x));
@@ -641,7 +648,7 @@ function InviteSheet({ d, onClose, onSent }: { d: OrgData; onClose: () => void; 
     setText((t) => (t.trim() ? t.trim() + '\n' : '') + got);
   };
   const send = async () => {
-    if (!user || !ready.length) return;
+    if (!user || !ready.length || overLimit) return;
     setBusy(true);
     try {
       const n = await inviteTeachers(org, ready, { uid: user.uid, name: d.me.name });
@@ -718,13 +725,19 @@ function InviteSheet({ d, onClose, onSent }: { d: OrgData; onClose: () => void; 
           )}
         </div>
       )}
+      {limit !== null && (
+        <span className={'hint' + (overLimit ? ' ic-full' : '')}>
+          {room === 0 ? limitMessage(org, 'teachers') : `${org.name} has room for ${plural(room, 'more teacher')} (its limit is ${limit}).`}
+          {owner && ready.length > room ? ' As a super admin you can still invite them, but they cannot join until the limit is raised.' : ''}
+        </span>
+      )}
       <div className="hq-sheet-f">
         <span className="hint">They see what you can set and see before they say yes.</span>
         <span style={{ flex: 1 }} />
         <button type="button" className="btn" onClick={onClose}>
           Cancel
         </button>
-        <button type="button" className="btn primary" disabled={!ready.length || busy} onClick={() => void send()}>
+        <button type="button" className="btn primary" disabled={!ready.length || busy || overLimit} onClick={() => void send()}>
           {ready.length > 1 ? `Invite ${ready.length} teachers` : 'Invite'}
         </button>
       </div>

@@ -71,9 +71,14 @@ export function SuperTeachers({ d, go, params }: { d: SuperData; go: Go; params:
         title="Teachers"
         lede={`${plural(teachers.length, 'account')} in ELT Suite, ${teachers.filter((t) => daysSince(t.createdAt) < 7 && t.createdAt).length} new this week.`}
         actions={
-          <button type="button" className="btn" disabled={!teachers.length} onClick={() => void saveSuperWorkbook(teachers, accounts, orgs, classes, d.invites)}>
-            <UiIcon name="export" size={15} /> Export
-          </button>
+          <>
+            <button type="button" className="btn primary" onClick={() => go({ tab: 'codes' })}>
+              <UiIcon name="plus" size={15} /> Invite teachers
+            </button>
+            <button type="button" className="btn" disabled={!teachers.length} onClick={() => void saveSuperWorkbook(teachers, accounts, orgs, classes, d.invites)}>
+              <UiIcon name="export" size={15} /> Export
+            </button>
+          </>
         }
       />
       <div className="hq-tools">

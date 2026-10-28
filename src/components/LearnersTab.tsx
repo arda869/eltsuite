@@ -1,4 +1,5 @@
 import { tr } from '../lib/terms';
+import { LimitError } from '../lib/limitError';
 import { openMenu } from './ContextMenu';
 import { ask, tell } from '../lib/ask';
 import { openAsLearner } from '../lib/proxy';
@@ -75,7 +76,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
       setAdding(false);
     } catch (err) {
       console.error(err);
-      setError(tr('Some learners could not be added. Please check the list and try again.'));
+      setError(err instanceof LimitError ? err.message + ' Learners added before the limit are in the list.' : tr('Some learners could not be added. Please check the list and try again.'));
     } finally {
       setBusy('');
     }

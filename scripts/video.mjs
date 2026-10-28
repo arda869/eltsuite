@@ -54,6 +54,70 @@ console.log(`Video rooms: ${made} made or renewed.`);
 const POOL = Number(process.env.CALL_POOL || 24);
 const pool = db.collection('callRooms');
 const all = await pool.get();
+
+// ------------------------------------------------------------------ call minutes, against organisations' limits
+// Each organisation can have a limit of call minutes a month (orgs/{id}.limits.callMinutes). Minutes
+// are the length of every call in its rooms, from Daily, counted from the 1st of the month (UTC):
+// its classes' rooms, and ready rooms its teachers took (remembered in callUse, as used rooms go).
+// Past the limit, its classes' rooms do not open until the next month and its teachers start no new
+// call (firestore.rules, callRooms); under it again, they open.
+try {
+  const accounts = new Map((await db.collection('accounts').get()).docs.map((d) => [d.id, d.data()]));
+  const orgs = new Map((await db.collection('orgs').get()).docs.map((d) => [d.id, d]));
+  const roomOrg = new Map();
+  const classRooms = new Map(); // org → [class doc]
+  for (const c of classes.docs) {
+    const d = c.data();
+    const org = d.org || accounts.get(d.teacherId)?.org;
+    if (!d.video?.room || !org) continue;
+    roomOrg.set(d.video.room, org);
+    classRooms.set(org, [...(classRooms.get(org) ?? []), c]);
+  }
+  for (const r of all.docs) {
+    const x = r.data();
+    const org = x.by ? accounts.get(x.by)?.org : null;
+    if (x.state === 'used' && org) await db.collection('callUse').doc(r.id).set({ org, by: x.by, at: x.usedAt ?? Date.now() }, { merge: true });
+  }
+  for (const u of (await db.collection('callUse').get()).docs) {
+    if (Date.now() - (u.data().at ?? 0) > 40 * DAY) await u.ref.delete();
+    else roomOrg.set(u.id, u.data().org);
+  }
+  const now = new Date();
+  const month = now.toISOString().slice(0, 7);
+  const start = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1) / 1000);
+  const next = Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1) / 1000);
+  const minutes = new Map();
+  let after = '';
+  for (let page = 0; page < 50; page++) {
+    const r = await api(`/meetings?timeframe_start=${start}&limit=100${after ? `&starting_after=${after}` : ''}`);
+    const list = r.ok ? r.j.data ?? [] : [];
+    for (const m of list) {
+      const org = roomOrg.get(m.room);
+      if (!org) continue;
+      const secs = m.ongoing ? Math.max(Number(m.duration) || 0, Date.now() / 1000 - Number(m.start_time || 0)) : Number(m.duration) || 0;
+      minutes.set(org, (minutes.get(org) ?? 0) + secs / 60);
+    }
+    if (list.length < 100) break;
+    after = list[list.length - 1].id;
+  }
+  for (const [id, od] of orgs) {
+    const o = od.data();
+    const used = Math.round(minutes.get(id) ?? 0);
+    if (o.usage?.month !== month || Math.round(o.usage?.callMinutes ?? -1) !== used) await od.ref.update({ 'usage.callMinutes': used, 'usage.month': month });
+    const limit = o.limits?.callMinutes;
+    const over = typeof limit === 'number' && used >= limit;
+    for (const c of classRooms.get(id) ?? []) {
+      const v = c.data().video ?? {};
+      if (!!v.paused === over) continue;
+      const u = await api('/rooms/' + v.room, { properties: { nbf: over ? next : null } });
+      if (u.ok) await c.ref.set({ video: { ...v, paused: over } }, { merge: true });
+    }
+  }
+  console.log(`Call minutes counted for ${orgs.size} organisations.`);
+} catch (e) {
+  console.error('Call minutes could not be counted', e?.message);
+}
+
 let gone = 0;
 for (const d of all.docs) {
   const r = d.data();

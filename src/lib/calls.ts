@@ -4,6 +4,8 @@ import { setActivity } from './status';
 import { useEffect, useState } from 'react';
 import { auth, db } from './firebase';
 import { chatTitle, sendMsg, type Chat, type Person } from './chat';
+import { currentOrg, limitMessage, orgHasRoom } from './admin';
+import { LimitError } from './limitError';
 
 // Rooms: audio and video calls. A call takes one of the ready rooms (scripts/video.mjs keeps a
 // stock of them), so it starts at once; class lessons use the class's own room.
@@ -12,6 +14,9 @@ export type CallKind = 'audio' | 'video';
 export type ChatCall = { url: string; room: string; kind: CallKind; by: string; byName: string; at: number; ended?: number | null; declined?: string[]; code?: string };
 export const RING_MS = 45_000;
 export const CALL_MAX_MS = 8 * 3600e3;
+
+// What to tell someone when a call cannot start: no free room, or the organisation's call minutes used up.
+export const callStartError = (e: unknown, fallback: string) => (e instanceof NoRoomError || e instanceof LimitError ? e.message : fallback);
 
 export class NoRoomError extends Error {
   constructor() {
@@ -24,6 +29,9 @@ export class NoRoomError extends Error {
 export async function takeRoom(forWhat: string): Promise<{ url: string; name: string }> {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new NoRoomError();
+  // An organisation that has used its call minutes this month starts no new call (see firestore.rules).
+  const org = currentOrg();
+  if (org && !orgHasRoom(org, 'callMinutes')) throw new LimitError(limitMessage(org, 'callMinutes'));
   for (let tries = 0; tries < 5; tries++) {
     const free = await getDocs(query(collection(db, 'callRooms'), where('state', '==', 'free'), limit(10)));
     if (free.empty) throw new NoRoomError();

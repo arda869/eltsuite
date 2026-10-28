@@ -411,6 +411,21 @@ const J = {
     await see(s.p, '.hq-nav-i:has-text("Super admins")', 'Super Admin, for a super admin');
     return s;
   },
+  'Invitation codes: a super admin makes one': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['superAdmins/teacher@example.com'] = { name: 'Arda', by: 'x', byName: 'The owner', at: Date.now() };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/admin?tab=codes`);
+    await see(s.p, 'h1:has-text("Invitation codes")', 'the invitation codes page');
+    await s.p.click('button:has-text("Make code")');
+    await see(s.p, '.ic-code.big', 'the new code');
+    await see(s.p, '.ic-list .ic-row', 'the code in the list');
+    await axe(s.p, 'Super Admin: invitation codes', A11Y_FOUND);
+    return s;
+  },
   'Super Admin is the owner’s alone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/admin`);
