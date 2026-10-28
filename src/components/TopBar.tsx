@@ -149,6 +149,8 @@ function AppMark() {
             ? { name: 'Support tickets', color: '#9a4f3c' }
           : pathname.startsWith('/timetable')
             ? { name: 'Timetable', color: '#8a6a4a' }
+          : pathname.startsWith('/guide')
+            ? { name: 'Guide', color: '#4a7a4f' }
           : pathname.startsWith('/rooms')
             ? { name: 'Rooms', color: '#3b7f7a' }
           : pathname.startsWith('/settings')

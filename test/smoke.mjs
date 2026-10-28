@@ -413,6 +413,20 @@ const J = {
     await see(s.p, '.hq-nav-i:has-text("Super admins")', 'Super Admin, for a super admin');
     return s;
   },
+  'Guide: open it from the apps and answer a question': async (b) => {
+    const s = await session(b);
+    await s.p.goto(`${BASE}/classes`);
+    await s.p.click('.apps-btn');
+    await s.p.click('.apps-pop .app-tile:has-text("Guide")');
+    await see(s.p, 'h1:has-text("How ELT Suite works")', 'the Guide');
+    await axe(s.p, 'Guide', A11Y_FOUND);
+    await s.p.fill('input[aria-label="Gap 1"]', 'has lived');
+    await s.p.locator('.gu-try', { hasText: 'present perfect' }).locator('button:has-text("Check")').click();
+    await see(s.p, '.gu-result:has-text("1 of 2")', 'the gap fill marked');
+    await s.p.click('.gu-nav-i:has-text("Pronunciation")');
+    await see(s.p, '.gu-card', 'the sound cards');
+    return s;
+  },
   'Support tickets in a window, from any page': async (b) => {
     const s = await session(b, { owner: true });
     await s.p.goto(`${BASE}/classes`);

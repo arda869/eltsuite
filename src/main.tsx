@@ -57,6 +57,7 @@ const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ de
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
+const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 function NoAccess() {
@@ -143,6 +144,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
+          <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/invite/:id" element={<InvitePage />} />

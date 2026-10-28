@@ -538,6 +538,7 @@ export const APP_LIST: { k: string; name: string; about: string }[] = [
   { k: 'files', name: 'Files', about: 'Lessons, documents, flashcards and reading' },
   { k: 'messages', name: 'Messages', about: 'Chats with learners and other teachers' },
   { k: 'colleagues', name: 'Colleagues', about: 'Sharing lessons and files with other teachers' },
+  { k: 'guide', name: 'Guide', about: 'How ELT Suite works, with things to try' },
   { k: 'library', name: 'Organisation library', about: 'The organisation’s lessons, to copy into classes' },
 ];
 

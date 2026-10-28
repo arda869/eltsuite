@@ -24,6 +24,7 @@ const APPS: App[] = [
   { k: 'orgadmin', group: 'run', short: 'Organisation', name: 'Organisation admin', about: 'Your organisation’s teachers, rules, branding and library', to: '/org-admin', teacher: true, color: '#5d6f80', icon: I('M4 20V8l8-4.5L20 8v12M9 20v-5h6v5M4 20h16M9 10.5h.01M15 10.5h.01') },
   { k: 'support', group: 'run', short: 'Support', name: 'Support tickets', about: 'Tell us what is wrong or what you would like, with screenshots', to: '/support', teacher: true, color: '#9a4f3c', icon: I('M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5V10a2 2 0 0 0 0 4v2.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5V14a2 2 0 0 0 0-4zM14 6v12') },
   { k: 'timetable', group: 'teach', name: 'Timetable', about: 'Your classes and meetings, week by week', to: '/timetable', teacher: true, color: '#8a6a4a', icon: I('M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM4 10h16M8 4v4M16 4v4') },
+  { k: 'guide', group: 'teach', name: 'Guide', about: 'How ELT Suite works, with things to try', to: '/guide', teacher: true, color: '#4a7a4f', icon: I('M12 6.5C10.4 5.3 8 4.5 4.5 4.5v13c3.5 0 5.9.8 7.5 2 1.6-1.2 4-2 7.5-2v-13c-3.5 0-5.9.8-7.5 2zM12 6.5v13') },
   { k: 'rooms', group: 'teach', name: 'Rooms', about: 'Audio and video calls, and your classes’ video rooms', to: '/rooms', teacher: true, color: '#3b7f7a', icon: I('M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3') },
 ];
 
