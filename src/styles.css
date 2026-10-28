@@ -7696,3 +7696,14 @@ html { touch-action: manipulation; }
 .pdf-keybtn { height: 22px; padding: 0 6px; border: 1px solid var(--hair-strong); border-radius: 6px; background: var(--paper); color: var(--muted); font: 600 11px var(--sans); cursor: pointer; }
 .pdf-keybtn.on { border-color: #c0392b; background: #c0392b; color: #fff; }
 @media (max-width: 700px) { .pdff-rail { display: none; } }
+
+/* Sign-in: what is in ELT Suite */
+.signin .intro { max-width: 480px; }
+.si-apps { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.si-apps li { display: flex; align-items: flex-start; gap: 12px; }
+.si-ico { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 82%, #fff), color-mix(in srgb, var(--c) 88%, #000)); color: #fff; }
+.si-apps li > span:last-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.si-apps b { color: var(--ink); font-size: 14.5px; }
+.si-apps li > span:last-child > span { flex-basis: 100%; }
+.si-soon { padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--c) 15%, transparent); color: color-mix(in srgb, var(--c) 70%, #000); font: 700 10px/1.7 var(--sans); font-style: normal; letter-spacing: .06em; text-transform: uppercase; }
+@media (max-width: 640px) { .si-apps { gap: 8px; } }
