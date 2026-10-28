@@ -4,10 +4,10 @@ import { db } from './firebase';
 import type { NewShot, Shot, Ticket } from './tickets';
 
 // Conversations between super admins and Claude (Super Admin → Claude). A super admin writes, with
-// screenshots if they like, or hands Claude a support ticket. The thread then waits for Claude:
-// scripts/claude-inbox.mjs carries a waiting thread (and its ticket) to Claude Code working in the
-// repository, and Claude's answer back, with the pull request for anything it changed. Only super
-// admins read or write any of this.
+// screenshots if they like, or hands Claude a support ticket. The thread then waits for Claude's
+// hourly run: scripts/tickets.mjs copies it out (with the "ELT Suite support" Google Sheet and Drive
+// folder in between), Claude works in the repository, and its answer comes back the same way, with
+// the pull request for anything it changed. Only super admins read or write any of this.
 //
 // claudeThreads/{id}                the conversation and where it is
 // claudeThreads/{id}/messages/{mid} what each side said
