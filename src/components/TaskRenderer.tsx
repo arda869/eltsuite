@@ -916,8 +916,10 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
                   const at = toStack(pages, Number(a.page) || 0, Number(a.x) || 0, Number(a.y) || 0);
                   if (c.type === 'pdfInk') return <InkSvg key={i} pages={pages} page={Number(a.page) || 0} pts={(a.pts ?? []) as [number, number][]} color={String(a.color ?? 'ink')} />;
                   if (c.type === 'pdfMark') return <span key={i} className="pdf-mark" style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0) * 100}%`, height: `${(Number(a.h) || 0) * at.pageH}%`, background: MARK_COLORS.find((m) => m.k === a.color)?.bg ?? MARK_COLORS[0].bg }} />;
+                  // The answer key is for teachers: learners never see it.
+                  if (a.key && !teacher) return null;
                   return (
-                    <div key={i} className={'pdf-box tone-' + (a.tone || 'paper')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0.3) * 100}%` }}>
+                    <div key={i} className={'pdf-box tone-' + (a.tone || 'paper') + (a.key ? ' is-key' : '')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${(Number(a.w) || 0.3) * 100}%` }}>
                       <div className="pdf-box-body">{c.content?.map((cc, j) => render(cc, key + '.' + i + '.' + j))}</div>
                     </div>
                   );

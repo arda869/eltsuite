@@ -48,6 +48,16 @@ function usePdf(src: string, classId: string) {
   return { pdf, error };
 }
 
+// The words on a page, for reading it aloud. A scanned page has none (it is a picture of text).
+export async function pageText(src: string, classId: string, n: number): Promise<string> {
+  const key = classId + '|' + src;
+  if (!docs.has(key)) docs.set(key, loadPdf(src, classId).then(openPdf));
+  const pdf = await docs.get(key)!;
+  const pg = await pdf.getPage(n + 1);
+  const tc = await pg.getTextContent();
+  return (tc.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join('').replace(/[ \t]+/g, ' ').trim();
+}
+
 function Page({ pdf, n, size }: { pdf: PDFDocumentProxy; n: number; size: PageSize }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [seen, setSeen] = useState(false);
