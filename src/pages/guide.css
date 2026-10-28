@@ -52,9 +52,6 @@
 .gu-steps li b { color: var(--ink); font-size: 14.5px; }
 .gu-steps li b::before { content: counter(s) '. '; color: var(--gu); }
 .gu-say { margin: 0; font-size: 14.5px; line-height: 1.55; min-height: 1.5em; }
-.gu-apps { display: flex; flex-wrap: wrap; gap: 8px; }
-.gu-app { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--paper); color: color-mix(in srgb, var(--c) 72%, #000); font: 600 13.5px var(--sans); cursor: pointer; }
-.gu-app.on { background: color-mix(in srgb, var(--c) 78%, #000); border-color: color-mix(in srgb, var(--c) 78%, #000); color: #fff; }
 .gu-slash { display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
 .gu-slash-in { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); }
 .gu-slash-in span { font: 700 18px var(--mono, monospace); color: var(--gu); }
@@ -149,7 +146,7 @@
   .gu-qs { grid-template-columns: minmax(0, 1fr); }
 }
 
-:root[data-theme='dark'] .gu-app:not(.on), :root[data-theme='dark'] .gu-code:not(.on) { color: color-mix(in srgb, var(--c) 55%, #fff); }
+:root[data-theme='dark'] .gu-code:not(.on) { color: color-mix(in srgb, var(--c) 55%, #fff); }
 :root[data-theme='dark'] .gu-card:not(.on) .gu-card-s, :root[data-theme='dark'] .gu-card:not(.on) .gu-card-w b, :root[data-theme='dark'] .gu-tile b { color: color-mix(in srgb, var(--c) 55%, #fff); }
 /* Language notation, blends, studio, print, files */
 .gu-pop { animation: fade-in .35s ease both; }
@@ -169,7 +166,6 @@
 .gu-arrow { color: var(--gu); align-self: center; }
 .gu-blends { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
 .gu-blend { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 16px; border: 1.5px solid var(--hair-strong); border-radius: 16px; background: var(--paper); color: var(--ink); text-align: left; font: 13.5px/1.5 var(--sans); cursor: pointer; }
-.gu-blend svg { color: color-mix(in srgb, var(--gu) 85%, var(--ink)); }
 .gu-blend b { font-size: 15.5px; }
 .gu-blend span { color: var(--muted); }
 .gu-blend.on { border-color: var(--gu); background: color-mix(in srgb, var(--gu) 8%, var(--paper)); box-shadow: 0 0 0 1px var(--gu); }
@@ -183,5 +179,80 @@
 .gu-flip-b { transform: rotateY(180deg); background: var(--paper); border: 2px solid var(--hair-strong); color: var(--ink); font: 15px/1.45 var(--sans); }
 .gu-flip-b i { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .gu-flip-in { transition: none; } .gu-pop { animation: none; } }
-.gu-flow li { position: relative; justify-content: center; min-height: 64px; color: var(--ink); background: var(--paper); }
-.gu-flow li::before { content: counter(s); display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--gu); color: #fff; font: 600 12.5px var(--sans); }
+
+/* Start: choose an app, see its screen */
+.gu-explore { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.gu-apps { display: flex; flex-direction: column; gap: 2px; }
+.gu-app { display: flex; align-items: center; gap: 10px; width: 100%; padding: 4px 10px 4px 4px; border: 1px solid transparent; border-radius: 11px; background: none; color: var(--ink); font: 500 14px var(--sans); text-align: left; cursor: pointer; transition: background .15s; }
+.gu-app:hover { background: color-mix(in srgb, var(--c) 8%, transparent); }
+.gu-app-ico { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 8px; background: color-mix(in srgb, var(--c) 14%, var(--paper)); color: color-mix(in srgb, var(--c) 80%, #000); }
+.gu-app.on { background: color-mix(in srgb, var(--c) 11%, var(--paper)); border-color: color-mix(in srgb, var(--c) 35%, transparent); font-weight: 600; }
+.gu-app.on .gu-app-ico { background: var(--c); color: #fff; }
+.gu-win { display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--hair-strong); border-radius: 18px; overflow: hidden; background: var(--paper); box-shadow: 0 24px 48px -32px rgba(0, 0, 0, .45); }
+.gu-win-bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 14px; background: color-mix(in srgb, var(--c) 78%, #000); color: #fff; font-size: 13px; }
+.gu-win-dots { display: flex; gap: 6px; }
+.gu-win-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .55); }
+.gu-win-t b { font-weight: 700; }
+.gu-win-pic { display: flex; justify-content: center; padding: 16px 20px 10px; background: color-mix(in srgb, var(--c) 6%, var(--paper)); border-bottom: 1px solid var(--hair); }
+.gu-win-pic svg { display: block; width: 100%; max-width: 520px; height: auto; }
+.gu-win-text { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 8px 22px; padding: 18px 22px 20px; align-content: start; }
+.gu-win-text > .gu-win-tag, .gu-win-text > p { grid-column: 1; }
+.gu-win-text > ul { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.gu-win-text > .gu-win-go { grid-column: 1 / -1; margin-top: 4px; }
+.gu-win-tag { font: 500 21px/1.2 var(--serif); color: color-mix(in srgb, var(--c) 78%, var(--ink)); }
+.gu-win-text p { margin: 0; font-size: 14.5px; line-height: 1.6; }
+.gu-win-text ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gu-win-text li { position: relative; padding-left: 24px; font-size: 14px; line-height: 1.45; }
+.gu-win-text li::before { content: '✓'; position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; background: color-mix(in srgb, var(--c) 16%, transparent); color: color-mix(in srgb, var(--c) 85%, #000); font: 700 10.5px/17px var(--sans); }
+.gu-win-go { justify-self: start; padding: 8px 14px; border-radius: 10px; background: color-mix(in srgb, var(--c) 85%, #000); color: #fff; font-weight: 600; font-size: 14px; text-decoration: none; }
+.gu-win-go:hover { filter: brightness(1.1); }
+:root[data-theme='dark'] .gu-win-tag { color: color-mix(in srgb, var(--c) 55%, #fff); }
+:root[data-theme='dark'] .gu-app-ico { color: color-mix(in srgb, var(--c) 55%, #fff); }
+
+/* Blends as glasses */
+.gu-blend { align-items: center; text-align: center; }
+.gu-blend > span { text-align: center; }
+.gu-glass { width: 110px; height: auto; margin-bottom: 2px; opacity: .55; filter: saturate(.6); transition: opacity .3s, filter .3s, transform .3s; }
+.gu-glass.on { opacity: 1; filter: none; transform: translateY(-3px); }
+.gu-glass-air { fill: color-mix(in srgb, var(--ink) 3%, var(--paper)); }
+.gu-glass-edge { fill: none; stroke: color-mix(in srgb, var(--ink) 45%, transparent); stroke-width: 2.5; stroke-linejoin: round; }
+.gu-glass .gu-rise { animation-duration: .55s; }
+.gu-blend-d { display: none; margin: 0; font-size: 14.5px; line-height: 1.55; }
+.gu-mix { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; }
+.gu-mix li { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+.gu-mix i { width: 14px; height: 14px; border-radius: 4px; }
+.gu-mix b { color: var(--muted); font-weight: 600; }
+
+/* Steps of a process, with arrows between them */
+.gu-flow { display: flex; align-items: stretch; gap: 34px; margin: 0; padding: 0; list-style: none; }
+.gu-flow li { position: relative; flex: 1 1 0; display: flex; flex-direction: column; gap: 8px; padding: 14px; border: 1px solid var(--hair-strong); border-radius: 14px; background: var(--paper); font-size: 14px; line-height: 1.45; }
+.gu-flow-n { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--gu); color: #fff; font: 700 13px var(--sans); }
+.gu-flow li:not(:last-child)::after { content: ''; position: absolute; top: 50%; right: -28px; width: 22px; height: 22px; margin-top: -11px; background: var(--gu); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h15M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h15M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* Learners' privacy */
+.gu-priv { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 18px; align-items: center; padding: 16px 18px; border-radius: 16px; background: color-mix(in srgb, #c8764a 7%, var(--paper)); border: 1px solid color-mix(in srgb, #c8764a 30%, transparent); }
+.gu-priv-card { width: 100%; height: auto; }
+.gu-priv-t { display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; line-height: 1.6; }
+.gu-priv-t > b { display: flex; align-items: center; gap: 8px; font-size: 16px; color: color-mix(in srgb, #c8764a 70%, var(--ink)); }
+.gu-priv-t ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+
+@media (max-width: 860px) {
+  .gu-explore { grid-template-columns: minmax(0, 1fr); }
+  .gu-apps { flex-direction: row; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .gu-app { flex: none; width: auto; }
+  .gu-win { grid-template-columns: minmax(0, 1fr); }
+  .gu-win-text { grid-template-columns: minmax(0, 1fr); }
+  .gu-win-text > ul { grid-column: 1; grid-row: auto; }
+  .gu-flow { flex-direction: column; gap: 30px; }
+  .gu-flow li:not(:last-child)::after { top: auto; bottom: -27px; right: 50%; margin: 0 -11px 0 0; transform: rotate(90deg); }
+  .gu-priv { grid-template-columns: minmax(0, 1fr); }
+  .gu-blends { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .gu-blend { padding: 10px 6px; gap: 4px; }
+  .gu-blend b { font-size: 13px; line-height: 1.3; }
+  .gu-blend > span { display: none; }
+  .gu-glass { width: 64px; }
+  .gu-blend-d { display: block; }
+  .gu-flow li { flex-direction: row; align-items: center; gap: 12px; padding: 10px 12px; }
+  .gu-flow-n { flex: none; }
+  .gu-priv-card { max-width: 260px; }
+}
