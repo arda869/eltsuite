@@ -256,7 +256,7 @@ const J = {
     await s.p.fill('.hq-sheet input', 'Test School');
     await s.p.click('.hq-sheet button:has-text("Create")');
     await see(s.p, 'h1:has-text("Admins")', 'the new organisation, at its admins');
-    for (const t of ['Activity', 'Teachers', 'Invitations', 'Classes', 'Library', 'Rules', 'Branding', 'Plan and space', 'Overview']) {
+    for (const t of ['Activity', 'Teachers', 'Invitations', 'Invitation codes', 'Classes', 'Library', 'Rules', 'Branding', 'Plan and limits', 'Overview']) {
       await s.p.click(`.hq-nav-i:has-text("${t}")`);
       await see(s.p, `h1:has-text("${t === 'Overview' ? 'Test School' : t}")`, `the ${t} page`);
     }
