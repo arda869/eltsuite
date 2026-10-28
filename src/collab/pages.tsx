@@ -67,7 +67,7 @@ export function useLayout(doc: Y.Doc | undefined) {
 }
 
 // The page setup button and, on a paged document, the font and size of the selected text.
-export function PageTools({ editor, layout, setLayout }: { editor: Editor; layout: Layout; setLayout: (p: Partial<Layout>) => void }) {
+export function PageTools({ editor, layout, setLayout, part = 'both' }: { editor: Editor; layout: Layout; setLayout: (p: Partial<Layout>) => void; part?: 'both' | 'setup' | 'fonts' }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
   const cur = editor.getAttributes('fontStyle') as { family?: string | null; pt?: number | null };
@@ -85,7 +85,7 @@ export function PageTools({ editor, layout, setLayout }: { editor: Editor; layou
   };
   return (
     <>
-      {layout.paged && (
+      {layout.paged && part !== 'setup' && (
         <span className="pg-fonts">
           <select className="pg-sel pg-font" aria-label="Font" value={cur.family ?? ''} onChange={(e) => apply({ family: e.target.value || null })} onMouseDown={(e) => e.stopPropagation()}>
             <option value="">{layout.font}</option>
@@ -105,7 +105,7 @@ export function PageTools({ editor, layout, setLayout }: { editor: Editor; layou
           </select>
         </span>
       )}
-      <span className="pg-wrap" ref={ref}>
+      {part !== 'fonts' && <span className="pg-wrap" ref={ref}>
         <button type="button" className={'tool pg-btn' + (open ? ' on' : '')} aria-expanded={open} onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((v) => !v)} data-tip="Pageless or pages, page size, margins and font">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M6 3h9l4 4v14H6zM15 3v4h4" />
@@ -172,7 +172,7 @@ export function PageTools({ editor, layout, setLayout }: { editor: Editor; layou
             <span className="hint">{layout.paged ? 'Select text to give it its own font and size, in the toolbar. Everyone in the document sees the same pages.' : 'Choose Pages to set a page size and margins, and to change fonts and sizes.'}</span>
           </div>
         )}
-      </span>
+      </span>}
     </>
   );
 }
