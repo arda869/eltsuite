@@ -1,0 +1,178 @@
+name: Claude
+
+# Super admins talk to Claude in ELT Suite (Super Admin → Claude). The "Notifications" workflow
+# starts this one when a conversation waits. Claude Code reads the conversation (and a support
+# ticket handed to it, screenshots and all), answers, and commits any change it makes. A second
+# job then pushes those commits to the conversation's own claude/… branch, opens a pull request
+# and puts Claude's answer back in ELT Suite. Nothing here merges or deploys: a person merges the
+# pull request on GitHub.
+#
+# Claude works in a job that can only read the repository, with a short list of tools and no
+# deploy key; the job that writes runs on a fresh machine Claude never touched.
+#
+# Needs the FIREBASE_SERVICE_ACCOUNT secret (there already) and one of: ANTHROPIC_API_KEY (an
+# Anthropic API key) or CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`, on a Claude plan).
+# In Settings → Actions → General, allow GitHub Actions to create pull requests.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: claude
+  cancel-in-progress: false
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      id: ${{ steps.take.outputs.id }}
+      branch: ${{ steps.take.outputs.branch }}
+      more: ${{ steps.take.outputs.more }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # The deploy key is on disk only for this step, before Claude starts.
+      - name: Take the next conversation
+        id: take
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          mkdir -p "$RUNNER_TEMP/fb" && cp scripts/claude-inbox.mjs "$RUNNER_TEMP/fb/"
+          (cd "$RUNNER_TEMP/fb" && npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 >/dev/null)
+          node "$RUNNER_TEMP/fb/claude-inbox.mjs" take "$GITHUB_WORKSPACE/.inbox" >> "$GITHUB_OUTPUT"
+          rm -rf "$RUNNER_TEMP/sa.json" "$RUNNER_TEMP/fb"
+
+      - name: Get the branch, the app and the test browser ready
+        if: steps.take.outputs.id
+        env:
+          BRANCH: ${{ steps.take.outputs.branch }}
+        run: |
+          git config user.name 'Claude (ELT Suite)'
+          git config user.email 'claude@users.noreply.github.com'
+          if git rev-parse -q --verify "origin/$BRANCH" >/dev/null; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            git merge --no-edit origin/main || { git merge --abort; echo "Note: main could not be merged into $BRANCH; the branch is as it was." >> .inbox/notes.md; }
+          else
+            git checkout -B "$BRANCH" origin/main
+          fi
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Claude works on it
+        if: steps.take.outputs.id
+        timeout-minutes: 70
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -n "$KEY" ]; then export ANTHROPIC_API_KEY="$KEY"; elif [ -n "$OAUTH" ]; then export CLAUDE_CODE_OAUTH_TOKEN="$OAUTH"; else
+            echo "Claude is not set up yet: add an ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN secret to the GitHub repository (Settings → Secrets and variables → Actions)." > .inbox/failed.md
+            echo "::error::No ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN secret"
+            exit 0
+          fi
+          unset KEY OAUTH
+          set +e
+          npx -y @anthropic-ai/claude-code -p "$(cat .inbox/prompt.md)" \
+            --permission-mode acceptEdits \
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(npm run build),Bash(npx tsc:*),Bash(node test/smoke.mjs:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git add:*),Bash(git commit:*)" \
+            --max-turns 300 > "$RUNNER_TEMP/claude.log" 2>&1
+          code=$?
+          tail -c 4000 "$RUNNER_TEMP/claude.log"
+          if [ $code -ne 0 ] && [ ! -s .inbox/reply.md ]; then
+            echo "I stopped with an error before I could finish. Send your message again and I will try once more." > .inbox/failed.md
+          fi
+          exit 0
+
+      - name: Pack up what Claude did
+        if: always() && steps.take.outputs.id
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          for f in reply.md failed.md notes.md title.txt; do [ -f ".inbox/$f" ] && cp ".inbox/$f" "$RUNNER_TEMP/out/"; done
+          if [ "$(git rev-list --count origin/main..HEAD 2>/dev/null || echo 0)" -gt 0 ]; then git bundle create "$RUNNER_TEMP/out/work.bundle" origin/main..HEAD; fi
+          ls -la "$RUNNER_TEMP/out"
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.take.outputs.id
+        with:
+          name: claude-answer
+          path: ${{ runner.temp }}/out
+          retention-days: 7
+
+  answer:
+    needs: work
+    if: always() && needs.work.outputs.id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: claude-answer
+          path: ${{ runner.temp }}/in
+
+      # Claude's commits go to the conversation's own branch, never anywhere else, and never with
+      # a change to the workflows.
+      - name: Push the changes and open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.work.outputs.branch }}
+          IN: ${{ runner.temp }}/in
+        run: |
+          mkdir -p "$IN"
+          case "$BRANCH" in claude/*) ;; *) echo "::error::Unexpected branch $BRANCH"; exit 1 ;; esac
+          if [ -f "$IN/work.bundle" ]; then
+            git bundle verify "$IN/work.bundle"
+            git fetch "$IN/work.bundle" "HEAD:refs/claude/incoming"
+            if git diff --name-only origin/main...refs/claude/incoming | grep -q '^\.github/'; then
+              printf '\n\n(My changes touched the GitHub workflows, so they were not sent. Ask a developer to look at them.)\n' >> "$IN/reply.md"
+            else
+              git push --force origin "refs/claude/incoming:refs/heads/$BRANCH"
+              pr=$(gh pr list --head "$BRANCH" --state open --json url -q '.[0].url')
+              if [ -z "$pr" ]; then
+                { cat "$IN/reply.md" 2>/dev/null; printf '\n\n---\nAsked for in ELT Suite (Super Admin → Claude). Nothing here goes live until this pull request is merged.\n'; } > "$RUNNER_TEMP/body.md"
+                pr=$(gh pr create --base main --head "$BRANCH" --title "$(head -c 120 "$IN/title.txt" 2>/dev/null || echo 'Changes from Claude')" --body-file "$RUNNER_TEMP/body.md")
+              fi
+              echo "$pr" > "$IN/pr.txt"
+            fi
+          fi
+          if [ -s "$IN/reply.md" ] && [ -f "$IN/notes.md" ]; then cat "$IN/notes.md" >> "$IN/reply.md"; fi
+
+      - name: Send the answer back to ELT Suite
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          mkdir -p "$RUNNER_TEMP/fb" "$RUNNER_TEMP/in" && cp scripts/claude-inbox.mjs "$RUNNER_TEMP/fb/"
+          cd "$RUNNER_TEMP/fb" && npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 >/dev/null
+          node claude-inbox.mjs reply "${{ needs.work.outputs.id }}" "$RUNNER_TEMP/in"
+          rm -f "$RUNNER_TEMP/sa.json"
+
+      - name: Next conversation
+        if: always() && needs.work.outputs.more == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run claude.yml -R "$GITHUB_REPOSITORY"

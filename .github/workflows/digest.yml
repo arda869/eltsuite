@@ -5,6 +5,10 @@ on:
     - cron: '*/15 * * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   digest:
     runs-on: ubuntu-latest
@@ -31,3 +35,19 @@ jobs:
           node push.mjs || echo "Notifications could not be sent this time."
           if [ -n "$SMTP_URL" ]; then node mail.mjs || echo "Class emails could not be sent this time."; node digest.mjs; else echo "No SMTP_URL secret yet: no emails."; fi
           rm -f "$RUNNER_TEMP/sa.json"
+      # A conversation waiting for Claude (Super Admin → Claude) starts the Claude workflow, which
+      # opens a pull request for any change; nothing it does goes live until someone merges it.
+      - name: Start Claude for waiting conversations
+        if: always()
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          mkdir -p "$RUNNER_TEMP/c" && cp scripts/claude-inbox.mjs "$RUNNER_TEMP/c/" && cd "$RUNNER_TEMP/c"
+          npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 >/dev/null
+          waiting=$(node claude-inbox.mjs check || echo 0)
+          rm -f "$RUNNER_TEMP/sa.json"
+          echo "Conversations waiting for Claude: ${waiting:-0}"
+          if [ "${waiting:-0}" -gt 0 ]; then gh workflow run claude.yml -R "$GITHUB_REPOSITORY" || echo "The Claude workflow could not be started."; fi

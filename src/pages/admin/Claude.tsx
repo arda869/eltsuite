@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
-import { ask } from '../../lib/ask';
 import { composing } from '../../lib/keys';
 import { UiIcon } from '../../components/UiIcon';
 import { Loader } from '../../components/Loader';
@@ -35,7 +34,7 @@ function ThreadList({ threads, go }: { threads: Thread[] | null; go: Go }) {
     <div className="hq-page">
       <PageHead
         title="Claude"
-        lede="Ask Claude to change something in ELT Suite, to look into a problem, or about how something works. Claude works in ELT Suite's code and answers here; anything it changes waits for you to check and publish."
+        lede="Ask Claude to change something in ELT Suite, to look into a problem, or about how something works. Claude works in ELT Suite's code and answers here. Anything it changes waits on GitHub, as a pull request, until someone checks and merges it."
         actions={
           <button type="button" className="btn primary" onClick={() => setMaking(true)}>
             <UiIcon name="plus" size={15} /> New conversation
@@ -164,8 +163,6 @@ function Linked({ text }: { text: string }) {
   );
 }
 
-const PUBLISH = 'Publish: merge the pull request into main and put it live.';
-
 function ThreadView({ id, go }: { id: string; go: Go }) {
   const t = useThread(id);
   const { messages, shots } = useThreadParts(id);
@@ -188,7 +185,8 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
       </div>
     );
   const busyClaude = t.state === 'waiting' || t.state === 'working';
-  const send = async (words = text.trim()) => {
+  const send = async () => {
+    const words = text.trim();
     if (busy || (!words && !add.length)) return;
     setBusy(true);
     try {
@@ -200,9 +198,6 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
       say('That could not be sent. Try again.');
     }
     setBusy(false);
-  };
-  const publish = async () => {
-    if (await ask('Ask Claude to publish these changes? Claude merges them into ELT Suite and puts them live for everyone.', { ok: 'Publish' })) void send(PUBLISH);
   };
   const late = t.state === 'waiting' && Date.now() - t.updatedAt > 40 * 60 * 1000;
   const lede: ReactNode = (
@@ -224,14 +219,9 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
         lede={lede}
         actions={
           t.pr && (
-            <>
-              <a className="btn" href={t.pr} target="_blank" rel="noreferrer">
-                See the changes
-              </a>
-              <button type="button" className="btn primary" disabled={busyClaude || busy} onClick={() => void publish()}>
-                Publish
-              </button>
-            </>
+            <a className="btn" href={t.pr} target="_blank" rel="noreferrer" title="Claude's changes go live once this pull request is merged">
+              See the changes on GitHub
+            </a>
           )
         }
       />

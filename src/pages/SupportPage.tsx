@@ -450,7 +450,7 @@ function ClaudePart({ t, me }: { t: Ticket; me: { uid: string; name: string } })
     <DrawerPart title="Claude">
       {!asking ? (
         <span className="hq-tk-claude">
-          <span className="hint">Hand this ticket to Claude: it reads it with its screenshots, makes the change and opens it for you to check before it goes live.</span>
+          <span className="hint">Hand this ticket to Claude: it reads it with its screenshots, makes the change, and leaves it on GitHub for someone to check before it goes live.</span>
           <button type="button" className="btn small" onClick={() => setAsking(true)}>
             Ask Claude
           </button>

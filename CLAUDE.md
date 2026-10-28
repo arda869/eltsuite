@@ -16,8 +16,11 @@ email. `isOwner()` in `firestore.rules` and `useSuper()` in `src/lib/admin.ts` m
 Organisation admins open tickets with screenshots at `/support` (`src/pages/SupportPage.tsx`,
 `src/lib/tickets.ts`). Super admins see them in Super Admin → Support tickets, answer them, and can hand one
 to Claude ("Ask Claude"), which starts a conversation in Super Admin → Claude (`src/lib/claude.ts`,
-`src/pages/admin/Claude.tsx`). `scripts/claude-inbox.mjs` takes a waiting conversation out as files with a
-prompt (`take`) and puts the answer back (`reply`).
+`src/pages/admin/Claude.tsx`). Every 15 minutes the Notifications workflow (`digest.yml`) checks for waiting
+conversations and starts `.github/workflows/claude.yml`: Claude Code works in a read-only job with a short
+list of tools and only commits; a separate job pushes the commits to `claude/<conversation>`, opens a pull
+request (never a change to `.github/`) and posts the answer back with `scripts/claude-inbox.mjs`. Nothing
+there merges or deploys: a person merges the pull request.
 
 When asked to "look at the tickets" or work on them:
 
