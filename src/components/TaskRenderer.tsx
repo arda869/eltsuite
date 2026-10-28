@@ -909,7 +909,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         const pages = (node.attrs?.pages ?? []) as PageSize[];
         return (
           <div key={key} className="pdf-block" data-bk={key}>
-            <PdfStack src={String(node.attrs?.src ?? '')} classId={classId ?? ''} pages={pages}>
+            <PdfStack src={String(node.attrs?.src ?? '')} classId={classId ?? ''} pages={pages} first={Number(node.attrs?.first) || 0}>
               <div className="pdf-layer">
                 {(node.content ?? []).map((c, i) => {
                   const a = c.attrs ?? {};

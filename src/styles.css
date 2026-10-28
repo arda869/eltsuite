@@ -7707,3 +7707,34 @@ html { touch-action: manipulation; }
 .si-apps li > span:last-child > span { flex-basis: 100%; }
 .si-soon { padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--c) 15%, transparent); color: color-mix(in srgb, var(--c) 70%, #000); font: 700 10px/1.7 var(--sans); font-style: normal; letter-spacing: .06em; text-transform: uppercase; }
 @media (max-width: 640px) { .si-apps { gap: 8px; } }
+
+/* PDF pages: the words over each page, to tap for a meaning */
+.pdf-pagewrap { position: relative; display: block; }
+.pdf-pagewrap + .pdf-pagewrap, .pdf-pagewrap + .pdf-page, .pdf-page + .pdf-pagewrap { border-top: 6px solid #e9e6e1; }
+.pdf-pagewrap > .pdf-page { border-top: 0 !important; }
+.textLayer { position: absolute; inset: 0; overflow: hidden; line-height: 1; text-align: initial; transform-origin: 0 0; forced-color-adjust: none; z-index: 0; }
+.textLayer :is(span, br) { position: absolute; color: transparent; white-space: pre; cursor: pointer; transform-origin: 0 0; }
+.textLayer span.markedContent { top: 0; height: 0; }
+.textLayer ::selection { background: rgba(60, 120, 230, .28); }
+.textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: -1; cursor: default; user-select: none; }
+.pdf-wordpop { position: fixed; z-index: 90; width: 290px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 18px 40px -14px rgba(0, 0, 0, .35); font: 14px/1.5 var(--sans); }
+.pdf-wp-h { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pdf-wp-h b { font: 600 18px var(--serif); }
+.pdf-wp-ipa { color: #7a4fa3; font-family: 'Doulos SIL', 'Charis SIL', 'Noto Sans', var(--sans); }
+.pdf-wp-h .btn { margin-left: auto; }
+.pdf-wordpop ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.pdf-wordpop i { color: var(--muted); }
+.pdf-sw.mine { outline: 2px solid var(--paper); box-shadow: 0 0 0 3px currentColor; }
+/* PDF: units, and choosing pages for a lesson */
+.pdff-rail-i { display: flex; flex-direction: column; gap: 4px; }
+.pdff-unit { position: relative; display: block; width: 38px; padding: 3px 2px; border-radius: 5px; background: color-mix(in srgb, #a6463a 14%, var(--paper)); color: #7d2f25; font: 700 9px/1.15 var(--sans); text-align: center; word-break: break-word; }
+.pdff-unit-x { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; padding: 0; border: 0; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 1px var(--hair-strong); color: var(--muted); font-size: 11px; line-height: 16px; cursor: pointer; display: none; }
+.pdff-unit:hover .pdff-unit-x { display: block; }
+.pdff-rail button.in-unit { border-left: 3px solid #a6463a; }
+.pdff-unit-add { width: 38px; padding: 6px 0; border: 1px dashed var(--hair-strong); border-radius: 6px; background: none; color: var(--muted); font: 600 10px var(--sans); cursor: pointer; }
+.pdf-pick-pages { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: var(--surface); }
+.pdf-pick-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pdf-pick-range { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.pdf-pick-range input { width: 64px; height: 32px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 8px; font: inherit; }
+.pdf-pick-opt { padding: 4px 12px; border: 1.5px solid var(--hair-strong); border-radius: 999px; background: var(--paper); color: var(--ink); font: 14px var(--sans); cursor: pointer; }
+.pdf-pick-opt.on { border-color: var(--accent, #a6463a); background: color-mix(in srgb, var(--accent, #a6463a) 12%, var(--paper)); }

@@ -20,8 +20,8 @@ import { ProsodyTool } from '../editor/Prosody';
 import { SymbolTool } from '../editor/Symbols';
 import { DefinitionPop } from '../editor/Definition';
 import { UiIcon } from '../components/UiIcon';
-import { tell } from '../lib/ask';
-import { PDF_NODES, ToolButtons } from './PdfNodes';
+import { ask, askText, tell } from '../lib/ask';
+import { PDF_NODES, ToolButtons, pdfStore } from './PdfNodes';
 import { filePdfInfo, type PageSize } from './pdfData';
 import { pageText } from './PdfStack';
 
@@ -75,6 +75,10 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     [session],
   );
   useEffect(() => editor?.setEditable(canEdit), [editor, canEdit]);
+  // Drawing together: everyone but the owner draws in their own colour to begin with.
+  useEffect(() => {
+    if (editor && d.owner !== me.uid) pdfStore(editor).ink = colorOf(me.uid);
+  }, [editor, d.owner, me.uid]);
   // The first person to open it puts the PDF in place.
   useEffect(() => {
     if (!editor) return;
@@ -111,6 +115,16 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     block?.forEach((c) => void (c.attrs.key && (k = true)));
     return k;
   })();
+  type Unit = { name: string; from: number; to: number };
+  const units = ((block?.attrs.units as Unit[]) ?? []) as Unit[];
+  const setUnits = (u: Unit[]) => editor.view.dispatch(editor.state.tr.setNodeMarkup(0, undefined, { ...block?.attrs, units: [...u].sort((a, b) => a.from - b.from) }));
+  const addUnit = async () => {
+    const name = (await askText('The unit’s name, for example “Unit 3 · Travel”', `Unit ${units.length + 1}`))?.trim();
+    if (!name) return;
+    const from = Math.min(pages.length, Math.max(1, Number(await askText(`First page of ${name}`, String(cur + 1))) || cur + 1));
+    const to = Math.min(pages.length, Math.max(from, Number(await askText(`Last page of ${name}`, String(from))) || from));
+    setUnits([...units, { name, from, to }]);
+  };
   const canvases = () => Array.from(document.querySelectorAll<HTMLElement>('.pdff .pdf-page'));
   const goPage = (i: number) => canvases()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   const readAloud = async () => {
@@ -179,11 +193,32 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
       <div className="pdff-body">
         {pages.length > 1 && (
           <nav className="pdff-rail" aria-label="Pages">
-            {pages.map((_, i) => (
-              <button key={i} type="button" className={i === cur ? 'on' : ''} aria-current={i === cur ? 'page' : undefined} onClick={() => goPage(i)}>
-                {i + 1}
+            {pages.map((_, i) => {
+              const u = units.find((x) => x.from === i + 1);
+              const inUnit = units.find((x) => i + 1 >= x.from && i + 1 <= x.to);
+              return (
+                <span key={i} className="pdff-rail-i">
+                  {u && (
+                    <span className="pdff-unit" title={`${u.name}: pages ${u.from}–${u.to}`}>
+                      <span>{u.name}</span>
+                      {canEdit && (
+                        <button type="button" className="pdff-unit-x" aria-label={`Remove ${u.name}`} onClick={() => void ask(`Remove the unit “${u.name}”? The pages stay.`).then((ok) => ok && setUnits(units.filter((x) => x !== u)))}>
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  )}
+                  <button type="button" className={(i === cur ? 'on' : '') + (inUnit ? ' in-unit' : '')} aria-current={i === cur ? 'page' : undefined} onClick={() => goPage(i)}>
+                    {i + 1}
+                  </button>
+                </span>
+              );
+            })}
+            {canEdit && (
+              <button type="button" className="pdff-unit-add" onClick={() => void addUnit()} data-tip="Name a few pages as a unit, to put them into a lesson on their own">
+                + Unit
               </button>
-            ))}
+            )}
           </nav>
         )}
         <div
@@ -217,7 +252,7 @@ function printPdf() {
     img.className = 'pdf-page';
     c.replaceWith(img);
   });
-  clone.querySelectorAll('button, .pdf-box-bar, .pdf-size, .pdf-tools, .pdf-keytag').forEach((x) => x.remove());
+  clone.querySelectorAll('button, .pdf-box-bar, .pdf-size, .pdf-tools, .pdf-keytag, .textLayer').forEach((x) => x.remove());
   if (stack.closest('.no-key')) clone.querySelectorAll('.is-key').forEach((x) => x.remove());
   const w = window.open('', '_blank');
   if (!w) return;
