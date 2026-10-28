@@ -7738,3 +7738,6 @@ html { touch-action: manipulation; }
 .pdf-pick-range input { width: 64px; height: 32px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 8px; font: inherit; }
 .pdf-pick-opt { padding: 4px 12px; border: 1.5px solid var(--hair-strong); border-radius: 999px; background: var(--paper); color: var(--ink); font: 14px var(--sans); cursor: pointer; }
 .pdf-pick-opt.on { border-color: var(--accent, #a6463a); background: color-mix(in srgb, var(--accent, #a6463a) 12%, var(--paper)); }
+/* Slides is a demo for now */
+.sl-beta { display: flex; align-items: center; gap: 10px; padding: 7px 14px; background: #fdf0d2; color: #5c3d00; border-bottom: 1px solid #ecd49a; font: 13px/1.35 var(--sans); }
+.sl-beta b { flex: none; padding: 1px 8px; border-radius: 999px; background: #7a5200; color: #fff; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
