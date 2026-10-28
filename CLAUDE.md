@@ -21,7 +21,7 @@ to Claude ("Ask Claude"), which starts a conversation in Super Admin → Claude 
 Every hour, at :23, `.github/workflows/tickets.yml` copies the tickets and the conversations (with their
 screenshots) to the `support-tickets` branch: `index.json`, plus `<ticket id>/ticket.md` and
 `threads/<id>/thread.md` with `shot-NN.png` files. A scheduled Claude run (the "ELT Suite support"
-routine, hourly at :47) copies them into Google and works on them.
+routine, hourly, a little after the copy, e.g. at :45) copies them into Google and works on them.
 
 Google ("ELT Suite support" folder in arda@eltsuite.com's Drive):
 - Sheet "ELT Suite support tickets": `1TlyGyuk1tFIdYoWTEsQgWYrURTL55NAmc-qSOkmpJiA`
