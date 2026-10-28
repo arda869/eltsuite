@@ -153,7 +153,7 @@ export function MediaArchive() {
       for (const f of pics) await uploadPicture(space, f, quality(), undefined, inClasses(folder) ? "" : folder);
       setUpBusy('');
     } catch {
-      setUpBusy('A picture could not be added. Try a smaller one.');
+      setUpBusy('We couldn’t add a picture. Try a smaller one.');
     }
   };
   // A picture copied anywhere (a screenshot, a map) can be pasted straight into the folder.
@@ -333,7 +333,7 @@ export function MediaArchive() {
   };
   const deleteF = async (f: string) => {
     const n = countIn(f);
-    if (!(await ask(`Delete the folder “${leafOf(f)}”? ${n ? `The ${n === 1 ? 'item' : `${n} items`} in it move up to ${parentOf(f) ? `“${leafOf(parentOf(f))}”` : 'the library'}.` : 'It is empty.'}`, { ok: 'Delete the folder' }))) return;
+    if (!(await ask(`Delete the folder “${leafOf(f)}”? ${n ? `The ${n === 1 ? 'item' : `${n} items`} in it move up to ${parentOf(f) ? `“${leafOf(parentOf(f))}”` : 'the library'}.` : 'It’s empty.'}`, { ok: 'Delete the folder' }))) return;
     if (!uid) return;
     await removeFolder(uid, f, all, allFolders).catch(() => {});
     await moveLibTasks(uid, tasks.filter((t) => inTree(t.folder, f)).map((t) => t.id), parentOf(f)).catch(() => {});
@@ -381,7 +381,7 @@ export function MediaArchive() {
       );
       setBusy('');
     } catch {
-      setBusy('The download could not be made. Try fewer items.');
+      setBusy('We couldn’t make the download. Try fewer items.');
     }
   };
   const moveTo = async (list: Entry[], to: string) => {
@@ -461,7 +461,7 @@ export function MediaArchive() {
     if (!inClasses(f)) return setSel(new Set(['f:' + f])), setRenaming('f:' + f);
     const parts = f.split('/');
     const cls = entries.find((e) => e.cls && e.cls.className === parts[1])?.cls;
-    if (parts.length < 2 || !cls) return void (await ask('The Classes folder keeps your lessons in step with your classes, so it cannot be renamed here. Rename a class or a topic in the class, and its folder follows.', { ok: 'OK', cancel: '' }));
+    if (parts.length < 2 || !cls) return void (await ask('The Classes folder keeps your lessons in step with your classes, so you can’t rename it here. Rename a class or a topic in the class, and its folder follows.', { ok: 'Got it', cancel: '' }));
     const what = parts.length === 2 ? `the class “${parts[1]}”` : `the topic “${parts[parts.length - 1]}” in ${parts[1]}`;
     if (await ask(`This folder follows ${what}. To rename it, rename it in the class: the folder changes with it.`, { ok: 'Open the class', cancel: 'Cancel' })) window.open(`/class/${cls.classId}`, '_blank');
   };
@@ -478,7 +478,7 @@ export function MediaArchive() {
   const [pdfBusy, setPdfBusy] = useState('');
   const makePdf = async (f: File) => {
     if (!uid) return;
-    if (f.size > MAX_PDF) return void tell('That PDF is larger than 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    if (f.size > MAX_PDF) return void tell('That PDF is over 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
     const w = window.open('about:blank', '_blank');
     setPdfBusy('Uploading ' + f.name + '…');
     try {
@@ -490,7 +490,7 @@ export function MediaArchive() {
       if (w) w.location.href = `/doc/${id}`;
     } catch {
       w?.close();
-      void tell('That file could not be opened as a PDF.');
+      void tell('We couldn’t open that file as a PDF.');
     } finally {
       setPdfBusy('');
     }
@@ -842,7 +842,7 @@ export function MediaArchive() {
                 </span>
               )}
             </div>
-            {acct?.over && <div className="ma-full" role="status"><b>Your space is full.</b> New pictures, recordings and files cannot be added until you delete some, or {quota.org ? `${quota.org} gives you more` : 'ask for more space'}.</div>}
+            {acct?.over && <div className="ma-full" role="status"><b>Your space is full.</b> You can’t add new pictures, recordings or files until you delete some, or {quota.org ? `${quota.org} gives you more` : 'ask for more space'}.</div>}
             {(upBusy || busy) && <BusyToast text={upBusy || busy} onClose={() => (setBusy(''), setUpBusy(''))} />}
             {/* The selection bar sits over the tools, so nothing below moves when files are picked. */}
             <div className="ma-toolwrap">
@@ -1342,7 +1342,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
           className="btn small-btn"
           onClick={async () => {
             setDl('Getting the file…');
-            await downloadItem(item).catch(() => setDl('It could not be downloaded.'));
+            await downloadItem(item).catch(() => setDl('We couldn’t download it. Try again.'));
             setDl('');
           }}
         >
@@ -1514,14 +1514,14 @@ function ToOrgDialog({ d, folders, me, onClose }: { d: SharedDoc; folders: Drive
       void tell(`${d.title} is in ${f.name} now. Your own copy stays in your Files.`);
     } catch (e) {
       console.error(e);
-      setBusy('The copy could not be made. Try again.');
+      setBusy('We couldn’t make the copy. Try again.');
     }
   };
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog" role="dialog" aria-label="Copy to the organisation library">
         <h2>Copy to the organisation library</h2>
-        <span className="hint">A copy of “{d.title}” goes into the folder. The teachers who can see the folder can use it; your own file stays as it is.</span>
+        <span className="hint">A copy of “{d.title}” goes into the folder. Teachers who can see the folder can use it, and your own file stays as it is.</span>
         <Select value={to} options={folders.map((f) => ({ v: f.id, label: f.name }))} onChange={setTo} label="Folder" />
         {busy && <span className="hint">{busy}</span>}
         <span style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

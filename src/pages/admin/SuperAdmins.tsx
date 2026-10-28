@@ -20,7 +20,7 @@ export function SuperAdmins() {
   const already = clean === OWNER_EMAIL || !!list?.some((s) => s.email === clean);
   const add = async () => {
     if (!valid || already || busy) return;
-    if (!(await ask(`Make ${clean} a super admin? They will see and change everything in ELT Suite: every teacher, organisation, ticket and switch, and they can make other super admins.`, { ok: 'Make them a super admin' }))) return;
+    if (!(await ask(`Make ${clean} a super admin? They’ll see and change everything in ELT Suite: every teacher, organisation, ticket and switch, and they can make other super admins.`, { ok: 'Make them a super admin' }))) return;
     setBusy(true);
     try {
       await addSuperAdmin(clean, name, me);
@@ -28,13 +28,13 @@ export function SuperAdmins() {
       setName('');
       say(`${clean} is a super admin. They see Super Admin the next time they open ELT Suite.`);
     } catch {
-      say('That did not work. Try again.');
+      say('That didn’t work. Try again.');
     }
     setBusy(false);
   };
   const remove = async (e: string) => {
-    if (!(await ask(e === user?.email?.toLowerCase() ? 'Stop being a super admin yourself? You will lose Super Admin at once.' : `Stop ${e} being a super admin?`, { ok: 'Remove', danger: true }))) return;
-    await removeSuperAdmin(e).then(() => say(`${e} is no longer a super admin.`), () => say('That did not work. Try again.'));
+    if (!(await ask(e === user?.email?.toLowerCase() ? 'Stop being a super admin yourself? You’ll lose Super Admin straight away.' : `Stop ${e} being a super admin?`, { ok: 'Remove', danger: true }))) return;
+    await removeSuperAdmin(e).then(() => say(`${e} is no longer a super admin.`), () => say('That didn’t work. Try again.'));
   };
   return (
     <div className="hq-page">
@@ -47,7 +47,7 @@ export function SuperAdmins() {
             Add
           </button>
         </div>
-        {clean && already && <span className="hint">They are a super admin already.</span>}
+        {clean && already && <span className="hint">They’re already a super admin.</span>}
       </Panel>
       <Panel title="Super admins">
         <ul className="hq-supers">

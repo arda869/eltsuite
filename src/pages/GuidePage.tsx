@@ -228,7 +228,7 @@ export function Start({ tour = false }: { tour?: boolean }) {
   const a = APPS[pick];
   return (
     <>
-      {!tour && <p>ELT Suite is for all your work as an English teacher, not only your classes: making materials, recording listening, printing worksheets, reading for your development, timetabling and working with colleagues. It is one account with several apps. The <b>nine dots</b> at the top right of every page open them; the name under “ELT Suite” at the top left tells you which app you are in.</p>}
+      {!tour && <p>ELT Suite is for all your work as an English teacher, not only your classes: making materials, recording listening, printing worksheets, reading for your development, timetabling and working with colleagues. It’s one account with several apps. The <b>nine dots</b> at the top right of every page open them; the name under “ELT Suite” at the top left tells you which app you’re in.</p>}
       <div className="gu-explore">
         <div className="gu-apps" role="radiogroup" aria-label="Apps">
           {APPS.map((p, i) => (
@@ -266,7 +266,7 @@ export function Start({ tour = false }: { tour?: boolean }) {
               ))}
             </ul>
             {a.soon ? (
-              <span className="gu-win-soon">Under development: it comes to ELT Suite soon.</span>
+              <span className="gu-win-soon">We’re building this now. It’s coming to ELT Suite soon.</span>
             ) : tour ? null : (
               <Link className="gu-win-go" to={a.to} target="_blank" rel="noopener">
                 Open {a.name} in a new tab ↗
@@ -644,7 +644,7 @@ function Lessons() {
           { t: 'Teach it or set it', d: 'Teach it live in class, or open it as homework with a due date.' },
         ]}
       />
-      <Try title="Press / and choose an element to see it in a lesson" note="In a real lesson, pressing / opens this list where you are typing; type to search it.">
+      <Try title="Press / and choose an element to see it in a lesson" note="In a real lesson, pressing / opens this list where you’re typing. Type to search it.">
         <SlashDemo />
       </Try>
     </>
@@ -786,7 +786,7 @@ const SLASH: El[] = [
   },
   {
     k: 'Crossword', g: 'Questions', h: 'Made from words and clues', mark: 'auto',
-    learners: 'Fill the crossword from the clues; it is made for you from a list of words.',
+    learners: 'Fill the crossword from the clues. It’s made for you from a list of words.',
     view: () => (
       <span className="gu-el-cross" aria-hidden="true">
         {['TRAIN', 'R..X.', 'A..I.', 'V..T.', 'E....', 'L....'].flatMap((r, y) => r.split('').map((ch, x) => (
@@ -919,7 +919,7 @@ export function GapFill() {
       <p className="gu-q">
         2. I <input className="gu-gap" value={a[1]} onChange={(e) => setA([a[0], e.target.value])} aria-label="Gap 2" /> <Mark ok={ok[1]} show={shown} /> (never / be) to Japan.
       </p>
-      <Checker result={shown ? `${ok.filter(Boolean).length} of 2${ok.every(Boolean) ? '. Well done!' : '. Answers: has lived · have never been'}` : ''} onCheck={() => setShown(true)} onReset={() => (setA(['', '']), setShown(false))} />
+      <Checker result={shown ? `${ok.filter(Boolean).length} of 2${ok.every(Boolean) ? '. Well done.' : '. Answers: has lived · have never been'}` : ''} onCheck={() => setShown(true)} onReset={() => (setA(['', '']), setShown(false))} />
     </Try>
   );
 }
@@ -953,7 +953,7 @@ function Inline() {
 
 function TrueFalse() {
   const items = [
-    { s: 'In a reading task, “not given” means the text does not say.', key: true },
+    { s: 'In a reading task, “not given” means the text doesn’t say.', key: true },
     { s: '“Since” goes with a period of time, like “since three years”.', key: false },
   ];
   const [a, setA] = useState<(boolean | null)[]>([null, null]);
@@ -974,7 +974,7 @@ function TrueFalse() {
           </span>
         </p>
       ))}
-      <Checker result={shown ? `${items.filter((it, i) => a[i] === it.key).length} of 2${a[1] === true ? '. It is “for three years”, or “since 2021”.' : ''}` : ''} onCheck={() => setShown(true)} onReset={() => (setA([null, null]), setShown(false))} />
+      <Checker result={shown ? `${items.filter((it, i) => a[i] === it.key).length} of 2${a[1] === true ? '. It’s “for three years”, or “since 2021”.' : ''}` : ''} onCheck={() => setShown(true)} onReset={() => (setA([null, null]), setShown(false))} />
     </Try>
   );
 }
@@ -1006,7 +1006,7 @@ function WordOrder() {
           </button>
         ))}
       </div>
-      <Checker result={shown ? (sentence === right ? 'Right!' : built.length < words.length ? 'Use every word.' : 'Not quite: a question starts with Have.') : ''} onCheck={() => setShown(true)} onReset={() => (setBuilt([]), setShown(false))} />
+      <Checker result={shown ? (sentence === right ? 'Right.' : built.length < words.length ? 'Use every word.' : 'Not quite: a question starts with Have.') : ''} onCheck={() => setShown(true)} onReset={() => (setBuilt([]), setShown(false))} />
     </Try>
   );
 }
@@ -1377,7 +1377,7 @@ export function Blend() {
   const b = BLENDS[k];
   return (
     <>
-      <p>There is no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class. Each glass shows what one way of teaching is made of.</p>
+      <p>There’s no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class. Each glass shows what one way of teaching is made of.</p>
       <div className="gu-blends" role="radiogroup" aria-label="Ways to teach">
         {BLENDS.map((x, i) => (
           <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-blend' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
@@ -1588,7 +1588,7 @@ function Print() {
 function FilesTopic() {
   return (
     <>
-      <p>Everything you make that is not a lesson has an app of its own, like Docs and Slides in Google’s suite, and is in Files too. Each app lists <b>your files</b>, the ones <b>shared with you</b>, your <b>organisation’s library</b> and the ones you <b>starred</b>.</p>
+      <p>Everything you make that isn’t a lesson has an app of its own, like Docs and Slides in Google’s suite, and is in Files too. Each app lists <b>your files</b>, the ones <b>shared with you</b>, your <b>organisation’s library</b> and the ones you <b>starred</b>.</p>
       <div className="gu-grid2">
         <Try title="Flashcards: tap the card to turn it over">
           <FlipCard />
@@ -1988,7 +1988,7 @@ function RoomCard() {
         <button type="button" className="btn small primary" onClick={() => setCopied(true)}>
           {copied ? 'Copied ✓' : 'Copy the link'}
         </button>
-        <span className="hint" role="status">{copied ? 'Put it in your timetable or a message once: it is the same every week.' : 'The same link every lesson: learners save it once.'}</span>
+        <span className="hint" role="status">{copied ? 'Put it in your timetable or a message once. It’s the same every week.' : 'The same link every lesson: learners save it once.'}</span>
       </div>
     </Try>
   );
@@ -2002,7 +2002,7 @@ function Share() {
       <p>Nobody should start from a blank page. Connect with the teachers you work with once, then share lessons, folders and recordings with them, or plan together in the same document. Messages keeps the conversations with colleagues and learners next to the work.</p>
       <Steps
         items={[
-          { t: 'Invite a colleague', d: 'Colleagues → Invite. Send them the link; they open it and you are connected.' },
+          { t: 'Invite a colleague', d: 'Colleagues → Invite. Send them the link. When they open it, you’re connected.' },
           { t: 'Share', d: 'A lesson, a folder, a recording or a document, with them or with everyone in a shared folder.' },
           { t: 'Edit together, or copy', d: 'Work on it together live, or they copy it into their own class and change it.' },
         ]}
@@ -2055,7 +2055,7 @@ function Share() {
 
 const ORG_PAGES: { g: string; k: string; t: string; d: string; can: string[] }[] = [
   { g: 'People', k: 'Teachers', t: 'Everyone who teaches in your organisation', d: 'Each teacher with their classes, learners and the space their files take.', can: ['See who is active', 'Make a teacher an admin', 'Take a teacher out of the organisation'] },
-  { g: 'People', k: 'Invitations', t: 'Bring teachers in', d: 'Invite a teacher by email, or make invitation codes to give to many at once. A teacher who uses your code joins your organisation.', can: ['Invite by email', 'Codes for a whole team, with how many uses', 'See who has not answered yet'] },
+  { g: 'People', k: 'Invitations', t: 'Bring teachers in', d: 'Invite a teacher by email, or make invitation codes to give to many at once. A teacher who uses your code joins your organisation.', can: ['Invite by email', 'Codes for a whole team, with how many uses', 'See who hasn’t answered yet'] },
   { g: 'People', k: 'Admins', t: 'Who runs it with you', d: 'Admins see this page and can change everything in it.', can: ['Add or remove admins', 'Admins can still teach their own classes'] },
   { g: 'Teaching', k: 'Classes', t: 'Every class in the organisation', d: 'Who teaches each class, and its learners. You can add learners, give new PINs and print sign-in cards; lessons and answers stay with the teacher.', can: ['Add learners for a teacher', 'Give a new PIN', 'Print sign-in cards'] },
   { g: 'Teaching', k: 'Library', t: 'Your shared lessons and materials', d: 'Folders of lessons, documents, flashcards and PDFs for all your teachers, ready to copy into their classes.', can: ['Folders by course or level', 'Choose who can add and who can only use', 'Copy a lesson into a class in one step'] },

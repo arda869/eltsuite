@@ -57,7 +57,7 @@ export function OrgClasses({ d, params, go }: { d: OrgData; params: URLSearchPar
     <div className="hq-page">
       <PageHead
         title="Classes"
-        lede={org.policy?.createClasses === false ? `Your teachers do not create their own classes: you create them here, for them.` : `Your teachers create their own classes. You can also create one for a teacher here.`}
+        lede={org.policy?.createClasses === false ? `Your teachers don’t make their own classes. You make them here, for them.` : `Your teachers make their own classes. You can also make one for a teacher here.`}
         actions={
           <>
             <button type="button" className="btn" disabled={!classes.length} onClick={() => void saveOrgWorkbook(org, classes, d.accounts, d.invites, 'classes')}>
@@ -80,7 +80,7 @@ export function OrgClasses({ d, params, go }: { d: OrgData; params: URLSearchPar
       {d.loading ? (
         <p className="hint">Opening the classes…</p>
       ) : !classes.length ? (
-        <Empty title="No classes yet" text={org.policy?.createClasses === false ? 'Create the first class for one of your teachers.' : 'Classes your teachers create show here, with their learners.'} action={<button type="button" className="btn primary" onClick={() => go({ tab: 'classes', new: '1' })}>New class</button>} />
+        <Empty title="No classes yet" text={org.policy?.createClasses === false ? 'Make the first class for one of your teachers.' : 'Classes your teachers make show here, with their learners.'} action={<button type="button" className="btn primary" onClick={() => go({ tab: 'classes', new: '1' })}>New class</button>} />
       ) : !shown.length ? (
         <Empty title="No class here" text="No class matches. Try another filter or search." action={<button type="button" className="btn" onClick={() => (setQ(''), setWho(''), setLevel(''), go({ tab: 'classes', replace: true }))}>Show active classes</button>} />
       ) : (
@@ -188,7 +188,7 @@ function NewClass({ d, onClose, onMade }: { d: OrgData; onClose: () => void; onM
       onMade(`${name.trim()} is ready for ${[who, ...cos].map((u) => org.teachers[u]?.name || 'a teacher').join(' and ')}.`, String(id ?? ''));
     } catch (e) {
       console.error(e);
-      setErr(e instanceof LimitError ? e.message : 'The class could not be made. Try again.');
+      setErr(e instanceof LimitError ? e.message : 'We couldn’t make the class. Try again.');
     } finally {
       setBusy(false);
     }
@@ -251,7 +251,7 @@ function NewClass({ d, onClose, onMade }: { d: OrgData; onClose: () => void; onM
           Cancel
         </button>
         <button type="button" className="btn primary" disabled={!who || !name.trim() || busy} onClick={() => void make()}>
-          Create the class
+          Make the class
         </button>
       </div>
     </Sheet>

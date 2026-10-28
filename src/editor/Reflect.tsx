@@ -106,7 +106,7 @@ function ReflectView({ node, updateAttributes, deleteNode, editor, getPos, selec
           <label className="r-share">
             <input type="checkbox" checked={share} onChange={() => updateAttributes({ share: !share })} />
             Send the feedback to the classmate
-            <span className="hint">{share ? 'They see it in this task as soon as it is written.' : 'Only you see the feedback.'}</span>
+            <span className="hint">{share ? 'They see it in this task as soon as it’s written.' : 'Only you see the feedback.'}</span>
           </label>
           {pairing === 'teacher' && (
             <div className="r-pairs">

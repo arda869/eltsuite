@@ -108,14 +108,14 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
       setTime(media.currentTime);
     };
     media.onended = () => setEnds((n) => n + 1);
-    media.onerror = () => setError(stored ? 'This recording could not be opened.' : 'This file could not be played. Check the address.');
+    media.onerror = () => setError(stored ? 'We couldn’t open this recording.' : 'We couldn’t play this file. Check the address.');
     (stored ? soundUrl(classId, mediaId, m) : Promise.resolve(url)).then(
       (src) => {
         if (cancelled) return;
         media.src = src;
         if (m.duration) setDuration(m.duration);
       },
-      () => setError('This recording could not be opened.'),
+      () => setError('We couldn’t open this recording.'),
     );
     return () => {
       cancelled = true;
@@ -157,7 +157,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
             const d = yt.current?.getDuration?.();
             if (d) setDuration(d);
           },
-          onError: () => setError('This video cannot be played here. It may be private or blocked from other sites.'),
+          onError: () => setError('This video can’t play here. It may be private, or blocked from other sites.'),
         },
       });
     });
@@ -446,8 +446,8 @@ export function Karaoke({ lines, time, duration, onSeek, big }: { lines: ScriptL
 
 export type ScriptMode = 'karaoke' | 'after' | 'button' | 'none';
 export const SCRIPT_MODES: { k: ScriptMode; label: string; about: string }[] = [
-  { k: 'karaoke', label: 'While it plays', about: 'Words light up as they are spoken' },
-  { k: 'after', label: 'After listening', about: tr('Learners see the script once they have listened to the end') },
+  { k: 'karaoke', label: 'While it plays', about: 'Words light up as they’re spoken' },
+  { k: 'after', label: 'After listening', about: tr('Learners see the script once they’ve listened to the end') },
   { k: 'button', label: 'On a button', about: tr('Learners open the script when they want it') },
   { k: 'none', label: 'Hidden', about: tr('Learners never see the script') },
 ];

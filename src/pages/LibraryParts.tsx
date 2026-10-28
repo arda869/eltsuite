@@ -209,7 +209,7 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
   return (
     <aside className="ma-detail" aria-label={name}>
       <div className="ma-detail-head">
-        <span className="pop-type">{here ? 'You are in' : 'Folder'}</span>
+        <span className="pop-type">{here ? 'You’re in' : 'Folder'}</span>
         {!here && (
           <button type="button" className="ma-x big" onClick={onClose} aria-label="Close">
             ×

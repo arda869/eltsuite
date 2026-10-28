@@ -571,7 +571,7 @@ export function LessonEditor() {
     }, (e) => {
       console.error(e);
       if (!cancelled) setOpening('');
-      if (!cancelled) setTaskErr((e as { code?: string }).code === 'permission-denied' ? tr('This task could not be opened. If a “view as a learner” tab is open, close it, then try again.') : 'This task could not be opened. Check your connection, then try again.');
+      if (!cancelled) setTaskErr((e as { code?: string }).code === 'permission-denied' ? tr('We couldn’t open this task. If a “view as a learner” tab is open, close it and try again.') : 'We couldn’t open this task. Check your connection and try again.');
     });
     return () => {
       cancelled = true;
@@ -826,7 +826,7 @@ export function LessonEditor() {
       )}
       <NoticeToasts classId={classId} to="teacher" link={(i, t) => (i === 'disc' ? `/class/${classId}?tab=discussion&thread=${t}` : `/class/${classId}/lesson/${i}?task=${t}`)} />
       {item === undefined && <Loader full label="Opening the lesson" />}
-      {item === null && <p className="placeholder">This lesson could not be found.</p>}
+      {item === null && <p className="placeholder">We couldn’t find this lesson.</p>}
 
       {item && (
         <div className={'lesson-layout' + (present ? ' present' : '') + (fullscreen && present ? ' fullscreen' : '') + panels.cls} style={panes.style}>
@@ -963,7 +963,7 @@ export function LessonEditor() {
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
               <span className="tb-group" aria-label="The class">
-                <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? tr('Learners follow you from task to task. Click to let them move freely (S)') : 'Bring everyone to the task you are on, and keep them with you (S)'}>
+                <button type="button" className={'tb-sync' + (live?.sync ? ' on' : '')} onClick={toggleSync} data-tip={live?.sync ? tr('Learners follow you from task to task. Click to let them move freely (S)') : 'Bring everyone to the task you’re on, and keep them with you (S)'}>
                   <UiIcon name="sync" />
                   {live?.sync ? (live.syncRoom ? `${activeSet?.groups.find((g) => g.id === live.syncRoom)?.name ?? 'Room'} follows you` : 'Class follows you') : 'Sync class'}
                 </button>
@@ -1041,7 +1041,7 @@ export function LessonEditor() {
               <div className="frame-inner">
                 <div className="frame-head">
                   <h1 className="task-title">Board</h1>
-                  <p className="hint" style={{ margin: 0 }}>{tr('Prepare pages before class; double-click a page to name it. When you teach, learners see the page you are on.')}</p>
+                  <p className="hint" style={{ margin: 0 }}>{tr('Prepare pages before class; double-click a page to name it. When you teach, learners see the page you’re on.')}</p>
                 </div>
                 <div className="frame-body">
                   <LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} />
@@ -1128,7 +1128,7 @@ export function LessonEditor() {
                   />
                 </div>
                 <div className="frame-foot">
-                  <span className="hint">{preview ? 'Preview · answers here are not saved' : 'Teaching · click a question to show its answer to the class'}</span>
+                  <span className="hint">{preview ? 'Preview · answers here aren’t saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
                     {!preview && qCount > 0 && (
                       <span className="reveal-ctl foot-reveal" aria-label="Answers">
@@ -1393,7 +1393,7 @@ export function LessonEditor() {
               {copyMsg}
               <span className="toast-actions">
                 <button type="button" className="btn small-btn" onClick={() => setCopyMsg('')}>
-                  OK
+                  Got it
                 </button>
               </span>
             </span>
@@ -1441,7 +1441,7 @@ function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: strin
             className="lib-break"
             disabled={busy}
             onClick={async () => {
-              if (!(await ask('Break the link with the library? This lesson’s task becomes its own: changes stop going both ways, and it cannot be linked again.', { ok: 'Break the link' }))) return;
+              if (!(await ask('Break the link with the library? This lesson’s task becomes its own: changes stop going both ways, and you can’t link it again.', { ok: 'Break the link' }))) return;
               setBusy(true);
               await flush();
               await breakLink(uid, task.lib!.id, use).catch(() => {});

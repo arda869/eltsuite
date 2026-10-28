@@ -47,7 +47,7 @@ export const KINDS: { k: TicketKind; label: string }[] = [
   { k: 'question', label: 'A question' },
 ];
 export const URGENCIES: { k: TicketUrgency; label: string }[] = [
-  { k: 'low', label: 'When there is time' },
+  { k: 'low', label: 'When there’s time' },
   { k: 'normal', label: 'Soon' },
   { k: 'urgent', label: 'Urgent' },
 ];
@@ -131,7 +131,7 @@ export async function toShot(f: Blob): Promise<NewShot> {
     if (jpg.length < LIMIT) return { data: jpg, w: c.width, h: c.height };
     max = Math.round(Math.max(c.width, c.height) * 0.75);
   }
-  throw new Error('This picture is too large.');
+  throw new Error('This picture is too big. Try a smaller one.');
 }
 
 async function saveShots(id: string, uid: string, shots: NewShot[], note: string | null) {

@@ -401,7 +401,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
       insertPictures(editor, srcs, { size, mark, alt });
       onClose();
     } catch {
-      setBusy('The picture could not be uploaded. Try a smaller one, or a smaller quality.');
+      setBusy('We couldn’t upload the picture. Try a smaller one, or a lower quality.');
     }
   };
   const fromArchive = async (items: ArchiveItem[]) => {
@@ -417,7 +417,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
       insertPictures(editor, srcs, { size, mark, alt });
       onClose();
     } catch {
-      setBusy('That picture could not be added.');
+      setBusy('We couldn’t add that picture.');
     }
   };
   // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.

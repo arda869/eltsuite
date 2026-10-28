@@ -76,7 +76,7 @@ function MediaInput({ field, v, onSave }: { field: Field; v: CardValue; onSave: 
     try {
       onSave(field.type === 'image' ? await imageToData(f) : await fileToData(f));
     } catch {
-      void tell(field.type === 'image' ? 'That picture could not be used.' : 'That recording is too big. Keep it under 650 KB.');
+      void tell(field.type === 'image' ? 'We couldn’t use that picture. Try another one.' : 'That recording is too big. Keep it under 650 KB.');
     }
   };
   const record = async () => {
@@ -91,7 +91,7 @@ function MediaInput({ field, v, onSave }: { field: Field; v: CardValue; onSave: 
       setRec(mr);
       window.setTimeout(() => mr.state === 'recording' && mr.stop(), 10000);
     } catch {
-      void tell('The microphone could not be opened.');
+      void tell('We couldn’t open your microphone. Check that this site is allowed to use it.');
     }
   };
   return (

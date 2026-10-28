@@ -77,7 +77,7 @@ export function RoomsPage() {
       setLink(callLinkUrl(code));
       openCall({ url: r.url, title, kind: 'video', sub: 'Anyone with the link can join', code });
     } catch (e) {
-      void tell(callStartError(e, 'The call could not be started. Please try again.'));
+      void tell(callStartError(e, 'We couldn’t start the call. Try again.'));
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export function RoomsPage() {
       openCall({ url: k.url, title: chatTitle(chat, me.key), kind: k.kind, chatId: chat.id, code: k.code });
       if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {});
     } catch (e) {
-      void tell(callStartError(e, 'The call could not be started. Please try again.'));
+      void tell(callStartError(e, 'We couldn’t start the call. Try again.'));
     } finally {
       setCalling('');
     }
@@ -220,7 +220,7 @@ export function RoomsPage() {
                                 </span>
                               </span>
                               <button type="button" className="btn small-btn primary" disabled={inIt} onClick={() => joinChat(c)}>
-                                {inIt ? 'You are in it' : 'Join'}
+                                {inIt ? 'You’re in it' : 'Join'}
                               </button>
                             </li>
                           );
@@ -325,7 +325,7 @@ export function RoomsPage() {
                           <b>{c.name}</b>
                           <span className="hint">{ready ? [`${n} ${n === 1 ? 'learner' : 'learners'}`, next ? (isNow(next, 0) ? 'on now' : `next ${dayKey(next.start) === dayKey(now) ? 'at' : 'tomorrow,'} ${timeText(next.start)}`) : ''].filter(Boolean).join(' · ') : 'Setting up the room'}</span>
                         </span>
-                        <button type="button" className="btn small-btn" disabled={!ready || inIt} onClick={() => void joinClassVideo(c, true)} aria-label={inIt ? `In the room of ${c.name}` : `Open the room of ${c.name}`}>
+                        <button type="button" className="btn small-btn" disabled={!ready || inIt} onClick={() => void joinClassVideo(c, true)} aria-label={inIt ? `In ${c.name}’s room` : `Open ${c.name}’s room`}>
                           {inIt ? 'In it' : 'Open'}
                         </button>
                       </div>
@@ -365,7 +365,7 @@ function Hero({ session: o, call: c, now, uid, cls, inSession, inCall, onStart, 
           </span>
           <span className="rm-hero-acts">
             <button type="button" className="btn primary rm-go" disabled={inCall} onClick={() => onJoin(c)}>
-              <UiIcon name={k.kind === 'video' ? 'video' : 'phone'} size={18} /> {inCall ? 'You are in it' : 'Join the call'}
+              <UiIcon name={k.kind === 'video' ? 'video' : 'phone'} size={18} /> {inCall ? 'You’re in it' : 'Join the call'}
             </button>
           </span>
         </span>
@@ -383,7 +383,7 @@ function Hero({ session: o, call: c, now, uid, cls, inSession, inCall, onStart, 
     const kicker = started ? 'On now' : mins <= 10 ? `Starting in ${minsText(mins)}` : `Next, in ${minsText(mins)}`;
     const color = o.s.kind === 'class' ? theme(cls?.themeColor).accent : undefined;
     const what = o.s.kind === 'class' ? (cls?.name ?? 'Class') : o.s.names ? `Meeting with ${Object.values(o.s.names).filter(Boolean).slice(0, 3).join(', ')}` : 'Meeting';
-    const label = inSession ? 'You are in it' : o.s.kind === 'class' ? (o.s.online ? 'Start the class' : 'Open the lesson') : o.s.live ? 'Join the meeting' : 'Start the meeting';
+    const label = inSession ? 'You’re in it' : o.s.kind === 'class' ? (o.s.online ? 'Start the class' : 'Open the lesson') : o.s.live ? 'Join the meeting' : 'Start the meeting';
     return (
       <section className={'rm-hero is-session' + (started ? ' is-now' : '')} style={color ? ({ ['--ev' as string]: color } as CSSProperties) : undefined} aria-labelledby="rm-hero-t">
         <HeroArt />

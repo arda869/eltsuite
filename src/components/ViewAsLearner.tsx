@@ -33,7 +33,7 @@ export function ViewAsLearner({ classId, classCode, roster, path, inMenu, list }
           <span className="hint">Loading…</span>
         ) : (
           roster.map((r) => (
-            <button key={r.id} role="menuitem" disabled={!pins[r.id]} title={pins[r.id] ? 'Opens a new tab signed in as ' + r.name : 'This learner set their own PIN, so you cannot sign in as them'} onClick={() => pick(r)}>
+            <button key={r.id} role="menuitem" disabled={!pins[r.id]} title={pins[r.id] ? 'Opens a new tab signed in as ' + r.name : 'This learner set their own PIN, so you can’t sign in as them'} onClick={() => pick(r)}>
               {r.name}
             </button>
           ))
@@ -59,7 +59,7 @@ export function ViewAsLearner({ classId, classCode, roster, path, inMenu, list }
               <span className="hint">Loading…</span>
             ) : (
               roster.map((r) => (
-                <button key={r.id} role="menuitem" disabled={!pins[r.id]} title={pins[r.id] ? undefined : 'This learner set their own PIN, so you cannot sign in as them'} onClick={() => pick(r)}>
+                <button key={r.id} role="menuitem" disabled={!pins[r.id]} title={pins[r.id] ? undefined : 'This learner set their own PIN, so you can’t sign in as them'} onClick={() => pick(r)}>
                   {r.name}
                 </button>
               ))

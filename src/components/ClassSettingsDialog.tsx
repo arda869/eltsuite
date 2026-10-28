@@ -100,7 +100,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
       onClose();
     } catch (err) {
       console.error(err);
-      setError('Your changes could not be saved. Please try again.');
+      setError('We couldn’t save your changes. Check your connection and try again.');
       setBusy(false);
     }
   }
@@ -186,7 +186,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           <label className="switch-row">
             <span>
               Show learners where I am
-              <span className="hint">{tr('Learners see which task you are on')}</span>
+              <span className="hint">{tr('Learners see which task you’re on')}</span>
             </span>
             <input type="checkbox" checked={showMarker} onChange={() => setShowMarker((v) => !v)} />
           </label>

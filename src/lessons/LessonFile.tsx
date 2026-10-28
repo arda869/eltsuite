@@ -86,7 +86,7 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
       onClose();
     } catch (e) {
       console.error(e);
-      void tell('The lesson could not be added. Try again.');
+      void tell('We couldn’t add the lesson. Try again.');
       setBusy('');
     }
   };
@@ -94,7 +94,7 @@ function AddToClass({ rows, title, type, onClose }: { rows: LessonRow[]; title: 
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog" role="dialog" aria-label="Add to a class">
         <h2>Add “{title}” to a class</h2>
-        <span className="hint">It becomes a new lesson at the end of the class, with all its tasks and answers. Changes there do not come back here.</span>
+        <span className="hint">It becomes a new lesson at the end of the class, with all its tasks and answers. Changes there don’t come back here.</span>
         <div className="lf-classes">
           {classes === null ? (
             <span className="hint">Opening your classes…</span>

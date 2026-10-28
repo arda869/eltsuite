@@ -65,6 +65,6 @@ export function credit(): { by: string; note: string } {
   const name = (auth.currentUser?.displayName ?? '').trim();
   const org = currentOrg()?.name;
   const by = `${name ? `Prepared by ${name}` : 'Prepared'}${org ? ` · ${org}` : ''} · Made with ELT Suite`;
-  const note = `The content of this material is the work of ${name || 'its author'}. ELT Suite provides the tools used to create it and does not review or endorse its content.`;
+  const note = `The content of this material is the work of ${name || 'its author'}. ELT Suite provides the tools used to make it, and doesn’t review or endorse its content.`;
   return { by, note };
 }

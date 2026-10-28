@@ -15,7 +15,7 @@ export async function joinClassVideo(c: Pick<ClassDoc, 'id' | 'name' | 'video'>,
 // The button that opens it: shown once the class has its room.
 export function VideoButton({ c, teacher }: { c: ClassDoc; name?: string; teacher?: boolean }) {
   const open = useOpenCall();
-  if (!c.video?.url) return teacher ? <span className="hint vc-soon" data-tip="Each class gets its own video room within a few minutes of being created.">Video room on its way</span> : null;
+  if (!c.video?.url) return teacher ? <span className="hint vc-soon" data-tip="Each class gets its own video room within a few minutes of being set up.">Video room on its way</span> : null;
   // The organisation has used its call minutes for this month: the room opens again on the 1st.
   if (c.video?.paused)
     return (

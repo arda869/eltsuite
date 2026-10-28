@@ -120,7 +120,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
     });
     if (ok) return classRef.id;
   }
-  throw new Error('Could not find a free class code. Please try again.');
+  throw new Error('We couldn’t find a free class code. Try again.');
 }
 
 export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {

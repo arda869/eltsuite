@@ -66,7 +66,7 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
       <Frame>
         <div className="hq-closed">
           <strong>Super Admin is only for the super admins of ELT Suite</strong>
-          <span className="hint">You can run your own organisation from Organisation admin, if you are one of its admins.</span>
+          <span className="hint">You can run your own organisation from Organisation admin, if you’re one of its admins.</span>
         </div>
       </Frame>
     );

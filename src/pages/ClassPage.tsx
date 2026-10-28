@@ -131,15 +131,15 @@ export function ClassPage() {
 
       {c === null && (
         <div className="class-missing">
-          <h1 className="page-title">{why.code === 'deleted' ? 'This class has been deleted' : why.code === 'unavailable' ? 'The class could not be reached' : 'This class can’t be opened'}</h1>
+          <h1 className="page-title">{why.code === 'deleted' ? 'This class has been deleted' : why.code === 'unavailable' ? 'We couldn’t reach the class' : 'This class can’t be opened'}</h1>
           <p className="hint">
             {why.code === 'deleted'
-              ? 'It is no longer on the server. If it still shows on your home screen, reload the page.'
+              ? 'It’s gone. If it still shows on your home screen, reload the page.'
               : why.code === 'permission-denied'
-                ? tr('Your account does not have access to it. This happens when a co-teacher removes you, or when the class belongs to another of your accounts.')
+                ? tr('Your account doesn’t have access to it. This happens when a co-teacher removes you, or when the class belongs to another of your accounts.')
                 : why.code === 'unavailable'
                   ? 'Check your connection and try again.'
-                  : 'Something went wrong while opening it.'}
+                  : 'We couldn’t open it. Try again in a moment.'}
           </p>
           <span className="hint small">
             Class {classId} · {why.code || 'unknown'}

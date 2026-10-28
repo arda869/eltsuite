@@ -47,7 +47,7 @@ export function AroundNow({ mates, st, chatOf, me, onOpen, strip }: { mates: Mat
       ))}
     </ul>
   ) : (
-    <p className="hint clg-none">No one else is around just now. Messages wait for them, and you see here when they are back.</p>
+    <p className="hint clg-none">No one else is around just now. Messages wait for them, and you’ll see here when they’re back.</p>
   );
 }
 
@@ -157,7 +157,7 @@ export function Invite({ uid, me, org, links, admin }: { uid: string; me: { name
     try {
       copy(await makeColleagueLink({ uid, ...me }));
     } catch {
-      setErr('The link could not be made. Please try again.');
+      setErr('We couldn’t make the link. Try again.');
     } finally {
       setBusy(false);
     }
@@ -165,7 +165,7 @@ export function Invite({ uid, me, org, links, admin }: { uid: string; me: { name
   if (org?.outside === 'org')
     return (
       <div className="clg-invite">
-        <p className="hint">{org.name} keeps colleagues inside the organisation, so teachers from outside cannot join through a link. Everyone in {org.name} is already here.</p>
+        <p className="hint">{org.name} keeps colleagues inside the organisation, so teachers from outside can’t join through a link. Everyone in {org.name} is already here.</p>
         {admin && <AdminNote org={org} />}
       </div>
     );
@@ -273,8 +273,8 @@ export function Empty({ org, invite }: { org: Org | null; invite: React.ReactNod
           </span>
         ))}
       </span>
-      <h2>{org ? `You are the first teacher from ${org.name} here` : 'Your colleagues, in one place'}</h2>
-      <p>{org ? `Teachers your admins add to ${org.name} appear here on their own, with their profiles. You can also invite teachers from other schools.` : 'Invite a teacher with a link. When they say yes, you can share lessons and files, message and call each other, and see when they are around.'}</p>
+      <h2>{org ? `You’re the first teacher from ${org.name} here` : 'Your colleagues, in one place'}</h2>
+      <p>{org ? `Teachers your admins add to ${org.name} appear here on their own, with their profiles. You can also invite teachers from other schools.` : 'Invite a teacher with a link. When they say yes, you can share lessons and files, message and call each other, and see when they’re around.'}</p>
       {invite}
     </div>
   );

@@ -203,7 +203,7 @@ function Stage({ s, teacher, compact }: { s: EngineState; teacher: boolean; comp
         <div className="ks-screen">
           <Video track={sharer.screenTrack} fit="contain" />
           <span className="ks-name">
-            <b>{sharer.local ? 'You are sharing your screen' : `${sharer.name}’s screen`}</b>
+            <b>{sharer.local ? 'You’re sharing your screen' : `${sharer.name}’s screen`}</b>
           </span>
         </div>
         {!compact && (

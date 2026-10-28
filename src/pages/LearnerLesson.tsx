@@ -334,7 +334,7 @@ export function LearnerLesson() {
   examLockedRef.current = examLocked;
   async function submitNow(auto = false) {
     if (!scope || !user) return;
-    if (!auto && !(await ask(scope.kind === 'item' ? 'Submit the whole exam? You can’t change your answers after this.' : 'Submit this exam? You can’t change your answers after this.'))) return;
+    if (!auto && !(await ask(scope.kind === 'item' ? 'Hand in the whole exam? You can’t change your answers after this.' : 'Hand in this exam? You can’t change your answers after this.'))) return;
     window.clearTimeout(timer.current);
     if (base) await saveResponses(classId, base, responses).catch(() => {});
     await submitExam(classId, scope.id, user.uid).catch((e) => console.error(e));
@@ -499,9 +499,9 @@ export function LearnerLesson() {
                     <span className="eyebrow">Exam</span>
                     <h2>{scope.title}</h2>
                     <ul>
-                      <li>{scope.minutes ? `You have ${scope.minutes} minutes from when you start.` : 'There is no time limit.'}</li>
-                      <li>{tr('You won’t see the answers until your teacher releases the results.')}</li>
-                      <li>When you submit{scope.minutes ? ' or the time is up' : ''}, your answers are locked.</li>
+                      <li>{scope.minutes ? `You have ${scope.minutes} minutes from when you start.` : 'There’s no time limit.'}</li>
+                      <li>{tr('You won’t see the answers until your teacher shares the results.')}</li>
+                      <li>When you hand it in{scope.minutes ? ' or the time is up' : ''}, your answers are locked.</li>
                     </ul>
                     <button type="button" className="btn primary tall" disabled={examState === 'loading'} onClick={() => user && startExam(classId, scope.id, user.uid, learnerId, profile?.role === 'learner' ? profile.displayName : '')}>
                       Start the exam
@@ -566,7 +566,7 @@ export function LearnerLesson() {
                     {left !== null ? `${fmt(left)} left` : 'Exam'} · {answered} of {qs.length} answered
                   </span>
                 ) : scope && examState === 'submitted' ? (
-                  <span className="hint">{tr('Submitted. Your teacher will release the results.')}</span>
+                  <span className="hint">{tr('Handed in. Your teacher will share the results soon.')}</span>
                 ) : checked && key && showScore ? (
                   <span className="score">
                     {result.total > 0 ? (
@@ -589,7 +589,7 @@ export function LearnerLesson() {
                   {scope ? (
                     examState === 'running' ? (
                       <button className="btn primary" onClick={() => submitNow()}>
-                        {scope.kind === 'item' ? 'Submit the exam' : 'Submit'}
+                        {scope.kind === 'item' ? 'Hand in the exam' : 'Hand in'}
                       </button>
                     ) : null
                   ) : qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (

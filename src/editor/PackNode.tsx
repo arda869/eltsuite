@@ -115,7 +115,7 @@ function PictureField({ value, onChange, label = 'Picture' }: { value: string; o
           try {
             onChange(await uploadPicture(classId, f));
           } catch {
-            void tell('The picture could not be added. Try a smaller one.');
+            void tell('We couldn’t add the picture. Try a smaller one.');
           } finally {
             setBusy(false);
           }

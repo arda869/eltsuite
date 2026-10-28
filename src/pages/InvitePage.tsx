@@ -30,7 +30,7 @@ export function InvitePage() {
   if (!inv)
     return (
       <Frame>
-        <h1>This invitation is not there any more</h1>
+        <h1>This invitation isn’t there any more</h1>
         <p className="hint">The admin may have taken it back. Ask them to send a new one.</p>
         <Link className="btn" to="/">
           Go to ELT Suite
@@ -90,7 +90,7 @@ function Answer({ inv, me }: { inv: OrgInvite; me: { uid: string; email: string;
   if (inv.status !== 'pending')
     return (
       <Frame inv={inv}>
-        <h1>{inv.status === 'accepted' ? `You are in ${inv.orgName}` : 'You said no to this invitation'}</h1>
+        <h1>{inv.status === 'accepted' ? `You’re in ${inv.orgName}` : 'You said no to this invitation'}</h1>
         <p className="hint">{inv.status === 'accepted' ? 'Its branding and rules are on your account now.' : `Ask ${inv.byName || 'the admin'} for a new one if you change your mind.`}</p>
         <Link className="btn primary" to="/">
           Go to ELT Suite
@@ -101,7 +101,7 @@ function Answer({ inv, me }: { inv: OrgInvite; me: { uid: string; email: string;
     return (
       <Frame inv={inv}>
         <h1>This invitation is for {inv.email}</h1>
-        <p className="hint">You are signed in as {me.email || 'a learner'}. Sign out, then sign in with {inv.email}.</p>
+        <p className="hint">You’re signed in as {me.email || 'a learner'}. Sign out, then sign in with {inv.email}.</p>
         <button type="button" className="btn primary" onClick={() => void signOut(auth)}>
           Sign out
         </button>
@@ -115,13 +115,13 @@ function Answer({ inv, me }: { inv: OrgInvite; me: { uid: string; email: string;
       nav('/', { replace: true });
     } catch (e) {
       console.error(e);
-      setError('That did not work. Try again, or ask the admin to send a new invitation.');
+      setError('That didn’t work. Try again, or ask the admin to send a new invitation.');
       setBusy('');
     }
   };
   const no = async () => {
     setBusy('no');
-    await declineInvite(inv, me.uid).catch(() => setError('That did not work. Try again.'));
+    await declineInvite(inv, me.uid).catch(() => setError('That didn’t work. Try again.'));
     setBusy('');
   };
   return (

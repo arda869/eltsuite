@@ -50,7 +50,7 @@ export function TeacherLiveVideo({ c, live, teachingHere, groupSets, itemId }: {
       await setLive(c.id, { videoRooms: out });
       setMenu(false);
     } catch (e) {
-      void tell(e instanceof NoRoomError ? 'There are not enough free video rooms for every group right now. Try again in a few minutes.' : callStartError(e, 'The group rooms could not be opened.'));
+      void tell(e instanceof NoRoomError ? 'There aren’t enough free video rooms for every group right now. Try again in a few minutes.' : callStartError(e, 'We couldn’t open the group rooms.'));
     } finally {
       setBusy(false);
     }

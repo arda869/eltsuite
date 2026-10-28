@@ -59,7 +59,7 @@ export function TeacherHome() {
       navigate(`/class/${classId}`);
     } catch (e) {
       console.error(e);
-      setError('The demo class could not be created. Please try again.');
+      setError('We couldn’t make the demo class. Try again in a moment.');
     } finally {
       setDemoStep('');
     }
@@ -193,7 +193,7 @@ export function TeacherHome() {
           {invites.length > 0 && user && (
             <section className="invite-card" aria-label="Invitations">
               <span className="eyebrow" style={{ fontSize: 11 }}>
-                You are invited
+                You’re invited
               </span>
               {invites.map((c) => {
                 const inv = c.invites?.[emailKey(user.email ?? '')];
@@ -250,8 +250,8 @@ export function TeacherHome() {
             <Loader label="Loading your classes" />
           ) : active.length === 0 ? (
             <div className="empty">
-              <h2>{canCreate ? 'Create your first class' : 'Your classes are on their way'}</h2>
-              <p>{canCreate ? 'A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.' : `${myOrg?.name} creates the classes for its teachers. They appear here as soon as they are ready.`}</p>
+              <h2>{canCreate ? 'Make your first class' : 'Your classes are on their way'}</h2>
+              <p>{canCreate ? 'A class holds your lessons, homework and learners. Learners join with a class code and a PIN, so they don’t need an email.' : `${myOrg?.name} makes the classes for its teachers. They’ll appear here as soon as they’re ready.`}</p>
               {canCreate && <span style={{ display: 'flex', gap: 8 }}>
                 <button className="btn primary" onClick={() => setCreating(true)}>
                   + New class
@@ -311,7 +311,7 @@ export function TeacherHome() {
                       className="btn small-btn danger"
                       disabled={!!purging}
                       onClick={async () => {
-                        if (!(await ask(`Remove ${c.name} for good now? This can't be undone.`))) return;
+                        if (!(await ask(`Delete ${c.name} for good? You can’t undo this.`))) return;
                         setPurging(c.name);
                         await purgeClass(c).catch((e) => console.error(e));
                         setPurging('');

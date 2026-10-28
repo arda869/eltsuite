@@ -224,7 +224,7 @@ function parseInline(s: string, line: number, errors: ImportError[]): JSONConten
       try {
         out.push(JSON.parse(tok.slice(7, -8)));
       } catch {
-        errors.push({ line, message: 'A [[raw]] part could not be read' });
+        errors.push({ line, message: 'We couldn’t read a [[raw]] part' });
       }
     } else if (tok.startsWith('**')) out.push(T(tok.slice(2, -2), [{ type: 'bold' }]));
     else if (tok.startsWith('![')) {
@@ -481,7 +481,7 @@ export function importLesson(text: string): ImportResult {
           try {
             body.push(JSON.parse(inner.join('\n')));
           } catch {
-            errors.push({ line: start + 1, message: 'This [[raw]] block could not be read' });
+            errors.push({ line: start + 1, message: 'We couldn’t read this [[raw]] block' });
           }
           break;
         case 'mcq':
@@ -645,6 +645,6 @@ export function importLesson(text: string): ImportResult {
     i++;
   }
   finish();
-  if (!tasks.length && !errors.length) errors.push({ line: 1, message: 'No tasks found. Start each task with “## Task title”.' });
+  if (!tasks.length && !errors.length) errors.push({ line: 1, message: 'We couldn’t find any tasks. Start each task with “## Task title”.' });
   return { title, tasks, errors };
 }

@@ -93,7 +93,7 @@ export function SharedPage() {
       <Shell>
         <div className="sp-empty">
           <UiIcon name="lock" size={26} />
-          <h1 className="page-title">{sh === null ? 'This is no longer shared' : 'This was not shared with you'}</h1>
+          <h1 className="page-title">{sh === null ? 'This is no longer shared' : 'This isn’t shared with you'}</h1>
           <p className="hint">{sh === null ? 'The teacher who shared it has stopped sharing it.' : 'Ask the teacher who sent the link to share it with you, or to share it with anyone who has the link.'}</p>
           <Link className="btn" to="/archive?show=shared">
             Shared with me
@@ -258,7 +258,7 @@ export function SharedWindow({ id, onClose }: { id: string; onClose: () => void 
           ) : sh === null || sh === 'denied' ? (
             <div className="sp-empty">
               <UiIcon name="lock" size={26} />
-              <h1 className="page-title">{sh === null ? 'This is no longer shared' : 'This was not shared with you'}</h1>
+              <h1 className="page-title">{sh === null ? 'This is no longer shared' : 'This isn’t shared with you'}</h1>
             </div>
           ) : (
             <SharedContent sh={sh} tasks={tasks} cur={cur} setCur={setCur} onCopy={() => setCopying(true)} play />
@@ -339,7 +339,7 @@ function CopyOut({ sh, tasks, onClose }: { sh: Share; tasks: SharedTask[]; onClo
       }
     } catch (e) {
       console.error(e);
-      setErr('The copy didn’t work. Please try again.');
+      setErr('That copy didn’t work. Try again.');
       setBusy('');
     }
   }
@@ -440,8 +440,8 @@ export function ColleagueJoin() {
             <h1 className="page-title">{from.name} invites you to be colleagues</h1>
             <p className="hint">Colleagues can share lessons, tasks, documents and media with each other, as read-only copies. Nothing is shared until one of you chooses to share it.</p>
             {state === 'self' && <span className="error">This is your own invitation link. Send it to a colleague.</span>}
-            {state === 'org' && <span className="error">Your organisation, or theirs, keeps colleagues within the organisation, so you cannot add each other.</span>}
-            {state === 'error' && <span className="error">That didn’t work. The link may have ended; ask for a new one.</span>}
+            {state === 'org' && <span className="error">Your organisation, or theirs, keeps colleagues within the organisation, so you can’t add each other.</span>}
+            {state === 'error' && <span className="error">That didn’t work. The link may have ended, so ask for a new one.</span>}
             <span style={{ display: 'flex', gap: 8 }}>
               <Link className="btn" to="/">
                 Not now

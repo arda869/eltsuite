@@ -58,7 +58,7 @@ export function superAttention(teachers: Teacher[], accounts: Record<string, Acc
   const out: Attention[] = [];
   const nm = (t: Teacher) => t.name || t.email;
   const full = teachers.filter((t) => accounts[t.uid]?.over);
-  if (full.length) out.push({ k: 'full', n: full.length, title: full.length === 1 ? 'account is full' : 'accounts are full', text: `${names(full.map(nm))} cannot add files until they have more space.`, go: { tab: 'teachers', f: 'full' }, act: 'See teachers' });
+  if (full.length) out.push({ k: 'full', n: full.length, title: full.length === 1 ? 'account is full' : 'accounts are full', text: `${names(full.map(nm))} can’t add files until they have more space.`, go: { tab: 'teachers', f: 'full' }, act: 'See teachers' });
   const near = teachers.filter((t) => !accounts[t.uid]?.over && usedOf(accounts[t.uid], t) >= limitGbOf(accounts[t.uid], orgs, t.uid) * GB * 0.9);
   if (near.length) out.push({ k: 'near', n: near.length, title: near.length === 1 ? 'account nearly full' : 'accounts nearly full', text: names(near.map(nm)), go: { tab: 'teachers', f: 'near' }, act: 'See teachers' });
   const noAdmin = orgs.filter((o) => !o.adminEmails.length);

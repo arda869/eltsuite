@@ -20,7 +20,7 @@ const db = getFirestore();
 const [mode, ...args] = process.argv.slice(2);
 const STATUS = { open: 'Open', doing: 'Being worked on', done: 'Done' };
 const KIND = { bug: 'Something is wrong', change: 'A change or new idea', question: 'A question' };
-const URGENCY = { low: 'When there is time', normal: 'Soon', urgent: 'Urgent' };
+const URGENCY = { low: 'When there’s time', normal: 'Soon', urgent: 'Urgent' };
 const when = (ms) => (ms ? new Date(ms).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '');
 
 if (mode === 'answer') {

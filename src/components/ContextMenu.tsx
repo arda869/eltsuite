@@ -48,7 +48,7 @@ export function MenuHost() {
         items.push(
           { label: 'Cut', icon: '', hint: keyLabel('Mod+X'), disabled: !text, onClick: () => document.execCommand('cut') },
           { label: 'Copy', icon: 'copyall', hint: keyLabel('Mod+C'), disabled: !text, onClick: () => document.execCommand('copy') },
-          { label: 'Paste', icon: '', hint: keyLabel('Mod+V'), onClick: () => void (navigator.clipboard?.readText ? navigator.clipboard.readText() : Promise.reject()).then((v) => (field.focus(), document.execCommand('insertText', false, v))).catch(() => (field.focus(), void tell(`Your browser does not let menus paste. Press ${keyLabel('Mod+V')} to paste.`))) },
+          { label: 'Paste', icon: '', hint: keyLabel('Mod+V'), onClick: () => void (navigator.clipboard?.readText ? navigator.clipboard.readText() : Promise.reject()).then((v) => (field.focus(), document.execCommand('insertText', false, v))).catch(() => (field.focus(), void tell(`Your browser doesn’t let menus paste. Press ${keyLabel('Mod+V')} to paste.`))) },
           'sep',
           { label: 'Select all', icon: '', hint: keyLabel('Mod+A'), onClick: () => (field.focus(), document.execCommand('selectAll')) },
         );

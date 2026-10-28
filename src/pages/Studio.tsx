@@ -154,7 +154,7 @@ export function SoundStudio() {
         const lines = item.script ?? m.script ?? [];
         setSource({ buffer, name: item.name, script: lines.map((l) => l.text), marks: lines.map((l) => (l.t === null ? NaN : l.t)) });
       } catch {
-        setError('The sound could not be opened.');
+        setError('We couldn’t open the sound.');
       }
     })();
   }, [item]);

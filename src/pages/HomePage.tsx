@@ -225,7 +225,7 @@ export function HomePage() {
                 </div>
               ) : (
                 <p className="hm-empty">
-                  No classes yet. <Link to="/classes">Create your first class</Link>.
+                  No classes yet. <Link to="/classes">Make your first class</Link>.
                 </p>
               )}
             </section>

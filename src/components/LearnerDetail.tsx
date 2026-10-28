@@ -114,7 +114,7 @@ export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc;
               )}
             </span>
           ) : (
-            <span className="hint">{lastAt ? `Last active ${ago(lastAt)}` : 'Has not signed in yet'}</span>
+            <span className="hint">{lastAt ? `Last active ${ago(lastAt)}` : 'Hasn’t signed in yet'}</span>
           )}
         </span>
         <span className="ld-acts">
@@ -184,7 +184,7 @@ export function LearnerDetail({ c, learner, items, pin, onBack }: { c: ClassDoc;
             </span>
           </span>
           {timeline === null && <span className="hint">Gathering {first}’s activity…</span>}
-          {timeline && !shown.length && <span className="hint">{filter === 'All' ? `${first} has not done anything here yet.` : 'Nothing of this kind yet.'}</span>}
+          {timeline && !shown.length && <span className="hint">{filter === 'All' ? `${first} hasn’t done anything here yet.` : 'Nothing of this kind yet.'}</span>}
           {days.map(([d, list]) => (
             <div key={d} className="ld-day">
               <span className="ld-day-h">{d}</span>

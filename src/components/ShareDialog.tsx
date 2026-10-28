@@ -35,7 +35,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
       await f();
     } catch (e) {
       console.error(e);
-      setErr('That didn’t work. Please try again.');
+      setErr('That didn’t work. Try again.');
     } finally {
       setBusy('');
     }

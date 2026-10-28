@@ -35,7 +35,7 @@ export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClos
       await savePhoto(user.uid, f);
       await pick(photoKey(user.uid), true);
     } catch {
-      setErr('That photo could not be used. Try another one.');
+      setErr('We couldn’t use that photo. Try another one.');
     } finally {
       setBusy('');
     }
@@ -49,7 +49,7 @@ export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClos
       await chooseAvatar(user.uid, classIds, k, mine, { name, learnerId: profile?.role === 'learner' ? profile.learnerId : undefined });
       setAvatarLocal(k);
     } catch (e) {
-      setErr((e as Error).message === 'taken' ? 'Someone has just taken that picture. Please choose another.' : 'That didn’t work. Please try again.');
+      setErr((e as Error).message === 'taken' ? 'Someone’s just taken that picture. Choose another one.' : 'That didn’t work. Try again.');
     } finally {
       setBusy('');
     }
@@ -82,7 +82,7 @@ export function AvatarPicker({ classIds, onClose }: { classIds: string[]; onClos
               {mine?.startsWith('photo:') ? <Avatar k={mine} size={52} /> : <span className="av-plus">+</span>}
               <span className="av-label">{busy === 'photo' ? 'Adding…' : mine?.startsWith('photo:') ? 'Change photo' : 'Your photo'}</span>
             </button>
-            <span className="hint">Use a photo of yourself. It is cropped to a circle and seen by everyone in your class.</span>
+            <span className="hint">Use a photo of yourself. It’s cropped to a circle, and everyone in your class sees it.</span>
             <input ref={fileIn} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && void upload(e.target.files[0]), (e.target.value = ''))} />
           </div>
         )}

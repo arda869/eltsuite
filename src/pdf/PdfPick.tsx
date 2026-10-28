@@ -51,7 +51,7 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
       setRange([1, n]);
       setChosen({ id, title, docKey, n, units: b.units });
     } catch {
-      setBusy('The PDF could not be opened. Try again.');
+      setBusy('We couldn’t open the PDF. Try again.');
     }
   };
   const fromFile = async (id: string, title: string, docKey: string, [a, z]: [number, number]) => {
@@ -69,12 +69,12 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
       const part = first > 0 || last < all.length - 1 ? ` (pages ${first + 1}–${last + 1})` : '';
       onPick({ type: 'pdfBlock', attrs: { src: 'media:' + mediaId, pages, title: title + part, from: id, inLesson: true, first }, content: notes });
     } catch {
-      setBusy('The PDF could not be added. Try again.');
+      setBusy('We couldn’t add the PDF. Try again.');
     }
   };
   const upload = async (f: File) => {
     if (!classId) return setBusy('PDFs can be added inside a class.');
-    if (f.size > MAX_PDF) return setBusy('That PDF is larger than 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    if (f.size > MAX_PDF) return setBusy('That PDF is over 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
     try {
       setBusy('Uploading the PDF…');
       const bytes = new Uint8Array(await f.arrayBuffer());
@@ -83,7 +83,7 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
       const mediaId = await saveClassPdf(classId, bytes, pages, title);
       onPick({ type: 'pdfBlock', attrs: { src: 'media:' + mediaId, pages, title, inLesson: true }, content: [] });
     } catch {
-      setBusy('That file could not be opened as a PDF.');
+      setBusy('We couldn’t open that file as a PDF.');
     }
   };
   return createPortal(

@@ -45,7 +45,7 @@ export function LearnerRecap() {
         </span>
       </header>
       <main>
-        {r === undefined ? <p className="hint">Loading…</p> : r === null || r.status !== 'shared' ? <p className="placeholder">This recap is not available yet.</p> : <RecapView r={r} learnerLinks />}
+        {r === undefined ? <p className="hint">Loading…</p> : r === null || r.status !== 'shared' ? <p className="placeholder">This recap isn’t ready yet.</p> : <RecapView r={r} learnerLinks />}
       </main>
     </div>
   );
@@ -64,9 +64,9 @@ export function SharedRecap() {
         <Wordmark />
       </header>
       <main>
-        {r === undefined ? <p className="hint">Loading…</p> : r === null ? <p className="placeholder">This link does not work any more. Ask the teacher for a new one.</p> : <RecapView r={r} />}
+        {r === undefined ? <p className="hint">Loading…</p> : r === null ? <p className="placeholder">This link doesn’t work any more. Ask the teacher for a new one.</p> : <RecapView r={r} />}
         <p className="hint" style={{ marginTop: 24 }}>
-          Shared privately by the teacher with ELT Suite. Please don’t pass the link on.
+          Shared privately by the teacher with ELT Suite. Don’t pass the link on, please.
         </p>
       </main>
     </div>

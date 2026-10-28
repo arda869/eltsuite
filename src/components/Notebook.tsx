@@ -521,7 +521,7 @@ function Settings({ c, roster }: { c: ClassDoc; roster: { id: string; name: stri
           </div>
         </div>
       )}
-      <span className="hint">Changes apply straight away, and the security rules check them too.</span>
+      <span className="hint">Changes apply straight away.</span>
     </div>
   );
 }
@@ -744,7 +744,7 @@ export function Notebook({
                       try {
                         const title = (await askText('Name for the practice', 'Vocabulary practice', { ok: 'Make it' })) ?? 'Vocabulary practice';
                         await createVocabQuiz(classId, title, entries.filter((e) => picking.has(e.id)).map((e) => e.data));
-                        setQuizBusy('Made. It is under Practice on the class page.');
+                        setQuizBusy('Done. It’s under Practice on the class page.');
                         setPicking(null);
                         window.setTimeout(() => setQuizBusy(''), 3000);
                       } catch (e) {

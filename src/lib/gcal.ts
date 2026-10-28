@@ -66,7 +66,7 @@ function loadGis() {
     s.src = 'https://accounts.google.com/gsi/client';
     s.async = true;
     s.onload = () => res();
-    s.onerror = () => ((loading = null), rej(new Error('Google sign-in could not load. Check the connection and try again.')));
+    s.onerror = () => ((loading = null), rej(new Error('Google sign-in didn’t load. Check your connection and try again.')));
     document.head.appendChild(s);
   });
   return loading;
@@ -86,7 +86,7 @@ const settle = (r: TokenResponse) => {
     w.forEach((x) => x.res(r.access_token!));
   } else {
     const denied = r.error === 'access_denied';
-    const e = new GcalError(denied ? 'Google did not let ELT Suite in. While Google is still checking the app, only people added as test users can connect.' : r.error === 'popup_closed' ? 'The Google window was closed before it finished.' : 'Google Calendar could not connect. Please try again.');
+    const e = new GcalError(denied ? 'Google didn’t let ELT Suite in. While Google is still checking the app, only people added as test users can connect.' : r.error === 'popup_closed' ? 'The Google window was closed before it finished.' : 'We couldn’t connect Google Calendar. Try again.');
     w.forEach((x) => x.rej(e));
   }
   ping();
@@ -104,7 +104,7 @@ export const googleReady = () => !!client;
 // consent already given, the window closes by itself at once.
 export function askToken(o: { consent?: boolean; hint?: string } = {}): Promise<string> {
   if (hasToken()) return Promise.resolve(token!.value);
-  if (!client) return Promise.reject(new GcalError('Google Calendar is not set up for ELT Suite yet.'));
+  if (!client) return Promise.reject(new GcalError('Google Calendar isn’t set up for ELT Suite yet.'));
   const p = new Promise<string>((res, rej) => waiting.push({ res, rej }));
   if (waiting.length === 1) client.requestAccessToken({ prompt: o.consent ? 'consent' : '', ...(o.hint ? { hint: o.hint, login_hint: o.hint } : {}) });
   return p;
@@ -284,7 +284,7 @@ export function useGcalSync(uid: string, items: Item[], setting: GcalSetting | n
         for (const e of events) if (e.session && !mine.has(e.session) && (await gone(e.session))) await deleteEvent(e.id);
       }
     } catch (e) {
-      error = e instanceof GcalError && e.message !== 'no token' ? e.message : e instanceof Error && e.message !== 'no token' ? 'Google Calendar could not be updated.' : '';
+      error = e instanceof GcalError && e.message !== 'no token' ? e.message : e instanceof Error && e.message !== 'no token' ? 'We couldn’t update Google Calendar.' : '';
     } finally {
       busy.current = false;
     }

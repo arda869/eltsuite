@@ -488,7 +488,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         const tr = { ...newTrack(name), clips: [{ id: newId(), src: id, a: 0, b: d.length / rate, at: head, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }] };
         edit((x) => ({ ...x, tracks: [...x.tracks.filter((t) => t.kind === 'voice'), tr, ...x.tracks.filter((t) => t.kind !== 'voice')] }));
       } catch {
-        setImportBusy(`${f.name} could not be opened as a sound.`);
+        setImportBusy(`${f.name} couldn’t be opened as a sound.`);
         return;
       }
     }
@@ -638,7 +638,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             return { ...x, tracks, lines };
           });
         } catch {
-          setRecError('The recording could not be read. Try again.');
+          setRecError('We couldn’t read the recording. Try again.');
         }
       };
       recTrack.current = pickedTrack?.kind === 'voice' ? pickedTrack.id : p.tracks.find((t) => t.kind === 'voice' && !t.clips.length)?.id ?? '';
@@ -649,7 +649,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       recorder.current = r;
       setRec({ at, started: performance.now() });
     } catch (e) {
-      setRecError((e as Error).name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the address bar, then try again.' : 'No microphone was found.');
+      setRecError((e as Error).name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the address bar, then try again.' : 'We couldn’t find a microphone.');
     }
   };
   const stopRec = () => {
@@ -775,7 +775,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     } catch (e) {
       console.error(e);
       setSaving(null);
-      setError('It could not be saved. Check your connection and try again.');
+      setError('We couldn’t save it. Check your connection and try again.');
     }
   };
   const askReplace = async () => {
@@ -796,7 +796,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     } catch (e) {
       console.error(e);
       setSaving(null);
-      setError('It could not be replaced. Check your connection and try again.');
+      setError('We couldn’t replace it. Check your connection and try again.');
     }
   };
 
@@ -883,7 +883,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     } catch (err) {
       console.error(err);
-      setError('That track could not be downloaded. Try again.');
+      setError('We couldn’t download that track. Try again.');
     }
     setTrackBusy('');
   };
@@ -1108,7 +1108,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         </span>
         <span className="sed-saving-n">{Math.round(saving.p * 100)}%</span>
         <span className="hint">
-          {formatBytes(est)} · {short(total)} long. Keep this window open until it is saved.
+          {formatBytes(est)} · {short(total)} long. Keep this window open until it’s saved.
         </span>
       </div>
     );
@@ -1595,7 +1595,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             <input ref={fileIn} type="file" accept="audio/*,video/*" multiple hidden onChange={(e) => (e.target.files && void importFiles(e.target.files), (e.target.value = ''))} />
           </div>
           {(importBusy || recError) && <span className="hint">{importBusy || recError}</span>}
-          {!rec && <span className="hint sx-phones">Recording over other tracks? Wear headphones, so they are not recorded again.</span>}
+          {!rec && <span className="hint sx-phones">Recording over other tracks? Wear headphones, so they aren’t recorded again.</span>}
         </aside>
       </div>
 
@@ -1604,11 +1604,11 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         <div className="sed-replace" role="alertdialog" aria-label="Replace this sound?" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
           <strong>Replace “{replace?.name}” everywhere?</strong>
           {asking === 'loading' ? (
-            <span className="hint">Finding where it is used…</span>
+            <span className="hint">Finding where it’s used…</span>
           ) : asking.length ? (
             <>
               <span className="hint">
-                It is used in {asking.length} {asking.length === 1 ? 'task' : 'tasks'}. All of them will play the new version, and their scripts move to the new timing:
+                It’s used in {asking.length} {asking.length === 1 ? 'task' : 'tasks'}. All of them will play the new version, and their scripts move to the new timing:
               </span>
               <ul className="sed-uses">
                 {asking.map((u, i) => (
@@ -1619,9 +1619,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               </ul>
             </>
           ) : (
-            <span className="hint">It is not used in any lesson yet.</span>
+            <span className="hint">It isn’t used in any lesson yet.</span>
           )}
-          <span className="hint warn">The old version cannot be brought back. To keep it, save as a new sound instead.</span>
+          <span className="hint warn">You can’t bring the old version back. To keep it, save as a new sound instead.</span>
           <span className="cd-card-btns">
             <button type="button" className="btn small-btn" onClick={() => setAsking(null)}>
               Cancel

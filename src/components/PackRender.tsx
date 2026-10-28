@@ -512,7 +512,7 @@ function Speaking({ data, classId = '' }: Props) {
         </ul>
       )}
       <div className="pq-speak-bar">
-        <span className="pq-turn">{turn === 'done' ? 'Well done!' : turn === 'you' ? (data.pairs !== false ? 'Your turn' : 'Speak') : 'Your partner’s turn'}</span>
+        <span className="pq-turn">{turn === 'done' ? 'Well done.' : turn === 'you' ? (data.pairs !== false ? 'Your turn' : 'Speak') : 'Your partner’s turn'}</span>
         {turn !== 'done' && (
           <>
             <span className="pq-clock" role="timer">

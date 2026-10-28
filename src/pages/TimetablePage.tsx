@@ -39,7 +39,7 @@ export async function startSession(o: Occurrence, c: ClassDoc | undefined, me: {
     if (s.kind === 'class' && s.classId) go(s.itemId ? `/class/${s.classId}/lesson/${s.itemId}?teach=1` : `/class/${s.classId}`);
     return;
   }
-  if (external(s)) return void tell('The link for this session is not ready yet. It is made when the session is saved, or for Google Meet when Google Calendar is connected.');
+  if (external(s)) return void tell('The link for this session isn’t ready yet. It’s made when the session is saved, or for Google Meet when Google Calendar is connected.');
   if (s.kind === 'class' && s.classId) {
     if (s.online && c) await joinClassVideo(c, true);
     go(s.itemId ? `/class/${s.classId}/lesson/${s.itemId}?teach=1` : `/class/${s.classId}`);
@@ -52,7 +52,7 @@ export async function startSession(o: Occurrence, c: ClassDoc | undefined, me: {
     if (s.guest) void pointGuestLink(s.guest, r.url);
     openCall({ url: r.url, title: s.title, kind: 'video', sessionId: s.id, sub: 'Meeting' });
   } catch (e) {
-    void tell(callStartError(e, 'The meeting could not be started. Please try again.'));
+    void tell(callStartError(e, 'We couldn’t start the meeting. Try again.'));
   }
 }
 
@@ -233,7 +233,7 @@ export function TimetablePage() {
       }
     } catch (e) {
       console.error(e);
-      void tell('It could not be changed. Please try again.');
+      void tell('We couldn’t change it. Try again.');
     } finally {
       setHold(null);
     }
@@ -254,10 +254,10 @@ export function TimetablePage() {
         }
       }
       await removeSession(s);
-      say(`Took out “${s.title}”`, () => restoreSession(s).catch(() => tell('It could not be put back.')));
+      say(`Took out “${s.title}”`, () => restoreSession(s).catch(() => tell('We couldn’t put it back.')));
     } catch (e) {
       console.error(e);
-      void tell('It could not be taken out. Please try again.');
+      void tell('We couldn’t take it out. Try again.');
     }
   };
 
@@ -465,7 +465,7 @@ function GcalStatus({ sync }: { sync: ReturnType<typeof useGcalSync> }) {
         <UiIcon name="calendar" size={15} /> Add to Google Calendar
       </Link>
     );
-  const text = sync.state === 'busy' ? 'Updating Google Calendar…' : sync.state === 'waiting' ? `${sync.waiting} ${sync.waiting === 1 ? 'change' : 'changes'} for Google Calendar` : sync.state === 'error' ? sync.error || 'Google Calendar could not be updated.' : 'Google Calendar is up to date';
+  const text = sync.state === 'busy' ? 'Updating Google Calendar…' : sync.state === 'waiting' ? `${sync.waiting} ${sync.waiting === 1 ? 'change' : 'changes'} for Google Calendar` : sync.state === 'error' ? sync.error || 'We couldn’t update Google Calendar.' : 'Google Calendar is up to date';
   return (
     <div className={'ttb-gcal ' + sync.state} role="status">
       <i aria-hidden="true" />

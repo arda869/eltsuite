@@ -137,7 +137,7 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
       setNote(`${d.title} is in your Files now.`);
     } catch (e) {
       console.error(e);
-      setNote('The copy could not be made. Check your space, then try again.');
+      setNote('We couldn’t make the copy. Check how much space you have left, then try again.');
     }
   };
   const menuFor = (d: SharedDoc): MenuItem[] => [

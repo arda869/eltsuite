@@ -40,11 +40,11 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     setBusy('Opening the recording…');
     try {
       const buffer = await decodeSound(f);
-      if (buffer.duration > MAX_MIN * 60) return setBusy(`That is ${Math.round(buffer.duration / 60)} minutes long. Sounds can be up to ${MAX_MIN} minutes: trim it first, or use a link.`);
+      if (buffer.duration > MAX_MIN * 60) return setBusy(`That’s ${Math.round(buffer.duration / 60)} minutes long. Sounds can be up to ${MAX_MIN} minutes, so trim it first or use a link.`);
       setBusy('');
       setSource({ buffer, name: f.name.replace(/\.[a-z0-9]+$/i, '') || 'Recording', file: f });
     } catch {
-      setBusy('That file could not be opened as a sound. Try an MP3, M4A or WAV file.');
+      setBusy('We couldn’t open that file as a sound. Try an MP3, M4A or WAV file.');
     }
   };
   // Recording opens the editor straight away, ready to record.
@@ -65,7 +65,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
       const mediaId = await mediaIn(user.uid, it, classId);
       onPick({ mediaId, archiveId: it.id, kind: it.kind === 'video' ? 'video' : 'audio', title: it.name });
     } catch {
-      setBusy('That could not be added.');
+      setBusy('We couldn’t add that. Try again.');
     }
   };
   const addLink = async () => {
@@ -79,7 +79,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
       const archiveId = await archiveAdd(user.uid, { kind: video ? 'video' : 'audio', name, folder, tags: [], size: 0, link: u, home: { classId, mediaId }, script: [] as ScriptLine[] });
       onPick({ mediaId, archiveId, kind: video ? 'video' : 'audio', title: name });
     } catch {
-      setBusy('That link could not be added.');
+      setBusy('We couldn’t add that link. Check it and try again.');
     }
   };
 

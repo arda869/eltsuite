@@ -89,7 +89,7 @@ export function CollabTask({ a, classId, teacher, selfId, classmates }: { a: Col
   if (a.scope === 'group') {
     const g = roomOf(set, selfId);
     if (g) return <AnyDoc {...common} docKey={keyFor(a, { group: g.id })} modes={modes} head={<span className="cd-for">{g.name}</span>} />;
-    return <AnyDoc {...common} docKey={keyFor(a, { learner: selfId })} modes={modes} head={<span className="hint">You are not in a group, so this one is yours</span>} />;
+    return <AnyDoc {...common} docKey={keyFor(a, { learner: selfId })} modes={modes} head={<span className="hint">You’re not in a group, so this one is yours</span>} />;
   }
   // Each learner: their own document, and their group's shared ones.
   const g = roomOf(set, selfId);

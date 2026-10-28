@@ -40,7 +40,7 @@ function usePdf(src: string, classId: string) {
       .then((d) => live && setPdf(d))
       .catch(() => {
         docs.delete(key);
-        if (live) setError('The PDF could not be opened.');
+        if (live) setError('We couldn’t open the PDF.');
       });
     return () => {
       live = false;
@@ -192,7 +192,7 @@ function WordPop({ at, word, onClose }: { at: { x: number; y: number }; word: st
           ))}
         </ol>
       ) : (
-        <span className="hint">No meaning found for this word.</span>
+        <span className="hint">We couldn’t find a meaning for this word.</span>
       )}
     </div>,
     document.body,

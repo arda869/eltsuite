@@ -471,11 +471,11 @@ export async function driveUse(folderIds: string[]) {
 export type OrgInvite = { id: string; org: string; orgName: string; color?: string; logo?: string; email: string; name: string; title?: string; admin?: boolean; by: string; byName: string; at: number; status: 'pending' | 'accepted' | 'declined'; mailed?: number; existing?: boolean; uid?: string; answeredAt?: number };
 export const ADMIN_CAN = [
   'Which apps you have, and how much space',
-  'Whether you create your own classes, or they create them for you',
+  'Whether you make your own classes, or they make them for you',
   'Class settings for learners: emails, and how names show',
   'Whether you can add colleagues from outside the organisation',
   'Which shared folders you can view or change',
-  'Your job title, and whether you are a teacher trainer',
+  'Your job title, and whether you’re a teacher trainer',
 ];
 export const ADMIN_SEE = 'Your name, email, job title and the profile you write, if they ask for one, and the class lists of your classes. Not your lessons, files or messages, unless you share them.';
 

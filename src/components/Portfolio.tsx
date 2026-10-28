@@ -113,7 +113,7 @@ function LearnerPortfolio({ c, l, items, answers, docs, files, me, avg }: { c: C
       setBusy('');
     } catch (e) {
       console.error(e);
-      setBusy('The PDF could not be made. Try again.');
+      setBusy('We couldn’t make the PDF. Try again.');
     }
   };
   return (

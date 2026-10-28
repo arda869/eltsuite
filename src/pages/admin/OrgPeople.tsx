@@ -262,7 +262,7 @@ function AddExisting({ d, onClose }: { d: OrgData; onClose: () => void }) {
   };
   return (
     <Sheet title="Add a teacher who has an account" onClose={onClose}>
-      <span className="hint">They join {d.org.name} at once, with its plan and space, and leave any organisation they are in now. To ask them first, invite them instead.</span>
+      <span className="hint">They join {d.org.name} at once, with its plan and space, and leave any organisation they’re in now. To ask them first, invite them instead.</span>
       <Select value={add} search placeholder="Choose a teacher…" options={free.map((t) => ({ v: t.uid, label: t.name || t.email, hint: t.email + (d.allAccounts[t.uid]?.org ? ` · now in ${d.orgs.find((o) => o.id === d.allAccounts[t.uid]?.org)?.name ?? 'another organisation'}` : '') }))} onChange={setAdd} label="Teacher to add" className="grow" />
       <div className="hq-sheet-f">
         <span style={{ flex: 1 }} />
@@ -322,7 +322,7 @@ function TeacherDrawer({ d, uid, onClose, go }: { d: OrgData; uid: string; onClo
           <div className="hq-set">
             <span className="hq-set-t">
               <b>Teacher trainer</b>
-              <span>Creates teacher training classes for the others.</span>
+              <span>Makes teacher training classes for the others.</span>
             </span>
             <Switch on={!!t.trainer} onChange={(v) => void setTrainer(org, uid, v).then(() => d.note(v ? 'Made a teacher trainer' : 'Took the trainer role from a teacher', name))} label={`${name} is a teacher trainer`} />
           </div>
@@ -375,7 +375,7 @@ function TeacherDrawer({ d, uid, onClose, go }: { d: OrgData; uid: string; onClo
             ))}
           </ul>
         ) : (
-          <p className="hint">No classes yet.{d.org.policy?.createClasses === false ? ' Create one for them in Classes.' : ''}</p>
+          <p className="hint">No classes yet.{d.org.policy?.createClasses === false ? ' Make one for them in Classes.' : ''}</p>
         )}
       </DrawerPart>
       {org.policy?.profiles && (
@@ -477,7 +477,7 @@ export function OrgInvites({ d, params, go }: { d: OrgData; params: URLSearchPar
     const mailed = list.filter((i) => i.mailed && i.status === 'pending');
     await Promise.all(mailed.map((i) => resendInvite(i.id)));
     if (mailed.length) d.note(`Sent ${plural(mailed.length, 'invitation')} again`, mailed.map((i) => i.name || i.email).join(', '));
-    say(mailed.length ? `Sending ${plural(mailed.length, 'invitation')} again, within 15 minutes.` : 'Those emails have not gone out yet. They go within 15 minutes.');
+    say(mailed.length ? `Sending ${plural(mailed.length, 'invitation')} again, within 15 minutes.` : 'Those emails haven’t gone out yet. They’ll go within 15 minutes.');
     sel.clear();
   };
   const takeBack = async (list: OrgInvite[]) => {
@@ -490,7 +490,7 @@ export function OrgInvites({ d, params, go }: { d: OrgData; params: URLSearchPar
     <div className="hq-page">
       <PageHead
         title="Invitations"
-        lede="New teachers get a link to finish their account. Teachers who already have one are asked if they would like to join. Emails go out within 15 minutes."
+        lede="New teachers get a link to finish their account. Teachers who already have one are asked if they’d like to join. Emails go out within 15 minutes."
         actions={
           <>
             <button type="button" className="btn" disabled={!invites.length} onClick={() => void saveOrgWorkbook(org, d.classes, d.accounts, invites, 'invites')}>
@@ -728,7 +728,7 @@ function InviteSheet({ d, onClose, onSent }: { d: OrgData; onClose: () => void; 
       {limit !== null && (
         <span className={'hint' + (overLimit ? ' ic-full' : '')}>
           {room === 0 ? limitMessage(org, 'teachers') : `${org.name} has room for ${plural(room, 'more teacher')} (its limit is ${limit}).`}
-          {owner && ready.length > room ? ' As a super admin you can still invite them, but they cannot join until the limit is raised.' : ''}
+          {owner && ready.length > room ? ' As a super admin you can still invite them, but they can’t join until the limit is raised.' : ''}
         </span>
       )}
       <div className="hq-sheet-f">

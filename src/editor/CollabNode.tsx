@@ -145,7 +145,7 @@ function CollabView({ node, updateAttributes, deleteNode, editor, getPos, select
       ) : (
         <div className="co-start">
         <span className="hint">
-          {a.scope === 'class' ? 'Starting text: it is put in the document when it is first opened.' : a.scope === 'group' ? 'Starting text: each group’s document begins with it.' : 'Starting text: each learner’s document begins with it.'}
+          {a.scope === 'class' ? 'Starting text: it goes into the document the first time it’s opened.' : a.scope === 'group' ? 'Starting text: each group’s document begins with it.' : 'Starting text: each learner’s document begins with it.'}
         </span>
         <NoteEditor value={a.start} onChange={(v) => updateAttributes({ start: v })} placeholder="Optional: a heading, questions to answer, a text to improve…" />
       </div>

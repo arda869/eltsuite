@@ -99,7 +99,7 @@ export function SupportTickets({ owner, orgs, local }: { owner: boolean; orgs: O
           <div className="hq-page">
             <PageHead
               title="Support tickets"
-              lede={owner ? 'Every ticket from every organisation. Answer it here, or hand it to Claude to work on.' : 'Tell us what is wrong or what you would like changed. Paste screenshots straight in; we answer here.'}
+              lede={owner ? 'Every ticket from every organisation. Answer it here, or hand it to Claude to work on.' : 'Tell us what’s wrong or what you’d like changed. Paste screenshots straight in, and we’ll answer here.'}
               actions={
                 <button type="button" className="btn primary" onClick={() => setMaking(true)}>
                   <UiIcon name="plus" size={15} /> New ticket
@@ -115,7 +115,7 @@ export function SupportTickets({ owner, orgs, local }: { owner: boolean; orgs: O
             ) : !shown.length ? (
               <Empty
                 title={list.length ? 'No tickets here' : 'No tickets yet'}
-                text={list.length ? 'Try another filter.' : 'When something is wrong, or you would like something changed, open a ticket and paste a screenshot of it.'}
+                text={list.length ? 'Try another filter.' : 'When something’s wrong, or you’d like something changed, open a ticket and paste in a screenshot.'}
                 action={
                   !list.length && (
                     <button type="button" className="btn" onClick={() => setMaking(true)}>
@@ -188,7 +188,7 @@ export function SupportTickets({ owner, orgs, local }: { owner: boolean; orgs: O
           onSend={async (t, shots) => {
             const id = await openTicket({ ...t, by: user.uid, byName: name, byEmail: user.email ?? '' }, shots);
             setMaking(false);
-            say('Ticket sent. We will answer here.');
+            say('Ticket sent. We’ll answer here.');
             go({ t: id, f: '' });
           }}
         />
@@ -211,8 +211,8 @@ function Frame({ children }: { children: ReactNode }) {
 
 function MissingTicket({ onClose }: { onClose: () => void }) {
   return (
-    <Sheet title="This ticket is not here" onClose={onClose}>
-      <span className="hint">It may have been removed, or it belongs to an organisation you are not an admin of.</span>
+    <Sheet title="This ticket isn’t here" onClose={onClose}>
+      <span className="hint">It may have been removed, or it belongs to an organisation you’re not an admin of.</span>
       <div className="hq-sheet-f">
         <span style={{ flex: 1 }} />
         <button type="button" className="btn" onClick={onClose}>
@@ -259,7 +259,7 @@ function NewTicket({ orgs, owner, onClose, onSend }: { orgs: Org[]; owner: boole
     try {
       await onSend({ title: title.trim().slice(0, 140), body: body.trim().slice(0, 10000), kind, urgency, org: o?.id ?? null, orgName: o?.name ?? '', where }, shots);
     } catch (e) {
-      setErr('The ticket could not be sent: ' + ((e as Error).message || 'try again.'));
+      setErr('We couldn’t send the ticket: ' + ((e as Error).message || 'try again.'));
       setBusy(false);
     }
   };
@@ -271,7 +271,7 @@ function NewTicket({ orgs, owner, onClose, onSend }: { orgs: Org[]; owner: boole
       </label>
       <Seg label="What is it" value={kind} options={KINDS} onChange={setKind} />
       <label className="field">
-        <span>What happened, or what you would like</span>
+        <span>What happened, or what you’d like</span>
         <textarea className="hq-in" name="description" rows={6} maxLength={10000} value={body} placeholder="What you did, what you expected, and what happened instead. Paste screenshots with Ctrl+V or ⌘V." onChange={(e) => setBody(e.target.value)} />
       </label>
       <ShotPicker shots={shots} setShots={setShots} />
@@ -336,7 +336,7 @@ function TicketDrawer({ t, owner, me, onClose }: { t: Ticket; owner: boolean; me
       setText('');
       setAdd([]);
     } catch (e) {
-      setErr('That could not be sent: ' + ((e as Error).message || 'try again.'));
+      setErr('We couldn’t send that: ' + ((e as Error).message || 'try again.'));
     }
     setBusy(false);
   };
@@ -357,13 +357,13 @@ function TicketDrawer({ t, owner, me, onClose }: { t: Ticket; owner: boolean; me
         <span className="hq-tk-moves">
           {moves.map((s) => (
             <button key={s.k} type="button" className="btn small" disabled={busy} onClick={() => void send(s.k)}>
-              {s.k === 'done' ? (owner ? 'Mark done' : 'Close, it is sorted') : s.k === 'open' ? 'Open again' : 'Working on it'}
+              {s.k === 'done' ? (owner ? 'Mark done' : 'Close, it’s sorted') : s.k === 'open' ? 'Open again' : 'Working on it'}
             </button>
           ))}
         </span>
       }
     >
-      <DrawerPart title={kindLabel(t.kind) + (t.where ? ` · ${t.where}` : '') + (t.urgency === 'urgent' ? ' · Urgent' : t.urgency === 'low' ? ' · When there is time' : '')}>
+      <DrawerPart title={kindLabel(t.kind) + (t.where ? ` · ${t.where}` : '') + (t.urgency === 'urgent' ? ' · Urgent' : t.urgency === 'low' ? ' · When there’s time' : '')}>
         {t.body && <p className="hq-tk-body">{t.body}</p>}
         {shots === null ? <Loader label="Loading screenshots" /> : <Shots list={first} />}
       </DrawerPart>
@@ -433,7 +433,7 @@ function ClaudePart({ t, me }: { t: Ticket; me: { uid: string; name: string } })
       await startThread(me, t.title, text.trim() || 'Please look at this ticket and fix it.', add, t);
       setAsking(false);
     } catch (e) {
-      setErr('Claude could not be asked: ' + ((e as Error).message || 'try again.'));
+      setErr('We couldn’t reach Claude: ' + ((e as Error).message || 'try again.'));
     }
     setBusy(false);
   };

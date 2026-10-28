@@ -92,7 +92,7 @@ export function FileComments({ d, role, me }: { d: SharedDoc; role: DocRole; me:
               </button>
             </span>
           ) : (
-            <span className="hint">You can view this file. Ask its owner if you would like to comment.</span>
+            <span className="hint">You can view this file. To comment, ask its owner.</span>
           )}
         </div>
       )}

@@ -38,8 +38,8 @@ export function OrgRules({ d }: { d: OrgData }) {
     <div className="hq-page">
       <PageHead title="Rules" lede={`What teachers in ${org.name} can do, and the settings their new classes start with. Classes keep the settings they already have.`} />
       <Panel title="Classes">
-        <Setting title="Teachers create their own classes" about="When this is off, only admins create classes, from Classes.">
-          <Switch on={p.createClasses !== false} onChange={(v) => set({ createClasses: v }, `Teachers create their own classes: ${on(v)}`)} label="Teachers create their own classes" />
+        <Setting title="Teachers make their own classes" about="When this is off, only admins make classes, from Classes.">
+          <Switch on={p.createClasses !== false} onChange={(v) => set({ createClasses: v }, `Teachers make their own classes: ${on(v)}`)} label="Teachers make their own classes" />
         </Setting>
         <Levels d={d} />
       </Panel>
@@ -74,7 +74,7 @@ export function OrgRules({ d }: { d: OrgData }) {
         </Setting>
       </Panel>
       <Panel title="Apps">
-        <p className="hint">The apps your teachers have. What is not part of your plan is shown off.</p>
+        <p className="hint">The apps your teachers have. Anything not in your plan shows as off.</p>
         {APP_LIST.map((k) => {
           const blocked = org.allow?.apps?.[k.k] === false;
           return (
@@ -103,7 +103,7 @@ function Levels({ d }: { d: OrgData }) {
   };
   return (
     <div className="hq-levels">
-      <Setting title="Levels" about="What teachers choose from when they create a class.">
+      <Setting title="Levels" about="What teachers choose from when they make a class.">
         <span className="hq-inline">
           <span className="hint">CEFR</span>
           <Switch on={l.cefr !== false} onChange={(v) => save({ cefr: v }, `CEFR levels ${v ? 'on' : 'off'}`)} label="CEFR levels" disabled={l.cefr !== false && !custom.length} />
@@ -237,7 +237,7 @@ export function OrgBrand({ d }: { d: OrgData }) {
         await saveBrand(org, { ...b, [k]: await logoToData(f, k === 'wide' ? 720 : 320) });
         d.note('Changed the branding', k === 'wide' ? 'New long logo' : 'New square logo');
       } catch {
-        setErr('That picture could not be used. Try a PNG.');
+        setErr('We couldn’t use that picture. Try a PNG.');
       } finally {
         setBusy('');
       }
@@ -465,7 +465,7 @@ function OwnerSettings({ d }: { d: OrgData }) {
       <Setting title="Space for the organisation">
         <GbInput value={org.limitGb} max={100000} onSave={(gb) => void saveOrg(org.id, { limitGb: gb }).then(() => d.note('Changed the space for the organisation', `${gb} GB`))} label="Space for the organisation in GB" />
       </Setting>
-      <Setting title="Teacher training" about="Its admins can make teachers trainers, who create and run teacher training classes.">
+      <Setting title="Teacher training" about="Its admins can make teachers trainers, who make and run teacher training classes.">
         <Switch on={!!org.allow?.trainers} onChange={(v) => allow({ trainers: v }, `Teacher training ${v ? 'on' : 'off'}`)} label="Teacher training" />
       </Setting>
       <h3 className="hq-sub">Apps in the plan</h3>

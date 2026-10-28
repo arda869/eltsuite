@@ -191,7 +191,7 @@ function PeoplePicker({ dir, picked, onToggle, exclude = [] }: { dir: Directory;
             </div>
           );
         })}
-        {dir.groups.every((g) => !g.people.length) && <span className="hint">There is no one to write to yet.</span>}
+        {dir.groups.every((g) => !g.people.length) && <span className="hint">There’s no one to write to yet.</span>}
       </div>
     </div>
   );
@@ -213,7 +213,7 @@ export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Director
       onOpen(await openChat(dir.me, picked, title));
     } catch (e) {
       console.error(e);
-      setErr('The chat could not be started. Please try again.');
+      setErr('We couldn’t start the chat. Try again.');
       setBusy(false);
     }
   };
@@ -221,7 +221,7 @@ export function NewChat({ dir, onClose, onOpen, group = false }: { dir: Director
     <div className="scrim" onClick={onClose}>
       <div className="dialog msg-new" role="dialog" aria-label="New message" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>{group ? 'New group' : 'New message'}</h2>
-        {!group && <button type="button" className="msg-self-row" disabled={busy} onClick={() => void ((setBusy(true), openChat(dir.me, [])).then(onOpen).catch(() => (setErr('The chat could not be started. Please try again.'), setBusy(false))))}>
+        {!group && <button type="button" className="msg-self-row" disabled={busy} onClick={() => void ((setBusy(true), openChat(dir.me, [])).then(onOpen).catch(() => (setErr('We couldn’t start the chat. Try again.'), setBusy(false))))}>
           <span className="msg-av self"><UiIcon name="pen" size={15} /></span>
           <span className="sh-pt">
             <b>Notes to self</b>
@@ -466,7 +466,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
               </button>
             )}
             {questionIds(content).length > 0 && (
-              <label className="chat-opt" data-tip="Each person sees the others’ answers once they have sent their own. You always see everyone’s.">
+              <label className="chat-opt" data-tip="Each person sees the others’ answers once they’ve sent their own. You always see everyone’s.">
                 <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
                 Others see answers after answering
               </label>
@@ -895,7 +895,7 @@ function PrivateMessages() {
       <div className="msg-empty msg-private">
         <UiIcon name="lock" size={30} />
         <strong>Messages are private</strong>
-        <span className="hint">Learners’ messages are only for the people in each chat. Viewing as a learner does not open them, and teachers cannot read them.</span>
+        <span className="hint">Learners’ messages are only for the people in each chat. Viewing as a learner doesn’t open them, and teachers can’t read them.</span>
         <Link className="btn" to="/">
           Back
         </Link>
@@ -951,7 +951,7 @@ function MsgSettings({ uid }: { uid: string }) {
               <label className="switch-row">
                 <span>
                   Email me about unread messages
-                  <span className="hint">A short summary of what is waiting</span>
+                  <span className="hint">A short summary of what’s waiting</span>
                 </span>
                 <input type="checkbox" checked={prefs.email} onChange={(e) => saveMsgPrefs(uid, { ...prefs, email: e.target.checked })} />
               </label>

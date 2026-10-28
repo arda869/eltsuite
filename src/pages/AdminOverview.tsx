@@ -275,7 +275,7 @@ export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
               ))}
             </ul>
           ) : (
-            <p className="hint">No organisations yet. Create one in Organisations.</p>
+            <p className="hint">No organisations yet. Make one in Organisations.</p>
           )}
         </Panel>
         <Panel title="Closest to their space limit" action={<button type="button" className="btn link small" onClick={() => go({ tab: 'teachers', f: 'near' })}>Teachers</button>}>

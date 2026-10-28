@@ -62,7 +62,7 @@ export function ImportDialog({ classId, topics, onClose }: { classId: string; to
         navigate(`/class/${classId}/lesson/${id}`);
       }
     } catch (e) {
-      setBusy('Import failed: ' + (e as Error).message);
+      setBusy('We couldn’t import that: ' + (e as Error).message);
       return;
     }
     setBusy('');
@@ -91,7 +91,7 @@ export function ImportDialog({ classId, topics, onClose }: { classId: string; to
           </div>
           <div className="import-preview">
             {!src ? (
-              <p className="hint">Paste the lesson text on the left, or upload a file. You will see the tasks and any problems here before anything is created.</p>
+              <p className="hint">Paste the lesson text on the left, or upload a file. You’ll see the tasks, and anything to fix, here before anything is made.</p>
             ) : src.kind === 'bad' ? (
               <div className="import-errors" role="alert">
                 <strong>{src.message}</strong>

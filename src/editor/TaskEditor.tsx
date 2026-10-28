@@ -101,7 +101,7 @@ export const COMMANDS: Cmd[] = [
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
   { key: 'lettergap', label: 'Letter gaps', hint: 'One line per letter, for a word or a whole sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, letters: true } }).run() },
   { key: 'wordform', label: 'Word formation', hint: 'A gap with the stem word in capitals beside it', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, stem: 'WORD' } }).run() },
-  { key: 'radio', label: 'Multiple choice radio buttons', hint: 'Options listed under the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
+  { key: 'radio', label: 'Multiple choice, as a list', hint: 'Options listed under the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio')).run() },
   { key: 'dropdown', label: 'Multiple choice in line', hint: 'go / goes / going · learners circle one', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('dropdown')).run() },
   { key: 'truefalse', label: 'True or false', hint: 'True / False inside the sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False'])).run() },
   { key: 'notgiven', label: 'True, false or not given', hint: 'For reading tasks', group: 'Questions', run: (e) => e.chain().focus().insertContent(newChoice('radio', ['True', 'False', 'Not given'])).run() },
@@ -649,7 +649,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       }
       insertPictures(ed, srcs);
     } catch {
-      void tell('The picture could not be uploaded. Try a smaller one.');
+      void tell('We couldn’t upload the picture. Try a smaller one.');
     }
   }
   const [picOpen, setPicOpen] = useState(false);

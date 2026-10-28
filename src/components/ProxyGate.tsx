@@ -36,7 +36,7 @@ export function ProxyGate({ children }: { children: ReactNode }) {
         setInfo(next);
         navigate(info.path || '/', { replace: true });
       })
-      .catch(() => setError('Could not open this learner’s view. Their PIN may have changed: refresh the Learners list and try again.'));
+      .catch(() => setError('We couldn’t open this learner’s view. Their PIN may have changed. Refresh the Learners list and try again.'));
   }, [info, ready, navigate]);
   if (!info) return <>{children}</>;
   const close = async () => {

@@ -190,7 +190,7 @@ export function PickedBanner({ picked, me, onClose }: { picked?: LiveState['pick
   return (
     <div className={'picked-banner' + (mine ? ' mine' : '')} role="status">
       <span className="picked-name">{picked.name.split(' ')[0]}</span>
-      <span>{mine ? 'It’s your turn!' : 'is next'}</span>
+      <span>{mine ? 'It’s your turn.' : 'is next'}</span>
       <button type="button" className="picked-x" aria-label={onClose ? 'Close for everyone' : 'Close'} title={onClose ? 'Close for everyone' : 'Close'} onClick={() => (setHidden(picked.at), onClose?.())}>
         ×
       </button>
@@ -224,7 +224,7 @@ export function SignalBar({ classId, uid, name, learnerId }: { classId: string; 
   return (
     <div className="signal-bar" role="group" aria-label="Tell your teacher">
       <IconBtn icon="hand" label={me?.hand ? 'Your hand is up · lower it' : 'Raise your hand'} active={!!me?.hand} onClick={() => send({ hand: !me?.hand, handAt: Date.now() })} />
-      <IconBtn icon="stuck" label={me?.stuck ? 'Your teacher knows you need help · click when you are fine' : 'I’m stuck: tell your teacher'} active={!!me?.stuck} onClick={() => send({ stuck: !me?.stuck })} />
+      <IconBtn icon="stuck" label={me?.stuck ? 'Your teacher knows you need help · click when you’re OK' : 'I’m stuck: tell your teacher'} active={!!me?.stuck} onClick={() => send({ stuck: !me?.stuck })} />
       <span className="sig-react" ref={reactRef}>
         <IconBtn icon="react" label="Send a reaction" aria-expanded={open} active={open} onClick={() => setOpen((o) => !o)} />
         {open && (

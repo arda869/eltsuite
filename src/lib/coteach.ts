@@ -24,7 +24,7 @@ export const canEdit = (c: ClassDoc | null | undefined, uid?: string | null) => 
 
 export async function inviteTeacher(c: ClassDoc, email: string, role: CoRole, byName: string) {
   const k = emailKey(email);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) throw new Error('That does not look like an email address.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) throw new Error('That doesn’t look like an email address.');
   await updateDoc(doc(db, 'classes', c.id), { [`invites.${k}`]: { role, by: byName, at: Date.now() }, inviteEmails: arrayUnion(keyEmail(k)) });
 }
 export async function cancelInvite(c: ClassDoc, email: string) {
@@ -80,7 +80,7 @@ export function useTeacherClasses(uid?: string | null) {
         console.error(e);
         // Try again on its own a few times (a token refresh or a dropped connection) before saying so.
         if (attempt < 3) timer = window.setTimeout(() => setAttempt((a) => a + 1), 1200 * (attempt + 1));
-        else setError('Your classes could not be loaded.');
+        else setError('We couldn’t load your classes. Try again.');
       },
     );
     const u2 = onSnapshot(query(collection(db, 'classes'), where('teacherIds', 'array-contains', uid)), (s) => setShared(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) }))), () => setShared([]));

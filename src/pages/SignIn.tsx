@@ -30,7 +30,7 @@ const GOOGLE = (
 
 const TITLES: Record<Mode, string> = {
   signin: 'Teacher sign-in',
-  create: 'Create a teacher account',
+  create: 'Make your teacher account',
   reset: 'Reset your password',
   link: 'Sign in with an email link',
   code: 'I have an invitation',
@@ -84,7 +84,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
   async function openInvitation(text: string) {
     await run(async () => {
       const c = await readCode(text);
-      if (!c) return setError('That code was not found. Check it and try again: it looks like ABCD-EF23.');
+      if (!c) return setError('We couldn’t find that code. Check it and try again. It looks like ABCD-EF23.');
       const problem = codeProblem(c);
       if (problem) return setError(problem + ' Ask whoever invited you for a new one.');
       keepCode(c.code);
@@ -106,7 +106,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
     } else if (mode === 'signin') {
       run(async () => void (await signInWithEmailAndPassword(auth, address, password)));
     } else if (mode === 'create') {
-      if (password.length < 8) return setError('Please use a password of at least 8 characters.');
+      if (password.length < 8) return setError('Your password needs at least 8 characters.');
       if (code) {
         const problem = codeProblem(code, address);
         if (problem) return setError(problem);
@@ -129,7 +129,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
     } else if (mode === 'reset') {
       run(async () => {
         await sendPasswordResetEmail(auth, address);
-        setNotice('If there is an account for this email, a reset link is on its way.');
+        setNotice('If there’s an account for this email, we’ve sent it a reset link.');
       });
     } else {
       run(async () => {
@@ -175,7 +175,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
         {notInvited && !error && (
           <span className="error" role="alert">
-            {notInvited} has no account in ELT Suite yet, and there is no invitation for it. ELT Suite is open by invitation for now: if you have an invitation code, choose “I have an invitation”.
+            {notInvited} doesn’t have an account yet, and there’s no invitation for it. ELT Suite is invitation-only for now. If you have a code, choose “I have an invitation”.
           </span>
         )}
         {mode === 'create' && code && (
@@ -247,7 +247,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         {notice && <span className="notice" role="status">{notice}</span>}
 
         <button type="submit" className="btn primary tall block" disabled={busy || (mode === 'code' ? cleanCode(typed).length < 8 : !email.trim() || (needsPassword && !password))}>
-          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Create account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
+          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
         </button>
 
         {mode === 'signin' && (
@@ -274,7 +274,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
             </button>
           )}
           <Link to="/join" className="small">
-            I am a learner
+            I’m a learner
           </Link>
         </div>
         <span className="hint legal-links">
