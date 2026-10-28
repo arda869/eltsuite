@@ -64,8 +64,8 @@ export function SuiteOrbit() {
 }
 
 // "Your whole job in one account.", marked up the way a teacher would on the board: a substitution
-// slot for "whole", "n." over "job", linking from "job" into "in" and from "one" into "account",
-// the schwa in "account" and its stressed syllable. Hover (or tab) to read what it means.
+// slot for "whole", "n." over "job", linking from "one" into "account",
+// the weak "in" (a schwa) and its stressed syllable. Hover (or tab) to read what it means.
 const Link = () => (
   <span className="pr-pl" data-k="link" data-s="under" role="img" aria-label="linking">
     <span className="pr-pl-arc">
@@ -88,11 +88,10 @@ export function Tagline() {
         </span>{' '}
         <span className="pr-gl" data-text="n." data-shape="pill" data-tone="ink" data-at="above">
           job
-        </span>
+        </span>{' '}
+        <span className="pr-sd" data-k="schwa">in</span> one
         <Link />
-        in one
-        <Link />
-        <span className="pr-sd" data-k="schwa">a</span>c<span className="si-st">count</span>.
+        ac<span className="si-st">count</span>.
       </span>
       <span className="si-tag-tip" id="si-tag-tip" role="tooltip">
         <b>Made by English teachers, for English teachers.</b> The board, the coursebook, the worksheets and your marking pen: everything you reach for in the classroom, now online and together in one place.
