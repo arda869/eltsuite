@@ -6,19 +6,25 @@ import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
 import { Select } from '../components/Select';
 import { OrgOverview, SuperOverview } from './AdminOverview';
-import { isOwnerEmail, logOrg, useAccounts, useAllClasses, useAllInvites, useDrive, useOrgAccounts, useOrgClasses, useOrgInvites, useOrgLog, useOrgPictures, useOrgs, useTeachers, type Org } from '../lib/admin';
+import { useSuper, logOrg, useAccounts, useAllClasses, useAllInvites, useDrive, useOrgAccounts, useOrgClasses, useOrgInvites, useOrgLog, useOrgPictures, useOrgs, useTeachers, type Org } from '../lib/admin';
 import { OrgAdmins, OrgInvites, OrgTeachers } from './admin/OrgPeople';
 import { OrgClasses } from './admin/OrgClasses';
 import { OrgBrand, OrgRules, OrgSpace } from './admin/OrgSettings';
 import { OrgDrives, OrgForms } from './admin/OrgLibrary';
 import { OrgActivity } from './admin/OrgActivity';
 import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Super';
+import { SuperAdmins } from './admin/SuperAdmins';
+import { ClaudeArea } from './admin/Claude';
+import { SupportTickets } from './SupportPage';
+import { useTickets } from '../lib/tickets';
+import { useThreads } from '../lib/claude';
 import { WAIT_DAYS } from './admin/attention';
 import { daysSince, plural } from './admin/ui';
 import type { OrgData, Go, SuperData } from './admin/types';
 import './admin.css';
 
-// Super Admin (/admin) is the app's owner's alone: every teacher, organisation and switch.
+// Super Admin (/admin) is for super admins (the owner, and whoever they make one): every teacher,
+// organisation and switch, the support tickets, and conversations with Claude.
 // Organisation admin (/org-admin) is for an organisation's admins: their organisation only.
 // Where you are lives in the address (?org=…&tab=…), so every page can be linked to and Back works.
 
@@ -27,7 +33,8 @@ const OLD: Record<string, string> = { drives: 'library' };
 
 export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
   const { user } = useAuth();
-  const isOwner = isOwnerEmail(user?.email);
+  const isSuper = useSuper();
+  const isOwner = isSuper === true;
   const owner = mode === 'super' && isOwner;
   const orgs = useOrgs(owner, user?.email);
   const [params, setParams] = useSearchParams();
@@ -50,11 +57,12 @@ export function AdminPage({ mode = 'super' }: { mode?: 'super' | 'org' }) {
   // A new page starts at its top.
   useEffect(() => void window.scrollTo({ top: 0 }), [tab, orgId, params.get('c')]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (user && isSuper === null) return <Loader full label={mode === 'super' ? 'Opening Super Admin' : 'Opening Organisation admin'} />;
   if (user && mode === 'super' && !isOwner)
     return (
       <Frame>
         <div className="hq-closed">
-          <strong>Super Admin is only for the owner of ELT Suite</strong>
+          <strong>Super Admin is only for the super admins of ELT Suite</strong>
           <span className="hint">You can run your own organisation from Organisation admin, if you are one of its admins.</span>
         </div>
       </Frame>
@@ -136,6 +144,8 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
   const accounts = useAccounts(true);
   const classes = useAllClasses(true);
   const invites = useAllInvites(true);
+  const tickets = useTickets(true, null);
+  const threads = useThreads(true);
   const d: SuperData = { teachers: teachers ?? [], accounts, orgs, classes: classes ?? [], invites, loading: teachers === null || classes === null };
   const items: NavItem[] = [
     { k: 'overview', label: 'Overview', icon: 'poll' },
@@ -143,6 +153,9 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
+    { k: 'tickets', label: 'Support tickets', icon: 'help', n: tickets?.filter((t) => t.status === 'open').length },
+    { k: 'claude', label: 'Claude', icon: 'message', n: threads?.filter((t) => t.state === 'answered' && !t.seen).length || undefined },
+    { k: 'supers', label: 'Super admins', icon: 'lock' },
   ];
   const known = items.some((i) => i.k === tab) ? tab : 'overview';
   return (
@@ -185,6 +198,9 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
           {known === 'apps' && <SuperApps d={d} />}
           {known === 'defaults' && <SuperDefaults />}
+          {known === 'tickets' && <SupportTickets owner orgs={orgs} />}
+          {known === 'claude' && <ClaudeArea threads={threads} params={params} go={go} />}
+          {known === 'supers' && <SuperAdmins />}
         </main>
       </div>
     </Frame>
