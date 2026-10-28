@@ -7760,11 +7760,19 @@ html { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) { .so-ring, .so-up { animation: none; } }
 @media (max-width: 480px) { .so { transform: scale(.82); margin: -30px auto -26px; } }
 /* Sign-in: the tagline, marked up like the board */
-.signin .intro p.si-tag { position: relative; margin: 14px 0 0; font: 500 30px/2.1 var(--serif); color: var(--ink); cursor: help; outline: none; }
-.si-tag .pr-ss, .si-tag .pr-sd, .si-tag .pr-gl { --accent: #c8764a; }
+.signin .intro p.si-tag { position: relative; margin: 14px 0 0; font: 500 28px/2.1 var(--serif); white-space: nowrap; color: var(--ink); cursor: help; outline: none; }
+.si-tag .pr-sd { --accent: #b0612f; }
+.si-tag .pr-gl[data-at='above'] { background: none; border-top: 0; padding: 0; }
+.si-tag .pr-gl::before { display: none; }
+.si-tag .pr-gl::after { bottom: calc(100% - 0.1em); }
+.si-tag .subs.si-subs { vertical-align: baseline; margin: 0 0.15em; padding: 0 0.35em; border-color: #b0612f; line-height: 1.15; }
+.si-subs .subs-o:nth-child(2) { font-size: 0.72em; color: #5a5550; }
+.si-subs .subs-o:nth-child(3) { font-size: 0.56em; color: #6b655f; }
+.si-st { position: relative; font-weight: 700; }
+.si-st::before { content: ''; position: absolute; left: 50%; top: -0.2em; width: 0.24em; height: 0.24em; transform: translateX(-50%); background: #b0612f; }
 .si-tag .pr-pl { --accent: #c8764a; color: #c8764a; }
-.si-tag-tip { position: absolute; left: 0; top: calc(100% + 2px); z-index: 6; width: min(380px, 90vw); display: none; padding: 12px 14px; border-radius: 12px; background: var(--paper, #fff); box-shadow: 0 0 0 1px var(--hair), 0 12px 30px rgba(51, 48, 44, .16); font: 14.5px/1.55 var(--sans); color: #4d4a46; }
+.si-tag-tip { position: absolute; left: 0; top: calc(100% + 2px); z-index: 6; width: min(380px, 90vw); display: none; white-space: normal; padding: 12px 14px; border-radius: 12px; background: var(--paper, #fff); box-shadow: 0 0 0 1px var(--hair), 0 12px 30px rgba(51, 48, 44, .16); font: 14.5px/1.55 var(--sans); color: #4d4a46; }
 .si-tag-tip b { display: block; margin-bottom: 2px; color: var(--ink); font-size: 15px; }
 .si-tag:hover .si-tag-tip, .si-tag:focus-visible .si-tag-tip { display: block; }
 .si-tag:focus-visible .si-tag-line { outline: 2px solid #c8764a; outline-offset: 4px; border-radius: 6px; }
-@media (max-width: 480px) { .signin .intro p.si-tag { font-size: 24px; } }
+@media (max-width: 480px) { .signin .intro p.si-tag { font-size: 21px; } }
