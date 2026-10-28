@@ -9,6 +9,7 @@ import { cleanNoise } from '../lib/soundJobs';
 import { archiveAdd, formatBytes, saveSound, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
+import { askText } from '../lib/ask';
 import { SuiteMark } from '../components/Wordmark';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { UiIcon } from '../components/UiIcon';
@@ -72,7 +73,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 
   // ------------------------------------------------------------ the project, with undo
   const initial = useMemo<Project>(() => {
-    const voice = { ...newTrack(source.blank ? 'Recording' : source.extra || source.at !== undefined ? source.name : source.recorded ? 'Recording' : 'Voice'), clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
+    const voice = { ...newTrack(source.extra || source.at !== undefined ? source.name : 'Speaker 1'), clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
     const marks = source.marks ?? [];
     const texts = source.script ?? [];
     const lines: Line[] = texts.map((text, i) => {
@@ -445,7 +446,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   };
   // A script line at the playhead, up to 3 s, never over another line.
   const addVoiceTrack = () => {
-    const tr = newTrack(`Recording ${p.tracks.filter((t) => t.kind === 'voice').length + 1}`);
+    const tr = newTrack(`Speaker ${p.tracks.filter((t) => t.kind === 'voice').length + 1}`);
     edit((x) => ({ ...x, tracks: [...x.tracks.filter((t) => t.kind === 'voice'), tr, ...x.tracks.filter((t) => t.kind !== 'voice')] }));
     setPick({ kind: 'track', id: tr.id });
   };
@@ -748,7 +749,15 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const out = mixdown(heard.project, heard.sources, rate);
     setSaving({ stage: 'Making it smaller', p: 0.08 });
     const blob = await encodeMp3(out, rate, quality, (q) => setSaving({ stage: 'Making it smaller', p: 0.08 + q * 0.52 }));
-    const sc: ScriptLine[] = [...p.lines].filter((l) => l.text.trim()).sort((a, b) => a.a - b.a).map((l) => ({ text: l.text.trim(), t: +l.a.toFixed(2), e: +l.b.toFixed(2), ...(l.who ? { who: l.who } : {}) }));
+    // Scripts on more than one speaker's track: each line's speaker is its track, so the karaoke
+    // player knows who says what without setting speakers again.
+    const said = p.lines.filter((l) => l.text.trim());
+    const many = new Set(said.map(lineTrack)).size > 1;
+    const trackName = (id: string) => p.tracks.find((t) => t.id === id)?.name.trim() || '';
+    const sc: ScriptLine[] = [...said].sort((a, b) => a.a - b.a).map((l) => {
+      const who = l.who || (many ? trackName(lineTrack(l)) : '');
+      return { text: l.text.trim(), t: +l.a.toFixed(2), e: +l.b.toFixed(2), ...(who ? { who } : {}) };
+    });
     return { blob, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.6 };
   };
   const save = async () => {
@@ -853,10 +862,39 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       { label: c.fadeOut ? 'No fade out' : 'Fade out', icon: 'sync', hint: 'Shift F', onClick: () => setClip(tr.id, c.id, { fadeOut: c.fadeOut ? 0 : Math.min(0.5, clipLen(c) / 3) }) },
       ...(tr.kind === 'voice' ? [{ label: 'Add 1 second of silence here', icon: 'silence', onClick: () => insertSilence(1, inside ? t : clipEnd(c), tr.id) } as MenuItem] : []),
       { label: tr.mute ? 'Unmute the track' : 'Mute the track', icon: 'beep', hint: 'M', onClick: () => setTrack(tr.id, { mute: !tr.mute }) },
+      ...trackItems(tr),
       'sep',
       { label: 'Delete', icon: 'trash', hint: 'Delete', danger: true, onClick: () => window.setTimeout(removePicked, 0) },
     ]);
   };
+  // One track on its own, as an MP3 file: what that speaker (or the effects) says, nothing else.
+  const [trackBusy, setTrackBusy] = useState('');
+  const downloadTrack = async (tr: Track) => {
+    if (trackBusy) return;
+    setTrackBusy(tr.id);
+    try {
+      const only = { ...heard.project, tracks: heard.project.tracks.filter((t) => t.id === tr.id).map((t) => ({ ...t, mute: false, solo: false })) };
+      const out = mixdown(only, heard.sources, rate);
+      const blob = await encodeMp3(out, rate, quality);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${(title.trim() || 'Recording').replace(/[\\/:*?"<>|]/g, '')} - ${tr.name.replace(/[\\/:*?"<>|]/g, '')}.mp3`;
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch (err) {
+      console.error(err);
+      setError('That track could not be downloaded. Try again.');
+    }
+    setTrackBusy('');
+  };
+  const renameTrack = async (tr: Track) => {
+    const name = await askText('Name this track', tr.name, { ok: 'Rename' });
+    if (name !== null && name.trim()) setTrack(tr.id, { name: name.trim().slice(0, 40) });
+  };
+  const trackItems = (tr: Track): MenuItem[] => [
+    { label: trackBusy === tr.id ? 'Getting the track ready…' : `Download “${tr.name}” (MP3)`, icon: 'export', disabled: !tr.clips.length || !!trackBusy, onClick: () => void downloadTrack(tr) },
+    { label: 'Rename the track', icon: 'edit', onClick: () => void renameTrack(tr) },
+  ];
   const laneMenu = (tr: Track | null) => (e: React.MouseEvent) => {
     const t = Math.max(0, T(e.clientX));
     const cb = clipBoard.current;
@@ -875,6 +913,8 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       'sep',
       { label: 'Select everything', icon: 'pick', hint: 'Ctrl A', onClick: () => setSel({ a: 0, b: total }) },
       ...(sel ? [{ label: 'Cut out the selection', icon: 'trash', hint: 'Delete', onClick: () => cutRange(sel.a, sel.b) } as MenuItem, { label: 'Keep only the selection', icon: 'pick', hint: 'Ctrl Shift X', onClick: () => keepRange(sel.a, sel.b) } as MenuItem] : []),
+      ...(tr ? (['sep', ...trackItems(tr)] as MenuItem[]) : []),
+      'sep',
       { label: 'Show every shortcut', icon: 'help', hint: '?', onClick: () => setKeysOpen(true) },
     ]);
   };
@@ -923,6 +963,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     window.addEventListener('pointerup', up);
   };
   // Dragging a clip: the middle moves it; the sides trim it; the top corners set its fades.
+  const [dragId, setDragId] = useState(''); // the clip being moved: lifted, so it reads as in the hand
   const clipDown = (tr: Track, c: Clip, mode: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => {
     if (e.button !== 0) return;
     if (silMode) return silenceDown(e, tr.kind === 'voice' ? tr.id : undefined);
@@ -938,6 +979,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const mv = (ev: PointerEvent) => {
       const dt = (ev.clientX - x0) / pps;
       if (!moved && Math.abs(ev.clientX - x0) < 3) return;
+      if (!moved && mode === 'move') setDragId(c.id);
       moved = true;
       setGuide(null);
       if (mode === 'move') {
@@ -977,6 +1019,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const up = () => {
       window.removeEventListener('pointermove', mv);
       window.removeEventListener('pointerup', up);
+      setDragId('');
       if (!moved && mode === 'move') setHead(T(x0));
     };
     window.addEventListener('pointermove', mv);
@@ -989,25 +1032,55 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     setPick({ kind: 'line', id: l.id });
     setSel(null);
     const x0 = e.clientX;
-    const others = p.lines.filter((o) => o.id !== l.id).sort((a, b) => a.a - b.a);
-    const prevEnd = others.filter((o) => o.b <= l.a + 0.001).reduce((m, o) => Math.max(m, o.b), 0);
-    const nextStart = others.filter((o) => o.a >= l.b - 0.001).reduce((m, o) => Math.min(m, o.a), Infinity);
+    const y0 = e.clientY;
+    // Only the lines of the same speaker's script are in the way: each track has its own script.
+    const home = lineTrack(l);
+    const bounds = (tk: string) => {
+      const others = p.lines.filter((o) => o.id !== l.id && lineTrack(o) === tk);
+      return {
+        others,
+        prevEnd: others.filter((o) => o.b <= l.a + 0.001).reduce((m, o) => Math.max(m, o.b), 0),
+        nextStart: others.filter((o) => o.a >= l.b - 0.001).reduce((m, o) => Math.min(m, o.a), Infinity),
+      };
+    };
+    const { prevEnd, nextStart } = bounds(home);
     const group = 'line-' + l.id + '-' + Date.now();
     let moved = false;
     const mv = (ev: PointerEvent) => {
       const dt = (ev.clientX - x0) / pps;
-      if (!moved && Math.abs(ev.clientX - x0) < 3) return;
+      if (!moved && Math.abs(ev.clientX - x0) < 3 && Math.abs(ev.clientY - y0) < 3) return;
+      if (!moved && mode === 'move') setDragId(l.id);
       moved = true;
       const len = l.b - l.a;
       if (mode === 'move') {
+        // Dragged up or down onto another track's script (or the track itself): the line moves to that speaker.
+        const over = (document.elementFromPoint(ev.clientX, ev.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-script-track], [data-track]');
+        const to = over?.dataset.scriptTrack ?? over?.dataset.track ?? home;
+        const target = p.tracks.some((t) => t.id === to && t.kind === 'voice') ? to : home;
+        if (target !== home) {
+          const want = snap(l.a + dt, ev.altKey, [l.a]);
+          const { others } = bounds(target);
+          // the free space nearest to where it was dropped
+          const gaps: [number, number][] = [];
+          let from = 0;
+          for (const o of [...others].sort((x, y) => x.a - y.a)) {
+            if (o.a - from >= len) gaps.push([from, o.a]);
+            from = Math.max(from, o.b);
+          }
+          gaps.push([from, Infinity]);
+          const fit = gaps.map(([g0, g1]) => Math.max(g0, Math.min(g1 - len, want))).sort((x, y) => Math.abs(x - want) - Math.abs(y - want))[0];
+          if (fit !== undefined) setLine(l.id, { a: fit, b: fit + len, track: target }, group);
+          return;
+        }
         const a = Math.max(prevEnd, Math.min(nextStart - len, snap(l.a + dt, ev.altKey, [l.a])));
-        setLine(l.id, { a, b: a + len }, group);
+        setLine(l.id, { a, b: a + len, track: home }, group);
       } else if (mode === 'l') setLine(l.id, { a: Math.max(prevEnd, Math.min(l.b - 0.2, snap(l.a + dt, ev.altKey, [l.a]))) }, group);
       else setLine(l.id, { b: Math.min(nextStart, Math.max(l.a + 0.2, snap(l.b + dt, ev.altKey, [l.b]))) }, group);
     };
     const up = () => {
       window.removeEventListener('pointermove', mv);
       window.removeEventListener('pointerup', up);
+      setDragId('');
       if (!moved && mode === 'move') setHead(l.a);
     };
     window.addEventListener('pointermove', mv);
@@ -1249,7 +1322,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             {voice.map((tr) => [
               <div key={tr.id} className={'sx-row sx-voice' + (tr.mute ? ' muted' : '') + (pickedTrack?.id === tr.id ? ' picked' : '')}>
                 <span className="sx-head-cell" onClick={() => setPick({ kind: 'track', id: tr.id })}>
-                  <b className="sx-tname">{tr.name}</b>
+                  <b className="sx-tname" onDoubleClick={(e) => (e.stopPropagation(), void renameTrack(tr))} onContextMenu={(e) => (e.preventDefault(), e.stopPropagation(), openMenu(e, trackItems(tr)))} data-tip="Double-click to rename; right-click to download">{tr.name}</b>
                   <span className="sx-tbtns">
                     <button type="button" className={'sx-ms' + (tr.mute ? ' on' : '')} onClick={(e) => (e.stopPropagation(), setTrack(tr.id, { mute: !tr.mute }))} data-tip="Mute (M)">
                       M
@@ -1263,7 +1336,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                 </span>
                 <span className="sx-lane" data-track={tr.id} onPointerDown={backgroundDown} onContextMenu={laneMenu(tr)}>
                   {tr.clips.map((c) => (
-                    <ClipView key={c.id} c={c} kind="voice" data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
+                    <ClipView key={c.id} c={c} kind="voice" onGain={(g, grp) => setClip(tr.id, c.id, { gain: g }, grp)} data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} dragging={dragId === c.id} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
                   ))}
                   {rec && (recTrack.current ? recTrack.current === tr.id : voice[voice.length - 1].id === tr.id) && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, livePeaks.length * 0.05 * pps, recNow * pps) }}>
                       <svg width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true">
@@ -1282,9 +1355,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                   + Line
                 </button>
               </span>
-              <span className="sx-lane" onPointerDown={backgroundDown}>
+              <span className="sx-lane" data-script-track={tr.id} onPointerDown={backgroundDown}>
                 {pv.lines.filter((l) => lineTrack(l) === tr.id).map((l) => (
-                  <span key={l.id} className={'sx-line' + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' blank')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
+                  <span key={l.id} className={'sx-line' + (dragId === l.id ? ' dragging' : '') + (pick?.kind === 'line' && pick.id === l.id ? ' picked' : '') + (l.text.trim() ? '' : ' blank')} style={{ left: X(l.a), width: Math.max(6, X(l.b) - X(l.a)) }} onPointerDown={lineDown(l, 'move')} title={l.text}>
                     <span className="sx-edge l" onPointerDown={lineDown(l, 'l')} />
                     <span className="sx-line-t">
                       {l.who && <b>{l.who}</b>}
@@ -1310,7 +1383,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               return (
                 <div key={tr.id} className={'sx-row sx-sfx' + (tr.mute ? ' muted' : '') + (pickedTrack?.id === tr.id ? ' picked' : '')} style={{ height: Math.max(62, n * 30 + 12) }}>
                   <span className="sx-head-cell" onClick={() => setPick({ kind: 'track', id: tr.id })}>
-                    <b className="sx-tname">{tr.name}</b>
+                    <b className="sx-tname" onDoubleClick={(e) => (e.stopPropagation(), void renameTrack(tr))} onContextMenu={(e) => (e.preventDefault(), e.stopPropagation(), openMenu(e, trackItems(tr)))} data-tip="Double-click to rename; right-click to download">{tr.name}</b>
                     <span className="sx-tbtns">
                       <button type="button" className={'sx-ms' + (tr.mute ? ' on' : '')} onClick={(e) => (e.stopPropagation(), setTrack(tr.id, { mute: !tr.mute }))} data-tip="Mute">
                         M
@@ -1320,7 +1393,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                   </span>
                   <span className="sx-lane" onPointerDown={backgroundDown}>
                     {tr.clips.map((c) => (
-                      <ClipView key={c.id} c={c} kind="sfx" row={rows[c.id] ?? 0} data={sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
+                      <ClipView key={c.id} c={c} kind="sfx" row={rows[c.id] ?? 0} data={sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} dragging={dragId === c.id} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
                     ))}
                   </span>
                 </div>
@@ -1564,7 +1637,32 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 }
 
 // A clip on its track: its own wave (after its effect and volume), edges to trim, corners to fade.
-function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked, onDown, onMenu }: { c: Clip; kind: 'voice' | 'sfx'; row?: number; data?: Float32Array; rate: number; pps: number; scroll: number; vw: number; label: string; picked: boolean; onDown: (m: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => void; onMenu?: (e: React.MouseEvent) => void }) {
+function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked, dragging, onDown, onMenu, onGain }: { c: Clip; dragging?: boolean; kind: 'voice' | 'sfx'; row?: number; data?: Float32Array; rate: number; pps: number; scroll: number; vw: number; label: string; picked: boolean; onDown: (m: 'move' | 'l' | 'r' | 'fi' | 'fo') => (e: React.PointerEvent) => void; onMenu?: (e: React.MouseEvent) => void; onGain?: (gain: number, group: string) => void }) {
+  // The clip's volume: a line across it, dragged up (louder, to 200%) or down (quieter, to silent).
+  const [gainDrag, setGainDrag] = useState(false);
+  const gainDown = (e: React.PointerEvent) => {
+    if (!onGain || e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const box = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+    const y0 = e.clientY;
+    const g0 = c.gain;
+    const group = 'gain-' + c.id + '-' + Date.now();
+    setGainDrag(true);
+    const mv = (ev: PointerEvent) => {
+      let g = g0 - ((ev.clientY - y0) / Math.max(20, box.height)) * 2;
+      g = Math.max(0, Math.min(2, g));
+      if (Math.abs(g - 1) < 0.04) g = 1; // a pull towards 100%
+      onGain(Math.round(g * 100) / 100, group);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', mv);
+      window.removeEventListener('pointerup', up);
+      setGainDrag(false);
+    };
+    window.addEventListener('pointermove', mv);
+    window.addEventListener('pointerup', up);
+  };
   const cv = useRef<HTMLCanvasElement>(null);
   const left = c.at * pps;
   const w = Math.max(3, clipLen(c) * pps);
@@ -1598,7 +1696,7 @@ function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked
   const fi = c.fadeIn * pps;
   const fo = c.fadeOut * pps;
   return (
-    <span className={'sx-clip ' + kind + (c.src === 'silence' ? ' silence' : '') + (picked ? ' picked' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')} onContextMenu={(e) => (e.stopPropagation(), onMenu?.(e))}>
+    <span className={'sx-clip ' + kind + (c.src === 'silence' ? ' silence' : '') + (picked ? ' picked' : '') + (dragging ? ' dragging' : '') + (c.fx ? ' has-fx' : '')} style={{ left, width: w, ...(kind === 'sfx' ? { top: 5 + row * 30, height: 26 } : {}) }} onPointerDown={onDown('move')} onContextMenu={(e) => (e.stopPropagation(), onMenu?.(e))}>
       <canvas ref={cv} className="sx-clip-wave" style={{ left: from, width: Math.max(0, to - from) }} />
       {w > 30 && (
         <span className="sx-clip-name">
@@ -1617,6 +1715,11 @@ function ClipView({ c, kind, row = 0, data, rate, pps, scroll, vw, label, picked
         <svg className="sx-fade" style={{ right: 0, width: fo }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           <path d="M100 0 L100 100 Q 40 95 0 0 Z" />
         </svg>
+      )}
+      {onGain && c.src !== 'silence' && w > 24 && (
+        <span className={'sx-gain' + (gainDrag ? ' on' : '')} style={{ top: `${(1 - c.gain / 2) * 100}%` }} onPointerDown={gainDown} onDoubleClick={(e) => (e.stopPropagation(), onGain(1, 'gain-reset-' + c.id))} data-tip="Drag up or down for this clip's volume; double-click for 100%">
+          {gainDrag && <b>{Math.round(c.gain * 100)}%</b>}
+        </span>
       )}
       <span className="sx-edge l" onPointerDown={onDown('l')} />
       <span className="sx-edge r" onPointerDown={onDown('r')} />

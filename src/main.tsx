@@ -4,6 +4,7 @@ import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
 import { startTilt } from './lib/tilt';
 import { startTheme } from './lib/theme';
+import { startViewport } from './lib/viewport';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -121,6 +122,7 @@ function LearnerOnly({ children }: { children: JSX.Element }) {
 }
 
 startTheme();
+startViewport();
 startTilt();
 watchChunkErrors();
 
