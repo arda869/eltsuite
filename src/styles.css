@@ -7782,3 +7782,14 @@ html { touch-action: manipulation; }
 .cd-pagebar .pg-pt { width: 54px; }
 .cd-pagebar .pg-sel { height: 28px; padding: 0 4px; font-size: 12.5px; }
 .pg-paper .dp-h1 { font-size: 30px; margin-bottom: 14px; }
+/* Sign-in on a computer: everything fits the window, no scrolling. The picture shrinks on shorter screens. */
+@media (min-width: 721px) {
+  .signin { min-height: 100vh; padding: 20px 24px; }
+  .signin .intro { gap: 12px; }
+  .signin .intro .so { margin: 0 auto; }
+}
+@media (min-width: 721px) and (max-height: 940px) { .signin .intro .so { zoom: 0.86; } }
+@media (min-width: 721px) and (max-height: 860px) { .signin .intro .so { zoom: 0.74; } }
+@media (min-width: 721px) and (max-height: 780px) { .signin .intro .so { zoom: 0.62; } }
+@media (min-width: 721px) and (max-height: 700px) { .signin .intro .so { zoom: 0.5; } }
+@media (min-width: 721px) and (max-height: 620px) { .signin .intro .so { display: none; } }
