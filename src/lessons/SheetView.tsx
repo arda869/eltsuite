@@ -56,6 +56,24 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
   const [pushes, setPushes] = useState<number[]>([]);
   const [pages, setPages] = useState(1);
   const inner = areaBottom(0) - areaTop(0);
+  // The task you click stays where it was on screen while the page around it settles: the one you
+  // leave shrinks back to its printed size, which would otherwise move everything below it.
+  const anchor = useRef<{ id: string; top: number } | null>(null);
+  const keep = (id: string) => {
+    const el = host.current?.querySelector<HTMLElement>(`[data-b="${CSS.escape(id)}"]`);
+    if (el) anchor.current = { id, top: el.getBoundingClientRect().top };
+  };
+  const settle = () => {
+    const a = anchor.current;
+    const el = a && host.current?.querySelector<HTMLElement>(`[data-b="${CSS.escape(a.id)}"]`);
+    if (!a || !el) return;
+    const d = el.getBoundingClientRect().top - a.top;
+    if (Math.abs(d) < 2) return;
+    let sc: HTMLElement | null = host.current!.parentElement;
+    while (sc && !(sc.scrollHeight > sc.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+    if (sc) sc.scrollTop += d;
+    else window.scrollBy(0, d);
+  };
   // Lay the blocks out page by page from their own heights.
   useLayoutEffect(() => {
     const el = host.current;
@@ -82,11 +100,14 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
       });
       setPages((n) => (n === page + 1 ? n : page + 1));
       setPushes((old) => (old.length === next.length && old.every((v, i) => Math.abs(v - next[i]) < 1) ? old : next));
+      requestAnimationFrame(settle);
     };
     lay();
     const ro = new ResizeObserver(lay);
     [...el.children].forEach((c) => ro.observe(c));
-    return () => ro.disconnect();
+    // Stop holding the clicked task in place once the page has settled.
+    const done = window.setTimeout(() => (anchor.current = null), 1500);
+    return () => (ro.disconnect(), window.clearTimeout(done));
   }, [inner, blocks.map((b) => b.id + (b.html?.length ?? 0)).join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -102,10 +123,11 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
           {blocks.map((b, i) => (
             <div
               key={b.id}
+              data-b={b.id}
               className={'sh-block' + (b.on ? ' on' : '') + (b.heading ? ' is-heading' : '') + (b.onClick ? ' pick' : '')}
               style={{ marginTop: pushes[i] ?? (i === 0 ? areaTop(0) : 0) }}
-              onClick={b.onClick}
-              onKeyDown={b.onClick ? (e) => e.key === 'Enter' && e.target === e.currentTarget && b.onClick?.() : undefined}
+              onClick={b.onClick ? () => (keep(b.id), b.onClick?.()) : undefined}
+              onKeyDown={b.onClick ? (e) => e.key === 'Enter' && e.target === e.currentTarget && (keep(b.id), b.onClick?.()) : undefined}
               role={b.onClick ? 'button' : undefined}
               tabIndex={b.onClick ? 0 : undefined}
               aria-label={b.onClick ? b.label ?? 'Edit this task' : undefined}

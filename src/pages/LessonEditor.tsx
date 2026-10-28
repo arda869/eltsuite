@@ -1098,7 +1098,7 @@ export function LessonEditor() {
             </div>
           )}
           <main className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
-            {opening && (
+            {opening && !(sheet && mode === 'edit') && (
               <div className="frame-veil" role="status">
                 <Loader label="Opening the task" />
               </div>
@@ -1224,6 +1224,9 @@ export function LessonEditor() {
                   .filter((t) => !isVariant(t))
                   .map((t) => {
                     const p = sheetData.byId[t.id];
+                    const ready = editorKey.startsWith(t.id + ':');
+                    if (t.id === task.id && t.kind !== 'section' && !ready)
+                      return { id: t.id, on: true, html: p?.html ?? '', note: 'Opening…' };
                     if (t.id === task.id && t.kind !== 'section')
                       return {
                         id: t.id,
