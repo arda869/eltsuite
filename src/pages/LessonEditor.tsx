@@ -70,6 +70,7 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { SheetTop, SheetView } from '../lessons/SheetView';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
 import { drawShared, useSharedPicks } from '../lib/picks';
@@ -378,6 +379,22 @@ export function LessonEditor() {
   // Teaching shortcuts (not while typing).
   const [exportOpen, setExportOpen] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
+  // Worksheet view: the lesson as A4 pages, remembered on this device.
+  const [sheet, setSheetState] = useState(() => {
+    try {
+      return localStorage.getItem('ll.sheetView') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const setSheet = (on: boolean) => {
+    setSheetState(on);
+    try {
+      localStorage.setItem('ll.sheetView', on ? '1' : '');
+    } catch {
+      /* fine */
+    }
+  };
   const [recapOpen, setRecapOpen] = useState(false);
   const [bankSave, setBankSave] = useState<{ kind: 'question' | 'task'; content: JSONContent[]; title?: string; instructions?: string } | null>(null);
   const [bankPick, setBankPick] = useState<((nodes: JSONContent[]) => void) | null>(null);
@@ -716,6 +733,36 @@ export function LessonEditor() {
   const previewKey = useMemo(() => (draft ? splitKey(draft.content) : null), [draft, previewChecked]); // eslint-disable-line react-hooks/exhaustive-deps
   const th = theme(c?.themeColor);
 
+  // The task being edited, in the digital view or on its worksheet page.
+  const editFrame = task && draft ? (
+              <div className="frame-inner">
+                <div className="frame-head">
+                  {teachingHere && (
+                    <button type="button" className="btn small-btn done-edit" onClick={() => (flush(), setEditWhileTeaching(false))}>
+                      Done editing
+                    </button>
+                  )}
+                  {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
+                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
+                  <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
+                  <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                </div>
+                <div className="frame-body">
+                  <TaskEditor
+                    key={editorKey}
+                    compact
+                    content={draft.content}
+                    onChange={(content) => change({ content })}
+                    classmates={classmates}
+                    classId={classId}
+                    onNotebook={NOTEBOOK ? (word, sentence) => toNotebook({ type: 'vocab', word, example: sentence }) : undefined}
+                    onBank={(nodes) => nodes.length && setBankSave({ kind: 'question', content: nodes })}
+                    onPickBank={(insert) => setBankPick(() => insert)}
+                    places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
+                  />
+                </div>
+              </div>
+  ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
     <div className="shell wide" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
@@ -790,6 +837,21 @@ export function LessonEditor() {
         </div>
         </span>
         <span className="topbar-right">
+          {!viewer && !phone && mode === 'edit' && !teachingHere && (
+            <span className="sh-switch" role="radiogroup" aria-label="View">
+              <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)} data-tip="The lesson as learners see it on a screen">
+                Digital
+              </button>
+              <button type="button" role="radio" aria-checked={sheet} className={sheet ? 'on' : ''} onClick={() => setSheet(true)} data-tip="The lesson as a printed worksheet: A4 pages, one column">
+                Worksheet
+              </button>
+            </span>
+          )}
+          {sheet && !viewer && !phone && mode === 'edit' && !teachingHere && (
+            <button type="button" className="btn small-btn" onClick={() => void flush().then(() => setWorksheet(true))}>
+              Print or PDF
+            </button>
+          )}
           <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
           {viewer ? (
             teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
@@ -1151,34 +1213,33 @@ export function LessonEditor() {
                   </span>
                 </div>
               </div>
+            ) : sheet ? (
+              <SheetView
+                title={item.title}
+                footer={[c?.name, item.title].filter(Boolean).join(' · ')}
+                blocks={[
+                  { id: '_top', node: <SheetTop title={item.title} /> },
+                  ...tasks.filter((t) => !isVariant(t)).map((t) =>
+                    t.kind === 'section'
+                      ? { id: t.id, heading: true, node: <h2 className="sh-sec">{t.title}</h2> }
+                      : t.id === task.id
+                        ? { id: t.id, on: true, node: editFrame }
+                        : {
+                            id: t.id,
+                            onClick: () => void select(t.id),
+                            node: (
+                              <div className="sh-task">
+                                <b className="sh-task-h">{t.title}</b>
+                                <InstrView doc={t.instrDoc} text={t.instructions ?? ''} />
+                                {t.content ? <TaskRenderer content={t.content} responses={{}} onChange={() => {}} disabled classId={classId} /> : <span className="hint">One moment…</span>}
+                              </div>
+                            ),
+                          },
+                  ),
+                ]}
+              />
             ) : (
-              <div className="frame-inner">
-                <div className="frame-head">
-                  {teachingHere && (
-                    <button type="button" className="btn small-btn done-edit" onClick={() => (flush(), setEditWhileTeaching(false))}>
-                      Done editing
-                    </button>
-                  )}
-                  {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
-                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
-                  <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
-                  <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
-                </div>
-                <div className="frame-body">
-                  <TaskEditor
-                    key={editorKey}
-                    compact
-                    content={draft.content}
-                    onChange={(content) => change({ content })}
-                    classmates={classmates}
-                    classId={classId}
-                    onNotebook={NOTEBOOK ? (word, sentence) => toNotebook({ type: 'vocab', word, example: sentence }) : undefined}
-                    onBank={(nodes) => nodes.length && setBankSave({ kind: 'question', content: nodes })}
-                    onPickBank={(insert) => setBankPick(() => insert)}
-                    places={tasks.filter((t) => t.kind !== 'section' && t.id !== task.id).map((t) => ({ id: t.id, title: t.title, n: tasks.filter((x) => x.kind !== 'section').findIndex((x) => x.id === t.id) + 1 }))}
-                  />
-                </div>
-              </div>
+              editFrame
             )}
           </main>
           {task && draft && !viewer && !preview && !present && !boardView && (
