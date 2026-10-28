@@ -81,10 +81,10 @@ export function Tagline() {
     <p className="si-tag" tabIndex={0} aria-describedby="si-tag-tip">
       <span className="si-tag-line">
         Your{' '}
-        <span className="subs subs-both si-subs" role="group" aria-label="One of: whole, entire, teaching">
+        <span className="subs subs-both si-subs" role="group" aria-label="One of: whole, entire, everyday">
           <span className="subs-o">whole</span>
           <span className="subs-o">entire</span>
-          <span className="subs-o">teaching</span>
+          <span className="subs-o">everyday</span>
         </span>{' '}
         <span className="pr-gl" data-text="n." data-shape="pill" data-tone="ink" data-at="above">
           job
