@@ -366,6 +366,10 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
 
   const body = (
     <div ref={root} className={'cd sl' + (big ? ' big' : '') + ' m-' + eff + (locked ? ' is-locked' : '')}>
+      <div className="sl-beta" role="note">
+        <b>Beta · demo</b>
+        <span>Slides is still being built. Try it out, but keep a copy of anything important somewhere else for now.</span>
+      </div>
       <div className="cd-top">
         <span className="cd-title">
           <UiIcon name="present" size={16} />
