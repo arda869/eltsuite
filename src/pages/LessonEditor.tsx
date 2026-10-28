@@ -1098,7 +1098,7 @@ export function LessonEditor() {
             </div>
           )}
           <main className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
-            {opening && (
+            {opening && !(sheet && mode === 'edit') && (
               <div className="frame-veil" role="status">
                 <Loader label="Opening the task" />
               </div>
@@ -1224,10 +1224,14 @@ export function LessonEditor() {
                   .filter((t) => !isVariant(t))
                   .map((t) => {
                     const p = sheetData.byId[t.id];
+                    const ready = editorKey.startsWith(t.id + ':');
+                    if (t.id === task.id && t.kind !== 'section' && !ready)
+                      return { id: t.id, on: true, html: p?.html ?? '', note: 'Opening…' };
                     if (t.id === task.id && t.kind !== 'section')
                       return {
                         id: t.id,
                         on: true,
+                        measure: p?.html ?? '',
                         node: (
                           <div className="sh-edit" style={{ ['--ws-accent' as string]: th.accent }}>
                             <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing · hidden from learners, not printed'}</span>
@@ -1244,7 +1248,7 @@ export function LessonEditor() {
                         ),
                       };
                     if (!p) return { id: t.id, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
-                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
+                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
                   })}
                 after={
                   <button type="button" className="sh-add" onClick={() => void newTask()}>
@@ -1256,7 +1260,7 @@ export function LessonEditor() {
               editFrame
             )}
           </main>
-          {task && draft && !viewer && !preview && !present && !boardView && (
+          {task && draft && !viewer && !preview && !present && !boardView && !(sheet && mode === 'edit') && (
             <PresenterNotes pane={notesPane} hasNotes={!!notes.trim()}>
               {teachingHere && !editWhileTeaching && !notesEditing ? (
                 <div className="pn-read" onClick={() => setNotesEditing(true)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setNotesEditing(true)} data-tip="Click to edit">

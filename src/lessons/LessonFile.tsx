@@ -252,6 +252,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                 return {
                   id: r.id,
                   on: true,
+                  measure: p?.html ?? '',
                   node: (
                     <div className="sh-edit">
                       <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing'}</span>
@@ -259,7 +260,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                     </div>
                   ),
                 };
-              return { id: r.id, html: p?.html ?? '', heading: r.kind === 'section', onClick: () => setSel(r.id), label: `Edit ${r.title}` };
+              return { id: r.id, html: p?.html ?? '', heading: r.kind === 'section', onClick: r.kind === 'section' ? undefined : () => setSel(r.id), label: `Edit ${r.title}` };
             })}
             after={
               canEdit ? (
