@@ -13,7 +13,7 @@ const areaTop = (k: number) => k * P + PAGE.band + PAGE.pad;
 const areaBottom = (k: number) => k * P + PAGE.h - PAGE.foot;
 
 export type SheetParts = { css: string; band: string; foot: string };
-export type SheetBlock = { note?: string; id: string; html?: string; node?: ReactNode; on?: boolean; onClick?: () => void; heading?: boolean; label?: string };
+export type SheetBlock = { measure?: string; note?: string; id: string; html?: string; node?: ReactNode; on?: boolean; onClick?: () => void; heading?: boolean; label?: string };
 
 // The print styles, for a shadow root: our own copies of the two typefaces under their own names, so
 // the app's own fonts stay as they are.
@@ -55,6 +55,8 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
   const host = useRef<HTMLDivElement>(null);
   const [pushes, setPushes] = useState<number[]>([]);
   const [pages, setPages] = useState(1);
+  // While a task is edited, the page it is on stretches to fit the editor; the rest keep their size.
+  const [stretch, setStretch] = useState<{ page: number; extra: number }>({ page: -1, extra: 0 });
   const inner = areaBottom(0) - areaTop(0);
   // The task you click stays where it was on screen while the page around it settles: the one you
   // leave shrinks back to its printed size, which would otherwise move everything below it.
@@ -83,8 +85,11 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
       const next: number[] = [];
       let page = 0;
       let y = 0; // where the last block ended
+      let st = { page: -1, extra: 0 };
       kids.forEach((k, i) => {
-        const h = k.offsetHeight;
+        // The task being edited is laid out at its printed height, so the pages break as they print.
+        const m = k.querySelector<HTMLElement>(':scope > .sh-measure');
+        const h = m ? m.offsetHeight : k.offsetHeight;
         let at = y;
         // A section heading goes with the task after it.
         const withNext = k.classList.contains('is-heading') && kids[i + 1] ? Math.min(kids[i + 1].offsetHeight, inner) : 0;
@@ -95,16 +100,19 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
           at = areaTop(page);
         }
         next.push(at - y);
+        if (m) st = { page, extra: Math.max(0, k.offsetHeight - h) };
         y = at + h;
         while (y > areaBottom(page)) page++; // only a task taller than a page runs on
       });
       setPages((n) => (n === page + 1 ? n : page + 1));
+      setStretch((o) => (o.page === st.page && Math.abs(o.extra - st.extra) < 1 ? o : st));
       setPushes((old) => (old.length === next.length && old.every((v, i) => Math.abs(v - next[i]) < 1) ? old : next));
       requestAnimationFrame(settle);
     };
     lay();
     const ro = new ResizeObserver(lay);
     [...el.children].forEach((c) => ro.observe(c));
+    el.querySelectorAll('.sh-measure').forEach((c) => ro.observe(c));
     // Stop holding the clicked task in place once the page has settled.
     const done = window.setTimeout(() => (anchor.current = null), 1500);
     return () => (ro.disconnect(), window.clearTimeout(done));
@@ -112,9 +120,9 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
 
   return (
     <div className="sh-desk">
-      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap }}>
+      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra }}>
         {Array.from({ length: pages }, (_, i) => (
-          <div key={i} className="sh-sheet" style={{ top: i * P, height: PAGE.h }} aria-hidden="true">
+          <div key={i} className={'sh-sheet' + (i === stretch.page && stretch.extra > 0 ? ' stretched' : '')} style={{ top: i * P + (i > stretch.page ? stretch.extra : 0), height: PAGE.h + (i === stretch.page ? stretch.extra : 0) }} aria-hidden="true">
             <Piece css={css} html={parts.band} />
             <Piece css={css} className="sh-pagefoot" html={parts.foot.replace('<span class="pn"></span>', `<span class="pn">${i + 1}</span>`)} />
           </div>
@@ -133,6 +141,7 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
               aria-label={b.onClick ? b.label ?? 'Edit this task' : undefined}
             >
               {b.html !== undefined ? <Piece css={css} html={b.html} /> : b.node}
+              {b.measure !== undefined && <Piece css={css} className="sh-measure" html={b.measure} />}
               {b.note && <span className="sh-note">{b.note}</span>}
             </div>
           ))}

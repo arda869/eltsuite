@@ -1231,6 +1231,7 @@ export function LessonEditor() {
                       return {
                         id: t.id,
                         on: true,
+                        measure: p?.html ?? '',
                         node: (
                           <div className="sh-edit" style={{ ['--ws-accent' as string]: th.accent }}>
                             <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing · hidden from learners, not printed'}</span>
@@ -1259,7 +1260,7 @@ export function LessonEditor() {
               editFrame
             )}
           </main>
-          {task && draft && !viewer && !preview && !present && !boardView && (
+          {task && draft && !viewer && !preview && !present && !boardView && !(sheet && mode === 'edit') && (
             <PresenterNotes pane={notesPane} hasNotes={!!notes.trim()}>
               {teachingHere && !editWhileTeaching && !notesEditing ? (
                 <div className="pn-read" onClick={() => setNotesEditing(true)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setNotesEditing(true)} data-tip="Click to edit">

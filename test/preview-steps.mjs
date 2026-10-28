@@ -51,9 +51,9 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
   await shot('click-2s');
   await blocks('blocks after click');
 
-  const ed = p.locator('.sh-edit .ProseMirror').first();
+  const ed = p.locator('.sh-edit .task-editor .ProseMirror').first();
   if (await ed.count()) {
-    await ed.click();
+    await ed.click({ position: { x: 30, y: 10 } });
     await p.keyboard.press('Control+End');
     await p.keyboard.press('Enter');
     await p.keyboard.type('She has lived here for ten years.', { delay: 15 });
