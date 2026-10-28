@@ -7760,7 +7760,7 @@ html { touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce) { .so-ring, .so-up { animation: none; } }
 @media (max-width: 480px) { .so { transform: scale(.82); margin: -30px auto -26px; } }
 /* Sign-in: the tagline, marked up like the board */
-.signin .intro p.si-tag { position: relative; margin: 14px 0 0; font: 500 28px/2.1 var(--serif); white-space: nowrap; color: var(--ink); cursor: help; outline: none; }
+.signin .intro p.si-tag { position: relative; margin: 14px 0 0; font: 500 clamp(16px, 5.6vw, 28px)/2.1 var(--serif); white-space: nowrap; color: var(--ink); cursor: help; outline: none; }
 .si-tag .pr-sd { --accent: #b0612f; }
 .si-tag .pr-gl[data-at='above'] { background: none; border-top: 0; padding: 0; }
 .si-tag .pr-gl::before { display: none; }
@@ -7776,7 +7776,6 @@ html { touch-action: manipulation; }
 .si-tag-tip b { display: block; margin-bottom: 2px; color: var(--ink); font-size: 15px; }
 .si-tag:hover .si-tag-tip, .si-tag:focus-visible .si-tag-tip { display: block; }
 .si-tag:focus-visible .si-tag-line { outline: 2px solid #c8764a; outline-offset: 4px; border-radius: 6px; }
-@media (max-width: 480px) { .signin .intro p.si-tag { font-size: 21px; } }
 
 /* Page fonts in the one-line toolbar: narrow */
 .cd-pagebar .pg-font { width: 104px; }
