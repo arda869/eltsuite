@@ -260,3 +260,38 @@
 .gu-slide { animation: gu-slide .35s ease both; }
 @keyframes gu-slide { from { transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .gu-slide { animation: none; } }
+
+/* Steps with a title and a line each */
+.gu-flow-d li { flex-direction: row; align-items: flex-start; gap: 10px; }
+.gu-flow-d li > span:last-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gu-flow-d li b { font-size: 14.5px; color: var(--ink); }
+.gu-flow-d li > span:last-child > span { font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.gu-flow-d .gu-flow-n { flex: none; }
+/* Steps you can press */
+.gu-flow-tabs li { padding: 0; border: 0; background: none; }
+.gu-flow-tabs button { flex: 1; display: flex; align-items: center; gap: 10px; width: 100%; height: 100%; padding: 12px 14px; border: 1px solid var(--hair-strong); border-radius: 14px; background: var(--paper); color: var(--ink); font: 500 14px/1.35 var(--sans); text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.gu-flow-tabs button:hover { border-color: var(--gu); }
+.gu-flow-tabs button.on { border-color: var(--gu); background: color-mix(in srgb, var(--gu) 10%, var(--paper)); box-shadow: 0 0 0 1px var(--gu); font-weight: 600; }
+.gu-flow-tabs button:not(.on) .gu-flow-n { background: color-mix(in srgb, var(--gu) 15%, transparent); color: color-mix(in srgb, var(--gu) 80%, var(--ink)); }
+.gu-flow-tabs .gu-flow-n { flex: none; }
+.gu-next { margin-left: 10px; vertical-align: middle; }
+.gu-tog { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.gu-tog input { width: 18px; height: 18px; accent-color: var(--gu); }
+/* The apps for your files */
+.gu-fapps { display: flex; flex-direction: column; gap: 8px; }
+.gu-fapp { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border: 1px solid var(--hair); border-radius: 14px; background: color-mix(in srgb, var(--c) 5%, var(--paper)); color: var(--ink); text-decoration: none; transition: border-color .15s, transform .15s; }
+.gu-fapp:hover { border-color: var(--c); transform: translateY(-1px); }
+.gu-fapp > span:last-child { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.gu-fapp b { font-size: 15px; color: color-mix(in srgb, var(--c) 65%, #000); }
+.gu-logo { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 82%, #fff), color-mix(in srgb, var(--c) 88%, #000)); color: #fff; }
+:root[data-theme='dark'] .gu-fapp b { color: color-mix(in srgb, var(--c) 55%, #fff); }
+/* Timetable and a class's room */
+.gu-grid-week { grid-template-columns: minmax(0, 1.7fr) minmax(240px, 1fr); }
+.gu-room { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.gu-room-v { display: grid; grid-template-columns: repeat(2, 56px); gap: 6px; padding: 8px; border-radius: 12px; background: #1f1d1b; }
+.gu-room-v span { display: grid; place-items: center; height: 40px; border-radius: 8px; color: #fff; font: 600 14px var(--sans); }
+.gu-room-link { padding: 4px 10px; border-radius: 8px; background: var(--surface); font: 13px var(--mono, monospace); }
+@media (max-width: 860px) {
+  .gu-grid-week { grid-template-columns: minmax(0, 1fr); }
+  .gu-flow-tabs { gap: 30px; }
+}
