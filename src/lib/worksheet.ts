@@ -61,7 +61,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { online?: string[]; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -73,6 +73,11 @@ export type Options = { header: boolean; key: boolean; notes?: boolean; media?: 
 const LET = 'abcdefghijklmnop';
 const UP = 'ABCDEFGHIJKLMNOP';
 const text = (n?: JSONContent): string => (n ? (n.text ?? '') + (n.content ?? []).map(text).join('') : '');
+
+// Gap lengths a teacher can choose for paper (in the units the print uses for a blank).
+const GAP: Record<string, number> = { short: 8, medium: 18, long: 36 };
+// Elements that only work on a screen, by name, for the note in the worksheet view.
+const ONLINE: Record<string, string> = { mcq: 'Quiz', reveal: 'Reveal', phonChart: 'Phonemic chart', phonCard: 'Sound card', lessonLink: 'Link to another task', refList: 'Reference list', stress: 'Word stress', poll: 'Poll' };
 
 export function flattenTask(t: ExportTask): WsTask {
   const blocks: Block[] = [];
@@ -92,6 +97,7 @@ export function flattenTask(t: ExportTask): WsTask {
   const glossary: { word: string; d: DefData; key: string }[] = [];
   const picCount: Record<string, number> = {};
   const mediaUsed: string[] = [];
+  const online: string[] = []; // what only works on a screen, left off the paper
   let lastDef = '';
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
     const out: Run[] = [];
@@ -144,7 +150,7 @@ export function flattenTask(t: ExportTask): WsTask {
           marks++;
           answers.push({ n, text: (a.answers ?? []).join(' / ') });
           if (a.letters && a.pattern) out.push({ num: n }, { letters: String(a.pattern) });
-          else out.push({ num: n }, { blank: Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
+          else out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? Math.max(8, ((a.answers?.[0] ?? '').length + 4) * 2) });
           if (a.stem) out.push({ t: ' ' }, { t: String(a.stem), bold: true, kw: true, stem: true }, { t: ' ' });
           break;
           }
@@ -156,7 +162,7 @@ export function flattenTask(t: ExportTask): WsTask {
           n++;
           marks++;
           answers.push({ n, text: a.answer ?? '' });
-          out.push({ num: n }, { blank: 14 });
+          out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? 14 });
           break;
         }
         case 'hardBreak':
@@ -259,7 +265,12 @@ export function flattenTask(t: ExportTask): WsTask {
         marks += Number(a.points) || 5;
         answers.push({ n, text: a.model ? 'Model: ' + a.model : '(marked by the teacher)' });
         const words = a.maxWords ?? a.minWords;
-        cur.push({ kind: 'lines', n, count: Math.min(14, Math.max(5, Math.ceil(((words as number) || 100) / 12))), prompt: words ? `${a.minWords ? a.minWords + '–' : 'up to '}${a.maxWords ?? a.minWords} words` : undefined });
+        const prompt = words ? `${a.minWords ? a.minWords + '–' : 'up to '}${a.maxWords ?? a.minWords} words` : undefined;
+        // The teacher can choose the number of lines, or none (learners write on their own paper).
+        const want = t.print?.lines;
+        if (want === 0) {
+          if (prompt) cur.push({ kind: 'note', text: prompt });
+        } else cur.push({ kind: 'lines', n, count: typeof want === 'number' ? want : Math.min(14, Math.max(5, Math.ceil(((words as number) || 100) / 12))), prompt });
         return;
       }
       case 'pq': {
@@ -438,13 +449,16 @@ export function flattenTask(t: ExportTask): WsTask {
         return;
       default:
         if (node.content) node.content.forEach((c) => walk(c));
+        else if (node.type && ONLINE[node.type]) online.push(ONLINE[node.type]);
     }
   };
   // A formatted instruction keeps its bold, colour, IPA and word stress on paper too.
-  const instrRuns = t.instrDoc ? (t.instrDoc.content ?? []).flatMap((p, i) => [...(i ? [{ t: ' ' }] : []), ...runsOf(p.content)]) : undefined;
+  // An instruction written for paper replaces the online one.
+  const paperInstr = t.print?.instr?.trim();
+  const instrRuns = paperInstr ? undefined : t.instrDoc ? (t.instrDoc.content ?? []).flatMap((p, i) => [...(i ? [{ t: ' ' }] : []), ...runsOf(p.content)]) : undefined;
   (t.content.content ?? []).forEach((c) => walk(c));
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
-  return { title: t.title, instructions: t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
