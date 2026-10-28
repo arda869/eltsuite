@@ -431,7 +431,6 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   const brandLogo = org?.brand?.wide || org?.brand?.logo || '';
   const accent = org?.brand?.color || opts.accent || '#d98f63';
   const brandName = org?.name ?? '';
-  const small = opts.paper === 'A5';
   const cols = opts.columns ?? 2;
   const marks = !!opts.marks;
   const tasks = items.filter((i): i is { kind: 'task'; task: WsTask } => i.kind === 'task').map((i) => i.task);
