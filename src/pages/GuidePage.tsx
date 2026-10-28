@@ -555,37 +555,52 @@ function Lessons() {
       <p>A <b>class</b> holds its learners and its lessons. A <b>lesson</b> is a page of <b>tasks</b>; each task mixes text, pictures, sound and questions. Learners join with the class code and a PIN you give them: no email needed.</p>
       <Privacy />
       <figure className="gu-fig wide">
-        <svg viewBox="0 0 720 300" role="img" aria-label="Four shapes, one inside the other: the class holds lessons, a lesson holds tasks, a task holds elements">
-          <ellipse cx="360" cy="150" rx="348" ry="140" style={{ fill: 'color-mix(in srgb, #c8764a 10%, var(--paper))', stroke: '#c8764a', strokeWidth: 2 }} />
-          <ellipse cx="420" cy="158" rx="268" ry="116" style={{ fill: 'color-mix(in srgb, #3667a6 10%, var(--paper))', stroke: '#3667a6', strokeWidth: 2 }} />
-          <ellipse cx="478" cy="166" rx="192" ry="90" style={{ fill: 'color-mix(in srgb, #7a4fa3 11%, var(--paper))', stroke: '#7a4fa3', strokeWidth: 2 }} />
-          <ellipse cx="534" cy="174" rx="118" ry="62" style={{ fill: 'color-mix(in srgb, #3b7f7a 14%, var(--paper))', stroke: '#3b7f7a', strokeWidth: 2 }} />
-          <text x="60" y="110" style={{ fill: '#a35a33', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>CLASS</text>
-          <text x="60" y="128" className="gu-s-b">B1 Evening</text>
-          {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={66 + i * 14} cy="146" r="6" style={{ fill: ['#c8764a', '#3667a6', '#3b7f4f', '#7a4fa3', '#a8701f'][i] }} />)}
-          <text x="60" y="168" className="gu-s-small">14 learners</text>
-          <text x="60" y="190" className="gu-s-small">other lessons:</text>
-          <text x="60" y="205" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Travel vocabulary</text>
-          <text x="60" y="220" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Exam practice</text>
-          <text x="176" y="122" style={{ fill: '#2b5486', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>LESSON</text>
-          <text x="176" y="140" className="gu-s-b">Present perfect</text>
-          <text x="176" y="166" className="gu-s-small">its tasks:</text>
-          <text x="176" y="181" className="gu-s-small" style={{ fill: 'var(--ink)' }}>1. Warm-up</text>
-          <text x="176" y="196" className="gu-s-small" style={{ fill: 'var(--ink)' }}>2. Listening</text>
-          <text x="176" y="211" className="gu-s-small" style={{ fill: 'var(--ink)' }}>4. Speaking</text>
-          <text x="306" y="138" style={{ fill: '#5f3c82', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>TASK</text>
-          <text x="306" y="156" className="gu-s-b">3. Practice</text>
-          <text x="306" y="176" className="gu-s-small">one page of</text>
-          <text x="306" y="191" className="gu-s-small">the lesson</text>
-          <text x="460" y="148" style={{ fill: '#2c615d', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>ELEMENTS</text>
+        <svg viewBox="0 0 720 250" role="img" aria-label="A class holds lessons; the open lesson holds tasks; the open task is made of elements such as text, a gap fill, a recording and a timeline">
+          <rect x="10" y="10" width="700" height="230" rx="16" className="gu-s-card" />
+          <rect x="10" y="10" width="700" height="40" rx="16" style={{ fill: '#c8764a' }} />
+          <rect x="10" y="34" width="700" height="16" style={{ fill: '#c8764a' }} />
+          <text x="28" y="36" style={{ fill: '#fff', font: '600 15px var(--sans)' }}>B1 Evening</text>
+          <text x="128" y="36" style={{ fill: '#fff', font: '12px var(--sans)', opacity: 0.9 }}>CLASS · 14 learners · code BEV-482</text>
+          {['Travel vocabulary', 'Present perfect', 'Exam practice'].map((t, i) => (
+            <g key={t} transform={`translate(28 ${66 + i * 54})`}>
+              <rect width="170" height="44" rx="10" style={{ fill: i === 1 ? 'color-mix(in srgb, #3667a6 12%, var(--paper))' : 'var(--paper)', stroke: i === 1 ? '#3667a6' : 'var(--hair-strong)', strokeWidth: i === 1 ? 2 : 1 }} />
+              <text x="14" y="19" className="gu-s-small" style={{ fontSize: 10, fill: '#3667a6' }}>LESSON {i + 1}</text>
+              <text x="14" y="34" className="gu-s-b">{t}</text>
+            </g>
+          ))}
+          <path d="M200 142 h22" className="gu-s-arrow" />
+          <rect x="226" y="62" width="200" height="164" rx="12" style={{ fill: 'color-mix(in srgb, #3667a6 5%, var(--paper))', stroke: '#3667a6' }} />
+          <text x="242" y="84" className="gu-s-small" style={{ fontSize: 10, fill: '#3667a6' }}>LESSON · Present perfect</text>
+          {['1. Warm-up', '2. Listening', '3. Practice', '4. Speaking'].map((t, i) => (
+            <g key={t} transform={`translate(242 ${96 + i * 31})`}>
+              <rect width="168" height="25" rx="7" style={{ fill: i === 2 ? 'color-mix(in srgb, #7a4fa3 14%, var(--paper))' : 'var(--paper)', stroke: i === 2 ? '#7a4fa3' : 'var(--hair-strong)', strokeWidth: i === 2 ? 2 : 1 }} />
+              <text x="10" y="17" className="gu-s-b" style={{ fontSize: 12 }}>{t}</text>
+              <text x="158" y="17" textAnchor="end" className="gu-s-small" style={{ fontSize: 9.5, fill: '#7a4fa3' }}>TASK</text>
+            </g>
+          ))}
+          <path d="M428 170 h22" className="gu-s-arrow" />
+          <rect x="454" y="62" width="240" height="164" rx="12" style={{ fill: 'color-mix(in srgb, #7a4fa3 5%, var(--paper))', stroke: '#7a4fa3' }} />
+          <text x="470" y="84" className="gu-s-small" style={{ fontSize: 10, fill: '#7a4fa3' }}>TASK · 3. Practice · its elements</text>
+          <rect x="470" y="94" width="208" height="22" rx="6" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
+          <text x="480" y="109" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Text: “Complete the sentences.”</text>
+          <rect x="470" y="122" width="208" height="22" rx="6" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
+          <text x="480" y="137" className="gu-s-small" style={{ fill: 'var(--ink)' }}>She</text>
+          <rect x="502" y="129" width="46" height="10" rx="2" style={{ fill: 'color-mix(in srgb, #3b7f4f 18%, var(--paper))', stroke: '#3b7f4f' }} />
+          <text x="554" y="137" className="gu-s-small" style={{ fill: 'var(--ink)' }}>(live) here since 2019.</text>
+          <rect x="470" y="150" width="100" height="32" rx="6" style={{ fill: '#1f1d1b' }} />
+          {Array.from({ length: 14 }, (_, j) => <rect key={j} x={478 + j * 6} y={166 - ((j * 5) % 9) - 2} width="2.5" height={2 * (((j * 5) % 9) + 2)} fill="#e9a27a" />)}
+          <rect x="576" y="150" width="102" height="32" rx="6" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
+          <line x1="584" y1="168" x2="670" y2="168" stroke="var(--ink)" strokeWidth="1.4" />
+          <line x1="640" y1="161" x2="640" y2="175" stroke="var(--ink)" strokeWidth="1.4" />
+          <path d="M600 162 l6 12 M606 162 l-6 12" stroke="#3b7f4f" strokeWidth="1.8" />
           {['text', 'gap fill', 'sound', 'timeline'].map((t, i) => (
-            <g key={t} transform={`translate(${460 + (i % 2) * 74} ${160 + Math.floor(i / 2) * 26})`}>
-              <rect width="66" height="20" rx="10" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
-              <text x="33" y="14" textAnchor="middle" className="gu-s-small" style={{ fill: 'var(--ink)', fontSize: 10.5 }}>{t}</text>
+            <g key={t} transform={`translate(${470 + i * 54} 194)`}>
+              <rect width="48" height="18" rx="9" style={{ fill: 'color-mix(in srgb, #3b7f7a 14%, var(--paper))' }} />
+              <text x="24" y="13" textAnchor="middle" className="gu-s-small" style={{ fontSize: 9.5, fill: 'var(--ink)' }}>{t}</text>
             </g>
           ))}
         </svg>
-        <figcaption>Each one sits inside the one before: a class holds its learners and lessons, a lesson holds tasks, and a task is made of elements, which you add with /.</figcaption>
+        <figcaption>A class holds lessons; a lesson holds tasks; a task is made of elements, which you add with /.</figcaption>
       </figure>
       <Steps
         items={[
