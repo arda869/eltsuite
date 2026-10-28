@@ -151,3 +151,37 @@
 
 :root[data-theme='dark'] .gu-app:not(.on), :root[data-theme='dark'] .gu-code:not(.on) { color: color-mix(in srgb, var(--c) 55%, #fff); }
 :root[data-theme='dark'] .gu-card:not(.on) .gu-card-s, :root[data-theme='dark'] .gu-card:not(.on) .gu-card-w b, :root[data-theme='dark'] .gu-tile b { color: color-mix(in srgb, var(--c) 55%, #fff); }
+/* Language notation, blends, studio, print, files */
+.gu-pop { animation: fade-in .35s ease both; }
+.gu-tenses { margin-bottom: 4px; }
+.gu-tl { width: 100%; height: auto; max-width: 420px; }
+.gu-subst { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.gu-subst-slot { display: inline-flex; flex-direction: column; padding: 2px 10px; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); }
+.gu-subst-slot button { padding: 2px 6px; border: 0; border-radius: 6px; background: none; color: var(--muted); font: 17px var(--serif); text-align: left; cursor: pointer; }
+.gu-subst-slot button.on { background: color-mix(in srgb, var(--gu) 14%, transparent); color: var(--ink); font-weight: 600; }
+.gu-marks { display: flex; flex-direction: column; gap: 10px; }
+.gu-sent { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 12px; margin: 0; padding: 18px 4px 6px; font: 26px/1.3 var(--serif); }
+.gu-w { position: relative; display: inline-flex; align-items: flex-end; }
+.gu-dot { position: absolute; top: -12px; left: 50%; width: 9px; height: 9px; margin-left: -4.5px; border-radius: 50%; background: var(--gu); animation: fade-in .2s ease both; }
+.gu-big { font-weight: 700; }
+.gu-weak { position: absolute; top: -18px; left: 0; color: color-mix(in srgb, #7a4fa3 80%, #000); font: 13px 'Doulos SIL', 'Charis SIL', 'Noto Sans', var(--sans); white-space: nowrap; }
+.gu-link { position: absolute; right: -14px; bottom: -2px; color: var(--gu); font-size: 26px; line-height: 1; }
+.gu-arrow { color: var(--gu); align-self: center; }
+.gu-blends { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.gu-blend { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 16px; border: 1.5px solid var(--hair-strong); border-radius: 16px; background: var(--paper); color: var(--ink); text-align: left; font: 13.5px/1.5 var(--sans); cursor: pointer; }
+.gu-blend svg { color: color-mix(in srgb, var(--gu) 85%, var(--ink)); }
+.gu-blend b { font-size: 15.5px; }
+.gu-blend span { color: var(--muted); }
+.gu-blend.on { border-color: var(--gu); background: color-mix(in srgb, var(--gu) 8%, var(--paper)); box-shadow: 0 0 0 1px var(--gu); }
+.gu-fo { display: block; font: 12.5px/1.35 var(--sans); color: var(--ink); }
+.gu-flash { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.gu-flip { width: 100%; max-width: 320px; height: 170px; padding: 0; border: 0; background: none; perspective: 900px; cursor: pointer; }
+.gu-flip-in { position: relative; display: block; width: 100%; height: 100%; transition: transform .5s ease; transform-style: preserve-3d; }
+.gu-flip.back .gu-flip-in { transform: rotateY(180deg); }
+.gu-flip-f, .gu-flip-b { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; border-radius: 16px; backface-visibility: hidden; box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .35); }
+.gu-flip-f { background: color-mix(in srgb, #a8701f 12%, var(--paper)); border: 2px solid color-mix(in srgb, #a8701f 60%, transparent); color: var(--ink); font: 600 22px var(--serif); }
+.gu-flip-b { transform: rotateY(180deg); background: var(--paper); border: 2px solid var(--hair-strong); color: var(--ink); font: 15px/1.45 var(--sans); }
+.gu-flip-b i { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .gu-flip-in { transition: none; } .gu-pop { animation: none; } }
+.gu-flow li { position: relative; justify-content: center; min-height: 64px; color: var(--ink); background: var(--paper); }
+.gu-flow li::before { content: counter(s); display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--gu); color: #fff; font: 600 12.5px var(--sans); }

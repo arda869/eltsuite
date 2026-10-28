@@ -423,7 +423,7 @@ const J = {
     await s.p.fill('input[aria-label="Gap 1"]', 'has lived');
     await s.p.locator('.gu-try', { hasText: 'present perfect' }).locator('button:has-text("Check")').click();
     await see(s.p, '.gu-result:has-text("1 of 2")', 'the gap fill marked');
-    await s.p.click('.gu-nav-i:has-text("Pronunciation")');
+    await s.p.click('.gu-nav-i:has-text("Language notation")');
     await see(s.p, '.gu-card', 'the sound cards');
     return s;
   },

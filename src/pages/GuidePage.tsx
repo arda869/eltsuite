@@ -11,15 +11,19 @@ import './guide.css';
 type Topic = { id: string; title: string; short: string; body: () => JSX.Element };
 
 const TOPICS: Topic[] = [
-  { id: 'start', title: 'Getting around', short: 'Start here', body: Start },
+  { id: 'start', title: 'One place for all your teaching', short: 'Start here', body: Start },
+  { id: 'blend', title: 'Teach your way: choose your blend', short: 'Your blend', body: Blend },
   { id: 'lessons', title: 'Lessons and tasks', short: 'Lessons', body: Lessons },
   { id: 'questions', title: 'Question types', short: 'Questions', body: Questions },
-  { id: 'pron', title: 'Pronunciation tools', short: 'Pronunciation', body: Pronunciation },
+  { id: 'notation', title: 'Language notation: the marks teachers use', short: 'Language notation', body: Notation },
   { id: 'live', title: 'Teaching live', short: 'Teaching live', body: Live },
   { id: 'games', title: 'Games and activities', short: 'Games', body: Games },
   { id: 'progress', title: 'Marking and progress', short: 'Progress', body: Progress },
+  { id: 'studio', title: 'Studio: record and edit sound', short: 'Studio', body: Studio },
+  { id: 'print', title: 'PDFs, printing and worksheets', short: 'Print and PDF', body: Print },
+  { id: 'files', title: 'Files: documents, flashcards and reading', short: 'Files', body: FilesTopic },
   { id: 'week', title: 'Timetable and Rooms', short: 'Timetable, Rooms', body: Week },
-  { id: 'share', title: 'Files, Messages and Colleagues', short: 'Files and sharing', body: Share },
+  { id: 'share', title: 'Colleagues and Messages', short: 'Colleagues', body: Share },
 ];
 
 export function GuidePage() {
@@ -59,7 +63,7 @@ export function GuidePage() {
           <header className="gu-hero">
             <span className="gu-eyebrow">Guide</span>
             <h1>How ELT Suite works</h1>
-            <p>Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress. Here is each part, with something to try. Nothing you do here is saved.</p>
+            <p>Everything an English teacher needs, in one place: make materials, record and edit sound, teach in class or online, print worksheets, keep your reading notes and work with colleagues. Here is each app, with something to try. Nothing you do here is saved.</p>
           </header>
           {TOPICS.map((t, i) => (
             <section key={t.id} id={'gu-' + t.id} className="gu-sec" aria-labelledby={'gu-h-' + t.id}>
@@ -146,6 +150,8 @@ const APPS: { name: string; color: string; about: string; d: string }[] = [
   { name: 'Files', color: '#3667a6', about: 'Library, documents, flashcards', d: 'M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z' },
   { name: 'Messages', color: '#7a4fa3', about: 'Chat with learners and teachers', d: 'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z' },
   { name: 'Colleagues', color: '#4f6b7a', about: 'Share lessons with teachers', d: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2' },
+  { name: 'Studio', color: '#a8473a', about: 'Record and edit listening, alone or with colleagues', d: 'M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v3.5' },
+  { name: 'Guide', color: '#4a7a4f', about: 'How every app works, with things to try', d: 'M12 6.5C10.4 5.3 8 4.5 4.5 4.5v13c3.5 0 5.9.8 7.5 2 1.6-1.2 4-2 7.5-2v-13c-3.5 0-5.9.8-7.5 2zM12 6.5v13' },
 ];
 
 function Start() {
@@ -153,7 +159,7 @@ function Start() {
   const a = APPS[pick];
   return (
     <>
-      <p>ELT Suite is one account with several apps. The <b>nine dots</b> at the top right of every page open them; the name under “ELT Suite” at the top left tells you which app you are in, and takes you home.</p>
+      <p>ELT Suite is for all your work as an English teacher, not only your classes: making materials, recording listening, printing worksheets, reading for your development, timetabling and working with colleagues. It is one account with several apps. The <b>nine dots</b> at the top right of every page open them; the name under “ELT Suite” at the top left tells you which app you are in, and takes you home.</p>
       <div className="gu-grid2">
         <figure className="gu-fig">
           <svg viewBox="0 0 360 230" role="img" aria-label="The top bar: the app's name on the left, the nine-dot apps button and your picture on the right">
@@ -497,7 +503,7 @@ const CARDS: { id: string; sym: string; ex: string; kind: 'mono' | 'diph' | 'con
 const KIND: Record<string, { name: string; c: string }> = { mono: { name: 'Single vowel', c: '#3667a6' }, diph: { name: 'Diphthong', c: '#7a4fa3' }, cons: { name: 'Consonant', c: '#a8701f' } };
 const bold = (ex: string) => ex.split(/([A-Z]+)/).map((p, i) => (/^[A-Z]+$/.test(p) ? <b key={i}>{p.toLowerCase()}</b> : <span key={i}>{p}</span>));
 
-function Pronunciation() {
+function Notation() {
   const [heard, setHeard] = useState('');
   const hear = async (c: (typeof CARDS)[number]) => {
     setHeard(c.id);
@@ -506,8 +512,24 @@ function Pronunciation() {
   };
   return (
     <>
-      <p>Pronunciation lives inside your lessons, not beside them: the <b>phonemic chart</b>, <b>sound cards</b>, <b>stress</b> and <b>intonation</b> marks, IPA and minimal pairs. Each kind of sound has its own colour, the same everywhere.</p>
+      <p>
+        The marks you draw on the board, ready to use in any lesson: <b>tense timelines</b>, <b>substitution slots</b> (the vertical lines), <b>word and sentence stress</b>, <b>intonation arrows</b>, <b>linking</b>, weak vowels, IPA and sound cards. Each kind of mark looks the same everywhere, so learners always read them the same way.
+      </p>
       <div className="gu-grid2">
+        <Try title="Tense timelines: choose a tense">
+          <TimelineDemo />
+        </Try>
+        <Try title="Substitution slot: the words that can go in one place">
+          <SubstDemo />
+        </Try>
+      </div>
+      <Try title="Sentence stress, linking and intonation: turn the marks on and off">
+        <SentenceMarks />
+      </Try>
+      <div className="gu-grid2">
+        <Try title="Word stress: tap the stressed syllable">
+          <Stress />
+        </Try>
         <Try title="Sound cards: tap one to hear it">
           <div className="gu-cards">
             {CARDS.map((c) => (
@@ -526,14 +548,127 @@ function Pronunciation() {
           </span>
           {heard === 'none' && <span className="gu-try-note">No recording for this sound yet: you can record your own in Settings → Sounds.</span>}
         </Try>
-        <Try title="Word stress: tap the stressed syllable">
-          <Stress />
-        </Try>
       </div>
       <Try title="Intonation: does the voice go up or down at the end?">
         <Intonation />
       </Try>
     </>
+  );
+}
+
+// A tense on a timeline, as in the Timeline element: × an event, ~ in progress, [ ] a period, → up to now.
+const TENSES: { k: string; ex: string; draw: 'x' | 'wave' | 'arrow' | 'xwave' | 'repeat' | 'future' }[] = [
+  { k: 'Past simple', ex: 'I visited Rome last year.', draw: 'x' },
+  { k: 'Past continuous', ex: 'I was cooking when you called.', draw: 'xwave' },
+  { k: 'Present perfect', ex: 'I have lived here since 2019.', draw: 'arrow' },
+  { k: 'Present continuous', ex: 'I am reading a good book.', draw: 'wave' },
+  { k: 'Present simple', ex: 'I swim every Saturday.', draw: 'repeat' },
+  { k: 'Will future', ex: 'I will call you tomorrow.', draw: 'future' },
+];
+function TimelineDemo() {
+  const [k, setK] = useState(0);
+  const t = TENSES[k];
+  const ink = 'var(--gu)';
+  return (
+    <>
+      <div className="gu-inline gu-tenses" role="radiogroup" aria-label="Tense">
+        {TENSES.map((x, i) => (
+          <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-opt' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
+            {x.k}
+          </button>
+        ))}
+      </div>
+      <svg viewBox="0 0 340 120" className="gu-tl" role="img" aria-label={`${t.k} on a timeline: ${t.ex}`}>
+        <line x1="14" y1="64" x2="324" y2="64" stroke="var(--ink)" strokeWidth="2" />
+        <path d="M318 58 l8 6 -8 6" fill="none" stroke="var(--ink)" strokeWidth="2" />
+        <line x1="190" y1="50" x2="190" y2="78" stroke="var(--ink)" strokeWidth="2" />
+        <text x="190" y="96" textAnchor="middle" className="gu-s-b">NOW</text>
+        <text x="20" y="96" className="gu-s-small">past</text>
+        <text x="320" y="96" textAnchor="end" className="gu-s-small">future</text>
+        <g key={k} className="gu-pop" style={{ stroke: ink }} strokeWidth="3" fill="none" strokeLinecap="round">
+          {(t.draw === 'x' || t.draw === 'xwave') && <path d={t.draw === 'x' ? 'M92 54 l14 20 M106 54 l-14 20' : 'M118 54 l14 20 M132 54 l-14 20'} />}
+          {(t.draw === 'wave' || t.draw === 'xwave') && <path d={t.draw === 'wave' ? 'M150 44 q8 -8 16 0 t16 0 t16 0 t16 0' : 'M86 44 q8 -8 16 0 t16 0 t16 0 t16 0 t16 0'} />}
+          {t.draw === 'arrow' && <path d="M70 40 C 110 18 160 18 186 40 M176 34 l10 6 -12 3" />}
+          {t.draw === 'arrow' && <path d="M70 54 l0 20" />}
+          {t.draw === 'repeat' && [60, 100, 140, 180, 220, 260].map((x) => <path key={x} d={`M${x} 56 l0 16`} />)}
+          {t.draw === 'future' && <path d="M240 54 l14 20 M254 54 l-14 20" />}
+        </g>
+      </svg>
+      <p className="gu-say">
+        <b>{t.k}:</b> “{t.ex}”
+      </p>
+    </>
+  );
+}
+
+function SubstDemo() {
+  const slot = ['Lisbon', 'Istanbul', 'Hong Kong'];
+  const [i, setI] = useState(0);
+  return (
+    <>
+      <div className="gu-subst" aria-label="I want to go to Lisbon, Istanbul or Hong Kong this summer">
+        <span className="gu-q">I want to go to</span>
+        <span className="gu-subst-slot">
+          {slot.map((w, k) => (
+            <button key={w} type="button" aria-pressed={k === i} className={k === i ? 'on' : ''} onClick={() => setI(k)}>
+              {w}
+            </button>
+          ))}
+        </span>
+        <span className="gu-q">this summer.</span>
+      </div>
+      <p className="gu-say">
+        Learners say: “I want to go to <b>{slot[i]}</b> this summer.” Tap another word in the slot.
+      </p>
+    </>
+  );
+}
+
+function SentenceMarks() {
+  const [on, setOn] = useState({ stress: true, link: true, weak: false, inton: true });
+  const flip = (k: keyof typeof on) => setOn({ ...on, [k]: !on[k] });
+  // "What do you want to do?" — stressed: WHAT, WANT, DO; linking want‿to; weak "to" /tə/; falling intonation at the end.
+  const words: { w: string; stress?: boolean; weak?: string; link?: boolean }[] = [
+    { w: 'What', stress: true },
+    { w: 'do', weak: 'də' },
+    { w: 'you' },
+    { w: 'want', stress: true, link: true },
+    { w: 'to', weak: 'tə' },
+    { w: 'do?', stress: true },
+  ];
+  return (
+    <div className="gu-marks">
+      <div className="gu-inline" role="group" aria-label="Marks to show">
+        {(
+          [
+            ['stress', 'Sentence stress'],
+            ['link', 'Linking'],
+            ['weak', 'Weak vowels'],
+            ['inton', 'Intonation'],
+          ] as const
+        ).map(([k, l]) => (
+          <button key={k} type="button" aria-pressed={on[k]} className={'gu-opt' + (on[k] ? ' on' : '')} onClick={() => flip(k)}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <p className="gu-sent" aria-label="What do you want to do?">
+        {words.map((x, i) => (
+          <span key={i} className="gu-w">
+            {on.stress && x.stress && <i className="gu-dot" aria-hidden="true" />}
+            <span className={on.stress && x.stress ? 'gu-big' : ''}>{x.w}</span>
+            {on.weak && x.weak && <sup className="gu-weak">/{x.weak}/</sup>}
+            {on.link && x.link && <span className="gu-link" aria-hidden="true">‿</span>}
+          </span>
+        ))}
+        {on.inton && (
+          <svg className="gu-arrow" width="34" height="22" viewBox="0 0 34 22" aria-hidden="true">
+            <path d="M2 4 C14 4 22 8 30 17 M24 17 h6 v-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          </svg>
+        )}
+      </p>
+      <span className="gu-try-note">In a lesson you add these marks to any text from the toolbar, and choose one look for each kind (dots or capitals, for example).</span>
+    </div>
   );
 }
 
@@ -587,6 +722,232 @@ function Intonation() {
           {a[i] && <span className={'gu-why ' + (a[i] === it.key ? 'ok' : 'no')}>{a[i] === it.key ? '✓ ' : '✗ '}{it.why}</span>}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ teach your way
+
+const BLENDS: { k: string; t: string; d: string; steps: string[]; uses: string[] }[] = [
+  {
+    k: 'online',
+    t: 'Teach online',
+    d: 'Teach live in ELT Suite, with Rooms for video, or your own call tool (Zoom, Teams, Meet) beside it.',
+    steps: ['Plan the lesson in Classes', 'Start Teach live: learners join on their own devices', 'Talk in Rooms, or share a link to your own call', 'Answers, marking and the recap afterwards'],
+    uses: ['Classes', 'Rooms', 'Teach live', 'Reports'],
+  },
+  {
+    k: 'present',
+    t: 'Present in class, print the rest',
+    d: 'In a classroom: show the lesson on the board from ELT Suite, and give learners printed worksheets.',
+    steps: ['Plan the lesson in Classes', 'Present it on the board, with notation, timelines and sound', 'Print the tasks as a worksheet (PDF or Word)', 'Learners write on paper'],
+    uses: ['Classes', 'Present', 'Print'],
+  },
+  {
+    k: 'make',
+    t: 'Make materials only',
+    d: 'Use ELT Suite to make your materials and listening, then print them or take them to whatever you teach with.',
+    steps: ['Make the lesson and its tasks', 'Record and edit the listening in Studio', 'Print a worksheet or download Word and MP3', 'Teach with them anywhere'],
+    uses: ['Classes', 'Studio', 'Print', 'Files'],
+  },
+];
+function Blend() {
+  const [k, setK] = useState(0);
+  const b = BLENDS[k];
+  return (
+    <>
+      <p>There is no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class.</p>
+      <div className="gu-blends" role="radiogroup" aria-label="Ways to teach">
+        {BLENDS.map((x, i) => (
+          <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-blend' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
+            <BlendIcon k={x.k} />
+            <b>{x.t}</b>
+            <span>{x.d}</span>
+          </button>
+        ))}
+      </div>
+      <ol className="gu-steps gu-flow" key={b.k} aria-label={b.t}>
+        {b.steps.map((st) => (
+          <li key={st} className="gu-pop">
+            <span>{st}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="gu-say">
+        <b>You use:</b> {b.uses.join(' · ')}
+      </p>
+    </>
+  );
+}
+function BlendIcon({ k }: { k: string }) {
+  const d = k === 'online' ? 'M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3' : k === 'present' ? 'M3 4.5h18v11H3zM12 15.5v4M8 19.5h8' : 'M6 3.5h8l4 4v13H6zM14 3.5v4h4M9 12h6M9 15.5h6';
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
+    </svg>
+  );
+}
+
+// ------------------------------------------------------------------ studio
+
+function Studio() {
+  return (
+    <>
+      <p>Make your own listening: record yourself, edit it like audio software, or record a dialogue live with colleagues, each on their own device. The script turns into karaoke text that lights up as it plays.</p>
+      <figure className="gu-fig wide">
+        <svg viewBox="0 0 720 200" role="img" aria-label="The Sound editor: two speakers' tracks with their scripts, sound effects below, and a playhead">
+          <rect x="10" y="10" width="700" height="180" rx="14" fill="#1f1d1b" />
+          {[
+            { y: 30, n: 'Speaker 1', c: '#d98f63', clips: [[120, 160], [330, 120]] },
+            { y: 92, n: 'Speaker 2', c: '#8aa5c4', clips: [[290, 50], [470, 170]] },
+          ].map((t) => (
+            <g key={t.n}>
+              <text x="24" y={t.y + 22} style={{ fill: '#ece7df', font: '600 13px var(--sans)' }}>
+                {t.n}
+              </text>
+              {t.clips.map(([x, w], i) => (
+                <g key={i}>
+                  <rect x={x} y={t.y} width={w} height="34" rx="6" style={{ fill: t.c, opacity: 0.35 }} />
+                  {Array.from({ length: Math.floor(w / 5) }, (_, j) => {
+                    const h = 6 + Math.abs(Math.sin((j + x) * 0.7)) * 22;
+                    return <rect key={j} x={x + 3 + j * 5} y={t.y + 17 - h / 2} width="2.5" height={h} style={{ fill: t.c }} />;
+                  })}
+                </g>
+              ))}
+              <rect x={t.clips[0][0]} y={t.y + 38} width="150" height="16" rx="5" style={{ fill: 'rgba(255,255,255,.12)' }} />
+              <text x={t.clips[0][0] + 8} y={t.y + 50} style={{ fill: '#ece7df', font: '11px var(--sans)' }}>
+                {t.n === 'Speaker 1' ? 'Hi! Are you new here?' : 'Yes, I started today.'}
+              </text>
+            </g>
+          ))}
+          <text x="24" y="172" style={{ fill: '#b9cde2', font: '600 13px var(--sans)' }}>
+            Effects
+          </text>
+          <rect x="120" y="158" width="60" height="20" rx="5" style={{ fill: 'rgba(138,165,196,.4)' }} />
+          <text x="128" y="172" style={{ fill: '#ece7df', font: '11px var(--sans)' }}>
+            door
+          </text>
+          <line x1="400" y1="20" x2="400" y2="186" stroke="#fff" strokeWidth="2" />
+        </svg>
+      </figure>
+      <Steps
+        items={[
+          { t: 'Record', d: 'Record in the browser, reading your script: press Space at each line so the script follows the sound.' },
+          { t: 'Edit', d: 'Split, trim, fade, move clips between speakers, change a clip’s volume, add silence and sound effects.' },
+          { t: 'Record with a colleague', d: 'Start a recording session: each of you records on your own device, hearing each other; the takes come in as tracks.' },
+          { t: 'Use it', d: 'Save it to Files and put it into any lesson as karaoke listening, or download the MP3 and each speaker’s track.' },
+        ]}
+      />
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ print and PDF
+
+function Print() {
+  const [as, setAs] = useState<'pdf' | 'word'>('pdf');
+  return (
+    <>
+      <p>Everything you make can go on paper. Print a lesson as a worksheet, with your organisation’s logo, or download it as a Word file to change it there. Bring PDFs in and add gaps, text boxes and highlights on top of the pages.</p>
+      <div className="gu-grid2">
+        <figure className="gu-fig">
+          <svg viewBox="0 0 300 220" role="img" aria-label="A printed worksheet: a heading, a gap fill and a timeline">
+            <rect x="70" y="10" width="160" height="200" rx="4" className="gu-s-card" />
+            <rect x="84" y="24" width="36" height="10" rx="3" fill="#d98f63" />
+            <rect x="84" y="44" width="110" height="10" rx="3" className="gu-s-ink" opacity=".8" />
+            {[66, 84, 102].map((y) => (
+              <g key={y}>
+                <rect x="84" y={y} width="50" height="6" rx="3" className="gu-s-soft" />
+                <rect x="138" y={y + 5} width="34" height="1.5" className="gu-s-ink" />
+                <rect x="176" y={y} width="38" height="6" rx="3" className="gu-s-soft" />
+              </g>
+            ))}
+            <line x1="90" y1="150" x2="210" y2="150" stroke="var(--ink)" strokeWidth="1.5" />
+            <line x1="170" y1="143" x2="170" y2="157" stroke="var(--ink)" strokeWidth="1.5" />
+            <path d="M118 144 l8 12 M126 144 l-8 12" style={{ stroke: 'var(--gu)' }} strokeWidth="2" />
+            <text x="170" y="170" textAnchor="middle" style={{ fill: 'var(--muted)', font: '8px var(--sans)' }}>
+              NOW
+            </text>
+            <text x="150" y="200" textAnchor="middle" style={{ fill: 'var(--muted)', font: '8px var(--sans)' }}>
+              {as === 'pdf' ? 'worksheet.pdf' : 'worksheet.docx'}
+            </text>
+          </svg>
+        </figure>
+        <Try title="Print a lesson: choose how">
+          <div className="gu-inline" role="radiogroup" aria-label="Format">
+            <button type="button" role="radio" aria-checked={as === 'pdf'} className={'gu-opt' + (as === 'pdf' ? ' on' : '')} onClick={() => setAs('pdf')}>
+              Print or PDF
+            </button>
+            <button type="button" role="radio" aria-checked={as === 'word'} className={'gu-opt' + (as === 'word' ? ' on' : '')} onClick={() => setAs('word')}>
+              Word file
+            </button>
+          </div>
+          <p className="gu-say">{as === 'pdf' ? 'In a lesson: ⋯ → Print as a worksheet. Choose the tasks, with or without answers, and your printer or “Save as PDF”.' : 'In a lesson: ⋯ → Download as Word. Change it in Word, Pages or Google Docs; the gaps and timelines come too.'}</p>
+        </Try>
+      </div>
+      <Tip>Teaching from a coursebook? Upload the PDF to Files, put a page into a lesson, and add gaps and text boxes where learners write.</Tip>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ files
+
+function FilesTopic() {
+  return (
+    <>
+      <p>Your own library, and more than lessons: <b>documents</b> you write with colleagues or learners live (Collab), <b>flashcard</b> sets, <b>reading notes</b> for your development with references made for you, recordings and PDFs. Star what you use most.</p>
+      <div className="gu-grid2">
+        <Try title="Flashcards: tap the card to turn it over">
+          <FlipCard />
+        </Try>
+        <div className="gu-tiles">
+          {[
+            { n: 'Documents (Collab)', c: '#3667a6', t: 'Write together live, with suggestions and comments; export to Word or PDF.' },
+            { n: 'Flashcards', c: '#a8701f', t: 'A table you type into like a spreadsheet, cards to flip and a study view for learners.' },
+            { n: 'Reading notes', c: '#7a4fa3', t: 'Your sources with full references in the style you choose, and notes page by page.' },
+            { n: 'Recordings and PDFs', c: '#a8473a', t: 'Everything you record or upload, ready to put into lessons.' },
+          ].map((x) => (
+            <div key={x.n} className="gu-tile" style={{ ['--c' as string]: x.c }}>
+              <b>{x.n}</b>
+              <span>{x.t}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+function FlipCard() {
+  const cards = [
+    { f: 'to look forward to', b: 'to feel happy about something that will happen', ex: 'I’m looking forward to the holiday.' },
+    { f: 'to put off', b: 'to do something later than planned', ex: 'Don’t put off your homework.' },
+    { f: 'to get on with', b: 'to have a good relationship with someone', ex: 'I get on well with my sister.' },
+  ];
+  const [i, setI] = useState(0);
+  const [back, setBack] = useState(false);
+  const c = cards[i];
+  return (
+    <div className="gu-flash">
+      <button type="button" className={'gu-flip' + (back ? ' back' : '')} onClick={() => setBack(!back)} aria-label={back ? `${c.b}. ${c.ex}` : `${c.f}. Turn over`}>
+        <span className="gu-flip-in">
+          <span className="gu-flip-f">{c.f}</span>
+          <span className="gu-flip-b">
+            <b>{c.b}</b>
+            <i>{c.ex}</i>
+          </span>
+        </span>
+      </button>
+      <span className="gu-check">
+        <button type="button" className="btn small" onClick={() => (setI((i + cards.length - 1) % cards.length), setBack(false))}>
+          ‹ Back
+        </button>
+        <span className="gu-result">
+          {i + 1} of {cards.length}
+        </span>
+        <button type="button" className="btn small" onClick={() => (setI((i + 1) % cards.length), setBack(false))}>
+          Next ›
+        </button>
+      </span>
     </div>
   );
 }
