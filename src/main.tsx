@@ -10,6 +10,7 @@ import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
+import { ComputerOnly } from './components/ComputerOnly';
 import { ConnectionBanner } from './components/ConnectionBanner';
 import { AuthProvider, useAuth } from './lib/auth';
 import { SignIn } from './pages/SignIn';
@@ -152,8 +153,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/invite/:id" element={<InvitePage />} />
-          <Route path="/admin" element={<TeacherOnly><AdminPage mode="super" /></TeacherOnly>} />
-          <Route path="/org-admin" element={<TeacherOnly><AdminPage mode="org" /></TeacherOnly>} />
+          <Route path="/admin" element={<TeacherOnly><ComputerOnly what="Super Admin"><AdminPage mode="super" /></ComputerOnly></TeacherOnly>} />
+          <Route path="/org-admin" element={<TeacherOnly><ComputerOnly what="Organisation admin"><AdminPage mode="org" /></ComputerOnly></TeacherOnly>} />
           <Route path="/support" element={<TeacherOnly><SupportPage /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
@@ -172,9 +173,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
           <Route path="/call/:code" element={<CallPage />} />
-          <Route path="/studio/task/:id" element={<TeacherOnly><TaskStudio /></TeacherOnly>} />
-          <Route path="/studio/session/:id" element={<TeacherOnly><StudioSession /></TeacherOnly>} />
-          <Route path="/studio/sound/:id" element={<TeacherOnly><SoundStudio /></TeacherOnly>} />
+          <Route path="/studio/task/:id" element={<TeacherOnly><ComputerOnly what="The task editor"><TaskStudio /></ComputerOnly></TeacherOnly>} />
+          <Route path="/studio/session/:id" element={<TeacherOnly><ComputerOnly what="The recording studio"><StudioSession /></ComputerOnly></TeacherOnly>} />
+          <Route path="/studio/sound/:id" element={<TeacherOnly><ComputerOnly what="The sound editor"><SoundStudio /></ComputerOnly></TeacherOnly>} />
           <Route path="/doc/:id" element={<SignedIn><DocPage /></SignedIn>} />
           <Route path="/doc/k/:key" element={<SignedIn><DocPage /></SignedIn>} />
           <Route path="/settings" element={<SignedIn><SettingsPage /></SignedIn>} />
