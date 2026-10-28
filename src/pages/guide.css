@@ -295,3 +295,69 @@
   .gu-grid-week { grid-template-columns: minmax(0, 1fr); }
   .gu-flow-tabs { gap: 30px; }
 }
+
+/* Elements: choose one, see it in a lesson */
+.gu-els { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.gu-els .gu-slash { max-width: none; }
+.gu-els .gu-slash-list { max-height: 360px; overflow-y: auto; }
+.gu-el { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--hair-strong); border-radius: 16px; background: var(--paper); box-shadow: 0 18px 36px -28px rgba(0, 0, 0, .45); }
+.gu-el-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.gu-el-head b { font: 500 20px var(--serif); }
+.gu-el-mark { padding: 3px 10px; border-radius: 999px; font: 600 12px var(--sans); }
+.gu-el-mark.m-auto { background: #e5f2e8; color: #24572f; }
+.gu-el-mark.m-you { background: #fbeade; color: #8a4422; }
+.gu-el-mark.m-show { background: #e6eef8; color: #284f80; }
+.gu-el-page { display: flex; flex-direction: column; gap: 10px; min-height: 130px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--hair); background: color-mix(in srgb, var(--ink) 2%, var(--paper)); }
+.gu-el-task { font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.gu-el-p { margin: 0; font: 16px/2 var(--serif); color: var(--ink); }
+.gu-el-p mark { background: #f3d36b; color: inherit; border-radius: 3px; padding: 0 2px; }
+.gu-el-gap { display: inline-block; min-width: 86px; padding: 0 8px; border-bottom: 2px solid color-mix(in srgb, var(--gu) 60%, transparent); border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--gu) 8%, var(--paper)); font: 600 14px/1.7 var(--sans); color: #24572f; text-align: center; }
+.gu-el-pill { display: inline-block; padding: 0 10px; border: 1.5px solid var(--hair-strong); border-radius: 999px; font: 14px/1.7 var(--sans); }
+.gu-el-pill.on { border-color: #3b7f4f; background: #e5f2e8; color: #24572f; }
+.gu-el-col { display: flex; flex-direction: column; gap: 8px; }
+.gu-el-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.gu-el-line { padding: 4px 0; border-bottom: 2px solid color-mix(in srgb, var(--gu) 60%, transparent); font: 16px var(--serif); }
+.gu-el-box { padding: 10px 12px; min-height: 64px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); font: 14px/1.6 var(--serif); }
+.gu-el-small { font-size: 12px; color: var(--muted); }
+.gu-el-svg { width: 100%; max-width: 320px; height: auto; }
+.gu-el-player { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #1f1d1b; color: #fff; }
+.gu-el-play { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #e9a27a; font-size: 11px; }
+.gu-el-bar { flex: 1; height: 5px; border-radius: 3px; background: #4a4641; overflow: hidden; }
+.gu-el-bar i { display: block; width: 40%; height: 100%; background: #e9a27a; }
+.gu-el-player .gu-el-small { color: #cfc8bf; }
+.gu-el-chart { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.gu-el-chart span { padding: 6px 0; border-radius: 6px; background: color-mix(in srgb, #3667a6 12%, var(--paper)); text-align: center; font: 13px 'Doulos SIL', 'Charis SIL', 'Noto Sans', var(--sans); }
+.gu-el-wall { display: flex; flex-wrap: wrap; gap: 8px; }
+.gu-el-wall span { width: 104px; min-height: 72px; padding: 8px; border-radius: 4px; box-shadow: 0 6px 12px -8px rgba(0, 0, 0, .4); color: #33302c; font: 13px/1.35 var(--sans); }
+.gu-el-wall span:nth-child(2) { transform: rotate(2deg); }
+.gu-el-wall span:nth-child(3) { transform: rotate(-2deg); }
+.gu-el-cross { display: grid; grid-template-columns: repeat(5, 26px); gap: 2px; }
+.gu-el-cross span { display: grid; place-items: center; width: 26px; height: 26px; border: 1.5px solid var(--ink); background: var(--paper); font: 700 13px var(--sans); color: var(--ink); }
+.gu-el-cross span.off { border-color: transparent; background: none; }
+@media (max-width: 860px) {
+  .gu-els { grid-template-columns: minmax(0, 1fr); }
+  .gu-els .gu-slash-list { max-height: 220px; }
+}
+/* Substitution table */
+.gu-stab { display: inline-flex; flex-wrap: wrap; align-items: stretch; border-left: 2px solid var(--ink); }
+.gu-stab-col { display: flex; flex-direction: column; justify-content: center; border-right: 2px solid var(--ink); }
+.gu-stab-col button { padding: 6px 14px; border: 0; border-bottom: 1px solid var(--hair-strong); background: none; color: var(--muted); font: 17px var(--serif); text-align: left; white-space: nowrap; cursor: pointer; }
+.gu-stab-col button:last-child { border-bottom: 0; }
+.gu-stab-col button.on { background: color-mix(in srgb, var(--gu) 14%, transparent); color: var(--ink); font-weight: 600; }
+/* Question bank */
+.gu-bank { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.2fr) auto minmax(0, 1fr); gap: 10px; align-items: center; }
+.gu-bank-col { display: flex; flex-direction: column; gap: 8px; align-self: stretch; padding: 12px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--paper); }
+.gu-bank-list { background: color-mix(in srgb, var(--gu) 6%, var(--paper)); }
+.gu-bank-arrow { color: var(--gu); }
+.gu-bank-q { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 3%, var(--paper)); font: 15px/1.5 var(--serif); }
+.gu-bank-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--paper); border: 1px solid var(--hair); }
+.gu-bank-item > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gu-bank-item b { font: 14px/1.4 var(--serif); }
+.gu-bank-item i { font-style: normal; font-size: 12px; color: var(--muted); }
+@media (max-width: 860px) {
+  .gu-bank { grid-template-columns: minmax(0, 1fr); }
+  .gu-bank-arrow { transform: rotate(90deg); justify-self: center; }
+}
+.gu-grid2 > .gu-try:has(.gu-stab), .gu-grid2 > .gu-try:has(.gu-tl) { grid-column: 1 / -1; }
+.gu-stab { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; align-self: flex-start; }
+.gu-bank-q .btn, .gu-bank-item .btn { font-family: var(--sans); }

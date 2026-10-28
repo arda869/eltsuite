@@ -509,13 +509,14 @@ function AppScreen({ k, c }: { k: string; c: string }) {
                 <text x="26" y="18" className="gu-s-small" style={{ fontSize: 10 }}>{n}</text>
               </g>
             ))}
-            <rect x="124" y="30" width="140" height="30" rx="12" className="gu-s-soft" />
-            <text x="136" y="49" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Is homework due Friday?</text>
-            <rect x="180" y="72" width="156" height="30" rx="12" style={{ fill: c }} />
-            <text x="192" y="91" style={{ fill: '#fff', font: '12px var(--sans)' }}>Yes! Here’s the lesson 👇</text>
-            <rect x="200" y="110" width="136" height="44" rx="10" className="gu-s-card" />
-            <rect x="210" y="120" width="18" height="24" rx="3" style={{ fill: '#c8764a' }} />
-            <text x="236" y="136" className="gu-s-b" style={{ fontSize: 11.5 }}>Unit 3 homework</text>
+            <rect x="124" y="28" width="162" height="28" rx="12" className="gu-s-soft" />
+            <text x="136" y="46" style={{ fill: 'var(--ink)', font: '11px var(--sans)' }}>Is homework due on Friday?</text>
+            <rect x="170" y="66" width="166" height="28" rx="12" style={{ fill: c }} />
+            <text x="182" y="84" style={{ fill: '#fff', font: '11px var(--sans)' }}>Yes, here is the lesson:</text>
+            <rect x="196" y="104" width="140" height="44" rx="10" className="gu-s-card" />
+            <rect x="206" y="114" width="18" height="24" rx="3" style={{ fill: '#c8764a' }} />
+            <text x="232" y="126" className="gu-s-b" style={{ fontSize: 11 }}>Unit 3 homework</text>
+            <text x="232" y="140" className="gu-s-small" style={{ fontSize: 9 }}>Lesson · due Friday</text>
             <rect x="124" y="172" width="212" height="28" rx="14" className="gu-s-card" />
             <text x="138" y="190" className="gu-s-small">Write a message…</text>
           </>
@@ -554,52 +555,37 @@ function Lessons() {
       <p>A <b>class</b> holds its learners and its lessons. A <b>lesson</b> is a page of <b>tasks</b>; each task mixes text, pictures, sound and questions. Learners join with the class code and a PIN you give them: no email needed.</p>
       <Privacy />
       <figure className="gu-fig wide">
-        <svg viewBox="0 0 720 250" role="img" aria-label="A class holds lessons; the open lesson holds tasks; the open task is made of elements such as text, a gap fill, a recording and a timeline">
-          <rect x="10" y="10" width="700" height="230" rx="16" className="gu-s-card" />
-          <rect x="10" y="10" width="700" height="40" rx="16" style={{ fill: '#c8764a' }} />
-          <rect x="10" y="34" width="700" height="16" style={{ fill: '#c8764a' }} />
-          <text x="28" y="36" style={{ fill: '#fff', font: '600 15px var(--sans)' }}>B1 Evening</text>
-          <text x="128" y="36" style={{ fill: '#fff', font: '12px var(--sans)', opacity: 0.9 }}>CLASS · 14 learners · code BEV-482</text>
-          {['Travel vocabulary', 'Present perfect', 'Exam practice'].map((t, i) => (
-            <g key={t} transform={`translate(28 ${66 + i * 54})`}>
-              <rect width="170" height="44" rx="10" style={{ fill: i === 1 ? 'color-mix(in srgb, #3667a6 12%, var(--paper))' : 'var(--paper)', stroke: i === 1 ? '#3667a6' : 'var(--hair-strong)', strokeWidth: i === 1 ? 2 : 1 }} />
-              <text x="14" y="19" className="gu-s-small" style={{ fontSize: 10, fill: '#3667a6' }}>LESSON {i + 1}</text>
-              <text x="14" y="34" className="gu-s-b">{t}</text>
-            </g>
-          ))}
-          <path d="M200 142 h22" className="gu-s-arrow" />
-          <rect x="226" y="62" width="200" height="164" rx="12" style={{ fill: 'color-mix(in srgb, #3667a6 5%, var(--paper))', stroke: '#3667a6' }} />
-          <text x="242" y="84" className="gu-s-small" style={{ fontSize: 10, fill: '#3667a6' }}>LESSON · Present perfect</text>
-          {['1. Warm-up', '2. Listening', '3. Practice', '4. Speaking'].map((t, i) => (
-            <g key={t} transform={`translate(242 ${96 + i * 31})`}>
-              <rect width="168" height="25" rx="7" style={{ fill: i === 2 ? 'color-mix(in srgb, #7a4fa3 14%, var(--paper))' : 'var(--paper)', stroke: i === 2 ? '#7a4fa3' : 'var(--hair-strong)', strokeWidth: i === 2 ? 2 : 1 }} />
-              <text x="10" y="17" className="gu-s-b" style={{ fontSize: 12 }}>{t}</text>
-              <text x="158" y="17" textAnchor="end" className="gu-s-small" style={{ fontSize: 9.5, fill: '#7a4fa3' }}>TASK</text>
-            </g>
-          ))}
-          <path d="M428 170 h22" className="gu-s-arrow" />
-          <rect x="454" y="62" width="240" height="164" rx="12" style={{ fill: 'color-mix(in srgb, #7a4fa3 5%, var(--paper))', stroke: '#7a4fa3' }} />
-          <text x="470" y="84" className="gu-s-small" style={{ fontSize: 10, fill: '#7a4fa3' }}>TASK · 3. Practice · its elements</text>
-          <rect x="470" y="94" width="208" height="22" rx="6" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
-          <text x="480" y="109" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Text: “Complete the sentences.”</text>
-          <rect x="470" y="122" width="208" height="22" rx="6" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
-          <text x="480" y="137" className="gu-s-small" style={{ fill: 'var(--ink)' }}>She</text>
-          <rect x="502" y="129" width="46" height="10" rx="2" style={{ fill: 'color-mix(in srgb, #3b7f4f 18%, var(--paper))', stroke: '#3b7f4f' }} />
-          <text x="554" y="137" className="gu-s-small" style={{ fill: 'var(--ink)' }}>(live) here since 2019.</text>
-          <rect x="470" y="150" width="100" height="32" rx="6" style={{ fill: '#1f1d1b' }} />
-          {Array.from({ length: 14 }, (_, j) => <rect key={j} x={478 + j * 6} y={166 - ((j * 5) % 9) - 2} width="2.5" height={2 * (((j * 5) % 9) + 2)} fill="#e9a27a" />)}
-          <rect x="576" y="150" width="102" height="32" rx="6" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
-          <line x1="584" y1="168" x2="670" y2="168" stroke="var(--ink)" strokeWidth="1.4" />
-          <line x1="640" y1="161" x2="640" y2="175" stroke="var(--ink)" strokeWidth="1.4" />
-          <path d="M600 162 l6 12 M606 162 l-6 12" stroke="#3b7f4f" strokeWidth="1.8" />
+        <svg viewBox="0 0 720 300" role="img" aria-label="Four shapes, one inside the other: the class holds lessons, a lesson holds tasks, a task holds elements">
+          <ellipse cx="360" cy="150" rx="348" ry="140" style={{ fill: 'color-mix(in srgb, #c8764a 10%, var(--paper))', stroke: '#c8764a', strokeWidth: 2 }} />
+          <ellipse cx="420" cy="158" rx="268" ry="116" style={{ fill: 'color-mix(in srgb, #3667a6 10%, var(--paper))', stroke: '#3667a6', strokeWidth: 2 }} />
+          <ellipse cx="478" cy="166" rx="192" ry="90" style={{ fill: 'color-mix(in srgb, #7a4fa3 11%, var(--paper))', stroke: '#7a4fa3', strokeWidth: 2 }} />
+          <ellipse cx="534" cy="174" rx="118" ry="62" style={{ fill: 'color-mix(in srgb, #3b7f7a 14%, var(--paper))', stroke: '#3b7f7a', strokeWidth: 2 }} />
+          <text x="60" y="110" style={{ fill: '#a35a33', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>CLASS</text>
+          <text x="60" y="128" className="gu-s-b">B1 Evening</text>
+          {[0, 1, 2, 3, 4].map((i) => <circle key={i} cx={66 + i * 14} cy="146" r="6" style={{ fill: ['#c8764a', '#3667a6', '#3b7f4f', '#7a4fa3', '#a8701f'][i] }} />)}
+          <text x="60" y="168" className="gu-s-small">14 learners</text>
+          <text x="60" y="190" className="gu-s-small">other lessons:</text>
+          <text x="60" y="205" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Travel vocabulary</text>
+          <text x="60" y="220" className="gu-s-small" style={{ fill: 'var(--ink)' }}>Exam practice</text>
+          <text x="176" y="122" style={{ fill: '#2b5486', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>LESSON</text>
+          <text x="176" y="140" className="gu-s-b">Present perfect</text>
+          <text x="176" y="166" className="gu-s-small">its tasks:</text>
+          <text x="176" y="181" className="gu-s-small" style={{ fill: 'var(--ink)' }}>1. Warm-up</text>
+          <text x="176" y="196" className="gu-s-small" style={{ fill: 'var(--ink)' }}>2. Listening</text>
+          <text x="176" y="211" className="gu-s-small" style={{ fill: 'var(--ink)' }}>4. Speaking</text>
+          <text x="306" y="138" style={{ fill: '#5f3c82', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>TASK</text>
+          <text x="306" y="156" className="gu-s-b">3. Practice</text>
+          <text x="306" y="176" className="gu-s-small">one page of</text>
+          <text x="306" y="191" className="gu-s-small">the lesson</text>
+          <text x="460" y="148" style={{ fill: '#2c615d', font: '700 13px var(--sans)', letterSpacing: '0.08em' }}>ELEMENTS</text>
           {['text', 'gap fill', 'sound', 'timeline'].map((t, i) => (
-            <g key={t} transform={`translate(${470 + i * 54} 194)`}>
-              <rect width="48" height="18" rx="9" style={{ fill: 'color-mix(in srgb, #3b7f7a 14%, var(--paper))' }} />
-              <text x="24" y="13" textAnchor="middle" className="gu-s-small" style={{ fontSize: 9.5, fill: 'var(--ink)' }}>{t}</text>
+            <g key={t} transform={`translate(${460 + (i % 2) * 74} ${160 + Math.floor(i / 2) * 26})`}>
+              <rect width="66" height="20" rx="10" style={{ fill: 'var(--paper)', stroke: '#3b7f7a' }} />
+              <text x="33" y="14" textAnchor="middle" className="gu-s-small" style={{ fill: 'var(--ink)', fontSize: 10.5 }}>{t}</text>
             </g>
           ))}
         </svg>
-        <figcaption>A class holds lessons; a lesson holds tasks; a task is made of elements, which you add with /.</figcaption>
+        <figcaption>Each one sits inside the one before: a class holds its learners and lessons, a lesson holds tasks, and a task is made of elements, which you add with /.</figcaption>
       </figure>
       <Steps
         items={[
@@ -609,54 +595,241 @@ function Lessons() {
           { t: 'Teach it or set it', d: 'Teach it live in class, or open it as homework with a due date.' },
         ]}
       />
-      <Try title="Press / to insert an element" note="In a real lesson, pressing / opens this list; type to search it.">
+      <Try title="Press / and choose an element to see it in a lesson" note="In a real lesson, pressing / opens this list where you are typing; type to search it.">
         <SlashDemo />
       </Try>
     </>
   );
 }
 
-const SLASH = [
-  { k: 'Gap fill', g: 'Questions', h: 'A blank inside a sentence' },
-  { k: 'Multiple choice in line', g: 'Questions', h: 'go / goes / going · learners circle one' },
-  { k: 'Matching', g: 'Questions', h: 'Match items on the left to the right' },
-  { k: 'Word order', g: 'Questions', h: 'Put the words in the right order' },
-  { k: 'Long answer', g: 'Questions', h: 'Writing with a word count; you mark it' },
-  { k: 'Dialogue', g: 'Text', h: 'A and B, with gaps and choices inside' },
-  { k: 'Timeline', g: 'Text', h: 'A tense timeline: events, periods, arrows' },
-  { k: 'Sound or video', g: 'Text', h: 'Record, upload or link, with a karaoke script' },
-  { k: 'Phonemic chart', g: 'Text', h: 'The sounds of English; tap to hear' },
-  { k: 'Board', g: 'Blocks', h: 'A drawing board, live in class' },
-  { k: 'Post-it wall', g: 'Questions', h: 'Learners stick notes on a shared wall' },
-  { k: 'Crossword', g: 'Questions', h: 'Made from words and clues' },
+type El = { k: string; g: string; h: string; learners: string; mark: 'auto' | 'you' | 'show'; view: () => JSX.Element };
+const SLASH: El[] = [
+  {
+    k: 'Gap fill', g: 'Questions', h: 'A blank inside a sentence', mark: 'auto',
+    learners: 'Type the missing word. A hint in brackets can say which verb or word to use.',
+    view: () => (
+      <p className="gu-el-p">1. She <span className="gu-el-gap">has lived</span> (live) here since 2019.<br />2. We <span className="gu-el-gap" /> (never / try) sushi.</p>
+    ),
+  },
+  {
+    k: 'Multiple choice in line', g: 'Questions', h: 'go / goes / going · learners circle one', mark: 'auto',
+    learners: 'Tap the right form inside the sentence, the way they would circle it on paper.',
+    view: () => (
+      <p className="gu-el-p">She <span className="gu-el-pill">go</span> <span className="gu-el-pill on">goes</span> <span className="gu-el-pill">going</span> to work by bike.</p>
+    ),
+  },
+  {
+    k: 'Matching', g: 'Questions', h: 'Match items on the left to the right', mark: 'auto',
+    learners: 'Tap one on the left, then the one it goes with. Lines join them.',
+    view: () => (
+      <svg viewBox="0 0 260 96" className="gu-el-svg" aria-hidden="true">
+        {['make', 'do', 'take'].map((w, i) => (
+          <g key={w}>
+            <rect x="6" y={6 + i * 30} width="70" height="24" rx="12" style={{ fill: 'var(--paper)', stroke: 'var(--hair-strong)' }} />
+            <text x="41" y={22 + i * 30} textAnchor="middle" style={{ fill: 'var(--ink)', font: '12px var(--sans)' }}>{w}</text>
+          </g>
+        ))}
+        {['a mistake', 'homework', 'a photo'].map((w, i) => (
+          <g key={w}>
+            <rect x="166" y={6 + i * 30} width="88" height="24" rx="12" style={{ fill: 'var(--paper)', stroke: 'var(--hair-strong)' }} />
+            <text x="210" y={22 + i * 30} textAnchor="middle" style={{ fill: 'var(--ink)', font: '12px var(--sans)' }}>{w}</text>
+          </g>
+        ))}
+        <path d="M76 18 C 120 18 122 18 166 18 M76 48 C 120 48 122 48 166 48 M76 78 C 120 78 122 78 166 78" style={{ fill: 'none', stroke: 'var(--gu)', strokeWidth: 2 }} />
+      </svg>
+    ),
+  },
+  {
+    k: 'Word order', g: 'Questions', h: 'Put the words in the right order', mark: 'auto',
+    learners: 'Tap the words in order to build the sentence; tap one again to take it back.',
+    view: () => (
+      <div className="gu-el-col">
+        <span className="gu-el-line">Have you ever</span>
+        <span className="gu-el-row">
+          <span className="gu-el-pill">eaten</span> <span className="gu-el-pill">sushi</span> <span className="gu-el-pill">?</span>
+        </span>
+      </div>
+    ),
+  },
+  {
+    k: 'Long answer', g: 'Questions', h: 'Writing with a word count; you mark it', mark: 'you',
+    learners: 'Write in a box that counts their words, then hand it in. You mark it with codes and comments.',
+    view: () => (
+      <div className="gu-el-col">
+        <span className="gu-el-box">Last summer I went to Spain with my family. The beach was beautiful and…</span>
+        <span className="gu-el-small">84 / 120 words</span>
+      </div>
+    ),
+  },
+  {
+    k: 'Dialogue', g: 'Text', h: 'A and B, with gaps and choices inside', mark: 'auto',
+    learners: 'Read the conversation, fill its gaps, and read it aloud with a partner.',
+    view: () => (
+      <p className="gu-el-p">
+        <b>A:</b> <span className="gu-el-gap">Have</span> you been here before?
+        <br />
+        <b>B:</b> No, it’s my first time.
+      </p>
+    ),
+  },
+  {
+    k: 'Timeline', g: 'Language', h: 'A tense timeline: events, periods, arrows', mark: 'show',
+    learners: 'See when things happen. You can turn it into a task: learners place the cross themselves.',
+    view: () => (
+      <svg viewBox="0 0 260 70" className="gu-el-svg" aria-hidden="true">
+        <line x1="10" y1="34" x2="246" y2="34" stroke="var(--ink)" strokeWidth="2" />
+        <path d="M240 28 l7 6 -7 6" fill="none" stroke="var(--ink)" strokeWidth="2" />
+        <rect x="70" y="28" width="120" height="12" rx="4" style={{ fill: 'var(--gu)', opacity: 0.35 }} />
+        <line x1="190" y1="22" x2="190" y2="46" stroke="var(--ink)" strokeWidth="2" />
+        <text x="190" y="62" textAnchor="middle" style={{ fill: 'var(--muted)', font: '600 10px var(--sans)' }}>NOW</text>
+        <text x="70" y="20" style={{ fill: 'var(--ink)', font: '11px var(--sans)' }}>2019</text>
+      </svg>
+    ),
+  },
+  {
+    k: 'Sound or video', g: 'Media', h: 'Record, upload or link, with a karaoke script', mark: 'show',
+    learners: 'Listen, and follow the script as each line lights up. Slow it down, or hear a line again.',
+    view: () => (
+      <div className="gu-el-col">
+        <span className="gu-el-player">
+          <span className="gu-el-play">▶</span>
+          <span className="gu-el-bar"><i /></span>
+          <span className="gu-el-small">0:12</span>
+        </span>
+        <span className="gu-el-p">A: Is this the train to <mark>Leeds?</mark> B: No, that’s platform 4.</span>
+      </div>
+    ),
+  },
+  {
+    k: 'Phonemic chart', g: 'Language', h: 'The sounds of English; tap to hear', mark: 'show',
+    learners: 'Tap a sound to hear it, with an example word. Good for pointing at sounds while you teach.',
+    view: () => (
+      <span className="gu-el-chart">
+        {['iː', 'ɪ', 'ʊ', 'uː', 'e', 'ə', 'ɜː', 'ɔː', 'æ', 'ʌ', 'ɑː', 'ɒ'].map((x) => (
+          <span key={x}>/{x}/</span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    k: 'Board', g: 'Blocks', h: 'A drawing board, live in class', mark: 'show',
+    learners: 'Draw and write on the same board as you and their classmates, live.',
+    view: () => (
+      <svg viewBox="0 0 260 90" className="gu-el-svg" aria-hidden="true">
+        <rect x="2" y="2" width="256" height="86" rx="10" style={{ fill: 'var(--paper)', stroke: 'var(--hair-strong)' }} />
+        <path d="M24 60 q20 -40 40 0 t40 0" fill="none" stroke="#3667a6" strokeWidth="3" strokeLinecap="round" />
+        <circle cx="170" cy="44" r="20" fill="none" stroke="#c94f3d" strokeWidth="3" />
+        <text x="152" y="49" style={{ fill: '#c94f3d', font: '600 13px var(--sans)' }}>cat</text>
+        <path d="M206 26 l30 30 M236 26 l-30 30" stroke="#3b7f4f" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    k: 'Post-it wall', g: 'Questions', h: 'Learners stick notes on a shared wall', mark: 'show',
+    learners: 'Add a note to the wall; everyone sees the notes appear, and you can move them into groups.',
+    view: () => (
+      <span className="gu-el-wall">
+        {[['My best holiday', '#f6e08a'], ['A place I want to visit', '#bfe3c9'], ['Something I’ve never done', '#f4c6b8']].map(([t, c]) => (
+          <span key={t} style={{ background: c }}>{t}</span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    k: 'Crossword', g: 'Questions', h: 'Made from words and clues', mark: 'auto',
+    learners: 'Fill the crossword from the clues; it is made for you from a list of words.',
+    view: () => (
+      <span className="gu-el-cross" aria-hidden="true">
+        {['TRAIN', 'R..X.', 'A..I.', 'V..T.', 'E....', 'L....'].flatMap((r, y) => r.split('').map((ch, x) => (
+          <span key={`${x}${y}`} className={ch === '.' ? 'off' : ''}>{y === 0 ? ch : ''}</span>
+        )))}
+      </span>
+    ),
+  },
 ];
+const MARK: Record<El['mark'], string> = { auto: 'Marked for you', you: 'You mark it', show: 'To show and use' };
 function SlashDemo() {
   const [q, setQ] = useState('');
-  const [chosen, setChosen] = useState('');
-  const list = SLASH.filter((s) => !q.trim() || `${s.k} ${s.h}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const [chosen, setChosen] = useState(SLASH[0].k);
+  const list = SLASH.filter((s) => !q.trim() || `${s.k} ${s.h} ${s.g}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const el = SLASH.find((s) => s.k === chosen) ?? SLASH[0];
   return (
-    <div className="gu-slash">
-      <label className="gu-slash-in">
-        <span aria-hidden="true">/</span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type: gap, sound, match…" aria-label="Search elements" />
-      </label>
-      <ul className="gu-slash-list" aria-label="Elements">
-        {list.slice(0, 6).map((s) => (
-          <li key={s.k}>
-            <button type="button" aria-pressed={chosen === s.k} onClick={() => setChosen(s.k)}>
-              <b>{s.k}</b>
-              <span>{s.h}</span>
-              <i>{s.g}</i>
-            </button>
-          </li>
-        ))}
-        {!list.length && <li className="gu-slash-none">Nothing called that: try “gap”.</li>}
-      </ul>
-      {chosen && (
-        <span className="gu-say" role="status">
-          <b>{chosen}</b> would go into your task here.
+    <div className="gu-els">
+      <div className="gu-slash">
+        <label className="gu-slash-in">
+          <span aria-hidden="true">/</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type: gap, sound, match…" aria-label="Search elements" />
+        </label>
+        <ul className="gu-slash-list" aria-label="Elements">
+          {list.map((s) => (
+            <li key={s.k}>
+              <button type="button" aria-pressed={chosen === s.k} onClick={() => setChosen(s.k)}>
+                <b>{s.k}</b>
+                <span>{s.h}</span>
+                <i>{s.g}</i>
+              </button>
+            </li>
+          ))}
+          {!list.length && <li className="gu-slash-none">Nothing called that: try “gap”.</li>}
+        </ul>
+      </div>
+      <div className="gu-el gu-slide" key={el.k} aria-live="polite">
+        <span className="gu-el-head">
+          <b>{el.k}</b>
+          <span className={'gu-el-mark m-' + el.mark}>{MARK[el.mark]}</span>
         </span>
-      )}
+        <div className="gu-el-page">
+          <span className="gu-el-task">3. Practice</span>
+          <el.view />
+        </div>
+        <p className="gu-say">
+          <b>Learners:</b> {el.learners}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// The question bank: questions saved once and used again.
+function BankDemo() {
+  const QS = [
+    { t: 'She ___ (live) here since 2019.', tag: 'Present perfect · gap fill' },
+    { t: 'go / goes / going to work by bike', tag: 'Present simple · choice' },
+    { t: 'make / do / take + a photo, homework…', tag: 'Collocations · matching' },
+  ];
+  const [saved, setSaved] = useState<number[]>([1, 2]);
+  const [used, setUsed] = useState<number[]>([]);
+  return (
+    <div className="gu-bank">
+      <div className="gu-bank-col">
+        <span className="gu-el-task">B1 Evening · Present perfect</span>
+        <div className="gu-bank-q">
+          <span>{QS[0].t}</span>
+          <button type="button" className="btn small" disabled={saved.includes(0)} onClick={() => setSaved([0, ...saved])}>
+            {saved.includes(0) ? 'Saved ✓' : 'Save to my bank'}
+          </button>
+        </div>
+      </div>
+      <svg className="gu-bank-arrow" width="34" height="22" viewBox="0 0 34 22" aria-hidden="true"><path d="M2 11h28M22 4l8 7-8 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <div className="gu-bank-col gu-bank-list">
+        <span className="gu-el-task">My question bank · {saved.length}</span>
+        {saved.map((k) => (
+          <div key={k} className="gu-bank-item gu-slide">
+            <span>
+              <b>{QS[k].t}</b>
+              <i>{QS[k].tag}</i>
+            </span>
+            <button type="button" className="btn small" disabled={used.includes(k)} onClick={() => setUsed([...used, k])}>
+              {used.includes(k) ? 'Added ✓' : 'Use'}
+            </button>
+          </div>
+        ))}
+      </div>
+      <svg className="gu-bank-arrow" width="34" height="22" viewBox="0 0 34 22" aria-hidden="true"><path d="M2 11h28M22 4l8 7-8 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      <div className="gu-bank-col">
+        <span className="gu-el-task">IELTS Prep · Revision</span>
+        {used.length ? used.map((k) => <div key={k} className="gu-bank-q gu-slide"><span>{QS[k].t}</span></div>) : <span className="hint">Press Use on a saved question.</span>}
+      </div>
     </div>
   );
 }
@@ -677,7 +850,9 @@ function Questions() {
         <Matching />
         <FindFix />
       </div>
-      <Tip>Every question can be saved to <b>your question bank</b> and used again in another lesson: right-click it, or use “From my question bank…” in the / list.</Tip>
+      <Try title="Your question bank: save a question once, use it in any lesson" note="In a lesson: right-click a question → Save to my question bank. To use one: press / → From my question bank….">
+        <BankDemo />
+      </Try>
     </>
   );
 }
@@ -884,7 +1059,7 @@ function Notation() {
         <Try title="Tense timelines: choose a tense">
           <TimelineDemo />
         </Try>
-        <Try title="Substitution slot: the words that can go in one place">
+        <Try title="Substitution table: pick one from each column">
           <SubstDemo />
         </Try>
       </div>
@@ -967,25 +1142,21 @@ function TimelineDemo() {
 }
 
 function SubstDemo() {
-  const slot = ['Lisbon', 'Istanbul', 'Hong Kong'];
-  const [i, setI] = useState(0);
+  const COLS = [['I', 'We', 'My sister'], ['want to go to', 'would love to visit', 'am going to'], ['Lisbon', 'Istanbul', 'Hong Kong'], ['this summer.', 'next year.', 'one day.']];
+  const [pick, setPick] = useState([0, 0, 0, 0]);
+  const fix = (w: string, c: number) => (c === 2 || c === 0 ? w : pick[0] === 1 && c === 1 && w === 'am going to' ? 'are going to' : pick[0] === 2 && c === 1 ? w.replace('want', 'wants').replace('am going', 'is going') : w);
   return (
-    <>
-      <div className="gu-subst" aria-label="I want to go to Lisbon, Istanbul or Hong Kong this summer">
-        <span className="gu-q">I want to go to</span>
-        <span className="gu-subst-slot">
-          {slot.map((w, k) => (
-            <button key={w} type="button" aria-pressed={k === i} className={k === i ? 'on' : ''} onClick={() => setI(k)}>
-              {w}
+    <div className="gu-stab" role="group" aria-label="A substitution table: choose one word or phrase from each column">
+      {COLS.map((col, c) => (
+        <span key={c} className="gu-stab-col">
+          {col.map((w, k) => (
+            <button key={w} type="button" aria-pressed={pick[c] === k} className={pick[c] === k ? 'on' : ''} onClick={() => setPick(pick.map((x, j) => (j === c ? k : x)))}>
+              {fix(w, c)}
             </button>
           ))}
         </span>
-        <span className="gu-q">this summer.</span>
-      </div>
-      <p className="gu-say">
-        Learners say: “I want to go to <b>{slot[i]}</b> this summer.” Tap another word in the slot.
-      </p>
-    </>
+      ))}
+    </div>
   );
 }
 
@@ -1143,9 +1314,9 @@ function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: stri
         {mix.map(([p, n], i) => {
           const h = ((bottom - top) * n) / 100;
           y -= h;
-          return <rect key={p + (on ? 'on' : '')} className="gu-rise" style={{ fill: PARTS[p].c, animationDelay: `${i * 0.28}s` }} x="0" y={y} width="120" height={h + 0.5} />;
+          return <rect key={on ? p + '-on' : p} className={on ? 'gu-rise' : undefined} style={{ fill: PARTS[p].c, animationDelay: `${i * 0.28}s` }} x="0" y={y} width="120" height={h + 0.5} />;
         })}
-        <path d={`M0 ${top} q15 -4 30 0 t30 0 t30 0 t30 0 v4 H0z`} fill="#fff" opacity="0.35" className="gu-rise" style={{ animationDelay: `${mix.length * 0.28}s` }} />
+        <path key={on ? 'top-on' : 'top'} d={`M0 ${top} q15 -4 30 0 t30 0 t30 0 t30 0 v4 H0z`} fill="#fff" opacity="0.35" className={on ? 'gu-rise' : undefined} style={{ animationDelay: `${mix.length * 0.28}s` }} />
         <rect x="26" y="20" width="9" height="118" rx="4.5" fill="#fff" opacity="0.28" />
       </g>
       <path d="M16 12h88l-10 136a6 6 0 0 1-6 5.5H32a6 6 0 0 1-6-5.5z" className="gu-glass-edge" />
