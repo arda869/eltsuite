@@ -1247,7 +1247,7 @@ export function LessonEditor() {
                         ),
                       };
                     if (!p) return { id: t.id, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
-                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
+                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
                   })}
                 after={
                   <button type="button" className="sh-add" onClick={() => void newTask()}>
