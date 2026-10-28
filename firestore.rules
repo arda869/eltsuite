@@ -521,6 +521,21 @@ service cloud.firestore {
     }
     // A call's own link (eltsuite.com/call/<code>): anyone with the code opens it, nobody can list
     // them; the person who made it can change or remove it.
+    // What people do, for super admins (src/lib/usage.ts): a summary per person and their visits.
+    // Each person writes only their own; learners write only that they came; super admins read.
+    match /usage/{uid} {
+      allow read, delete: if isOwner();
+      allow create, update: if isSelf(uid) && request.resource.data.keys().hasOnly(['last', 'visits', 'role', 'at']);
+      match /visits/{vid} {
+        allow read, delete: if isOwner();
+        allow create: if isSelf(uid) && request.resource.data.keys().hasOnly(['start', 'last', 'device', 'role', 'events', 'n'])
+          && request.resource.data.events is list && request.resource.data.events.size() <= 1500
+          && (!learnerAccount() || (request.resource.data.role == 'learner' && request.resource.data.events.size() <= 1));
+        allow update: if isSelf(uid) && !learnerAccount()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['events', 'last', 'n'])
+          && request.resource.data.events.size() <= 1600;
+      }
+    }
     match /callLinks/{code} {
       allow get: if true;
       allow list: if false;

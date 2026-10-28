@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { SuperUsage } from './admin/Usage';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
@@ -159,6 +160,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
     { k: 'tickets', label: 'Support tickets', icon: 'help', n: tickets?.filter((t) => t.status === 'open').length },
     { k: 'claude', label: 'Claude', icon: 'message', n: threads?.filter((t) => t.state === 'answered' && !t.seen).length || undefined },
+    { k: 'activity', label: 'Activity', icon: 'timer' },
     { k: 'supers', label: 'Super admins', icon: 'lock' },
   ];
   const known = items.some((i) => i.k === tab) ? tab : 'overview';
@@ -205,6 +207,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'defaults' && <SuperDefaults />}
           {known === 'tickets' && <SupportTickets owner orgs={orgs} />}
           {known === 'claude' && <ClaudeArea threads={threads} params={params} go={go} />}
+          {known === 'activity' && <SuperUsage teachers={teachers ?? []} />}
           {known === 'supers' && <SuperAdmins />}
         </main>
       </div>

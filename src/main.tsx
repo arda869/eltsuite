@@ -32,6 +32,7 @@ const LiveStartWatch = lazy(() => import('./components/LiveVideo').then((m) => (
 const CallPage = lazy(() => import('./pages/CallPage').then((m) => ({ default: m.CallPage })));
 const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
 const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
+const UsageWatch = lazy(() => import('./lib/usage').then((m) => ({ default: m.UsageWatch })));
 const SupportFloat = lazy(() => import('./components/SupportFloat').then((m) => ({ default: m.SupportFloat })));
 const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
 const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.SharedPage })));
@@ -190,6 +191,7 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={null}>
           <ChatDock />
           <SupportFloat />
+          <UsageWatch />
           <CallHost />
           <LiveStartWatch />
         </Suspense>

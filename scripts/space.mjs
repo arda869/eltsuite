@@ -69,3 +69,18 @@ for (const od of orgs.docs) {
   await od.ref.update({ 'usage.classes': live.length, 'usage.learners': learners, 'usage.bytes': bytes, 'usage.at': Date.now() });
 }
 console.log(`Usage counted for ${orgs.size} organisations.`);
+
+// Activity (usage/{uid}/visits) is kept for 90 days: older visits are removed here.
+{
+  const cutoff = Date.now() - 90 * 864e5;
+  let gone = 0;
+  for (const u of (await db.collection('usage').select().get()).docs) {
+    const old = await u.ref.collection('visits').where('start', '<', cutoff).limit(200).get();
+    if (old.empty) continue;
+    const b = db.batch();
+    old.docs.forEach((d) => b.delete(d.ref));
+    await b.commit();
+    gone += old.size;
+  }
+  if (gone) console.log(`Removed ${gone} visits older than 90 days.`);
+}

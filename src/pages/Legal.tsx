@@ -21,6 +21,7 @@ export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
               <li>For teachers: name, email address and the classes, lessons and notes you create.</li>
               <li>For learners: the display name the teacher enters, a profile picture they choose, their answers, feedback, board posts and which task they are on during a lesson. Learners don’t give an email address.</li>
               <li>Short audio clips a teacher records for pronunciation.</li>
+              <li>How ELT Suite is used, to run and improve it: for teachers, each visit, the pages opened and the buttons and links clicked (never what is typed); for learners, only when they came. This is kept for 90 days and only ELT Suite’s administrators can see it.</li>
             </ul>
             <h2>Who can see it</h2>
             <p>A teacher sees the work of the learners in their classes. Learners see their own work, and what the teacher shares with the class (for example a message board or feedback a classmate sends them). We don’t sell data or show adverts.</p>
