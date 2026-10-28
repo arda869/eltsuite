@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, deleteDoc, deleteField, doc, getDoc, increment, onSnapshot, query, setDoc, updateDoc, where, writeBatch, type WriteBatch } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, increment, onSnapshot, query, setDoc, updateDoc, where, type WriteBatch } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Invitation codes: ELT Suite is open by invitation for now. A super admin makes a code (for
