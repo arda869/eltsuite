@@ -15,7 +15,7 @@ import { friendlyAuthError } from '../lib/authErrors';
 import { inviteFields, useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
 import { Wordmark } from '../components/Wordmark';
-import { SuiteOrbit } from '../components/SuiteOrbit';
+import { SuiteOrbit, Tagline } from '../components/SuiteOrbit';
 
 type Mode = 'signin' | 'create' | 'reset' | 'link' | 'code';
 
@@ -155,7 +155,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         <div className="intro">
           <Wordmark big />
           <span className="soon-badge">Coming soon</span>
-          <p>Your whole job in one account.</p>
+          <Tagline />
           <SuiteOrbit />
           <div className="rule" />
           <p className="soon-note">
