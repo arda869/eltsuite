@@ -3,10 +3,8 @@ import { gatherLesson } from '../lib/transfer';
 import type { ExportTask } from '../lib/textformat';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { collectMedia, collectPictures, flattenWithSections, lessonDocx, saveBlob, type MediaInfo, type MediaMap, type Paper, type WsItem } from '../lib/worksheet';
-import { loadManifest } from '../lib/archive';
-import { audioUrl } from '../lib/media';
-import { bakePicture } from '../editor/PicEdit';
+import { flattenWithSections, lessonDocx, saveBlob, type Paper, type WsItem } from '../lib/worksheet';
+import { sheetPictures, sheetSounds } from '../lib/sheetMedia';
 import { worksheetHtml } from '../lib/worksheetHtml';
 import { theme } from '../lib/themes';
 import { coverMarkup } from './Covers';
@@ -116,49 +114,8 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
   useEffect(() => {
     if (cls) coverMarkup(cls.cover, classId).then(setCover, () => setCover(''));
   }, [cls, classId]);
-  // Uploaded pictures are read from the class first, with their sizes (the Word file needs them).
-  const pictures = async (items: WsItem[]): Promise<MediaMap> => {
-    const map: MediaMap = {};
-    await Promise.all(
-      collectPictures(items).map(async ({ key, src, crop, filter }) => {
-        const data = src.startsWith('media:') ? await audioUrl(classId, src.slice(6)).catch(() => '') : src;
-        if (!data) return;
-        // A cropped or recoloured picture, or one from the web: a copy made here.
-        if (crop || filter || !src.startsWith('media:')) {
-          const baked = await bakePicture(data, crop, filter);
-          if (baked) map[key] = baked;
-          if (baked || !src.startsWith('media:')) return;
-        }
-        const dims = await new Promise<{ w: number; h: number }>((res) => {
-          const im = new Image();
-          im.onload = () => res({ w: im.naturalWidth || 400, h: im.naturalHeight || 300 });
-          im.onerror = () => res({ w: 400, h: 300 });
-          im.src = data;
-        });
-        map[key] = { data, ...dims };
-      }),
-    );
-    return map;
-  };
-  // Sounds and videos: a QR code to the page that plays them, and their scripts for the key.
-  const sounds = async (items: WsItem[]): Promise<Record<string, MediaInfo>> => {
-    const list = collectMedia(items);
-    if (!list.length) return {};
-    const QR = await import('qrcode');
-    const accent = theme(cls?.themeColor).accent.replace('#', '');
-    const out: Record<string, MediaInfo> = {};
-    await Promise.all(
-      list.map(async ({ id, mode }) => {
-        const m = await loadManifest(classId, id).catch(() => null);
-        if (!m) return;
-        const url = `${location.origin}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
-        const look = { margin: 0, errorCorrectionLevel: 'M' as const, color: { dark: '#2b2a28', light: '#ffffff' } };
-        const [svg, png] = await Promise.all([QR.toString(url, { ...look, type: 'svg' }), QR.toDataURL(url, { ...look, margin: 1, width: 320 })]);
-        out[id] = { url, svg, png, title: m.title || 'Listening', video: m.kind === 'link' ? !!m.video : false, script: (m.script ?? []).map((l) => l.text.trim()).filter(Boolean) };
-      }),
-    );
-    return out;
-  };
+  const pictures = (items: WsItem[]) => sheetPictures(classId, items);
+  const sounds = (items: WsItem[]) => sheetSounds(classId, items, theme(cls?.themeColor).accent);
   const hasMedia = !!lesson && JSON.stringify(lesson.tasks).includes('"type":"media"');
   const print = async () => {
     const tasks = chosen();

@@ -205,97 +205,14 @@ let MEDIA: NonNullable<Options['media']> = {};
 let SOUNDS: NonNullable<Options['sounds']> = {};
 let QR_ON = true;
 
-export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
-  MEDIA = opts.media ?? {};
-  SOUNDS = opts.sounds ?? {};
-  QR_ON = opts.qr !== false;
-  // An organisation's teachers print with its logo and colour.
+// The worksheet's styles: the house style (see "How printed worksheets look" in CLAUDE.md).
+export function sheetCss(opts: Options) {
   const org = currentOrg();
-  const brandLogo = org?.brand?.wide || org?.brand?.logo || '';
   const accent = org?.brand?.color || opts.accent || '#d98f63';
-  const brandName = org?.name ?? '';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;
   const small = opts.paper === 'A5';
   const cols = opts.columns ?? 2;
-  const marks = !!opts.marks;
-  const tasks = items.filter((i): i is { kind: 'task'; task: WsTask } => i.kind === 'task').map((i) => i.task);
-
-  // Units in reading order. Section totals (exams) follow the last task of each section.
-  const units: string[] = [];
-  let num = 0;
-  let secTitle = '';
-  let secMarks = 0;
-  const closeSection = () => {
-    if (marks && secTitle && secMarks) units.push(`<div class="unit total"><span>${esc(secTitle)} total</span>${markBox(secMarks)}</div>`);
-    secMarks = 0;
-  };
-  for (const it of items) {
-    if (it.kind === 'section') {
-      closeSection();
-      secTitle = it.title;
-      units.push(`<div class="unit section" data-keep="1"><h2>${esc(it.title)}</h2></div>`);
-    } else {
-      num++;
-      secMarks += it.task.marks;
-      units.push(taskUnit(it.task, num, marks));
-    }
-  }
-  closeSection();
-  const grand = tasks.reduce((s, t) => s + t.marks, 0);
-  if (marks && grand) units.push(`<div class="unit total grand"><span>Total</span>${markBox(grand)}</div>`);
-  // Who made it, at the end of the worksheet.
-  units.push(`<div class="unit ws-credit"><b>${esc(credit().by)}</b><span>${esc(credit().note)}</span></div>`);
-
-  // For the teacher: each exercise's answers and, when chosen, its teacher's notes.
-  const keyUnits =
-    opts.key || opts.notes
-      ? tasks
-          .map((t, i) => {
-            const answers = opts.key ? t.answers : [];
-            const notes = opts.notes ? t.notes ?? '' : '';
-            const scripts = opts.key ? (t.media ?? []).map((id) => SOUNDS[id]).filter((m) => m && m.script.length) : [];
-            if (!answers.length && !notes && !scripts.length) return '';
-            const sc = scripts.map((m) => `<div class="tscript"><span class="tnotes-h">${m.video ? 'Video script' : 'Audioscript'} <i>${esc(m.title)}</i></span>${m.script.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`).join('');
-            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}${sc}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
-          })
-          .filter(Boolean)
-      : [];
-
-  // Cut-out cards (draw a card, spin the wheel, open a box): one set per exercise, laid out by the
-  // script so that every card on the sheet is the same size.
-  const cardSets: string[] = [];
-  {
-    let k = 0;
-    for (const it of items) {
-      if (it.kind !== 'task') continue;
-      k++;
-      for (const set of it.task.cutouts ?? [])
-        if (set.cards.length)
-          cardSets.push(
-            `<div class="cut-set" data-head="${esc(`${k}  ${it.task.instructions?.trim() || it.task.title}`)}">${set.cards
-              .map((c) => `<div class="cut-card"><span class="cut-title">${esc(c.title)}</span><div class="cut-body">${c.blocks.map(block).join('')}</div>${set.symbol ? `<span class="cut-sym">${esc(set.symbol)}</span>` : ''}</div>`)
-              .join('')}</div>`,
-          );
-    }
-  }
-
-  const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
-  const band = (heading: string) => `
-    <header class="band">
-      <div class="band-left">
-        ${opts.header ? `<div class="namebox"><span>Name</span></div>` : '<div class="namebox empty"></div>'}
-        <h1>${esc(heading)}</h1>
-      </div>
-      <div class="band-right">
-        <div class="band-cover">${plainColours(opts.cover ?? '', accent)}</div>
-        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
-      </div>
-    </header>`;
-  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(credit().by)}</span><span class="pn"></span></footer>`;
-
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
-<style>
-${BOX_CSS}
+  return `${BOX_CSS}
 ${extrasCss}
 .dcut { break-inside: avoid; } .dcut-wrap { break-inside: avoid; }
 ${opts.size && opts.size !== 'standard' ? `.cols .unit { zoom: ${opts.size === 'xl' ? 1.4 : 1.2}; }` : ''}
@@ -488,6 +405,113 @@ h1 { color: var(--ink); }
 
 /* Answer key */
 .key .ex-body p { margin-bottom: .6mm; }
+`;
+}
+
+// The pieces of a worksheet for the worksheet view in the lesson editor: its styles, the header band,
+// the footer, and each item (a section or a task) printed on its own, in order.
+export function sheetParts(title: string, items: WsItem[], opts: Options) {
+  MEDIA = opts.media ?? {};
+  SOUNDS = opts.sounds ?? {};
+  QR_ON = opts.qr !== false;
+  const marks = !!opts.marks;
+  let num = 0;
+  const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks)));
+  const html = worksheetHtml(title, items, opts);
+  const pick = (id: string) => html.match(new RegExp(`<template id="${id}">([\\s\\S]*?)</template>`))?.[1] ?? '';
+  return { css: sheetCss(opts), band: pick('band-main'), foot: pick('foot'), pieces, credit: `<div class="unit ws-credit"><b>${esc(credit().by)}</b><span>${esc(credit().note)}</span></div>` };
+}
+
+export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
+  MEDIA = opts.media ?? {};
+  SOUNDS = opts.sounds ?? {};
+  QR_ON = opts.qr !== false;
+  // An organisation's teachers print with its logo and colour.
+  const org = currentOrg();
+  const brandLogo = org?.brand?.wide || org?.brand?.logo || '';
+  const accent = org?.brand?.color || opts.accent || '#d98f63';
+  const brandName = org?.name ?? '';
+  const small = opts.paper === 'A5';
+  const cols = opts.columns ?? 2;
+  const marks = !!opts.marks;
+  const tasks = items.filter((i): i is { kind: 'task'; task: WsTask } => i.kind === 'task').map((i) => i.task);
+
+  // Units in reading order. Section totals (exams) follow the last task of each section.
+  const units: string[] = [];
+  let num = 0;
+  let secTitle = '';
+  let secMarks = 0;
+  const closeSection = () => {
+    if (marks && secTitle && secMarks) units.push(`<div class="unit total"><span>${esc(secTitle)} total</span>${markBox(secMarks)}</div>`);
+    secMarks = 0;
+  };
+  for (const it of items) {
+    if (it.kind === 'section') {
+      closeSection();
+      secTitle = it.title;
+      units.push(`<div class="unit section" data-keep="1"><h2>${esc(it.title)}</h2></div>`);
+    } else {
+      num++;
+      secMarks += it.task.marks;
+      units.push(taskUnit(it.task, num, marks));
+    }
+  }
+  closeSection();
+  const grand = tasks.reduce((s, t) => s + t.marks, 0);
+  if (marks && grand) units.push(`<div class="unit total grand"><span>Total</span>${markBox(grand)}</div>`);
+  // Who made it, at the end of the worksheet.
+  units.push(`<div class="unit ws-credit"><b>${esc(credit().by)}</b><span>${esc(credit().note)}</span></div>`);
+
+  // For the teacher: each exercise's answers and, when chosen, its teacher's notes.
+  const keyUnits =
+    opts.key || opts.notes
+      ? tasks
+          .map((t, i) => {
+            const answers = opts.key ? t.answers : [];
+            const notes = opts.notes ? t.notes ?? '' : '';
+            const scripts = opts.key ? (t.media ?? []).map((id) => SOUNDS[id]).filter((m) => m && m.script.length) : [];
+            if (!answers.length && !notes && !scripts.length) return '';
+            const sc = scripts.map((m) => `<div class="tscript"><span class="tnotes-h">${m.video ? 'Video script' : 'Audioscript'} <i>${esc(m.title)}</i></span>${m.script.map((l) => `<p>${esc(l)}</p>`).join('')}</div>`).join('');
+            return `<div class="unit key"><div class="ex-head"><b class="ex-n">${i + 1}</b><span class="ex-text">${esc(t.instructions?.trim() || t.title)}</span></div><div class="ex-body">${answers.map((a) => `<p><b class="qn">${a.n}</b>${esc(a.text)}</p>`).join('')}${sc}${notes ? `<div class="tnotes"><span class="tnotes-h">Notes</span>${notes.split('\n').filter((l) => l.trim()).map((l) => `<p>${esc(l)}</p>`).join('')}</div>` : ''}</div></div>`;
+          })
+          .filter(Boolean)
+      : [];
+
+  // Cut-out cards (draw a card, spin the wheel, open a box): one set per exercise, laid out by the
+  // script so that every card on the sheet is the same size.
+  const cardSets: string[] = [];
+  {
+    let k = 0;
+    for (const it of items) {
+      if (it.kind !== 'task') continue;
+      k++;
+      for (const set of it.task.cutouts ?? [])
+        if (set.cards.length)
+          cardSets.push(
+            `<div class="cut-set" data-head="${esc(`${k}  ${it.task.instructions?.trim() || it.task.title}`)}">${set.cards
+              .map((c) => `<div class="cut-card"><span class="cut-title">${esc(c.title)}</span><div class="cut-body">${c.blocks.map(block).join('')}</div>${set.symbol ? `<span class="cut-sym">${esc(set.symbol)}</span>` : ''}</div>`)
+              .join('')}</div>`,
+          );
+    }
+  }
+
+  const kicker = [opts.className, opts.level].filter(Boolean).join(' · ');
+  const band = (heading: string) => `
+    <header class="band">
+      <div class="band-left">
+        ${opts.header ? `<div class="namebox"><span>Name</span></div>` : '<div class="namebox empty"></div>'}
+        <h1>${esc(heading)}</h1>
+      </div>
+      <div class="band-right">
+        <div class="band-cover">${plainColours(opts.cover ?? '', accent)}</div>
+        <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
+      </div>
+    </header>`;
+  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(credit().by)}</span><span class="pn"></span></footer>`;
+
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
+<style>
+${sheetCss(opts)}
 </style></head><body>
 <div class="toolbar"><span id="status">Laying out the pages…</span><button onclick="window.print()">Print or save as PDF</button></div>
 <div id="pages"></div>

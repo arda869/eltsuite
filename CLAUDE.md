@@ -34,6 +34,36 @@ Every word on the site, in emails and in notifications follows this. Read it bef
   stumble on.
 - Use the ellipsis character (…) and curly quotes (“ ” ’) in visible text.
 
+## How printed worksheets look
+
+Every printed or PDF worksheet, test, answer key and set of cut-out cards follows this. It is the
+house style of `src/lib/worksheetHtml.ts`. The worksheet view in the lesson editor and any new paper
+version of a question type must keep to it. Change these rules only when the owner asks.
+
+- **Like a coursebook photocopiable:** calm, generous, precise. Measured in mm and pt, never screen px.
+  A4 (or Letter, A5), one column. Nothing is split: a task or card never breaks across pages, and a section
+  heading always stays with the task after it.
+- **Two typefaces only:** Fraunces (serif) for everything learners read and write, 10.2pt/1.5 (9pt on
+  A5); Karla (sans) for labels, headings, numbers in chips, kickers and the footer. Our own font files,
+  loaded before the pages are laid out. The clearer-font option swaps both for Atkinson Hyperlegible.
+- **Header band** on the first page of each part: a light grey band (#ecebe7), 30mm high, with a white
+  Name box, the title in Karla 800 15.5pt, and on the right the class cover graphic fading into the band,
+  with the ELT Suite logo (or the organisation's logo) and a kicker (class · level) on a white chip.
+- **One accent colour:** the class colour (or the organisation's brand colour), used sparingly: exercise
+  and question numbers, section headings and their rule, callout bars, the page-number chip, mark boxes,
+  QR labels and scissors. Text is ink #262420; secondary text #66615b; hairlines warm greys (#d6d3cd,
+  #a9a49d). No other colours, no gradients except the cover fade and the section rule.
+- **Sections:** Karla 800, uppercase, letter-spaced, in the accent, with a thin accent rule to the right.
+  **Exercises:** a number in the accent, the instruction as the heading, the body indented under it.
+- **Answer space is drawn, not typed:** gaps are underlines, writing is ruled lines 7.4mm apart, matching
+  is two lists with short answer lines (1 A), word boxes are pills, tables have hairline rows.
+- **Sound and video** print as a QR code (20mm, rounded white tile) with a small accent label, the title
+  in Fraunces and the short link under it. **Cut-out cards:** dashed borders, equal sizes on their own
+  sheets, scissors in the accent.
+- **Footer:** the class and lesson in Karla 6.8pt on the left, the page number in a solid accent chip on
+  the right. The answer key and teacher's notes are numbered apart; cut-outs are not numbered.
+- **Colour prints exactly** (`print-color-adjust: exact`) and pages have no browser margins.
+
 ## Super admins
 
 The owner (a fixed email) is always a super admin; others are in `superAdmins/{email}` and need a verified

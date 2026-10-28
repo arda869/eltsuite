@@ -10,9 +10,9 @@ import { allTeacherClasses } from '../lib/coteach';
 import { lessonTaskBody } from '../lib/libtasks';
 import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
 import { TaskEditor } from '../editor/TaskEditor';
-import { InstrEditor, InstrView } from '../editor/InstrEditor';
-import { TaskRenderer } from '../components/TaskRenderer';
-import { SheetTop, SheetView } from './SheetView';
+import { InstrEditor } from '../editor/InstrEditor';
+import { SheetView } from './SheetView';
+import { useSheet } from './useSheet';
 import { useAuth } from '../lib/auth';
 import { ask, tell } from '../lib/ask';
 import { theme } from '../lib/themes';
@@ -133,6 +133,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       return false;
     }
   });
+  const sheetData = useSheet(d.title, rows ?? [], { classId: 'user:' + d.owner, accent: '#d98f63' }, sheet);
   const setSheet = (on: boolean) => {
     setSheetState(on);
     try {
@@ -242,29 +243,31 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             Worksheet
           </button>
         </span>
-        {sheet && rows.length ? (
+        {sheet && rows.length && sheetData ? (
           <SheetView
-            title={d.title}
-            blocks={[
-              { id: '_top', node: <SheetTop title={d.title} /> },
-              ...rows.map((r) =>
-                r.kind === 'section'
-                  ? { id: r.id, heading: true, node: <h2 className="sh-sec">{r.title}</h2>, onClick: r.id === sel ? undefined : () => setSel(r.id), on: r.id === sel }
-                  : r.id === sel && cur
-                    ? { id: r.id, on: true, node: taskBlock }
-                    : {
-                        id: r.id,
-                        onClick: () => setSel(r.id),
-                        node: (
-                          <div className="sh-task">
-                            <b className="sh-task-h">{r.title}</b>
-                            <InstrView doc={r.instrDoc ?? null} text={r.instructions ?? ''} />
-                            {r.content && <TaskRenderer content={r.content} responses={{}} onChange={() => {}} disabled />}
-                          </div>
-                        ),
-                      },
-              ),
-            ]}
+            parts={sheetData.parts}
+            blocks={rows.map((r) => {
+              const p = sheetData.byId[r.id];
+              if (r.id === sel && cur && r.kind === 'task')
+                return {
+                  id: r.id,
+                  on: true,
+                  node: (
+                    <div className="sh-edit">
+                      <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing'}</span>
+                      {taskBlock}
+                    </div>
+                  ),
+                };
+              return { id: r.id, html: p?.html ?? '', heading: r.kind === 'section', onClick: () => setSel(r.id), label: `Edit ${r.title}` };
+            })}
+            after={
+              canEdit ? (
+                <button type="button" className="sh-add" onClick={() => void add('task')}>
+                  + Add a task
+                </button>
+              ) : undefined
+            }
           />
         ) : cur ? (
           taskBlock
