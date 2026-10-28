@@ -8,7 +8,7 @@ import { newId } from './tasks';
 // a picture, a recording, a translation…) and which fields go on the front and back. The cards
 // are kept as plain rows, so games can use the same set later.
 
-export type FieldType = 'text' | 'rich' | 'ipa' | 'image' | 'audio';
+export type FieldType = 'text' | 'rich' | 'ipa' | 'image' | 'audio' | 'tag';
 export type Field = { id: string; name: string; type: FieldType };
 export type FlashStyle = 'classic' | 'index' | 'bold' | 'slate' | 'polaroid' | 'minimal' | 'pastel' | 'kraft' | 'night';
 export type FlashLook = { style: FlashStyle; font: 'serif' | 'sans' | 'rounded'; size: 's' | 'm' | 'l'; pic: 'top' | 'full' | 'side'; align: 'center' | 'left' };
@@ -22,6 +22,7 @@ export const FIELD_TYPES: { k: FieldType; label: string; about: string }[] = [
   { k: 'ipa', label: 'Phonemic script', about: 'IPA, with the symbol keyboard' },
   { k: 'image', label: 'Picture', about: 'Uploaded or from a web address' },
   { k: 'audio', label: 'Recording', about: 'Recorded here or uploaded' },
+  { k: 'tag', label: 'Tag', about: 'Group the cards, like “Unit 3” or “verbs”; more than one with commas' },
 ];
 
 export const STYLES: { k: FlashStyle; label: string }[] = [
@@ -122,4 +123,6 @@ export function plainOf(v: CardValue): string {
   const walk = (n: JSONContent): string => (n.text ?? '') + (n.content ?? []).map(walk).join(n.type === 'paragraph' ? '\n' : '') + (n.type === 'ipa' ? `/${n.attrs?.text ?? ''}/` : '') + (n.type === 'stress' ? ((n.attrs?.syllables as string[]) ?? []).join('') : '');
   return walk(v).trim();
 }
+// A tag column holds one or more tags, with commas between them.
+export const tagsOf = (v: CardValue) => plainOf(v).split(',').map((t) => t.trim()).filter(Boolean);
 export const sizeOfCards = (cards: Card[]) => cards.reduce((s, c) => s + JSON.stringify(c.f).length, 0);
