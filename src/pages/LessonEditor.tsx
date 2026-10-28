@@ -421,6 +421,8 @@ export function LessonEditor() {
   });
   const setSheet = (on: boolean) => {
     setSheetState(on);
+    // Room for the page and the editor side by side: the task settings fold away (one click brings them back).
+    if (on && panels.right) panels.toggleRight();
     try {
       localStorage.setItem('ll.sheetView', on ? '1' : '');
     } catch {
