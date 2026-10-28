@@ -20,8 +20,10 @@ import { ProsodyTool } from '../editor/Prosody';
 import { SymbolTool } from '../editor/Symbols';
 import { DefinitionPop } from '../editor/Definition';
 import { UiIcon } from '../components/UiIcon';
+import { tell } from '../lib/ask';
 import { PDF_NODES, ToolButtons } from './PdfNodes';
-import { filePdfInfo } from './pdfData';
+import { filePdfInfo, type PageSize } from './pdfData';
+import { pageText } from './PdfStack';
 
 // A PDF in Files: its pages, with text boxes and highlights everyone it is shared with sees and
 // changes live. The boxes hold anything a lesson can: text, IPA, gaps, choices.
@@ -40,6 +42,22 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [ready, setReady] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
+  const [showKey, setShowKey] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const [cur, setCur] = useState(0);
+  const [reading, setReading] = useState(false);
+  // The page in view: the last one whose top has passed the upper part of the screen.
+  useEffect(() => {
+    const f = () => {
+      const list = Array.from(document.querySelectorAll<HTMLElement>('.pdff .pdf-page'));
+      let best = 0;
+      list.forEach((c, i) => void (c.getBoundingClientRect().top < window.innerHeight * 0.4 && (best = i)));
+      setCur(best);
+    };
+    window.addEventListener('scroll', f, true);
+    return () => window.removeEventListener('scroll', f, true);
+  }, []);
+  useEffect(() => () => speechSynthesis.cancel(), []);
   const editor = useEditor(
     {
       extensions: [
@@ -86,6 +104,28 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const slash = useSlash(editor, cmds, false, true, () => true);
   if (!editor) return <div className="dp-msg">Opening the PDF…</div>;
   const inBox = editor.isActive('pdfBox');
+  const block = editor.state.doc.firstChild;
+  const pages = ((block?.attrs.pages as PageSize[]) ?? []) as PageSize[];
+  const hasKey = (() => {
+    let k = false;
+    block?.forEach((c) => void (c.attrs.key && (k = true)));
+    return k;
+  })();
+  const canvases = () => Array.from(document.querySelectorAll<HTMLElement>('.pdff .pdf-page'));
+  const goPage = (i: number) => canvases()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const readAloud = async () => {
+    if (reading) return (speechSynthesis.cancel(), setReading(false));
+    const text = await pageText(String(block?.attrs.src ?? ''), '', cur).catch(() => '');
+    if (!text) return void tell('This page is a picture of text (a scan), so there are no words to read yet. Reading scanned pages is on the way.');
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-GB';
+    u.rate = 0.95;
+    u.onend = () => setReading(false);
+    u.onerror = () => setReading(false);
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+    setReading(true);
+  };
   const B = (label: React.ReactNode, on: boolean, run: () => void, tip: string, disabled = false) => (
     <button type="button" className={'ne-btn' + (on ? ' on' : '')} data-tip={tip} aria-label={tip} aria-pressed={on} disabled={disabled} onMouseDown={(e) => e.preventDefault()} onClick={run}>
       {label}
@@ -110,6 +150,25 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </span>
         )}
         <span style={{ flex: 1 }} />
+        <span className="pdff-zoom" role="group" aria-label="Zoom">
+          <button type="button" className="ne-btn" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} aria-label="Smaller" data-tip="Smaller">
+            −
+          </button>
+          <button type="button" className="ne-btn pdff-zv" onClick={() => setZoom(1)} data-tip="Fit the width">
+            {Math.round(zoom * 100)}%
+          </button>
+          <button type="button" className="ne-btn" onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2)))} aria-label="Bigger" data-tip="Bigger">
+            +
+          </button>
+        </span>
+        <button type="button" className={'btn small-btn' + (reading ? ' on' : '')} onClick={() => void readAloud()} data-tip={`Read page ${cur + 1} aloud`}>
+          <UiIcon name="music" size={14} /> {reading ? 'Stop reading' : 'Read aloud'}
+        </button>
+        {teacher && hasKey && (
+          <button type="button" className={'btn small-btn' + (showKey ? ' on' : '')} aria-pressed={showKey} onClick={() => setShowKey((v) => !v)} data-tip="The answer key: boxes only teachers see. Hide it to see the page as learners do, or to print without it">
+            {showKey ? 'Answer key shown' : 'Answer key hidden'}
+          </button>
+        )}
         <PeopleHere people={people} me={me.uid} max={6} />
         <button type="button" className="btn small-btn" onClick={() => printPdf()} data-tip="Print it, or save it as a PDF, with the notes on the pages">
           <UiIcon name="import" size={14} /> Print or save
@@ -117,10 +176,24 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
       </div>
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
       <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
-      <div className="pdff-page">
-        <EditorClassContext.Provider value={{ classId: '', classmates: [] }}>
-          <EditorContent editor={editor} />
-        </EditorClassContext.Provider>
+      <div className="pdff-body">
+        {pages.length > 1 && (
+          <nav className="pdff-rail" aria-label="Pages">
+            {pages.map((_, i) => (
+              <button key={i} type="button" className={i === cur ? 'on' : ''} aria-current={i === cur ? 'page' : undefined} onClick={() => goPage(i)}>
+                {i + 1}
+              </button>
+            ))}
+          </nav>
+        )}
+        <div
+          className={'pdff-page' + (showKey && teacher ? '' : ' no-key')}
+          style={{ ['--pdf-zoom' as string]: zoom }}
+        >
+          <EditorClassContext.Provider value={{ classId: '', classmates: [] }}>
+            <EditorContent editor={editor} />
+          </EditorClassContext.Provider>
+        </div>
       </div>
       {canEdit && <SlashMenu editor={editor} slash={slash} groups={DOC_GROUPS} />}
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
@@ -144,7 +217,8 @@ function printPdf() {
     img.className = 'pdf-page';
     c.replaceWith(img);
   });
-  clone.querySelectorAll('button, .pdf-box-bar, .pdf-size, .pdf-tools').forEach((x) => x.remove());
+  clone.querySelectorAll('button, .pdf-box-bar, .pdf-size, .pdf-tools, .pdf-keytag').forEach((x) => x.remove());
+  if (stack.closest('.no-key')) clone.querySelectorAll('.is-key').forEach((x) => x.remove());
   const w = window.open('', '_blank');
   if (!w) return;
   const css = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))

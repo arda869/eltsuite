@@ -210,7 +210,7 @@ export function ToolButtons({ editor }: { editor: Editor }) {
 function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected }: NodeViewProps) {
   const ref = useRef<HTMLDivElement>(null);
   const pages = pagesOf(editor, getPos() ?? 0);
-  const a = node.attrs as { page: number; x: number; y: number; w: number; tone: string };
+  const a = node.attrs as { page: number; x: number; y: number; w: number; tone: string; key?: boolean };
   const at = toStack(pages, a.page, a.x, a.y);
   const editable = editor.isEditable;
   const drag = (mode: 'move' | 'size') => (e: React.PointerEvent) => {
@@ -236,7 +236,7 @@ function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected 
     window.addEventListener('pointerup', up);
   };
   return (
-    <NodeViewWrapper ref={ref} className={'pdf-box tone-' + (a.tone || 'paper') + (selected ? ' on' : '')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${a.w * 100}%` }}>
+    <NodeViewWrapper ref={ref} className={'pdf-box tone-' + (a.tone || 'paper') + (a.key ? ' is-key' : '') + (selected ? ' on' : '')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${a.w * 100}%` }}>
       {editable && (
         <span className="pdf-box-bar" contentEditable={false}>
           <span className="pdf-grip" onPointerDown={drag('move')} title="Drag to move" aria-label="Move">
@@ -245,11 +245,15 @@ function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected 
           {(['paper', 'note', 'clear'] as const).map((t) => (
             <button key={t} type="button" className={'pdf-tone t-' + t + (a.tone === t ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => updateAttributes({ tone: t })} aria-label={t === 'paper' ? 'White box' : t === 'note' ? 'Sticky note' : 'No box'} title={t === 'paper' ? 'White box' : t === 'note' ? 'Sticky note' : 'Just the text'} />
           ))}
+          <button type="button" className={'pdf-keybtn' + (a.key ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => updateAttributes({ key: !a.key })} aria-pressed={!!a.key} aria-label="Answer key: only teachers see it" title={a.key ? 'Answer key: only teachers see it. Press to show it to everyone' : 'Make it part of the answer key: only teachers see it'}>
+            Key
+          </button>
           <button type="button" className="pdf-x" onMouseDown={(e) => e.preventDefault()} onClick={() => deleteNode()} aria-label="Delete the box" title="Delete the box">
             ×
           </button>
         </span>
       )}
+      {a.key && <span className="pdf-keytag" contentEditable={false}>Answer key · teachers only</span>}
       <NodeViewContent className="pdf-box-body" />
       {editable && <span className="pdf-size" onPointerDown={drag('size')} contentEditable={false} title="Drag to change the width" />}
     </NodeViewWrapper>
@@ -295,7 +299,7 @@ export const PdfBox = Node.create({
   content: 'block+',
   isolating: true,
   defining: true,
-  addAttributes: () => ({ page: { default: 0 }, x: { default: 0.1 }, y: { default: 0.1 }, w: { default: 0.3 }, tone: { default: 'paper' } }),
+  addAttributes: () => ({ page: { default: 0 }, x: { default: 0.1 }, y: { default: 0.1 }, w: { default: 0.3 }, tone: { default: 'paper' }, key: { default: false } }),
   parseHTML: () => [{ tag: 'div[data-pdfbox]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-pdfbox': '' }), 0],
   addNodeView: () => ReactNodeViewRenderer(BoxView),

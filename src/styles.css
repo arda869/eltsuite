@@ -7678,3 +7678,21 @@ html { touch-action: manipulation; }
 .co-card h1 { margin: 4px 0 0; font: 500 24px/1.2 var(--serif); }
 .co-card p { margin: 0; color: var(--muted); line-height: 1.55; }
 .co-acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+
+/* PDF app: pages rail, zoom, answer key */
+.pdff-body { display: flex; gap: 12px; align-items: flex-start; }
+.pdff-rail { position: sticky; top: 124px; display: flex; flex-direction: column; gap: 4px; max-height: calc(100vh - 150px); overflow-y: auto; padding: 4px; }
+.pdff-rail button { width: 38px; height: 46px; border: 1px solid var(--hair-strong); border-radius: 6px; background: var(--paper); color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
+.pdff-rail button.on { border-color: var(--accent); color: var(--ink); box-shadow: 0 0 0 1px var(--accent); }
+.pdff-page { flex: 1; min-width: 0; overflow-x: auto; }
+.pdff-page .pdf-block { width: calc(100% * var(--pdf-zoom, 1)); margin: 0 auto; }
+.pdff-zoom { display: inline-flex; align-items: center; gap: 2px; }
+.pdff-zoom .ne-btn { min-width: 30px; height: 30px; border-radius: 7px; }
+.pdff-zv { min-width: 52px !important; font: 600 12px var(--sans); }
+.pdff-bar .btn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
+.pdf-box.is-key { outline: 2px dashed #c0392b; outline-offset: 2px; }
+.pdf-keytag { position: absolute; left: 0; bottom: calc(100% + 4px); padding: 1px 6px; border-radius: 5px; background: #c0392b; color: #fff; font: 600 10px var(--sans); white-space: nowrap; pointer-events: none; }
+.no-key .pdf-box.is-key { display: none; }
+.pdf-keybtn { height: 22px; padding: 0 6px; border: 1px solid var(--hair-strong); border-radius: 6px; background: var(--paper); color: var(--muted); font: 600 11px var(--sans); cursor: pointer; }
+.pdf-keybtn.on { border-color: #c0392b; background: #c0392b; color: #fff; }
+@media (max-width: 700px) { .pdff-rail { display: none; } }
