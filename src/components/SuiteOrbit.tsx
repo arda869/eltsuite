@@ -63,9 +63,9 @@ export function SuiteOrbit() {
   );
 }
 
-// "Your whole job in one account.", marked up the way a teacher would on the board: stress boxes,
-// a noun shape over "job", linking from "job" into "in" and from "one" into "account", and the schwa in "account". Hover (or tab)
-// to read what it means.
+// "Your whole job in one account.", marked up the way a teacher would on the board: a substitution
+// slot for "whole", "n." over "job", linking from "job" into "in" and from "one" into "account",
+// the schwa in "account" and its stressed syllable. Hover (or tab) to read what it means.
 const Link = () => (
   <span className="pr-pl" data-k="link" data-s="under" role="img" aria-label="linking">
     <span className="pr-pl-arc">
@@ -80,14 +80,19 @@ export function Tagline() {
   return (
     <p className="si-tag" tabIndex={0} aria-describedby="si-tag-tip">
       <span className="si-tag-line">
-        Your <span className="pr-ss" data-l="strong" data-s="box">whole</span>{' '}
-        <span className="pr-gl" data-text="noun" data-shape="mont" data-tone="ink" data-at="above">
-          <span className="pr-ss" data-l="strong" data-s="box">job</span>
+        Your{' '}
+        <span className="subs subs-both si-subs" role="group" aria-label="One of: whole, entire, complete">
+          <span className="subs-o">whole</span>
+          <span className="subs-o">entire</span>
+          <span className="subs-o">complete</span>
+        </span>{' '}
+        <span className="pr-gl" data-text="n." data-shape="pill" data-tone="ink" data-at="above">
+          job
         </span>
         <Link />
         in one
         <Link />
-        <span className="pr-sd" data-k="schwa">a</span>c<span className="pr-ss" data-l="main" data-s="box">count</span>.
+        <span className="pr-sd" data-k="schwa">a</span>c<span className="si-st">count</span>.
       </span>
       <span className="si-tag-tip" id="si-tag-tip" role="tooltip">
         <b>Made by English teachers, for English teachers.</b> The board, the coursebook, the worksheets and your marking pen: everything you reach for in the classroom, now online and together in one place.
