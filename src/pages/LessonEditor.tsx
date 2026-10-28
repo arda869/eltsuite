@@ -70,7 +70,8 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
-import { SheetTop, SheetView } from '../lessons/SheetView';
+import { SheetView } from '../lessons/SheetView';
+import { useSheet } from '../lessons/useSheet';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
 import { drawShared, useSharedPicks } from '../lib/picks';
@@ -732,6 +733,9 @@ export function LessonEditor() {
 
   const previewKey = useMemo(() => (draft ? splitKey(draft.content) : null), [draft, previewChecked]); // eslint-disable-line react-hooks/exhaustive-deps
   const th = theme(c?.themeColor);
+  // The worksheet view's printed pieces, from the saved tasks.
+  const sheetTasks = useMemo(() => tasks.filter((t) => !isVariant(t)), [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover }, sheet && mode === 'edit');
 
   // The task being edited, in the digital view or on its worksheet page.
   const editFrame = task && draft ? (
@@ -1213,30 +1217,32 @@ export function LessonEditor() {
                   </span>
                 </div>
               </div>
-            ) : sheet ? (
+            ) : sheet && sheetData ? (
               <SheetView
-                title={item.title}
-                footer={[c?.name, item.title].filter(Boolean).join(' · ')}
-                blocks={[
-                  { id: '_top', node: <SheetTop title={item.title} /> },
-                  ...tasks.filter((t) => !isVariant(t)).map((t) =>
-                    t.kind === 'section'
-                      ? { id: t.id, heading: true, node: <h2 className="sh-sec">{t.title}</h2> }
-                      : t.id === task.id
-                        ? { id: t.id, on: true, node: editFrame }
-                        : {
-                            id: t.id,
-                            onClick: () => void select(t.id),
-                            node: (
-                              <div className="sh-task">
-                                <b className="sh-task-h">{t.title}</b>
-                                <InstrView doc={t.instrDoc} text={t.instructions ?? ''} />
-                                {t.content ? <TaskRenderer content={t.content} responses={{}} onChange={() => {}} disabled classId={classId} /> : <span className="hint">One moment…</span>}
-                              </div>
-                            ),
-                          },
-                  ),
-                ]}
+                parts={sheetData.parts}
+                blocks={tasks
+                  .filter((t) => !isVariant(t))
+                  .map((t) => {
+                    const p = sheetData.byId[t.id];
+                    if (t.id === task.id && t.kind !== 'section')
+                      return {
+                        id: t.id,
+                        on: true,
+                        node: (
+                          <div className="sh-edit" style={{ ['--ws-accent' as string]: th.accent }}>
+                            <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing · hidden from learners, not printed'}</span>
+                            {editFrame}
+                          </div>
+                        ),
+                      };
+                    if (!p) return { id: t.id, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
+                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: () => void select(t.id), label: `Edit ${t.title}` };
+                  })}
+                after={
+                  <button type="button" className="sh-add" onClick={() => void newTask()}>
+                    + Add a task
+                  </button>
+                }
               />
             ) : (
               editFrame
