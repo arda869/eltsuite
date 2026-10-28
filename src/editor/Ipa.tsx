@@ -106,7 +106,7 @@ function Recorder({ classId, audioId, onSaved, accent }: { classId: string; audi
       setRec(r);
       setSecs(0);
     } catch {
-      setMsg('The microphone could not be used. Check that the browser is allowed to use it.');
+      setMsg('We couldn’t use your microphone. Check that this site is allowed to use it.');
     }
   }
   useEffect(() => {
@@ -126,7 +126,7 @@ function Recorder({ classId, audioId, onSaved, accent }: { classId: string; audi
       onSaved(await saveAudio(classId, blob));
       setMsg('Saved.');
     } catch {
-      setMsg('The recording could not be saved. Please try again.');
+      setMsg('We couldn’t save the recording. Try again.');
     }
   }
 

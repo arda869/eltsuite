@@ -47,22 +47,22 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
       setMade(code);
       setEmail('');
       setName('');
-      say(clean ? `Code ${code} made. It is emailed to ${clean} within 15 minutes.` : `Code ${code} made.`);
+      say(clean ? `Code ${code} made. We’ll email it to ${clean} within 15 minutes.` : `Code ${code} made.`);
     } catch {
-      say(full ? limitMessage(target!, 'teachers') : 'That did not work. Try again.');
+      say(full ? limitMessage(target!, 'teachers') : 'That didn’t work. Try again.');
     }
     setBusy(false);
   };
   const copy = (text: string, what: string) =>
     void navigator.clipboard?.writeText(text).then(
       () => say(`${what} copied.`),
-      () => say('It could not be copied.'),
+      () => say('We couldn’t copy it.'),
     );
   const remove = async (c: InviteCode) => {
     if (!(await ask(`Delete the code ${c.code}? Nobody can use it any more. Accounts already made with it stay.`, { ok: 'Delete', danger: true }))) return;
-    await deleteCode(c.code).then(() => say(`${c.code} is deleted.`), () => say('That did not work. Try again.'));
+    await deleteCode(c.code).then(() => say(`${c.code} is deleted.`), () => say('That didn’t work. Try again.'));
   };
-  const toggle = (c: InviteCode) => void setCodeOff(c.code, !c.off).then(() => say(c.off ? `${c.code} is on again.` : `${c.code} is turned off.`), () => say('That did not work. Try again.'));
+  const toggle = (c: InviteCode) => void setCodeOff(c.code, !c.off).then(() => say(c.off ? `${c.code} is on again.` : `${c.code} is turned off.`), () => say('That didn’t work. Try again.'));
   const open = list?.filter((c) => codeState(c) === 'open') ?? [];
   const closed = list?.filter((c) => codeState(c) !== 'open') ?? [];
   const row = (c: InviteCode) => {
@@ -170,7 +170,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
         </div>
       </Panel>
       <Panel title={`Open codes${open.length ? ` (${open.length})` : ''}`}>
-        {list === null ? null : !open.length ? <Empty title="No open codes" text="Codes you make appear here until they are used up, run out or are turned off." /> : <ul className="hq-supers ic-list">{open.map(row)}</ul>}
+        {list === null ? null : !open.length ? <Empty title="No open codes" text="Codes you make appear here until they’re used up, run out or turned off." /> : <ul className="hq-supers ic-list">{open.map(row)}</ul>}
       </Panel>
       {closed.length > 0 && (
         <Panel title={`Used, run out or turned off (${closed.length})`}>

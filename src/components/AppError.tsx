@@ -37,7 +37,7 @@ export class AppError extends Component<{ children: ReactNode }, { err: unknown 
     if (!this.state.err) return this.props.children;
     return (
       <div className="app-err" role="alert">
-        <strong>Something did not load</strong>
+        <strong>Something didn’t load</strong>
         <span className="hint">{isChunkError(this.state.err) ? 'A new version of ELT Suite is out. Reload to get it.' : 'Reload the page to try again. Your work is saved.'}</span>
         <button type="button" className="btn primary" onClick={() => window.location.reload()}>
           Reload

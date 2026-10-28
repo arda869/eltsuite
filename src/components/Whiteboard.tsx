@@ -205,7 +205,7 @@ export function Whiteboard({ classId, boardId, uid, teacher, people = [], compac
       setBusy('');
     } catch (e) {
       console.error(e);
-      setBusy('The picture could not be added. Try a smaller one.');
+      setBusy('We couldn’t add the picture. Try a smaller one.');
       window.setTimeout(() => setBusy(''), 3000);
     }
   }

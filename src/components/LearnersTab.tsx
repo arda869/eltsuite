@@ -52,7 +52,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
     const existing = new Set(learners.map((l) => l.displayName.toLowerCase()));
     const dupes = list.filter((n) => existing.has(n.toLowerCase()));
     if (dupes.length) return setError(`Already in the class: ${dupes.join(', ')}. Use a surname initial to tell them apart.`);
-    if (list.length > 40) return setError(tr('Please add up to 40 learners at a time.'));
+    if (list.length > 40) return setError(tr('Add up to 40 learners at a time.'));
     setBusy('add');
     setError('');
     try {
@@ -76,7 +76,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
       setAdding(false);
     } catch (err) {
       console.error(err);
-      setError(err instanceof LimitError ? err.message + ' Learners added before the limit are in the list.' : tr('Some learners could not be added. Please check the list and try again.'));
+      setError(err instanceof LimitError ? err.message + ' Learners added before the limit are in the list.' : tr('We couldn’t add some learners. Check the list and try again.'));
     } finally {
       setBusy('');
     }
@@ -91,7 +91,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
       setShown((s) => ({ ...s, [l.id]: true }));
     } catch (err) {
       console.error(err);
-      setError(`The PIN for ${l.displayName} could not be reset.`);
+      setError(`We couldn’t reset ${l.displayName}’s PIN. Try again.`);
     } finally {
       setBusy('');
     }
@@ -104,7 +104,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
       await removeLearner(c, l, pins[l.id] ?? '');
     } catch (err) {
       console.error(err);
-      setError(`${l.displayName} could not be removed.`);
+      setError(`We couldn’t remove ${l.displayName}. Try again.`);
     } finally {
       setBusy('');
     }
@@ -193,7 +193,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                     </td>}
                     <td>
                       {own[l.id] ? (
-                        <span className="hint" title={tr('The learner chose their own, so you cannot see or reset it. If they forget it, resetting needs the Phase 5 server; removing and re-adding them starts a new account without their work.')}>
+                        <span className="hint" title={tr('The learner chose their own, so you can’t see or reset it. If they forget it, you can remove them and add them again, but that starts a new account without their work.')}>
                           Own {own[l.id]}, private
                         </span>
                       ) : (
@@ -295,7 +295,7 @@ function LangChips({ classId, learner, all }: { classId: string; learner: Learne
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
   const used = [...new Set(all.flatMap((l) => l.langs ?? []))];
-  const save = (next: string[]) => void saveLearnerLangs(classId, learner.id, next, all).catch(() => tell('The languages could not be saved.'));
+  const save = (next: string[]) => void saveLearnerLangs(classId, learner.id, next, all).catch(() => tell('We couldn’t save the languages. Try again.'));
   const add = (v: string) => {
     const t = v.trim().replace(/^./, (c) => c.toUpperCase());
     if (t && !langs.includes(t)) save([...langs, t]);

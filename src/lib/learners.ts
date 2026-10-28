@@ -100,13 +100,13 @@ export async function resetPin(c: ClassDoc, learner: Learner, oldPin: string) {
 export type OwnSecret = { kind: 'pin' | 'password' };
 export async function changeMySecret(o: { classId: string; classCode: string; learnerId: string; current: string; next: string; kind: 'pin' | 'password' }) {
   const u = mainAuth.currentUser;
-  if (!u || !u.email) throw new Error('Please sign in again.');
+  if (!u || !u.email) throw new Error('Sign in again, please.');
   if (o.kind === 'pin' && !/^\d{4}$/.test(o.next)) throw new Error('A PIN is 4 numbers.');
   if (o.kind === 'password' && o.next.length < 8) throw new Error('Use at least 8 characters.');
   try {
     await reauthenticateWithCredential(u, EmailAuthProvider.credential(u.email, learnerPassword(o.classCode, o.current)));
   } catch {
-    throw new Error('Your current PIN or password is not right.');
+    throw new Error('That’s not your current PIN or password.');
   }
   await updatePassword(u, learnerPassword(o.classCode, o.next));
   await setDoc(doc(db, 'classes', o.classId, 'secrets', o.learnerId), { own: true, kind: o.kind, at: Date.now() });

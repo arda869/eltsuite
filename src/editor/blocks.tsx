@@ -85,7 +85,7 @@ function DropGapView({ node, updateAttributes, selected, editor, getPos }: NodeV
               if (e.key === 'Escape') setOpen(false);
             }}
           />
-          <span className="hint">{node.attrs.example ? 'An example: the word is shown in the gap and is not in the word bank.' : 'This word goes into the word bank automatically. Add wrong words to the word bank’s “Extra words”.'}</span>
+          <span className="hint">{node.attrs.example ? 'An example: the word is shown in the gap and isn’t in the word bank.' : 'This word goes into the word bank automatically. Add wrong words to the word bank’s “Extra words”.'}</span>
           <label className="pop-check">
             <input type="checkbox" checked={!!node.attrs.example} onChange={() => updateAttributes({ example: !node.attrs.example })} />
             Example (answer shown, numbered 0, not marked)

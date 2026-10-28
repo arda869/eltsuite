@@ -142,7 +142,7 @@ export function BlockMenu({ editor, pos, anchor, space, onClose }: { editor: Edi
         keys={keyLabel('Mod+C')}
         onClick={() =>
           void copy().then((ok) => {
-            setNote(ok ? 'Copied' : 'Could not copy');
+            setNote(ok ? 'Copied' : 'We couldn’t copy that');
             window.setTimeout(onClose, 600);
           })
         }

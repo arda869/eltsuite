@@ -6,6 +6,34 @@ from GitHub Actions. `npm run build` type-checks and builds; `npm run smoke` (or
 Playwright journeys in `test/smoke.mjs` against stand-ins for Firebase (`test/mock`). Pushing to `main`
 deploys.
 
+## How ELT Suite writes
+
+Every word on the site, in emails and in notifications follows this. Read it before you write any copy.
+
+- **Voice:** a good colleague in the staffroom. Friendly and plain, not chatty. Calm, practical, on the
+  teacher's side.
+- **People:** "you" for the person reading. "Teachers" and "learners" (never "students", "users",
+  "members" or "customers"). An organisation's "admins". "We" only for the ELT Suite team, mainly in
+  emails, errors and support.
+- **Contractions are fine:** you'll, we couldn't, it's, don't. No slang, no exclamation marks, no emoji,
+  no hype ("amazing", "powerful", "seamless", "unleash", "revolutionise", "journey").
+- **Short sentences, everyday words.** Say what a thing does and what to do next. One idea per sentence.
+- **British English:** organisation, colour, centre, programme, licence (noun), enrol, practise (verb).
+- **Sentence case** everywhere: buttons, headings, tabs, menus. Only names keep capitals (Classes,
+  Studio, Rooms, Collab, Slides, Print, Files, Teach live, Super Admin).
+- **Buttons are verbs** that say what happens: "Make a class", "Save", "Send invitation". Not "OK",
+  "Submit" or "Click here". Use "make" over "create" in everyday copy.
+- **Errors:** say what happened, then what to do, and reassure if work is safe. Never blame the teacher.
+  "We couldn't save that just now. Check your connection and try again. Your work is still here."
+- **Empty states:** say what will appear and how to get it there. "No learners yet. Share your class code
+  and they'll appear here as they join."
+- **Confirmations:** name the thing and the consequence. "Delete this lesson? Your learners' answers to it
+  go too. You can't undo this."
+- **Loading:** "One moment…", or say what's happening ("Saving…", "Uploading…").
+- **Learner-facing text** is even simpler: short words, short sentences, nothing a B1 learner would
+  stumble on.
+- Use the ellipsis character (…) and curly quotes (“ ” ’) in visible text.
+
 ## Super admins
 
 The owner (a fixed email) is always a super admin; others are in `superAdmins/{email}` and need a verified

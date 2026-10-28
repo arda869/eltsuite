@@ -57,11 +57,11 @@ export function AnnounceDialog({ classId, roster, onClose }: { classId: string; 
       setSubject('');
       setLater('');
       setPinned(false);
-      setDone(laterAt > Date.now() ? 'Scheduled. It will go out at ' + toLocal(laterAt) + '.' : 'Sent to ' + (all ? 'the whole class' : picked.length + (picked.length === 1 ? ' learner' : ' learners')) + '.');
+      setDone(laterAt > Date.now() ? 'Scheduled. It goes out at ' + toLocal(laterAt) + '.' : 'Sent to ' + (all ? 'the whole class' : picked.length + (picked.length === 1 ? ' learner' : ' learners')) + '.');
       window.setTimeout(() => setDone(''), 4000);
     } catch (e) {
       console.error(e);
-      setErr('The announcement could not be sent. Check your connection, then try again.');
+      setErr('We couldn’t send the announcement. Check your connection and try again.');
     } finally {
       setBusy(false);
     }

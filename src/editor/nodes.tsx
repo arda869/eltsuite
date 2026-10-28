@@ -347,7 +347,7 @@ export const newMcq = () => ({ type: 'mcq', attrs: { id: newId(), prompt: '', op
 export type ChoiceDisplay = 'letters' | 'radio' | 'dropdown';
 const DISPLAYS: { key: ChoiceDisplay; label: string }[] = [
   { key: 'dropdown', label: 'In line' },
-  { key: 'radio', label: 'Radio buttons' },
+  { key: 'radio', label: 'As a list' },
 ];
 
 function ChoiceView({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) {

@@ -62,7 +62,7 @@ export function TourPage() {
           <GapFill />
         </Part>
 
-        <Part n={3} eyebrow="Teaching live" title="Every screen follows yours" lede="In class or online, learners see the page you are on and answer as you teach. Step through a lesson:">
+        <Part n={3} eyebrow="Teaching live" title="Every screen follows yours" lede="In class or online, learners see the page you’re on and answer as you teach. Step through a lesson:">
           <Live />
         </Part>
 

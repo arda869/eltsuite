@@ -16,7 +16,7 @@ export function DeleteClassDialog({ c, onClose, onDeleted }: { c: ClassDoc; onCl
           This removes all lessons and work, <strong>{c.learnerCount ?? 0} learner accounts</strong>, their answers, feedback and board posts, and the class code.
         </p>
         <p className="hint" style={{ margin: 0 }}>
-          The class goes to <strong>Recently deleted</strong> for 30 days and you can restore it there. After 30 days it is removed for good. If you only want to put it away, archive it instead.
+          The class goes to <strong>Recently deleted</strong> for 30 days and you can restore it there. After that, it’s gone for good. If you only want to put it away, archive it instead.
         </p>
         <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={async () => download(c.name, await classText(c.id, c.name, true))}>
           Export the lessons first

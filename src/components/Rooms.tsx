@@ -193,7 +193,7 @@ export function CallButtons({ c, me, compact }: { c: Chat; me: Person; compact?:
       openCall({ url: k.url, title: chatTitle(c, me.key), kind: k.kind, chatId: c.id, code: k.code });
       if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {});
     } catch (e) {
-      void tell(callStartError(e, 'The call could not be started. Please try again.'));
+      void tell(callStartError(e, 'We couldn’t start the call. Try again.'));
     } finally {
       setBusy(false);
     }

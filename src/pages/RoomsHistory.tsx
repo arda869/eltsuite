@@ -97,7 +97,7 @@ export function HistoryView({ logs, ctx, now }: { logs: LogDoc[] | null; ctx: Ct
       ) : !shown.length ? (
         <section className="rm-card rm-hempty">
           <h2>{kind === 'all' ? 'No calls yet' : 'None of these yet'}</h2>
-          <p className="rm-none">Every class, meeting and call you are in is kept here: who came, when, and for how long.</p>
+          <p className="rm-none">Every class, meeting and call you’re in is kept here: who came, when, and for how long.</p>
         </section>
       ) : (
         days.map((list) => (
@@ -135,8 +135,8 @@ export function CallDetail({ id, logs, ctx, now }: { id: string; logs: LogDoc[] 
         <Link className="rm-back" to="/rooms?history">
           <UiIcon name="prev" size={14} /> Call history
         </Link>
-        <h2>This call’s record is not here</h2>
-        <p className="rm-none">It may have been removed, or it is not one of your calls.</p>
+        <h2>This call’s record isn’t here</h2>
+        <p className="rm-none">It may have been removed, or it isn’t one of your calls.</p>
       </section>
     );
   const cls = l.classId ? ctx.classes.find((c) => c.id === l.classId) : undefined;
@@ -280,7 +280,7 @@ export function CallDetail({ id, logs, ctx, now }: { id: string; logs: LogDoc[] 
         </div>
         {absent.length > 0 && (
           <div className="rm-absent">
-            <b>Did not join</b>
+            <b>Didn’t join</b>
             <span className="rm-chips">
               {absent.map((p) => (
                 <span key={p.key} className="rm-chip">

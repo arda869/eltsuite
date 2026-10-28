@@ -49,7 +49,7 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, pr
         v = { kind: 'teams', url: await makeTeamsMeeting({ title: name, start, mins, weeks: 1 }), by: me.uid };
       } catch (e) {
         v = null;
-        void tell(`${e instanceof Error ? e.message : 'The Teams meeting could not be made.'} The session uses the ELT Suite video room for now.`);
+        void tell(`${e instanceof Error ? e.message : 'We couldn’t make the Teams meeting.'} The session uses the ELT Suite video room for now.`);
       }
     }
     try {
@@ -58,7 +58,7 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, pr
     } catch (e) {
       console.error(e);
       setBusy(false);
-      void tell('It could not be saved. Please try again.');
+      void tell('We couldn’t save it. Try again.');
     }
   };
   return (
@@ -103,7 +103,7 @@ export function QuickCreate({ start, end, classes, colleagues, lastClass, me, pr
             <Select label="Class" value={classId} options={classes.map((x) => ({ v: x.id, label: x.name }))} onChange={setClassId} placeholder="Choose a class" />
           </div>
         ) : (
-          <span className="hint">You have no classes yet. Add one first, or make this a meeting.</span>
+          <span className="hint">You don’t have any classes yet. Add one first, or make this a meeting.</span>
         )
       ) : (
         <div className="ttb-quick-row">
@@ -178,7 +178,7 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
               </a>
             </span>
           ) : external(s) ? (
-            <span>{videoLabel(s.video?.kind)}: {s.video?.kind === 'meet' ? 'the link is made in Google Calendar, once it is connected in Settings' : 'the link is not ready yet'}</span>
+            <span>{videoLabel(s.video?.kind)}: {s.video?.kind === 'meet' ? 'the link is made in Google Calendar, once it’s connected in Settings' : 'the link is not ready yet'}</span>
           ) : (
             <span>{s.online ? (s.kind === 'class' ? (c?.video?.url ? 'Online, in the class video room' : 'Online: the class video room is on its way') : s.live ? `On now: ${s.live.byName} started it` : 'Online: the room opens when it starts') : s.place || 'In person'}</span>
           )}
@@ -220,12 +220,12 @@ function GuestInvite({ s, o, mine }: { s: Session; o: Occurrence; mine: boolean 
     try {
       setCode(await guestLink(s, s.ownerName || 'Teacher'));
     } catch {
-      void tell('The link could not be made. Please try again.');
+      void tell('We couldn’t make the link. Try again.');
     } finally {
       setBusy(false);
     }
   };
-  const mail = `mailto:?subject=${encodeURIComponent(`Invitation: ${s.title || 'Meeting'}, ${longDay(o.start)}`)}&body=${encodeURIComponent(`You are invited to ${s.title || 'a meeting'} on ${longDay(o.start)}, ${clockRange(o.start, o.end)} (${localZone()}).\n\nJoin in your browser, no account needed:\n${url}\n\nOpen the link a little before it starts; it lets you in when the meeting begins.`)}`;
+  const mail = `mailto:?subject=${encodeURIComponent(`Invitation: ${s.title || 'Meeting'}, ${longDay(o.start)}`)}&body=${encodeURIComponent(`You’re invited to ${s.title || 'a meeting'} on ${longDay(o.start)}, ${clockRange(o.start, o.end)} (${localZone()}).\n\nJoin in your browser, no account needed:\n${url}\n\nOpen the link a little before it starts. It lets you in when the meeting begins.`)}`;
   return (
     <li className="ttb-guest">
       <UiIcon name="link" size={16} />
@@ -244,7 +244,7 @@ function GuestInvite({ s, o, mine }: { s: Session; o: Occurrence; mine: boolean 
         </span>
       ) : mine ? (
         <span className="ttb-guest-b">
-          <span>Invite someone who is not in ELT Suite</span>
+          <span>Invite someone who isn’t in ELT Suite</span>
           <button type="button" className="btn small-btn" disabled={busy} onClick={() => void make()}>
             {busy ? 'Making the link…' : 'Make a guest link'}
           </button>

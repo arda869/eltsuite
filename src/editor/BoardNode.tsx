@@ -36,11 +36,11 @@ function BoardView({ node, updateAttributes, deleteNode, editor, getPos, selecte
       <div className="board-settings">
         {toggle('replies', 'Replies', 'Learners can reply to a message')}
         {toggle('reactions', 'Reactions', 'Hearts, likes, claps and ideas')}
-        {toggle('anonymous', 'Anonymous', 'Learners’ names are not shown')}
+        {toggle('anonymous', 'Anonymous', 'Learners’ names aren’t shown')}
         <label className="r-share">
           <input type="checkbox" checked={a.tagging !== false} onChange={() => updateAttributes({ tagging: a.tagging === false })} />
           Tagging
-          <span className="hint">Learners can type @ to tag a classmate or you; that person gets a notification</span>
+          <span className="hint">Learners can type @ to tag a classmate or you, and that person gets a notification</span>
         </label>
       </div>
       <div className="board-preview">

@@ -630,7 +630,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           <UiIcon name="lock" size={16} />
           {teacher ? (
             <span>
-              <b>Locked.</b> Learners can read it but cannot change it. You can still edit.
+              <b>Locked.</b> Learners can read it but can’t change it. You can still edit.
             </span>
           ) : (
             <span>

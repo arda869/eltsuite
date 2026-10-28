@@ -76,7 +76,7 @@ export function DocPage() {
 
   if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
-  if (!lesson && (d === null || !role)) return <div className="dp-msg">This document is not shared with you, or it was deleted.<Link to="/">Back to ELT Suite</Link></div>;
+  if (!lesson && (d === null || !role)) return <div className="dp-msg">This document isn’t shared with you, or it’s been deleted.<Link to="/">Back to ELT Suite</Link></div>;
   const docKey = lesson ? key : d!.docKey;
   const cite = ((d as { citeStyle?: CiteStyle } | null | undefined)?.citeStyle ?? 'apa') as CiteStyle;
   const classId = lesson ? qs.get('c') ?? '' : '';
@@ -119,7 +119,7 @@ export function DocPage() {
             </button>
           )}
           {d && (
-            <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(docLink(d.id))} data-tip="Only people it is shared with can open it">
+            <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(docLink(d.id))} data-tip="Only people it’s shared with can open it">
               <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}
@@ -198,7 +198,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
       setNote('');
     } catch (e) {
       console.error(e);
-      setDone('It could not be shared. Try again.');
+      setDone('We couldn’t share it. Try again.');
     }
     setBusy(false);
   };

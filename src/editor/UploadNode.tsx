@@ -37,7 +37,7 @@ function FileRow({ classId, f, onRemove }: { classId: string; f: SentFile; onRem
       }
     } catch {
       w?.close();
-      void tell('The file could not be opened.');
+      void tell('We couldn’t open the file.');
     }
   };
   return (
@@ -94,7 +94,7 @@ export function UploadBox({ classId, a, value, onChange, disabled, sample }: { c
     if (all.length > take.length) setError(`You can send ${max === 1 ? 'one file' : `up to ${max} files`}.`);
     for (const f0 of take) {
       if (!allowed(kinds, f0)) {
-        setError(`${f0.name} is not a kind of file this task takes.`);
+        setError(`${f0.name} isn’t a kind of file this task takes.`);
         continue;
       }
       const f = a.shrink ? await shrinkPhoto(f0) : f0;
@@ -108,7 +108,7 @@ export function UploadBox({ classId, a, value, onChange, disabled, sample }: { c
         onChange({ files: [...latest.current, sent] });
         latest.current = [...latest.current, sent];
       } catch {
-        setError(`${f.name} could not be sent. Check your connection and try again.`);
+        setError(`${f.name} couldn’t be sent. Check your connection and try again.`);
       }
       setBusy((b) => b.filter((x) => x.name !== f.name));
     }
@@ -236,7 +236,7 @@ function UploadView({ node, updateAttributes, deleteNode, editor, getPos, select
           <input value={a.note} onChange={(e) => updateAttributes({ note: e.target.value })} onKeyDown={(e) => e.stopPropagation()} placeholder="For example: Upload a photo of your mind map" />
         </label>
       </div>
-      <span className="hint">{a.maxMB >= 10 ? 'Large files use up the free space quickly; most homework fits in 5 MB.' : 'On the free plan, files are kept in the database, so smaller is better. Photos shrink to under 1 MB.'}</span>
+      <span className="hint">{a.maxMB >= 10 ? 'Large files use up the free space quickly; most homework fits in 5 MB.' : 'On the free plan, smaller files are better. Photos shrink to under 1 MB.'}</span>
       <UploadBox classId="" a={a} sample disabled />
     </NodeViewWrapper>
   );

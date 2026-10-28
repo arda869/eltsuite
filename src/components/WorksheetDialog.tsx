@@ -110,8 +110,8 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
         console.error(e);
         setLoadError(
           (e as { code?: string }).code === 'permission-denied'
-            ? 'The tasks could not be read. If a “view as a learner” tab is open, close it, then try again.'
-            : 'The tasks could not be loaded. Check your connection, then try again.',
+            ? 'We couldn’t read the tasks. If a “view as a learner” tab is open, close it and try again.'
+            : 'We couldn’t load the tasks. Check your connection and try again.',
         );
       });
   }, [classId, itemId, attempt]);
@@ -196,7 +196,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
       setBusy('');
     } catch (e) {
       console.error(e);
-      setBusy('The PDF could not be made: ' + (e as Error).message);
+      setBusy('We couldn’t make the PDF: ' + (e as Error).message);
     }
   };
   const docx = async () => {
@@ -206,7 +206,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
       saveBlob(`${lesson!.title.replace(/[^\w\- ]+/g, '').trim() || 'Worksheet'}.docx`, await lessonDocx(lesson!.title, items, { ...look(), media: await pictures(items), sounds: await sounds(items) }));
       setBusy('');
     } catch (e) {
-      setBusy('The file could not be made: ' + (e as Error).message);
+      setBusy('We couldn’t make the file: ' + (e as Error).message);
     }
   };
   return (
@@ -230,7 +230,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
         ) : (
           <>
             <span className="hint">Laid out like a coursebook page: your sections as headings, each task as a numbered exercise (its instruction is the heading), and no exercise split across columns or pages. Hidden tasks are left out.</span>
-            {visible.length === 0 && <span className="load-error">{lesson.tasks.some((t) => t.kind !== 'section') ? 'Every task here is hidden from learners, so there is nothing to print. Show a task first.' : 'This lesson has no tasks yet.'}</span>}
+            {visible.length === 0 && <span className="load-error">{lesson.tasks.some((t) => t.kind !== 'section') ? 'Every task here is hidden from learners, so there’s nothing to print. Show a task first.' : 'This lesson has no tasks yet.'}</span>}
             <div className="field" style={{ gap: 6 }}>
               <span>Tasks</span>
               <div className="aud-pick ws-tasks">

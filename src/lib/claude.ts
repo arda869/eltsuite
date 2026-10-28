@@ -33,7 +33,7 @@ export const STATE_LABEL: Record<ThreadState, string> = {
   waiting: 'Waiting for Claude',
   working: 'Claude is working on it',
   answered: 'Claude answered',
-  failed: 'Claude could not finish',
+  failed: 'Claude couldn’t finish',
 };
 
 const ID_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';

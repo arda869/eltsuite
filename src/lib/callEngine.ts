@@ -193,7 +193,7 @@ export function startEngine(call: OpenCall) {
       });
       on('camera-error', (ev) => {
         const m = String((ev as { errorMsg?: { errorMsg?: string } }).errorMsg?.errorMsg ?? '');
-        emit({ error: /denied|permission|NotAllowed/i.test(m) ? 'The camera or microphone is blocked. Allow them in the address bar, then turn them on again.' : 'The camera or microphone could not be used.' });
+        emit({ error: /denied|permission|NotAllowed/i.test(m) ? 'The camera or microphone is blocked. Allow them in the address bar, then turn them on again.' : 'We couldn’t use your camera or microphone. Check that this site is allowed to use them.' });
       });
       on('error', (ev) => emit({ status: 'error', error: String((ev as { errorMsg?: string }).errorMsg ?? 'The call stopped.') }));
       // Left without asking to (removed by a host, or the room closed): the call ends here too.
@@ -217,7 +217,7 @@ export function startEngine(call: OpenCall) {
       if (bg !== 'none' && call.kind === 'video') void setBackground(bg);
     } catch (e) {
       console.error(e);
-      emit({ status: 'error', error: 'The call could not be joined. Check your connection, then try again.' });
+      emit({ status: 'error', error: 'We couldn’t join the call. Check your connection and try again.' });
     }
   });
   return queue;
@@ -289,7 +289,7 @@ export async function setBackground(bg: string, own?: ArrayBuffer) {
     emit({ bg });
     if (bg !== 'own') remember('ll.callBg', bg);
   } catch {
-    emit({ error: 'Backgrounds do not work on this device or browser.' });
+    emit({ error: 'Backgrounds don’t work on this device or browser.' });
   }
 }
 // Background noise (keyboards, traffic, a fan) taken out of your microphone. On unless turned off.
@@ -300,7 +300,7 @@ export async function setNoise(on: boolean) {
     emit({ noise: on });
     remember('ll.callNoise', on ? '1' : '0');
   } catch {
-    emit({ noise: false, error: on ? 'Noise reduction does not work on this device or browser.' : undefined });
+    emit({ noise: false, error: on ? 'Noise reduction doesn’t work on this device or browser.' : undefined });
   }
 }
 export function raiseHand(up: boolean) {
@@ -507,7 +507,7 @@ async function saveLog() {
   log.data.savedAt = Date.now();
   log.dirty = false;
   await setDoc(doc(db, 'callLogs', log.id), JSON.parse(JSON.stringify(log.data))).catch((e) => {
-    console.warn('The attendance record could not be saved', e);
+    console.warn('We couldn’t save the attendance record', e);
     if (log) log.dirty = true;
   });
 }

@@ -111,7 +111,7 @@ function NewThread({ onClose, onDone }: { onClose: () => void; onDone: (id: stri
     try {
       onDone(await startThread(me, title.trim() || text.trim().split('\n')[0].slice(0, 80), text.trim(), shots));
     } catch (e) {
-      setErr('That could not be sent: ' + ((e as Error).message || 'try again.'));
+      setErr('We couldn’t send that: ' + ((e as Error).message || 'try again.'));
       setBusy(false);
     }
   };
@@ -122,8 +122,8 @@ function NewThread({ onClose, onDone }: { onClose: () => void; onDone: (id: stri
         <input className="hq-in" name="title" maxLength={140} autoComplete="off" placeholder="For example: a dark theme for the timetable" value={title} onChange={(e) => setTitle(e.target.value)} />
       </label>
       <label className="field">
-        <span>What you would like</span>
-        <textarea className="hq-in" name="message" rows={7} maxLength={20000} placeholder="Say it as you would to a developer: what should change, where, and how you will know it works. Paste screenshots with Ctrl+V or ⌘V." value={text} onChange={(e) => setText(e.target.value)} />
+        <span>What you’d like</span>
+        <textarea className="hq-in" name="message" rows={7} maxLength={20000} placeholder="Say it as you would to a developer: what should change, where, and how you’ll know it works. Paste screenshots with Ctrl+V or ⌘V." value={text} onChange={(e) => setText(e.target.value)} />
       </label>
       <ShotPicker shots={shots} setShots={setShots} />
       <span className="hint">{WAIT_NOTE}</span>
@@ -181,7 +181,7 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
   if (t === null)
     return (
       <div className="hq-page">
-        <PageHead crumb={back} title="This conversation is not here" />
+        <PageHead crumb={back} title="This conversation isn’t here" />
       </div>
     );
   const busyClaude = t.state === 'waiting' || t.state === 'working';
@@ -195,7 +195,7 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
       setAdd([]);
       say('Sent. ' + WAIT_NOTE);
     } catch {
-      say('That could not be sent. Try again.');
+      say('We couldn’t send that. Try again.');
     }
     setBusy(false);
   };
@@ -250,7 +250,7 @@ function ThreadView({ id, go }: { id: string; go: Go }) {
           )}
         </ol>
       )}
-      {late && <span className="hint hq-tk-err">Claude has not answered yet. It looks every hour; if it stays like this, check the "ELT Suite support" routine in Claude.</span>}
+      {late && <span className="hint hq-tk-err">Claude hasn’t answered yet. It looks every hour; if it stays like this, check the "ELT Suite support" routine in Claude.</span>}
       <div className="cl-compose">
         <label className="field">
           <span>Write to Claude</span>

@@ -19,7 +19,7 @@ export function CalendarSettings({ uid, owner, Row, Toggle }: { uid: string; own
   useEffect(() => void prepareGoogle().then(setReady, () => setReady(false)), []);
   const turnOn = async () => {
     setNote('');
-    if (!ready) return setNote('Google Calendar is not set up for ELT Suite yet.');
+    if (!ready) return setNote('Google Calendar isn’t set up for ELT Suite yet.');
     setBusy(true);
     try {
       await askToken({ consent: true });
@@ -27,7 +27,7 @@ export function CalendarSettings({ uid, owner, Row, Toggle }: { uid: string; own
       await saveGcalSetting(uid, { on: true, epoch: Date.now(), ...(calendar.includes('@') ? { email: calendar } : {}) });
       setNote('Done. Your timetable goes to Google Calendar whenever you open it in ELT Suite.');
     } catch (e) {
-      setNote(e instanceof Error ? e.message : 'Google Calendar could not connect. Please try again.');
+      setNote(e instanceof Error ? e.message : 'We couldn’t connect Google Calendar. Try again.');
     } finally {
       setBusy(false);
     }
@@ -45,7 +45,7 @@ export function CalendarSettings({ uid, owner, Row, Toggle }: { uid: string; own
       await saveGcalSetting(uid, { on: false });
       forgetToken();
     } catch (e) {
-      setNote(e instanceof Error ? e.message : 'Google Calendar could not be reached.');
+      setNote(e instanceof Error ? e.message : 'We couldn’t reach Google Calendar.');
       await saveGcalSetting(uid, { on: false }).catch(() => {});
     } finally {
       setBusy(false);
@@ -62,7 +62,7 @@ export function CalendarSettings({ uid, owner, Row, Toggle }: { uid: string; own
         </p>
       )}
       <VideoRows uid={uid} Row={Row} googleOn={!!g?.on} />
-      {owner && <ClientIdRow Row={Row} doc_="google" label="Google Client ID (owner only)" hint="From Google Cloud, project lesson-lit. It is public and safe here. Never paste the client secret anywhere." pattern={/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/} placeholder="1234-abc.apps.googleusercontent.com" read={googleClientId} onSaved={(id) => (setGoogleClientIdLocal(id), void prepareGoogle().then(setReady, () => setReady(false)))} />}
+      {owner && <ClientIdRow Row={Row} doc_="google" label="Google Client ID (owner only)" hint="From Google Cloud, project lesson-lit. It’s public and safe here. Never paste the client secret anywhere." pattern={/^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/} placeholder="1234-abc.apps.googleusercontent.com" read={googleClientId} onSaved={(id) => (setGoogleClientIdLocal(id), void prepareGoogle().then(setReady, () => setReady(false)))} />}
       {owner && <ClientIdRow Row={Row} doc_="microsoft" label="Microsoft Client ID (owner only)" hint="The Application (client) ID from Microsoft Entra, for Teams meetings. Public too; never paste a client secret." pattern={/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i} placeholder="00000000-0000-0000-0000-000000000000" read={microsoftClientId} onSaved={(id) => (setMicrosoftClientIdLocal(id), void prepareMicrosoft())} />}
     </>
   );

@@ -92,7 +92,7 @@ export function AppFiles({ app }: { app: AppKey }) {
   };
   const makePdf = async (f: File) => {
     if (!uid) return;
-    if (f.size > MAX_PDF) return void tell('That PDF is larger than 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    if (f.size > MAX_PDF) return void tell('That PDF is over 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
     const w = window.open('about:blank', '_blank');
     setBusy('Uploading ' + f.name + '…');
     try {
@@ -103,7 +103,7 @@ export function AppFiles({ app }: { app: AppKey }) {
       if (w) w.location.href = `/doc/${id}`;
     } catch {
       w?.close();
-      void tell('That file could not be opened as a PDF.');
+      void tell('We couldn’t open that file as a PDF.');
     } finally {
       setBusy('');
     }
@@ -126,7 +126,7 @@ export function AppFiles({ app }: { app: AppKey }) {
     { label: 'Open', onClick: e.open },
     { label: stars[e.star] ? 'Remove the star' : 'Star', onClick: () => void setStar(uid, e.star, !stars[e.star]) },
     ...(e.doc && e.doc.owner === uid && !(e.doc.folder && inLib.has(e.doc.folder))
-      ? ['sep' as const, { label: 'Delete', danger: true, onClick: () => void ask(`Delete “${e.title}” for everyone it is shared with?`).then((ok) => void (ok && removeSharedDoc(e.doc!.id))) }]
+      ? ['sep' as const, { label: 'Delete', danger: true, onClick: () => void ask(`Delete “${e.title}” for everyone it’s shared with?`).then((ok) => void (ok && removeSharedDoc(e.doc!.id))) }]
       : []),
   ];
 
@@ -202,7 +202,7 @@ export function AppFiles({ app }: { app: AppKey }) {
               <FileIcon kind={app === 'recordings' ? 'audio' : (a.kinds[0] as FileKind)} size={44} label={false} />
             </span>
             <strong>{s ? 'Nothing matches' : tab === 'starred' ? 'Nothing starred yet' : tab === 'shared' ? 'Nothing shared with you yet' : tab === 'library' ? 'Nothing in the library yet' : `No ${a.name} files yet`}</strong>
-            <span className="hint">{s ? 'Try other words.' : tab === 'starred' ? 'Star a file to find it here quickly.' : tab === 'library' && app === 'recordings' ? 'Recordings are not kept in the library yet.' : a.empty}</span>
+            <span className="hint">{s ? 'Try other words.' : tab === 'starred' ? 'Star a file to find it here quickly.' : tab === 'library' && app === 'recordings' ? 'Recordings aren’t kept in the library yet.' : a.empty}</span>
           </div>
         )}
       </main>

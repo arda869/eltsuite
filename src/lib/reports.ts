@@ -37,7 +37,7 @@ export const addAttendance = (classId: string, itemId: string, learner: { id: st
   setDoc(doc(db, 'classes', classId, 'attendance', `${itemId}_${learner.uid}`), { itemId, learnerId: learner.id, uid: learner.uid, name: learner.name, day: new Date().toISOString().slice(0, 10), firstAt: Date.now(), lastAt: Date.now(), minutes: 0, corrected: minutes, note: 'added by the teacher' }, { merge: true });
 
 export type Status = 'not-started' | 'in-progress' | 'submitted' | 'marked';
-export const STATUS_LABEL: Record<Status, string> = { 'not-started': 'Not started', 'in-progress': 'In progress', submitted: 'Submitted', marked: 'Marked' };
+export const STATUS_LABEL: Record<Status, string> = { 'not-started': 'Not started', 'in-progress': 'In progress', submitted: 'Handed in', marked: 'Marked' };
 
 // One learner's result on one item.
 export type ItemResult = { status: Status; score: number; total: number; pct: number | null; late: boolean; tasksDone: number; tasksTotal: number; submittedAt?: number };

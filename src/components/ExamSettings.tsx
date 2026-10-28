@@ -21,7 +21,7 @@ export function ExamSettings({ classId, item, task }: { classId: string; item: I
         <label className="switch-row">
           <span>
             Exam mode for this task
-            <span className="hint">A Start button and a timer, no checking, answers locked after submitting</span>
+            <span className="hint">A Start button and a timer. No checking, and answers lock once they’re handed in</span>
           </span>
           <input type="checkbox" checked={!!task.exam} onChange={() => setTaskFlags(classId, item.id, task.id, { exam: task.exam ? null : { minutes: 20 }, examReleased: false })} />
         </label>
@@ -34,7 +34,7 @@ export function ExamSettings({ classId, item, task }: { classId: string; item: I
             minutes
           </label>
           <span className="hint">
-            {runs.length} started · {done} submitted. Each learner has one attempt.
+            {runs.length} started · {done} handed in. Each learner has one go.
           </span>
           <button type="button" className={'btn small-btn' + (released ? '' : ' primary')} style={{ alignSelf: 'flex-start' }} onClick={() => release(!released)}>
             {released ? 'Results released · take back' : 'Release the results'}

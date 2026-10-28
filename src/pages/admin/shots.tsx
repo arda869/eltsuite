@@ -26,7 +26,7 @@ export function ShotPicker({ shots, setShots }: { shots: NewShot[]; setShots: (f
           const s = await toShot(f);
           setShots((list) => [...list, s].slice(0, MAX_SHOTS));
         } catch {
-          setErr('One picture could not be read. Try a PNG or JPEG.');
+          setErr('We couldn’t read one picture. Try a PNG or JPEG.');
         }
         setWorking((n) => n - 1);
       }

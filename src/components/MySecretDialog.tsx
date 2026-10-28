@@ -55,9 +55,9 @@ export function MySecretDialog({ classId, classCode, learnerId, onClose }: { cla
             <label className="field">
               Type it again
               <input type="password" inputMode={kind === 'pin' ? 'numeric' : undefined} maxLength={kind === 'pin' ? 4 : 100} value={again} autoComplete="new-password" onChange={(e) => setAgain(kind === 'pin' ? e.target.value.replace(/\D/g, '') : e.target.value)} />
-              {again && next !== again && <span className="error">They are not the same.</span>}
+              {again && next !== again && <span className="error">They don’t match.</span>}
             </label>
-            <span className="hint">Your teacher will not be able to see it, and cannot reset it for you yet, so choose something you will remember.</span>
+            <span className="hint">Your teacher can’t see it or reset it for you, so choose something you’ll remember.</span>
             {msg && <span className="error">{msg}</span>}
             <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" className="btn" onClick={onClose}>

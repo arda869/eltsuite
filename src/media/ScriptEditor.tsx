@@ -152,7 +152,7 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
         {bulk ? (
           <div className="field">
             <span>The script, one line for each sentence or speaker turn</span>
-            <textarea aria-label="Script, one line per sentence" className="se-bulk" value={text} autoFocus placeholder={'Paste or type the script here.\nEach line lights up as it is spoken.'} onChange={(ev) => setText(ev.target.value)} />
+            <textarea aria-label="Script, one line per sentence" className="se-bulk" value={text} autoFocus placeholder={'Paste or type the script here.\nEach line lights up as it’s spoken.'} onChange={(ev) => setText(ev.target.value)} />
             <span className="hint">More than one speaker? Start lines with a name or a letter, like “A: Hello” or “Anna: Hello”.</span>
             <span className="se-tools">
               <button type="button" className="btn small-btn" disabled={!text.trim()} onClick={() => setText(splitScript(text).join('\n'))}>

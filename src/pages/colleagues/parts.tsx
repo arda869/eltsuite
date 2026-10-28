@@ -43,7 +43,7 @@ export function Reach({ m, me, chat, look }: { m: Mate; me: Person; chat?: Chat;
       if (window.matchMedia(PHONE).matches) return nav(`/messages?c=${encodeURIComponent(id)}`);
       dockOpen(id);
     } catch {
-      void tell('The chat could not be opened. Please try again.');
+      void tell('We couldn’t open the chat. Try again.');
     }
     setBusy(false);
   };
@@ -54,7 +54,7 @@ export function Reach({ m, me, chat, look }: { m: Mate; me: Person; chat?: Chat;
       await openChat(me, [them]);
     } catch {
       setPending(null);
-      void tell('The call could not be started. Please try again.');
+      void tell('We couldn’t start the call. Try again.');
     }
   };
   useEffect(() => {
@@ -110,13 +110,13 @@ export function ThingIcon({ t }: { t: Thing }) {
 export function ThingRow({ t, face }: { t: Thing; face?: ReactNode }) {
   const [gone, setGone] = useState(false);
   const stop = async () => {
-    if (!t.stop || !(await ask(`Stop sharing “${t.title}”? They will no longer see it.`, { ok: 'Stop sharing' }))) return;
+    if (!t.stop || !(await ask(`Stop sharing “${t.title}”? They won’t see it any more.`, { ok: 'Stop sharing' }))) return;
     setGone(true);
     try {
       await t.stop();
     } catch {
       setGone(false);
-      void tell('Sharing could not be stopped. Please try again.');
+      void tell('We couldn’t stop sharing. Try again.');
     }
   };
   if (gone) return null;

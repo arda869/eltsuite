@@ -242,11 +242,11 @@ for (const c of threads.docs) {
 
 const ADMIN_CAN = [
   'which apps you have, and how much space',
-  'whether you create your own classes, or they create them for you',
+  'whether you make your own classes, or they make them for you',
   'class settings for learners: emails, and how names show',
   'whether you can add colleagues from outside the organisation',
   'which shared folders you can view or change',
-  'your job title, and whether you are a teacher trainer',
+  'your job title, and whether you’re a teacher trainer',
 ];
 const ADMIN_SEE = 'Your name, email, job title and the profile you write, if they ask for one, and the class lists of your classes. Not your lessons, files or messages, unless you share them.';
 const invites = await db.collection('orgInvites').where('status', '==', 'pending').get();

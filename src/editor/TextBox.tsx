@@ -199,7 +199,7 @@ function TextBoxView({ node, updateAttributes, deleteNode, selected, editor, get
                 ['fit', 'Fit the text'],
               ] as const
             ).map(([k, l]) => (
-              <button key={k} type="button" role="radio" aria-checked={(attrs.width ?? 'full') === k} className={(attrs.width ?? 'full') === k ? 'on' : ''} onClick={() => updateAttributes({ width: k })} title={k === 'full' ? 'The box reaches the right edge of the page' : 'The box is only as wide as what is in it'}>
+              <button key={k} type="button" role="radio" aria-checked={(attrs.width ?? 'full') === k} className={(attrs.width ?? 'full') === k ? 'on' : ''} onClick={() => updateAttributes({ width: k })} title={k === 'full' ? 'The box reaches the right edge of the page' : 'The box is only as wide as what’s in it'}>
                 {l}
               </button>
             ))}

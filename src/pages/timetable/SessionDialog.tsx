@@ -84,7 +84,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
         video = { kind: 'teams', url: await makeTeamsMeeting({ title, start, mins: s.mins ?? 60, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1 }), by: me.uid };
       } catch (e) {
         setBusy(false);
-        return void tell(e instanceof Error ? e.message : 'The Teams meeting could not be made.');
+        return void tell(e instanceof Error ? e.message : 'We couldn’t make the Teams meeting.');
       }
     }
     const base = { ...s, video, tz, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
@@ -95,7 +95,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
       onClose();
     } catch (e) {
       console.error(e);
-      void tell('It could not be saved. Please try again.');
+      void tell('We couldn’t save it. Try again.');
       setBusy(false);
     }
   };
@@ -184,13 +184,13 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
           {s.online ? (
             <div className="ttb-video">
               <Select label="Video" value={vk} options={VIDEO_KINDS.map((v) => ({ v: v.k, label: v.label }))} onChange={pickVideo} />
-              {vk === 'eltsuite' && <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page; no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : 'A video room opens when it starts. No link to send.'}</span>}
+              {vk === 'eltsuite' && <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page, so there’s no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : 'A video room opens when it starts. No link to send.'}</span>}
               {vk === 'meet' && <span className="hint">{init.video?.kind === 'meet' && init.video.url ? `Google Meet: ${init.video.url.replace('https://', '')}` : google?.on ? 'A Google Meet link is made in your Google Calendar when you save, and learners see it on their home page.' : 'Google Meet links are made with your Google Calendar: turn on Add my timetable to Google Calendar in Settings.'}</span>}
               {vk === 'teams' && <span className="hint">{init.video?.kind === 'teams' && init.video.url ? 'The Teams meeting is ready. Learners see its link on their home page.' : 'A Teams meeting is made when you save. It needs a work or school Microsoft account.'}</span>}
               {(vk === 'zoom' || vk === 'link') && (
                 <>
                   <input value={vurl} onChange={(e) => setVurl(e.target.value)} placeholder={vk === 'zoom' ? 'Your Zoom link, for example https://zoom.us/j/1234567890' : 'https://'} aria-label={vk === 'zoom' ? 'Zoom link' : 'Link'} inputMode="url" spellCheck={false} />
-                  {vk === 'zoom' && vurl && cleanUrl(vurl) && !looksZoom(cleanUrl(vurl)) && <span className="hint">That does not look like a Zoom link, but it will work if it opens your meeting.</span>}
+                  {vk === 'zoom' && vurl && cleanUrl(vurl) && !looksZoom(cleanUrl(vurl)) && <span className="hint">That doesn’t look like a Zoom link, but it’ll work if it opens your meeting.</span>}
                   {cleanUrl(vurl) && cleanUrl(vurl) !== (vk === 'zoom' ? prefs.zoom : prefs.link) && (
                     <button type="button" className="btn link small ttb-keep" onClick={() => void saveVideoPrefs(me.uid, { ...prefs, kind: vk, [vk]: cleanUrl(vurl) })}>
                       Use this for my new sessions

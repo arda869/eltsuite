@@ -61,8 +61,8 @@ export function SuperTeachers({ d, go, params }: { d: SuperData; go: Go; params:
   const orgOf = (t: Teacher) => orgs.find((o) => o.id === accounts[t.uid]?.org) ?? null;
   const pause = async (on: boolean) => {
     const list = chosen.filter((t) => !!accounts[t.uid]?.suspended !== on);
-    if (!list.length) return say(on ? 'They are paused already.' : 'None of them is paused.');
-    if (!(await ask(on ? `Pause ${plural(list.length, 'account')}? They cannot open ELT Suite until you turn them back on. Nothing is deleted.` : `Let ${plural(list.length, 'teacher')} use ELT Suite again?`, { ok: on ? 'Pause' : 'Turn back on' }))) return;
+    if (!list.length) return say(on ? 'They’re already paused.' : 'None of them is paused.');
+    if (!(await ask(on ? `Pause ${plural(list.length, 'account')}? They can’t open ELT Suite until you turn them back on. Nothing is deleted.` : `Let ${plural(list.length, 'teacher')} use ELT Suite again?`, { ok: on ? 'Pause' : 'Turn back on' }))) return;
     await Promise.all(list.map((t) => saveAccount(t, { suspended: on })));
     say(on ? `${plural(list.length, 'account')} paused.` : `${plural(list.length, 'account')} on again.`);
   };
@@ -246,10 +246,10 @@ function SuperSwitch({ t }: { t: Teacher }) {
   const flip = async () => {
     if (on) {
       const self = email === (user?.email ?? '').toLowerCase();
-      if (!(await ask(self ? 'Stop being a super admin yourself? You will lose Super Admin at once.' : `Stop ${name} being a super admin?`, { ok: 'Remove', danger: true }))) return;
+      if (!(await ask(self ? 'Stop being a super admin yourself? You’ll lose Super Admin straight away.' : `Stop ${name} being a super admin?`, { ok: 'Remove', danger: true }))) return;
       await removeSuperAdmin(email);
     } else {
-      if (!(await ask(`Make ${name} a super admin? They will see and change everything in ELT Suite: every teacher, organisation, ticket and switch, and they can make other super admins. They need a verified email (Google, or a confirmed one).`, { ok: 'Make them a super admin' }))) return;
+      if (!(await ask(`Make ${name} a super admin? They’ll see and change everything in ELT Suite: every teacher, organisation, ticket and switch, and they can make other super admins. They need a verified email (Google, or a confirmed one).`, { ok: 'Make them a super admin' }))) return;
       await addSuperAdmin(email, t.name ?? '', me);
     }
   };
@@ -283,7 +283,7 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
       pic={<Avatar k={t.avatar} name={name} size={46} />}
       onClose={onClose}
       foot={
-        <button type="button" className={'btn small-btn' + (a.suspended ? ' primary' : ' danger')} onClick={() => void ask(a.suspended ? `Let ${name} use ELT Suite again?` : `Pause ${name}'s account? They cannot open ELT Suite until you turn it back on. Nothing is deleted.`, { ok: a.suspended ? 'Turn back on' : 'Pause' }).then((ok) => ok && void saveAccount(t, { suspended: !a.suspended }))}>
+        <button type="button" className={'btn small-btn' + (a.suspended ? ' primary' : ' danger')} onClick={() => void ask(a.suspended ? `Let ${name} use ELT Suite again?` : `Pause ${name}'s account? They can’t open ELT Suite until you turn it back on. Nothing is deleted.`, { ok: a.suspended ? 'Turn back on' : 'Pause' }).then((ok) => ok && void saveAccount(t, { suspended: !a.suspended }))}>
           {a.suspended ? 'Turn the account back on' : 'Pause the account'}
         </button>
       }
@@ -396,7 +396,7 @@ export function SuperOrgs({ d, go, params }: { d: SuperData; go: Go; params: URL
         <Pills value={f} options={pills} onChange={(v) => go({ tab: 'orgs', f: v === 'all' ? '' : v, replace: true })} label="Show" />
       </div>
       {!orgs.length ? (
-        <Empty title="No organisations yet" text="Create one, then add its admins and teachers." action={<button type="button" className="btn primary" onClick={() => setMaking(true)}>New organisation</button>} />
+        <Empty title="No organisations yet" text="Make one, then add its admins and teachers." action={<button type="button" className="btn primary" onClick={() => setMaking(true)}>New organisation</button>} />
       ) : !shown.length ? (
         <Empty title="None here" text="No organisation matches." />
       ) : (
@@ -485,7 +485,7 @@ function NewOrg({ onClose, onMade }: { onClose: () => void; onMade: (id: string)
           Cancel
         </button>
         <button type="button" className="btn primary" disabled={!name.trim()} onClick={make}>
-          Create
+          Make the organisation
         </button>
       </div>
     </Sheet>

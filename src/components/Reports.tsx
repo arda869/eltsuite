@@ -80,7 +80,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
         ['minutes live', String(Math.round(att.reduce((s2, x) => s2 + minutesOf(x), 0)))],
         ['in the review deck', String(mistakes.filter((m) => m.learnerUid === uid && !m.done).length)],
       ],
-      columns: ['Item', 'Type', 'Status', 'Score', 'Percent', 'Submitted'],
+      columns: ['Item', 'Type', 'Status', 'Score', 'Percent', 'Handed in'],
       rows: list.map((i) => {
         const r = itemResult(i, byLearner(uid));
         return [i.title, TYPE_LABEL[i.type], STATUS_LABEL[r.status] + (r.late ? ', late' : ''), r.pct === null ? '' : `${r.score} / ${r.total}`, r.pct === null ? '' : `${r.pct}%`, when(r.submittedAt)];
@@ -99,7 +99,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
         ['class average', mean === null ? '–' : `${mean}%`],
         ...(item.due ? ([['late', String(rs.filter((x) => x.r.late).length)]] as [string, string][]) : []),
       ],
-      columns: ['Learner', 'Status', 'Tasks done', 'Score', 'Percent', 'Submitted'],
+      columns: ['Learner', 'Status', 'Tasks done', 'Score', 'Percent', 'Handed in'],
       rows: rs.map(({ l, r }) => [l.displayName, STATUS_LABEL[r.status] + (r.late ? ', late' : ''), `${r.tasksDone} of ${r.tasksTotal}`, r.pct === null ? '' : `${r.score} / ${r.total}`, r.pct === null ? '' : `${r.pct}%`, when(r.submittedAt)]),
     };
   };
@@ -210,7 +210,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
             </table>
           </div>
           <span className="rp-foot">
-            <span className="hint">Scores are percentages, so versions and tasks of different lengths compare. A dot means not started (grey), in progress (orange) or submitted with nothing to mark automatically.</span>
+            <span className="hint">Scores are percentages, so versions and tasks of different lengths compare. A dot means not started (grey), in progress (orange) or handed in with nothing to mark automatically.</span>
             <ReportDownload make={classReport} />
           </span>
         </>
@@ -249,7 +249,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
                     <th>Item</th>
                     <th>Status</th>
                     <th>Score</th>
-                    <th>Submitted</th>
+                    <th>Handed in</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -296,7 +296,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
                 <>
                   <span className="rp-summary">
                     <span>
-                      <strong>{done}</strong> of {roster.length} submitted
+                      <strong>{done}</strong> of {roster.length} handed in
                     </span>
                     {item.due && (
                       <span>
@@ -315,7 +315,7 @@ export function Reports({ c, items, learners, initialItem }: { c: ClassDoc; item
                         <th>Status</th>
                         <th>Tasks</th>
                         <th>Score</th>
-                        <th>Submitted</th>
+                        <th>Handed in</th>
                       </tr>
                     </thead>
                     <tbody>

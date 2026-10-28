@@ -69,7 +69,7 @@ export function ReflectBlock({ about, title, items, value, onChange, disabled, c
         <div className="rf-peer">
           {fixed ? (
             <span className="rf-q">
-              You are giving feedback to <strong className="rf-to">{fixed.name}</strong>.
+              You’re giving feedback to <strong className="rf-to">{fixed.name}</strong>.
             </span>
           ) : (
             <span className="hint">Your teacher hasn’t paired you with a classmate yet.</span>

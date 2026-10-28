@@ -54,7 +54,7 @@ export function CopyDialog({ kind, fromClass, itemId, taskId, title, onClose, on
       onClose();
     } catch (e) {
       console.error(e);
-      setErr('The copy didn’t work. Please try again.');
+      setErr('That copy didn’t work. Try again.');
     } finally {
       setBusy(false);
     }

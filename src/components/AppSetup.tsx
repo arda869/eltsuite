@@ -33,10 +33,10 @@ export function AppSetupDialog({ onClose }: { onClose: () => void }) {
     setErr('');
     try {
       const ok = await enablePush(user.uid, key, profile?.role ?? 'teacher', profile?.role === 'learner' ? profile.classId ?? '' : '');
-      if (!ok) setErr('Notifications were not allowed. You can allow them in the settings for this site or app.');
+      if (!ok) setErr('Notifications aren’t allowed yet. You can allow them in the settings for this site or app.');
     } catch (e) {
       console.error(e);
-      setErr('Notifications could not be turned on here. Try again in a moment.');
+      setErr('We couldn’t turn on notifications here. Try again in a moment.');
     } finally {
       setBusy(false);
       setSt(await pushState());

@@ -54,7 +54,7 @@ export function StudioSession() {
     navigator.mediaDevices
       ?.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false, channelCount: 1 } })
       .then((st) => (live ? setMic(st) : st.getTracks().forEach((t) => t.stop())))
-      .catch((e: Error) => setMicError(e.name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the address bar, then reload.' : 'No microphone was found.'));
+      .catch((e: Error) => setMicError(e.name === 'NotAllowedError' ? 'The microphone is blocked. Allow it in the address bar, then reload.' : 'We couldn’t find a microphone.'));
     return () => {
       live = false;
     };
@@ -142,7 +142,7 @@ export function StudioSession() {
           await uploadTake(id, me, rd, blob, start, (Date.now() + offset.current - start) / 1000, (p) => setStatus(`Sending your recording… ${Math.round(p * 100)}%`));
           setStatus('Your recording is with the host.');
         } catch {
-          setStatus('Your recording could not be sent. Check your connection.');
+          setStatus('We couldn’t send your recording. Check your connection and try again.');
         }
       };
       r.stop();
@@ -168,7 +168,7 @@ export function StudioSession() {
       setEditing({ buffer: mine.buffer, name: mine.t.name, at: (mine.t.start - t0) / 1000, extra: rest.map((x) => ({ name: x.t.name, buffer: x.buffer, at: (x.t.start - t0) / 1000 })) });
       setStatus('');
     } catch {
-      setStatus('The recordings could not be opened.');
+      setStatus('We couldn’t open the recordings.');
     }
   };
 
@@ -180,7 +180,7 @@ export function StudioSession() {
           <Wordmark />
           <span className="studio-app">Recording studio</span>
         </header>
-        <p className="hint studio-missing">This recording session has ended, or you are not invited to it.</p>
+        <p className="hint studio-missing">This recording session has ended, or you’re not invited to it.</p>
       </div>
     );
   if (editing && host)
@@ -230,7 +230,7 @@ export function StudioSession() {
             </svg>
             <span>
               <b>Put on headphones</b>
-              <span className="hint">Everyone records their own voice. With headphones, the others’ voices are not picked up by your microphone, so each track stays clean.</span>
+              <span className="hint">Everyone records their own voice. With headphones, your microphone doesn’t pick up the others’ voices, so each track stays clean.</span>
             </span>
             <button type="button" className="btn primary small-btn" onClick={() => setPhones(true)}>
               I’m wearing headphones
@@ -332,7 +332,7 @@ export function RecordTogether({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (e) {
       console.error(e);
-      setErr('The session could not be started. Try again.');
+      setErr('We couldn’t start the session. Try again.');
       setBusy(false);
     }
   };

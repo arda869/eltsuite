@@ -83,7 +83,7 @@ export function LearnerJoin() {
       const c = (err as { code?: string }).code ?? '';
       setError(
         c === 'auth/too-many-requests'
-          ? 'Too many tries. Please wait a minute, or ask your teacher for your PIN.'
+          ? 'Too many tries. Wait a minute, or ask your teacher for your PIN.'
           : c === 'auth/network-request-failed'
             ? 'No connection. Check your internet and try again.'
             : usePassword
@@ -176,7 +176,7 @@ export function LearnerJoin() {
         </button>
         <div className="row-between small">
           <span className="hint">Forgot your PIN? Ask your teacher (unless you chose your own).</span>
-          <Link to="/">I am a teacher</Link>
+          <Link to="/">I’m a teacher</Link>
         </div>
       </form>
     </div>

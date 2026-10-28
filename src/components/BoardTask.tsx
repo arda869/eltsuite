@@ -94,7 +94,7 @@ function BoardShell({ classId, boardId, title, me, teacher, free, display, head 
           <UiIcon name="lock" size={16} />
           {teacher ? (
             <span>
-              <b>Locked.</b> Learners can see it but cannot draw. You still can.
+              <b>Locked.</b> Learners can see it but can’t draw. You still can.
             </span>
           ) : (
             <span>

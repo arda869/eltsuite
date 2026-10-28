@@ -20,14 +20,14 @@ export function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
     } catch (e) {
       const code = (e as { code?: string }).code;
       setStep('');
-      setErr(code === 'auth/requires-recent-login' ? 'Your classes are deleted. To delete the account itself, sign out, sign in again and repeat this step.' : 'Something went wrong. Please try again.');
+      setErr(code === 'auth/requires-recent-login' ? 'Your classes are deleted. To delete the account itself, sign out, sign in again and do this step again.' : 'That didn’t work. Try again, and if it keeps happening, write to us from Support.');
     }
   }
   return (
     <div className="scrim" onClick={onClose}>
       <div className="dialog" role="dialog" aria-label="Delete my account" onClick={(e) => e.stopPropagation()}>
         <h2 style={{ margin: 0 }}>Delete your account?</h2>
-        <p style={{ margin: 0 }}>This deletes every class you teach straight away, including the learner accounts and all their work, and then your account. It can’t be undone.</p>
+        <p style={{ margin: 0 }}>This deletes every class you teach straight away, including the learner accounts and all their work, and then your account. You can’t undo this.</p>
         <label className="field">
           Type DELETE to confirm
           <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus />

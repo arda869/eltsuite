@@ -39,7 +39,7 @@ export function ImportTasksDialog({ classId, itemId, onClose, onDone }: { classI
         setLessons(list);
         setFromItem(list.find((l) => l.id !== itemId)?.id ?? list[0]?.id ?? '');
       })
-      .catch(() => setErr('The lessons in that class could not be read.'));
+      .catch(() => setErr('We couldn’t open the lessons in that class.'));
   }, [fromClass, itemId]);
   useEffect(() => {
     setTasks(null);
@@ -67,7 +67,7 @@ export function ImportTasksDialog({ classId, itemId, onClose, onDone }: { classI
       onClose();
     } catch (e) {
       console.error(e);
-      setErr('The copy didn’t work. Please try again.');
+      setErr('That copy didn’t work. Try again.');
     } finally {
       setBusy('');
     }

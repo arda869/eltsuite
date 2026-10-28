@@ -25,7 +25,7 @@ export function Person({ m, st, chat, me, org, uid, between, onBack, onGone }: {
     { k: 'classes', label: 'Classes together', short: 'Classes', empty: `No classes together yet. Add a co-teacher in a class’s settings.` },
   ];
   const remove = async () => {
-    if (!(await ask(`Remove ${m.name} from your colleagues? What you have shared stays shared until you stop sharing it.`, { ok: 'Remove' }))) return;
+    if (!(await ask(`Remove ${m.name} from your colleagues? What you’ve shared stays shared until you stop sharing it.`, { ok: 'Remove' }))) return;
     await removeColleague(uid, m.id);
     onGone();
   };
@@ -64,7 +64,7 @@ export function Person({ m, st, chat, me, org, uid, between, onBack, onGone }: {
           {p === undefined ? (
             <span className="clg-skel clg-skel-text" aria-hidden="true" />
           ) : !answers.length ? (
-            <p className="hint">{m.first} has not written a profile yet. Teachers in {m.orgName} fill it in from Settings.</p>
+            <p className="hint">{m.first} hasn’t written a profile yet. Teachers in {m.orgName} fill it in from Settings.</p>
           ) : (
             <div className="clg-bio">
               {long.map(({ f, v }) => (

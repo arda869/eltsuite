@@ -532,7 +532,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
           <UiIcon name="lock" size={16} />
           {teacher ? (
             <span>
-              <b>Locked.</b> Learners can look at the slides but cannot change them. You can still edit.
+              <b>Locked.</b> Learners can look at the slides but can’t change them. You can still edit.
             </span>
           ) : (
             <span>

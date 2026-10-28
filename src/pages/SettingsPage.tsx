@@ -209,7 +209,7 @@ export function SettingsPage() {
           </Row>
           {teacher && user && (
             <>
-              <Row title="Email me about unread messages" hint="A short summary of what is waiting">
+              <Row title="Email me about unread messages" hint="A short summary of what’s waiting">
                 <Toggle label="Email me about unread messages" on={prefs.email} onChange={(v) => saveMsgPrefs(user.uid, { ...prefs, email: v })} />
               </Row>
               {prefs.email && (
@@ -427,16 +427,16 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
       setMsg('Linked. Next time you can sign in with Google.');
     } catch (e) {
       const code = (e as { code?: string }).code ?? '';
-      setMsg(code.includes('credential-already-in-use') || code.includes('email-already-in-use') ? 'That Google account is already used by another ELT Suite account.' : code.includes('popup') ? 'The Google window was closed before it finished.' : 'It could not be linked. Please try again.');
+      setMsg(code.includes('credential-already-in-use') || code.includes('email-already-in-use') ? 'That Google account is already used by another ELT Suite account.' : code.includes('popup') ? 'The Google window was closed before it finished.' : 'We couldn’t link it. Try again.');
     }
   };
   const saveEmail = async (v = email) => {
     const e = v.trim();
-    if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return setMsg('That email does not look right.');
+    if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return setMsg('That email doesn’t look right.');
     await updateDoc(doc(db, 'users', uid), { contactEmail: e, msgPrefs: { email: !!e, after: 60 } }).catch(() => {});
     setSaved(e);
     setEmail(e);
-    setMsg(e ? 'Saved. You will get an email when messages wait for you.' : 'Email removed.');
+    setMsg(e ? 'Saved. We’ll email you when messages are waiting.' : 'Email removed.');
   };
   return (
     <Section icon="person" title="Sign-in and email">
@@ -450,7 +450,7 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
           </button>
         )}
       </Row>
-      <Row title="Email for message summaries" hint="When messages wait for you, a short email tells you">
+      <Row title="Email for message summaries" hint="When messages are waiting, we’ll send you a short email">
         <span className="set-email">
           <input type="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void saveEmail()} aria-label="Email" />
           <button type="button" className="btn small-btn" disabled={email.trim() === saved} onClick={() => void saveEmail()}>

@@ -36,7 +36,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
       onCreated(id);
     } catch (err) {
       console.error(err);
-      setError(err instanceof LimitError ? err.message : 'The class could not be created. Please try again.');
+      setError(err instanceof LimitError ? err.message : 'We couldn’t make the class. Try again.');
       setBusy(false);
     }
   }
@@ -49,7 +49,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           Class name
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="For example: B1 Evening Group" />
         </label>
-        {onlyTraining ? <span className="hint">As a teacher trainer, you create teacher training classes. {currentOrg()?.name} creates the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} uid={teacherId} />}
+        {onlyTraining ? <span className="hint">As a teacher trainer, you make teacher training classes. {currentOrg()?.name} makes the language classes.</span> : <ClassKindPicker kind={kind} onChange={setKind} uid={teacherId} />}
         {kind === 'language' ? (
           <LevelPicker value={level} onChange={setLevel} />
         ) : (
@@ -89,7 +89,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
             Cancel
           </button>
           <button type="submit" className="btn primary" disabled={busy || !name.trim()}>
-            {busy ? 'Creating…' : 'Create class'}
+            {busy ? 'Making…' : 'Make class'}
           </button>
         </div>
       </form>
@@ -100,8 +100,8 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
 // Teacher training classes are for teacher trainers in an organisation that has them switched on.
 export function trainingBlock(uid?: string): string {
   const org = currentOrg();
-  if (!org) return 'Teacher training classes are made in an organisation. Join an organisation that has teacher training to create one.';
-  if (!org.allow?.trainers) return `${org.name} does not have teacher training classes.`;
+  if (!org) return 'Teacher training classes are made in an organisation. Join an organisation that has teacher training to make one.';
+  if (!org.allow?.trainers) return `${org.name} doesn’t have teacher training classes.`;
   if (!isTrainerIn(org, uid)) return `Ask an admin in ${org.name} to make you a teacher trainer.`;
   return '';
 }

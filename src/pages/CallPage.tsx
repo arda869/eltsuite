@@ -68,7 +68,7 @@ export function CallPage() {
   if (!link || Date.now() - link.at > ENDED_AFTER)
     return shell(
       <div className="kp-card">
-        <h1>{link ? 'This call has ended' : 'This link does not open a call'}</h1>
+        <h1>{link ? 'This call has ended' : 'This link doesn’t open a call'}</h1>
         <p className="hint">{link ? 'Ask the person who sent it for a new link.' : 'Check that the whole link was copied.'}</p>
         {user && (
           <Link className="btn" to="/">
@@ -104,8 +104,8 @@ function Waiting({ code, title, by, onReady }: { code: string; title: string; by
   return (
     <div className="kp-card">
       <h1>{title}</h1>
-      <p>The meeting has not started yet.</p>
-      <p className="hint">Keep this page open: it lets you in as soon as {by.split(' ')[0] || 'the organiser'} starts it. You do not need an ELT Suite account.</p>
+      <p>The meeting hasn’t started yet.</p>
+      <p className="hint">Keep this page open: it lets you in as soon as {by.split(' ')[0] || 'the organiser'} starts it. You don’t need an ELT Suite account.</p>
     </div>
   );
 }

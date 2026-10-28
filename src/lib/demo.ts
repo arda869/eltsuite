@@ -95,7 +95,7 @@ ${raw({ type: 'reflect', attrs: { id: newId(), about: 'peer', title: 'Feedback o
 `;
 
 export async function createDemoClass(teacherId: string, onStep?: (s: string) => void) {
-  onStep?.('Creating the class');
+  onStep?.('Making the class');
   const id = await createClass(teacherId, { name: 'Demo class', level: 'B1', themeColor: 'flame' });
   const c = await getClass(id);
   if (!c) throw new Error('missing');

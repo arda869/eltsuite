@@ -24,7 +24,7 @@ export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: 
     return () => URL.revokeObjectURL(u);
   }, [bytes]);
   const leave = async () => {
-    if (!id && !(await ask('This PDF is not saved in your Files. You can make it again at any time.', { ok: 'Close without saving', cancel: 'Keep it open' }))) return;
+    if (!id && !(await ask('This PDF isn’t saved in your Files. You can make it again at any time.', { ok: 'Close without saving', cancel: 'Keep it open' }))) return;
     onClose();
   };
   useEffect(() => {
@@ -42,7 +42,7 @@ export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: 
       setId(nid);
     } catch (e) {
       console.error(e);
-      void tell('The PDF could not be saved. Check your connection and your space, then try again.');
+      void tell('We couldn’t save the PDF. Check your connection and how much space you have left, then try again.');
     } finally {
       setBusy(false);
     }

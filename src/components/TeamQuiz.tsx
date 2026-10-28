@@ -188,7 +188,7 @@ export function TeacherQuiz({ classId, itemId, tasks, taskId, roster, online, ac
                   ))}
                 </NSelect>
               )}
-              <span className="hint">{online.length ? `${online.length} learners in the lesson take part.` : 'Everyone in the class takes part.'} Points: 500 to 1000 for a right answer, more for a fast one. A team gets its members’ average.</span>
+              <span className="hint">{online.length ? `${online.length} learners in the lesson take part.` : 'Everyone in the class takes part.'} Points: 500 to 1000 for a right answer, more for a fast one. A team’s score is the average of its learners’ scores.</span>
             </div>
             <button type="button" className="btn primary tall" disabled={!usable.some((t) => t.id === pick)} onClick={start}>
               Start
@@ -295,7 +295,7 @@ export function LearnerQuiz({ classId, uid, learnerId, content }: { classId: str
           <div className="tq-reveal">
             {mine && (
               <div className={'tq-result' + (res?.ok ? ' ok' : '')}>
-                <span className="tq-result-big">{res ? (res.ok ? 'Correct!' : res.pts > 0 ? 'Partly right' : 'Not this time') : 'No answer'}</span>
+                <span className="tq-result-big">{res ? (res.ok ? 'Correct' : res.pts > 0 ? 'Partly right' : 'Not this time') : 'No answer'}</span>
                 {res && res.pts > 0 && <span className="tq-result-pts">+{res.pts}</span>}
               </div>
             )}

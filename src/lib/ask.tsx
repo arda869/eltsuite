@@ -23,7 +23,15 @@ const VERBS: [RegExp, string][] = [
   [/^archive\b/i, 'Archive'],
   [/^stop sharing\b/i, 'Stop sharing'],
   [/^stop being colleagues\b/i, 'Stop'],
-  [/^submit\b/i, 'Submit'],
+  [/^hand in\b/i, 'Hand in'],
+  [/^send\b/i, 'Send'],
+  [/^start\b/i, 'Start'],
+  [/^finish\b/i, 'Finish'],
+  [/^end\b/i, 'End'],
+  [/^restore\b/i, 'Restore'],
+  [/^reset\b/i, 'Reset'],
+  [/^discard\b/i, 'Discard'],
+  [/^sign out\b/i, 'Sign out'],
   [/^give\b/i, 'Give a new PIN'],
   [/^replace\b/i, 'Replace'],
 ];
@@ -39,10 +47,10 @@ function open(r: Omit<Req, 'resolve'>) {
 
 export function ask(message: string, o: Opts = {}) {
   const verb = VERBS.find(([re]) => re.test(message))?.[1];
-  return open({ kind: 'ask', message, ok: o.ok ?? verb ?? 'OK', cancel: o.cancel ?? 'Cancel', danger: o.danger ?? DANGER.test(message), value: '' }) as Promise<boolean>;
+  return open({ kind: 'ask', message, ok: o.ok ?? verb ?? 'Yes', cancel: o.cancel ?? 'Cancel', danger: o.danger ?? DANGER.test(message), value: '' }) as Promise<boolean>;
 }
 export function tell(message: string) {
-  return open({ kind: 'tell', message, ok: 'OK', cancel: '', danger: false, value: '' }) as Promise<void>;
+  return open({ kind: 'tell', message, ok: 'Got it', cancel: '', danger: false, value: '' }) as Promise<void>;
 }
 // Closing a window by a click outside it or Escape: if something was typed, ask first.
 export async function closeUnlessTyped(typed: boolean, close: () => void) {
@@ -61,7 +69,7 @@ export function onBackdrop(close: () => void) {
   };
 }
 export function askText(message: string, value = '', o: Opts = {}) {
-  return open({ kind: 'text', message, ok: o.ok ?? 'OK', cancel: o.cancel ?? 'Cancel', danger: false, value }) as Promise<string | null>;
+  return open({ kind: 'text', message, ok: o.ok ?? 'Done', cancel: o.cancel ?? 'Cancel', danger: false, value }) as Promise<string | null>;
 }
 
 export function AskHost() {

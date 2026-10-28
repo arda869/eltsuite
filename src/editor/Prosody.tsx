@@ -384,7 +384,7 @@ export function ProsodyTool({ editor }: { editor: Editor }) {
               Sounds <span className="hint">{empty ? 'Select the letters' : ''}</span>
             </span>
             <span className="pro-row">
-              <button type="button" className={'pro-b' + (sd?.k === 'drop' ? ' on' : '')} disabled={empty} title="Elision: a sound that is not said, as in nex(t) day" onMouseDown={keep} onClick={() => mark('speechSound', { k: 'drop', s: looks.drop })}>
+              <button type="button" className={'pro-b' + (sd?.k === 'drop' ? ' on' : '')} disabled={empty} title="Elision: a sound that isn’t said, as in nex(t) day" onMouseDown={keep} onClick={() => mark('speechSound', { k: 'drop', s: looks.drop })}>
                 <s className="pro-glyph">t</s>Dropped
               </button>
               <button type="button" className={'pro-b' + (sd?.k === 'schwa' ? ' on' : '')} disabled={empty} title="A weak vowel, said /ə/" onMouseDown={keep} onClick={() => mark('speechSound', { k: 'schwa', s: 'top' })}>

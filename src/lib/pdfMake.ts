@@ -18,7 +18,7 @@ export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' = 'A4'):
     while (!w.__laidOut && Date.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 120));
     await Promise.all([...d.images].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = r), (i.onerror = r))))));
     const pages = [...d.querySelectorAll<HTMLElement>('.page')];
-    if (!pages.length) throw new Error('The worksheet had no pages.');
+    if (!pages.length) throw new Error('The worksheet has no pages yet.');
     const size: [number, number] = paper === 'Letter' ? [215.9, 279.4] : [210, 297];
     const pdf = new jsPDF({ unit: 'mm', format: paper === 'Letter' ? 'letter' : 'a4' });
     for (let i = 0; i < pages.length; i++) {

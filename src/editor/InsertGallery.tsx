@@ -50,7 +50,7 @@ const ABOUT: Record<string, string> = {
   'pq-gapped': 'A text with sentences removed. Learners put each removed sentence back, with extra sentences as distractors.',
   'pq-matching': 'Multiple matching: statements matched to texts or people A, B, C, D.',
   'pq-label': 'A picture with numbered points. Learners drag labels onto the right points.',
-  'pq-odd': 'A row of words; learners pick the one that does not belong, and can say why.',
+  'pq-odd': 'A row of words; learners pick the one that doesn’t belong, and can say why.',
   'pq-dictation': 'Learners press Listen (you set how many times), type the sentence, and see it marked word by word.',
   'pq-pairs': 'Minimal pairs: learners hear one word and pick it from similar-sounding options, like ship / sheep.',
   ipa: 'A phonemic transcription with a chart to type it, British or American, and a listen button (computer voice or your recording).',

@@ -82,7 +82,7 @@ type Msal = import('@azure/msal-browser').PublicClientApplication;
 let msApp: Promise<Msal> | null = null;
 async function msal() {
   const id = await microsoftClientId();
-  if (!id) throw new Error('Microsoft Teams is not set up for ELT Suite yet.');
+  if (!id) throw new Error('Microsoft Teams isn’t set up for ELT Suite yet.');
   msApp ??= import('@azure/msal-browser').then(async (m) => {
     const app = new m.PublicClientApplication({
       // Work and school accounts: Microsoft lets only those make Teams meetings this way.
@@ -113,7 +113,7 @@ async function teamsToken() {
       msToken = { value: r.accessToken, exp: r.expiresOn?.getTime() ?? Date.now() + 3000e3 };
       return r.accessToken;
     }
-    throw new Error('Microsoft did not let ELT Suite in. Teams meetings need a work or school Microsoft account, and your school may need to allow ELT Suite.');
+    throw new Error('Microsoft didn’t let ELT Suite in. Teams meetings need a work or school Microsoft account, and your school may need to allow ELT Suite.');
   }
 }
 // Start signing in from the click itself (browsers open the window only then); the meeting is
@@ -133,6 +133,6 @@ export async function makeTeamsMeeting(s: Pick<Session, 'title' | 'start' | 'min
     body: JSON.stringify({ subject: s.title || 'ELT Suite', startDateTime: new Date(s.start).toISOString(), endDateTime: new Date(end).toISOString() }),
   });
   const d = (await r.json().catch(() => ({}))) as { joinWebUrl?: string; joinUrl?: string; error?: { message?: string } };
-  if (!r.ok || !(d.joinWebUrl || d.joinUrl)) throw new Error(r.status === 403 ? 'Microsoft did not allow a Teams meeting for this account. Teams meetings need a work or school account with Teams.' : d.error?.message ?? 'The Teams meeting could not be made.');
+  if (!r.ok || !(d.joinWebUrl || d.joinUrl)) throw new Error(r.status === 403 ? 'Microsoft didn’t allow a Teams meeting for this account. Teams meetings need a work or school account with Teams.' : d.error?.message ?? 'We couldn’t make the Teams meeting.');
   return (d.joinWebUrl || d.joinUrl)!;
 }

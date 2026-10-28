@@ -22,7 +22,7 @@ export function OrgLimitsPanel({ org, owner, usedBytes, note }: { org: Org; owne
       setEdit(false);
       say('The limits are saved.');
     } catch {
-      say('That did not work. Try again.');
+      say('That didn’t work. Try again.');
     }
     setBusy(false);
   };

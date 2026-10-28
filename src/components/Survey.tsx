@@ -227,7 +227,7 @@ export function LearnerSurvey({ classId, surveyId, questions, anonymous, me, ite
             <path d="M5 12.5l4.5 4.5L19 7" />
           </svg>
         </span>
-        <span>Thank you! Your answers have been sent.</span>
+        <span>Thank you. Your answers have been sent.</span>
         {!anonymous && (
           <button type="button" className="btn link small" onClick={() => setEditing(true)}>
             Change my answers

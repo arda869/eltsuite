@@ -24,7 +24,7 @@ function SoundRow({ p, accent, target }: { p: Phoneme; accent: Accent; target: '
       await saveSound(target, accent, p.id, await fileToData(blob));
       load();
     } catch (e) {
-      void tell((e as Error).message === 'too big' ? 'That file is too big. Keep sound clips under 650 KB, a few seconds long.' : 'The recording could not be saved.');
+      void tell((e as Error).message === 'too big' ? 'That file is too big. Keep sound clips under 650 KB, a few seconds long.' : 'We couldn’t save the recording. Try again.');
     }
   };
   const record = async () => {
@@ -44,7 +44,7 @@ function SoundRow({ p, accent, target }: { p: Phoneme; accent: Accent; target: '
       setRec(true);
       window.setTimeout(() => mr.state === 'recording' && mr.stop(), 6000);
     } catch {
-      void tell('The microphone could not be opened.');
+      void tell('We couldn’t open your microphone. Check that this site is allowed to use it.');
     }
   };
   const have = target === 'mine' ? st?.mine : st?.def;

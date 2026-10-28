@@ -18,7 +18,7 @@ export function PlayPage() {
       </header>
       <main className="play-main">
         {m === null ? (
-          <p className="placeholder">This sound or video is not available any more. Ask your teacher.</p>
+          <p className="placeholder">This sound or video isn’t here any more. Ask your teacher.</p>
         ) : (
           <>
             {m?.title && <h1 className="play-title">{m.title}</h1>}

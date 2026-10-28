@@ -269,7 +269,7 @@ export function CoverPicker({ classId, value, onChange }: { classId: string; val
       onChange('media:' + id);
       setBusy('');
     } catch {
-      setBusy('That picture could not be used. Try a JPG or PNG.');
+      setBusy('We couldn’t use that picture. Try a JPG or PNG.');
     }
   };
   const current = value ?? 'preset:waves';

@@ -256,7 +256,7 @@ const J = {
     await s.p.click('.hq-nav-i:has-text("Organisations")');
     await s.p.click('button:has-text("New organisation")');
     await s.p.fill('.hq-sheet input', 'Test School');
-    await s.p.click('.hq-sheet button:has-text("Create")');
+    await s.p.click('.hq-sheet button:has-text("Make the organisation")');
     await see(s.p, 'h1:has-text("Admins")', 'the new organisation, at its admins');
     for (const t of ['Activity', 'Teachers', 'Invitations', 'Invitation codes', 'Classes', 'Library', 'Rules', 'Branding', 'Plan and limits', 'Overview']) {
       await s.p.click(`.hq-nav-i:has-text("${t}")`);
@@ -304,7 +304,7 @@ const J = {
     await s.p.fill('.hq-sheet input[placeholder^="For example"]', 'Saturday FCE');
     await s.p.click('.hq-sheet .field:has-text("Teacher") .sel');
     await s.p.click('.sel-list .sel-o:has-text("Sofia Rossi")');
-    await s.p.click('.hq-sheet button:has-text("Create the class")');
+    await s.p.click('.hq-sheet button:has-text("Make the class")');
     await see(s.p, 'h1:has-text("Saturday FCE")', 'the new class, with its learners');
     await axe(s.p, 'Organisation admin: a class', A11Y_FOUND);
     await s.p.click('.hq-nav-i:has-text("Activity")');
@@ -477,7 +477,7 @@ const J = {
   'An invitation that is gone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/invite/nothing-here`);
-    await see(s.p, 'text=not there any more', 'the gone invitation');
+    await see(s.p, 'text=isn’t there any more', 'the gone invitation');
     return s;
   },
 };

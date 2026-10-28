@@ -52,7 +52,7 @@ const PLACES: Place[] = [
   {
     id: 'teaching',
     title: 'Teaching a lesson',
-    note: 'While teaching, when you are not typing.',
+    note: 'While teaching, when you’re not typing.',
     rows: [
       [['Left', 'Right'], 'Previous or next task (moves the class when synced)'],
       [['S'], 'Sync the class to you, or stop'],
@@ -82,7 +82,7 @@ const PLACES: Place[] = [
   {
     id: 'calls',
     title: 'Calls',
-    note: 'When you are not typing.',
+    note: 'When you’re not typing.',
     rows: [
       [['Mod+D'], 'Microphone on or off'],
       [['Mod+E'], 'Camera on or off'],
