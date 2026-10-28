@@ -320,3 +320,17 @@
 .ttb-keep { align-self: flex-start; }
 .ttb-link { display: flex; flex-direction: column; min-width: 0; }
 .ttb-link a { color: var(--accent-text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Guests: a meeting's link for people without ELT Suite */
+.ttb-guest { align-items: flex-start; }
+.ttb-guest-b { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.ttb-guest-link { max-width: 100%; padding: 3px 8px; border-radius: 6px; background: var(--surface); font: 12.5px var(--mono, monospace); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ttb-guest-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+/* Moving a window to see what is behind it */
+.ttb-grip { display: block; width: 44px; height: 5px; margin: 8px auto -4px; border-radius: 3px; background: var(--hair-strong); cursor: grab; touch-action: none; }
+.ttb-grip:hover { background: var(--muted); }
+.ttb-grip::before { content: ''; display: block; height: 22px; margin: -9px -40px 0; }
+.ttb-dlg-h { cursor: grab; user-select: none; touch-action: none; }
+body.ttb-moving, body.ttb-moving * { cursor: grabbing !important; user-select: none; }
+@media (max-width: 640px) { .ttb-grip { cursor: default; } .ttb-dlg-h { cursor: auto; } }
+.ttb-scrim { background: rgba(32, 30, 28, .2); }

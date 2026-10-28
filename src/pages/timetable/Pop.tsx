@@ -11,12 +11,42 @@ export const rectOf = (el: Element | null | undefined): Anchor | null => {
   return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
 };
 
+// Moving a window by a handle, to see what is behind it: returns the offset and the handle's
+// pointer handler. Phones keep their sheets where they are.
+export function useMove() {
+  const [off, setOff] = useState({ x: 0, y: 0 });
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || window.innerWidth < 640 || (e.target as HTMLElement).closest('button, a, input, select, textarea')) return;
+    e.preventDefault();
+    const sx = e.clientX - off.x;
+    const sy = e.clientY - off.y;
+    const box = (e.currentTarget as HTMLElement).closest<HTMLElement>('[role="dialog"]');
+    const r = box?.getBoundingClientRect();
+    const move = (m: PointerEvent) => {
+      let x = m.clientX - sx;
+      let y = m.clientY - sy;
+      // Keep a corner of it on the screen.
+      if (r) {
+        x = Math.max(-r.left - r.width + 80 + off.x, Math.min(window.innerWidth - r.left - 80 + off.x, x));
+        y = Math.max(-r.top + 8 + off.y, Math.min(window.innerHeight - r.top - 40 + off.y, y));
+      }
+      setOff({ x, y });
+    };
+    const up = () => (window.removeEventListener('pointermove', move), window.removeEventListener('pointerup', up), document.body.classList.remove('ttb-moving'));
+    document.body.classList.add('ttb-moving');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return { off, onPointerDown, style: off.x || off.y ? { transform: `translate(${off.x}px, ${off.y}px)` } : undefined };
+}
+
 // Clicks in these are not "outside": drop-down lists and tooltips open in their own layer.
 const INSIDE = '.sel-list, .tip-float, .scrim';
 
 export function Pop({ at, onClose, label, className = '', children, width = 360 }: { at: Anchor; onClose: () => void; label: string; className?: string; children: ReactNode; width?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const mv = useMove();
   const back = useRef<HTMLElement | null>(null);
   const close = useRef(onClose);
   close.current = onClose;
@@ -65,7 +95,8 @@ export function Pop({ at, onClose, label, className = '', children, width = 360 
     };
   }, []);
   return createPortal(
-    <div ref={ref} role="dialog" aria-label={label} tabIndex={-1} className={'ttb-pop ' + className + (pos ? ' in' : '')} style={{ width, left: pos?.left ?? -9999, top: pos?.top ?? 0 }}>
+    <div ref={ref} role="dialog" aria-label={label} tabIndex={-1} className={'ttb-pop ' + className + (pos ? ' in' : '')} style={{ width, left: (pos?.left ?? -9999) + mv.off.x, top: (pos?.top ?? 0) + mv.off.y }}>
+      <span className="ttb-grip" onPointerDown={mv.onPointerDown} aria-hidden="true" title="Drag to move" />
       {children}
     </div>,
     document.body,

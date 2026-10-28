@@ -30,6 +30,7 @@ export type Session = {
   skip?: number[]; // weeks (0-based) taken out of a weekly session
   live?: { url: string; room: string; at: number; by: string; byName: string } | null;
   gcal?: Record<string, { id: string; h: string; at?: number } | null>; // each teacher's Google Calendar event (see lib/gcal.ts)
+  guest?: string; // a meeting's link for people without ELT Suite: callLinks/<code>, pointed at the room when it starts
   at?: number;
 };
 export type Occurrence = { s: Session; start: number; end: number; week: number };

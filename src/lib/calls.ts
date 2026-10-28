@@ -187,6 +187,16 @@ export async function makeCallLink(l: Omit<CallLink, 'by' | 'at'>): Promise<stri
   return code;
 }
 export const callLinkUrl = (code: string) => `${location.origin}/call/${code}`;
+// A meeting's link for people without an account: made once, kept on the session, and pointed at
+// the meeting's room each time it starts. Until then the link waits for it.
+export async function guestLink(s: { id: string; title: string; guest?: string; live?: { url: string; at: number } | null }, byName: string): Promise<string> {
+  if (s.guest) return s.guest;
+  const live = s.live && Date.now() - s.live.at < 8 * 3600e3 ? s.live.url : '';
+  const code = await makeCallLink({ url: live, title: s.title, kind: 'video', byName, sessionId: s.id });
+  await updateDoc(doc(db, 'sessions', s.id), { guest: code });
+  return code;
+}
+export const pointGuestLink = (code: string, url: string) => updateDoc(doc(db, 'callLinks', code), { url, at: Date.now() }).catch(() => {});
 export async function readCallLink(code: string): Promise<CallLink | null> {
   const s = await getDoc(doc(db, 'callLinks', code)).catch(() => null);
   return s?.exists() ? (s.data() as CallLink) : null;
