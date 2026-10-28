@@ -44,7 +44,7 @@
 .gu-try { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; border-radius: 16px; border: 1.5px dashed color-mix(in srgb, var(--gu) 45%, transparent); background: color-mix(in srgb, var(--gu) 4%, var(--paper)); min-width: 0; }
 .gu-try-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 600; font-size: 14.5px; }
 .gu-try-tag { padding: 2px 9px; border-radius: 999px; background: var(--gu); color: #fff; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
-.gu-try-note { font-size: 13px; color: var(--muted); }
+.gu-try-note { font-size: 13px; color: color-mix(in srgb, var(--ink) 80%, transparent); }
 .gu-tip { margin: 0; padding: 10px 14px; border-left: 3px solid var(--gu); border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--gu) 7%, transparent); font-size: 14px; line-height: 1.55; }
 .gu-tip > b:first-child { margin-right: 4px; color: color-mix(in srgb, var(--gu) 85%, var(--ink)); }
 .gu-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
@@ -54,7 +54,7 @@
 .gu-say { margin: 0; font-size: 14.5px; line-height: 1.55; min-height: 1.5em; }
 .gu-apps { display: flex; flex-wrap: wrap; gap: 8px; }
 .gu-app { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--hair-strong); border-radius: 12px; background: var(--paper); color: color-mix(in srgb, var(--c) 72%, #000); font: 600 13.5px var(--sans); cursor: pointer; }
-.gu-app.on { background: var(--c); border-color: var(--c); color: #fff; }
+.gu-app.on { background: color-mix(in srgb, var(--c) 78%, #000); border-color: color-mix(in srgb, var(--c) 78%, #000); color: #fff; }
 .gu-slash { display: flex; flex-direction: column; gap: 8px; max-width: 520px; }
 .gu-slash-in { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); }
 .gu-slash-in span { font: 700 18px var(--mono, monospace); color: var(--gu); }
@@ -99,7 +99,7 @@
 .gu-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .gu-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; border: 2px solid var(--c); border-radius: 14px; background: color-mix(in srgb, var(--c) 8%, var(--paper)); color: var(--ink); cursor: pointer; transition: transform 0.12s; }
 .gu-card:hover { transform: translateY(-2px); }
-.gu-card.on { background: var(--c); color: #fff; }
+.gu-card.on { background: color-mix(in srgb, var(--c) 78%, #000); color: #fff; }
 .gu-card-s { font: 600 24px 'Doulos SIL', 'Charis SIL', 'Noto Sans', var(--sans); color: color-mix(in srgb, var(--c) 80%, #000); }
 .gu-card.on .gu-card-s { color: #fff; }
 .gu-card-w { font: 14px var(--sans); }
@@ -128,16 +128,16 @@
 .gu-err.on { background: color-mix(in srgb, #c94f3d 15%, transparent); }
 .gu-codes { display: flex; flex-wrap: wrap; gap: 6px; }
 .gu-code { padding: 4px 10px; border: 1.5px solid var(--c); border-radius: 999px; background: var(--paper); color: color-mix(in srgb, var(--c) 75%, #000); font: 13.5px var(--sans); cursor: pointer; }
-.gu-code.on { background: var(--c); color: #fff; }
+.gu-code.on { background: color-mix(in srgb, var(--c) 78%, #000); color: #fff; }
 .gu-week { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .gu-day { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .gu-day-h { text-align: center; font-size: 12.5px; font-weight: 600; color: var(--muted); }
-.gu-ev { display: flex; flex-direction: column; min-height: 64px; padding: 8px; border-left: 4px solid var(--c); border-radius: 8px; background: color-mix(in srgb, var(--c) 13%, var(--paper)); font-size: 12px; color: var(--muted); animation: fade-in 0.3s ease both; }
+.gu-ev { display: flex; flex-direction: column; min-height: 64px; padding: 8px; border-left: 4px solid var(--c); border-radius: 8px; background: color-mix(in srgb, var(--c) 13%, var(--paper)); font-size: 12px; color: var(--ink); animation: fade-in 0.3s ease both; }
 .gu-ev b { color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
 .gu-slot { min-height: 64px; border: 1.5px dashed var(--hair-strong); border-radius: 8px; background: none; color: var(--ink); font-size: 20px; cursor: pointer; }
 .gu-slot:hover { border-color: var(--gu); color: var(--gu); }
 .gu-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.gu-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-top: 4px solid var(--c); border-radius: 12px; background: color-mix(in srgb, var(--c) 6%, var(--paper)); font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.gu-tile { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-top: 4px solid var(--c); border-radius: 12px; background: color-mix(in srgb, var(--c) 6%, var(--paper)); font-size: 13.5px; line-height: 1.5; color: var(--ink); }
 .gu-tile b { color: color-mix(in srgb, var(--c) 75%, #000); font-size: 15px; }
 .gu-end { padding: 18px 22px; border-radius: 16px; background: color-mix(in srgb, var(--gu) 10%, var(--paper)); font-size: 15px; line-height: 1.6; }
 @media (max-width: 860px) {
