@@ -14,7 +14,42 @@ import { Select } from '../components/Select';
 // Documents can cite any of these sources; the reference list is made for them.
 
 export type Section = { id: string; page: string; content: JSONContent | null };
-export type ReadSource = Source & { order: number; paged?: boolean; notes?: JSONContent | null; sections?: Section[] };
+export type Chapter = { id: string; title: string; notes?: JSONContent | null; rows?: Section[] };
+// Notes are kept one of four ways: one page of notes; lines with page numbers (a ruled notebook,
+// the page in the margin); chapters, each with its notes; or chapters with page lines inside.
+export type ReadSource = Source & { order: number; paged?: boolean; chapters?: boolean; parts?: Chapter[]; notes?: JSONContent | null; sections?: Section[] };
+
+// Turning chapters or page numbers off keeps everything: chapter titles become headings, and
+// each page line a bullet point that starts with its page.
+const blocksOf = (c?: JSONContent | null): JSONContent[] => (c?.content ?? []).filter((b) => !(b.type === 'paragraph' && !b.content?.length));
+const asDoc = (blocks: JSONContent[]): JSONContent => ({ type: 'doc', content: blocks.length ? blocks : [{ type: 'paragraph' }] });
+const heading = (t: string): JSONContent => ({ type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: t }] });
+function rowsToBullets(rows: Section[]): JSONContent[] {
+  const out: JSONContent[] = [];
+  let items: JSONContent[] = [];
+  const flush = () => {
+    if (items.length) out.push({ type: 'bulletList', content: items });
+    items = [];
+  };
+  for (const r of rows) {
+    const blocks = blocksOf(r.content);
+    if (!r.page.trim() && !blocks.length) continue;
+    // A line that is only a heading (a chapter title) stays a heading.
+    if (!r.page.trim() && blocks.length === 1 && blocks[0].type === 'heading') {
+      flush();
+      out.push(blocks[0]);
+      continue;
+    }
+    const label: JSONContent[] = r.page.trim() ? [{ type: 'text', text: `p. ${r.page.trim()}`, marks: [{ type: 'bold' }] }] : [];
+    const first = blocks[0]?.type === 'paragraph' ? blocks.shift()! : null;
+    const lead: JSONContent = { type: 'paragraph', content: [...label, ...(label.length && first?.content?.length ? [{ type: 'text', text: '  ' }] : []), ...(first?.content ?? [])] };
+    if (!lead.content?.length) delete lead.content;
+    items.push({ type: 'listItem', content: [lead, ...blocks] });
+  }
+  flush();
+  return out;
+}
+const oneRow = (content: JSONContent | null = null): Section => ({ id: newId(), page: '', content });
 const srcCol = (id: string) => collection(db, 'sharedDocs', id, 'sources');
 
 export function useSources(fileId?: string) {
@@ -255,6 +290,122 @@ function TypeIcon({ t, size = 16 }: { t: string; size?: number }) {
     </svg>
   );
 }
+function Switch({ on, label, hint, disabled, onClick }: { on: boolean; label: string; hint: string; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} className={'pd-switch' + (on ? ' on' : '')} disabled={disabled} onClick={onClick} data-tip={hint}>
+      <span className="pd-switch-k" aria-hidden="true" />
+      {label}
+    </button>
+  );
+}
+
+// Lines with a page number: a ruled notebook, the page left of the red line, the note right of it.
+// A longer note makes its line taller, so it still sits between two rules.
+function PageLines({ rows, canEdit, onChange }: { rows: Section[]; canEdit: boolean; onChange: (r: Section[]) => void }) {
+  const [blank] = useState(oneRow);
+  const list = rows.length ? rows : [blank];
+  const next = () => String((parseInt(list[list.length - 1]?.page, 10) || 0) + 1 || '');
+  return (
+    <div className="pd-ruled">
+      {list.map((r, i) => (
+        <div key={r.id} className="pd-line">
+          <input className="pd-line-p" value={r.page} placeholder="p." disabled={!canEdit} onChange={(e) => onChange(list.map((x, k) => (k === i ? { ...x, page: e.target.value } : x)))} aria-label={`Page, line ${i + 1}`} />
+          <NoteBox value={r.content} placeholder={i ? '' : 'Your note on this page'} onSave={(c) => onChange(list.map((x, k) => (k === i ? { ...x, content: c } : x)))} />
+          {canEdit && list.length > 1 && (
+            <button type="button" className="icon-btn pd-line-x" aria-label={`Remove line ${i + 1}`} onClick={() => onChange(list.filter((_, k) => k !== i))}>
+              ×
+            </button>
+          )}
+        </div>
+      ))}
+      {canEdit && (
+        <button type="button" className="pd-line-add" onClick={() => onChange([...list, { ...oneRow(), page: next() }])}>
+          + Next line
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Notes({ cur, canEdit, patch }: { cur: ReadSource; canEdit: boolean; patch: (p: Partial<ReadSource>) => void }) {
+  const chapters = !!cur.chapters;
+  const pages = !!cur.paged;
+  const [closed, setClosed] = useState<Set<string>>(new Set());
+  const parts: Chapter[] = chapters ? (cur.parts?.length ? cur.parts : [{ id: 'c1', title: 'Chapter 1', notes: cur.notes, rows: cur.sections }]) : [{ id: 'all', title: '', notes: cur.notes, rows: cur.sections }];
+  const store = (next: Chapter[], ch = chapters, pg = pages) =>
+    patch(ch ? { chapters: true, paged: pg, parts: next, notes: null, sections: [] } : { chapters: false, paged: pg, parts: [], notes: next[0]?.notes ?? null, sections: next[0]?.rows ?? [] });
+  const setPart = (i: number, p: Partial<Chapter>) => store(parts.map((x, k) => (k === i ? { ...x, ...p } : x)));
+  // Switching a setting on or off, keeping what was written.
+  const turn = async (what: 'chapters' | 'pages') => {
+    let ch = chapters;
+    let pg = pages;
+    let next = parts;
+    if (what === 'pages') {
+      if (pg) {
+        if (!(await ask('Turn off page numbers? Each line becomes a bullet point that starts with its page, like “p. 12 …”.'))) return;
+        next = next.map((p) => ({ ...p, notes: asDoc([...blocksOf(p.notes), ...rowsToBullets(p.rows ?? [])]), rows: [] }));
+      } else next = next.map((p) => ({ ...p, rows: (p.rows?.length ? p.rows : [oneRow(blocksOf(p.notes).length ? p.notes! : null)]), notes: null }));
+      pg = !pg;
+    } else {
+      if (ch) {
+        if (!(await ask('Turn off chapters? Each chapter title becomes a heading in your notes, with its notes under it.'))) return;
+        next = pg
+          ? [{ id: 'all', title: '', rows: next.flatMap((p) => [...(p.title.trim() ? [oneRow(asDoc([heading(p.title.trim())]))] : []), ...(p.rows ?? [])]) }]
+          : [{ id: 'all', title: '', notes: asDoc(next.flatMap((p) => [...(p.title.trim() ? [heading(p.title.trim())] : []), ...blocksOf(p.notes)])) }];
+      } else next = [{ ...next[0], id: newId(), title: 'Chapter 1' }];
+      ch = !ch;
+    }
+    store(next, ch, pg);
+  };
+  const body = (p: Chapter, i: number) =>
+    pages ? (
+      <PageLines rows={p.rows ?? []} canEdit={canEdit} onChange={(r) => setPart(i, { rows: r })} />
+    ) : (
+      <NoteBox key={cur.id + p.id} value={p.notes} placeholder={chapters ? 'Your notes on this chapter' : 'Your notes on this source: key ideas, quotations with their pages, how it links to your teaching'} onSave={(c) => setPart(i, { notes: c })} />
+    );
+  return (
+    <section className="pd-notes">
+      <span className="pd-notes-h">
+        <b>Notes</b>
+        <span className="pd-switches">
+          <Switch on={chapters} label="Chapters" hint="Notes under chapter titles you can fold away" disabled={!canEdit} onClick={() => void turn('chapters')} />
+          <Switch on={pages} label="Page numbers" hint="A ruled notebook: the page in the margin, your note beside it" disabled={!canEdit} onClick={() => void turn('pages')} />
+        </span>
+      </span>
+      {chapters ? (
+        <div className="pd-chapters">
+          {parts.map((p, i) => {
+            const shut = closed.has(p.id);
+            return (
+              <section key={p.id} className={'pd-ch' + (shut ? ' shut' : '')}>
+                <span className="pd-ch-h">
+                  <button type="button" className="pd-ch-fold" aria-expanded={!shut} aria-label={shut ? `Open ${p.title || 'this chapter'}` : `Fold ${p.title || 'this chapter'}`} onClick={() => setClosed((s) => { const n = new Set(s); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                  </button>
+                  <input className="pd-ch-t" value={p.title} placeholder="Chapter title" disabled={!canEdit} onChange={(e) => setPart(i, { title: e.target.value })} aria-label={`Chapter ${i + 1} title`} />
+                  {canEdit && parts.length > 1 && (
+                    <button type="button" className="icon-btn" aria-label={`Remove ${p.title || 'this chapter'}`} onClick={() => void ask(`Remove “${p.title || 'this chapter'}” and its notes?`).then((ok) => ok && store(parts.filter((_, k) => k !== i)))}>
+                      ×
+                    </button>
+                  )}
+                </span>
+                {!shut && <div className="pd-ch-b">{body(p, i)}</div>}
+              </section>
+            );
+          })}
+          {canEdit && (
+            <button type="button" className="btn small-btn pd-ch-add" onClick={() => store([...parts, { id: newId(), title: `Chapter ${parts.length + 1}`, notes: null, rows: [] }])}>
+              + Add a chapter
+            </button>
+          )}
+        </div>
+      ) : (
+        body(parts[0], 0)
+      )}
+    </section>
+  );
+}
+
 const authorLine = (s: Source) => (s.org ? s.org : s.authors.map((a) => [a.first, a.last].filter(Boolean).join(' ')).filter(Boolean).join(', ')) || 'No author';
 
 export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: CiteStyle } }; canEdit: boolean }) {
@@ -265,6 +416,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
   const [copied, setCopied] = useState('');
   const [editing, setEditing] = useState<(Omit<ReadSource, 'id'> & { id?: string }) | null>(null);
   const [fresh, setFresh] = useState('');
+  const [showRef, setShowRef] = useState(false);
   useEffect(() => {
     if (list && !sel && list[0]) setSel(list[0].id);
   }, [list, sel]);
@@ -285,7 +437,6 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
     window.setTimeout(() => setCopied(''), 1400);
   };
   if (!list) return <div className="dp-msg">Opening your reading…</div>;
-  const sections = cur?.sections?.length ? cur.sections : [{ id: 's1', page: '', content: null }];
   const words = q.trim().toLowerCase();
   const shown = [...list].sort((a, b) => sortKey(a).localeCompare(sortKey(b))).filter((s) => !words || `${shortName(s)} ${s.title} ${authorLine(s)} ${s.year}`.toLowerCase().includes(words));
   // A new source opens at once: the details at the top, the notes ready underneath.
@@ -347,76 +498,49 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
                 <SourceForm key={cur.id} init={cur} style={style} onSave={(x) => void save(x)} onCancel={() => setFresh('')} />
               </div>
             ) : (
-            <header className="pd-cover">
-              <span className="pd-type">
-                <TypeIcon t={cur.type} size={14} /> {SOURCE_TYPES.find((x) => x.k === cur.type)?.label}
-                {cur.year ? ` · ${cur.year}` : ''}
-              </span>
-              <h1 className="pd-title">{cur.title || 'Untitled'}</h1>
-              <span className="pd-by">{authorLine(cur)}</span>
-              <div className="pd-cite-box">
-                <span className="pd-k">Reference · {CITE_STYLES.find((x) => x.k === style)?.label}</span>
-                <Ref s={cur} style={style} />
-                <span className="pd-cite-acts">
-                  <button type="button" className="btn small-btn" onClick={() => copy('ref', piecesText(reference(cur, style)))}>
-                    {copied === 'ref' ? 'Copied' : 'Copy the reference'}
-                  </button>
+            <header className="pd-cover pd-slim">
+              <span className="pd-slim-row">
+                <span className="pd-slim-t">
+                  <span className="pd-type">
+                    <TypeIcon t={cur.type} size={13} /> {SOURCE_TYPES.find((x) => x.k === cur.type)?.label}
+                    {cur.year ? ` · ${cur.year}` : ''}
+                  </span>
+                  <h1 className="pd-title">{cur.title || 'Untitled'}</h1>
+                  <span className="pd-by">{authorLine(cur)}</span>
+                </span>
+                <span className="pd-slim-acts">
                   <button type="button" className="btn small-btn pd-intext" onClick={() => copy('in', inText(cur, style))} data-tip="Copy the citation for the text">
                     {copied === 'in' ? 'Copied' : inText(cur, style)}
                   </button>
-                  <span style={{ flex: 1 }} />
-                  {canEdit && (
-                    <>
-                      <button type="button" className="btn small-btn" onClick={() => setEditing(cur)}>
-                        Edit the details
-                      </button>
-                      <button type="button" className="btn link small" onClick={() => void ask(`Delete ${shortName(cur)} and its notes?`).then((ok) => ok && void deleteDoc(doc(srcCol(d.id), cur.id)).then(() => setSel('')))}>
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </span>
-              </div>
-            </header>
-            )}
-            <section className="pd-notes">
-              <span className="pd-notes-h">
-                <b>Notes</b>
-                <span className="seg small-seg" role="radiogroup" aria-label="How the notes are kept">
-                  <button type="button" role="radio" aria-checked={!cur.paged} className={!cur.paged ? 'on' : ''} disabled={!canEdit} onClick={() => cur.paged && patch({ paged: false })}>
-                    One page of notes
+                  <button type="button" className={'btn small-btn' + (showRef ? ' on' : '')} aria-expanded={showRef} onClick={() => setShowRef(!showRef)}>
+                    Reference {showRef ? '▴' : '▾'}
                   </button>
-                  <button type="button" role="radio" aria-checked={!!cur.paged} className={cur.paged ? 'on' : ''} disabled={!canEdit} onClick={() => !cur.paged && patch({ paged: true })} data-tip="Each page you read gets its own notes, so you can quote it with the page">
-                    Page by page
-                  </button>
-                </span>
-              </span>
-              {cur.paged ? (
-                <div className="pd-sections">
-                  {sections.map((sec, i) => (
-                    <section key={cur.id + sec.id} className="pd-sec">
-                      <label className="pd-page">
-                        <span>p.</span>
-                        <input value={sec.page} placeholder="12" disabled={!canEdit} onChange={(e) => patch({ sections: sections.map((x, k) => (k === i ? { ...x, page: e.target.value } : x)) })} aria-label="Page" />
-                      </label>
-                      <NoteBox value={sec.content} placeholder="Your notes on this page" onSave={(c) => patch({ sections: sections.map((x, k) => (k === i ? { ...x, content: c } : x)) })} />
-                      {canEdit && sections.length > 1 && (
-                        <button type="button" className="icon-btn pd-sec-x" aria-label="Remove this page" onClick={() => patch({ sections: sections.filter((_, k) => k !== i) })}>
-                          ×
-                        </button>
-                      )}
-                    </section>
-                  ))}
                   {canEdit && (
-                    <button type="button" className="btn small-btn pd-newpage" onClick={() => patch({ sections: [...sections, { id: newId(), page: String((parseInt(sections[sections.length - 1]?.page, 10) || 0) + 1 || ''), content: null }] })}>
-                      + Next page
+                    <button type="button" className="btn small-btn" onClick={() => setEditing(cur)}>
+                      Edit
                     </button>
                   )}
+                  {canEdit && (
+                    <button type="button" className="btn link small" onClick={() => void ask(`Delete ${shortName(cur)} and its notes?`).then((ok) => ok && void deleteDoc(doc(srcCol(d.id), cur.id)).then(() => setSel('')))}>
+                      Delete
+                    </button>
+                  )}
+                </span>
+              </span>
+              {showRef && (
+                <div className="pd-cite-box">
+                  <span className="pd-k">Reference · {CITE_STYLES.find((x) => x.k === style)?.label}</span>
+                  <Ref s={cur} style={style} />
+                  <span className="pd-cite-acts">
+                    <button type="button" className="btn small-btn" onClick={() => copy('ref', piecesText(reference(cur, style)))}>
+                      {copied === 'ref' ? 'Copied' : 'Copy the reference'}
+                    </button>
+                  </span>
                 </div>
-              ) : (
-                <NoteBox key={cur.id} value={cur.notes} placeholder="Your notes on this source: key ideas, quotations with their pages, how it links to your teaching" onSave={(c) => patch({ notes: c })} />
               )}
-            </section>
+            </header>
+            )}
+            <Notes cur={cur} canEdit={canEdit} patch={patch} />
           </article>
         ) : (
           <div className="pd-empty">
