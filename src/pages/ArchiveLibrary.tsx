@@ -272,7 +272,7 @@ function NewButtons({ make }: { make: (k: DocKind) => void }) {
     <span className="fd-new">
       {(['doc', 'flash', 'pd'] as DocKind[]).map((k) => (
         <button key={k} type="button" className="btn" onClick={() => make(k)}>
-          + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Collab document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'PD reading'}
+          + {k === 'lesson' ? 'Lesson' : k === 'doc' ? 'Collab document' : k === 'slides' ? 'Slides' : k === 'flash' ? 'Flashcards' : 'Reading Journal'}
         </button>
       ))}
     </span>

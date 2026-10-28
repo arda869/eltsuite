@@ -163,7 +163,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('reveal', 'Basic', { label: 'Toggle', hint: 'Hidden until someone opens it' }),
   { key: 'image', label: 'Picture', hint: 'Upload, paste or choose from My files', group: 'Media', run: (e) => pickPictures(e) },
   from('linkcard', 'Media', { label: 'Video or web page', hint: 'A YouTube video, a sound file or a web page' }),
-  { key: 'cite', label: 'Citation', hint: 'Cite a source from your PD reading', group: 'Writing', run: () => void window.dispatchEvent(new CustomEvent('ll:cite')) },
+  { key: 'cite', label: 'Citation', hint: 'Cite a source from your Reading Journal', group: 'Writing', run: () => void window.dispatchEvent(new CustomEvent('ll:cite')) },
   {
     key: 'reflist',
     label: 'Reference list',
@@ -209,7 +209,7 @@ export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'ph
 export const DOC_SECTIONS = [
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
   { title: 'Pictures and media', blurb: 'Pictures from your device, videos and web pages.', keys: ['image', 'linkcard'] },
-  { title: 'Academic writing', blurb: 'Citations from your PD reading and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
+  { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },
   { title: 'Questions', blurb: 'Gaps, choices, matching, word order and every other question a lesson can hold.', keys: COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => c.key) },

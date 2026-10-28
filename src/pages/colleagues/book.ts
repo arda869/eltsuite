@@ -130,7 +130,7 @@ export type Thing = {
   stop?: () => Promise<unknown>;
 };
 const ROLE: Record<string, string> = { edit: 'Can edit', suggest: 'Can suggest', comment: 'Can comment', view: 'Can view' };
-const DOC_KIND: Record<string, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading', lesson: 'Lesson', pdf: 'PDF' };
+const DOC_KIND: Record<string, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF' };
 const SHARE_KIND: Record<string, string> = { lesson: 'Lesson', task: 'Task', doc: 'Document', media: 'Media' };
 const ms = (t?: { toMillis?: () => number } | null) => t?.toMillis?.() ?? 0;
 const mediaKind = (s: Partial<Share>): FileKind => {

@@ -5,7 +5,7 @@ import type { DocRole, SharedDoc } from '../lib/sharedDocs';
 import { UiIcon } from './UiIcon';
 import { ago } from '../lib/activity';
 
-// Comments on a file that is not a document: flashcards, PD reading, a lesson, a PDF. Everyone
+// Comments on a file that is not a document: flashcards, Reading Journal, a lesson, a PDF. Everyone
 // it is shared with reads them; people who can comment or edit write them; anyone who can edit
 // marks one done.
 

@@ -1213,7 +1213,7 @@ function Share() {
       <p>Your work is yours, and easy to share.</p>
       <div className="gu-tiles">
         {[
-          { n: 'Files', c: '#3667a6', t: 'Your library of lessons, documents, flashcards and PD reading. Documents are written together live, with suggestions and comments.' },
+          { n: 'Files', c: '#3667a6', t: 'Your library of lessons, documents, flashcards and Reading Journal. Documents are written together live, with suggestions and comments.' },
           { n: 'Messages', c: '#7a4fa3', t: 'Chat with learners and teachers, one to one or in groups, and call from a chat. Learners can message you about a task.' },
           { n: 'Colleagues', c: '#4f6b7a', t: 'Connect with teachers by link, then share a lesson to edit together, or copy it into their class.' },
           { n: 'Organisation library', c: '#7a5a3a', t: 'If you belong to a school, its shared lessons and materials, ready to copy into your classes.' },
