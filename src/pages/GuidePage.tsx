@@ -231,7 +231,7 @@ function Start() {
             </button>
           ))}
         </div>
-        <div className="gu-win gu-pop" key={a.k} style={{ ['--c' as string]: a.color }} aria-live="polite">
+        <div className="gu-win gu-slide" key={a.k} style={{ ['--c' as string]: a.color }} aria-live="polite">
           <div className="gu-win-bar">
             <span className="gu-win-dots" aria-hidden="true">
               <i />
@@ -1109,10 +1109,10 @@ function Blend() {
           </button>
         ))}
       </div>
-      <p className="gu-blend-d gu-pop" key={'d' + b.k}>{b.d}</p>
+      <p className="gu-blend-d gu-slide" key={'d' + b.k}>{b.d}</p>
       <ul className="gu-mix" aria-label={`What “${b.t}” is made of`} key={'m' + b.k}>
         {[...b.mix].reverse().map(([p, n]) => (
-          <li key={p} className="gu-pop">
+          <li key={p} className="gu-slide">
             <i style={{ background: PARTS[p].c }} />
             {PARTS[p].n}
             <b>{n}%</b>
@@ -1121,7 +1121,7 @@ function Blend() {
       </ul>
       <ol className="gu-flow" key={b.k} aria-label={`${b.t}, step by step`}>
         {b.steps.map((st, i) => (
-          <li key={st} className="gu-pop" style={{ animationDelay: `${i * 0.08}s` }}>
+          <li key={st} className="gu-slide" style={{ animationDelay: `${i * 0.08}s` }}>
             <span className="gu-flow-n">{i + 1}</span>
             <span>{st}</span>
           </li>

@@ -189,7 +189,7 @@
 .gu-app.on { background: color-mix(in srgb, var(--c) 11%, var(--paper)); border-color: color-mix(in srgb, var(--c) 35%, transparent); font-weight: 600; }
 .gu-app.on .gu-app-ico { background: var(--c); color: #fff; }
 .gu-win { display: grid; grid-template-rows: auto auto 1fr; grid-template-columns: minmax(0, 1fr); border: 1px solid var(--hair-strong); border-radius: 18px; overflow: hidden; background: var(--paper); box-shadow: 0 24px 48px -32px rgba(0, 0, 0, .45); }
-.gu-win-bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 14px; background: color-mix(in srgb, var(--c) 78%, #000); color: #fff; font-size: 13px; }
+.gu-win-bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 14px; background: color-mix(in srgb, var(--c) 66%, #000); color: #fff; font-size: 13px; }
 .gu-win-dots { display: flex; gap: 6px; }
 .gu-win-dots i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .55); }
 .gu-win-t b { font-weight: 700; }
@@ -199,7 +199,7 @@
 .gu-win-text > .gu-win-tag, .gu-win-text > p { grid-column: 1; }
 .gu-win-text > ul { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
 .gu-win-text > .gu-win-go { grid-column: 1 / -1; margin-top: 4px; }
-.gu-win-tag { font: 500 21px/1.2 var(--serif); color: color-mix(in srgb, var(--c) 78%, var(--ink)); }
+.gu-win-tag { font: 500 21px/1.2 var(--serif); color: color-mix(in srgb, var(--c) 62%, #000); }
 .gu-win-text p { margin: 0; font-size: 14.5px; line-height: 1.6; }
 .gu-win-text ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .gu-win-text li { position: relative; padding-left: 24px; font-size: 14px; line-height: 1.45; }
@@ -256,3 +256,7 @@
   .gu-flow-n { flex: none; }
   .gu-priv-card { max-width: 260px; }
 }
+
+.gu-slide { animation: gu-slide .35s ease both; }
+@keyframes gu-slide { from { transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .gu-slide { animation: none; } }

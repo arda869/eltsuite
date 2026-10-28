@@ -1,6 +1,6 @@
 import { OrgLogo } from './OrgLook';
 import { currentOrg, libName } from '../lib/admin';
-import { AppGrid, HOME_COLOR } from './AppGrid';
+import { AppGrid, AppLogo, HOME_COLOR } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -132,8 +132,9 @@ export function TopBar({ children }: { children?: ReactNode }) {
 function AppMark() {
   const { pathname } = useLocation();
   // Every app shows its name under ELT Suite, in its own colour.
-  const app =
-    pathname.startsWith('/archive') || pathname.startsWith('/doc')
+  const own = pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'reading', name: 'Reading Journal', color: '#6b5a8a' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
+  const app = own ??
+    (pathname.startsWith('/archive') || pathname.startsWith('/doc')
       ? { name: 'Files', color: '#3667a6' }
       : pathname.startsWith('/messages')
         ? { name: 'Messages', color: '#7a4fa3' }
@@ -159,10 +160,10 @@ function AppMark() {
               ? { name: 'Notebook', color: '#a8701f' }
               : pathname === '/'
                 ? { name: 'Home', color: HOME_COLOR }
-                : { name: 'Classes', color: '#c8764a' };
+                : { name: 'Classes', color: '#c8764a' });
   return (
     <Link to="/" className="suite-mark" style={{ ['--app' as string]: app.color }} aria-label={`ELT Suite ${app.name}: Home`} data-tip="Home">
-      <Mark size={26} />
+      {own ? <AppLogo k={own.k} size={28} /> : <Mark size={26} />}
       <span>
         <span className="suite-k">ELT Suite</span>
         <b>{app.name}</b>

@@ -7544,32 +7544,44 @@ html { touch-action: manipulation; }
 }
 
 /* Collab, Reading Journal, PDF and Recordings as apps: one list of files, four views */
-.af { width: min(960px, 100%); margin: 0 auto; padding: 24px 20px 64px; display: flex; flex-direction: column; gap: 14px; }
-.af-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.af-head .page-title { font-family: var(--serif); font-size: 26px; display: flex; align-items: center; gap: 10px; }
-.af-head .page-title::before { content: ''; width: 10px; height: 26px; border-radius: 3px; background: var(--app); }
+.app-logo { display: inline-grid; place-items: center; flex: none; border-radius: 28%; background: linear-gradient(150deg, color-mix(in srgb, var(--app) 82%, #fff), color-mix(in srgb, var(--app) 88%, #000)); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18), 0 2px 6px -2px color-mix(in srgb, var(--app) 60%, transparent); }
+.af { width: min(980px, 100%); margin: 0 auto; padding: 26px 20px 64px; display: flex; flex-direction: column; gap: 16px; }
+.af-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.af-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.af-head .page-title { font: 500 28px/1.1 var(--serif); margin: 0; }
+.af-sub { font-size: 13.5px; color: var(--muted); }
 .af-grow { flex: 1; }
-.af-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.af-tabs { flex: 0 1 auto; overflow-x: auto; scrollbar-width: none; }
-.af-tabs button { height: 32px; padding: 0 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
-.af-n { min-width: 18px; padding: 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--app) 14%, transparent); color: var(--ink); font-size: 11px; font-weight: 600; line-height: 18px; text-align: center; }
-.af-q { flex: 1 1 180px; height: 34px; padding: 0 12px; border: 1px solid var(--hair); border-radius: 8px; background: var(--paper); font: inherit; font-size: 14px; color: var(--ink); }
-.af-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); overflow: hidden; }
-.af-row { display: flex; align-items: center; border-top: 1px solid var(--hair); }
+.af-head .btn.primary { background: color-mix(in srgb, var(--app) 85%, #000); border-color: transparent; }
+.af-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 2px; border-bottom: 1px solid var(--hair); }
+.af-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; min-width: 0; }
+.af-tabs button { position: relative; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 12px; border: 0; border-radius: 10px 10px 0 0; background: none; color: var(--muted); font: 500 14px var(--sans); white-space: nowrap; cursor: pointer; }
+.af-tabs button:hover { color: var(--ink); background: color-mix(in srgb, var(--app) 6%, transparent); }
+.af-tabs button.on { color: color-mix(in srgb, var(--app) 70%, var(--ink)); font-weight: 600; }
+.af-tabs button.on::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: -3px; height: 3px; border-radius: 3px; background: var(--app); }
+.af-n { min-width: 20px; padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--app) 12%, var(--surface)); color: var(--ink); font-size: 11.5px; font-weight: 600; line-height: 19px; text-align: center; }
+.af-q { display: flex; align-items: center; gap: 8px; width: 230px; height: 38px; margin-bottom: 4px; padding: 0 14px; border: 1px solid transparent; border-radius: 999px; background: var(--surface); color: var(--muted); transition: width .2s ease, background .2s, border-color .2s, box-shadow .2s; cursor: text; }
+.af-q:focus-within, .af-q.on { width: 300px; background: var(--paper); border-color: color-mix(in srgb, var(--app) 55%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--app) 14%, transparent); color: color-mix(in srgb, var(--app) 75%, var(--ink)); }
+.af-q input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; font: 14px var(--sans); color: var(--ink); }
+.af-q input::-webkit-search-cancel-button { cursor: pointer; }
+.af-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--hair); border-radius: 14px; background: var(--paper); overflow: hidden; }
+.af-row { display: flex; align-items: center; border-top: 1px solid var(--hair); transition: background .12s; }
 .af-row:first-child { border-top: 0; }
-.af-row:hover { background: var(--surface); }
-.af-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 0; background: none; font: inherit; text-align: left; color: var(--ink); cursor: pointer; }
+.af-row:hover { background: color-mix(in srgb, var(--app) 4%, var(--paper)); }
+.af-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 11px 16px; border: 0; background: none; font: inherit; text-align: left; color: var(--ink); cursor: pointer; }
 .af-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .af-t b { font-weight: 600; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.af-t span { font-size: 12.5px; color: var(--muted); }
+.af-t span { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .af-when { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .af-star { width: 44px; height: 44px; margin-right: 6px; flex-shrink: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--soft); cursor: pointer; }
-.af-star:hover { color: var(--ink); background: var(--paper); }
-.af-star.on { color: #b07a12; }
-.af-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 56px 20px; border: 1px dashed var(--hair); border-radius: 12px; text-align: center; }
+.af-star:hover { color: var(--ink); background: var(--surface); }
+.af-star.on { color: #a8700f; }
+.af-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 56px 20px; border: 1px dashed var(--hair-strong); border-radius: 14px; text-align: center; }
 .af-empty-ico { opacity: 0.85; margin-bottom: 4px; }
 @media (max-width: 640px) {
   .af { padding: 16px 14px 96px; }
-  .af-head .page-title { font-size: 22px; flex: 1 0 100%; }
+  .af-head .page-title { font-size: 23px; }
+  .af-sub { display: none; }
+  .af-grow { flex-basis: 100%; height: 0; }
+  .af-q, .af-q:focus-within, .af-q.on { width: 100%; order: -1; }
   .af-when { display: none; }
 }
