@@ -7697,17 +7697,6 @@ html { touch-action: manipulation; }
 .pdf-keybtn.on { border-color: #c0392b; background: #c0392b; color: #fff; }
 @media (max-width: 700px) { .pdff-rail { display: none; } }
 
-/* Sign-in: what is in ELT Suite */
-.signin .intro { max-width: 480px; }
-.si-apps { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.si-apps li { display: flex; align-items: flex-start; gap: 12px; }
-.si-ico { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 82%, #fff), color-mix(in srgb, var(--c) 88%, #000)); color: #fff; }
-.si-apps li > span:last-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font-size: 14px; line-height: 1.45; color: var(--muted); }
-.si-apps b { color: var(--ink); font-size: 14.5px; }
-.si-apps li > span:last-child > span { flex-basis: 100%; }
-.si-soon { padding: 0 7px; border-radius: 999px; background: color-mix(in srgb, var(--c) 15%, transparent); color: color-mix(in srgb, var(--c) 70%, #000); font: 700 10px/1.7 var(--sans); font-style: normal; letter-spacing: .06em; text-transform: uppercase; }
-@media (max-width: 640px) { .si-apps { gap: 8px; } }
-
 /* PDF pages: the words over each page, to tap for a meaning */
 .pdf-pagewrap { position: relative; display: block; }
 .pdf-pagewrap + .pdf-pagewrap, .pdf-pagewrap + .pdf-page, .pdf-page + .pdf-pagewrap { border-top: 6px solid #e9e6e1; }
@@ -7741,3 +7730,8 @@ html { touch-action: manipulation; }
 /* Slides is a demo for now */
 .sl-beta { display: flex; align-items: center; gap: 10px; padding: 7px 14px; background: #fdf0d2; color: #5c3d00; border-bottom: 1px solid #ecd49a; font: 13px/1.35 var(--sans); }
 .sl-beta b { flex: none; padding: 1px 8px; border-radius: 999px; background: #7a5200; color: #fff; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+
+/* Sign-in: the tour, and who to ask */
+.signin .si-tour { align-self: flex-start; margin-top: 4px; }
+.signin .intro p.si-ask { font-family: inherit; margin: 0; font-size: 14px; color: var(--muted); }
+.signin .si-ask a { color: inherit; font-weight: 600; }

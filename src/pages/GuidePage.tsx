@@ -223,12 +223,12 @@ const APPS: GuideApp[] = [
   },
 ];
 
-function Start() {
+export function Start({ tour = false }: { tour?: boolean }) {
   const [pick, setPick] = useState(1);
   const a = APPS[pick];
   return (
     <>
-      <p>ELT Suite is for all your work as an English teacher, not only your classes: making materials, recording listening, printing worksheets, reading for your development, timetabling and working with colleagues. It is one account with several apps. The <b>nine dots</b> at the top right of every page open them; the name under “ELT Suite” at the top left tells you which app you are in.</p>
+      {!tour && <p>ELT Suite is for all your work as an English teacher, not only your classes: making materials, recording listening, printing worksheets, reading for your development, timetabling and working with colleagues. It is one account with several apps. The <b>nine dots</b> at the top right of every page open them; the name under “ELT Suite” at the top left tells you which app you are in.</p>}
       <div className="gu-explore">
         <div className="gu-apps" role="radiogroup" aria-label="Apps">
           {APPS.map((p, i) => (
@@ -267,7 +267,7 @@ function Start() {
             </ul>
             {a.soon ? (
               <span className="gu-win-soon">Under development: it comes to ELT Suite soon.</span>
-            ) : (
+            ) : tour ? null : (
               <Link className="gu-win-go" to={a.to} target="_blank" rel="noopener">
                 Open {a.name} in a new tab ↗
               </Link>
@@ -906,7 +906,7 @@ function Questions() {
   );
 }
 
-function GapFill() {
+export function GapFill() {
   const [a, setA] = useState(['', '']);
   const [shown, setShown] = useState(false);
   const key = [['has lived', "'s lived"], ['have never been']];
@@ -1154,7 +1154,7 @@ const TENSES: { k: string; ex: string; draw: 'x' | 'wave' | 'arrow' | 'xwave' | 
   { k: 'Present simple', ex: 'I swim every Saturday.', draw: 'repeat' },
   { k: 'Will future', ex: 'I will call you tomorrow.', draw: 'future' },
 ];
-function TimelineDemo() {
+export function TimelineDemo() {
   const [k, setK] = useState(0);
   const t = TENSES[k];
   const ink = 'var(--gu)';
@@ -1372,7 +1372,7 @@ function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: stri
     </svg>
   );
 }
-function Blend() {
+export function Blend() {
   const [k, setK] = useState(0);
   const b = BLENDS[k];
   return (
@@ -1658,7 +1658,7 @@ function FlipCard() {
 
 // ------------------------------------------------------------------ 5. teaching live
 
-function Live() {
+export function Live() {
   const [step, setStep] = useState(0);
   const STEPS = [
     { t: 'You start the lesson', d: 'Press Teach live. Learners who are signed in get a notice and join; the lesson opens on their screens, whatever they use: a laptop, a tablet or a phone.' },
@@ -1871,7 +1871,7 @@ function Wheel() {
 
 // ------------------------------------------------------------------ 7. progress
 
-function Progress() {
+export function Progress() {
   const [code, setCode] = useState<string | null>(null);
   const CODES: Record<string, { name: string; c: string; fix: string }> = {
     T: { name: 'Tense', c: '#c94f3d', fix: 'went' },

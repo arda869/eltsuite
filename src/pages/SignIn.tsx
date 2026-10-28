@@ -45,17 +45,6 @@ function codeInLink() {
 }
 
 // intro: what shows beside the form, for example an organisation's invitation; start: the form filled in.
-// What is in ELT Suite, and what is on the way, from the Guide.
-const SI_APPS: { n: string; t: string; c: string; d: string; soon?: boolean }[] = [
-  { n: 'Classes', t: 'Lessons with questions, sound and language notation; teach live, every screen follows yours', c: '#c8764a', d: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z' },
-  { n: 'Collab', t: 'Documents and slides written together, live, with timelines, stress and IPA built in', c: '#2f6f9f', d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 12.5h6M9 16h4' },
-  { n: 'Recordings', t: 'Make your own listening, alone or with colleagues, with karaoke scripts', c: '#a8473a', d: 'M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v3.5' },
-  { n: 'PDF', t: 'Write on coursebook pages together; print with your additions', c: '#a6463a', d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 16.5l2-5 2 5M9.6 15h2.8' },
-  { n: 'Reading Journal', t: 'Your reading for CELTA, Delta or an MA, with references made for you', c: '#6b5a8a', d: 'M5 4.5h10.5A2.5 2.5 0 0 1 18 7v13H7.5A2.5 2.5 0 0 1 5 17.5zM5 17.5A2.5 2.5 0 0 1 7.5 15H18M9 8.5h5' },
-  { n: 'Timetable and Rooms', t: 'Your week, and a video room for every class', c: '#3b7f7a', d: 'M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3' },
-  { n: 'Money', t: 'For freelance teachers: rates, invoices from your timetable, who has paid', c: '#2f7a5a', d: 'M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z', soon: true },
-];
-
 export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mode?: Mode; name?: string; email?: string } } = {}) {
   const { notInvited } = useAuth();
   const linked = start ? '' : codeInLink();
@@ -166,25 +155,15 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           <Wordmark big />
           <span className="soon-badge">Coming soon</span>
           <p>Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress.</p>
-          <ul className="si-apps" aria-label="What is in ELT Suite">
-            {SI_APPS.map((a) => (
-              <li key={a.n} style={{ ['--c' as string]: a.c }}>
-                <span className="si-ico" aria-hidden="true">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={a.d} />
-                  </svg>
-                </span>
-                <span>
-                  <b>{a.n}</b>
-                  {a.soon && <i className="si-soon">Coming</i>}
-                  <span>{a.t}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
           <div className="rule" />
           <p className="soon-note">
             ELT Suite opens to every teacher soon. For now, <b>teachers join by invitation</b>. Learners join with the code their teacher gives them.
+          </p>
+          <Link className="btn si-tour" to="/tour">
+            See what ELT Suite can do →
+          </Link>
+          <p className="si-ask">
+            Questions? Email <a href="mailto:arda@eltsuite.com">arda@eltsuite.com</a>
           </p>
         </div>
       )}
