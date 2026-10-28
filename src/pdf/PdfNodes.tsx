@@ -23,7 +23,8 @@ export const INK_COLORS: { k: string; c: string; label: string }[] = [
   { k: 'plum', c: '#7a4fa3', label: 'Purple' },
   { k: 'amber', c: '#c07a12', label: 'Amber' },
 ];
-export const inkColor = (k: string) => INK_COLORS.find((c) => c.k === k)?.c ?? INK_COLORS[0].c;
+// A colour of its own: each person's colour (as in the document), for drawing together.
+export const inkColor = (k: string) => (k.startsWith('#') ? k : INK_COLORS.find((c) => c.k === k)?.c ?? INK_COLORS[0].c);
 // Questions that can go on a page, given by the editor that holds the PDF.
 type QCmd = { key: string; label: string; run: (e: Editor) => void };
 let QUESTIONS: QCmd[] = [];
@@ -164,7 +165,7 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
           </button>
         </span>
       )}
-      <PdfStack src={node.attrs.src} classId={classId} pages={pages} onDown={down} tool={tool}>
+      <PdfStack src={node.attrs.src} classId={classId} pages={pages} onDown={down} tool={tool} first={Number(node.attrs.first) || 0}>
         <NodeViewContent className="pdf-layer" />
         {line && <InkSvg pages={pages} page={line.page} pts={line.pts} color={line.color} />}
         {draft && <span className="pdf-mark draft" style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%`, width: `${draft.w * 100}%`, height: `${draft.h * 100}%`, background: markBg(store.color) }} />}
@@ -173,6 +174,7 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
   );
 }
 
+export const myColor = (e: Editor): string => ((e.storage as unknown as { collaborationCursor?: { user?: { color?: string } } }).collaborationCursor?.user?.color ?? '');
 export function ToolButtons({ editor }: { editor: Editor }) {
   const store = useTool(editor);
   return (
@@ -199,6 +201,9 @@ export function ToolButtons({ editor }: { editor: Editor }) {
         MARK_COLORS.map((c) => (
           <button key={c.k} type="button" className={'pdf-sw' + (store.color === c.k ? ' on' : '')} style={{ background: c.bg }} aria-label={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'mark', c.k)} />
         ))}
+      {store.tool === 'draw' && myColor(editor) && (
+        <button type="button" className={'pdf-sw ink mine' + (store.ink === myColor(editor) ? ' on' : '')} style={{ background: myColor(editor) }} aria-label="My colour" data-tip="My colour: everyone sees who drew what" onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'draw', myColor(editor))} />
+      )}
       {store.tool === 'draw' &&
         INK_COLORS.map((c) => (
           <button key={c.k} type="button" className={'pdf-sw ink' + ((store.ink ?? 'ink') === c.k ? ' on' : '')} style={{ background: c.c }} aria-label={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'draw', c.k)} />
@@ -288,6 +293,8 @@ export const PdfBlock = Node.create({
     title: { default: '' },
     from: { default: '' }, // the file it was copied from
     inLesson: { default: false },
+    first: { default: 0 }, // the first page of the PDF shown here (a lesson can take a few pages)
+    units: { default: [] }, // a coursebook's units: { name, from, to }, pages counted from 1
   }),
   parseHTML: () => [{ tag: 'div[data-pdf]' }],
   renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-pdf': '' }), 0],

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { loadPdf, openPdf, type PageSize } from './pdfData';
+import { createPortal } from 'react-dom';
+import { loadPdf, openPdf, pdfjs, type PageSize } from './pdfData';
 
 // The pages of a PDF, one under the other at the same width, drawn when they come into view.
 // Anything placed on the pages goes in `children`, positioned in % of the whole stack.
@@ -58,8 +59,9 @@ export async function pageText(src: string, classId: string, n: number): Promise
   return (tc.items as { str?: string; hasEOL?: boolean }[]).map((i) => (i.str ?? '') + (i.hasEOL ? '\n' : ' ')).join('').replace(/[ \t]+/g, ' ').trim();
 }
 
-function Page({ pdf, n, size }: { pdf: PDFDocumentProxy; n: number; size: PageSize }) {
+function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size: PageSize; words?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
   const [seen, setSeen] = useState(false);
   const [w, setW] = useState(0);
   useEffect(() => {
@@ -84,24 +86,138 @@ function Page({ pdf, n, size }: { pdf: PDFDocumentProxy; n: number; size: PageSi
       c.height = Math.round(vp.height);
       task = pg.render({ canvasContext: c.getContext('2d')!, viewport: vp }) as unknown as typeof task;
       task?.promise.catch(() => {});
+      // The words, invisible over the picture of the page, so they can be tapped.
+      const host = textRef.current;
+      if (words && host) {
+        host.replaceChildren();
+        const tvp = pg.getViewport({ scale: w / pg.getViewport({ scale: 1 }).width });
+        host.style.setProperty('--scale-factor', String(tvp.scale));
+        void Promise.all([pdfjs(), pg.getTextContent()]).then(([lib, tc]) => {
+          if (!live) return;
+          const tl = new lib.TextLayer({ textContentSource: tc, container: host, viewport: tvp });
+          void tl.render().catch(() => {});
+        });
+      }
     });
     return () => {
       live = false;
       task?.cancel();
     };
   }, [seen, w, pdf, n]);
-  return <canvas ref={ref} className="pdf-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-label={`Page ${n + 1}`} />;
+  const canvas = <canvas ref={ref} className="pdf-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-label={`Page ${n + 1}`} />;
+  if (!words) return canvas;
+  return (
+    <span className="pdf-pagewrap">
+      {canvas}
+      <div ref={textRef} className="textLayer pdf-words" />
+    </span>
+  );
 }
 
-export function PdfStack({ src, classId = '', pages, children, onDown, tool }: { src: string; classId?: string; pages: PageSize[]; children?: ReactNode; onDown?: (e: React.PointerEvent<HTMLDivElement>) => void; tool?: string }) {
+// Tapping a word on a page: what it means, and how it sounds.
+type Meaning = { word: string; ipa?: string; defs: { pos: string; d: string }[] } | null;
+const meanings = new Map<string, Promise<Meaning>>();
+function meaningOf(word: string): Promise<Meaning> {
+  const w = word.toLowerCase();
+  if (!meanings.has(w))
+    meanings.set(
+      w,
+      fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(w)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (!Array.isArray(j) || !j.length) return null;
+          const e = j[0] as { word: string; phonetic?: string; phonetics?: { text?: string }[]; meanings?: { partOfSpeech: string; definitions: { definition: string }[] }[] };
+          const defs = (e.meanings ?? []).flatMap((m) => m.definitions.slice(0, 2).map((d) => ({ pos: m.partOfSpeech, d: d.definition }))).slice(0, 3);
+          return { word: e.word, ipa: e.phonetic ?? e.phonetics?.find((p) => p.text)?.text, defs };
+        })
+        .catch(() => null),
+    );
+  return meanings.get(w)!;
+}
+function wordAt(x: number, y: number): string {
+  const d = document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null };
+  let node: Node | null = null;
+  let off = 0;
+  if (d.caretPositionFromPoint) {
+    const p = d.caretPositionFromPoint(x, y);
+    if (p) (node = p.offsetNode), (off = p.offset);
+  } else if (document.caretRangeFromPoint) {
+    const r = document.caretRangeFromPoint(x, y);
+    if (r) (node = r.startContainer), (off = r.startOffset);
+  }
+  const t = node?.textContent ?? '';
+  if (!t) return '';
+  let a = off;
+  let b = off;
+  while (a > 0 && /[\p{L}'’-]/u.test(t[a - 1])) a--;
+  while (b < t.length && /[\p{L}'’-]/u.test(t[b])) b++;
+  return t.slice(a, b).replace(/^['’-]+|['’-]+$/g, '');
+}
+function WordPop({ at, word, onClose }: { at: { x: number; y: number }; word: string; onClose: () => void }) {
+  const [m, setM] = useState<Meaning | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    void meaningOf(word).then((x) => live && setM(x));
+    const away = (e: MouseEvent) => !(e.target as Element).closest?.('.pdf-wordpop') && onClose();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.setTimeout(() => document.addEventListener('mousedown', away), 0);
+    document.addEventListener('keydown', esc);
+    return () => ((live = false), document.removeEventListener('mousedown', away), document.removeEventListener('keydown', esc));
+  }, [word]); // eslint-disable-line react-hooks/exhaustive-deps
+  const say = () => {
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang = 'en-GB';
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  };
+  const left = Math.max(8, Math.min(window.innerWidth - 300, at.x - 140));
+  const top = at.y + 14 + 220 > window.innerHeight ? Math.max(8, at.y - 230) : at.y + 14;
+  return createPortal(
+    <div className="pdf-wordpop" role="dialog" aria-label={`What ${word} means`} style={{ left, top }}>
+      <span className="pdf-wp-h">
+        <b>{m?.word ?? word}</b>
+        {m?.ipa && <span className="pdf-wp-ipa">{m.ipa}</span>}
+        <button type="button" className="btn small-btn" onClick={say} aria-label={`Hear ${word}`}>
+          ▶ Hear it
+        </button>
+      </span>
+      {m === undefined ? (
+        <span className="hint">Looking it up…</span>
+      ) : m && m.defs.length ? (
+        <ol>
+          {m.defs.map((d, i) => (
+            <li key={i}>
+              <i>{d.pos}</i> {d.d}
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <span className="hint">No meaning found for this word.</span>
+      )}
+    </div>,
+    document.body,
+  );
+}
+
+export function PdfStack({ src, classId = '', pages, children, onDown, tool, first = 0 }: { src: string; classId?: string; pages: PageSize[]; children?: ReactNode; onDown?: (e: React.PointerEvent<HTMLDivElement>) => void; tool?: string; first?: number }) {
   const { pdf, error } = usePdf(src, classId);
+  // Tap a word for its meaning when nothing else is being done on the page.
+  const words = !tool || tool === 'select';
+  const [pop, setPop] = useState<{ x: number; y: number; word: string } | null>(null);
+  const click = (e: React.MouseEvent) => {
+    if (!words || !(e.target as Element).closest('.pdf-words') || (e.target as Element).closest('.pdf-box, .pdf-mark')) return;
+    if (!window.getSelection()?.isCollapsed) return;
+    const w = wordAt(e.clientX, e.clientY);
+    if (w.length > 1) setPop({ x: e.clientX, y: e.clientY, word: w });
+  };
   return (
-    <div className={'pdf-stack' + (tool ? ' tool-' + tool : '')} onPointerDown={onDown}>
-      <div className="pdf-pages">
-        {pages.map((p, i) => (pdf ? <Page key={i} pdf={pdf} n={i} size={p} /> : <span key={i} className="pdf-page pdf-wait" style={{ aspectRatio: `${p.w} / ${p.h}` }} />))}
+    <div className={'pdf-stack' + (tool ? ' tool-' + tool : '') + (words ? ' with-words' : '')} onPointerDown={onDown} onClick={click}>
+      <div className="pdf-pages" contentEditable={false} suppressContentEditableWarning>
+        {pages.map((p, i) => (pdf ? <Page key={i} pdf={pdf} n={i + first} size={p} words={words} /> : <span key={i} className="pdf-page pdf-wait" style={{ aspectRatio: `${p.w} / ${p.h}` }} />))}
         {error && <span className="pdf-err">{error}</span>}
       </div>
       {children}
+      {pop && <WordPop at={pop} word={pop.word} onClose={() => setPop(null)} />}
     </div>
   );
 }

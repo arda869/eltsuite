@@ -13,7 +13,8 @@ import { FileIcon } from '../components/FileIcon';
 // The lesson gets its own copy, so learners in the class can open it and the tasks in its boxes
 // are part of the task.
 
-async function notesOf(docKey: string, uid: string): Promise<JSONContent[]> {
+type Unit = { name: string; from: number; to: number };
+async function blockOf(docKey: string, uid: string): Promise<{ notes: JSONContent[]; units: Unit[] }> {
   const doc = new Y.Doc();
   const p = new RtdbProvider(docKey, doc, uid);
   try {
@@ -22,7 +23,8 @@ async function notesOf(docKey: string, uid: string): Promise<JSONContent[]> {
       window.setTimeout(res, 8000);
     });
     const json = yXmlFragmentToProsemirrorJSON(doc.getXmlFragment('default')) as JSONContent;
-    return (json.content?.[0]?.content ?? []) as JSONContent[];
+    const b = json.content?.[0];
+    return { notes: (b?.content ?? []) as JSONContent[], units: ((b?.attrs?.units as Unit[]) ?? []) as Unit[] };
   } finally {
     p.destroy();
     doc.destroy();
@@ -35,14 +37,37 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
   const files = [...(mine ?? []), ...(withMe ?? [])].filter((d) => d.kind === 'pdf');
   const [busy, setBusy] = useState('');
   const input = useRef<HTMLInputElement>(null);
-  const fromFile = async (id: string, title: string, docKey: string) => {
+  // A file is chosen first; then which pages: all of them, a unit, or from one page to another.
+  const [chosen, setChosen] = useState<{ id: string; title: string; docKey: string; n: number; units: Unit[] } | null>(null);
+  const [range, setRange] = useState<[number, number]>([1, 1]);
+  const choose = async (id: string, title: string, docKey: string) => {
+    if (!user || !classId) return setBusy('PDFs can be added inside a class.');
+    setBusy('Opening the PDF…');
+    try {
+      const [info, b] = await Promise.all([filePdfInfo(id), blockOf(docKey, user.uid)]);
+      const n = info?.pages.length ?? 1;
+      setBusy('');
+      if (n <= 1) return void fromFile(id, title, docKey, [1, 1]);
+      setRange([1, n]);
+      setChosen({ id, title, docKey, n, units: b.units });
+    } catch {
+      setBusy('The PDF could not be opened. Try again.');
+    }
+  };
+  const fromFile = async (id: string, title: string, docKey: string, [a, z]: [number, number]) => {
     if (!user || !classId) return setBusy('PDFs can be added inside a class.');
     try {
       setBusy('Copying the PDF into the class…');
-      const [bytes, info, notes] = await Promise.all([loadPdf('file:' + id), filePdfInfo(id), notesOf(docKey, user.uid)]);
-      const pages = info?.pages ?? (await pageSizes(await openPdf(bytes)));
-      const mediaId = await saveClassPdf(classId, bytes, pages, title);
-      onPick({ type: 'pdfBlock', attrs: { src: 'media:' + mediaId, pages, title, from: id, inLesson: true }, content: notes });
+      const [bytes, info, b] = await Promise.all([loadPdf('file:' + id), filePdfInfo(id), blockOf(docKey, user.uid)]);
+      const all = info?.pages ?? (await pageSizes(await openPdf(bytes)));
+      const first = Math.max(0, a - 1);
+      const last = Math.min(all.length - 1, z - 1);
+      const pages = all.slice(first, last + 1);
+      // Only the notes on those pages come, on the same pages.
+      const notes = b.notes.filter((c) => (Number(c.attrs?.page) || 0) >= first && (Number(c.attrs?.page) || 0) <= last).map((c) => ({ ...c, attrs: { ...c.attrs, page: (Number(c.attrs?.page) || 0) - first } }));
+      const mediaId = await saveClassPdf(classId, bytes, all, title);
+      const part = first > 0 || last < all.length - 1 ? ` (pages ${first + 1}–${last + 1})` : '';
+      onPick({ type: 'pdfBlock', attrs: { src: 'media:' + mediaId, pages, title: title + part, from: id, inLesson: true, first }, content: notes });
     } catch {
       setBusy('The PDF could not be added. Try again.');
     }
@@ -74,7 +99,7 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
         {files.length > 0 && <span className="pdf-pick-h">From your files</span>}
         <div className="pdf-pick-list">
           {files.map((d) => (
-            <button key={d.id} type="button" className="pdf-pick-it" disabled={!!busy} onClick={() => void fromFile(d.id, d.title, d.docKey)}>
+            <button key={d.id} type="button" className="pdf-pick-it" disabled={!!busy} onClick={() => void choose(d.id, d.title, d.docKey)}>
               <FileIcon kind="pdf" size={30} label={false} />
               <span>
                 <b>{d.title}</b>
@@ -83,6 +108,30 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
             </button>
           ))}
         </div>
+        {chosen && (
+          <div className="pdf-pick-pages">
+            <b>Which pages of {chosen.title}?</b>
+            <span className="pdf-pick-opts">
+              <button type="button" className={'pdf-pick-opt' + (range[0] === 1 && range[1] === chosen.n ? ' on' : '')} onClick={() => setRange([1, chosen.n])}>
+                All {chosen.n} pages
+              </button>
+              {chosen.units.map((u) => (
+                <button key={u.name + u.from} type="button" className={'pdf-pick-opt' + (range[0] === u.from && range[1] === u.to ? ' on' : '')} onClick={() => setRange([u.from, u.to])}>
+                  {u.name} · {u.from}–{u.to}
+                </button>
+              ))}
+            </span>
+            <span className="pdf-pick-range">
+              Pages
+              <input type="number" min={1} max={chosen.n} value={range[0]} onChange={(e) => setRange([Math.max(1, Math.min(chosen.n, Number(e.target.value) || 1)), Math.max(range[1], Number(e.target.value) || 1)])} aria-label="From page" />
+              to
+              <input type="number" min={range[0]} max={chosen.n} value={range[1]} onChange={(e) => setRange([range[0], Math.max(range[0], Math.min(chosen.n, Number(e.target.value) || range[0]))])} aria-label="To page" />
+              <button type="button" className="btn primary" disabled={!!busy} onClick={() => void fromFile(chosen.id, chosen.title, chosen.docKey, range)}>
+                Add these pages
+              </button>
+            </span>
+          </div>
+        )}
         {busy && <span className="hint">{busy}</span>}
         <span className="pe-actions">
           <span style={{ flex: 1 }} />
