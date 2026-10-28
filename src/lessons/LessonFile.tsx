@@ -11,7 +11,7 @@ import { lessonTaskBody } from '../lib/libtasks';
 import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
 import { TaskEditor } from '../editor/TaskEditor';
 import { InstrEditor } from '../editor/InstrEditor';
-import { SheetView } from './SheetView';
+import { SheetView, type Zoom } from './SheetView';
 import { useSheet } from './useSheet';
 import { useAuth } from '../lib/auth';
 import { ask, tell } from '../lib/ask';
@@ -134,6 +134,21 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     }
   });
   const sheetData = useSheet(d.title, rows ?? [], { classId: 'user:' + d.owner, accent: '#d98f63' }, sheet);
+  const [zoom, setZoomState] = useState<Zoom>(() => {
+    try {
+      return localStorage.getItem('ll.sheetZoom') === 'page' ? 'page' : 'width';
+    } catch {
+      return 'width';
+    }
+  });
+  const setZoom = (z: Zoom) => {
+    setZoomState(z);
+    try {
+      localStorage.setItem('ll.sheetZoom', z);
+    } catch {
+      /* fine */
+    }
+  };
   const setSheet = (on: boolean) => {
     setSheetState(on);
     try {
@@ -244,32 +259,41 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           </button>
         </span>
         {sheet && rows.length && sheetData ? (
-          <SheetView
-            parts={sheetData.parts}
-            blocks={rows.map((r) => {
-              const p = sheetData.byId[r.id];
-              if (r.id === sel && cur && r.kind === 'task')
-                return {
-                  id: r.id,
-                  on: true,
-                  measure: p?.html ?? '',
-                  node: (
-                    <div className="sh-edit">
-                      <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing'}</span>
-                      {taskBlock}
-                    </div>
-                  ),
-                };
-              return { id: r.id, html: p?.html ?? '', heading: r.kind === 'section', onClick: r.kind === 'section' ? undefined : () => setSel(r.id), label: `Edit ${r.title}` };
-            })}
-            after={
-              canEdit ? (
-                <button type="button" className="sh-add" onClick={() => void add('task')}>
-                  + Add a task
-                </button>
-              ) : undefined
-            }
-          />
+          <div className="sh-split lf-split">
+            <section className="sh-left" aria-label="The worksheet">
+              <div className="sh-left-bar">
+                <span className="sh-switch" role="radiogroup" aria-label="Size of the page">
+                  <button type="button" role="radio" aria-checked={zoom === 'width'} className={zoom === 'width' ? 'on' : ''} onClick={() => setZoom('width')}>
+                    Fit width
+                  </button>
+                  <button type="button" role="radio" aria-checked={zoom === 'page'} className={zoom === 'page' ? 'on' : ''} onClick={() => setZoom('page')}>
+                    Whole page
+                  </button>
+                </span>
+                <span className="hint">Click a task to edit it</span>
+              </div>
+              <SheetView
+                parts={sheetData.parts}
+                zoom={zoom}
+                focus={sel}
+                blocks={rows.map((r) => {
+                  const p = sheetData.byId[r.id];
+                  return { id: r.id, on: r.id === sel && r.kind === 'task', html: p?.html ?? '', heading: r.kind === 'section', onClick: r.kind === 'section' ? undefined : () => setSel(r.id), label: `Edit ${r.title}` };
+                })}
+                after={
+                  canEdit ? (
+                    <button type="button" className="sh-add" onClick={() => void add('task')}>
+                      + Add a task
+                    </button>
+                  ) : undefined
+                }
+              />
+            </section>
+            <span className="sh-divider" aria-hidden="true" />
+            <section className="sh-right lf-right" aria-label="Edit the task">
+              {taskBlock}
+            </section>
+          </div>
         ) : cur ? (
           taskBlock
         ) : (
