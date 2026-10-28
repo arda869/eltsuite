@@ -192,7 +192,7 @@ function Start() {
             ))}
           </div>
           <p className="gu-say" aria-live="polite">
-            <b style={{ color: a.color }}>{a.name}:</b> {a.about}.
+            <b style={{ color: `color-mix(in srgb, ${a.color} 72%, #000)` }}>{a.name}:</b> {a.about}.
           </p>
         </Try>
       </div>
@@ -777,7 +777,7 @@ function Progress() {
           </span>
           {code && (
             <p className="gu-say" role="status">
-              The learner sees <b style={{ color: CODES[code].c }}>{code}</b> over the words and writes a correction (“{CODES[code].fix}”). You approve it, or ask again.
+              The learner sees <b style={{ color: `color-mix(in srgb, ${CODES[code].c} 80%, #000)` }}>{code}</b> over the words and writes a correction (“{CODES[code].fix}”). You approve it, or ask again.
             </p>
           )}
         </Try>
