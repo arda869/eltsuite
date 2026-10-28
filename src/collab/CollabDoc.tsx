@@ -45,6 +45,7 @@ import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
 import { TaskRenderer } from '../components/TaskRenderer';
+import { FontStyle, PageTools, Paper, useLayout } from './pages';
 import { PdfPreview } from '../components/PdfPreview';
 import { splitKey, type Responses } from '../lib/questions';
 
@@ -161,6 +162,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [, tick] = useState(0);
   const gate = useToolGate();
   const [picFor, setPicFor] = useState<Editor | null>(null);
+  const [layout, setLayout] = useLayout(session.doc);
+  const paged = !!page && layout.paged;
   useEffect(() => {
     const f = (e: Event) => setPicFor((e as CustomEvent<Editor>).detail);
     window.addEventListener(PIC_EVENT, f);
@@ -180,6 +183,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         CollaborationCursor.configure({ provider: session.provider, user: { name: author.name, color: author.color, uid: me.uid, build: BUILD } }),
         NewerGuard,
         ShowMarks,
+        FontStyle,
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -576,6 +580,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           <span className="ne-sep" aria-hidden="true" />
           {B('↶', false, () => editor.chain().focus().undo().run(), 'Undo')}
           {B('↷', false, () => editor.chain().focus().redo().run(), 'Redo')}
+          {page && (
+            <>
+              <span className="ne-sep" aria-hidden="true" />
+              <PageTools editor={editor} layout={layout} setLayout={setLayout} />
+            </>
+          )}
           <span style={{ flex: 1 }} />
           {page && B(<span className="ti-row"><UiIcon name="plus" size={14} /><span>Insert</span></span>, false, () => setGallery(true), 'Everything you can add. You can also type / in the text.')}
           {page && (
@@ -624,7 +634,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         </div>
       )}
       <div className={'cd-main' + (page && !showSide ? ' no-side' : '')}>
-        <div className="cd-page">
+        <div className={'cd-page' + (paged ? ' pg-on' : '')}>
           {heads.length > 0 && (
             <div className={'cd-toc' + (toc ? ' open' : '')}>
               <button type="button" className="cd-toc-btn" onClick={() => setToc((v) => !v)} aria-expanded={toc} aria-label={toc ? 'Hide the contents' : 'Show the contents'} data-tip={toc ? 'Hide the contents' : 'Contents'}>
@@ -645,19 +655,30 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
           {heading}
-          {viewing && (
+          {viewing && (paged ? (
+            <Paper layout={layout}>
+              <div className="cd-view doc cd-doc" ref={setViewEl}>
+                <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
+              </div>
+            </Paper>
+          ) : (
             <div className={'cd-view' + (page ? ' doc cd-doc' : ' doc')} ref={setViewEl}>
               <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
             </div>
-          )}
+          ))}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
-            <div className={'editor-host' + (page ? ' cd-host' : '')} ref={setHost} hidden={viewing}>
-              <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
-              {page && writing && <LineAdder editor={editor} host={host} />}
-              {page && writing && <BlockHandles editor={editor} host={host} space={classId} />}
-              {writing && <TableHandles editor={editor} host={host} />}
-              {writing && <TableInsert editor={editor} host={host} />}
-            </div>
+            {(() => {
+              const hostEl = (
+                <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing}>
+                  <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
+                  {page && writing && <LineAdder editor={editor} host={host} />}
+                  {page && writing && <BlockHandles editor={editor} host={host} space={classId} />}
+                  {writing && <TableHandles editor={editor} host={host} />}
+                  {writing && <TableInsert editor={editor} host={host} />}
+                </div>
+              );
+              return paged && !viewing ? <Paper layout={layout}>{hostEl}</Paper> : hostEl;
+            })()}
           </EditorClassContext.Provider>
         </div>
         {(!page || showSide) && <aside className={'cd-side' + (side === 'none' && !sugg.length && !open.length ? ' empty' : '')}>

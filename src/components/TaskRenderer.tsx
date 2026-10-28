@@ -156,6 +156,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
     else if (mark.type === 'strike') out = <s>{out}</s>;
     else if (mark.type === 'link' && /^https:\/\//i.test(mark.attrs?.href ?? '')) out = <a href={mark.attrs!.href} target="_blank" rel="noopener noreferrer" className="web-link">{out}</a>;
     else if (mark.type === 'textColor') out = <span style={{ color: textColor(mark.attrs?.color) }}>{out}</span>;
+    else if (mark.type === 'fontStyle') out = <span style={{ ...(mark.attrs?.family ? { fontFamily: `'${mark.attrs.family}'` } : {}), ...(mark.attrs?.pt ? { fontSize: `${mark.attrs.pt}pt` } : {}) }}>{out}</span>;
     else if (mark.type === 'highlight') out = <mark className="hl" style={{ backgroundColor: highlightBg(mark.attrs?.color) }}>{out}</mark>;
     else if (mark.type === 'glabel') out = <span {...glabelAttrs(mark.attrs)}>{out}</span>;
     else {
