@@ -8,6 +8,7 @@ import type { ClassDoc } from '../../lib/classes';
 import { clock, lengthText, niceStart, shortDay } from './dates';
 import { cleanUrl, defaultVideo, looksZoom, makeTeamsMeeting, prepareMicrosoft, saveVideoPrefs, useVideoPrefs, VIDEO_KINDS, warmTeams, type VideoKind } from '../../lib/meetings';
 import { useGcalSetting } from '../../lib/gcal';
+import { useMove } from './Pop';
 
 // The full form, for everything: a class or a meeting, the lesson, when and in which time zone,
 // how often, where. The day and time are on the session's own clock.
@@ -19,6 +20,7 @@ const wallText = (hm: string) => {
 const MINS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
 
 export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { init: Partial<Session>; classes: ClassDoc[]; items: Record<string, { id: string; title: string; type: string }[]>; me: { uid: string; name: string }; onClose: () => void; onSaved?: (title: string, start: number) => void }) {
+  const mv = useMove();
   const dir = useDirectory();
   const colleagues = dir?.groups.find((g) => g.id === 'colleagues')?.people ?? [];
   const first = init.start ?? niceStart(Date.now());
@@ -99,8 +101,8 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
   };
   return (
     <div className="scrim ttb-scrim" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <form className="dialog ttb-dialog" role="dialog" aria-label={s.id ? 'Change the session' : 'A new session'} onSubmit={(e) => (e.preventDefault(), ok && void save())} onKeyDown={(e) => e.key === 'Escape' && !busy && !e.defaultPrevented && (e.preventDefault(), onClose())}>
-        <h2>{s.id ? 'Change the session' : 'Add to the timetable'}</h2>
+      <form className="dialog ttb-dialog" style={mv.style} role="dialog" aria-label={s.id ? 'Change the session' : 'A new session'} onSubmit={(e) => (e.preventDefault(), ok && void save())} onKeyDown={(e) => e.key === 'Escape' && !busy && !e.defaultPrevented && (e.preventDefault(), onClose())}>
+        <h2 className="ttb-dlg-h" onPointerDown={mv.onPointerDown} title="Drag to move">{s.id ? 'Change the session' : 'Add to the timetable'}</h2>
         <span className="seg" role="radiogroup" aria-label="What">
           {(
             [

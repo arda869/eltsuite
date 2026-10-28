@@ -525,7 +525,12 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
       allow create: if signedIn() && request.resource.data.by == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.by == request.auth.uid;
+      allow update: if signedIn() && (resource.data.by == request.auth.uid
+        // A meeting's guest link: whoever of the meeting starts it points the link at its room.
+        || (resource.data.get('sessionId', null) is string
+            && request.auth.uid in get(/databases/$(database)/documents/sessions/$(resource.data.sessionId)).data.get('attendees', [])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['url', 'at'])));
+      allow delete: if signedIn() && resource.data.by == request.auth.uid;
     }
     // A teacher's time zone (IANA name), so the colleagues who have them in their list can see
     // a meeting's time on their clock. Only the teacher writes it; nothing else is kept here.

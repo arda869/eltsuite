@@ -6,6 +6,7 @@ import { defaultVideo, external, joinText, joinUrl, makeTeamsMeeting, videoLabel
 import { Select, MultiSelect } from '../../components/Select';
 import { IconBtn, UiIcon } from '../../components/UiIcon';
 import { tell } from '../../lib/ask';
+import { callLinkUrl, guestLink } from '../../lib/calls';
 import type { ClassDoc } from '../../lib/classes';
 import { clock, clockRange, lengthText, longDay } from './dates';
 import type { GridEv } from './TimeGrid';
@@ -197,6 +198,7 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
           </li>
         )}
         {s.notes && <li className="ttb-notes">{s.notes}</li>}
+        {s.kind === 'meeting' && s.online && !external(s) && !lone && (mine || !!s.guest) && <GuestInvite s={s} o={o} mine={mine} />}
       </ul>
       {(s.online || s.kind === 'class') && (
         <button type="button" className={'btn ttb-go ' + (now ? 'primary' : '')} onClick={onStart} data-autofocus>
@@ -204,6 +206,51 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
         </button>
       )}
     </div>
+  );
+}
+
+// People without ELT Suite: a link to the meeting they open in their browser, by email or copied.
+function GuestInvite({ s, o, mine }: { s: Session; o: Occurrence; mine: boolean }) {
+  const [code, setCode] = useState(s.guest ?? '');
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const url = code ? callLinkUrl(code) : '';
+  const make = async () => {
+    setBusy(true);
+    try {
+      setCode(await guestLink(s, s.ownerName || 'Teacher'));
+    } catch {
+      void tell('The link could not be made. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const mail = `mailto:?subject=${encodeURIComponent(`Invitation: ${s.title || 'Meeting'}, ${longDay(o.start)}`)}&body=${encodeURIComponent(`You are invited to ${s.title || 'a meeting'} on ${longDay(o.start)}, ${clockRange(o.start, o.end)} (${localZone()}).\n\nJoin in your browser, no account needed:\n${url}\n\nOpen the link a little before it starts; it lets you in when the meeting begins.`)}`;
+  return (
+    <li className="ttb-guest">
+      <UiIcon name="link" size={16} />
+      {code ? (
+        <span className="ttb-guest-b">
+          <span>People without ELT Suite join with this link:</span>
+          <span className="ttb-guest-link">{url.replace(/^https:\/\//, '')}</span>
+          <span className="ttb-guest-acts">
+            <button type="button" className="btn small-btn" onClick={() => (void navigator.clipboard?.writeText(url), setCopied(true), window.setTimeout(() => setCopied(false), 1500))}>
+              {copied ? 'Copied' : 'Copy the link'}
+            </button>
+            <a className="btn small-btn" href={mail}>
+              Invite by email
+            </a>
+          </span>
+        </span>
+      ) : mine ? (
+        <span className="ttb-guest-b">
+          <span>Invite someone who is not in ELT Suite</span>
+          <button type="button" className="btn small-btn" disabled={busy} onClick={() => void make()}>
+            {busy ? 'Making the link…' : 'Make a guest link'}
+          </button>
+        </span>
+      ) : null}
+    </li>
   );
 }
 

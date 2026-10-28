@@ -62,6 +62,9 @@ export function CallPage() {
       </div>,
     );
   if (link === undefined || !ready) return shell(<div className="kp-card"><p className="hint">Opening the call…</p></div>);
+  // A meeting's invitation, before the meeting has started: this page lets them in when it does.
+  if (link && link.sessionId && (!link.url || Date.now() - link.at > ENDED_AFTER) && Date.now() - link.at < 120 * 86400e3)
+    return shell(<Waiting code={code} title={link.title} by={link.byName} onReady={setLink} />);
   if (!link || Date.now() - link.at > ENDED_AFTER)
     return shell(
       <div className="kp-card">
@@ -85,6 +88,25 @@ export function CallPage() {
         openCall({ url: link.url, title: link.title, kind: link.kind, code, chatId: link.chatId ?? undefined, sessionId: link.sessionId ?? undefined, micOff: !mic, camOff: !cam });
       }}
     />,
+  );
+}
+
+// Waiting for a meeting to start: the link is checked every few seconds.
+function Waiting({ code, title, by, onReady }: { code: string; title: string; by: string; onReady: (l: CallLink) => void }) {
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      void readCallLink(code).then((l) => {
+        if (l?.url && Date.now() - l.at < ENDED_AFTER) onReady(l);
+      }, () => {});
+    }, 8000);
+    return () => window.clearInterval(t);
+  }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="kp-card">
+      <h1>{title}</h1>
+      <p>The meeting has not started yet.</p>
+      <p className="hint">Keep this page open: it lets you in as soon as {by.split(' ')[0] || 'the organiser'} starts it. You do not need an ELT Suite account.</p>
+    </div>
   );
 }
 
