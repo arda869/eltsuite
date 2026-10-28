@@ -361,9 +361,11 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         {B(<SV d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), `Undo (${keyLabel('Mod+Z')})`, !editor.can().undo())}
         {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
       </span>
-      <span className="pb-g">
-        <PageTools editor={editor} layout={layout} setLayout={setLayout} />
-      </span>
+      {layout.paged && (
+        <span className="pb-g">
+          <PageTools editor={editor} layout={layout} setLayout={setLayout} part="fonts" />
+        </span>
+      )}
       <span className="pb-g">
         <StyleMenu editor={editor} />
       </span>
@@ -456,6 +458,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     ? createPortal(
         <>
           <PeopleHere people={people} me={me.uid} label="In the document now" />
+          {writing && <PageTools editor={editor} layout={layout} setLayout={setLayout} part="setup" />}
           <button type="button" className={'dp-ib cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
             <UiIcon name="discuss" size={17} />
             {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
@@ -657,9 +660,10 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           )}
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
-          {heading}
+          {!paged && heading}
           {viewing && (paged ? (
             <Paper layout={layout}>
+              {heading}
               <div className="cd-view doc cd-doc" ref={setViewEl}>
                 <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
               </div>
@@ -680,7 +684,14 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
                   {writing && <TableInsert editor={editor} host={host} />}
                 </div>
               );
-              return paged && !viewing ? <Paper layout={layout}>{hostEl}</Paper> : hostEl;
+              return paged && !viewing ? (
+                <Paper layout={layout}>
+                  {heading}
+                  {hostEl}
+                </Paper>
+              ) : (
+                hostEl
+              );
             })()}
           </EditorClassContext.Provider>
         </div>

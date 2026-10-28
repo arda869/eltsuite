@@ -6366,8 +6366,8 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
   .lib-shell .ma-files { margin-bottom: 0; }
 }
 /* Document page tools: one row in groups */
-.dp.k-doc .ne-bar.cd-pagebar { flex-wrap: wrap; row-gap: 2px; gap: 0; padding: 4px 6px; overflow: visible; width: min(1100px, 100%); justify-content: flex-start; }
-.cd-pagebar .pb-g { display: inline-flex; align-items: center; gap: 1px; padding: 0 6px; flex: none; }
+.dp.k-doc .ne-bar.cd-pagebar { flex-wrap: nowrap; row-gap: 2px; gap: 0; padding: 4px 6px; overflow: visible; width: min(1100px, 100%); justify-content: flex-start; }
+.cd-pagebar .pb-g { display: inline-flex; align-items: center; gap: 1px; padding: 0 4px; flex: none; }
 .cd-pagebar .pb-g + .pb-g { border-left: 1px solid var(--hair); }
 .cd-pagebar .pb-end { margin-left: auto; border-left: 0 !important; gap: 6px; }
 .cd-pagebar .ne-btn { min-width: 30px; height: 30px; border-radius: 7px; color: var(--muted); display: inline-grid; place-items: center; }
@@ -7776,3 +7776,9 @@ html { touch-action: manipulation; }
 .si-tag:hover .si-tag-tip, .si-tag:focus-visible .si-tag-tip { display: block; }
 .si-tag:focus-visible .si-tag-line { outline: 2px solid #c8764a; outline-offset: 4px; border-radius: 6px; }
 @media (max-width: 480px) { .signin .intro p.si-tag { font-size: 21px; } }
+
+/* Page fonts in the one-line toolbar: narrow */
+.cd-pagebar .pg-font { width: 104px; }
+.cd-pagebar .pg-pt { width: 54px; }
+.cd-pagebar .pg-sel { height: 28px; padding: 0 4px; font-size: 12.5px; }
+.pg-paper .dp-h1 { font-size: 30px; margin-bottom: 14px; }
