@@ -10,6 +10,7 @@ import {
   writeBatch,
   type Timestamp,
 } from 'firebase/firestore';
+import { countOne } from './limitError';
 import { db } from './firebase';
 import type { ThemeKey } from './themes';
 
@@ -25,7 +26,8 @@ export type ClassDoc = {
   status: 'active' | 'archived' | 'deleted';
   learnerCount?: number;
   dates?: { start?: string | null; end?: string | null };
-  video?: { url: string; room: string; at?: number } | null; // the class's own video room (Daily), made by scripts/video.mjs // the course's first and last day, as YYYY-MM-DD
+  video?: { url: string; room: string; at?: number; paused?: boolean } | null; // paused: the organisation has used its call minutes this month
+  // the class's own video room (Daily), made by scripts/video.mjs // the course's first and last day, as YYYY-MM-DD
   meeting?: Meeting | null;
   createdAt?: Timestamp;
   deletedAt?: Timestamp | null;
@@ -94,7 +96,11 @@ export async function createClass(teacherId: string, input: { name: string; leve
     const codeRef = doc(db, 'classCodes', code);
     const ok = await runTransaction(db, async (tx) => {
       const existing = await tx.get(codeRef);
+      // An organisation with a limit of classes counts this one in the same write (see firestore.rules).
+      const orgRef = input.org ? doc(db, 'orgs', input.org) : null;
+      const count = orgRef ? countOne((await tx.get(orgRef)).data(), 'classes') : null;
       if (existing.exists()) return false;
+      if (orgRef && count !== null) tx.update(orgRef, { 'usage.classes': count });
       tx.set(classRef, {
         teacherId,
         name: input.name,

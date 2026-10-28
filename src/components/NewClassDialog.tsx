@@ -1,4 +1,5 @@
 import { classDefaults, currentOrg, isTrainerIn } from '../lib/admin';
+import { LimitError } from '../lib/limitError';
 import { LevelPicker } from './LevelPicker';
 import { useEffect, useState, type FormEvent } from 'react';
 import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
@@ -35,7 +36,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
       onCreated(id);
     } catch (err) {
       console.error(err);
-      setError('The class could not be created. Please try again.');
+      setError(err instanceof LimitError ? err.message : 'The class could not be created. Please try again.');
       setBusy(false);
     }
   }

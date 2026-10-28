@@ -5,7 +5,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { isLive, liveRef, setLive, type LiveState } from '../lib/live';
-import { NoRoomError, takeRoom, useOpenCall } from '../lib/calls';
+import { callStartError, NoRoomError, takeRoom, useOpenCall } from '../lib/calls';
 import { isNow, occurrences, useClassSessions } from '../lib/sessions';
 import { joinClassVideo, VideoButton } from './VideoCall';
 import { quietNow } from '../lib/status';
@@ -50,7 +50,7 @@ export function TeacherLiveVideo({ c, live, teachingHere, groupSets, itemId }: {
       await setLive(c.id, { videoRooms: out });
       setMenu(false);
     } catch (e) {
-      void tell(e instanceof NoRoomError ? 'There are not enough free video rooms for every group right now. Try again in a few minutes.' : 'The group rooms could not be opened.');
+      void tell(e instanceof NoRoomError ? 'There are not enough free video rooms for every group right now. Try again in a few minutes.' : callStartError(e, 'The group rooms could not be opened.'));
     } finally {
       setBusy(false);
     }

@@ -18,6 +18,7 @@ const [teachers, accounts, orgs] = await Promise.all([
 const acc = new Map(accounts.docs.map((d) => [d.id, d.data()]));
 const org = new Map(orgs.docs.map((d) => [d.id, d.data()]));
 let changed = 0;
+const usedBy = new Map(); // uid → bytes, for each organisation's total below
 for (const t of teachers.docs) {
   const uid = t.id;
   const a = acc.get(uid) ?? {};
@@ -44,9 +45,27 @@ for (const t of teachers.docs) {
   used += lessons;
   const o = a.org ? org.get(a.org) : null;
   const gb = o ? Number(o.teachers?.[uid]?.gb ?? o.perTeacherGb ?? 1) : Number(a.limitGb ?? PLAN_GB[a.plan] ?? 1);
-  const over = used > gb * GB;
+  usedBy.set(uid, used);
+  // An organisation past its space in all (as measured last time) stops new uploads for all its teachers.
+  const orgOver = !!o && Number(o.usage?.bytes ?? 0) > Number(o.limitGb ?? 50) * GB;
+  const over = used > gb * GB || orgOver;
   if (a.over === over && Math.abs((a.usedBytes ?? 0) - used) < 100_000 && Math.abs((a.lessonBytes ?? 0) - lessons) < 50_000) continue;
   await db.collection('accounts').doc(uid).set({ over, usedBytes: used, lessonBytes: lessons, measuredAt: FieldValue.serverTimestamp() }, { merge: true });
   changed++;
 }
 console.log(`Space measured for ${teachers.size} teachers; ${changed} updated.`);
+
+// What each organisation uses, against the limits a super admin sets (orgs/{id}.limits): classes,
+// learners and space. The app counts classes and learners up at once as they are added; this
+// recounts them, so classes deleted or learners removed free their place. Call minutes: video.mjs.
+for (const od of orgs.docs) {
+  const o = od.data();
+  const classes = await db.collection('classes').where('org', '==', od.id).select('status', 'learnerCount').get();
+  const live = classes.docs.filter((c) => c.data().status !== 'deleted');
+  const learners = live.reduce((n, c) => n + Math.max(0, Number(c.data().learnerCount ?? 0)), 0);
+  const bytes = Object.keys(o.teachers ?? {}).reduce((n, uid) => n + (usedBy.get(uid) ?? Number(acc.get(uid)?.usedBytes ?? 0)), 0);
+  const u = o.usage ?? {};
+  if (u.classes === live.length && u.learners === learners && Math.abs((u.bytes ?? 0) - bytes) < 1_000_000) continue;
+  await od.ref.update({ 'usage.classes': live.length, 'usage.learners': learners, 'usage.bytes': bytes, 'usage.at': Date.now() });
+}
+console.log(`Usage counted for ${orgs.size} organisations.`);

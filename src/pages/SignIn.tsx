@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
   createUserWithEmailAndPassword,
@@ -12,9 +12,11 @@ import {
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../lib/firebase';
 import { friendlyAuthError } from '../lib/authErrors';
+import { inviteFields, useAuth } from '../lib/auth';
+import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
 import { Wordmark } from '../components/Wordmark';
 
-type Mode = 'signin' | 'create' | 'reset' | 'link';
+type Mode = 'signin' | 'create' | 'reset' | 'link' | 'code';
 
 const GOOGLE = (
   <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
@@ -30,13 +32,27 @@ const TITLES: Record<Mode, string> = {
   create: 'Create a teacher account',
   reset: 'Reset your password',
   link: 'Sign in with an email link',
+  code: 'I have an invitation',
 };
+
+// The link in an invitation email: /?code=<the code> opens the form with the code filled in.
+function codeInLink() {
+  try {
+    return new URLSearchParams(window.location.search).get('code')?.trim() ?? '';
+  } catch {
+    return '';
+  }
+}
 
 // intro: what shows beside the form, for example an organisation's invitation; start: the form filled in.
 export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mode?: Mode; name?: string; email?: string } } = {}) {
-  const [mode, setMode] = useState<Mode>(start?.mode ?? 'signin');
+  const { notInvited } = useAuth();
+  const linked = start ? '' : codeInLink();
+  const [mode, setMode] = useState<Mode>(start?.mode ?? (linked ? 'code' : 'signin'));
   const [name, setName] = useState(start?.name ?? '');
   const [email, setEmail] = useState(start?.email ?? '');
+  const [typed, setTyped] = useState(linked);
+  const [code, setCode] = useState<InviteCode | null>(null);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -63,19 +79,50 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
   const google = () => run(async () => void (await signInWithPopup(auth, googleProvider)));
 
+  // An invitation code: looked up, then the form to make the account, with what the code says.
+  async function openInvitation(text: string) {
+    await run(async () => {
+      const c = await readCode(text);
+      if (!c) return setError('That code was not found. Check it and try again: it looks like ABCD-EF23.');
+      const problem = codeProblem(c);
+      if (problem) return setError(problem + ' Ask whoever invited you for a new one.');
+      keepCode(c.code);
+      setCode(c);
+      if (c.email) setEmail(c.email);
+      if (c.name && !name) setName(c.name);
+      setMode('create');
+    });
+  }
+  useEffect(() => {
+    if (linked) void openInvitation(linked);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function submit(e: FormEvent) {
     e.preventDefault();
     const address = email.trim();
-    if (mode === 'signin') {
+    if (mode === 'code') {
+      void openInvitation(typed);
+    } else if (mode === 'signin') {
       run(async () => void (await signInWithEmailAndPassword(auth, address, password)));
     } else if (mode === 'create') {
       if (password.length < 8) return setError('Please use a password of at least 8 characters.');
+      if (code) {
+        const problem = codeProblem(code, address);
+        if (problem) return setError(problem);
+      }
+      keepName(name);
       run(async () => {
         const cred = await createUserWithEmailAndPassword(auth, address, password);
         const displayName = name.trim();
         if (displayName) {
-          await updateProfile(cred.user, { displayName });
-          await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address }, { merge: true });
+          // Without an invitation the profile is refused: the app then says so and takes the new
+          // sign-in account back, so a failure here is not this form's error.
+          try {
+            await updateProfile(cred.user, { displayName });
+            await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address, ...inviteFields() }, { merge: true });
+          } catch {
+            /* see above */
+          }
         }
       });
     } else if (mode === 'reset') {
@@ -106,14 +153,40 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
       {intro ?? (
         <div className="intro">
           <Wordmark big />
-          <p>Plan your lessons, teach them live and see every answer as it arrives.</p>
+          <span className="soon-badge">Coming soon</span>
+          <p>Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress.</p>
           <div className="rule" />
-          <span className="eyebrow">For teachers</span>
+          <p className="soon-note">
+            ELT Suite opens to every teacher soon. For now, <b>teachers join by invitation</b>. Learners join with the code their teacher gives them.
+          </p>
         </div>
       )}
 
       <form className="card" onSubmit={submit} noValidate>
         <h1>{TITLES[mode]}</h1>
+
+        {notInvited && !error && (
+          <span className="error" role="alert">
+            {notInvited} has no account in ELT Suite yet, and there is no invitation for it. ELT Suite is open by invitation for now: if you have an invitation code, choose “I have an invitation”.
+          </span>
+        )}
+        {mode === 'create' && code && (
+          <span className="code-ok" role="status">
+            <b>{code.orgName ? `An invitation from ${code.orgName}` : 'An invitation to ELT Suite'}</b>
+            <span>
+              Code {code.code}
+              {code.email ? `, for ${code.email}` : ''}. Make your account with Google or a password.
+            </span>
+          </span>
+        )}
+        {mode === 'create' && !code && <span className="hint">Teachers join by invitation for now. Use the email your invitation was sent to.</span>}
+        {mode === 'code' && (
+          <label className="field">
+            Invitation code
+            <input className="code-in" value={typed} onChange={(e) => setTyped(e.target.value)} onBlur={() => setTyped((t) => cleanCode(t) || t)} placeholder="ABCD-EF23" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={24} autoFocus />
+            <span className="hint">The code from your invitation email, or from the person who invited you.</span>
+          </label>
+        )}
 
         {(mode === 'signin' || mode === 'create') && (
           <>
@@ -132,10 +205,12 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           </label>
         )}
 
-        <label className="field">
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-        </label>
+        {mode !== 'code' && (
+          <label className="field">
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required readOnly={mode === 'create' && !!code?.email} />
+          </label>
+        )}
 
         {needsPassword && (
           <label className="field">
@@ -163,8 +238,8 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         {error && <span className="error" role="alert">{error}</span>}
         {notice && <span className="notice" role="status">{notice}</span>}
 
-        <button type="submit" className="btn primary tall block" disabled={busy || !email.trim() || (needsPassword && !password)}>
-          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Create account' : mode === 'reset' ? 'Send reset link' : 'Email me a link'}
+        <button type="submit" className="btn primary tall block" disabled={busy || (mode === 'code' ? cleanCode(typed).length < 8 : !email.trim() || (needsPassword && !password))}>
+          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Create account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
         </button>
 
         {mode === 'signin' && (
@@ -173,11 +248,18 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           </button>
         )}
 
+        {mode === 'signin' && !start && (
+          <div className="invite-cta">
+            <span>New to ELT Suite?</span>
+            <button type="button" className="btn block tall invite-btn" onClick={() => go('code')}>
+              I have an invitation
+            </button>
+          </div>
+        )}
+
         <div className="row-between small">
           {mode === 'signin' ? (
-            <button type="button" className="btn link small" onClick={() => go('create')}>
-              Create a teacher account
-            </button>
+            <span />
           ) : (
             <button type="button" className="btn link small" onClick={() => go('signin')}>
               Back to sign-in

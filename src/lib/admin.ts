@@ -75,7 +75,12 @@ export type OrgPolicy = {
   externalTrainees?: boolean; // teacher trainers may add teachers from outside the organisation to training classes
   recordCallMedia?: boolean; // false: call attendance keeps who joined and when, but not microphone or camera
 };
-export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; libraryName?: string; ttForms?: Record<string, { id: string; name: string; about?: string; fields: { id: string; label: string; kind: 'short' | 'long' | 'rating' | 'check'; hint?: string }[] }>; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
+export type Org = { id: string; name: string; plan: Plan; limitGb: number; adminEmails: string[]; teachers: Record<string, { name: string; email: string; title?: string; gb?: number; trainer?: boolean; invite?: string; tags?: string[] }>; tags?: Record<string, { name: string }>; perTeacherGb?: number; drives?: Record<string, { name: string; quotaGb: number; access?: DriveAccess }>; brand?: Brand; libraryName?: string; ttForms?: Record<string, { id: string; name: string; about?: string; fields: { id: string; label: string; kind: 'short' | 'long' | 'rating' | 'check'; hint?: string }[] }>; outside?: 'anyone' | 'org'; policy?: OrgPolicy; allow?: { trainers?: boolean; apps?: Record<string, boolean> }; limits?: OrgLimits; usage?: OrgUsage; createdAt?: unknown }; // allow: what the owner lets the organisation turn on
+// What a super admin lets an organisation have (a limit that is not set: no limit), and what it uses.
+// The database rules keep it within them (see firestore.rules, orgHasRoom and countedIn).
+export type LimitKey = 'teachers' | 'classes' | 'learners' | 'callMinutes';
+export type OrgLimits = Partial<Record<LimitKey, number>>;
+export type OrgUsage = { classes?: number; learners?: number; callMinutes?: number; month?: string; bytes?: number; at?: number };
 export type Teacher = { uid: string; name: string; email: string; avatar?: string; createdAt?: number; usedBytes?: number }; // usedBytes: what their files take, as their app last measured
 
 export const APP_KEYS: { k: string; name: string }[] = [
@@ -138,6 +143,7 @@ export function useSuperAdmins(on: boolean) {
 export const addSuperAdmin = (email: string, name: string, me: { uid: string; name: string }) =>
   setDoc(doc(db, 'superAdmins', lower(email)), { name: name.trim().slice(0, 80), by: me.uid, byName: me.name.slice(0, 80), at: Date.now() });
 export const removeSuperAdmin = (email: string) => deleteDoc(doc(db, 'superAdmins', lower(email)));
+
 
 // This account's own settings: its plan, its space and whether it is paused.
 export function useAccount(uid?: string) {
@@ -610,3 +616,41 @@ export function useOrgLog(org?: Org | null) {
 }
 // The owner's own note on an account, which only the owner sees.
 export const saveAccountNote = (t: Teacher, note: string) => saveAccount(t, { note: note.trim().slice(0, 2000) });
+
+// ------------------------------------------------------------------ an organisation's limits
+export const LIMITS: { k: LimitKey; label: string; unit: string; about: string }[] = [
+  { k: 'teachers', label: 'Teachers', unit: 'teachers', about: 'Teachers in the organisation, including its admins who teach.' },
+  { k: 'classes', label: 'Classes', unit: 'classes', about: 'Classes made in the organisation, open or archived.' },
+  { k: 'learners', label: 'Learners', unit: 'learners', about: 'Learner accounts across its classes.' },
+  { k: 'callMinutes', label: 'Call minutes a month', unit: 'minutes', about: 'Video and audio calls and live lesson video, counted from the 1st of each month.' },
+];
+// What an organisation uses now, for each limit (teachers are counted from its list; the rest by
+// scripts/space.mjs every 15 minutes, and counted up at once as classes and learners are added).
+export function orgUsed(o: Org, k: LimitKey) {
+  if (k === 'teachers') return Object.keys(o.teachers).length;
+  if (k === 'callMinutes') return o.usage?.month === thisMonth() ? Math.round(o.usage?.callMinutes ?? 0) : 0;
+  return o.usage?.[k] ?? 0;
+}
+export const thisMonth = () => new Date().toISOString().slice(0, 7);
+export const orgLimit = (o: Org | null | undefined, k: LimitKey) => (o?.limits && typeof o.limits[k] === 'number' ? (o.limits[k] as number) : null);
+// Room for one more: true when there is no limit.
+export const orgHasRoom = (o: Org | null | undefined, k: LimitKey) => {
+  const l = orgLimit(o, k);
+  return !o || l === null || orgUsed(o, k) < l;
+};
+export const limitMessage = (o: Org, k: LimitKey) => {
+  const l = orgLimit(o, k) ?? 0;
+  const what = LIMITS.find((x) => x.k === k)!;
+  return k === 'callMinutes'
+    ? `${o.name} has used its ${l} call minutes for this month. Calls open again on the 1st, or when ELT Suite raises the limit.`
+    : `${o.name} has reached its limit of ${l} ${what.unit}. Ask an admin of ${o.name} to raise it with ELT Suite.`;
+};
+// A super admin sets them; an empty one means no limit.
+export function saveOrgLimits(o: Org, limits: OrgLimits) {
+  const clean: OrgLimits = {};
+  for (const { k } of LIMITS) {
+    const v = limits[k];
+    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) clean[k] = Math.round(v);
+  }
+  return updateDoc(doc(db, 'orgs', o.id), { limits: clean });
+}

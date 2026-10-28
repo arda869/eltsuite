@@ -1,7 +1,7 @@
 {
   "name": "ELT Suite",
   "short_name": "ELT Suite",
-  "description": "Lessons, homework and messages for your English class.",
+  "description": "Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress.",
   "start_url": "/?source=app",
   "scope": "/",
   "display": "standalone",

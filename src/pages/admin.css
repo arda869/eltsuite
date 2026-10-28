@@ -549,6 +549,20 @@ textarea.hq-in { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
 .hq-tk-claude { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .hq-tk-claude .hint { margin: 0; flex: 1 1 240px; }
 .hq-supers { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.hq-reg-acts { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 10px; }
+.ic-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
+.ic-f { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 13px; color: var(--muted); }
+.ic-go { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 14px; }
+.ic-made { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.ic-code { font: 600 14px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; color: var(--ink); }
+.ic-code.big { padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, transparent); font-size: 18px; }
+.ic-row { align-items: flex-start !important; }
+.ic-row.closed .ic-code { color: var(--muted); }
+.ic-main { display: inline-flex; align-items: center; gap: 10px; min-width: 120px; }
+.ic-about { display: flex; flex: 1 1 280px; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; color: var(--muted); }
+.ic-about > span:first-child { color: var(--ink); font-size: 14px; }
+.ic-used { color: var(--ink); }
+.ic-full { color: var(--accent-text); }
 .hq-supers li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid var(--hair); }
 .hq-supers li:first-child { border-top: 0; }
 
@@ -568,3 +582,18 @@ textarea.hq-in { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
 .cl-dots i:nth-child(2) { animation-delay: .2s; }
 .cl-dots i:nth-child(3) { animation-delay: .4s; }
 .cl-compose { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid var(--hair); border-radius: 16px; background: var(--paper); }
+
+/* An organisation's limits (OrgLimits.tsx) */
+.lim-lede { margin: 0 0 6px; }
+.lim-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.lim-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; padding: 12px 0; border-top: 1px solid var(--hair); }
+.lim-row:first-child { border-top: 0; }
+.lim-t { display: flex; flex: 1 1 260px; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; color: var(--muted); }
+.lim-t b { color: var(--ink); font-size: 14px; font-weight: 600; }
+.lim-v { display: flex; flex: 0 1 280px; align-items: center; gap: 12px; min-width: 200px; }
+.lim-v .hq-meter { flex: 1; }
+.lim-n { white-space: nowrap; font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.lim-n.full { color: var(--accent-text); font-weight: 600; }
+.lim-of { color: var(--muted); }
+.lim-in { flex: 0 1 160px; width: 160px; }
+.lim-acts { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }

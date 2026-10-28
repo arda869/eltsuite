@@ -5,7 +5,7 @@ import { TopBar } from '../components/TopBar';
 import { MainNav } from './ColleaguesPage';
 import { useTeacherClasses } from '../lib/coteach';
 import { chatTitle, isSelf, openChat, useChats, type Chat, type Person } from '../lib/chat';
-import { callLinkUrl, callOn, makeCallLink, NoRoomError, openCall, startChatCall, takeRoom, useOpenCall, type CallKind, type ChatCall } from '../lib/calls';
+import { callLinkUrl, callOn, makeCallLink, callStartError, openCall, startChatCall, takeRoom, useOpenCall, type CallKind, type ChatCall } from '../lib/calls';
 import { joinClassVideo } from '../components/VideoCall';
 import { dayKey, isNow, occurrences, timeText, useTeacherSessions, whenText, type Occurrence } from '../lib/sessions';
 import { startSession } from './TimetablePage';
@@ -77,7 +77,7 @@ export function RoomsPage() {
       setLink(callLinkUrl(code));
       openCall({ url: r.url, title, kind: 'video', sub: 'Anyone with the link can join', code });
     } catch (e) {
-      void tell(e instanceof NoRoomError ? e.message : 'The call could not be started. Please try again.');
+      void tell(callStartError(e, 'The call could not be started. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -117,7 +117,7 @@ export function RoomsPage() {
       openCall({ url: k.url, title: chatTitle(chat, me.key), kind: k.kind, chatId: chat.id, code: k.code });
       if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission().catch(() => {});
     } catch (e) {
-      void tell(e instanceof NoRoomError ? e.message : 'The call could not be started. Please try again.');
+      void tell(callStartError(e, 'The call could not be started. Please try again.'));
     } finally {
       setCalling('');
     }

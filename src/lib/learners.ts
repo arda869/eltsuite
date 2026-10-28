@@ -19,10 +19,11 @@ import {
 import { setDoc } from 'firebase/firestore';
 import { auth as mainAuth } from './firebase';
 import { useEffect, useState } from 'react';
-import { arrayRemove, arrayUnion, collection, doc, getDoc, increment, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { arrayRemove, arrayUnion, collection, doc, getDoc, increment, runTransaction, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { firebaseConfig } from './firebaseConfig';
 import type { ClassDoc } from './classes';
+import { countOne } from './limitError';
 
 export const LEARNER_DOMAIN = 'learners.lesson-lit.firebaseapp.com';
 
@@ -57,20 +58,26 @@ export async function addLearners(c: ClassDoc, names: string[], from: Record<str
   for (const raw of names) {
     const displayName = raw.trim().slice(0, 60);
     if (!displayName) continue;
+    // An organisation with a limit of learners: check before making the sign-in account.
+    const orgSnap = c.org ? await getDoc(doc(db, 'orgs', c.org)).catch(() => null) : null;
+    const orgRef = orgSnap?.exists() && countOne(orgSnap.data(), 'learners') !== null ? orgSnap.ref : null;
     const learnerId = newLearnerId();
     const pin = newPin();
     const authUid = await withSecondaryAuth(async (auth) => {
       const cred = await createUserWithEmailAndPassword(auth, learnerEmail(learnerId), learnerPassword(c.classCode, pin));
       return cred.user.uid;
     });
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'classes', c.id, 'learners', learnerId), { displayName, authUid, ...(from[raw] ? { teacherUid: from[raw] } : {}), createdAt: serverTimestamp() });
-    batch.set(doc(db, 'classes', c.id, 'secrets', learnerId), { pin });
-    batch.set(doc(db, 'classes', c.id, 'members', authUid), { learnerId, displayName });
-    batch.set(doc(db, 'users', authUid), { role: 'learner', classId: c.id, learnerId, displayName });
-    batch.update(doc(db, 'classCodes', c.classCode), { roster: arrayUnion({ id: learnerId, name: displayName }) });
-    batch.update(doc(db, 'classes', c.id), { learnerCount: increment(1) });
-    await batch.commit();
+    // One write: the learner, and for a limited organisation, the learner counted in (see firestore.rules).
+    await runTransaction(db, async (tx) => {
+      const count = orgRef ? countOne((await tx.get(orgRef)).data(), 'learners') : null;
+      tx.set(doc(db, 'classes', c.id, 'learners', learnerId), { displayName, authUid, ...(from[raw] ? { teacherUid: from[raw] } : {}), createdAt: serverTimestamp() });
+      tx.set(doc(db, 'classes', c.id, 'secrets', learnerId), { pin });
+      tx.set(doc(db, 'classes', c.id, 'members', authUid), { learnerId, displayName });
+      tx.set(doc(db, 'users', authUid), { role: 'learner', classId: c.id, learnerId, displayName });
+      tx.update(doc(db, 'classCodes', c.classCode), { roster: arrayUnion({ id: learnerId, name: displayName }) });
+      tx.update(doc(db, 'classes', c.id), { learnerCount: increment(1) });
+      if (orgRef && count !== null) tx.update(orgRef, { 'usage.learners': count });
+    });
     added.push({ name: displayName, pin, id: learnerId });
   }
   return added;

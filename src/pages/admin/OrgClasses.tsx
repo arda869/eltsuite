@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LimitError } from '../../lib/limitError';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { MultiSelect, Select } from '../../components/Select';
@@ -187,7 +188,7 @@ function NewClass({ d, onClose, onMade }: { d: OrgData; onClose: () => void; onM
       onMade(`${name.trim()} is ready for ${[who, ...cos].map((u) => org.teachers[u]?.name || 'a teacher').join(' and ')}.`, String(id ?? ''));
     } catch (e) {
       console.error(e);
-      setErr('The class could not be made. Try again.');
+      setErr(e instanceof LimitError ? e.message : 'The class could not be made. Try again.');
     } finally {
       setBusy(false);
     }
