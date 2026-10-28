@@ -6,7 +6,7 @@ import { listLabel } from './listLabel';
 import type { JSONContent } from '@tiptap/react';
 import { newId } from './tasks';
 
-export type ExportTask = { title: string; instructions?: string; instrDoc?: JSONContent | null; hidden?: boolean; locked?: boolean; layout?: string; kind?: string; content: JSONContent; notes?: string; exam?: { minutes: number | null } | null };
+export type ExportTask = { print?: { gap?: string; lines?: number | null; instr?: string } | null; title: string; instructions?: string; instrDoc?: JSONContent | null; hidden?: boolean; locked?: boolean; layout?: string; kind?: string; content: JSONContent; notes?: string; exam?: { minutes: number | null } | null };
 
 // ---------------------------------------------------------------- export
 

@@ -9,7 +9,7 @@ import type { ExportTask } from '../lib/textformat';
 // The printed pieces of a lesson for the worksheet view: the page band and footer, and each task and
 // section as the print engine draws it, with its pictures and QR codes.
 
-export type SheetTask = { id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
+export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string } | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
 export type SheetLook = { classId: string; accent: string; className?: string; level?: string; cover?: string | null };
 
 export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on: boolean) {
@@ -43,9 +43,12 @@ export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on:
   return useMemo(() => {
     if (!on) return null;
     const p = sheetParts(title, items, { header: true, key: false, qr: true, paper: 'A4', columns: 1, accent: look.accent, className: look.className ?? '', level: look.level ?? '', cover, origin: location.origin, media: media.media, sounds: media.sounds });
-    const byId: Record<string, { html: string; n: number }> = {};
+    const byId: Record<string, { html: string; n: number; online: string[] }> = {};
     let n = 0;
-    shown.forEach((t, i) => (byId[t.id] = { html: p.pieces[i], n: t.kind === 'section' ? 0 : ++n }));
+    shown.forEach((t, i) => {
+      const it = items[i];
+      byId[t.id] = { html: p.pieces[i], n: t.kind === 'section' ? 0 : ++n, online: it.kind === 'task' ? it.task.online ?? [] : [] };
+    });
     return { parts: { css: p.css, band: p.band, foot: p.foot }, byId };
   }, [on, title, items, shown, look.accent, look.className, look.level, cover, media]);
 }

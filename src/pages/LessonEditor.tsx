@@ -70,7 +70,7 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
-import { SheetView } from '../lessons/SheetView';
+import { PaperBar, SheetView } from '../lessons/SheetView';
 import { useSheet } from '../lessons/useSheet';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
@@ -1231,12 +1231,20 @@ export function LessonEditor() {
                         node: (
                           <div className="sh-edit" style={{ ['--ws-accent' as string]: th.accent }}>
                             <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing · hidden from learners, not printed'}</span>
+                            <PaperBar
+                              key={t.id}
+                              look={t.print ?? {}}
+                              onChange={(print) => void setTaskFlags(classId, itemId, t.id, { print })}
+                              gaps={JSON.stringify(draft.content).includes('"type":"gap"') || JSON.stringify(draft.content).includes('"type":"dropgap"')}
+                              writing={JSON.stringify(draft.content).includes('"type":"writing"')}
+                              online={p?.online ?? []}
+                            />
                             {editFrame}
                           </div>
                         ),
                       };
                     if (!p) return { id: t.id, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
-                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: () => void select(t.id), label: `Edit ${t.title}` };
+                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
                   })}
                 after={
                   <button type="button" className="sh-add" onClick={() => void newTask()}>

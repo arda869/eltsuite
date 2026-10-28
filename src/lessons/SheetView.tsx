@@ -13,7 +13,7 @@ const areaTop = (k: number) => k * P + PAGE.band + PAGE.pad;
 const areaBottom = (k: number) => k * P + PAGE.h - PAGE.foot;
 
 export type SheetParts = { css: string; band: string; foot: string };
-export type SheetBlock = { id: string; html?: string; node?: ReactNode; on?: boolean; onClick?: () => void; heading?: boolean; label?: string };
+export type SheetBlock = { note?: string; id: string; html?: string; node?: ReactNode; on?: boolean; onClick?: () => void; heading?: boolean; label?: string };
 
 // The print styles, for a shadow root: our own copies of the two typefaces under their own names, so
 // the app's own fonts stay as they are.
@@ -111,11 +111,62 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
               aria-label={b.onClick ? b.label ?? 'Edit this task' : undefined}
             >
               {b.html !== undefined ? <Piece css={css} html={b.html} /> : b.node}
+              {b.note && <span className="sh-note">{b.note}</span>}
             </div>
           ))}
           {after && <div className="sh-after">{after}</div>}
         </div>
       </div>
+    </div>
+  );
+}
+
+// How the task being edited looks on paper: its gaps, its writing space and an instruction for paper.
+export type Paper = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string };
+export function PaperBar({ look, onChange, gaps, writing, online }: { look: Paper; onChange: (p: Paper) => void; gaps: boolean; writing: boolean; online: string[] }) {
+  const [instrOn, setInstrOn] = useState(!!look.instr);
+  const set = (p: Partial<Paper>) => onChange({ ...look, ...p });
+  return (
+    <div className="sh-paperbar" aria-label="On paper">
+      <b className="sh-pb-k">On paper</b>
+      {gaps && (
+        <label className="sh-pb-f">
+          <span>Gaps</span>
+          <select value={look.gap ?? 'fit'} onChange={(e) => set({ gap: e.target.value as Paper['gap'] })}>
+            <option value="fit">Fit the answer</option>
+            <option value="short">Short</option>
+            <option value="medium">Medium</option>
+            <option value="long">Long</option>
+          </select>
+        </label>
+      )}
+      {writing && (
+        <label className="sh-pb-f">
+          <span>Writing space</span>
+          <select value={look.lines === undefined || look.lines === null ? 'auto' : String(look.lines)} onChange={(e) => set({ lines: e.target.value === 'auto' ? null : Number(e.target.value) })}>
+            <option value="auto">Lines for the word count</option>
+            <option value="0">No lines</option>
+            {[4, 6, 8, 10, 12, 16, 20].map((n) => (
+              <option key={n} value={n}>
+                {n} lines
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <label className="sh-pb-c">
+        <input
+          type="checkbox"
+          checked={instrOn}
+          onChange={(e) => {
+            setInstrOn(e.target.checked);
+            if (!e.target.checked) set({ instr: '' });
+          }}
+        />
+        A different instruction on paper
+      </label>
+      {instrOn && <input className="sh-pb-instr" defaultValue={look.instr ?? ''} placeholder="For example: Write the answers in the gaps." onBlur={(e) => set({ instr: e.target.value })} aria-label="Instruction on paper" />}
+      {online.length > 0 && <span className="sh-pb-online">Online only, not printed: {online.join(', ')}</span>}
     </div>
   );
 }
