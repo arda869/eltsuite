@@ -15,6 +15,7 @@ import { friendlyAuthError } from '../lib/authErrors';
 import { inviteFields, useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
 import { Wordmark } from '../components/Wordmark';
+import { SuiteOrbit } from '../components/SuiteOrbit';
 
 type Mode = 'signin' | 'create' | 'reset' | 'link' | 'code';
 
@@ -155,6 +156,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           <Wordmark big />
           <span className="soon-badge">Coming soon</span>
           <p>Your whole job in one account.</p>
+          <SuiteOrbit />
           <div className="rule" />
           <p className="soon-note">
             ELT Suite opens to every teacher soon. For now, <b>teachers join by invitation</b>. Learners join with the code their teacher gives them.

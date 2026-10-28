@@ -7735,3 +7735,27 @@ html { touch-action: manipulation; }
 .signin .si-tour { align-self: flex-start; margin-top: 4px; }
 .signin .intro p.si-ask { font-family: inherit; margin: 0; font-size: 14px; color: var(--muted); }
 .signin .si-ask a { color: inherit; font-weight: 600; }
+
+/* Sign-in: the apps turning around the ELT Suite mark (SuiteOrbit.tsx) */
+.so { --spin-out: 70s; --spin-in: 48s; position: relative; width: 380px; height: 380px; max-width: 100%; margin: 4px auto 8px; }
+.so-track { position: absolute; border-radius: 50%; border: 1.5px dashed var(--hair-strong); pointer-events: none; }
+.so-track.out { inset: 40px; }
+.so-track.in { inset: 104px; border-style: solid; border-color: var(--hair); }
+.so-core { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 96px; height: 96px; border-radius: 28px; background: var(--paper, #fff); box-shadow: 0 10px 30px rgba(51, 48, 44, .14); }
+.so-ring { position: absolute; inset: 0; pointer-events: none; animation: so-spin var(--spin-out) linear infinite; }
+.so-ring.in { animation-duration: var(--spin-in); }
+.so-ring:hover, .so-ring:focus-within { z-index: 3; }
+.so-item { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--a)) translateY(calc(-1 * var(--r))) rotate(calc(-1 * var(--a))); }
+.so-item:hover, .so-item:focus-within { z-index: 4; }
+.so-up { position: absolute; left: 0; top: 0; width: 0; height: 0; animation: so-spin var(--spin-out) linear infinite reverse; }
+.so-ring.in .so-up { animation-duration: var(--spin-in); }
+.so:hover .so-ring, .so:hover .so-up, .so:focus-within .so-ring, .so:focus-within .so-up { animation-play-state: paused; }
+@keyframes so-spin { to { transform: rotate(360deg); } }
+.so-btn { position: absolute; left: 0; top: 0; pointer-events: auto; transform: translate(-50%, -50%); display: grid; place-items: center; width: var(--s); height: var(--s); padding: 0; border: 0; border-radius: 30%; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 80%, #fff), color-mix(in srgb, var(--c) 90%, #000)); color: #fff; box-shadow: 0 6px 16px color-mix(in srgb, var(--c) 30%, transparent); cursor: default; transition: transform .2s ease, box-shadow .2s ease; }
+.so-btn:hover, .so-btn:focus-visible { transform: translate(-50%, -50%) scale(1.14); box-shadow: 0 10px 22px color-mix(in srgb, var(--c) 40%, transparent); outline: none; }
+.so-btn:focus-visible { box-shadow: 0 0 0 3px var(--paper, #fff), 0 0 0 5px var(--c); }
+.so-tip { position: absolute; left: 0; top: calc(var(--s) / 2 + 10px); transform: translateX(-50%); width: max-content; max-width: 210px; display: none; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 10px; background: var(--paper, #fff); box-shadow: 0 0 0 1px var(--hair), 0 8px 24px rgba(51, 48, 44, .16); font: 13px/1.4 var(--sans); color: #4d4a46; text-align: center; pointer-events: none; }
+.so-tip b { color: var(--ink); font-size: 14px; }
+.so-item:hover .so-tip, .so-item:focus-within .so-tip { display: flex; }
+@media (prefers-reduced-motion: reduce) { .so-ring, .so-up { animation: none; } }
+@media (max-width: 480px) { .so { transform: scale(.82); margin: -30px auto -26px; } }
