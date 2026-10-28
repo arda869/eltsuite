@@ -361,3 +361,24 @@
 .gu-grid2 > .gu-try:has(.gu-stab), .gu-grid2 > .gu-try:has(.gu-tl) { grid-column: 1 / -1; }
 .gu-stab { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; align-self: flex-start; }
 .gu-bank-q .btn, .gu-bank-item .btn { font-family: var(--sans); }
+/* Coming soon in the app list */
+.gu-soon { margin-left: auto; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, var(--c) 16%, transparent); color: color-mix(in srgb, var(--c) 70%, #000); font: 700 10px var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.gu-win-soon { grid-column: 1 / -1; justify-self: start; padding: 8px 14px; border-radius: 10px; background: color-mix(in srgb, var(--c) 12%, var(--paper)); color: color-mix(in srgb, var(--c) 62%, #000); font-weight: 600; font-size: 14px; }
+/* Running an organisation */
+.gu-org { display: grid; grid-template-columns: 220px minmax(0, 1fr); border: 1px solid var(--hair-strong); border-radius: 16px; overflow: hidden; background: var(--paper); }
+.gu-org-nav { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: color-mix(in srgb, #5d6f80 7%, var(--paper)); border-right: 1px solid var(--hair); }
+.gu-org-id { display: flex; align-items: center; gap: 10px; padding: 4px 4px 10px; border-bottom: 1px solid var(--hair); }
+.gu-org-id > span:last-child { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
+.gu-org-id b { color: var(--ink); font-size: 14px; }
+.gu-org-logo { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: #d98f63; color: #fff; font: 700 15px var(--sans); }
+.gu-org-g { display: flex; flex-direction: column; gap: 1px; }
+.gu-org-h { margin: 6px 8px 2px; font: 700 10.5px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.gu-org-g button { padding: 6px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 14px var(--sans); text-align: left; cursor: pointer; }
+.gu-org-g button:hover { background: var(--surface); }
+.gu-org-g button.on { background: color-mix(in srgb, #5d6f80 18%, var(--paper)); font-weight: 600; }
+.gu-org-page { display: flex; flex-direction: column; gap: 8px; padding: 20px 22px; }
+.gu-org-crumb { font-size: 12px; color: var(--muted); }
+.gu-org-t { font: 500 22px/1.2 var(--serif); color: color-mix(in srgb, #5d6f80 70%, var(--ink)); }
+.gu-org-page p { margin: 0; font-size: 14.5px; line-height: 1.6; }
+.gu-org-page ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+@media (max-width: 860px) { .gu-org { grid-template-columns: minmax(0, 1fr); } .gu-org-nav { border-right: 0; border-bottom: 1px solid var(--hair); } }

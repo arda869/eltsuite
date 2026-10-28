@@ -24,6 +24,7 @@ const TOPICS: Topic[] = [
   { id: 'files', title: 'Your files and their apps', short: 'Files and apps', body: FilesTopic },
   { id: 'week', title: 'Timetable and Rooms', short: 'Timetable, Rooms', body: Week },
   { id: 'share', title: 'Colleagues and Messages', short: 'Colleagues', body: Share },
+  { id: 'org', title: 'Running an organisation', short: 'Organisation', body: OrgTopic },
 ];
 
 export function GuidePage() {
@@ -146,7 +147,7 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/[’']/g, "'").repla
 
 // ------------------------------------------------------------------ 1. getting around
 
-type GuideApp = { k: string; name: string; color: string; to: string; tag: string; about: string; can: string[]; d: string };
+type GuideApp = { k: string; name: string; color: string; to: string; tag: string; about: string; can: string[]; d: string; soon?: boolean };
 const APPS: GuideApp[] = [
   {
     k: 'home', name: 'Home', color: '#8b3d6b', to: '/', tag: 'Your day in one look',
@@ -214,6 +215,12 @@ const APPS: GuideApp[] = [
     can: ['Invite a colleague with a link', 'Share lessons, folders and recordings', 'Plan in Collab, record together in Studio'],
     d: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2',
   },
+  {
+    k: 'money', name: 'Money', color: '#2f7a5a', to: '/', soon: true, tag: 'For freelance teachers · under development',
+    about: 'Being built now: for teachers who work for themselves. Your rates and lesson packages, invoices made from the lessons you taught, who has paid, and what to put aside, from the Timetable you already keep.',
+    can: ['Your real hourly rate, after prep and holidays', 'Invoices from your Timetable, in your learner’s currency', 'Paid, due and late at a glance; a cushion for quiet months'],
+    d: 'M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM7 9v6M17 9v6',
+  },
 ];
 
 function Start() {
@@ -232,6 +239,7 @@ function Start() {
                 </svg>
               </span>
               {p.name}
+              {p.soon && <span className="gu-soon">Soon</span>}
             </button>
           ))}
         </div>
@@ -257,9 +265,13 @@ function Start() {
                 <li key={c}>{c}</li>
               ))}
             </ul>
-            <Link className="gu-win-go" to={a.to} target="_blank" rel="noopener">
-              Open {a.name} in a new tab ↗
-            </Link>
+            {a.soon ? (
+              <span className="gu-win-soon">Under development: it comes to ELT Suite soon.</span>
+            ) : (
+              <Link className="gu-win-go" to={a.to} target="_blank" rel="noopener">
+                Open {a.name} in a new tab ↗
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -477,6 +489,28 @@ function AppScreen({ k, c }: { k: string; c: string }) {
             <text x="30" y="186" style={{ fill: '#8f8a82', font: '13px var(--serif)' }}>
               A: Is this the train to <tspan style={{ fill: '#f3d36b', fontWeight: 700 }}>Leeds?</tspan> B: No, that’s platform 4.
             </text>
+          </>
+        );
+      case 'money':
+        return (
+          <>
+            <text x="20" y="32" className="gu-s-h">This month</text>
+            {[['Earned', '£2,140', '#2f7a5a'], ['Due', '£360', '#c9a227'], ['Late', '£90', '#c94f3d']].map(([l, v, col], i) => (
+              <g key={l} transform={`translate(${20 + i * 108} 44)`}>
+                <rect width="100" height="58" rx="10" className="gu-s-card" />
+                <text x="12" y="22" className="gu-s-small">{l}</text>
+                <text x="12" y="46" style={{ fill: col, font: '700 18px var(--sans)' }}>{v}</text>
+              </g>
+            ))}
+            <rect x="20" y="114" width="316" height="94" rx="10" className="gu-s-card" />
+            <text x="32" y="134" className="gu-s-b">Invoices</text>
+            {[['Mei · 8 lessons', 'Paid', '#2f7a5a'], ['Omar · 4 lessons', 'Due Fri', '#c9a227'], ['Lena · 2 lessons', '6 days late', '#c94f3d']].map(([n, st, col], i) => (
+              <g key={n} transform={`translate(32 ${146 + i * 20})`}>
+                <text y="10" className="gu-s-small" style={{ fill: 'var(--ink)' }}>{n}</text>
+                <rect x="196" y="-1" width="84" height="15" rx="7.5" style={{ fill: col, opacity: 0.16 }} />
+                <text x="238" y="10" textAnchor="middle" style={{ fill: col, font: '600 10px var(--sans)' }}>{st}</text>
+              </g>
+            ))}
           </>
         );
       case 'files':
@@ -2013,6 +2047,71 @@ function Share() {
           <figcaption>Send a lesson or file in a message; they open it, or copy it to a class.</figcaption>
         </figure>
       </div>
+    </>
+  );
+}
+
+// ------------------------------------------------------------------ running an organisation
+
+const ORG_PAGES: { g: string; k: string; t: string; d: string; can: string[] }[] = [
+  { g: 'People', k: 'Teachers', t: 'Everyone who teaches in your organisation', d: 'Each teacher with their classes, learners and the space their files take.', can: ['See who is active', 'Make a teacher an admin', 'Take a teacher out of the organisation'] },
+  { g: 'People', k: 'Invitations', t: 'Bring teachers in', d: 'Invite a teacher by email, or make invitation codes to give to many at once. A teacher who uses your code joins your organisation.', can: ['Invite by email', 'Codes for a whole team, with how many uses', 'See who has not answered yet'] },
+  { g: 'People', k: 'Admins', t: 'Who runs it with you', d: 'Admins see this page and can change everything in it.', can: ['Add or remove admins', 'Admins can still teach their own classes'] },
+  { g: 'Teaching', k: 'Classes', t: 'Every class in the organisation', d: 'Who teaches each class, and its learners. You can add learners, give new PINs and print sign-in cards; lessons and answers stay with the teacher.', can: ['Add learners for a teacher', 'Give a new PIN', 'Print sign-in cards'] },
+  { g: 'Teaching', k: 'Library', t: 'Your shared lessons and materials', d: 'Folders of lessons, documents, flashcards and PDFs for all your teachers, ready to copy into their classes.', can: ['Folders by course or level', 'Choose who can add and who can only use', 'Copy a lesson into a class in one step'] },
+  { g: 'Settings', k: 'Rules', t: 'How your organisation works', d: 'Which apps your teachers use, the levels you teach, and what teachers fill in on their profile.', can: ['Turn apps on or off for everyone', 'Your own list of levels', 'Profile fields you need'] },
+  { g: 'Settings', k: 'Branding', t: 'Your school’s look', d: 'Your logo and colour, on the top bar and on every worksheet your teachers print.', can: ['A square and a long logo', 'Your colour', 'Your name on worksheets'] },
+  { g: 'Settings', k: 'Plan and limits', t: 'What your plan includes', d: 'How many teachers, classes and learners you can have, call minutes each month and space for files, with what you use now.', can: ['See what is left this month', 'Know before you reach a limit', 'Ask for more from Support'] },
+  { g: '', k: 'Activity', t: 'What has changed', d: 'What your admins changed, who joined, who was invited and which classes are new.', can: ['Day by day', 'Filter by people, classes or changes'] },
+];
+function OrgTopic() {
+  const [k, setK] = useState(0);
+  const p = ORG_PAGES[k];
+  const groups = ['', 'People', 'Teaching', 'Settings'];
+  return (
+    <>
+      <p>A school or a team of teachers can be an <b>organisation</b> in ELT Suite. Its admins open <b>Organisation admin</b> from the Apps menu: one place to bring teachers in, share materials, set the rules and see what the plan includes. Teachers in it teach as usual; the organisation is there to help them.</p>
+      <div className="gu-org">
+        <nav className="gu-org-nav" aria-label="Organisation admin pages">
+          <span className="gu-org-id">
+            <span className="gu-org-logo" aria-hidden="true">B</span>
+            <span>
+              <b>Bright English</b>
+              <span>Organisation admin</span>
+            </span>
+          </span>
+          {groups.map((g) => (
+            <span key={g || '-'} className="gu-org-g">
+              {g && <span className="gu-org-h">{g}</span>}
+              {ORG_PAGES.map((x, i) =>
+                x.g === g ? (
+                  <button key={x.k} type="button" aria-pressed={i === k} className={i === k ? 'on' : ''} onClick={() => setK(i)}>
+                    {x.k}
+                  </button>
+                ) : null,
+              )}
+            </span>
+          ))}
+        </nav>
+        <div className="gu-org-page gu-slide" key={p.k} aria-live="polite">
+          <span className="gu-org-crumb">Organisation admin · {p.k}</span>
+          <b className="gu-org-t">{p.t}</b>
+          <p>{p.d}</p>
+          <ul>
+            {p.can.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <Steps
+        items={[
+          { t: 'Invite your teachers', d: 'By email, or with a code you give to the whole team.' },
+          { t: 'Set the rules', d: 'The apps you use, your levels and what teachers fill in.' },
+          { t: 'Add your branding', d: 'Your logo and colour, on screen and on worksheets.' },
+          { t: 'Fill the library', d: 'Shared lessons and materials, ready to copy into classes.' },
+        ]}
+      />
     </>
   );
 }
