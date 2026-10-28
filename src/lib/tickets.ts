@@ -29,6 +29,7 @@ export type Ticket = {
   where: string; // the page they were on, or the app it is about
   shots: number;
   notes: number;
+  escalated?: { thread: string; at: number; byName: string }; // handed to Claude by a super admin
   at: number;
   updatedAt: number;
 };

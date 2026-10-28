@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { isOwnerEmail, libName, useAppOn, useMyOrg, useOrgs } from '../lib/admin';
+import { libName, useSuper, useAppOn, useMyOrg, useOrgs } from '../lib/admin';
 
 // The apps in the suite, from the nine-dot button: one account, every app.
 
@@ -48,8 +48,8 @@ export function AppGrid() {
   const { user } = useAuth();
   const teacher = profile?.role === 'teacher';
   const on = useAppOn();
-  // Super Admin is the owner's alone; Organisation admin, for the admins of an organisation.
-  const owner = isOwnerEmail(user?.email);
+  // Super Admin is for super admins; Organisation admin, for the admins of an organisation.
+  const owner = useSuper() === true;
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const myOrg = useMyOrg();
   const show = (k: string) => (k === 'home' ? true : k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : k === 'support' ? owner || !!adminOf?.length : k === 'library' ? !!myOrg && on(k) : on(k));

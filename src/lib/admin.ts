@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { addDoc, collection, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { useAuth } from './auth';
 import { OWNER_EMAIL } from './phonAudio';
@@ -102,6 +102,43 @@ export function levelsFor(o: Org | null | undefined): string[] {
 export const libName = (o: Org | null | undefined) => (o ? o.libraryName?.trim() || `${o.name} library` : 'Organisation library');
 export const isOwnerEmail = (e?: string | null) => lower(e) === OWNER_EMAIL;
 
+// Super admins: the owner, always, and every account a super admin has made one
+// (superAdmins/{email}, by a verified email). They run all of ELT Suite, as the owner does.
+export type SuperAdmin = { email: string; name?: string; by?: string; byName?: string; at?: number };
+export function useSuper(): boolean | null {
+  const { user } = useAuth();
+  const email = lower(user?.email);
+  const verified = (user as { emailVerified?: boolean } | null)?.emailVerified !== false;
+  const [on, setOn] = useState<{ email: string; v: boolean } | null>(null);
+  useEffect(() => {
+    if (!email || isOwnerEmail(email) || !verified || email.endsWith('@learners.lesson-lit.firebaseapp.com')) return;
+    return onSnapshot(
+      doc(db, 'superAdmins', email),
+      (s) => setOn({ email, v: s.exists() }),
+      () => setOn({ email, v: false }),
+    );
+  }, [email, verified]);
+  if (!user) return false;
+  if (isOwnerEmail(email)) return true;
+  if (!email || !verified) return false;
+  return on?.email === email ? on.v : null;
+}
+export function useSuperAdmins(on: boolean) {
+  const [list, setList] = useState<SuperAdmin[] | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    return onSnapshot(
+      collection(db, 'superAdmins'),
+      (s) => setList(s.docs.map((d) => ({ ...(d.data() as SuperAdmin), email: d.id })).sort((a, b) => a.email.localeCompare(b.email))),
+      () => setList([]),
+    );
+  }, [on]);
+  return list;
+}
+export const addSuperAdmin = (email: string, name: string, me: { uid: string; name: string }) =>
+  setDoc(doc(db, 'superAdmins', lower(email)), { name: name.trim().slice(0, 80), by: me.uid, byName: me.name.slice(0, 80), at: Date.now() });
+export const removeSuperAdmin = (email: string) => deleteDoc(doc(db, 'superAdmins', lower(email)));
+
 // This account's own settings: its plan, its space and whether it is paused.
 export function useAccount(uid?: string) {
   const [a, setA] = useState<Account | null>(null);
@@ -136,10 +173,11 @@ export function useAppOn() {
   const acc = useAccount(user?.uid);
   const all = useFeatures();
   const org = useMyOrg();
+  const isSuper = useSuper();
   // The owner's switch for one teacher decides first; then what the owner allows the organisation,
   // then what the organisation allows its teachers; otherwise the switch for everyone.
   return (k: string) => {
-    if (isOwnerEmail(user?.email)) return true;
+    if (isSuper) return true;
     if (acc?.features?.[k] !== undefined) return acc.features[k];
     if (org?.allow?.apps?.[k] === false || org?.policy?.apps?.[k] === false) return false;
     if (org?.allow?.apps?.[k] === true) return true;

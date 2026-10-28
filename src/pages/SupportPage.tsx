@@ -1,27 +1,59 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
+import { useCallback, useState, type ReactNode } from 'react';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
 import { UiIcon } from '../components/UiIcon';
 import { Loader } from '../components/Loader';
-import { isOwnerEmail, useOrgs, type Org } from '../lib/admin';
+import { useOrgs, useSuper, type Org } from '../lib/admin';
 import { composing } from '../lib/keys';
-import { KINDS, MAX_SHOTS, STATUSES, URGENCIES, addNote, kindLabel, openTicket, statusLabel, toShot, useTicketParts, useTickets, type NewShot, type Shot, type Ticket, type TicketKind, type TicketStatus, type TicketUrgency } from '../lib/tickets';
-import { Drawer, DrawerPart, Empty, PageHead, Pills, Search, Sheet, ago, dateStr, plural, useNote } from './admin/ui';
+import { KINDS, STATUSES, URGENCIES, addNote, kindLabel, openTicket, statusLabel, useTicketParts, useTickets, type NewShot, type Ticket, type TicketKind, type TicketStatus, type TicketUrgency } from '../lib/tickets';
+import { STATE_LABEL, startThread, useThread } from '../lib/claude';
+import { Drawer, DrawerPart, Empty, PageHead, Pills, Search, Sheet, ago, dateStr, useNote } from './admin/ui';
+import { ShotPicker, Shots } from './admin/shots';
 import './admin.css';
 
-// Support tickets (/support): an organisation's admins tell the owner what is wrong or what they
-// would like, with screenshots pasted straight in. The owner sees every ticket and moves it along.
+// Support tickets: an organisation's admins (at /support) tell the super admins what is wrong or
+// what they would like, with screenshots pasted straight in. Super admins see every ticket in
+// Super Admin → Support tickets, answer it, move it along, and can hand it to Claude.
 // Where you are lives in the address (?f=…&t=…), so a ticket can be linked to.
 
 export function SupportPage() {
+  const { user } = useAuth();
+  const isSuper = useSuper();
+  const orgs = useOrgs(false, isSuper === false ? user?.email : null);
+  const [params] = useSearchParams();
+  if (isSuper) {
+    const n = new URLSearchParams(params);
+    n.set('tab', 'tickets');
+    return <Navigate to={`/admin?${n}`} replace />;
+  }
+  if (!user || isSuper === null || orgs === null) return <Loader full label="Opening Support tickets" />;
+  if (!orgs.length)
+    return (
+      <Frame>
+        <div className="hq-closed">
+          <strong>Support tickets are for an organisation's admins</strong>
+          <span className="hint">Ask the person who runs your organisation in ELT Suite to add you as an admin, or tell them what you need.</span>
+        </div>
+      </Frame>
+    );
+  return (
+    <Frame>
+      <div className="hq hq-solo">
+        <main className="hq-main">
+          <SupportTickets owner={false} orgs={orgs} />
+        </main>
+      </div>
+    </Frame>
+  );
+}
+
+// The tickets themselves: every ticket for a super admin (owner), an organisation's for its admins.
+export function SupportTickets({ owner, orgs }: { owner: boolean; orgs: Org[] }) {
   const { user, profile } = useAuth();
-  const owner = isOwnerEmail(user?.email);
-  const orgs = useOrgs(owner, user?.email);
-  // The owner sees every organisation, but opens tickets as themselves; an admin, for theirs.
-  const mine = orgs && !owner ? orgs : orgs?.filter((o) => o.adminEmails.includes((user?.email ?? '').toLowerCase())) ?? null;
-  const tickets = useTickets(owner, owner ? null : orgs?.map((o) => o.id) ?? null);
+  // A super admin opens tickets as themselves; an admin, for one of their organisations.
+  const mine = owner ? orgs.filter((o) => o.adminEmails.includes((user?.email ?? '').toLowerCase())) : orgs;
+  const tickets = useTickets(owner, owner ? null : orgs.map((o) => o.id));
   const [params, setParams] = useSearchParams();
   const f = params.get('f') || 'active';
   const open = params.get('t') || '';
@@ -37,17 +69,7 @@ export function SupportPage() {
     },
     [params, setParams],
   );
-
-  if (!user || orgs === null) return <Loader full label="Opening Support tickets" />;
-  if (!owner && !orgs.length)
-    return (
-      <Frame>
-        <div className="hq-closed">
-          <strong>Support tickets are for an organisation's admins</strong>
-          <span className="hint">Ask the person who runs your organisation in ELT Suite to add you as an admin, or tell them what you need.</span>
-        </div>
-      </Frame>
-    );
+  if (!user) return null;
 
   const list = tickets ?? [];
   const FILTERS: Record<string, (t: Ticket) => boolean> = {
@@ -69,13 +91,11 @@ export function SupportPage() {
   const cur = list.find((t) => t.id === open);
   const name = (profile?.role === 'teacher' ? profile.displayName : '') || user.displayName || user.email || 'Admin';
   return (
-    <Frame>
-      <div className="hq hq-solo">
-        <main className="hq-main">
+    <>
           <div className="hq-page">
             <PageHead
               title="Support tickets"
-              lede={owner ? 'Every ticket from every organisation. Open ones are copied, screenshots and all, to the support-tickets branch to be worked on.' : 'Tell us what is wrong or what you would like changed. Paste screenshots straight in; we answer here.'}
+              lede={owner ? 'Every ticket from every organisation. Answer it here, or hand it to Claude to work on.' : 'Tell us what is wrong or what you would like changed. Paste screenshots straight in; we answer here.'}
               actions={
                 <button type="button" className="btn primary" onClick={() => setMaking(true)}>
                   <UiIcon name="plus" size={15} /> New ticket
@@ -156,8 +176,6 @@ export function SupportPage() {
               </div>
             )}
           </div>
-        </main>
-      </div>
       {making && (
         <NewTicket
           orgs={mine ?? []}
@@ -171,10 +189,10 @@ export function SupportPage() {
           }}
         />
       )}
-      {cur && <TicketDrawer key={cur.id} t={cur} owner={owner} me={{ uid: user.uid, name: owner ? 'ELT Suite support' : name }} onClose={() => go({ t: '' })} />}
+      {cur && <TicketDrawer key={cur.id} t={cur} owner={owner} me={{ uid: user.uid, name: owner ? `${name} (ELT Suite)` : name }} onClose={() => go({ t: '' })} />}
       {open && tickets !== null && !cur && <MissingTicket onClose={() => go({ t: '' })} />}
       {toast}
-    </Frame>
+    </>
   );
 }
 
@@ -298,133 +316,6 @@ function NewTicket({ orgs, owner, onClose, onSend }: { orgs: Org[]; owner: boole
   );
 }
 
-// Screenshots: pasted anywhere while the form is open, dropped on it, or chosen from the computer.
-function ShotPicker({ shots, setShots }: { shots: NewShot[]; setShots: (f: (s: NewShot[]) => NewShot[]) => void }) {
-  const [working, setWorking] = useState(0);
-  const [err, setErr] = useState('');
-  const [over, setOver] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
-  const room = MAX_SHOTS - shots.length - working;
-  const add = useCallback(
-    async (files: File[]) => {
-      const pics = files.filter((f) => f.type.startsWith('image/'));
-      if (!pics.length) return;
-      setErr('');
-      const take = pics.slice(0, Math.max(0, room));
-      if (take.length < pics.length) setErr(`A ticket can have ${MAX_SHOTS} screenshots.`);
-      setWorking((n) => n + take.length);
-      for (const f of take) {
-        try {
-          const s = await toShot(f);
-          setShots((list) => [...list, s].slice(0, MAX_SHOTS));
-        } catch {
-          setErr('One picture could not be read. Try a PNG or JPEG.');
-        }
-        setWorking((n) => n - 1);
-      }
-    },
-    [room, setShots],
-  );
-  useEffect(() => {
-    const paste = (e: ClipboardEvent) => {
-      const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'));
-      if (!files.length) return;
-      e.preventDefault();
-      void add(files);
-    };
-    document.addEventListener('paste', paste);
-    return () => document.removeEventListener('paste', paste);
-  }, [add]);
-  const [big, setBig] = useState<string | null>(null);
-  return (
-    <div
-      className={'hq-tk-shots' + (over ? ' over' : '')}
-      onDragOver={(e) => (e.preventDefault(), setOver(true))}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => (e.preventDefault(), setOver(false), void add([...e.dataTransfer.files]))}
-    >
-      <div className="hq-tk-thumbs">
-        {shots.map((s, i) => (
-          <span key={i} className="hq-tk-thumb">
-            <button type="button" className="hq-tk-pic" aria-label={`Screenshot ${i + 1}, bigger`} onClick={() => setBig(s.data)}>
-              <img src={s.data} alt="" />
-            </button>
-            <button type="button" className="hq-tk-x" aria-label={`Remove screenshot ${i + 1}`} onClick={() => setShots((list) => list.filter((_, j) => j !== i))}>
-              ×
-            </button>
-          </span>
-        ))}
-        {Array.from({ length: working }, (_, i) => (
-          <span key={'w' + i} className="hq-tk-thumb wait" aria-label="Adding a screenshot" />
-        ))}
-        {room > 0 && (
-          <button type="button" className="hq-tk-add" onClick={() => input.current?.click()}>
-            <UiIcon name="picture" size={18} />
-            <span>{shots.length ? 'Add more' : 'Add screenshots'}</span>
-          </button>
-        )}
-      </div>
-      <span className="hint">Paste with Ctrl+V or ⌘V, drop pictures here, or choose them. {plural(MAX_SHOTS, 'screenshot')} at most.</span>
-      {err && (
-        <span className="hint hq-tk-err" role="alert">
-          {err}
-        </span>
-      )}
-      <input
-        ref={input}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        aria-hidden="true"
-        tabIndex={-1}
-        onChange={(e) => {
-          void add([...(e.target.files ?? [])]);
-          e.target.value = '';
-        }}
-      />
-      {big && <Lightbox src={big} onClose={() => setBig(null)} />}
-    </div>
-  );
-}
-
-// One screenshot, as big as the screen allows. Escape closes it and nothing behind it.
-function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
-  useEffect(() => {
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', key, true);
-    return () => window.removeEventListener('keydown', key, true);
-  }, [onClose]);
-  return createPortal(
-    <div className="hq-scrim center hq-tk-big" role="dialog" aria-modal="true" aria-label="Screenshot" onMouseDown={onClose}>
-      <img src={src} alt="Screenshot" />
-      <button type="button" className="hq-drawer-x" aria-label="Close" onClick={onClose} autoFocus>
-        ×
-      </button>
-    </div>,
-    document.body,
-  );
-}
-
-function Shots({ list }: { list: Shot[] }) {
-  const [big, setBig] = useState<string | null>(null);
-  if (!list.length) return null;
-  return (
-    <div className="hq-tk-thumbs">
-      {list.map((s, i) => (
-        <button key={s.id} type="button" className="hq-tk-pic" aria-label={`Screenshot ${i + 1}, bigger`} onClick={() => setBig(s.data)}>
-          <img src={s.data} alt="" />
-        </button>
-      ))}
-      {big && <Lightbox src={big} onClose={() => setBig(null)} />}
-    </div>
-  );
-}
-
 // ------------------------------------------------------------------ one ticket
 function TicketDrawer({ t, owner, me, onClose }: { t: Ticket; owner: boolean; me: { uid: string; name: string }; onClose: () => void }) {
   const { shots, notes } = useTicketParts(t.id);
@@ -489,8 +380,9 @@ function TicketDrawer({ t, owner, me, onClose }: { t: Ticket; owner: boolean; me
             ))}
           </ol>
         )}
+        <div data-paste className="hq-tk-zone">
         <label className="field">
-          <span>Add to the conversation</span>
+          <span>{owner ? `Answer ${t.byName}` : 'Add to the conversation'}</span>
           <textarea
             className="hq-in"
             name="reply"
@@ -513,7 +405,78 @@ function TicketDrawer({ t, owner, me, onClose }: { t: Ticket; owner: boolean; me
             {busy ? 'Sending…' : 'Send'}
           </button>
         </span>
+        </div>
       </DrawerPart>
+      {owner && <ClaudePart t={t} me={me} />}
     </Drawer>
+  );
+}
+
+// For super admins: hand the ticket to Claude, or see how Claude is getting on with it. What Claude
+// says stays between Claude and the super admins; the ticket's own conversation is for its admins.
+function ClaudePart({ t, me }: { t: Ticket; me: { uid: string; name: string } }) {
+  const thread = useThread(t.escalated?.thread);
+  const [asking, setAsking] = useState(false);
+  const [text, setText] = useState('');
+  const [add, setAdd] = useState<NewShot[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const ask = async () => {
+    if (busy) return;
+    setBusy(true);
+    setErr('');
+    try {
+      await startThread(me, t.title, text.trim() || 'Please look at this ticket and fix it.', add, t);
+      setAsking(false);
+    } catch (e) {
+      setErr('Claude could not be asked: ' + ((e as Error).message || 'try again.'));
+    }
+    setBusy(false);
+  };
+  if (t.escalated)
+    return (
+      <DrawerPart title="With Claude">
+        <span className="hq-tk-claude">
+          <span>
+            {thread ? STATE_LABEL[thread.state] : 'Handed to Claude'} · {t.escalated.byName}, {ago(t.escalated.at)}
+          </span>
+          <Link className="btn small" to={`/admin?tab=claude&c=${t.escalated.thread}`}>
+            Open the conversation
+          </Link>
+        </span>
+      </DrawerPart>
+    );
+  return (
+    <DrawerPart title="Claude">
+      {!asking ? (
+        <span className="hq-tk-claude">
+          <span className="hint">Hand this ticket to Claude: it reads it with its screenshots, makes the change and opens it for you to check before it goes live.</span>
+          <button type="button" className="btn small" onClick={() => setAsking(true)}>
+            Ask Claude
+          </button>
+        </span>
+      ) : (
+        <div data-paste className="hq-tk-zone">
+          <label className="field">
+            <span>What should Claude do?</span>
+            <textarea className="hq-in" name="claude" rows={3} value={text} maxLength={20000} placeholder="Anything to add to the ticket: what you found, what the change should be. Paste screenshots here too." onChange={(e) => setText(e.target.value)} />
+          </label>
+          <ShotPicker shots={add} setShots={setAdd} />
+          {err && (
+            <span className="hint hq-tk-err" role="alert">
+              {err}
+            </span>
+          )}
+          <span className="hq-tk-send">
+            <button type="button" className="btn" onClick={() => setAsking(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn primary" disabled={busy} onClick={() => void ask()}>
+              {busy ? 'Sending…' : 'Send to Claude'}
+            </button>
+          </span>
+        </div>
+      )}
+    </DrawerPart>
   );
 }

@@ -374,21 +374,47 @@ const J = {
     await see(s.p, '.hq-drawer', 'the ticket, still open behind it');
     await s.p.keyboard.press('Escape');
     await see(s.p, '.hq-table:has-text("The timetable shows Monday twice")', 'the ticket in the list');
-    // The owner sees it, answers and marks it done.
+    // A super admin finds it in Super Admin, answers, hands it to Claude and marks it done.
     await s.p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
     await s.p.goto(`${BASE}/support`);
+    await see(s.p, '.hq-nav-i.on:has-text("Support tickets")', 'Super Admin, at the support tickets');
     await s.p.click('.hq-table tbody tr:has-text("Monday twice")');
     await s.p.fill('.hq-drawer textarea[name="reply"]', 'Fixed, thank you.');
-    await s.p.click('.hq-drawer button:has-text("Send")');
+    await s.p.click('.hq-drawer .hq-tk-zone button:has-text("Send")');
     await see(s.p, '.hq-tk-notes:has-text("Fixed, thank you.")', 'the answer');
+    await s.p.click('.hq-drawer button:has-text("Ask Claude")');
+    await s.p.fill('.hq-drawer textarea[name="claude"]', 'Week view only.');
+    await s.p.click('.hq-drawer button:has-text("Send to Claude")');
+    await see(s.p, '.hq-drawer:has-text("With Claude")', 'the ticket, with Claude');
     await s.p.click('.hq-drawer button:has-text("Mark done")');
     await see(s.p, '.hq-drawer .hq-tk-st.done', 'the ticket, done');
+    await s.p.click('.hq-drawer a:has-text("Open the conversation")');
+    await see(s.p, '.cl-msg.admin:has-text("Week view only.")', 'the conversation with Claude');
+    await see(s.p, '.cl-msg.wait', 'waiting for Claude');
+    await axe(s.p, 'Super Admin: Claude', A11Y_FOUND);
+    await s.p.click('.hq-nav-i:has-text("Super admins")');
+    await s.p.fill('.hq-addrow input[name="email"]', 'sofia@school.org');
+    await s.p.click('.hq-addrow button:has-text("Add")');
+    await s.p.click('.dialog button:has-text("Make them a super admin")');
+    await see(s.p, '.hq-supers:has-text("sofia@school.org")', 'the new super admin');
+    await axe(s.p, 'Super Admin: super admins', A11Y_FOUND);
+    return s;
+  },
+  'Super admins: one made by another opens Super Admin': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['superAdmins/teacher@example.com'] = { name: 'Arda', by: 'x', byName: 'The owner', at: Date.now() };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(`${BASE}/admin`);
+    await see(s.p, '.hq-nav-i:has-text("Super admins")', 'Super Admin, for a super admin');
     return s;
   },
   'Super Admin is the owner’s alone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/admin`);
-    await see(s.p, 'text=only for the owner', 'the closed Super Admin');
+    await see(s.p, 'text=only for the super admins', 'the closed Super Admin');
     return s;
   },
   'Learner signs in and opens the lesson': async (b) => {

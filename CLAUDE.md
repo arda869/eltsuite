@@ -6,10 +6,20 @@ from GitHub Actions. `npm run build` type-checks and builds; `npm run smoke` (or
 Playwright journeys in `test/smoke.mjs` against stand-ins for Firebase (`test/mock`). Pushing to `main`
 deploys.
 
-## Support tickets
+## Super admins
 
-Organisation admins (and the owner) open tickets with screenshots at `/support` (`src/pages/SupportPage.tsx`,
-`src/lib/tickets.ts`). When asked to "look at the tickets" or work on them:
+The owner (a fixed email) is always a super admin; others are in `superAdmins/{email}` and need a verified
+email. `isOwner()` in `firestore.rules` and `useSuper()` in `src/lib/admin.ts` mean "a super admin".
+
+## Support tickets and Claude
+
+Organisation admins open tickets with screenshots at `/support` (`src/pages/SupportPage.tsx`,
+`src/lib/tickets.ts`). Super admins see them in Super Admin → Support tickets, answer them, and can hand one
+to Claude ("Ask Claude"), which starts a conversation in Super Admin → Claude (`src/lib/claude.ts`,
+`src/pages/admin/Claude.tsx`). `scripts/claude-inbox.mjs` takes a waiting conversation out as files with a
+prompt (`take`) and puts the answer back (`reply`).
+
+When asked to "look at the tickets" or work on them:
 
 1. `git fetch origin support-tickets` and read `README.md` on that branch
    (`git show origin/support-tickets:README.md`). Each ticket not done yet has a folder `<id>/` with
