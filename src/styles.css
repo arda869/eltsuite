@@ -7765,9 +7765,10 @@ html { touch-action: manipulation; }
 .si-tag .pr-gl[data-at='above'] { background: none; border-top: 0; padding: 0; }
 .si-tag .pr-gl::before { display: none; }
 .si-tag .pr-gl::after { bottom: calc(100% - 0.1em); }
-.si-tag .subs.si-subs { vertical-align: baseline; margin: 0 0.15em; padding: 0 0.35em; border-color: #b0612f; line-height: 1.15; }
-.si-subs .subs-o:nth-child(2) { font-size: 0.72em; color: #5a5550; }
-.si-subs .subs-o:nth-child(3) { font-size: 0.56em; color: #6b655f; }
+.si-tag .subs.si-subs { vertical-align: baseline; margin: 0 0.18em; padding: 0 0.4em; border-left: 1.5px solid #c9a089; border-right: 1.5px solid #c9a089; line-height: 1.12; text-align: center; }
+.si-subs .subs-o + .subs-o { margin-top: 0.12em; font-style: italic; letter-spacing: 0.01em; }
+.si-subs .subs-o:nth-child(2) { font-size: 0.6em; color: #645e58; }
+.si-subs .subs-o:nth-child(3) { font-size: 0.5em; color: #6f6963; }
 .si-st { position: relative; font-weight: 700; }
 .si-st::before { content: ''; position: absolute; left: 50%; top: -0.2em; width: 0.24em; height: 0.24em; transform: translateX(-50%); background: #b0612f; }
 .si-tag .pr-pl { --accent: #c8764a; color: #c8764a; }
