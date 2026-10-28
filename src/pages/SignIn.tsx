@@ -154,7 +154,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         <div className="intro">
           <Wordmark big />
           <span className="soon-badge">Coming soon</span>
-          <p>Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress.</p>
+          <p>Your whole job in one account.</p>
           <div className="rule" />
           <p className="soon-note">
             ELT Suite opens to every teacher soon. For now, <b>teachers join by invitation</b>. Learners join with the code their teacher gives them.
