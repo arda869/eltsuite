@@ -57,6 +57,7 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
       else if (m.type === 'strike') out = `<s>${out}</s>`;
       else if (m.type === 'textColor' && hex(m.attrs?.color)) out = `<span style="color:${hex(m.attrs?.color)}">${out}</span>`;
       else if (m.type === 'highlight') out = `<mark style="background:${highlightBg(m.attrs?.color)}">${out}</mark>`;
+      else if (m.type === 'fontStyle' && (m.attrs?.family || m.attrs?.pt)) out = `<span style="${m.attrs?.family ? `font-family:'${esc(String(m.attrs.family))}';` : ''}${m.attrs?.pt ? `font-size:${Number(m.attrs.pt)}pt;` : ''}">${out}</span>`;
       else if (m.type === 'definition') {
         const d = m.attrs?.data ?? {};
         out = `<span class="defw">${out}</span>${d.meaning ? `<span class="defn"> (${esc(String(d.meaning))})</span>` : ''}`;
