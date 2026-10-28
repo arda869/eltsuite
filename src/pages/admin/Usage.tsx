@@ -16,7 +16,7 @@ function useSummaries() {
     () =>
       onSnapshot(
         collection(db, 'usage'),
-        (s) => setList(s.docs.map((d) => ({ uid: d.id, last: Number(d.data().last) || 0, visits: Number(d.data().visits) || 0, role: d.data().role === 'learner' ? 'learner' : 'teacher' })).sort((a, b) => b.last - a.last)),
+        (s) => setList(s.docs.map((d) => ({ uid: d.id, last: Number(d.data().last) || 0, visits: Number(d.data().visits) || 0, role: (d.data().role === 'learner' ? 'learner' : 'teacher') as Sum['role'] })).sort((a, b) => b.last - a.last)),
         () => setList([]),
       ),
     [],
