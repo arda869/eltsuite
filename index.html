@@ -3,7 +3,7 @@
   <head>
     <script>try{var t=localStorage.getItem('ll.theme');if(t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.dataset.theme='dark'}catch(e){}try{var b=localStorage.getItem('ll.brand');if(/^#[0-9a-f]{6}$/i.test(b||''))document.documentElement.style.setProperty('--brand',b)}catch(e){}</script>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>ELT Suite</title>
     <meta name="description" content="Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress. Coming soon; teachers join by invitation." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -24,11 +24,19 @@
           var h = document.documentElement;
           h.dataset.standalone = '';
           if (h.dataset.theme === 'dark') document.getElementById('sbs').setAttribute('content', 'black-translucent');
-          /* No pinch or double-tap zoom, like an app (text size is in the Aa menu). */
-          document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
-          document.addEventListener('touchmove', function (e) { if (e.scale !== undefined && e.scale !== 1) e.preventDefault(); }, { passive: false });
           document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
         }
+      } catch (e) {}
+      /* No zooming the page, on any screen, like an app (text size is in the Aa menu): no pinch on
+         phones, tablets and trackpads, no Ctrl/Cmd with the wheel or + and -. Drawing boards and
+         other parts that zoom themselves still get these events; only the browser's zoom stops. */
+      try {
+        var stop = function (e) { e.preventDefault(); };
+        document.addEventListener('gesturestart', stop, { passive: false });
+        document.addEventListener('gesturechange', stop, { passive: false });
+        document.addEventListener('touchmove', function (e) { if ((e.scale !== undefined && e.scale !== 1) || e.touches.length > 1) e.preventDefault(); }, { passive: false });
+        document.addEventListener('wheel', function (e) { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
+        document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].indexOf(e.key) >= 0) e.preventDefault(); });
       } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
