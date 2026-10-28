@@ -9,12 +9,12 @@ import type { ExportTask } from '../lib/textformat';
 // The printed pieces of a lesson for the worksheet view: the page band and footer, and each task and
 // section as the print engine draws it, with its pictures and QR codes.
 
-export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string } | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
+export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string; show?: string } | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
 export type SheetLook = { classId: string; accent: string; className?: string; level?: string; cover?: string | null };
 
 export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on: boolean) {
   // What prints: sections, and the tasks learners can see, in order.
-  const shown = useMemo(() => tasks.filter((t) => t.kind === 'section' || (!t.hidden && t.content)), [tasks]);
+  const shown = useMemo(() => tasks.filter((t) => t.kind === 'section' || (!t.hidden && t.content && t.print?.show !== 'screen')), [tasks]);
   const items = useMemo<WsItem[]>(
     () => shown.map((t) => (t.kind === 'section' ? { kind: 'section' as const, title: t.title } : { kind: 'task' as const, task: flattenTask({ ...t, content: t.content! } as ExportTask) })),
     [shown],

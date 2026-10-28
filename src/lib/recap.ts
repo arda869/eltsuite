@@ -53,7 +53,7 @@ type Inputs = {
 
 // Builds a draft for each learner. Existing comments and sharing state are kept.
 export function buildRecaps(inp: Inputs, existing: Record<string, Recap>): Recap[] {
-  const visibleTasks = inp.tasks.filter((t) => t.kind !== 'section' && !t.hidden && !(t.family && t.family !== t.id));
+  const visibleTasks = inp.tasks.filter((t) => t.kind !== 'section' && !t.hidden && (t as { print?: { show?: string } | null }).print?.show !== 'paper' && !(t.family && t.family !== t.id));
   const vocab: RecapVocab[] = inp.entries
     .filter((e) => e.type === 'vocab' && e.itemId === inp.item.id && e.status === 'published' && !e.hidden && e.data.word)
     .map((e) => ({ word: e.data.word!, ...(e.data.def?.meaning ? { meaning: e.data.def.meaning } : {}), ...(e.data.def?.example ? { example: e.data.def.example } : {}) }));

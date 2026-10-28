@@ -11,7 +11,7 @@ import { lessonTaskBody } from '../lib/libtasks';
 import { newSharedDoc, type SharedDoc } from '../lib/sharedDocs';
 import { TaskEditor } from '../editor/TaskEditor';
 import { InstrEditor } from '../editor/InstrEditor';
-import { SheetView, type Zoom } from './SheetView';
+import { PaperBar, SheetView, type Paper, type Zoom } from './SheetView';
 import { useSheet } from './useSheet';
 import { useAuth } from '../lib/auth';
 import { ask, tell } from '../lib/ask';
@@ -26,7 +26,7 @@ export const LESSON_TYPES: { v: Item['type']; label: string; hint: string }[] = 
   { v: 'homework', label: 'Homework', hint: 'With a due date' },
   { v: 'exam', label: 'Exam', hint: 'Timed, with results released later' },
 ];
-export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent };
+export type LessonRow = { id: string; order: number; kind: 'task' | 'section'; title: string; instructions: string; instrDoc?: JSONContent | null; content: JSONContent; print?: Paper | null };
 const rowsCol = (id: string) => collection(db, 'sharedDocs', id, 'tasks');
 const EMPTY: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
 
@@ -52,7 +52,7 @@ export async function saveLessonToFiles(owner: { uid: string; name: string }, cl
   for (const t of s.docs) {
     const d = t.data();
     const body = d.kind === 'section' ? null : await lessonTaskBody({ classId, itemId, taskId: t.id });
-    b.set(doc(rowsCol(id), newId()), JSON.parse(JSON.stringify({ order: i++, kind: d.kind === 'section' ? 'section' : 'task', title: String(d.title ?? ''), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, content: body?.content ?? EMPTY })));
+    b.set(doc(rowsCol(id), newId()), JSON.parse(JSON.stringify({ order: i++, kind: d.kind === 'section' ? 'section' : 'task', title: String(d.title ?? ''), instructions: String(d.instructions ?? ''), instrDoc: d.instrDoc ?? null, print: d.print ?? null, content: body?.content ?? EMPTY })));
   }
   await b.commit();
   return id;
@@ -63,7 +63,7 @@ async function addToClass(rows: LessonRow[], c: ClassDoc, title: string, type: I
   let i = 0;
   for (const r of rows) {
     const taskId = await addTask(c.id, itemId, i++, r.kind, { title: r.title, instructions: r.instructions, content: r.content ?? EMPTY });
-    if (r.instrDoc) await updateDoc(taskRef(c.id, itemId, taskId), { instrDoc: r.instrDoc });
+    if (r.instrDoc || r.print) await updateDoc(taskRef(c.id, itemId, taskId), JSON.parse(JSON.stringify({ ...(r.instrDoc ? { instrDoc: r.instrDoc } : {}), ...(r.print ? { print: r.print } : {}) })));
   }
   return itemId;
 }
@@ -291,6 +291,16 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             </section>
             <span className="sh-divider" aria-hidden="true" />
             <section className="sh-right lf-right" aria-label="Edit the task">
+              {cur && cur.kind === 'task' && canEdit && (
+                <PaperBar
+                  key={cur.id}
+                  look={cur.print ?? {}}
+                  onChange={(print) => patch(cur.id, { print }, 0)}
+                  gaps={JSON.stringify(cur.content).includes('"type":"gap"') || JSON.stringify(cur.content).includes('"type":"dropgap"')}
+                  writing={JSON.stringify(cur.content).includes('"type":"writing"')}
+                  online={sheetData.byId[cur.id]?.online ?? []}
+                />
+              )}
               {taskBlock}
             </section>
           </div>

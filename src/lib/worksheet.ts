@@ -468,7 +468,7 @@ export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>): WsI
   let pending: string | null = null;
   tasks.forEach((t, i) => {
     if (t.kind === 'section') return void (pending = t.title);
-    if (t.hidden || (ids && !ids.has(i))) return;
+    if (t.hidden || t.print?.show === 'screen' || (ids && !ids.has(i))) return;
     if (pending !== null) out.push({ kind: 'section', title: pending }), (pending = null);
     out.push({ kind: 'task', task: flattenTask(t) });
   });
@@ -476,7 +476,7 @@ export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>): WsI
 }
 
 export function flattenLesson(tasks: ExportTask[], ids?: Set<number>) {
-  return tasks.map((t, i) => ({ t, i })).filter(({ t, i }) => t.kind !== 'section' && !t.hidden && (!ids || ids.has(i))).map(({ t }) => flattenTask(t));
+  return tasks.map((t, i) => ({ t, i })).filter(({ t, i }) => t.kind !== 'section' && !t.hidden && t.print?.show !== 'screen' && (!ids || ids.has(i))).map(({ t }) => flattenTask(t));
 }
 
 // ---------------------------------------------------------------- DOCX

@@ -45,7 +45,8 @@ export type Task = {
   print?: PaperLook | null; // how it looks on the printed worksheet
 };
 // How a task prints: the length of its gaps, the space for writing, and its own instruction on paper.
-export type PaperLook = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string };
+// show: on paper and on screen (the default), only on paper (learners don't see it online), or only on screen (not printed).
+export type PaperLook = { gap?: 'fit' | 'short' | 'medium' | 'long'; lines?: number | null; instr?: string; show?: 'both' | 'paper' | 'screen' };
 
 export const tasksCol = (classId: string, itemId: string) => collection(db, 'classes', classId, 'items', itemId, 'tasks');
 export const taskRef = (classId: string, itemId: string, taskId: string) => doc(db, 'classes', classId, 'items', itemId, 'tasks', taskId);

@@ -775,9 +775,30 @@ export function LessonEditor() {
   }, [draft, editorKey]);
   const liveId = task && editorKey.startsWith(task.id + ':') ? task.id : '';
   const liveDraft = live1 && live1.key === editorKey ? live1.d : null;
+  // Each task's answers, so a gap that fits its answer is as long on the page as it prints.
+  const [sheetKeys, setSheetKeys] = useState<Record<string, AnswerKey>>({});
+  const sheetOn = sheet && mode === 'edit';
+  useEffect(() => {
+    if (!sheetOn) return;
+    for (const t of tasks) if (t.kind !== 'section' && t.content && !(t.id in sheetKeys)) loadKey(classId, itemId, t.id).then((k) => setSheetKeys((m) => ({ ...m, [t.id]: k })), () => setSheetKeys((m) => ({ ...m, [t.id]: {} as AnswerKey })));
+  }, [sheetOn, tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A task's answers may have changed while it was open: read them again when you move on.
+  const lastOpen = useRef('');
+  useEffect(() => {
+    const prev = lastOpen.current;
+    lastOpen.current = task?.id ?? '';
+    if (prev && prev !== task?.id) setSheetKeys((m) => {
+      const n = { ...m };
+      delete n[prev];
+      return n;
+    });
+  }, [task?.id]);
   const sheetTasks = useMemo(
-    () => tasks.filter((t) => !isVariant(t)).map((t) => (t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t)),
-    [tasks, liveId, liveDraft], // eslint-disable-line react-hooks/exhaustive-deps
+    () =>
+      tasks
+        .filter((t) => !isVariant(t))
+        .map((t) => (t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t.content && sheetKeys[t.id] ? { ...t, content: mergeKey(t.content, sheetKeys[t.id]) } : t)),
+    [tasks, liveId, liveDraft, sheetKeys], // eslint-disable-line react-hooks/exhaustive-deps
   );
   const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover }, sheet && mode === 'edit');
 
@@ -1015,6 +1036,8 @@ export function LessonEditor() {
                   {!isVariant(t) && (t.variants?.length ?? 0) > 0 && <span className="variant-count" title={`${(t.variants?.length ?? 0) + 1} versions`}>{vLabel(t)}</span>}
                   {!isVariant(t) && t.audience && t.audience.mode !== 'all' && <span className="state-mark aud-mark" title={tr('Only some learners see this')}>{PEOPLE}</span>}
                   {t.hidden && <span className="state-mark" title={tr('Hidden from learners')}>{EYE_OFF}</span>}
+                  {t.print?.show === 'paper' && <span className="show-tag" title="Only on the printed worksheet: learners don’t see it online">Paper</span>}
+                  {t.print?.show === 'screen' && <span className="show-tag" title="Only on screen: not printed">Screen</span>}
                   {t.locked && <span className="state-mark" title="Locked">{LOCK}</span>}
                   {teachingHere && seeLearners && onTask(t.id) > 0 && (
                     <span className="on-task" title={`${onTask(t.id)} on this task`}>
@@ -1282,7 +1305,7 @@ export function LessonEditor() {
                     blocks={sheetTasks.map((t) => {
                       const p = sheetData.byId[t.id];
                       const on = t.id === task.id;
-                      if (!p) return { id: t.id, on, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
+                      if (!p) return { id: t.id, on, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : t.print?.show === 'screen' ? `${t.title || 'Task'} · only on screen, so not printed` : 'One moment…'}</div> };
                       return { id: t.id, on: on && t.kind !== 'section', html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
                     })}
                     after={

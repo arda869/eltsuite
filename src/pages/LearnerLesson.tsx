@@ -85,7 +85,7 @@ export function LearnerLesson() {
     const u1 = onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) }));
     const u2 = onSnapshot(doc(db, 'classes', classId, 'items', itemId), (s) => s.exists() && setItem({ id: s.id, ...(s.data() as Omit<Item, 'id'>) }));
     const u3 = onSnapshot(query(tasksCol(classId, itemId), orderBy('order')), (s) => {
-      setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) })).filter((t) => !t.hidden));
+      setTasks(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Task, 'id'>) })).filter((t) => !t.hidden && t.print?.show !== 'paper'));
     });
     return () => (u1(), u2(), u3());
   }, [classId, itemId]);
