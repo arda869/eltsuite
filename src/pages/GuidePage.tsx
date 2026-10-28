@@ -174,8 +174,8 @@ const APPS: GuideApp[] = [
   },
   {
     k: 'collab', name: 'Collab', color: '#2f6f9f', to: '/collab', tag: 'Write together, live',
-    about: 'Documents and slides you write at the same time as others: with colleagues to plan a course, or with learners for a class story or a shared essay.',
-    can: ['See each other’s cursors as you type', 'Suggest changes and comment', 'Download as Word, PDF or PowerPoint'],
+    about: 'Documents and slides you write at the same time as others: with colleagues to plan a course, or with learners for a class story or a shared essay. Unlike other editors, it speaks ELT: the marks you use on the board are built in.',
+    can: ['Tense timelines, substitution slots, word and sentence stress, IPA and sound cards, from the / menu', 'See each other’s cursors; suggest changes and comment', 'Download as Word, PDF or PowerPoint'],
     d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 12.5h6M9 16h4',
   },
   {
@@ -358,47 +358,76 @@ function AppScreen({ k, c }: { k: string; c: string }) {
       case 'collab':
         return (
           <>
-            <rect x="40" y="14" width="210" height="196" rx="6" className="gu-s-card" />
-            <text x="58" y="42" className="gu-s-h">Course plan: Term 2</text>
-            {[60, 74, 88, 110, 124, 138, 160, 174].map((y, i) => ln(58, y, [170, 150, 120, 168, 140, 90, 160, 110][i]))}
-            <rect x="178" y="84" width="2" height="16" style={{ fill: '#3667a6' }} />
-            <rect x="160" y="70" width="40" height="13" rx="3" style={{ fill: '#3667a6' }} />
-            <text x="180" y="80" textAnchor="middle" style={{ fill: '#fff', font: '600 9px var(--sans)' }}>Selin</text>
-            <rect x="112" y="134" width="2" height="16" style={{ fill: '#c8764a' }} />
-            <rect x="94" y="120" width="40" height="13" rx="3" style={{ fill: '#c8764a' }} />
-            <text x="114" y="130" textAnchor="middle" style={{ fill: '#fff', font: '600 9px var(--sans)' }}>Tom</text>
-            <rect x="58" y="108" width="100" height="10" rx="2" style={tint(0.18)} />
-            <g transform="translate(262 100)">
-              <rect width="86" height="58" rx="10" className="gu-s-card" />
-              <circle cx="16" cy="16" r="7" style={{ fill: '#3667a6' }} />
-              <text x="28" y="20" className="gu-s-small">Selin</text>
-              {ln(10, 32, 64)}
-              {ln(10, 44, 44)}
-              <path d="M0 22 l-10 -6" className="gu-s-arrow" />
+            <rect x="14" y="10" width="232" height="202" rx="6" className="gu-s-card" />
+            <text x="28" y="34" className="gu-s-h" style={{ fontSize: 14 }}>Present perfect: our notes</text>
+            {[['I’ve', 0], ['lived', 1], ['here', 0], ['for', 0], ['years.', 1]].map(([w, st], i, arr) => {
+              const x = 28 + arr.slice(0, i).reduce((n, [ww]) => n + String(ww).length * 7.4 + 8, 0);
+              return (
+                <g key={i}>
+                  {st ? <circle cx={x + String(w).length * 3.6} cy="48" r="3" style={{ fill: c }} /> : null}
+                  <text x={x} y="64" style={{ fill: 'var(--ink)', font: `${st ? 700 : 400} 13px var(--serif)` }}>{w}</text>
+                </g>
+              );
+            })}
+            <text x="58" y="78" style={{ fill: '#7a4fa3', font: '10px var(--sans)' }}>/lɪvd/</text>
+            <line x1="28" y1="96" x2="226" y2="96" stroke="var(--ink)" strokeWidth="1.4" />
+            <path d="M222 92 l5 4 -5 4" fill="none" stroke="var(--ink)" strokeWidth="1.4" />
+            <line x1="190" y1="88" x2="190" y2="104" stroke="var(--ink)" strokeWidth="1.4" />
+            <text x="190" y="116" textAnchor="middle" style={{ fill: 'var(--muted)', font: '8.5px var(--sans)' }}>NOW</text>
+            <rect x="70" y="91" width="120" height="10" rx="3" style={{ fill: c, opacity: 0.35 }} />
+            <text x="70" y="114" style={{ fill: c, font: '600 9px var(--sans)' }}>since 2019</text>
+            <text x="28" y="140" style={{ fill: 'var(--ink)', font: '12px var(--serif)' }}>She has been to</text>
+            <line x1="122" y1="126" x2="122" y2="168" stroke="var(--ink)" strokeWidth="1.4" />
+            <line x1="176" y1="126" x2="176" y2="168" stroke="var(--ink)" strokeWidth="1.4" />
+            {['Lisbon', 'Paris', 'Seoul'].map((w, i) => (
+              <text key={w} x="130" y={138 + i * 13} style={{ fill: i ? 'var(--muted)' : 'var(--ink)', font: `${i ? 400 : 700} 11px var(--serif)` }}>{w}</text>
+            ))}
+            {ln(28, 184, 180)}
+            {ln(28, 198, 130)}
+            <rect x="150" y="186" width="2" height="16" style={{ fill: '#c8764a' }} />
+            <rect x="132" y="172" width="40" height="13" rx="3" style={{ fill: '#c8764a' }} />
+            <text x="152" y="182" textAnchor="middle" style={{ fill: '#fff', font: '600 9px var(--sans)' }}>Tom</text>
+            <g transform="translate(256 24)">
+              <rect width="94" height="104" rx="10" className="gu-s-card" />
+              <text x="10" y="18" style={{ fill: c, font: '700 12px var(--mono, monospace)' }}>/</text>
+              <text x="22" y="18" className="gu-s-small" style={{ fontSize: 9.5 }}>Language</text>
+              {['Timeline', 'Stress', 'IPA', 'Substitution', 'Sound card'].map((t, i) => (
+                <g key={t}>
+                  <rect x="6" y={26 + i * 15} width="82" height="13" rx="4" style={{ fill: i === 0 ? c : 'transparent', opacity: i === 0 ? 0.16 : 1 }} />
+                  <text x="12" y={36 + i * 15} className="gu-s-small" style={{ fontSize: 10, fill: 'var(--ink)' }}>{t}</text>
+                </g>
+              ))}
+            </g>
+            <g transform="translate(256 142)">
+              <rect width="94" height="56" rx="10" className="gu-s-card" />
+              <circle cx="15" cy="15" r="7" style={{ fill: '#3667a6' }} />
+              <text x="27" y="19" className="gu-s-small" style={{ fontSize: 10 }}>Selin</text>
+              <text x="10" y="36" className="gu-s-small" style={{ fontSize: 9.5, fill: 'var(--ink)' }}>Add “since 2019”?</text>
+              {ln(10, 44, 60, 0.7)}
             </g>
           </>
         );
       case 'reading':
         return (
           <>
-            <rect x="16" y="14" width="110" height="192" rx="10" className="gu-s-card" />
-            {['Unplugged', 'How Languages…', 'Learning Teaching'].map((t, i) => (
-              <g key={t} transform={`translate(26 ${26 + i * 40})`}>
-                <rect width="90" height="32" rx="7" style={tint(i === 0 ? 0.16 : 0)} />
+            <rect x="12" y="14" width="122" height="192" rx="10" className="gu-s-card" />
+            {['Unplugged', 'How Languages', 'Learning Teaching'].map((t, i) => (
+              <g key={t} transform={`translate(20 ${26 + i * 40})`}>
+                <rect width="106" height="32" rx="7" style={tint(i === 0 ? 0.16 : 0)} />
                 <rect x="6" y="6" width="12" height="20" rx="2" style={tint(0.7 - i * 0.2)} />
-                <text x="24" y="20" className="gu-s-small" style={{ fontSize: 9.5 }}>{t}</text>
+                <text x="22" y="20" className="gu-s-small" style={{ fontSize: 9 }}>{t}</text>
               </g>
             ))}
-            <rect x="136" y="14" width="208" height="192" rx="10" style={{ fill: '#fffdf6', stroke: 'var(--hair-strong)' }} />
+            <rect x="142" y="14" width="204" height="192" rx="10" style={{ fill: '#fffdf6', stroke: 'var(--hair-strong)' }} />
             {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-              <line key={i} x1="136" x2="344" y1={46 + i * 24} y2={46 + i * 24} stroke="#a9c3e0" strokeWidth="1" />
+              <line key={i} x1="142" x2="346" y1={46 + i * 24} y2={46 + i * 24} stroke="#a9c3e0" strokeWidth="1" />
             ))}
-            <line x1="172" x2="172" y1="14" y2="206" stroke="#d9534f" strokeWidth="1.5" />
-            <text x="146" y="36" style={{ fill: '#33302c', font: '600 12px var(--serif)' }}>Ch. 2 · Materials-light</text>
+            <line x1="176" x2="176" y1="14" y2="206" stroke="#d9534f" strokeWidth="1.5" />
+            <text x="182" y="36" style={{ fill: '#33302c', font: '600 12px var(--serif)' }}>Ch. 2 · Materials-light</text>
             {[['p. 12', 'Dogme: conversation first'], ['p. 15', 'Emergent language'], ['p. 21', 'Try: no coursebook day']].map(([pg, t], i) => (
               <g key={pg}>
-                <text x="146" y={66 + i * 24} style={{ fill: '#d9534f', font: '10px var(--sans)' }}>{pg}</text>
-                <text x="180" y={66 + i * 24} style={{ fill: '#33302c', font: 'italic 12px var(--serif)' }}>{t}</text>
+                <text x="148" y={66 + i * 24} style={{ fill: '#d9534f', font: '9.5px var(--sans)' }}>{pg}</text>
+                <text x="182" y={66 + i * 24} style={{ fill: '#33302c', font: 'italic 11.5px var(--serif)' }}>{t}</text>
               </g>
             ))}
           </>
