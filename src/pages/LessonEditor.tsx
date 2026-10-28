@@ -70,7 +70,7 @@ import { TopBar } from '../components/TopBar';
 import { TaskEditor } from '../editor/TaskEditor';
 import { DOTS } from '../editor/nodes';
 import { TaskRenderer } from '../components/TaskRenderer';
-import { PaperBar, SheetView } from '../lessons/SheetView';
+import { PaperBar, SheetView, type Zoom } from '../lessons/SheetView';
 import { useSheet } from '../lessons/useSheet';
 import { firstPage, LessonBoard } from '../components/LessonBoard';
 import { LivePanel } from '../components/LivePanel';
@@ -380,6 +380,37 @@ export function LessonEditor() {
   // Teaching shortcuts (not while typing).
   const [exportOpen, setExportOpen] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
+  // Worksheet view: how big the page is shown, and how much of the screen it takes (remembered here).
+  const [sheetZoom, setSheetZoomState] = useState<Zoom>(() => {
+    try {
+      return localStorage.getItem('ll.sheetZoom') === 'page' ? 'page' : 'width';
+    } catch {
+      return 'width';
+    }
+  });
+  const setSheetZoom = (z: Zoom) => {
+    setSheetZoomState(z);
+    try {
+      localStorage.setItem('ll.sheetZoom', z);
+    } catch {
+      /* fine */
+    }
+  };
+  const [sheetW, setSheetWState] = useState(() => {
+    try {
+      return Number(localStorage.getItem('ll.sheetW')) || 45;
+    } catch {
+      return 45;
+    }
+  });
+  const setSheetW = (w: number) => {
+    setSheetWState(w);
+    try {
+      localStorage.setItem('ll.sheetW', String(w));
+    } catch {
+      /* fine */
+    }
+  };
   // Worksheet view: the lesson as A4 pages, remembered on this device.
   const [sheet, setSheetState] = useState(() => {
     try {
@@ -390,6 +421,8 @@ export function LessonEditor() {
   });
   const setSheet = (on: boolean) => {
     setSheetState(on);
+    // Room for the page and the editor side by side: the task settings fold away (one click brings them back).
+    if (on && panels.right) panels.toggleRight();
     try {
       localStorage.setItem('ll.sheetView', on ? '1' : '');
     } catch {
@@ -734,7 +767,18 @@ export function LessonEditor() {
   const previewKey = useMemo(() => (draft ? splitKey(draft.content) : null), [draft, previewChecked]); // eslint-disable-line react-hooks/exhaustive-deps
   const th = theme(c?.themeColor);
   // The worksheet view's printed pieces, from the saved tasks.
-  const sheetTasks = useMemo(() => tasks.filter((t) => !isVariant(t)), [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The worksheet on the left follows the task being edited as you type (a moment after each change).
+  const [live1, setLive1] = useState<{ key: string; d: Draft } | null>(null);
+  useEffect(() => {
+    const t = window.setTimeout(() => setLive1(draft ? { key: editorKey, d: draft } : null), 250);
+    return () => window.clearTimeout(t);
+  }, [draft, editorKey]);
+  const liveId = task && editorKey.startsWith(task.id + ':') ? task.id : '';
+  const liveDraft = live1 && live1.key === editorKey ? live1.d : null;
+  const sheetTasks = useMemo(
+    () => tasks.filter((t) => !isVariant(t)).map((t) => (t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t)),
+    [tasks, liveId, liveDraft], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover }, sheet && mode === 'edit');
 
   // The task being edited, in the digital view or on its worksheet page.
@@ -1218,49 +1262,71 @@ export function LessonEditor() {
                 </div>
               </div>
             ) : sheet && sheetData ? (
-              <SheetView
-                parts={sheetData.parts}
-                blocks={tasks
-                  .filter((t) => !isVariant(t))
-                  .map((t) => {
-                    const p = sheetData.byId[t.id];
-                    const ready = editorKey.startsWith(t.id + ':');
-                    if (t.id === task.id && t.kind !== 'section' && !ready)
-                      return { id: t.id, on: true, html: p?.html ?? '', note: 'Opening…' };
-                    if (t.id === task.id && t.kind !== 'section')
-                      return {
-                        id: t.id,
-                        on: true,
-                        measure: p?.html ?? '',
-                        node: (
-                          <div className="sh-edit" style={{ ['--ws-accent' as string]: th.accent }}>
-                            <span className="sh-edit-tag">{p ? `Exercise ${p.n} · editing` : 'Editing · hidden from learners, not printed'}</span>
-                            <PaperBar
-                              key={t.id}
-                              look={t.print ?? {}}
-                              onChange={(print) => void setTaskFlags(classId, itemId, t.id, { print })}
-                              gaps={JSON.stringify(draft.content).includes('"type":"gap"') || JSON.stringify(draft.content).includes('"type":"dropgap"')}
-                              writing={JSON.stringify(draft.content).includes('"type":"writing"')}
-                              online={p?.online ?? []}
-                            />
-                            {editFrame}
-                          </div>
-                        ),
-                      };
-                    if (!p) return { id: t.id, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
-                    return { id: t.id, html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
-                  })}
-                after={
-                  <button type="button" className="sh-add" onClick={() => void newTask()}>
-                    + Add a task
-                  </button>
-                }
-              />
+              <div className="sh-split" style={{ ['--sh-w' as string]: `${sheetW}%` }}>
+                <section className="sh-left" aria-label="The worksheet">
+                  <div className="sh-left-bar">
+                    <span className="sh-switch" role="radiogroup" aria-label="Size of the page">
+                      <button type="button" role="radio" aria-checked={sheetZoom === 'width'} className={sheetZoom === 'width' ? 'on' : ''} onClick={() => setSheetZoom('width')}>
+                        Fit width
+                      </button>
+                      <button type="button" role="radio" aria-checked={sheetZoom === 'page'} className={sheetZoom === 'page' ? 'on' : ''} onClick={() => setSheetZoom('page')}>
+                        Whole page
+                      </button>
+                    </span>
+                    <span className="hint">Click a task to edit it</span>
+                  </div>
+                  <SheetView
+                    parts={sheetData.parts}
+                    zoom={sheetZoom}
+                    focus={task.id}
+                    blocks={sheetTasks.map((t) => {
+                      const p = sheetData.byId[t.id];
+                      const on = t.id === task.id;
+                      if (!p) return { id: t.id, on, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : 'One moment…'}</div> };
+                      return { id: t.id, on: on && t.kind !== 'section', html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
+                    })}
+                    after={
+                      <button type="button" className="sh-add" onClick={() => void newTask()}>
+                        + Add a task
+                      </button>
+                    }
+                  />
+                </section>
+                <div
+                  className="sh-divider"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Drag to change the size of the worksheet"
+                  tabIndex={0}
+                  onPointerDown={(e) => {
+                    const box = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    const move = (ev: PointerEvent) => setSheetW(Math.round(Math.min(70, Math.max(25, ((ev.clientX - box.left) / box.width) * 100))));
+                    const up = () => (window.removeEventListener('pointermove', move), window.removeEventListener('pointerup', up));
+                    window.addEventListener('pointermove', move);
+                    window.addEventListener('pointerup', up);
+                  }}
+                  onKeyDown={(e) => (e.key === 'ArrowLeft' ? setSheetW(Math.max(25, sheetW - 5)) : e.key === 'ArrowRight' ? setSheetW(Math.min(70, sheetW + 5)) : null)}
+                />
+                <section className="sh-right" aria-label="Edit the task">
+                  {task.kind !== 'section' && (
+                    <PaperBar
+                      key={task.id}
+                      look={task.print ?? {}}
+                      onChange={(print) => void setTaskFlags(classId, itemId, task.id, { print })}
+                      gaps={JSON.stringify(draft.content).includes('"type":"gap"') || JSON.stringify(draft.content).includes('"type":"dropgap"')}
+                      writing={JSON.stringify(draft.content).includes('"type":"writing"')}
+                      online={sheetData.byId[task.id]?.online ?? []}
+                    />
+                  )}
+                  {editFrame}
+                </section>
+              </div>
             ) : (
               editFrame
             )}
           </main>
-          {task && draft && !viewer && !preview && !present && !boardView && !(sheet && mode === 'edit') && (
+          {task && draft && !viewer && !preview && !present && !boardView && (
             <PresenterNotes pane={notesPane} hasNotes={!!notes.trim()}>
               {teachingHere && !editWhileTeaching && !notesEditing ? (
                 <div className="pn-read" onClick={() => setNotesEditing(true)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && setNotesEditing(true)} data-tip="Click to edit">

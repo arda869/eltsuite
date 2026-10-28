@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 // Worksheet view of a lesson: the same tasks, on A4 pages, one column, in the printed house style
 // (see "How printed worksheets look" in CLAUDE.md). Every task you are not editing is drawn by the
@@ -50,7 +50,8 @@ function Piece({ css, html, className }: { css: string; html: string; className?
   return <div ref={ref} className={className} />;
 }
 
-export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks: SheetBlock[]; after?: ReactNode }) {
+export type Zoom = 'width' | 'page';
+export function SheetView({ parts, blocks, after, zoom = 'width', focus }: { parts: SheetParts; blocks: SheetBlock[]; after?: ReactNode; zoom?: Zoom; focus?: string }) {
   const css = useShadowCss(parts.css);
   const host = useRef<HTMLDivElement>(null);
   const [pushes, setPushes] = useState<number[]>([]);
@@ -64,12 +65,30 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
   useLayoutEffect(() => {
     const el = desk.current;
     if (!el) return;
-    const fit = () => setScale(Math.min(1, Math.max(0.5, (el.clientWidth - 24) / PAGE.w)));
+    // Fit the width of the panel, or a whole page in its height.
+    const fit = () => {
+      const w = (el.clientWidth - 32) / PAGE.w;
+      const h = (el.clientHeight - 32) / PAGE.h;
+      setScale(Math.max(0.25, Math.min(1.6, zoom === 'page' ? Math.min(w, h) : w)));
+    };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [zoom]);
+  // A task chosen somewhere else (the task list) is brought into view on the page.
+  useEffect(() => {
+    if (!focus || anchor.current) return;
+    const t = window.setTimeout(() => {
+      const el = host.current?.querySelector<HTMLElement>(`[data-b="${CSS.escape(focus)}"]`);
+      const d = desk.current;
+      if (!el || !d) return;
+      const r = el.getBoundingClientRect();
+      const dr = d.getBoundingClientRect();
+      if (r.top < dr.top + 8 || r.top > dr.bottom - 80) d.scrollTo({ top: d.scrollTop + r.top - dr.top - 24, behavior: 'smooth' });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [focus]);
   const inner = areaBottom(0) - areaTop(0);
   // The task you click stays where it was on screen while the page around it settles: the one you
   // leave shrinks back to its printed size, which would otherwise move everything below it.
@@ -134,7 +153,7 @@ export function SheetView({ parts, blocks, after }: { parts: SheetParts; blocks:
   return (
     <div className="sh-desk" ref={desk}>
       <div className="sh-fit" style={{ width: PAGE.w * scale, height: (pages * P - PAGE.gap + stretch.extra) * scale }}>
-      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale < 1 ? `scale(${scale})` : undefined }}>
+      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale !== 1 ? `scale(${scale})` : undefined }}>
         {Array.from({ length: pages }, (_, i) => (
           <div key={i} className={'sh-sheet' + (i === stretch.page && stretch.extra > 0 ? ' stretched' : '')} style={{ top: i * P + (i > stretch.page ? stretch.extra : 0), height: PAGE.h + (i === stretch.page ? stretch.extra : 0) }} aria-hidden="true">
             <Piece css={css} html={parts.band} />
