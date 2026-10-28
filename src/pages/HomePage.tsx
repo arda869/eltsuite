@@ -46,7 +46,7 @@ const CREATE: { k: DocKind; label: string; about: string }[] = [
   { k: 'lesson', label: 'Lesson', about: 'Tasks to teach, then add to a class' },
   { k: 'doc', label: 'Collab document', about: 'Written together, live' },
   { k: 'flash', label: 'Flashcards', about: 'A set to study and play' },
-  { k: 'pd', label: 'PD reading', about: 'Sources and notes' },
+  { k: 'pd', label: 'Reading Journal', about: 'Sources and notes' },
 ];
 
 export function HomePage() {

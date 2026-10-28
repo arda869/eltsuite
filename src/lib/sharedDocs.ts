@@ -45,12 +45,12 @@ const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
 export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf';
-export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'PD reading', lesson: 'Lesson', pdf: 'PDF' };
+export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF' };
 export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '') {
   const r = await addDoc(col, {
     owner: owner.uid,
     ownerName: owner.name,
-    title: title || (kind === 'pd' ? 'PD reading' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
+    title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind,
     docKey: 'f' + newId() + newId(),
     members: {},
@@ -176,7 +176,7 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     ownerName: f.ownerName,
     createdBy: me.uid,
     folder: f.id,
-    title: extra.title || (kind === 'pd' ? 'PD reading' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
+    title: extra.title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
     kind,
     ...(extra.ltype ? { ltype: extra.ltype } : {}),
     docKey: 'f' + newId() + newId(),

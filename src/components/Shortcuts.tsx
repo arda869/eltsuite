@@ -12,7 +12,7 @@ const PLACES: Place[] = [
   {
     id: 'writing',
     title: 'Writing',
-    note: 'Lessons, documents, notes, PD reading notes and messages.',
+    note: 'Lessons, documents, notes, Reading Journal notes and messages.',
     rows: [
       [['Mod+B'], 'Bold'],
       [['Mod+I'], 'Italic'],

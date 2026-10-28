@@ -59,6 +59,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default:
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
+const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 function NoAccess() {
@@ -164,6 +165,10 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
           <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
+          <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
+          <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
+          <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
+          <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
           <Route path="/call/:code" element={<CallPage />} />
           <Route path="/studio/task/:id" element={<TeacherOnly><TaskStudio /></TeacherOnly>} />

@@ -24,7 +24,7 @@ const NEW: { label: string; kind: DocKind; ltype?: LType; hint: string }[] = [
   { label: 'Collab document', kind: 'doc', hint: 'Written together, live' },
   { label: 'Slides', kind: 'slides', hint: 'A deck to present' },
   { label: 'Flashcards', kind: 'flash', hint: 'A set of cards to study' },
-  { label: 'PD reading', kind: 'pd', hint: 'Sources and notes for teachers' },
+  { label: 'Reading Journal', kind: 'pd', hint: 'Sources and notes for teachers' },
 ];
 
 export function LibraryPage() {

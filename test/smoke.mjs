@@ -132,7 +132,7 @@ const J = {
   },
   'Files: every kind opens': async (b) => {
     const s = await session(b);
-    for (const [label, sel] of [['Collab document', '.ProseMirror'], ['Flashcards', 'text=Design the cards'], ['PD reading', 'text=CITATION STYLE']]) {
+    for (const [label, sel] of [['Collab document', '.ProseMirror'], ['Flashcards', 'text=Design the cards'], ['Reading Journal', 'text=CITATION STYLE']]) {
       const tab = await newFile(s, label);
       await see(tab, sel, `a new ${label}`);
       await tab.close();

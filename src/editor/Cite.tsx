@@ -127,7 +127,7 @@ export const RefListNode = Node.create({
   addNodeView: () => ReactNodeViewRenderer(RefListView),
 });
 
-// The toolbar button: find a source in your PD reading and cite it.
+// The toolbar button: find a source in your Reading Journal and cite it.
 export function CiteTool({ editor }: { editor: Editor }) {
   const { user } = useAuth();
   const { mine, withMe } = useMyDocs(user?.uid);
@@ -160,7 +160,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
   });
   return (
     <span className="hl-tool" ref={ref}>
-      <button type="button" className={'tool' + (open ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title="Cite a source from your PD reading" aria-label="Cite a source">
+      <button type="button" className={'tool' + (open ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)} title="Cite a source from your Reading Journal" aria-label="Cite a source">
         <span className="ti-row">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M3 5.5C6 4.5 9 4.6 12 6.2v13.3c-3-1.6-6-1.7-9-.7zM21 5.5c-3-1-6-.9-9 .7v13.3c3-1.6 6-1.7 9-.7z" />
@@ -173,7 +173,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
           <input className="cite-q" type="search" aria-label="Find a source" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a source: author, title" autoFocus />
           <span className="cite-list">
             {all === null ? (
-              <span className="hint">Opening your PD reading…</span>
+              <span className="hint">Opening your Reading Journal…</span>
             ) : found.length ? (
               found.map((x) => (
                 <button
@@ -189,7 +189,7 @@ export function CiteTool({ editor }: { editor: Editor }) {
                 </button>
               ))
             ) : (
-              <span className="hint cite-empty">{all.length ? 'Nothing matches.' : 'No sources yet. Add them in a PD reading file, in the resources library.'}</span>
+              <span className="hint cite-empty">{all.length ? 'Nothing matches.' : 'No sources yet. Add them in a Reading Journal file, in the resources library.'}</span>
             )}
           </span>
           <label className="cite-page">
