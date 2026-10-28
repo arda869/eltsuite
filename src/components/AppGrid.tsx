@@ -31,6 +31,9 @@ const APPS: App[] = [
   { k: 'guide', group: 'teach', name: 'Guide', about: 'How ELT Suite works, with things to try', to: '/guide', teacher: true, color: '#4a7a4f', d: 'M12 6.5C10.4 5.3 8 4.5 4.5 4.5v13c3.5 0 5.9.8 7.5 2 1.6-1.2 4-2 7.5-2v-13c-3.5 0-5.9.8-7.5 2zM12 6.5v13', icon: I('M12 6.5C10.4 5.3 8 4.5 4.5 4.5v13c3.5 0 5.9.8 7.5 2 1.6-1.2 4-2 7.5-2v-13c-3.5 0-5.9.8-7.5 2zM12 6.5v13') },
   { k: 'rooms', group: 'teach', name: 'Rooms', about: 'Audio and video calls, and your classes’ video rooms', to: '/rooms', teacher: true, color: '#3b7f7a', d: 'M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3', icon: I('M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3') },
 ];
+// For the sign-in page's picture of the suite.
+export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'd'>[] = APPS;
+
 
 // An app's own logo: its symbol, white, on a square of its colour. Shown top left in the app.
 export function AppLogo({ k, size = 30 }: { k: string; size?: number }) {
