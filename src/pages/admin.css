@@ -502,3 +502,45 @@ textarea.hq-in { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
   .hq-rank li > button > .hq-meter, .hq-rank li > button > .hq-bar, .hq-rank-row > .hq-bar { grid-column: 1 / -1; grid-row: 2; }
   .hq-danger { flex-wrap: wrap; }
 }
+
+/* ------------------------------------------------------------------ support tickets (pages/SupportPage.tsx) */
+.hq.hq-solo { grid-template-columns: minmax(0, 1fr); max-width: 1040px; margin: 0 auto; }
+.hq-tk-name { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.hq-tk-name b { font-weight: 600; overflow-wrap: anywhere; }
+.hq-tk-name > span { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.hq-tk-n { display: inline-flex; align-items: center; gap: 3px; }
+.hq-tk-from { display: flex; flex-direction: column; min-width: 0; }
+.hq-tk-from b { font-weight: 500; }
+.hq-tk-from span { font-size: 12.5px; color: var(--muted); }
+.hq-tk-st { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font: 600 12px var(--sans); white-space: nowrap; }
+.hq-tk-st.open { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent-text, var(--ink)); }
+.hq-tk-st.doing { box-shadow: inset 0 0 0 1.5px var(--ink); color: var(--ink); }
+.hq-tk-st.done { background: var(--surface); color: var(--muted); }
+.hq-tk-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.hq-tk-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.hq-tk-err { color: var(--accent-text, var(--ink)); font-weight: 600; }
+.hq-tk-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.hq-tk-shots { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1.5px dashed var(--hair-strong); border-radius: 12px; }
+.hq-tk-shots.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.hq-tk-shots .hint { margin: 0; font-size: 12.5px; }
+.hq-tk-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.hq-tk-thumb { position: relative; display: inline-block; }
+.hq-tk-thumb.wait { width: 96px; height: 68px; border-radius: 8px; background: var(--surface); animation: hq-tk-pulse 1s ease-in-out infinite alternate; }
+@keyframes hq-tk-pulse { to { opacity: .45; } }
+.hq-tk-pic { display: block; width: 96px; height: 68px; padding: 0; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); overflow: hidden; cursor: zoom-in; }
+.hq-tk-pic img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+.hq-tk-pic:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hq-tk-x { position: absolute; top: -7px; right: -7px; display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 15px; line-height: 1; cursor: pointer; }
+.hq-tk-add { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 96px; height: 68px; border: 1px solid var(--hair-strong); border-radius: 8px; background: none; color: var(--ink); font: 500 12px var(--sans); cursor: pointer; }
+.hq-tk-add:hover { background: var(--surface); }
+.hq-tk-big { z-index: 1200; padding: 24px; background: rgba(20, 18, 16, .82); cursor: zoom-out; }
+.hq-tk-big img { max-width: 100%; max-height: 100%; border-radius: 6px; box-shadow: 0 20px 60px rgba(0, 0, 0, .4); }
+.hq-tk-big .hq-drawer-x { position: fixed; top: 14px; right: 14px; background: var(--paper); font-size: 20px; }
+.hq-tk-notes { display: flex; flex-direction: column; gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+.hq-tk-notes li { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--surface); }
+.hq-tk-notes li.me { background: color-mix(in srgb, var(--accent) 8%, var(--paper)); }
+.hq-tk-nh { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+.hq-tk-nh span { color: var(--muted); font-size: 12px; }
+.hq-tk-move { font-size: 12.5px; color: var(--muted); font-style: italic; }
+.hq-tk-send { display: flex; justify-content: flex-end; margin-top: 8px; }
+.hq-tk-moves { display: flex; flex-wrap: wrap; gap: 8px; }

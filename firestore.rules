@@ -708,6 +708,36 @@ service cloud.firestore {
           && request.resource.data.get('byName', '') is string && request.resource.data.get('byName', '').size() <= 80;
       }
     }
+    // Support tickets (see lib/tickets.ts): an organisation's admins open them for their
+    // organisation, the owner for anything. The owner sees and moves every ticket; an admin sees
+    // their organisation's, answers them, and closes or reopens them. Nobody but the owner deletes.
+    function ticketOf(id) { return get(/databases/$(database)/documents/tickets/$(id)).data; }
+    function seesTicket(t) { return isOwner() || (signedIn() && (t.by == request.auth.uid || adminOfOrg(t.get('org', null)))); }
+    match /tickets/{id} {
+      allow read: if seesTicket(resource.data);
+      allow create: if (isOwner() || adminOfOrg(request.resource.data.get('org', null)))
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 140
+        && request.resource.data.body is string && request.resource.data.body.size() <= 10000;
+      allow update: if isOwner() || (seesTicket(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'shots', 'notes', 'updatedAt'])
+        && (request.resource.data.status == resource.data.status || request.resource.data.status in ['open', 'done']));
+      allow delete: if isOwner();
+      // Screenshots, as data URLs: one to a document.
+      match /shots/{sid} {
+        allow read: if seesTicket(ticketOf(id));
+        allow create: if seesTicket(ticketOf(id)) && request.resource.data.by == request.auth.uid
+          && request.resource.data.data is string && request.resource.data.data.size() < 950000;
+        allow delete: if isOwner();
+      }
+      match /notes/{nid} {
+        allow read: if seesTicket(ticketOf(id));
+        allow create: if seesTicket(ticketOf(id)) && request.resource.data.by == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() <= 10000
+          && request.resource.data.get('byName', '') is string && request.resource.data.get('byName', '').size() <= 80;
+      }
+    }
     // A teacher's profile for the colleagues in their organisation.
     match /teacherProfiles/{uid} {
       allow read: if isSelf(uid) || isOwner() || (signedIn() && resource.data.org is string && request.auth.uid in get(/databases/$(database)/documents/orgs/$(resource.data.org)).data.get('teachers', {}));

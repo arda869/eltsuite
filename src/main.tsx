@@ -55,6 +55,7 @@ const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
+const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 function NoAccess() {
@@ -146,6 +147,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/invite/:id" element={<InvitePage />} />
           <Route path="/admin" element={<TeacherOnly><AdminPage mode="super" /></TeacherOnly>} />
           <Route path="/org-admin" element={<TeacherOnly><AdminPage mode="org" /></TeacherOnly>} />
+          <Route path="/support" element={<TeacherOnly><SupportPage /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
