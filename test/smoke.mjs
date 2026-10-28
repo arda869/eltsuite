@@ -183,12 +183,14 @@ const J = {
     // Dragging across the hours of a day adds one there, with the quick card.
     await s.p.keyboard.press('d');
     await see(s.p, '.ttb-col', 'the day view');
-    await s.p.locator('.ttb-scroll').evaluate((el) => (el.scrollTop = 9 * 48));
+    // An hour clear of the session above, which starts at the next hour from now.
+    const hr = await s.p.evaluate(() => (new Date().getHours() < 12 ? 15 : 6));
+    await s.p.locator('.ttb-scroll').evaluate((el, h) => (el.scrollTop = (h - 1) * 48), hr);
     const box = await s.p.locator('.ttb-col').first().boundingBox();
-    await s.p.mouse.move(box.x + 60, box.y + 10 * 48 + 4);
+    await s.p.mouse.move(box.x + 60, box.y + hr * 48 + 4);
     await s.p.mouse.down();
-    await s.p.mouse.move(box.x + 60, box.y + 10 * 48 + 30, { steps: 3 });
-    await s.p.mouse.move(box.x + 60, box.y + 11 * 48 + 20, { steps: 5 });
+    await s.p.mouse.move(box.x + 60, box.y + hr * 48 + 30, { steps: 3 });
+    await s.p.mouse.move(box.x + 60, box.y + (hr + 1) * 48 + 20, { steps: 5 });
     await s.p.mouse.up();
     await see(s.p, '.ttb-quick', 'the quick card after a drag');
     await s.p.keyboard.type('Reading group');
