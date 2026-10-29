@@ -8085,3 +8085,6 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
    take the room the header has, and only a very long name is cut short. */
 .dp-names, .pv-names { flex: 1 1 auto; min-width: 0; }
 input.dp-title, .dp-title { max-width: min(760px, 100%); }
+
+/* The words over a PDF page are for tapping, never shown as selected */
+.pdf-words ::selection, .pdf-words::selection, .pdf-pages ::selection { background: transparent; color: transparent; }

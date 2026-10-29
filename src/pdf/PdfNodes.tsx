@@ -343,6 +343,8 @@ export const PdfBlock = Node.create({
   content: '(pdfBox | pdfMark | pdfInk)*',
   isolating: true,
   draggable: false,
+  // Clicking a page never selects the whole PDF (which would light up every word on it).
+  selectable: false,
   addStorage: () => ({ tool: 'select' as PdfTool, color: 'yellow', ink: 'ink', pending: null }),
   addAttributes: () => ({
     src: { default: '' }, // "file:<id>" in Files, "media:<id>" in a class
