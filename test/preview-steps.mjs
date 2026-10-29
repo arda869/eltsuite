@@ -30,21 +30,21 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   await tab.waitForTimeout(800);
   await s('02-added');
   // type in the bubble
-  const t = tab.locator('.sb-item.on .sb-text');
+  const t = tab.locator('.sbf-stagebox .sb-item.on .sb-text');
   await t.click();
   await tab.keyboard.press('Control+A');
   await tab.keyboard.type('Have you ever been to Lisbon?');
   await tab.locator('.sbf-caption').click();
   await tab.waitForTimeout(600);
   // drag the bubble
-  const b = await tab.locator('.sb-item.t-bubble').first().boundingBox();
+  const b = await tab.locator('.sbf-stagebox .sb-item.t-bubble').first().boundingBox();
   await tab.mouse.move(b.x + 6, b.y + b.height - 8);
   await tab.mouse.down();
   await tab.mouse.move(b.x + 260, b.y + 30, { steps: 8 });
   await tab.mouse.up();
   await tab.waitForTimeout(800);
   // select Leo and turn him
-  const leo = tab.locator('.sb-item.t-person').nth(1);
+  const leo = tab.locator('.sbf-stagebox .sb-item.t-person').nth(1);
   const lb = await leo.boundingBox();
   await tab.mouse.click(lb.x + lb.width / 2, lb.y + lb.height * 0.6);
   await tab.waitForTimeout(400);

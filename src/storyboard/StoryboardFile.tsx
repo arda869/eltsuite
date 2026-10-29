@@ -105,7 +105,10 @@ export function StoryboardFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean 
     const move = (ev: PointerEvent) => {
       const dx = (ev.clientX - x0) / k;
       const dy = (ev.clientY - y0) / k;
-      if (how === 'move') last = { x: Math.round(start.x + dx), y: Math.round(start.y + dy) };
+      // Bubbles and labels stay on the stage; people and things can stand partly off it.
+      const keep = i.t === 'bubble' ? 0 : 0.6;
+      const cl = (v: number, size: number, max: number) => Math.round(Math.min(max - size * (1 - keep), Math.max(-size * keep, v)));
+      if (how === 'move') last = { x: cl(start.x + dx, start.w, STAGE.w), y: cl(start.y + dy, start.h, STAGE.h) };
       else if (how === 'size') {
         const w = Math.max(40, Math.round(start.w + dx));
         last = i.t === 'bubble' ? { w, h: Math.max(40, Math.round(start.h + dy)) } : { w };
