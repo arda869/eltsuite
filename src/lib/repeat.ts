@@ -24,12 +24,12 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const NTH = ['first', 'second', 'third', 'fourth', 'fifth'];
 
 // Sessions from before: "every week, for so many weeks".
-export function repeatOf(s: Sess): Repeat | null {
+export function repeatOf(s: { repeat?: Repeat | null; weeks?: number }): Repeat | null {
   if (s.repeat) return s.repeat;
   const n = Math.max(1, s.weeks ?? 1);
   return n > 1 ? { freq: 'week', every: 1, end: 'count', count: n } : null;
 }
-export const isSeries = (s: Sess) => !!repeatOf(s);
+export const isSeries = (s: { repeat?: Repeat | null; weeks?: number }) => !!repeatOf(s);
 
 type D = { y: number; mo: number; d: number };
 const dayNo = (x: D) => Math.floor(Date.UTC(x.y, x.mo - 1, x.d) / DAY);
@@ -116,7 +116,7 @@ export function eachTime(s: Sess, tz: string, f: (i: number, t: number) => boole
 export function timeAt(s: Sess, tz: string, i: number) {
   let out: number | null = null;
   eachTime(s, tz, (k, t) => (k === i ? ((out = t), false) : k < i));
-  return out;
+  return out as number | null;
 }
 // The last start, or null when it repeats for good.
 export function lastStart(s: Sess, tz: string) {

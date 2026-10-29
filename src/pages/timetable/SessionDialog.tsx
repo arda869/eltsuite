@@ -189,7 +189,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
           {s.online ? (
             <div className="ttb-video">
               <Select label="Video" value={vk} options={VIDEO_KINDS.map((v) => ({ v: v.k, label: v.label }))} onChange={pickVideo} />
-              {vk === 'eltsuite' && <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page, so there’s no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : 'A video room opens when it starts. No link to send.'}</span>}
+              {vk === 'eltsuite' && <span className="hint">{s.kind === 'class' ? (c?.video?.url ? 'In the class video room. Learners join from their home page, so there’s no link to send.' : 'In the class video room, which is made within a few minutes of the class.') : guests.length ? 'A video room opens when it starts. Guests get a link to join it, with no account needed.' : 'A video room opens when it starts. No link to send.'}</span>}
               {vk === 'meet' && <span className="hint">{init.video?.kind === 'meet' && init.video.url ? `Google Meet: ${init.video.url.replace('https://', '')}` : google?.on ? 'A Google Meet link is made in your Google Calendar when you save, and learners see it on their home page.' : 'Google Meet links are made with your Google Calendar: turn on Add my timetable to Google Calendar in Settings.'}</span>}
               {vk === 'teams' && <span className="hint">{init.video?.kind === 'teams' && init.video.url ? 'The Teams meeting is ready. Learners see its link on their home page.' : 'A Teams meeting is made when you save. It needs a work or school Microsoft account.'}</span>}
               {(vk === 'zoom' || vk === 'link') && (
@@ -257,7 +257,7 @@ function RepeatField({ rep, onChange, date, time, tz }: { rep: Repeat | null; on
           { v: 'none', label: 'Doesn’t repeat' },
           { v: 'day', label: 'Every day' },
           { v: 'weekdays', label: 'Every weekday (Monday to Friday)' },
-          { v: 'week', label: `Every week on ${DAY_NAMES[wd]}` },
+          { v: 'week', label: rep?.freq === 'week' ? 'Every week' : `Every week on ${DAY_NAMES[wd]}` },
           { v: 'month', label: 'Every month' },
           { v: 'year', label: 'Every year' },
         ]}

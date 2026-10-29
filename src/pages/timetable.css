@@ -347,7 +347,7 @@ body.ttb-moving, body.ttb-moving * { cursor: grabbing !important; user-select: n
 /* Guests from outside, by email. */
 .ttb-guests { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .ttb-guests-l { font-size: 13px; font-weight: 600; color: var(--ink); }
-.ttb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ttb-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--ink); font-size: 13px; }
+.ttb-guests .ttb-chips { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+.ttb-guests .ttb-chip { width: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--ink); font-size: 13px; }
 .ttb-chip button { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
 .ttb-chip button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
