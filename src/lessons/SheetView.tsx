@@ -128,23 +128,31 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove 
       let page = 0;
       let y = 0; // where the last block ended
       let st = { page: -1, extra: 0 };
+      let filled = false; // a task (not only a heading) is on this page already
       kids.forEach((k, i) => {
         // The task being edited is laid out at its printed height, so the pages break as they print.
         const m = k.querySelector<HTMLElement>(':scope > .sh-measure');
         const h = m ? m.offsetHeight : k.offsetHeight;
         let at = y;
         // A section heading goes with the task after it.
-        const withNext = k.classList.contains('is-heading') && kids[i + 1] ? Math.min(kids[i + 1].offsetHeight, inner) : 0;
+        // (A task taller than a whole page can't go anywhere better: it starts under its heading.)
+        const heading = k.classList.contains('is-heading');
+        const nextH = kids[i + 1]?.querySelector<HTMLElement>(':scope > .sh-measure')?.offsetHeight ?? kids[i + 1]?.offsetHeight ?? 0;
+        const withNext = heading && kids[i + 1] && nextH <= inner ? nextH : 0;
         const needs = Math.min(h, inner) + withNext;
         if (at < areaTop(page)) at = areaTop(page);
-        if (at > areaTop(page) && at + needs > areaBottom(page)) {
+        // As on paper: a task that doesn't fit moves to the next page, unless nothing but a heading
+        // is above it there and it is taller than a page anyway, when it runs on from here.
+        if (at > areaTop(page) && at + needs > areaBottom(page) && (filled || heading || h <= inner)) {
           page++;
           at = areaTop(page);
+          filled = false;
         }
+        if (!heading) filled = true;
         next.push(at - y);
         if (m) st = { page, extra: Math.max(0, k.offsetHeight - h) };
         y = at + h;
-        while (y > areaBottom(page)) page++; // only a task taller than a page runs on
+        while (y > areaBottom(page)) (page++, (filled = true)); // only a task taller than a page runs on
       });
       setPages((n) => (n === page + 1 ? n : page + 1));
       setStretch((o) => (o.page === st.page && Math.abs(o.extra - st.extra) < 1 ? o : st));
