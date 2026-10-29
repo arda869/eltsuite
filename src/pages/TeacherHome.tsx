@@ -128,6 +128,7 @@ export function TeacherHome() {
     let best: { c: ClassDoc; item: ItemWithTime; t: number } | null = null;
     for (const c of active)
       for (const it of items[c.id] ?? []) {
+        if (it.type !== 'lesson') continue; // only lessons are taught live
         const t = it.createdAt?.toMillis?.() ?? 0;
         if (!best || t > best.t) best = { c, item: it, t };
       }

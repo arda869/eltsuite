@@ -286,12 +286,12 @@ export function LessonEditor() {
       select(t);
       return;
     }
-    if (params.get('teach') === '1' && selected && live !== undefined) {
+    if (params.get('teach') === '1' && selected && live !== undefined && item !== undefined) {
       setParams({}, { replace: true });
-      if (!teachingHere) toggleTeaching();
+      if (!teachingHere && item?.type === 'lesson') toggleTeaching();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [selected, item]);
 
   // Sync and reveal while teaching.
   const qCount = useMemo(() => (draft ? questionIds(splitKey(draft.content).content).filter((q) => q.type !== 'writing' && q.type !== 'reflect').length : 0), [draft]);
@@ -554,7 +554,7 @@ export function LessonEditor() {
   }, [phone, preview, teachingHere, editWhileTeaching]);
   const mode: Mode = preview ? 'preview' : teachingHere && !editWhileTeaching ? (present ? 'present' : 'teach') : 'edit';
   async function startTeaching() {
-    if (!teachingHere) await toggleTeaching();
+    if (!teachingHere && item?.type === 'lesson') await toggleTeaching();
   }
   async function endTeaching() {
     setPresent(false);
@@ -932,6 +932,7 @@ export function LessonEditor() {
             <ModeMenu
               mode={mode === 'present' ? 'teach' : mode}
               noEdit={phone}
+              noTeach={item?.type !== 'lesson'}
               live={teachingHere}
               online={inLesson.length}
               onMode={changeMode}
