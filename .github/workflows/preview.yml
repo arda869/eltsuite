@@ -21,6 +21,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Type check
+        run: mkdir -p preview-out && (npx tsc -p tsconfig.json > preview-out/tsc.txt 2>&1 && echo "no type errors" >> preview-out/tsc.txt || true)
       - name: Take the screenshots
         run: node test/preview.mjs
       - name: Keep them on a shots/ branch

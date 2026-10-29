@@ -34,6 +34,8 @@ import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
 import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
+import { StoryStripFit } from '../storyboard/Stage';
+import type { SbAttrs } from '../storyboard/StoryboardNode';
 import { NextSub, subLetter, subShown, subTasksOf, useOpenSubs } from '../editor/SubTask';
 import type { CoverMode, CoverProps } from '../editor/PicEdit';
 import { MediaPlayer } from '../media/Player';
@@ -1150,6 +1152,14 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       case 'bankLink':
         return <BankLinkCard key={key} bank={node.attrs?.bank ?? 'grammar'} title={node.attrs?.title} label={node.attrs?.label} onOpen={onOpenNotebook && node.attrs?.entryId ? () => onOpenNotebook(node.attrs!.entryId) : undefined} />;
+      case 'storyboard': {
+        const a = node.attrs as SbAttrs;
+        return a.snap?.scenes?.length ? (
+          <div key={key} data-bk={key} className="sbn-read">
+            <StoryStripFit snap={a.snap} cols={a.cols} />
+          </div>
+        ) : null;
+      }
       case 'timeline':
         return <TimelineFigure key={key} a={node.attrs as TlAttrs} />;
       case 'diagram': {

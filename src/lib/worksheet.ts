@@ -1,5 +1,6 @@
 import { credit } from './brand';
 import type { TlAttrs } from '../editor/Timeline';
+import type { SbAttrs } from '../storyboard/StoryboardNode';
 import { listLabel } from './listLabel';
 import type { JSONContent } from '@tiptap/react';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, BorderStyle, SectionType, ImageRun } from 'docx';
@@ -55,6 +56,7 @@ export type Block =
   | { kind: 'form'; title?: string; peer?: boolean; items: FormItem[] }
   | { kind: 'draw'; prompt?: string }
   | { kind: 'timeline'; a: TlAttrs }
+  | { kind: 'storyboard'; a: SbAttrs }
   | { kind: 'diagram'; dkind: string; title: string; labels: string[]; cells: { label: string; blocks: Block[] }[] }
   | { kind: 'media'; id: string; title: string; video: boolean; mode: string }
   | { kind: 'subtask'; letter: string; text: string; blocks: Block[] };
@@ -417,6 +419,9 @@ export function flattenTask(t: ExportTask): WsTask {
       case 'timeline':
         cur.push({ kind: 'timeline', a: a as TlAttrs });
         return;
+      case 'storyboard':
+        if ((a as SbAttrs).snap?.scenes?.length) cur.push({ kind: 'storyboard', a: a as SbAttrs });
+        return;
       case 'diagram': {
         // Each box keeps what is in it, gaps and all; the drawing is made around them.
         const prev = cur;
@@ -685,7 +690,11 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         );
       else if (b.kind === 'diagram')
         out.push(shaded(ACC_TINT, [...(b.title ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.title)], spacing: { after: 80 } })] : []), ...b.cells.flatMap((c, i) => [new Paragraph({ keepNext: kn, keepLines: true, children: [label(`${i + 1}${c.label ? '  ' + c.label : ''}`)], spacing: { before: 60 } }), ...(toParas(c.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
-      else if (b.kind === 'timeline') {
+      else if (b.kind === 'storyboard') {
+        const sc = [...(b.a.snap?.scenes ?? [])].sort((x, y) => x.order - y.order);
+        out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('STORYBOARD  '), new TextRun({ text: b.a.title || '', font: SERIF })], spacing: { after: 60 } }));
+        sc.forEach((x, i) => x.caption && out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: `${i + 1}  `, bold: true, font: SANS, color: ACC_INK }), new TextRun({ text: x.caption, font: SERIF })] })));
+      } else if (b.kind === 'timeline') {
         const t = b.a;
         out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('TIMELINE  '), new TextRun({ text: [t.title, (t.items ?? []).map((i) => i.label).filter(Boolean).join(' · '), t.sentence].filter(Boolean).join(' — '), font: SERIF })], spacing: { after: 100 } }));
       } else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: S(18) })] }));

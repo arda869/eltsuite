@@ -14,7 +14,7 @@ const SECTIONS: Section[] = [
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a gap, a choice or any question.', keys: ['dg-mind', 'dg-venn', 'dg-compare', 'dg-cline', 'dg-flow', 'dg-cycle', 'dg-tree', 'dg-quad', 'dg-pyramid'] },
-  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'storyboard', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans, observation and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Question bank', blurb: 'Questions you saved to use again.', keys: ['bankpick'] },
@@ -22,6 +22,7 @@ const SECTIONS: Section[] = [
 
 // Longer explanations than the / menu hints: what learners do and how it is marked.
 const ABOUT: Record<string, string> = {
+  storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Files and press Update.',
   'dg-mind': 'A word or topic in the middle with ideas around it. Every box is text, so a branch can be a gap or a choice. Up to eight branches.',
   'dg-venn': 'Two circles: what belongs only to one, and what they share. Name each circle; learners can fill the parts with gaps or drag words.',
   'dg-compare': 'A T-chart: two to four columns with titles, for pros and cons, formal and informal, then and now.',
