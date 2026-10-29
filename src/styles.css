@@ -8073,3 +8073,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .tb-more-arrow.on { background: none; color: var(--muted); }
 .tb-more-n { font: 700 10.5px var(--sans); color: var(--accent-text, var(--accent)); }
 .tb-extra-sep { animation: tb-in .18s ease-out; }
+/* A narrow toolbar (lessons and chat): one row, the tools that don't fit behind the corner arrow */
+.toolbar.tb-compact { position: relative; flex-wrap: nowrap; overflow-x: clip; overflow-y: visible; padding-right: 34px; }
+.toolbar.tb-compact > * { flex: 0 0 auto; }
+.toolbar.tb-compact.open { flex-wrap: wrap; overflow: visible; }
