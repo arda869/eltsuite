@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from 'react';
 import { doc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { isLearnerEmail } from '../lib/learners';
 import { newId } from '../lib/tasks';
 import { ask, tell } from '../lib/ask';
 import type { SharedDoc } from '../lib/sharedDocs';
@@ -49,6 +50,8 @@ export type Ctx = {
   align: (how: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'hdist' | 'vdist') => void;
   duplicate: () => void;
   goPage: (id: string) => void;
+  spot: (w: number, h: number) => { x: number; y: number; w: number; h: number };
+  learnerUser: boolean;
 };
 
 const SNAP = 6;
@@ -67,7 +70,19 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const sel = useMemo(() => selIds.map((id) => here.find((e) => e.id === id)).filter((e): e is El => !!e), [selIds, here]);
   const [tool, setTool] = useState<Tool>('select');
   const [pen, setPen] = useState({ color: '#262420', size: 6 });
-  const [drawer, setDrawer] = useState<DrawerKey | null>('templates');
+  // On a phone the tools sit along the bottom and open as sheets over the page.
+  const [phone, setPhone] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches);
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 860px)');
+    const f = () => setPhone(m.matches);
+    m.addEventListener('change', f);
+    return () => m.removeEventListener('change', f);
+  }, []);
+  const [drawer, setDrawer] = useState<DrawerKey | null>(() => (typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches ? null : 'templates'));
+  const [propsOpen, setPropsOpen] = useState(false);
+  const [hover, setHover] = useState('');
+  const frameIn = useRef<HTMLInputElement>(null);
+  const frameFor = useRef('');
   const [view, setView] = useState<View>('all');
   const [learner, setLearner] = useState(false);
   const [editing, setEditing] = useState('');
@@ -122,7 +137,11 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       for (const p of list) {
         const id = newId() + newId();
         ids.push(id);
-        after[id] = clean({ x: 100, y: 100, w: 200, h: 120, ...p, id, page: p.page ?? page.id, z: z++ } as El);
+        const e = { x: 100, y: 100, w: 200, h: 120, ...p, id, page: p.page ?? page.id, z: z++ } as El;
+        // Something new never lands exactly on top of something else: it steps down and right.
+        if (list.length === 1 && e.t !== 'label')
+          for (let k = 0; k < 30 && here.some((o) => Math.abs(o.x - e.x) < 3 && Math.abs(o.y - e.y) < 3); k++) (e.x += 24), (e.y += 24);
+        after[id] = clean(e);
       }
       commit(after);
       if (o.select !== false) setSelIds(ids);
@@ -241,6 +260,17 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   );
 
   const clip = useRef<El[]>([]);
+  // Copying writes a marker to the clipboard, so pasting knows whether to paste things from here or
+  // text from somewhere else.
+  const MARK = '\u2063eltsuite-design\u2063';
+  const copy = (list: El[]) => {
+    clip.current = list;
+    void navigator.clipboard?.writeText(MARK).catch(() => {});
+  };
+  const pasteClip = () => {
+    if (!clip.current.length) return;
+    add(clip.current.map(({ id: _i, z: _z, ...x }) => ({ ...x, page: undefined, x: x.x + 24, y: x.y + 24, ...(x.t === 'label' ? { ax: (x.ax ?? 0) + 24, ay: (x.ay ?? 0) + 24 } : {}) })));
+  };
   const duplicate = useCallback(() => {
     if (!sel.length) return;
     add(sel.map(({ id: _id, z: _z, ...e }) => ({ ...e, x: e.x + 24, y: e.y + 24, ...(e.t === 'label' ? { ax: (e.ax ?? 0) + 24, ay: (e.ay ?? 0) + 24 } : {}) })));
@@ -250,13 +280,33 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   const scroller = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const PAD = 56;
+  const PAD = phone ? 16 : 56;
   const fit = useCallback(() => {
     const s = scroller.current;
     if (!s || !page) return;
-    setZoom(Math.max(0.1, Math.min(2, Math.min((s.clientWidth - PAD * 2) / page.w, (s.clientHeight - PAD * 2) / page.h))));
-  }, [page]);
-  useLayoutEffect(() => fit(), [page?.id, page?.w, page?.h, drawer === null]); // eslint-disable-line react-hooks/exhaustive-deps
+    setZoom(Math.max(0.08, Math.min(2, Math.min((s.clientWidth - PAD * 2) / page.w, (s.clientHeight - PAD * 2) / page.h))));
+  }, [page, PAD]);
+  useLayoutEffect(() => fit(), [page?.id, page?.w, page?.h, phone ? 0 : drawer === null, phone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Where something new goes: the middle of the part of the page you can see.
+  const spot = useCallback(
+    (w: number, h: number) => {
+      const s = scroller.current;
+      const c = canvas.current;
+      if (!page) return { x: 0, y: 0, w, h };
+      let cx = page.w / 2;
+      let cy = page.h / 2;
+      if (s && c) {
+        const r = c.getBoundingClientRect();
+        const sr = s.getBoundingClientRect();
+        cx = (sr.left + sr.width / 2 - r.left) / zoom;
+        cy = (sr.top + sr.height / 2 - r.top) / zoom;
+      }
+      const x = Math.round(Math.max(0, Math.min(page.w - w, cx - w / 2)));
+      const y = Math.round(Math.max(0, Math.min(page.h - h, cy - h / 2)));
+      return { x, y, w, h };
+    },
+    [page, zoom],
+  );
   useEffect(() => {
     const f = () => fit();
     window.addEventListener('resize', f);
@@ -331,6 +381,46 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     | { k: 'crop'; mode: 'pan' | 'size'; hx: number; hy: number; start: El; x0: number; y0: number };
   const drag = useRef<Drag | null>(null);
   const space = useRef(false);
+  // Two fingers: pinch to zoom and move around, on a phone or a tablet.
+  const touches = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d: number; z: number; mx: number; my: number; l: number; t: number } | null>(null);
+  const touchDown = (ev: RPE<HTMLDivElement>) => {
+    if (ev.pointerType !== 'touch') return false;
+    touches.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (touches.current.size === 2) {
+      const [a, b] = [...touches.current.values()];
+      const s = scroller.current!;
+      // A second finger stops whatever the first one began.
+      if (drag.current?.k === 'move' || drag.current?.k === 'resize' || drag.current?.k === 'rotate') setLive(Object.fromEntries(sel.map((e) => [e.id, { x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot }])));
+      drag.current = null;
+      setStroke(null);
+      setMarquee(null);
+      pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, l: s.scrollLeft, t: s.scrollTop };
+      return true;
+    }
+    return false;
+  };
+  const touchMove = (ev: RPE<HTMLDivElement>) => {
+    if (ev.pointerType !== 'touch' || !touches.current.has(ev.pointerId)) return false;
+    touches.current.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const pc = pinch.current;
+    if (!pc || touches.current.size < 2) return false;
+    const [a, b] = [...touches.current.values()];
+    const z = Math.max(0.08, Math.min(5, (pc.z * Math.hypot(a.x - b.x, a.y - b.y)) / pc.d));
+    setZoom(z);
+    const s = scroller.current!;
+    s.scrollLeft = pc.l * (z / pc.z) - ((a.x + b.x) / 2 - pc.mx);
+    s.scrollTop = pc.t * (z / pc.z) - ((a.y + b.y) / 2 - pc.my);
+    return true;
+  };
+  const touchUp = (ev: RPE<HTMLDivElement>) => {
+    touches.current.delete(ev.pointerId);
+    if (touches.current.size < 2 && pinch.current) {
+      pinch.current = null;
+      return true;
+    }
+    return false;
+  };
 
   const begin = (ev: RPE<HTMLDivElement>, k: Drag) => {
     drag.current = k;
@@ -338,7 +428,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   };
 
   const onDown = (ev: RPE<HTMLDivElement>) => {
-    if (!page) return;
+    if (!page || ev.button === 2) return;
+    if (touchDown(ev)) return;
     if (editing) {
       setEditing('');
       flush('text');
@@ -385,6 +476,11 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     const t = topAt(p.x, p.y);
     if (!t) {
       setSelIds(ev.shiftKey ? selIds : []);
+      // A finger on an empty part of the page moves around; a mouse draws a box to select.
+      if (ev.pointerType === 'touch') {
+        const sc = scroller.current!;
+        return begin(ev, { k: 'pan', sx: ev.clientX, sy: ev.clientY, l: sc.scrollLeft, t: sc.scrollTop });
+      }
       return begin(ev, { k: 'marquee', x0: p.x, y0: p.y, add: ev.shiftKey ? selIds : [] });
     }
     let ids = selIds;
@@ -400,7 +496,13 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   };
 
   const onMove = (ev: RPE<HTMLDivElement>) => {
+    if (touchMove(ev)) return;
     const g = drag.current;
+    if (!g && page && ev.pointerType === 'mouse' && tool === 'select') {
+      const p = toPage(ev);
+      const t = topAt(p.x, p.y);
+      if ((t?.id ?? '') !== hover) setHover(t?.id ?? '');
+    }
     if (!g || !page) return;
     if (g.k === 'pan') {
       const s = scroller.current!;
@@ -520,7 +622,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     }
   };
 
-  const onUp = () => {
+  const onUp = (ev?: RPE<HTMLDivElement>) => {
+    if (ev && touchUp(ev)) return;
     const g = drag.current;
     drag.current = null;
     setGuides({ x: [], y: [] });
@@ -579,6 +682,52 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     if (!t || t.locked) return;
     if (t.t === 'text' || t.t === 'label' || (t.t === 'shape' && !isLine(t.shape)) || t.t === 'wordbank' || t.t === 'qr') setEditing(t.id);
     else if (t.t === 'image' && t.img) setCropOf(t.id);
+    else if (t.t === 'image') (frameFor.current = t.id), frameIn.current?.click();
+  };
+
+  // Right-click: what you can do with the thing under the pointer, or with the page.
+  const onMenu = (ev: React.MouseEvent) => {
+    ev.preventDefault();
+    if (!canEdit || !page) return;
+    const p = toPage(ev);
+    const t = topAt(p.x, p.y);
+    const paste = { label: 'Paste', icon: 'copyall', hint: 'Ctrl+V', disabled: !clip.current.length, onClick: () => pasteClip() } as MenuItem;
+    if (!t) {
+      setSelIds([]);
+      return openMenu(ev, [
+        paste,
+        { label: 'Select everything', icon: 'check', hint: 'Ctrl+A', onClick: () => setSelIds(shown.filter((x) => !x.locked).map((x) => x.id)) },
+        'sep',
+        { label: 'Add text here', icon: 'edit', hint: 'T', onClick: () => void add([{ t: 'text', text: 'Add some text', font: 'Fraunces', size: 28, color: '#262420', lh: 1.4, x: Math.round(p.x), y: Math.round(p.y), w: 360, h: textHeight({ text: 'Add some text', font: 'Fraunces', size: 28, lh: 1.4 }, 360) }], { edit: true }) },
+        { label: 'Add a label pointing here', icon: 'tag', onClick: () => void add([{ t: 'label', text: 'word', ax: p.x, ay: p.y, x: p.x < page.w - 220 ? p.x + 70 : p.x - 230, y: p.y - 20, w: 160, h: 40, font: 'Fraunces', size: 18 }], { edit: true }) },
+      ]);
+    }
+    const ids = selIds.includes(t.id) ? selIds : [t.id];
+    setSelIds(ids);
+    const list = here.filter((e) => ids.includes(e.id));
+    const all = (f: (e: El) => Partial<El>) => patch(Object.fromEntries(list.map((e) => [e.id, f(e)])));
+    const one = list.length === 1 ? list[0] : null;
+    openMenu(ev, [
+      ...(one && (one.t === 'text' || one.t === 'label' || (one.t === 'shape' && !isLine(one.shape))) ? [{ label: 'Type', icon: 'pen', hint: 'Enter', onClick: () => setEditing(one.id) } as MenuItem] : []),
+      ...(one?.t === 'image' && one.img ? [{ label: 'Crop', icon: 'edit', onClick: () => setCropOf(one.id) } as MenuItem] : []),
+      ...(one?.t === 'image' ? [{ label: one.img ? 'Change the picture…' : 'Add a picture…', icon: 'picture', onClick: () => ((frameFor.current = one.id), frameIn.current?.click()) } as MenuItem] : []),
+      { label: 'Copy', icon: 'copyall', hint: 'Ctrl+C', onClick: () => copy(list) },
+      paste,
+      { label: 'Duplicate', icon: 'copyall', hint: 'Ctrl+D', onClick: duplicate },
+      'sep',
+      { label: 'Bring to front', icon: 'next', hint: 'Ctrl+]', onClick: () => zIndex('top') },
+      { label: 'Bring forward', icon: 'next', hint: ']', onClick: () => zIndex('up') },
+      { label: 'Send backward', icon: 'prev', hint: '[', onClick: () => zIndex('down') },
+      { label: 'Send to back', icon: 'prev', hint: 'Ctrl+[', onClick: () => zIndex('bottom') },
+      'sep',
+      { label: list.every((e) => e.locked) ? 'Unlock' : 'Lock in place', icon: list.every((e) => e.locked) ? 'unlock' : 'lock', onClick: () => all((e) => ({ locked: !list.every((x) => x.locked) || undefined, ...(e.locked ? {} : {}) })) },
+      { label: 'Hide', icon: '', onClick: () => all(() => ({ hidden: true })) },
+      { label: 'Only learner A sees it', icon: list.every((e) => e.ver === 'A') ? 'check' : '', onClick: () => all(() => ({ ver: 'A' })) },
+      { label: 'Only learner B sees it', icon: list.every((e) => e.ver === 'B') ? 'check' : '', onClick: () => all(() => ({ ver: 'B' })) },
+      ...(list.some((e) => e.ver) ? [{ label: 'Both learners see it', icon: '', onClick: () => all(() => ({ ver: undefined })) } as MenuItem] : []),
+      'sep',
+      { label: 'Delete', icon: 'trash', hint: 'Delete', danger: true, onClick: () => remove(list.filter((e) => !e.locked).map((e) => e.id)) },
+    ]);
   };
 
   // Zooming with Ctrl and the wheel, around the pointer.
@@ -599,10 +748,11 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   keys.current = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement;
-    if (t.closest('input, textarea, select, [contenteditable="true"], .dz-props, .dz-drawer')) {
+    if (t.closest('input:not([type=range]):not([type=checkbox]), textarea, select, [contenteditable="true"], [role=menu], .scrim')) {
       if (e.key === 'Escape' && editing) setEditing('');
       return;
     }
+    if (t.closest('button, [role=button], input') && (e.key === 'Enter' || e.key === ' ' || e.key.startsWith('Arrow'))) return;
     const mod = e.metaKey || e.ctrlKey;
     if (e.key === ' ') {
       space.current = true;
@@ -613,8 +763,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     if (mod && e.key.toLowerCase() === 'y') return e.preventDefault(), edits.redo();
     if (mod && e.key.toLowerCase() === 'a') return e.preventDefault(), setSelIds(shown.filter((x) => !x.locked).map((x) => x.id));
     if (mod && e.key.toLowerCase() === 'd') return e.preventDefault(), duplicate();
-    if (mod && e.key.toLowerCase() === 'c') return void (clip.current = sel);
-    if (mod && e.key.toLowerCase() === 'x') return void ((clip.current = sel), remove(sel.map((x) => x.id)));
+    if (mod && e.key.toLowerCase() === 'c' && sel.length) return void copy(sel);
+    if (mod && e.key.toLowerCase() === 'x' && sel.length) return void (copy(sel), remove(sel.filter((x) => !x.locked).map((x) => x.id)));
     if (mod && e.key === '0') return e.preventDefault(), fit();
     if (mod && (e.key === '=' || e.key === '+')) return e.preventDefault(), setZoom((z) => Math.min(5, z * 1.25));
     if (mod && e.key === '-') return e.preventDefault(), setZoom((z) => Math.max(0.08, z / 1.25));
@@ -654,13 +804,13 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       if (t.closest('input, textarea, [contenteditable="true"]') || !canEdit) return;
       const pic = [...(e.clipboardData?.files ?? [])].find((x) => x.type.startsWith('image/'));
       if (pic) return e.preventDefault(), void addPicture(pic);
-      const txt = e.clipboardData?.getData('text/plain');
-      if (clip.current.length && !txt) return add(clip.current.map(({ id: _i, z: _z, ...x }) => ({ ...x, page: undefined, x: x.x + 24, y: x.y + 24, ...(x.t === 'label' ? { ax: (x.ax ?? 0) + 24, ay: (x.ay ?? 0) + 24 } : {}) })));
-      if (clip.current.length) return void add(clip.current.map(({ id: _i, z: _z, ...x }) => ({ ...x, page: undefined, x: x.x + 24, y: x.y + 24 })));
-      if (txt?.trim()) add([{ t: 'text', text: txt.trim(), font: 'Fraunces', size: 22, lh: 1.4, color: '#262420', x: 100, y: 100, w: 500, h: textHeight({ text: txt.trim(), font: 'Fraunces', size: 22, lh: 1.4 }, 500) }]);
+      const txt = e.clipboardData?.getData('text/plain') ?? '';
+      if (clip.current.length && (!txt || txt === MARK)) return pasteClip();
+      if (txt.trim() && txt !== MARK) add([{ t: 'text', text: txt.trim(), font: 'Fraunces', size: 22, lh: 1.4, color: '#262420', x: 100, y: 100, w: 500, h: textHeight({ text: txt.trim(), font: 'Fraunces', size: 22, lh: 1.4 }, 500) }]);
     };
     document.addEventListener('paste', f);
     return () => document.removeEventListener('paste', f);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [add, addPicture, canEdit]);
 
   // ------------------------------------------------------------------ pages
@@ -754,6 +904,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         align,
         duplicate,
         goPage: setPageId,
+        spot,
+        learnerUser: isLearnerEmail(auth.currentUser?.email),
       }
     : null;
 
@@ -781,7 +933,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         </div>
         <div className="dz-group dz-zoom">
           <button type="button" className="dz-ib" onClick={() => setZoom((v) => Math.max(0.08, v / 1.25))} aria-label="Zoom out">−</button>
-          <button type="button" className="dz-zv" onClick={fit} data-tip="Fit the page (Ctrl+0)">{Math.round(z * 100)}%</button>
+          <button type="button" className="dz-zv" onClick={(e) => openMenu(e, [{ label: 'Fit the page', hint: 'Ctrl+0', onClick: fit }, ...[0.5, 1, 1.5, 2].map((v) => ({ label: `${v * 100}%`, onClick: () => setZoom(v) }))])} data-tip="Zoom" aria-label={`Zoom: ${Math.round(z * 100)}%`}>{Math.round(z * 100)}%</button>
           <button type="button" className="dz-ib" onClick={() => setZoom((v) => Math.min(5, v * 1.25))} aria-label="Zoom in">+</button>
         </div>
         <div className="dz-seg" role="radiogroup" aria-label="Whose copy">
@@ -795,10 +947,11 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           <input type="checkbox" checked={learner} onChange={(e) => setLearner(e.target.checked)} /> Learners’ copy
         </label>
         <span className="dz-grow" />
+        {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? 'Not saved. Check your connection.' : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
         <DownloadMenu cx={cx} />
       </div>
       <div className="dz-body">
-        <nav className="dz-rail" aria-label="Tools">
+        {canEdit && <nav className="dz-rail" aria-label="Tools">
           {(
             [
               ['templates', 'Templates', <path key="t" d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />],
@@ -811,17 +964,18 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
               ['layers', 'Layers', <path key="l" d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" />],
             ] as [DrawerKey, string, JSX.Element][]
           ).map(([k, label, icon]) => (
-            <button key={k} type="button" className={'dz-railb' + (drawer === k ? ' on' : '')} onClick={() => (setDrawer(drawer === k ? null : k), k === 'draw' ? setTool('pen') : tool !== 'select' && k !== 'teach' && setTool('select'))} aria-pressed={drawer === k}>
+            <button key={k} type="button" className={'dz-railb' + (drawer === k ? ' on' : '')} onClick={() => (setPropsOpen(false), setDrawer(drawer === k ? null : k), k === 'draw' ? setTool('pen') : tool !== 'select' && k !== 'teach' && setTool('select'))} aria-pressed={drawer === k}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 {icon}
               </svg>
               <span>{label}</span>
             </button>
           ))}
-        </nav>
-        {drawer && (
+        </nav>}
+        {drawer && canEdit && (
           <aside className="dz-drawer" aria-label="Add to the page">
             <Drawer k={drawer} cx={cx} onClose={() => setDrawer(null)} />
+            {phone && <button type="button" className="dz-sheet-scrim" aria-label="Close" onClick={() => setDrawer(null)} />}
           </aside>
         )}
         <main
@@ -842,7 +996,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             <div className="dz-board" style={{ width: page.w * z + PAD * 2, height: page.h * z + PAD * 2 }}>
               <div className="dz-paper" style={{ left: PAD, top: PAD, width: page.w * z, height: page.h * z }}>
                 <canvas ref={canvas} style={{ width: page.w * z, height: page.h * z }} aria-label={`Page ${pages.indexOf(page) + 1}`} role="img" />
-                <div className="dz-over" style={{ cursor }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDoubleClick={onDouble}>
+                <div className="dz-over" style={{ cursor }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onPointerLeave={() => setHover('')} onContextMenu={onMenu} onDoubleClick={onDouble}>
                   {/* Guides while moving. */}
                   {guides.x.map((g) => (
                     <span key={'gx' + g} className="dz-guide v" style={{ left: g * z }} />
@@ -850,6 +1004,16 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                   {guides.y.map((g) => (
                     <span key={'gy' + g} className="dz-guide h" style={{ top: g * z }} />
                   ))}
+                  {hover && !selIds.includes(hover) && !drag.current && (() => {
+                    const h = here.find((e) => e.id === hover);
+                    return h ? <span className="dz-hover" style={{ left: h.x * z, top: h.y * z, width: h.w * z, height: h.h * z, transform: `rotate(${h.t === 'label' ? 0 : h.rot ?? 0}deg)` }} /> : null;
+                  })()}
+                  {canEdit && !here.length && (
+                    <div className="dz-empty">
+                      <strong>This page is empty</strong>
+                      <span>{phone ? 'Add text, pictures and shapes from the bar below.' : 'Add text, pictures and shapes from the left, or drop a picture here.'}</span>
+                    </div>
+                  )}
                   {marquee && <span className="dz-marquee" style={{ left: marquee.x * z, top: marquee.y * z, width: marquee.w * z, height: marquee.h * z }} />}
                   {/* Outlines of everything selected. */}
                   {sel.length > 1 &&
@@ -883,6 +1047,19 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                   <UiIcon name="pen" size={15} /> Type
                 </button>
               )}
+              {(one.t === 'text' || (one.t === 'shape' && one.text) || one.t === 'label') && (
+                <span className="dz-fsize">
+                  <button type="button" aria-label="Smaller text" data-tip="Smaller text" onClick={() => { const size = Math.max(6, Math.round((one.size ?? 22) / 1.12)); patch({ [one.id]: { size, ...(one.t === 'text' ? { h: textHeight({ ...one, size }, one.w) } : {}) } }, 'fsize'); }}>A−</button>
+                  <em>{Math.round(one.size ?? 22)}</em>
+                  <button type="button" aria-label="Bigger text" data-tip="Bigger text" onClick={() => { const size = Math.round((one.size ?? 22) * 1.12); patch({ [one.id]: { size, ...(one.t === 'text' ? { h: textHeight({ ...one, size }, one.w) } : {}) } }, 'fsize'); }}>A+</button>
+                  <button type="button" className={one.bold ? 'on' : ''} aria-label="Bold" aria-pressed={!!one.bold} onClick={() => patch({ [one.id]: { bold: !one.bold, ...(one.t === 'text' ? { h: textHeight({ ...one, bold: !one.bold }, one.w) } : {}) } })}><b>B</b></button>
+                </span>
+              )}
+              {phone && (
+                <button type="button" onClick={() => (setDrawer(null), setPropsOpen(true))} aria-label="Settings">
+                  <UiIcon name="settings" size={15} />
+                </button>
+              )}
               <button type="button" onClick={duplicate} data-tip="Duplicate (Ctrl+D)" aria-label="Duplicate">
                 <UiIcon name="copyall" size={15} />
               </button>
@@ -912,10 +1089,19 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             </div>
           )}
           <Pages cx={cx} onMenu={pageMenu} onNew={() => void newPage()} />
+          <input ref={frameIn} type="file" accept="image/*" hidden onChange={(e) => (e.target.files?.[0] && void addPicture(e.target.files[0], { into: frameFor.current, name: e.target.files[0].name.replace(/\.[a-z0-9]+$/i, '') }), (e.target.value = ''))} />
         </main>
-        <aside className="dz-props" aria-label="Settings">
-          <Props cx={cx} />
-        </aside>
+        {canEdit && (!phone || propsOpen) && (
+          <aside className={'dz-props' + (phone ? ' sheet' : '')} aria-label="Settings">
+            {phone && (
+              <div className="dz-sheet-head">
+                <strong>Settings</strong>
+                <button type="button" className="dz-ib" onClick={() => setPropsOpen(false)} aria-label="Close">×</button>
+              </div>
+            )}
+            <Props cx={cx} />
+          </aside>
+        )}
       </div>
     </div>
   );

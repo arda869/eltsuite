@@ -124,7 +124,7 @@ const LINES: [ShapeKind, string][] = [['line', 'Line'], ['arrow', 'Arrow'], ['do
 const BUBBLES: [ShapeKind, string][] = [['speech', 'Speech bubble'], ['thought', 'Thought bubble'], ['shout', 'Shout'], ['cloud', 'Cloud']];
 
 function middle(cx: Ctx, w: number, h: number) {
-  return { x: Math.round((cx.page.w - w) / 2), y: Math.round((cx.page.h - h) / 2), w, h };
+  return cx.spot(w, h);
 }
 
 function Elements({ cx }: { cx: Ctx }) {
@@ -534,7 +534,24 @@ function Draw({ cx }: { cx: Ctx }) {
 // ------------------------------------------------------------------ layers
 
 const NAME: Record<string, string> = { image: 'Picture', text: 'Text', shape: 'Shape', path: 'Drawing', art: 'Person or thing', label: 'Label', cover: 'Cover', wordbank: 'Word bank', qr: 'QR code', lines: 'Writing lines' };
-export const nameOf = (e: El) => e.name || (e.t === 'text' || e.t === 'label' || (e.t === 'shape' && e.text) ? (e.text ?? '').split('\n')[0].slice(0, 40) || NAME[e.t] : e.t === 'image' && !e.img ? 'Empty frame' : NAME[e.t]);
+const SHAPE_NAME = Object.fromEntries([...SHAPES, ...LINES, ...BUBBLES]);
+export const nameOf = (e: El) => e.name || (e.t === 'shape' && !e.text ? SHAPE_NAME[e.shape ?? 'rect'] ?? 'Shape' : e.t === 'art' ? e.ref ?? 'Person or thing' : e.t === 'text' || e.t === 'label' || (e.t === 'shape' && e.text) ? (e.text ?? '').split('\n')[0].slice(0, 40) || NAME[e.t] : e.t === 'image' && !e.img ? 'Empty frame' : NAME[e.t]);
+
+function LayerIcon({ t }: { t: El['t'] }) {
+  const d: Record<string, string> = {
+    image: 'M4 5.5h16v13H4zM4 16l5-5 4 4 2.5-2.5L20 17',
+    text: 'M6 6V5h12v1M12 5v14M9.5 19h5',
+    shape: 'M4 4h8v8H4zM17 12a4 4 0 1 1 0 .01',
+    path: 'M4 17c3-6 5 2 8-4s5 1 8-3',
+    art: 'M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM7 21v-5a5 5 0 0 1 10 0v5',
+    label: 'M5 19l5-5M10 14h9v-5h-9z',
+    cover: 'M4 4h16v16H4zM4 12h16M12 4v16',
+    wordbank: 'M3 8h7v5H3zM12 8h9v5h-9zM6 16h10',
+    qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2z',
+    lines: 'M4 8h16M4 12h16M4 16h16',
+  };
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d[t] ?? d.shape} /></svg>;
+}
 
 function Layers({ cx }: { cx: Ctx }) {
   const list = [...cx.here].reverse();
@@ -566,10 +583,10 @@ function Layers({ cx }: { cx: Ctx }) {
         >
           <span className="dz-grip" aria-hidden="true">⋮⋮</span>
           {renaming === e.id ? (
-            <input autoFocus defaultValue={nameOf(e)} onBlur={(ev) => (cx.patch({ [e.id]: { name: ev.target.value.trim() || undefined } }), setRenaming(''))} onKeyDown={(ev) => ev.key === 'Enter' && (ev.target as HTMLInputElement).blur()} aria-label="Name" />
+            <input autoFocus onFocus={(ev) => ev.target.select()} defaultValue={nameOf(e)} onBlur={(ev) => (cx.patch({ [e.id]: { name: ev.target.value.trim() || undefined } }), setRenaming(''))} onKeyDown={(ev) => ev.key === 'Enter' && (ev.target as HTMLInputElement).blur()} aria-label="Name" />
           ) : (
             <button type="button" className="dz-lname" onClick={(ev) => cx.select(ev.shiftKey ? [...cx.sel.map((s) => s.id), e.id] : [e.id])} onDoubleClick={() => setRenaming(e.id)}>
-              <span className={'dz-lk t-' + e.t}>{NAME[e.t]?.[0]}</span>
+              <span className={'dz-lk t-' + e.t} aria-hidden="true"><LayerIcon t={e.t} /></span>
               {nameOf(e)}
               {e.ver && <em className="dz-ver">{e.ver}</em>}
             </button>

@@ -55,9 +55,11 @@ export function DownloadMenu({ cx }: { cx: Ctx }) {
             <button type="button" role="menuitem" onClick={() => void run('Making the picture…', () => downloadImage(cx.page, cx.els, env, name, 'jpg', 2))}>
               <strong>Picture (JPG)</strong><span>A smaller file, for messages</span>
             </button>
-            <button type="button" role="menuitem" onClick={() => void run('Saving to Files…', toFiles)}>
-              <strong>Save as a picture in Files</strong><span>To use in lessons and tasks</span>
-            </button>
+            {!cx.learnerUser && (
+              <button type="button" role="menuitem" onClick={() => void run('Saving to Files…', toFiles)}>
+                <strong>Save as a picture in Files</strong><span>To use in lessons and tasks</span>
+              </button>
+            )}
             <p className="dz-dl-h">All {cx.pages.length} {cx.pages.length === 1 ? 'page' : 'pages'}, to print</p>
             <button type="button" role="menuitem" onClick={() => void run('Making the PDF…', () => downloadPdf(cx.pages, cx.els, env, name, copies('all')))}>
               <strong>PDF</strong><span>Everything, as you see it</span>
