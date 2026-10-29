@@ -22,10 +22,10 @@ async function send(list, n) {
   for (const t of list) {
     if (gone.has(t.id)) continue;
     try {
-      await fcm.send({ token: t.token, data: { title: n.title.slice(0, 80), body: n.body.slice(0, 180), link: n.link, tag: n.tag } , webpush: { headers: { Urgency: 'high', TTL: '86400' }, notification: { title: n.title.slice(0, 80), body: n.body.slice(0, 180), icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: n.tag }, fcmOptions: { link: 'https://eltsuite.com' + n.link } } });
+      await fcm.send({ token: t.token, data: { title: String(n.title ?? '').slice(0, 80), body: String(n.body ?? '').slice(0, 180), link: String(n.link ?? '/'), tag: String(n.tag ?? 'eltsuite') } , webpush: { headers: { Urgency: 'high', TTL: '86400' }, notification: { title: n.title.slice(0, 80), body: n.body.slice(0, 180), icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: n.tag }, fcmOptions: { link: 'https://eltsuite.com' + n.link } } });
     } catch (e) {
       const code = e?.errorInfo?.code ?? e?.code ?? '';
-      if (/registration-token-not-registered|invalid-registration-token|invalid-argument/.test(code)) gone.add(t.id);
+      if (/registration-token-not-registered|invalid-registration-token/.test(code)) gone.add(t.id);
       else console.log('Could not send:', code || e?.message);
     }
   }
