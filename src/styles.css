@@ -7969,7 +7969,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 /* ------------------------------------------------------------------ PDF editor, redesigned
    One calm bar that never changes height: the tools on the left (icon and name, a key for each),
    what the tool in use needs in the middle, and the page, zoom and file actions on the right. */
-.pdff { max-width: 1160px; gap: 14px; }
+.pdff { max-width: none; gap: 14px; }
 .pdff-bar { flex-wrap: nowrap; gap: 4px; min-height: 52px; padding: 6px 8px; border-radius: 14px; overflow-x: auto; scrollbar-width: none; }
 .pdff-bar::-webkit-scrollbar { display: none; }
 .pdff-bar > * { flex: none; }
@@ -8070,15 +8070,17 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .sh-split.solo { grid-template-columns: minmax(0, 1fr) 0 0; }
 /* The editor slides open beside the worksheet, and slides away when it closes. Its text fades
    while the column changes width, so it isn't seen squeezing. */
-.sh-split { transition: grid-template-columns .34s cubic-bezier(.22, .7, .2, 1); }
-.sh-split.dragging { transition: none; }
-.sh-split > .sh-right, .sh-split > .sh-divider { transition: opacity .22s ease .12s, visibility 0s; }
-.sh-split > .sh-divider, .sh-split.solo > .sh-right { overflow: hidden; }
-.sh-split.solo > .sh-right, .sh-split.solo > .sh-divider { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s ease, visibility 0s .34s; }
+.sh-split, .sh-split.solo { display: flex; }
+.sh-split > .sh-left { flex: 1 1 0; }
+.sh-split > .sh-divider { flex: 0 0 10px; overflow: hidden; }
+.sh-split > .sh-right { flex: 0 0 calc((100% - 10px) * var(--sh-r, .55)); }
+.sh-split > .sh-right, .sh-split > .sh-divider { transition: flex-basis .34s cubic-bezier(.22, .7, .2, 1), opacity .22s ease .12s, visibility 0s; }
+.sh-split.dragging > * { transition: none; }
+.sh-split.solo > .sh-right, .sh-split.solo > .sh-divider { flex-basis: 0; overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none; transition: flex-basis .34s cubic-bezier(.22, .7, .2, 1), opacity .12s ease, visibility 0s .34s; }
 .sh-split > .sh-right > * { animation: sh-in .3s cubic-bezier(.22, .7, .2, 1); }
 @keyframes sh-in { from { transform: translateX(14px); } to { transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .sh-split, .sh-split > .sh-right, .sh-split > .sh-divider { transition: none; }
+  .sh-split > .sh-right, .sh-split > .sh-divider { transition: none; }
   .sh-split > .sh-right > * { animation: none; }
 }
 /* A file's name in full in its header (documents, PDFs, storyboards, flashcards, slides): the names

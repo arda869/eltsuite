@@ -1290,7 +1290,7 @@ export function LessonEditor() {
                 </div>
               </div>
             ) : sheet && sheetData ? (
-              <div className={'sh-split' + (sheetEdit ? '' : ' solo')} style={{ ['--sh-w' as string]: `${sheetW}%`, gridTemplateColumns: sheetEdit ? `minmax(0, ${sheetW}fr) 10px minmax(0, ${100 - sheetW}fr)` : 'minmax(0, 1fr) 0px minmax(0, 0fr)' }}>
+              <div className={'sh-split' + (sheetEdit ? '' : ' solo')} style={{ ['--sh-w' as string]: `${sheetW}%`, ['--sh-r' as string]: (100 - sheetW) / 100 }}>
                 <section className="sh-left" aria-label="The worksheet">
                   <div className="sh-left-bar">
                     <span className="sh-switch" role="radiogroup" aria-label="Size of the page">

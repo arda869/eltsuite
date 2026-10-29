@@ -28,6 +28,24 @@ export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: 
     if (!id && !(await ask('This PDF isn’t saved in your Files. You can make it again at any time.', { ok: 'Close without saving', cancel: 'Keep it open' }))) return;
     onClose();
   };
+  // The browser's back button closes the viewer, as it would a page, instead of leaving the lesson
+  // behind it.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    history.pushState({ ...(history.state ?? {}), pv: 1 }, '');
+    let popped = false;
+    const pop = () => {
+      if (history.state?.pv) return; // still on the viewer's own step
+      popped = true;
+      closeRef.current();
+    };
+    window.addEventListener('popstate', pop);
+    return () => {
+      window.removeEventListener('popstate', pop);
+      if (!popped && history.state?.pv) history.back();
+    };
+  }, []);
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && !sharing && void leave();
     window.addEventListener('keydown', esc);
