@@ -180,10 +180,11 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         b.set(doc(pagesCol(d.id), pid), clean({ ...tp.p, order: at + i * 0.01 }));
         tp.els.forEach((e, k) => b.set(doc(elsCol(d.id), newId() + newId()), clean({ ...e, page: pid, z: k + 1 })));
       });
-      if (replace && pages?.length === 1 && !server.some((e) => e.page === pages[0].id)) b.delete(doc(pagesCol(d.id), pages[0].id));
+      const gone = replace && pages?.length === 1 && !server.some((e) => e.page === pages[0].id) ? pages[0].id : '';
+      if (gone) b.delete(doc(pagesCol(d.id), gone));
       await b.commit();
       // Pages numbered in order again.
-      const all = [...(pages ?? []).filter((p) => !(replace && pages?.length === 1)), ...made.map((id, i) => ({ id, order: at + i * 0.01 }) as DPage)].sort((x, y) => x.order - y.order);
+      const all = [...(pages ?? []).filter((x) => x.id !== gone), ...made.map((id, i) => ({ id, order: at + i * 0.01 }) as DPage)].sort((x, y) => x.order - y.order);
       const b2 = writeBatch(db);
       all.forEach((p, i) => b2.update(doc(pagesCol(d.id), p.id), { order: i }));
       await b2.commit().catch(() => {});
@@ -249,7 +250,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   const scroller = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const PAD = 80;
+  const PAD = 56;
   const fit = useCallback(() => {
     const s = scroller.current;
     if (!s || !page) return;

@@ -86,6 +86,7 @@
 .dz-dr-note.small { font-size: 12px; }
 .dz-wide { width: 100%; justify-content: center; }
 .dz-drawer .btn.primary, .dz-props .btn.primary, .dz-cards .btn.primary { background: var(--dz); border-color: var(--dz); color: #fff; }
+.dz-drawer .btn.primary:hover:not(:disabled), .dz-props .btn.primary:hover:not(:disabled), .dz-cards .btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--dz) 86%, #000); border-color: color-mix(in srgb, var(--dz) 86%, #000); }
 
 /* ------------------------------------------------------------------ stage */
 .dz-stage { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
