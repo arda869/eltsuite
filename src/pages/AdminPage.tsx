@@ -16,6 +16,7 @@ import { OrgActivity } from './admin/OrgActivity';
 import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Super';
 import { SuperAdmins } from './admin/SuperAdmins';
 import { InviteCodes } from './admin/InviteCodes';
+import { BrandKit } from './admin/BrandKit';
 import { codeState, useCodes } from '../lib/codes';
 import { WAIT_DAYS } from './admin/attention';
 import { daysSince, plural } from './admin/ui';
@@ -154,6 +155,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
     { k: 'activity', label: 'Activity', icon: 'timer' },
     { k: 'supers', label: 'Super admins', icon: 'lock' },
+    { k: 'brand', label: 'Brand kit', icon: 'picture' },
   ];
   const known = items.some((i) => i.k === tab) ? tab : 'overview';
   return (
@@ -199,6 +201,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'defaults' && <SuperDefaults />}
           {known === 'activity' && <SuperUsage teachers={teachers ?? []} />}
           {known === 'supers' && <SuperAdmins />}
+          {known === 'brand' && <BrandKit />}
         </main>
       </div>
     </Frame>
