@@ -1,0 +1,6 @@
+menu Editing | Change tasks, questions and settings | Teaching | Go live: learners follow you and you see their answers | Learner view | Try the lesson as a learner sees it; nothing is saved | View as | ▾
+shot preview-out/01-lesson-menu.png
+menu Editing | Change tasks, questions and settings | Learner view | Try the lesson as a learner sees it; nothing is saved | View as | ▾
+shot preview-out/02-homework-menu.png
+homework with ?teach=1, mode Editing
+▾
