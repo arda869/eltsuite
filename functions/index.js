@@ -3,6 +3,8 @@
 // superAdmins/{email} with a verified email, as in firestore.rules) can ask; every use is written
 // to proxyLog. The pass is a Firebase custom token, good for one sign-in within an hour.
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { getMessaging } from 'firebase-admin/messaging';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -41,4 +43,35 @@ export const signInAs = onCall({ region: 'us-central1', maxInstances: 2 }, async
     throw new HttpsError('failed-precondition', `The server couldn’t make a sign-in pass: ${e?.message ?? e}`);
   }
   return { token, name: user.displayName || user.email || 'this person' };
+});
+
+// New messages reach phones and computers within seconds. When a chat gets a new message,
+// each member who didn't send it and hasn't read it yet gets one notification for that chat.
+// scripts/push.mjs still runs every 15 minutes as a back-up: `pushed` stops it sending twice.
+export const pushNewMessage = onDocumentUpdated({ document: 'chats/{chatId}', region: 'us-central1', maxInstances: 5 }, async (event) => {
+  const before = event.data?.before.data();
+  const d = event.data?.after.data();
+  if (!d?.last || !d.lastAt || before?.lastAt === d.lastAt) return;
+  const db = getFirestore();
+  const to = (d.members ?? []).filter((k) => k !== d.last.by && (d.seen?.[k] ?? 0) < d.lastAt && (d.pushed?.[k] ?? 0) < d.lastAt);
+  if (!to.length) return;
+  const title = d.kind === 'group' ? d.title || 'Group' : d.names?.[d.last.by] ?? 'New message';
+  const who = String(d.last.name || '').split(' ')[0];
+  const body = d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text || '';
+  const data = { title: String(title).slice(0, 80), body: String(body).slice(0, 180), link: `/messages?c=${event.params.chatId}`, tag: 'chat-' + event.params.chatId };
+  const patch = {};
+  for (let i = 0; i < to.length; i += 30) {
+    const snap = await db.collection('pushTokens').where('key', 'in', to.slice(i, i + 30)).get();
+    for (const t of snap.docs) {
+      try {
+        await getMessaging().send({ token: t.get('token'), data, webpush: { headers: { Urgency: 'high', TTL: '86400' } } });
+      } catch (e) {
+        const code = e?.errorInfo?.code ?? e?.code ?? '';
+        if (/registration-token-not-registered|invalid-registration-token/.test(code)) await t.ref.delete().catch(() => {});
+        else console.log('Could not send:', code || e?.message);
+      }
+    }
+  }
+  for (const k of to) patch[`pushed.${k}`] = d.lastAt;
+  await event.data.after.ref.update(patch);
 });
