@@ -15,14 +15,7 @@ export default async function steps({ p, shot, say, demo, BASE }) {
   await wait(400);
   await shot('01-hover');
   // drag the second block above the first
-  const g = await second.locator('.sh-grip').boundingBox();
-  const first = await p.locator('.sh-block').first().boundingBox();
-  await p.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
-  await p.mouse.down();
-  await p.mouse.move(first.x + 100, first.y + 10, { steps: 12 });
-  await wait(300);
-  await shot('02-dragging');
-  await p.mouse.up();
+  await second.locator('.sh-grip').dragTo(p.locator('.sh-block').first(), { targetPosition: { x: 100, y: 8 } });
   await wait(2000);
   say('order after drag', await order());
   await shot('03-moved');
