@@ -34,7 +34,7 @@ import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
 import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
-import { subLetter, subTasksOf } from '../editor/SubTask';
+import { NextSub, subLetter, subShown, subTasksOf, useOpenSubs } from '../editor/SubTask';
 import type { CoverMode, CoverProps } from '../editor/PicEdit';
 import { MediaPlayer } from '../media/Player';
 import { UploadBox, type UploadAnswer, type UploadAttrs } from '../editor/UploadNode';
@@ -195,7 +195,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const narrow = useNarrow();
   const [tab, setTab] = useState(0);
   // Sub-tasks opened so far (by their id), and every sub-task of this task in order.
-  const [openSubs, setOpenSubs] = useState<string[]>([]);
+  const openSubs = useOpenSubs();
   const subs = useMemo(() => subTasksOf(content), [content]);
   // Covered pictures: boxes opened here. On the teaching screen the teacher's boxes open for the
   // whole class; learners then see what the teacher has opened.
@@ -1096,28 +1096,19 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           </RevealBlock>
         );
       case 'subTask': {
-        // Sub-tasks: a first, then each next one when the learner (or the teacher) opens it.
+        // Sub-tasks: each part starts with its own instruction band, like the task's, and shows once
+        // it is open; the open part ends with a small button for the next one.
         const i = subs.indexOf(node);
-        const id = String(node.attrs?.id || i);
-        const all = !!results || !!asExample;
-        if (!all && i > 0 && !openSubs.includes(id)) return null;
-        const next = subs[i + 1];
-        const nextOpen = !next || all || openSubs.includes(String(next.attrs?.id || i + 1));
+        if (!subShown(subs, i, openSubs, !!results || !!asExample)) return null;
         return (
           <section key={key} data-bk={key} className="subtask">
-            <div className="st-head">
+            {/* The same band as the task's own instruction, with the part's letter. */}
+            <div className="st-band">
               <b className="st-l">{subLetter(i)}</b>
-              {node.attrs?.instr ? <span className="st-instr">{String(node.attrs.instr)}</span> : null}
+              <p className="task-instr">{String(node.attrs?.instr ?? '')}</p>
             </div>
             <div className="st-body">{kids()}</div>
-            {!nextOpen && (
-              <button type="button" className="st-next" onClick={() => setOpenSubs((o) => [...o, String(next.attrs?.id || i + 1)])}>
-                Next: part {subLetter(i + 1)}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9 6l6 6-6 6" />
-                </svg>
-              </button>
-            )}
+            {!(!!results || !!asExample) && i + 1 < subs.length && !subShown(subs, i + 1, openSubs) && <NextSub subs={subs} i={i} />}
           </section>
         );
       }
