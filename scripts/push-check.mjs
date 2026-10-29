@@ -18,6 +18,8 @@ say('Devices with notifications on, in all:', all.size);
 for (const email of ['ardanurioglu@gmail.com', 'arda@eltsuite.com']) {
   const u = await getAuth().getUserByEmail(email).catch(() => null);
   if (!u) { say(email.replace(/^(..).*@/, '$1…@'), ': no account'); continue; }
+  const log = (await db.doc('users/' + u.uid).get()).get('pushLog') ?? {};
+  for (const [k, v] of Object.entries(log)) say(`  last sign-up on ${k}: ${v.step}${v.err ? ' — ' + v.err : ''} (${when(v.at)})`);
   const mine = all.docs.filter((d) => d.get('uid') === u.uid || d.get('key') === u.uid);
   say(`\nAccount ${email.replace(/^(..).*@/, '$1…@')}: ${mine.length} device(s)`);
   for (const t of mine) {
