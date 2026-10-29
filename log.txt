@@ -1,0 +1,22 @@
+console debug [vite] connecting...
+console debug [vite] connected.
+console info %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+console warning ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more informa
+console warning ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see http
+console warning TextSelection endpoint not pointing into a node with inline content (doc)
+shot 01-opened
+after click tiptap ProseMirror pdf-doc ProseMirror-focused | anchor in box: true | P
+box text Lisbon
+box text after clicking in it Answer key
+
+Lisbon (clicked)
+shot 02-text-box
+shot 03a-highlight-tool
+shot 03-highlight
+shot 04-draw
+shot 05-question-menu
+shot 06-box-bar
+shot 07-page-2
+shot 08-tablet
+shot 09-phone
+toolbar ▾ B I U A ▾ Aa A
