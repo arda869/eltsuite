@@ -30,6 +30,7 @@ import { fmtTime } from '../lib/sound';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
 import { WorksheetDialog } from '../components/WorksheetDialog';
 import { MAX_PDF, openPdf, pageSizes, saveFilePdf } from '../pdf/pdfData';
+import { MAX_FILE, downloadAnyFile, extOf, isWord, saveAnyFile, saveStart } from '../lib/fileStore';
 import { FileIcon, FolderIcon } from '../components/FileIcon';
 import { ask, tell } from '../lib/ask';
 import { uploadPicture, type PicQuality } from '../editor/PackNode';
@@ -44,9 +45,9 @@ const KINDS = [
   { k: 'audio', label: 'Recordings', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
-type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label }))];
-const COLLAB_KINDS: Kind[] = ['doc', 'slides'];
+type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file';
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
+const COLLAB_KINDS: Kind[] = ['doc', 'slides', 'pdf', 'file'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
 type View = 'icons' | 'list' | 'time';
@@ -60,7 +61,7 @@ const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { mo
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
 const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Recording', lesson: 'Lesson', doc: 'Collab document', pdf: 'PDF', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal' })[k] ?? 'File';
-const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, storyboard: 7, image: 8, audio: 9, video: 10 };
+const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, storyboard: 7, image: 8, audio: 9, video: 10, file: 11 };
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
@@ -72,6 +73,8 @@ const entryOfLesson = (l: ClassLesson): Entry => ({ key: `l:${l.classId}/${l.ite
 // A learner's hand-in: in the class's folder, under Handed in and the learner's name.
 const entryOfHandIn = (h: HandIn): Entry => ({ key: `h:${h.classId}/${h.id}`, kind: h.type.startsWith('image/') ? 'image' : h.type.startsWith('audio/') ? 'audio' : h.type.startsWith('video/') ? 'video' : 'pdf', name: h.name, folder: `${CLASSES}/${h.className.replace(/\//g, '-')}/Handed in/${h.learner.replace(/\//g, '-')}`, at: h.at, size: 0, hand: h });
 const inClasses = (f: string) => f === CLASSES || f.startsWith(CLASSES + '/');
+const dlName = (d: SharedDoc) => { const x = extOf(d.file?.name ?? ''); return !x || d.title.toLowerCase().endsWith('.' + x) ? d.title : `${d.title}.${x}`; };
+const subOf = (e: Entry) => (e.doc?.kind === 'file' ? extOf(e.doc.file?.name ?? e.doc.title) || 'file' : undefined);
 const entryOfDoc = (d: SharedDoc): Entry => ({ key: 'd:' + d.id, kind: d.kind as Kind, name: d.title, folder: d.path ?? '', at: d.updatedAt?.toMillis?.() ?? d.createdAt?.toMillis?.() ?? 0, size: d.size ?? 0, doc: d });
 const entryOfItem = (i: ArchiveItem): Entry => ({ key: i.id, kind: i.kind, name: i.name, folder: i.folder, at: i.createdAt, size: spaceOf(i), item: i });
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -133,6 +136,8 @@ export function MediaArchive() {
   const [view, setViewS] = useState<View>(() => stored('ll.maView2', 'icons' as View));
   const setView = (v: View) => (setViewS(v), store('ll.maView2', v));
   const [dialog, setDialog] = useState<{ tab: MediaTab; file?: File } | null>(null);
+  const makePdfRef = useRef<(f: File) => Promise<void>>(async () => {});
+  const uploadRef = useRef<(l: File[]) => Promise<void>>(async () => {});
   const [upBusy, setUpBusy] = useState('');
   const [over, setOver] = useState(false);
   const [moving, setMoving] = useState<Entry[] | null>(null);
@@ -178,6 +183,11 @@ export function MediaArchive() {
     void addPictures(files.filter((f) => f.type.startsWith('image/')));
     const sound = files.find((f) => f.type.startsWith('audio/') || f.type.startsWith('video/'));
     if (sound) setDialog({ tab: 'upload', file: sound });
+    // PDFs open to write on; any other file is kept as it is.
+    const pdf = files.find((f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+    if (pdf) void makePdfRef.current(pdf);
+    const rest = files.filter((f) => f !== pdf && f !== sound && !f.type.startsWith('image/') && !f.type.startsWith('audio/') && !f.type.startsWith('video/'));
+    if (rest.length) void uploadRef.current(rest);
   };
 
   const { mine: myDocsTop } = useMyDocs(uid || undefined);
@@ -357,6 +367,7 @@ export function MediaArchive() {
   const download = async (list: Entry[], folders: string[] = []) => {
     const every = [...new Map([...list, ...entries.filter((e) => folders.some((f) => inTree(e.folder, f)))].map((e) => [e.key, e])).values()];
     if (!every.length) return;
+    if (every.length === 1 && !folders.length && every[0].doc?.kind === 'file') return void downloadAnyFile(every[0].doc.id, every[0].doc.file ? { ...every[0].doc.file, name: dlName(every[0].doc) } : undefined).catch(() => {});
     if (every.length === 1 && !folders.length && (every[0].item || every[0].task)) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
     setBusy('Putting the files together…');
     const base = folders.length === 1 && !list.length ? folders[0] : folder;
@@ -421,7 +432,7 @@ export function MediaArchive() {
   };
   // Editors open full screen in their own tab: Task editor, Sound editor.
   const openHand = (h: HandIn) => void import('../lib/uploads').then(({ fileUrl }) => fileUrl(h.classId, h).then((u) => window.open(u, '_blank')));
-  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch(() => void tell('We couldn’t download the file just now. Check your connection and try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
@@ -439,7 +450,12 @@ export function MediaArchive() {
       ];
     if (en.doc)
       return [
-        { label: 'Open', icon: 'fullscreen', onClick: () => openE(en) },
+        ...(en.doc.kind === 'file'
+          ? ([
+              { label: 'Download', icon: 'import', onClick: () => openE(en) },
+              { label: 'Open its page', icon: 'fullscreen', hint: 'the link people get', onClick: () => void window.open(`/doc/${en.doc!.id}`, '_blank') },
+            ] as MenuItem[])
+          : [{ label: 'Open', icon: 'fullscreen', onClick: () => openE(en) } as MenuItem]),
         { label: COLLAB_KINDS.includes(en.kind) ? 'Share…' : 'Share with colleagues…', icon: 'person', onClick: () => setSharing(en.doc!) },
         { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
         { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
@@ -495,6 +511,57 @@ export function MediaArchive() {
       setPdfBusy('');
     }
   };
+  makePdfRef.current = makePdf;
+  // Any other file: kept as it is, to download and open elsewhere. A Word file can become a
+  // Collab document instead.
+  const anyIn = useRef<HTMLInputElement>(null);
+  const [word, setWord] = useState<{ f: File; lost: string[] | null; html?: string; title?: string; failed?: boolean } | null>(null);
+  const upload = async (list: File[]) => {
+    if (!uid) return;
+    const big = list.filter((f) => f.size > MAX_FILE);
+    if (big.length) void tell(`${big.map((f) => f.name).join(', ')} ${big.length === 1 ? 'is' : 'are'} over 15 MB, so ${big.length === 1 ? 'it wasn’t' : 'they weren’t'} added. Make ${big.length === 1 ? 'it' : 'them'} smaller first.`);
+    const ok = list.filter((f) => f.size <= MAX_FILE);
+    const w = ok.find(isWord);
+    if (w) {
+      setWord({ f: w, lost: null });
+      void import('../lib/docxImport').then(({ docxToHtml }) => docxToHtml(w, w.name)).then(
+        (r) => setWord((x) => (x?.f === w ? { ...x, lost: r.lost, html: r.html, title: r.title } : x)),
+        () => setWord((x) => (x?.f === w ? { ...x, lost: [], failed: true } : x)),
+      );
+    }
+    const others = ok.filter((f) => f !== w);
+    for (let i = 0; i < others.length; i++) {
+      setPdfBusy(`Uploading ${others[i].name}…${others.length > 1 ? ` ${i + 1} of ${others.length}` : ''}`);
+      await saveAnyFile({ uid, name: user?.displayName || 'Teacher' }, others[i], folder && !inClasses(folder) ? folder : '').catch(() => void tell(`We couldn’t upload ${others[i].name}. Check your connection and try again.`));
+    }
+    setPdfBusy('');
+  };
+  uploadRef.current = upload;
+  const keepWord = async (f: File) => {
+    if (!uid) return;
+    setWord(null);
+    setPdfBusy(`Uploading ${f.name}…`);
+    await saveAnyFile({ uid, name: user?.displayName || 'Teacher' }, f, folder && !inClasses(folder) ? folder : '').catch(() => void tell(`We couldn’t upload ${f.name}. Check your connection and try again.`));
+    setPdfBusy('');
+  };
+  const wordToCollab = async () => {
+    if (!uid || !word?.html) return;
+    const { html, title } = word;
+    setWord(null);
+    const w = window.open('about:blank', '_blank');
+    setPdfBusy('Making the Collab document…');
+    try {
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'doc', title);
+      await saveStart(id, html);
+      if (folder && !inClasses(folder)) await setDocPath(id, folder).catch(() => {});
+      if (w) w.location.href = `/doc/${id}`;
+    } catch {
+      w?.close();
+      void tell('We couldn’t make the Collab document just now. Check your connection and try again.');
+    } finally {
+      setPdfBusy('');
+    }
+  };
   const makeDoc = async (k: DocKind) => {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
@@ -510,6 +577,7 @@ export function MediaArchive() {
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
     { label: 'Storyboard', icon: 'storyboard', hint: 'scenes with people and speech bubbles', onClick: () => void makeDoc('storyboard') },
     { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
+    { label: 'Upload a file…', icon: 'upload', hint: 'Word, Excel or any other kind', onClick: () => anyIn.current?.click() },
     'sep',
     { label: 'Recording', icon: 'mic', onClick: () => setDialog({ tab: 'record' }) },
     { label: 'Recording, with colleagues', icon: 'person', onClick: () => setTogether(true) },
@@ -643,7 +711,7 @@ export function MediaArchive() {
   const row = (en: Entry, depth = 0) => (
     <button key={en.key} type="button" data-sel={en.key} draggable={renaming !== en.key} onDragStart={dragE(en)} className={'ma-lrow' + (sel.has(en.key) ? ' chosen' : '')} onClick={clickE(en)} onDoubleClick={() => openE(en)} onContextMenu={menuE(en)}>
       <span className="ma-lname" style={{ ['--depth' as string]: depth }}>
-        {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} sub={en.cls?.type} />}
+        {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} sub={en.cls?.type ?? subOf(en)} />}
         {nameOf(en.key, en.name, 'ma-lname-t')}
         {en.item && sharedIds.has(en.item.id) && <SharedMark />}
         {en.task && en.task.uses.length > 0 && (
@@ -1066,7 +1134,7 @@ export function MediaArchive() {
               </button>
             </div>
             <div className="lt-preview dd" onDoubleClick={() => openE(oneEntry)} title="Double-click to open">
-              <FileIcon kind={oneEntry.kind} size={56} sub={oneEntry.cls?.type} />
+              <FileIcon kind={oneEntry.kind} size={56} sub={oneEntry.cls?.type ?? subOf(oneEntry)} />
               <b className="lt-preview-t">{oneEntry.doc.title}</b>
               <span className="hint">
                 {Object.keys(oneEntry.doc.members ?? {}).length ? `Shared with ${Object.values(oneEntry.doc.members).map((m) => m.name.split(' ')[0]).join(', ')}` : 'Only you'}
@@ -1123,7 +1191,46 @@ export function MediaArchive() {
         )}
         <input ref={picIn} type="file" accept="image/*" multiple hidden onChange={(e) => (e.target.files && void addPictures(Array.from(e.target.files)), (e.target.value = ''))} />
         <input ref={pdfIn} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => (e.target.files?.[0] && void makePdf(e.target.files[0]), (e.target.value = ''))} />
+        <input ref={anyIn} type="file" multiple hidden onChange={(e) => (e.target.files?.length && addFiles(Array.from(e.target.files)), (e.target.value = ''))} />
         {pdfBusy && <span className="ma-toast" role="status">{pdfBusy}</span>}
+        {word && (
+          <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && setWord(null)}>
+            <div className="dialog ma-word" role="dialog" aria-label="A Word file">
+              <h2>Turn “{word.f.name}” into a Collab document?</h2>
+              <p>You can write in it together with colleagues and learners, right here. Or keep the Word file as it is, to download and open in Word.</p>
+              {word.lost === null ? (
+                <p className="hint">Reading the file…</p>
+              ) : word.failed ? (
+                <p className="ma-word-warn">We couldn’t read this Word file, so it can only be kept as it is.</p>
+              ) : (
+                <div className="ma-word-warn">
+                  <strong>Some things may not come across.</strong> Text, headings, lists, tables, pictures and links do. Check the new document against the Word file.
+                  {word.lost.length > 0 && (
+                    <>
+                      <span className="ma-word-l">In this file, these won’t:</span>
+                      <ul>
+                        {word.lost.map((l) => (
+                          <li key={l}>{l}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )}
+              <div className="row-between" style={{ justifyContent: 'flex-end' }}>
+                <button type="button" className="btn" onClick={() => setWord(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn" onClick={() => void keepWord(word.f)}>
+                  Keep it as a Word file
+                </button>
+                <button type="button" className="btn primary" disabled={!word.html} onClick={() => void wordToCollab()}>
+                  Make a Collab document
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {exporting && <WorksheetDialog classId={exporting.classId} itemId={exporting.itemId} onClose={() => setExporting(null)} />}
         {dialog && space && <MediaDialog classId={space} tab={dialog.tab} file={dialog.file} folder={folder} noArchive onPictures={(f) => void addPictures(f)} onClose={() => setDialog(null)} onPick={() => setDialog(null)} />}
         {toOrg && <ToOrgDialog d={toOrg} folders={orgFolders} me={{ uid: uid ?? '', name: user?.displayName || 'Teacher' }} onClose={() => setToOrg(null)} />}
@@ -1210,7 +1317,7 @@ function Card({ entry, chosen, shared, name, onClick, onDoubleClick, onDragStart
         ) : item?.link && item.kind === 'video' && /youtu/.test(item.link) ? (
           <img src={`https://img.youtube.com/vi/${/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(item.link)?.[1] ?? ''}/mqdefault.jpg`} alt="" draggable={false} />
         ) : (
-          <FileIcon kind={entry.kind} size={42} sub={entry.cls?.type} />
+          <FileIcon kind={entry.kind} size={42} sub={entry.cls?.type ?? subOf(entry)} />
         )}
         {item?.duration ? <span className="ma-dur">{fmtTime(item.duration)}</span> : null}
         <span className="ma-badges">

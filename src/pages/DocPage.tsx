@@ -23,6 +23,8 @@ import { UiIcon } from '../components/UiIcon';
 import { FileComments } from '../components/FileComments';
 import { StoryboardFile } from '../storyboard/StoryboardFile';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
+import { AnyFile } from '../components/AnyFile';
+import { loadStart } from '../lib/fileStore';
 
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
 // sharing, and the whole window for writing.
@@ -58,8 +60,18 @@ export function DocPage() {
     document.title = `${title || 'Document'} · ELT Suite`;
   }, [title]);
   useEffect(() => setFileFavicon(kind), [kind]);
+  // A document made from a Word file starts with its text.
+  const [start, setStart] = useState<string | null | undefined>(undefined);
+  const startN = !lesson && d?.kind === 'doc' ? d.start ?? 0 : 0;
   useEffect(() => {
-    if (d && d.owner === uid) {
+    if (!startN || !d) return setStart(null);
+    let on = true;
+    loadStart(d.id, startN).then((h) => on && setStart(h || null), () => on && setStart(null));
+    return () => void (on = false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [d?.id, startN]);
+  useEffect(() => {
+    if (d && d.owner === uid && d.kind !== 'file') {
       const m = () => void measureDoc(d);
       const first = window.setTimeout(m, 4000);
       const t = window.setInterval(m, 3 * 60 * 1000);
@@ -77,6 +89,7 @@ export function DocPage() {
 
   if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
+  if (!lesson && d && startN && start === undefined) return <div className="dp-msg">Opening…</div>;
   if (!lesson && (d === null || !role)) return <div className="dp-msg">This document isn’t shared with you, or it’s been deleted.<Link to="/">Back to ELT Suite</Link></div>;
   const docKey = lesson ? key : d!.docKey;
   const cite = ((d as { citeStyle?: CiteStyle } | null | undefined)?.citeStyle ?? 'apa') as CiteStyle;
@@ -144,7 +157,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'storyboard' && d ? <StoryboardFile d={d} canEdit={role === 'edit'} /> : <CollabDoc {...props} page heading={heading} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'storyboard' && d ? <StoryboardFile d={d} canEdit={role === 'edit'} /> : kind === 'file' && d ? <AnyFile d={d} /> : <CollabDoc {...props} template={start ?? null} page heading={heading} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
@@ -157,7 +170,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   return (
     <SharePeople
       roles={rolesFor(d.kind)}
-      teachersOnly={!['doc', 'slides', 'pdf'].includes(d.kind)}
+      teachersOnly={!['doc', 'slides', 'pdf', 'file'].includes(d.kind)}
       title={`Share “${d.title}”`}
       ownerName={d.ownerName}
       members={d.members ?? {}}
@@ -208,7 +221,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog dp-dialog" role="dialog" aria-label={title}>
         <h2>{title}</h2>
-        {teachersOnly && <span className="hint">You can share this with other teachers. Documents and slides can also be shared with learners.</span>}
+        {teachersOnly && <span className="hint">You can share this with other teachers. Documents, slides, PDFs and uploaded files can also be shared with learners.</span>}
         <div className="dp-add">
           <span className="dp-chips">
             {picked.map((p) => (
