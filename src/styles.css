@@ -7871,3 +7871,19 @@ html { touch-action: manipulation; }
 @keyframes gu-slide { from { transform: translateY(8px); } }
 .st-ed-head .remove { flex: none; height: 26px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 7px; background: var(--paper); color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
 .st-ed-head .remove:hover { color: var(--ink); border-color: var(--ink); }
+/* Storyboard library (StoryboardLibrary.tsx) */
+.sbl { --sb-accent: var(--accent, #d98f63); max-width: 1180px; margin: 0 auto; padding: 12px 24px 64px; display: flex; flex-direction: column; gap: 16px; }
+.sbl-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.sbl-head h1 { margin: 0 0 4px; font: 500 30px var(--serif); }
+.sbl-head p { margin: 0; max-width: 640px; }
+.sbl-accents { display: inline-flex; gap: 6px; }
+.sbl-acc { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--hair-strong); cursor: pointer; }
+.sbl-acc.on { box-shadow: 0 0 0 2px var(--ink); }
+.sbl-tabs { align-self: flex-start; }
+.sbl-sec h2 { margin: 6px 0 10px; font: 600 13px var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sbl-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.sbl-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px 8px; border: 1px solid var(--hair); border-radius: 12px; background: #fff; font: 13px var(--sans); color: var(--muted); }
+button.sbl-card { cursor: pointer; }
+button.sbl-card:hover { border-color: var(--hair-strong); }
+.sbl-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); color: var(--ink); }
+.sbl-foot { margin-top: 8px; }
