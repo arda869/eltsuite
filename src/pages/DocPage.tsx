@@ -21,6 +21,7 @@ import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
 import { UiIcon } from '../components/UiIcon';
 import { FileComments } from '../components/FileComments';
+import { StoryboardFile } from '../storyboard/StoryboardFile';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
 
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
@@ -112,7 +113,7 @@ export function DocPage() {
         </span>
         <span className="dp-acts">
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
-          {d && role && ['flash', 'lesson', 'pdf'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
+          {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (
             <button type="button" className="btn primary dp-share" onClick={() => setSharing(true)}>
               <UiIcon name="lock" size={15} /> Share
@@ -143,7 +144,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : <CollabDoc {...props} page heading={heading} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'storyboard' && d ? <StoryboardFile d={d} canEdit={role === 'edit'} /> : <CollabDoc {...props} page heading={heading} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
