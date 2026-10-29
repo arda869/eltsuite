@@ -7,30 +7,54 @@ import type { ReactNode } from 'react';
 
 // ------------------------------------------------------------------ colours
 
-export const INK = '#3b3833';
-const G0 = '#fbfaf8';
-const G1 = '#f1efeb';
-const G2 = '#dfdcd6';
-const G3 = '#c4bfb7';
-const G4 = '#8f8981';
-const G5 = '#5f5a54';
-const A = 'var(--sb-accent, #d98f63)';
-const A_LIGHT = 'color-mix(in srgb, var(--sb-accent, #d98f63) 38%, white)';
-const A_DARK = 'color-mix(in srgb, var(--sb-accent, #d98f63) 72%, black)';
+// The house style for pictures is a loose pen line: white paper, the greys drawn as hatching, and a
+// light wash of the accent colour. Each grey is a CSS variable that Sketch sets to a hatching pattern;
+// outside a Sketch the plain grey is used.
+export const INK = '#262420';
+const G0 = '#ffffff';
+const G1 = '#ffffff';
+const G2 = 'var(--sb-g2, #e4e1dc)';
+const G3 = 'var(--sb-g3, #c9c5be)';
+const G4 = 'var(--sb-g4, #9a958e)';
+const G5 = 'var(--sb-g5, #4a4641)';
+const A = 'color-mix(in srgb, var(--sb-accent, #d98f63) 52%, white)';
+const A_LIGHT = 'color-mix(in srgb, var(--sb-accent, #d98f63) 26%, white)';
+const A_DARK = 'var(--sb-ad, color-mix(in srgb, var(--sb-accent, #d98f63) 72%, black))';
 const C = { G0, G1, G2, G3, G4, G5, A, A_LIGHT, A_DARK };
 type Col = keyof typeof C;
 
-// A pencil line: slightly uneven, as if drawn by hand.
+// A pen line: slightly uneven, gone over twice, as if drawn by hand; greys as hatching.
 export function Sketch({ id = 'sbr', children }: { id?: string; children: ReactNode }) {
+  const pat = (k: string, gap: number, rot: number, bg: string, line: string, w: number) => (
+    <pattern id={`${id}-${k}`} width={gap} height={gap} patternUnits="userSpaceOnUse" patternTransform={`rotate(${rot})`}>
+      <rect width={gap} height={gap} fill={bg} />
+      <line x1={0} y1={0} x2={0} y2={gap} stroke={line} strokeWidth={w} />
+    </pattern>
+  );
+  const vars = { ['--sb-g2' as string]: `url(#${id}-g2)`, ['--sb-g3' as string]: `url(#${id}-g3)`, ['--sb-g4' as string]: `url(#${id}-g4)`, ['--sb-g5' as string]: `url(#${id}-g5)`, ['--sb-ad' as string]: `url(#${id}-ad)` };
   return (
     <>
       <defs>
         <filter id={id} x="-5%" y="-5%" width="110%" height="110%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="7" />
-          <feDisplacementMap in="SourceGraphic" scale="2.4" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" />
+          <feDisplacementMap in="SourceGraphic" scale="2.6" />
         </filter>
+        <filter id={id + '-2'} x="-5%" y="-5%" width="110%" height="110%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="9" />
+          <feDisplacementMap in="SourceGraphic" scale="3.2" />
+        </filter>
+        {pat('g2', 6, 40, '#fff', INK, 0.6)}
+        {pat('g3', 4.2, 40, '#fff', INK, 0.75)}
+        {pat('g4', 3, -35, '#b4afa8', INK, 0.85)}
+        {pat('g5', 2.4, 55, '#55504a', '#141210', 0.9)}
+        {pat('ad', 3.6, 40, 'color-mix(in srgb, var(--sb-accent, #d98f63) 55%, white)', 'color-mix(in srgb, var(--sb-accent, #d98f63) 60%, black)', 0.8)}
       </defs>
-      <g filter={`url(#${id})`}>{children}</g>
+      <g style={vars}>
+        <g filter={`url(#${id})`}>{children}</g>
+        <g filter={`url(#${id}-2)`} opacity={0.3} transform="translate(0.9 -0.7)">
+          {children}
+        </g>
+      </g>
     </>
   );
 }
@@ -43,164 +67,258 @@ type P = [number, number];
 export type Pose = { neck: P; hip: P; arms: [P, P, P, P]; legs: [P, P, P, P]; tilt?: number };
 const pose = (neck: P, hip: P, arms: [P, P, P, P], legs: [P, P, P, P], tilt = 0): Pose => ({ neck, hip, arms, legs, tilt });
 
-const STAND_LEGS: [P, P, P, P] = [[90, 232], [88, 284], [110, 232], [112, 284]];
+const STAND_LEGS: [P, P, P, P] = [[92, 232], [90, 282], [108, 232], [110, 282]];
 export const POSES: Record<string, { name: string; p: Pose }> = {
-  stand: { name: 'Standing', p: pose([100, 98], [100, 178], [[76, 140], [73, 174], [124, 140], [127, 174]], STAND_LEGS) },
-  wave: { name: 'Waving', p: pose([100, 98], [100, 178], [[76, 140], [73, 174], [140, 86], [148, 50]], STAND_LEGS) },
-  point: { name: 'Pointing', p: pose([100, 98], [100, 178], [[76, 140], [73, 174], [146, 108], [176, 102]], STAND_LEGS) },
-  hips: { name: 'Hands on hips', p: pose([100, 98], [100, 178], [[60, 136], [86, 168], [140, 136], [114, 168]], STAND_LEGS) },
-  crossed: { name: 'Arms crossed', p: pose([100, 98], [100, 178], [[82, 142], [118, 130], [118, 142], [82, 128]], STAND_LEGS) },
-  think: { name: 'Thinking', p: pose([100, 98], [100, 178], [[84, 142], [126, 146], [130, 142], [110, 90]], STAND_LEGS, -4) },
-  shrug: { name: 'Shrugging', p: pose([100, 100], [100, 178], [[64, 130], [54, 104], [136, 130], [146, 104]], STAND_LEGS, 5) },
-  talk: { name: 'Talking', p: pose([100, 98], [100, 178], [[76, 140], [73, 174], [134, 136], [154, 118]], STAND_LEGS) },
-  phone: { name: 'On the phone', p: pose([100, 98], [100, 178], [[76, 140], [73, 174], [134, 124], [120, 76]], STAND_LEGS, 4) },
-  hold: { name: 'Holding something', p: pose([100, 98], [100, 178], [[80, 144], [92, 150], [120, 144], [108, 150]], STAND_LEGS) },
-  walk: { name: 'Walking', p: pose([100, 98], [100, 178], [[84, 140], [96, 168], [120, 138], [126, 166]], [[86, 230], [70, 282], [114, 228], [126, 280]]) },
-  run: { name: 'Running', p: pose([102, 100], [100, 180], [[72, 126], [82, 106], [132, 138], [122, 162]], [[80, 222], [58, 266], [120, 214], [130, 254]], -6) },
-  sit: { name: 'Sitting', p: pose([96, 124], [96, 204], [[80, 166], [112, 196], [118, 164], [128, 196]], [[134, 206], [136, 284], [140, 210], [146, 284]]) },
-  cheer: { name: 'Cheering', p: pose([100, 98], [100, 178], [[66, 74], [60, 40], [134, 74], [140, 40]], STAND_LEGS) },
+  stand: { name: 'Standing', p: pose([100, 100], [100, 180], [[80, 142], [79, 178], [120, 142], [121, 178]], STAND_LEGS) },
+  wave: { name: 'Waving', p: pose([100, 100], [100, 180], [[80, 142], [79, 178], [134, 100], [138, 66]], STAND_LEGS) },
+  point: { name: 'Pointing', p: pose([100, 100], [100, 180], [[80, 142], [79, 178], [140, 114], [170, 104]], STAND_LEGS) },
+  hips: { name: 'Hands on hips', p: pose([100, 100], [100, 180], [[66, 138], [86, 170], [134, 138], [114, 170]], STAND_LEGS) },
+  crossed: { name: 'Arms crossed', p: pose([100, 100], [100, 180], [[82, 146], [116, 134], [118, 146], [84, 132]], STAND_LEGS) },
+  think: { name: 'Thinking', p: pose([100, 100], [100, 180], [[86, 146], [120, 148], [128, 144], [108, 96]], STAND_LEGS, -4) },
+  shrug: { name: 'Shrugging', p: pose([100, 102], [100, 180], [[70, 132], [58, 112], [130, 132], [142, 112]], STAND_LEGS, 5) },
+  talk: { name: 'Talking', p: pose([100, 100], [100, 180], [[80, 142], [79, 178], [128, 138], [148, 122]], STAND_LEGS) },
+  phone: { name: 'On the phone', p: pose([100, 100], [100, 180], [[80, 142], [79, 178], [138, 120], [122, 80]], STAND_LEGS, 4) },
+  hold: { name: 'Holding something', p: pose([100, 100], [100, 180], [[82, 146], [94, 152], [118, 146], [106, 152]], STAND_LEGS) },
+  walk: { name: 'Walking', p: pose([102, 100], [100, 180], [[88, 142], [96, 172], [116, 140], [126, 168]], [[88, 230], [72, 280], [112, 228], [124, 280]]) },
+  run: { name: 'Running', p: pose([106, 102], [100, 180], [[78, 128], [88, 108], [130, 140], [124, 164]], [[82, 222], [60, 262], [120, 214], [130, 256]], -6) },
+  sit: { name: 'Sitting', p: pose([96, 126], [96, 204], [[82, 168], [112, 196], [116, 166], [128, 196]], [[136, 206], [138, 282], [142, 210], [148, 282]]) },
+  cheer: { name: 'Cheering', p: pose([100, 100], [100, 180], [[72, 78], [66, 46], [128, 78], [134, 46]], STAND_LEGS) },
 };
 
-// Faces: eyes, eyebrows and mouth, drawn around the middle of the head.
+// Faces: eyes, eyebrows and mouth, drawn around the middle of the face.
 export const FACES: Record<string, { name: string; draw: (x: number, y: number) => ReactNode }> = {
-  happy: { name: 'Happy', draw: (x, y) => (<><Eye x={x - 8} y={y} /><Eye x={x + 8} y={y} /><path d={`M${x - 8} ${y + 9}q8 8 16 0`} /></>) },
-  neutral: { name: 'Calm', draw: (x, y) => (<><Eye x={x - 8} y={y} /><Eye x={x + 8} y={y} /><path d={`M${x - 6} ${y + 11}h12`} /></>) },
-  laugh: { name: 'Laughing', draw: (x, y) => (<><path d={`M${x - 12} ${y + 1}q4 -5 8 0M${x + 4} ${y + 1}q4 -5 8 0`} /><path d={`M${x - 9} ${y + 8}h18q-2 10 -9 10t-9 -10z`} fill={INK} /></>) },
-  sad: { name: 'Sad', draw: (x, y) => (<><Eye x={x - 8} y={y + 1} /><Eye x={x + 8} y={y + 1} /><path d={`M${x - 13} ${y - 5}l7 -3M${x + 13} ${y - 5}l-7 -3`} /><path d={`M${x - 7} ${y + 14}q7 -6 14 0`} /></>) },
-  surprised: { name: 'Surprised', draw: (x, y) => (<><circle cx={x - 8} cy={y} r={2.8} /><circle cx={x + 8} cy={y} r={2.8} /><path d={`M${x - 12} ${y - 8}q4 -3 8 0M${x + 4} ${y - 8}q4 -3 8 0`} /><ellipse cx={x} cy={y + 12} rx={3.6} ry={4.6} /></>) },
-  angry: { name: 'Angry', draw: (x, y) => (<><Eye x={x - 8} y={y + 1} /><Eye x={x + 8} y={y + 1} /><path d={`M${x - 13} ${y - 7}l8 4M${x + 13} ${y - 7}l-8 4`} /><path d={`M${x - 6} ${y + 13}q6 -4 12 0`} /></>) },
-  thinking: { name: 'Thinking', draw: (x, y) => (<><Eye x={x - 6} y={y - 1} /><Eye x={x + 10} y={y - 1} /><path d={`M${x + 5} ${y - 9}q5 -3 10 0`} /><path d={`M${x - 1} ${y + 11}h8`} /></>) },
-  worried: { name: 'Worried', draw: (x, y) => (<><Eye x={x - 8} y={y + 1} /><Eye x={x + 8} y={y + 1} /><path d={`M${x - 12} ${y - 6}l7 2M${x + 12} ${y - 6}l-7 2`} /><path d={`M${x - 7} ${y + 12}q3.5 -3 7 0t7 0`} /></>) },
-  wink: { name: 'Winking', draw: (x, y) => (<><path d={`M${x - 12} ${y}q4 3 8 0`} /><Eye x={x + 8} y={y} /><path d={`M${x - 8} ${y + 9}q8 8 16 0`} /></>) },
-  bored: { name: 'Bored', draw: (x, y) => (<><path d={`M${x - 11} ${y}h6M${x + 5} ${y}h6`} /><path d={`M${x - 11} ${y - 2}q3 -2 6 0M${x + 5} ${y - 2}q3 -2 6 0`} opacity={0.6} /><path d={`M${x - 5} ${y + 12}h10`} /></>) },
+  happy: { name: 'Happy', draw: (x, y) => (<><Eye x={x - 8} y={y} /><Eye x={x + 8} y={y} /><Brows x={x} y={y} /><path d={`M${x - 7} ${y + 11}q7 6 14 0`} /></>) },
+  neutral: { name: 'Calm', draw: (x, y) => (<><Eye x={x - 8} y={y} /><Eye x={x + 8} y={y} /><Brows x={x} y={y} /><path d={`M${x - 5} ${y + 13}h10`} /></>) },
+  laugh: { name: 'Laughing', draw: (x, y) => (<><path d={`M${x - 12} ${y + 1}q4 -5 8 0M${x + 4} ${y + 1}q4 -5 8 0`} /><Brows x={x} y={y - 2} /><path d={`M${x - 9} ${y + 9}h18q-2 11 -9 11t-9 -11z`} fill={INK} /></>) },
+  sad: { name: 'Sad', draw: (x, y) => (<><Eye x={x - 8} y={y + 1} /><Eye x={x + 8} y={y + 1} /><path d={`M${x - 13} ${y - 5}l8 -3M${x + 13} ${y - 5}l-8 -3`} /><path d={`M${x - 7} ${y + 15}q7 -6 14 0`} /></>) },
+  surprised: { name: 'Surprised', draw: (x, y) => (<><circle cx={x - 8} cy={y} r={3} fill="#fff" /><circle cx={x + 8} cy={y} r={3} fill="#fff" /><circle cx={x - 8} cy={y} r={1.4} fill={INK} /><circle cx={x + 8} cy={y} r={1.4} fill={INK} /><path d={`M${x - 12} ${y - 9}q4 -3 8 0M${x + 4} ${y - 9}q4 -3 8 0`} /><ellipse cx={x} cy={y + 13} rx={3.4} ry={4.4} fill={INK} /></>) },
+  angry: { name: 'Angry', draw: (x, y) => (<><Eye x={x - 8} y={y + 1} /><Eye x={x + 8} y={y + 1} /><path d={`M${x - 13} ${y - 7}l9 4M${x + 13} ${y - 7}l-9 4`} /><path d={`M${x - 6} ${y + 14}q6 -4 12 0`} /></>) },
+  thinking: { name: 'Thinking', draw: (x, y) => (<><Eye x={x - 6} y={y - 1} /><Eye x={x + 10} y={y - 1} /><path d={`M${x - 11} ${y - 6}l7 -1M${x + 5} ${y - 9}q5 -3 10 0`} /><path d={`M${x - 1} ${y + 12}h8`} /></>) },
+  worried: { name: 'Worried', draw: (x, y) => (<><Eye x={x - 8} y={y + 1} /><Eye x={x + 8} y={y + 1} /><path d={`M${x - 12} ${y - 6}l7 2M${x + 12} ${y - 6}l-7 2`} /><path d={`M${x - 7} ${y + 13}q3.5 -3 7 0t7 0`} /></>) },
+  wink: { name: 'Winking', draw: (x, y) => (<><path d={`M${x - 12} ${y}q4 3 8 0`} /><Eye x={x + 8} y={y} /><Brows x={x} y={y} /><path d={`M${x - 7} ${y + 11}q7 6 14 0`} /></>) },
+  bored: { name: 'Bored', draw: (x, y) => (<><path d={`M${x - 11} ${y}h6M${x + 5} ${y}h6`} /><path d={`M${x - 11} ${y - 2}q3 -2 6 0M${x + 5} ${y - 2}q3 -2 6 0`} opacity={0.6} /><path d={`M${x - 5} ${y + 13}h10`} /></>) },
 };
 function Eye({ x, y }: { x: number; y: number }) {
-  return <circle cx={x} cy={y} r={2.2} fill={INK} stroke="none" />;
+  return (
+    <>
+      <path d={`M${x - 3.6} ${y}q3.6 -3.4 7.2 0q-3.6 2.6 -7.2 0z`} fill="#fff" strokeWidth={1.6} />
+      <circle cx={x + 0.3} cy={y - 0.2} r={1.7} fill={INK} stroke="none" />
+    </>
+  );
+}
+function Brows({ x, y }: { x: number; y: number }) {
+  return <path d={`M${x - 12} ${y - 6}q4 -3 8 -1M${x + 4} ${y - 7}q4 -2 8 1`} />;
+}
+
+// Smooth outlines through points (Catmull-Rom), closed.
+function smooth(pts: P[]) {
+  const n = pts.length;
+  const at = (i: number) => pts[(i + n) % n];
+  let d = `M${at(0)[0].toFixed(1)} ${at(0)[1].toFixed(1)}`;
+  for (let i = 0; i < n; i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += `C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+  }
+  return d + 'Z';
+}
+const sub = (a: P, b: P): P => [a[0] - b[0], a[1] - b[1]];
+const unit = (v: P): P => {
+  const l = Math.hypot(v[0], v[1]) || 1;
+  return [v[0] / l, v[1] / l];
+};
+// A limb as a tapered outline along its joints (widths at each joint).
+function tube(pts: P[], ws: number[]) {
+  const n = pts.length;
+  const dirs = pts.map((_, i) => unit(sub(pts[Math.min(n - 1, i + 1)], pts[Math.max(0, i - 1)])));
+  const L: P[] = [];
+  const R: P[] = [];
+  pts.forEach((p, i) => {
+    const [dx, dy] = dirs[i];
+    L.push([p[0] - dy * ws[i] / 2, p[1] + dx * ws[i] / 2]);
+    R.push([p[0] + dy * ws[i] / 2, p[1] - dx * ws[i] / 2]);
+  });
+  const e = pts[n - 1];
+  const s = pts[0];
+  const de = dirs[n - 1];
+  const ds = dirs[0];
+  return smooth([...L, [e[0] + de[0] * ws[n - 1] * 0.35, e[1] + de[1] * ws[n - 1] * 0.35], ...R.reverse(), [s[0] - ds[0] * ws[0] * 0.3, s[1] - ds[1] * ws[0] * 0.3]]);
+}
+// Points given along (u) and across (v) a direction, from an origin.
+const frame = (o: P, d: P, k = 1) => (a: number, b: number): P => [o[0] + d[0] * a * k - d[1] * b * k, o[1] + d[1] * a * k + d[0] * b * k];
+
+function Hand({ at, from, side }: { at: P; from: P; side: 1 | -1 }) {
+  const f = frame(at, unit(sub(at, from)));
+  const s = side;
+  const pts: [number, number][] = [[-2, -3.4 * s], [3, -4 * s], [7.6, -2.6 * s], [8.6, 0.4 * s], [6.8, 3.4 * s], [3, 3.8 * s], [3.6, 6.6 * s], [0.6, 6.4 * s], [-2, 3.4 * s]];
+  return <path d={smooth(pts.map(([a, b]) => f(a, b)))} fill={G0} />;
+}
+function Shoe({ at, dir, fill }: { at: P; dir: 1 | -1; fill: string }) {
+  const [x, y] = at;
+  const s = dir;
+  return (
+    <>
+      <path d={smooth([[x - 6 * s, y - 4], [x + 2 * s, y - 6], [x + 11 * s, y - 2.5], [x + 15 * s, y + 1.5], [x + 13 * s, y + 4.5], [x - 6.5 * s, y + 4.5]])} fill={fill} />
+      <path d={`M${x - 6 * s} ${y + 2.6}H${x + 13.5 * s}`} strokeWidth={1.2} />
+    </>
+  );
 }
 
 // The characters: the same people in every pose.
-type Hair = (x: number, y: number) => { back?: ReactNode; front?: ReactNode };
-export type Person = { name: string; hair: Hair; top: Col; bottom: Col; shoes: Col; skirt?: boolean; glasses?: boolean; beard?: boolean; scale?: number; collar?: Col };
+type Hair = (x: number, y: number, fill: string) => { back?: ReactNode; front?: ReactNode };
+export type Person = { name: string; hair: Hair; hairCol: Col; top: Col; bottom: Col; shoes: Col; skirt?: boolean; glasses?: boolean; beard?: boolean; scale?: number; collar?: Col };
+const strands = (x: number, y: number, list: string) => <path d={list.replace(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g, (_m, a, b) => `${x + Number(a)} ${y + Number(b)}`)} fill="none" strokeWidth={0.9} opacity={0.75} />;
 const HAIR: Record<string, Hair> = {
-  long: (x, y) => ({
-    back: <path d={`M${x - 25} ${y - 2}q-4 30 2 46l14 -2q-6 -14 -4 -30M${x + 25} ${y - 2}q4 30 -2 46l-14 -2q6 -14 4 -30`} fill={G5} />,
-    front: <path d={`M${x - 24} ${y - 2}q2 -26 24 -26t24 26q-14 -14 -30 -10q-8 2 -18 10z`} fill={G5} />,
-  }),
-  short: (x, y) => ({ front: <path d={`M${x - 23} ${y - 4}q0 -24 23 -24t23 24q-6 -10 -16 -11q-10 6 -30 11z`} fill={G4} /> }),
-  curly: (x, y) => ({
+  long: (x, y, fill) => ({
+    back: <path d={smooth([[x - 15, y - 8], [x - 19, y + 10], [x - 19, y + 28], [x - 14, y + 38], [x, y + 36], [x + 14, y + 38], [x + 19, y + 28], [x + 19, y + 10], [x + 15, y - 8]])} fill={fill} />,
     front: (
-      <path
-        d={`M${x - 23} ${y - 2}c-6 -6 -2 -14 3 -14c-1 -8 8 -12 12 -8c3 -7 13 -7 16 -1c5 -4 14 0 12 7c6 1 8 9 3 14c-6 -6 -14 -8 -24 -8s-18 4 -22 10z`}
-        fill={G5}
-      />
+      <>
+        <path d={smooth([[x - 16, y + 4], [x - 17, y - 10], [x - 9, y - 20], [x, y - 21], [x + 9, y - 20], [x + 17, y - 10], [x + 16, y + 4], [x + 11, y - 8], [x + 2, y - 13], [x - 6, y - 9]])} fill={fill} />
+        {strands(x, y, 'M-12,0 Q-12,-12 -2,-16 M-7,-4 Q-6,-13 0,-17 M12,-2 Q11,-12 3,-16 M7,-6 Q6,-12 2,-15')}
+      </>
     ),
   }),
-  bun: (x, y) => ({
-    back: <circle cx={x + 2} cy={y - 26} r={10} fill={G2} />,
-    front: <path d={`M${x - 23} ${y - 1}q0 -23 23 -23t23 23q-8 -12 -23 -12t-23 12z`} fill={G2} />,
+  short: (x, y, fill) => ({
+    front: (
+      <>
+        <path d={smooth([[x - 15, y - 1], [x - 16, y - 13], [x - 8, y - 21], [x + 2, y - 22], [x + 11, y - 19], [x + 16, y - 11], [x + 15, y - 1], [x + 12, y - 9], [x + 4, y - 12], [x - 5, y - 11], [x - 11, y - 7]])} fill={fill} />
+        {strands(x, y, 'M-12,-4 L-9,-14 M-7,-9 L-4,-18 M-1,-11 L1,-19 M5,-11 L6,-19 M10,-8 L12,-15')}
+      </>
+    ),
+  }),
+  curly: (x, y, fill) => ({
+    front: (
+      <>
+        <path
+          d={`M${x - 16} ${y - 1}c-5 -4 -4 -12 1 -13c-1 -7 6 -11 11 -8c3 -6 11 -6 14 -1c5 -3 12 1 11 7c5 2 6 9 2 13c-3 -6 -10 -8 -16 -7c-6 -4 -13 -1 -17 4c-2 1 -4 3 -6 5z`}
+          fill={fill}
+        />
+        {strands(x, y, 'M-11,-9 Q-8,-11 -6,-8 M-3,-15 Q0,-17 2,-14 M6,-13 Q9,-15 11,-12 M-8,-3 Q-5,-5 -3,-2 M4,-6 Q7,-8 9,-5')}
+      </>
+    ),
+  }),
+  bun: (x, y, fill) => ({
+    back: <path d={smooth([[x - 7, y - 22], [x - 6, y - 31], [x + 2, y - 35], [x + 9, y - 30], [x + 8, y - 22]])} fill={fill} />,
+    front: (
+      <>
+        <path d={smooth([[x - 15, y + 1], [x - 16, y - 12], [x - 8, y - 20], [x + 1, y - 21], [x + 10, y - 19], [x + 16, y - 11], [x + 15, y + 1], [x + 10, y - 10], [x, y - 13], [x - 9, y - 10]])} fill={fill} />
+        {strands(x, y, 'M-12,-2 Q-11,-13 -1,-18 M12,-2 Q11,-13 2,-18 M-5,-10 Q-3,-16 1,-19')}
+      </>
+    ),
   }),
   cap: (x, y) => ({
     front: (
       <>
-        <path d={`M${x - 22} ${y - 6}q2 -20 22 -20t22 20z`} fill={A} />
-        <path d={`M${x + 4} ${y - 7}h30q-4 6 -30 5z`} fill={A_DARK} />
+        <path d={smooth([[x - 15, y - 6], [x - 13, y - 17], [x - 3, y - 23], [x + 8, y - 22], [x + 15, y - 14], [x + 15, y - 6]])} fill={A} />
+        <path d={smooth([[x + 4, y - 8], [x + 18, y - 10], [x + 29, y - 7], [x + 26, y - 4], [x + 6, y - 4]])} fill={A_DARK} />
+        {strands(x, y, 'M0,-23 Q1,-14 0,-6')}
       </>
     ),
   }),
-  ponytail: (x, y) => ({
-    back: <path d={`M${x + 18} ${y - 14}q22 2 18 34q-8 -4 -10 -20q-4 -8 -10 -10z`} fill={G4} />,
-    front: <path d={`M${x - 23} ${y - 2}q0 -24 23 -24t23 24q-10 -10 -24 -10q-14 0 -22 10z`} fill={G4} />,
+  ponytail: (x, y, fill) => ({
+    back: <path d={smooth([[x + 12, y - 14], [x + 24, y - 12], [x + 28, y + 2], [x + 26, y + 20], [x + 21, y + 26], [x + 20, y + 10], [x + 15, y - 2]])} fill={fill} />,
+    front: (
+      <>
+        <path d={smooth([[x - 15, y], [x - 16, y - 12], [x - 8, y - 20], [x + 1, y - 21], [x + 10, y - 19], [x + 16, y - 11], [x + 15, y], [x + 9, y - 10], [x - 2, y - 12], [x - 10, y - 8]])} fill={fill} />
+        {strands(x, y, 'M-11,-4 Q-9,-14 0,-18 M-5,-9 Q-2,-15 4,-18 M18,-8 Q24,2 23,16')}
+      </>
+    ),
   }),
 };
 export const PEOPLE: Record<string, Person> = {
-  maya: { name: 'Maya', hair: HAIR.long, top: 'A', bottom: 'G4', shoes: 'G5' },
-  leo: { name: 'Leo', hair: HAIR.curly, top: 'G2', bottom: 'A_DARK', shoes: 'G5', collar: 'A' },
-  sam: { name: 'Sam', hair: HAIR.short, top: 'A_LIGHT', bottom: 'G5', shoes: 'G4', glasses: true },
-  grace: { name: 'Grace', hair: HAIR.bun, top: 'A', bottom: 'G3', shoes: 'G5', skirt: true, glasses: true },
-  omar: { name: 'Omar', hair: HAIR.short, top: 'G3', bottom: 'G5', shoes: 'G5', beard: true, collar: 'A' },
-  zoe: { name: 'Zoe', hair: HAIR.ponytail, top: 'A_LIGHT', bottom: 'A_DARK', shoes: 'G5', scale: 0.78 },
-  ben: { name: 'Ben', hair: HAIR.cap, top: 'G2', bottom: 'G4', shoes: 'A_DARK', scale: 0.74 },
+  maya: { name: 'Maya', hair: HAIR.long, hairCol: 'G5', top: 'A', bottom: 'G4', shoes: 'G5' },
+  leo: { name: 'Leo', hair: HAIR.curly, hairCol: 'G5', top: 'G2', bottom: 'A_DARK', shoes: 'G5', collar: 'A' },
+  sam: { name: 'Sam', hair: HAIR.short, hairCol: 'G4', top: 'A_LIGHT', bottom: 'G5', shoes: 'G4', glasses: true },
+  grace: { name: 'Grace', hair: HAIR.bun, hairCol: 'G2', top: 'A', bottom: 'G3', shoes: 'G5', skirt: true, glasses: true },
+  omar: { name: 'Omar', hair: HAIR.short, hairCol: 'G5', top: 'G3', bottom: 'G5', shoes: 'G5', beard: true, collar: 'A' },
+  zoe: { name: 'Zoe', hair: HAIR.ponytail, hairCol: 'G4', top: 'A_LIGHT', bottom: 'A_DARK', shoes: 'G5', scale: 0.78 },
+  ben: { name: 'Ben', hair: HAIR.cap, hairCol: 'G4', top: 'G2', bottom: 'G4', shoes: 'A_DARK', scale: 0.74 },
 };
 
-// An outlined limb: an ink line with the colour inside it.
-function Limb({ pts, w, fill }: { pts: P[]; w: number; fill: string }) {
-  const d = 'M' + pts.map((p) => p.join(' ')).join(' L');
-  return (
-    <>
-      <path d={d} stroke={INK} strokeWidth={w + 3.6} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <path d={d} stroke={fill} strokeWidth={w} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </>
-  );
-}
-// A few pencil strokes of shadow.
+// A few pen strokes of shadow.
 function Hatch({ x, y, n = 3, len = 9 }: { x: number; y: number; n?: number; len?: number }) {
-  return <path d={Array.from({ length: n }, (_, i) => `M${x + i * 4} ${y}l${-len * 0.45} ${len}`).join('')} stroke={INK} strokeWidth={1.2} opacity={0.35} />;
+  return <path d={Array.from({ length: n }, (_, i) => `M${x + i * 3.2} ${y}l${-len * 0.45} ${len}`).join('')} stroke={INK} strokeWidth={0.9} opacity={0.7} />;
 }
 
 // The viewBox that shows just a person's head and shoulders (children are drawn smaller, lower down).
 export function faceBox(who: string) {
   const k = PEOPLE[who]?.scale ?? 1;
-  return `${100 * (1 - k) + 40 * k} ${286 * (1 - k)} ${120 * k} ${118 * k}`;
+  return `${100 * (1 - k) + 64 * k} ${286 * (1 - k) + 46 * k} ${72 * k} ${72 * k}`;
 }
 
 export function PersonArt({ who = 'maya', p = 'stand', face = 'happy' }: { who?: string; p?: string; face?: string }) {
   const c = PEOPLE[who] ?? PEOPLE.maya;
   const ps = (POSES[p] ?? POSES.stand).p;
   const f = FACES[face] ?? FACES.happy;
-  const [nx, ny] = ps.neck;
-  const [hx, hy] = ps.hip;
-  const sL: P = [nx - 21, ny + 7];
-  const sR: P = [nx + 21, ny + 7];
-  const hL: P = [hx - 10, hy];
-  const hR: P = [hx + 10, hy];
-  const head: P = [nx, ny - 30];
-  const hair = c.hair(head[0], head[1]);
+  const N = ps.neck;
+  const H = ps.hip;
+  const len = Math.hypot(H[0] - N[0], H[1] - N[1]);
+  const v = unit(sub(H, N));
+  // across the body, to the right as you look at it
+  const T = (a: number, b: number): P => [N[0] + v[1] * a + v[0] * b, N[1] - v[0] * a + v[1] * b];
+  const sL = T(-16, 9);
+  const sR = T(16, 9);
+  const hL = T(-8, len);
+  const hR = T(8, len);
+  const tilt = ps.tilt ?? 0;
+  const head: P = [N[0] + Math.sin((tilt * Math.PI) / 180) * 24, N[1] - 24];
+  const hairCol = C[c.hairCol];
+  const hair = c.hair(head[0], head[1], hairCol);
   const [ae1, ah1, ae2, ah2] = ps.arms;
   const [lk1, lf1, lk2, lf2] = ps.legs;
   const top = C[c.top];
+  const bottom = C[c.bottom];
   const s = c.scale ?? 1;
-  // Smaller people (children) stand on the same ground.
+  const footDir = (foot: P, d: 1 | -1): 1 | -1 => (Math.abs(foot[0] - H[0]) > 18 ? (foot[0] > H[0] ? 1 : -1) : d);
+  // the wrist, a little before the hand
+  const wrist = (e: P, h: P): P => [h[0] - (h[0] - e[0]) * 0.12, h[1] - (h[1] - e[1]) * 0.12];
+  const torso = smooth([T(-5, -2), T(-14, 3), T(-19, 9), T(-19, 22), T(-15, len * 0.62), T(-15, len + 3), T(0, len + 5), T(15, len + 3), T(15, len * 0.62), T(19, 22), T(19, 9), T(14, 3), T(5, -2), T(0, 3)]);
+  const shade = smooth([T(11, 14), T(18, 14), T(18, 26), T(14, len * 0.62), T(14, len + 2), T(9, len + 2), T(10, len * 0.6), T(12, 26)]);
   const t = `translate(${100 * (1 - s)} ${286 * (1 - s)}) scale(${s})`;
   return (
     <g transform={t}>
-      <g stroke={INK} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <g stroke={INK} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" fill="none">
         {/* legs and shoes */}
-        <Limb pts={[hL, lk1, lf1]} w={15} fill={C[c.bottom]} />
-        <Limb pts={[hR, lk2, lf2]} w={15} fill={C[c.bottom]} />
-        <ellipse cx={lf1[0] - 4} cy={lf1[1] + 1} rx={11} ry={5.5} fill={C[c.shoes]} />
-        <ellipse cx={lf2[0] + 4} cy={lf2[1] + 1} rx={11} ry={5.5} fill={C[c.shoes]} />
-        {/* skirt */}
-        {c.skirt && <path d={`M${hx - 17} ${hy - 6}h34l10 44h-54z`} fill={C[c.bottom]} />}
+        <path d={tube([hL, lk1, lf1], [15, 11, 8.5])} fill={bottom} />
+        <path d={tube([hR, lk2, lf2], [15, 11, 8.5])} fill={bottom} />
+        <path d={`M${lk1[0] - 3} ${lk1[1] - 1}q3 2 6 0M${lk2[0] - 3} ${lk2[1] - 1}q3 2 6 0`} strokeWidth={1.1} />
+        <Shoe at={lf1} dir={footDir(lf1, -1)} fill={C[c.shoes]} />
+        <Shoe at={lf2} dir={footDir(lf2, 1)} fill={C[c.shoes]} />
+        {c.skirt && <path d={smooth([T(-15, len - 8), T(15, len - 8), T(22, len + 34), T(0, len + 37), T(-22, len + 34)])} fill={bottom} />}
+        {c.skirt && <path d={`M${T(-5, len + 4).join(' ')}L${T(-8, len + 34).join(' ')}M${T(6, len + 4).join(' ')}L${T(9, len + 34).join(' ')}`} strokeWidth={1} />}
         {/* body */}
-        <path d={`M${sL[0] - 3} ${sL[1] - 2}Q${nx} ${ny - 4} ${sR[0] + 3} ${sR[1] - 2}L${hx + 17} ${hy + 4}Q${hx} ${hy + 9} ${hx - 17} ${hy + 4}z`} fill={top} />
-        <Hatch x={hx + 4} y={hy - 30} n={3} len={12} />
-        {c.collar && <path d={`M${nx - 9} ${ny + 1}l9 10l9 -10`} fill={C[c.collar]} />}
-        {/* neck and head */}
-        <g transform={`translate(${head[0]} ${head[1]}) scale(1.13) translate(${-head[0]} ${-head[1]})`}>{hair.back}</g>
-        <path d={`M${nx} ${ny + 2}v-8`} stroke={INK} strokeWidth={12} />
-        <path d={`M${nx} ${ny + 2}v-8`} stroke={G1} strokeWidth={8} />
-        <g transform={`rotate(${ps.tilt ?? 0} ${head[0]} ${head[1] + 20})`}>
-          <circle cx={head[0] - 26} cy={head[1] + 3} r={5} fill={G0} />
-          <circle cx={head[0] + 26} cy={head[1] + 3} r={5} fill={G0} />
-          <circle cx={head[0]} cy={head[1]} r={26} fill={G0} />
-          <g transform={`translate(${head[0]} ${head[1]}) scale(1.13) translate(${-head[0]} ${-head[1]})`}>{hair.front}</g>
-          {c.beard && <path d={`M${head[0] - 21} ${head[1] + 9}q21 28 42 0q-2 12 -21 14q-19 -2 -21 -14z`} fill={G4} />}
-          <g strokeWidth={2.3} transform={`translate(${head[0]} ${head[1] + 3}) scale(1.12) translate(${-head[0]} ${-head[1] - 3})`}>{f.draw(head[0], head[1] + 3)}</g>
+        {hair.back}
+        <path d={tube([N, [head[0], head[1] + 12]], [9, 8])} fill={G0} />
+        <path d={torso} fill={top} />
+        <path d={shade} fill={G3} stroke="none" opacity={0.55} />
+        <path d={`M${T(-15, len - 1).join(' ')}Q${T(0, len + 3).join(' ')} ${T(15, len - 1).join(' ')}`} strokeWidth={1.2} />
+        <path d={`M${T(-8, 30).join(' ')}q2 8 0 16M${T(6, 40).join(' ')}q3 6 1 12`} strokeWidth={1} />
+        {c.collar ? <path d={`M${T(-7, -1).join(' ')}L${T(0, 9).join(' ')}L${T(7, -1).join(' ')}L${T(3, 6).join(' ')}M${T(-7, -1).join(' ')}L${T(-3, 6).join(' ')}`} fill={C[c.collar]} /> : <path d={`M${T(-6, -1).join(' ')}Q${T(0, 6).join(' ')} ${T(6, -1).join(' ')}`} strokeWidth={1.3} />}
+        {c.collar && <path d={`M${T(0, 9).join(' ')}L${T(0, len).join(' ')}`} strokeWidth={1} />}
+        {/* head */}
+        <g transform={`rotate(${tilt} ${head[0]} ${head[1] + 18})`}>
+          <path d={`M${head[0] - 14} ${head[1] - 1}q-5 1 -4 6t5 5M${head[0] + 14} ${head[1] - 1}q5 1 4 6t-5 5`} fill={G0} />
+          <path d={smooth([[head[0], head[1] - 18], [head[0] + 11, head[1] - 15], [head[0] + 15, head[1] - 4], [head[0] + 14, head[1] + 7], [head[0] + 9, head[1] + 15], [head[0], head[1] + 19], [head[0] - 9, head[1] + 15], [head[0] - 14, head[1] + 7], [head[0] - 15, head[1] - 4], [head[0] - 11, head[1] - 15]])} fill={G0} />
+          {hair.front}
+          {c.beard && <path d={smooth([[head[0] - 14, head[1] + 3], [head[0] - 8, head[1] + 10], [head[0], head[1] + 11], [head[0] + 8, head[1] + 10], [head[0] + 14, head[1] + 3], [head[0] + 10, head[1] + 15], [head[0], head[1] + 20], [head[0] - 10, head[1] + 15]])} fill={G4} />}
+          <g strokeWidth={2.6} transform={`translate(${head[0]} ${head[1] + 2}) scale(0.6) translate(${-head[0]} ${-head[1] - 2})`}>{f.draw(head[0], head[1] + 2)}</g>
+          <path d={`M${head[0] + 0.5} ${head[1] + 1.5}q2.4 4 -0.6 5.2`} strokeWidth={1.2} />
           {c.glasses && (
-            <g strokeWidth={1.8}>
-              <circle cx={head[0] - 9} cy={head[1] + 3} r={6.6} />
-              <circle cx={head[0] + 9} cy={head[1] + 3} r={6.6} />
-              <path d={`M${head[0] - 2.4} ${head[1] + 3}h4.8`} />
+            <g strokeWidth={1.2}>
+              <rect x={head[0] - 9.5} y={head[1] - 1} width={8} height={6} rx={2.4} />
+              <rect x={head[0] + 1.5} y={head[1] - 1} width={8} height={6} rx={2.4} />
+              <path d={`M${head[0] - 1.5} ${head[1] + 1.5}h3`} />
             </g>
           )}
-          <circle cx={head[0] - 16} cy={head[1] + 13} r={3.6} fill={A_LIGHT} stroke="none" opacity={0.7} />
-          <circle cx={head[0] + 16} cy={head[1] + 13} r={3.6} fill={A_LIGHT} stroke="none" opacity={0.7} />
         </g>
         {/* arms and hands, over the body */}
-        <Limb pts={[sL, ae1, ah1]} w={12} fill={top} />
-        <Limb pts={[sR, ae2, ah2]} w={12} fill={top} />
-        <circle cx={ah1[0]} cy={ah1[1]} r={5.2} fill={G0} />
-        <circle cx={ah2[0]} cy={ah2[1]} r={5.2} fill={G0} />
+        <path d={tube([sL, ae1, wrist(ae1, ah1)], [11, 9, 7.5])} fill={top} />
+        <path d={tube([sR, ae2, wrist(ae2, ah2)], [11, 9, 7.5])} fill={top} />
+        <path d={`M${ae1[0] - 2} ${ae1[1] - 2}l3 3M${ae2[0] + 2} ${ae2[1] - 2}l-3 3`} strokeWidth={1} />
+        {p === 'phone' && <rect x={ah2[0] - 1} y={ah2[1] - 9} width={6} height={12} rx={1.5} fill={INK} transform={`rotate(-12 ${ah2[0]} ${ah2[1]})`} />}
+        <Hand at={ah1} from={ae1} side={-1} />
+        <Hand at={ah2} from={ae2} side={1} />
       </g>
     </g>
   );
@@ -210,7 +328,7 @@ export function PersonArt({ who = 'maya', p = 'stand', face = 'happy' }: { who?:
 
 // Each thing is drawn in a 200 × 200 box, standing on y = 190 where it stands on the floor.
 type Thing = { name: string; group: 'Home' | 'School and work' | 'Food' | 'Outside' | 'Travel'; draw: () => ReactNode };
-const S = { stroke: INK, strokeWidth: 2.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+const S = { stroke: INK, strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 export const THINGS: Record<string, Thing> = {
   table: { name: 'Table', group: 'Home', draw: () => (<g {...S}><path d="M22 92h156l-10 14H32z" fill={G2} /><path d="M40 106v84M160 106v84M58 106v60M142 106v60" fill="none" /><Hatch x={120} y={96} n={4} len={7} /></g>) },
   chair: { name: 'Chair', group: 'Home', draw: () => (<g {...S}><path d="M64 28h72v74H64z" fill={A_LIGHT} /><path d="M54 102h92l-6 16H60z" fill={A} /><path d="M66 118v72M134 118v72M78 118v50M122 118v50" fill="none" /></g>) },
