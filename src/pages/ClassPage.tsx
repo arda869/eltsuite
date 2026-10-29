@@ -1,3 +1,4 @@
+import { learnOrigin } from '../lib/site';
 import { copyText } from '../lib/copyText';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
@@ -101,6 +102,7 @@ export function ClassPage() {
   const t = theme(c?.themeColor);
   const style = { ['--accent' as string]: t.accent, ['--accent-text' as string]: t.text };
 
+  const [linkCopied, setLinkCopied] = useState(false);
   async function copyCode() {
     if (!c) return;
     try {
@@ -173,6 +175,9 @@ export function ClassPage() {
                   Class code <strong>{c.classCode}</strong>
                   <button type="button" onClick={copyCode}>
                     {copied ? 'Copied' : 'Copy'}
+                  </button>
+                  <button type="button" onClick={() => void copyText(`${learnOrigin()}/?code=${c.classCode}`).then(() => (setLinkCopied(true), setTimeout(() => setLinkCopied(false), 1500)))} data-tip={`Learners open ${learnOrigin().replace(/^https?:\/\//, '')} with the code filled in`}>
+                    {linkCopied ? 'Copied' : 'Copy the link'}
                   </button>
                 </span>
                 <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />

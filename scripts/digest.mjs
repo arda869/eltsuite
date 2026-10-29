@@ -17,6 +17,7 @@ const db = getFirestore();
 const mail = nodemailer.createTransport(SMTP);
 const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
 const SITE = 'https://eltsuite.com';
+const LEARN = 'https://learn.eltsuite.com'; // learners' own address
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const now = Date.now();
 
@@ -55,7 +56,7 @@ for (const u of users.docs) {
     parts.push(`<div style="margin:0 0 18px;padding:14px 16px;border-radius:12px;background:#f7f5f2">
       <div style="font:600 15px Georgia,serif;color:#2b2a28;margin-bottom:6px">${esc(title)}</div>
       ${list.map((m) => `<div style="font:14px/1.45 Arial,sans-serif;color:#3d3a36;margin:4px 0"><b>${esc((m.name || '').split(' ')[0])}:</b> ${esc((m.text || (m.share ? 'Shared “' + m.share.title + '”' : 'Sent a task element')).slice(0, 200))}</div>`).join('')}
-      <a href="${SITE}/messages?c=${c.id}" style="display:inline-block;margin-top:8px;font:600 13px Arial,sans-serif;color:#b8744e">Open the chat</a>
+      <a href="${learner ? LEARN : SITE}/messages?c=${c.id}" style="display:inline-block;margin-top:8px;font:600 13px Arial,sans-serif;color:#b8744e">Open the chat</a>
     </div>`);
   }
   const n = Math.max(total, waiting.length);

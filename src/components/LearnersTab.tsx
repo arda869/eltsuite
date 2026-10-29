@@ -1,3 +1,4 @@
+import { learnOrigin } from '../lib/site';
 import { tr } from '../lib/terms';
 import { LimitError } from '../lib/limitError';
 import { openMenu } from './ContextMenu';
@@ -66,7 +67,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
           if (!uid) continue;
           try {
             const id = await openChat(me, [{ key: uid, name: a.name, role: 'teacher' }]);
-            await sendMsg({ id } as Chat, me, { text: `I have added you to ${c.name}, my teacher training class. Sign in at ${window.location.origin}/join with the class code ${c.classCode}, your name (${a.name}) and the PIN ${a.pin}.` });
+            await sendMsg({ id } as Chat, me, { text: `I have added you to ${c.name}, my teacher training class. Sign in at ${learnOrigin()}/?code=${c.classCode} with the class code ${c.classCode}, your name (${a.name}) and the PIN ${a.pin}.` });
           } catch {
             /* the PIN is still in the table */
           }
@@ -115,7 +116,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
     const rows = sorted
       .map(
         (l) =>
-          `<div class="pc"><div class="n">${l.displayName.replace(/</g, '&lt;')}</div><div class="k">Class code</div><div class="v">${c.classCode}</div><div class="k">PIN</div><div class="v">${pins[l.id] ?? '—'}</div><div class="u">${window.location.origin}/join</div></div>`,
+          `<div class="pc"><div class="n">${l.displayName.replace(/</g, '&lt;')}</div><div class="k">Class code</div><div class="v">${c.classCode}</div><div class="k">PIN</div><div class="v">${pins[l.id] ?? '—'}</div><div class="u">${learnOrigin().replace(/^https?:\/\//, '')}/?code=${c.classCode}</div></div>`,
       )
       .join('');
     const w = window.open('', '_blank');

@@ -6,6 +6,8 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { learnerEmail, learnerPassword } from '../lib/learners';
 import { Wordmark } from '../components/Wordmark';
+import { UiIcon } from '../components/UiIcon';
+import { live, mainOrigin } from '../lib/site';
 
 type Found = { code: string; className: string; roster: { id: string; name: string }[] };
 
@@ -13,13 +15,17 @@ const normalise = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').repla
 
 function lastCode() {
   try {
+    // A link from the teacher (learn.eltsuite.com/?code=ABC-123) fills the code in.
+    const q = new URLSearchParams(location.search).get('code');
+    if (q) return normalise(q);
     return localStorage.getItem('lastClassCode') ?? '';
   } catch {
     return '';
   }
 }
 
-export function LearnerJoin() {
+// The learners' home page (learn.eltsuite.com): join your class with its code and your PIN.
+export function LearnerJoin({ home = false }: { home?: boolean }) {
   const [code, setCode] = useState(lastCode());
   const [found, setFound] = useState<Found | null>(null);
   const [learnerId, setLearnerId] = useState('');
@@ -99,9 +105,26 @@ export function LearnerJoin() {
 
   return (
     <div className="signin">
-      <div className="intro">
+      <div className="intro lj-intro">
         <Wordmark big />
-        <p>Your English class, live. Join with the code and PIN your teacher gave you.</p>
+        {home && <span className="lj-kicker">For learners</span>}
+        <p>Your English class, in one place. Join with the code and PIN your teacher gave you.</p>
+        {home && (
+          <ul className="lj-points">
+            <li>
+              <span className="lj-ico"><UiIcon name="sync" size={18} /></span>
+              <span><b>Live lessons.</b> Your screen follows your teacher.</span>
+            </li>
+            <li>
+              <span className="lj-ico"><UiIcon name="task" size={18} /></span>
+              <span><b>Homework.</b> Do it here and see your answers.</span>
+            </li>
+            <li>
+              <span className="lj-ico"><UiIcon name="message" size={18} /></span>
+              <span><b>Messages and notes.</b> Everything from your class.</span>
+            </li>
+          </ul>
+        )}
         <div className="rule" />
         <span className="eyebrow">No email needed</span>
       </div>
@@ -176,7 +199,7 @@ export function LearnerJoin() {
         </button>
         <div className="row-between small">
           <span className="hint">Forgot your PIN? Ask your teacher (unless you chose your own).</span>
-          <Link to="/">I’m a teacher</Link>
+          {live() ? <a href={mainOrigin()}>I’m a teacher</a> : <Link to="/?site=main">I’m a teacher</Link>}
         </div>
       </form>
     </div>

@@ -18,6 +18,7 @@ const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
 const REPLY = process.env.MAIL_REPLY || '';
 const IMAP = process.env.IMAP_URL || '';
 const SITE = 'https://eltsuite.com';
+const LEARN = 'https://learn.eltsuite.com'; // learners' own address
 initializeApp({ credential: applicationDefault() });
 const db = getFirestore();
 const mail = nodemailer.createTransport(SMTP);
@@ -142,7 +143,7 @@ for (const o of out.docs) {
         to: x.contactEmail,
         replyTo: replyTo(token),
         subject: `${a.email.subject} [#${token}]`,
-        html: frame(a.email.subject, block(a.email.content ?? { type: 'doc' }), `From ${esc(a.email.byName)} · ${esc(cls.name ?? 'your class')}. ${REPLY ? 'Reply to this email and your teacher gets it in ELT Suite.' : `Open <a href="${SITE}" style="color:#b8744e">ELT Suite</a> to reply.`}`),
+        html: frame(a.email.subject, block(a.email.content ?? { type: 'doc' }), `From ${esc(a.email.byName)} · ${esc(cls.name ?? 'your class')}. ${REPLY ? 'Reply to this email and your teacher gets it in ELT Suite.' : `Open <a href="${LEARN}" style="color:#b8744e">ELT Suite</a> to reply.`}`),
       });
       sent++;
     }
@@ -230,7 +231,7 @@ for (const c of threads.docs) {
     to: email,
     replyTo: replyTo(token),
     subject: `${name} replied to you [#${token}]`,
-    html: frame(`${name} replied to you`, list.map((m) => (m.content ? block(m.content) : `<p style="font:15px/1.6 Georgia,serif">${esc(m.text)}</p>`)).join(''), `${REPLY ? 'Reply to this email to answer, or open' : 'Open'} <a href="${SITE}/messages?c=${c.id}" style="color:#b8744e">the chat in ELT Suite</a>.`),
+    html: frame(`${name} replied to you`, list.map((m) => (m.content ? block(m.content) : `<p style="font:15px/1.6 Georgia,serif">${esc(m.text)}</p>`)).join(''), `${REPLY ? 'Reply to this email to answer, or open' : 'Open'} <a href="${LEARN}/messages?c=${c.id}" style="color:#b8744e">the chat in ELT Suite</a>.`),
   });
   await c.ref.update({ [`mailed.${learner}`]: Date.now() });
   console.log('Emailed a reply to', d.names?.[learner]);

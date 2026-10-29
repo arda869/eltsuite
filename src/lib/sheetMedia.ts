@@ -1,3 +1,4 @@
+import { learnOrigin } from './site';
 import { collectMedia, collectPictures, type MediaInfo, type MediaMap, type WsItem } from './worksheet';
 import { loadManifest } from './archive';
 import { audioUrl } from './media';
@@ -42,7 +43,7 @@ export async function sheetSounds(classId: string, items: WsItem[], accentHex: s
     list.map(async ({ id, mode }) => {
       const m = await loadManifest(classId, id).catch(() => null);
       if (!m) return;
-      const url = `${location.origin}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
+      const url = `${learnOrigin()}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
       const look = { margin: 0, errorCorrectionLevel: 'M' as const, color: { dark: '#2b2a28', light: '#ffffff' } };
       const [svg, png] = await Promise.all([QR.toString(url, { ...look, type: 'svg' }), QR.toDataURL(url, { ...look, margin: 1, width: 320 })]);
       out[id] = { url, svg, png, title: m.title || 'Listening', video: m.kind === 'link' ? !!m.video : false, script: (m.script ?? []).map((l) => l.text.trim()).filter(Boolean) };
