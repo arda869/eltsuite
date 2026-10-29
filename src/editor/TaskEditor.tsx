@@ -688,7 +688,24 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const training = useTrainingClass(classId);
   const slash = useSlash(editor, bankCmds, textOnly, training);
   const toolPlace = useToolGate();
-  const [moreOpen, setMoreOpen] = useState(false);
+  // The extra tools are out by default; closing them is remembered on this device.
+  const [moreOpen, setMoreOpenState] = useState(() => {
+    try {
+      return localStorage.getItem('ll.tb.more') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const setMoreOpen = (f: (v: boolean) => boolean) =>
+    setMoreOpenState((v) => {
+      const n = f(v);
+      try {
+        localStorage.setItem('ll.tb.more', n ? '1' : '0');
+      } catch {
+        /* fine */
+      }
+      return n;
+    });
   const [gallery, setGallery] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
