@@ -34,6 +34,7 @@ import { AnswerMarkup, CodeKey } from './AnswerMarkup';
 import type { Annotation, Code } from '../lib/annotations';
 import type { Correction } from '../lib/tasks';
 import { RevealBlock } from '../editor/Reveal';
+import { subLetter, subTasksOf } from '../editor/SubTask';
 import type { CoverMode, CoverProps } from '../editor/PicEdit';
 import { MediaPlayer } from '../media/Player';
 import { UploadBox, type UploadAnswer, type UploadAttrs } from '../editor/UploadNode';
@@ -193,6 +194,9 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const training = useTrainingClass(classId);
   const narrow = useNarrow();
   const [tab, setTab] = useState(0);
+  // Sub-tasks opened so far (by their id), and every sub-task of this task in order.
+  const [openSubs, setOpenSubs] = useState<string[]>([]);
+  const subs = useMemo(() => subTasksOf(content), [content]);
   // Covered pictures: boxes opened here. On the teaching screen the teacher's boxes open for the
   // whole class; learners then see what the teacher has opened.
   const [covers, setCovers] = useState<Record<string, number[]>>({});
@@ -633,7 +637,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   };
 
   const wordbank = (node: JSONContent, key: string) => {
-    const words: string[] = node.attrs?.words ?? [];
+    // Always in alphabetical order, so the list is the same every time and on paper.
+    const words: string[] = [...((node.attrs?.words ?? []) as string[])].sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base' }));
     const remaining = [...placedWords];
     return (
       <div key={key} className="word-bank" aria-label="Word bank">
@@ -1090,6 +1095,32 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             {kids()}
           </RevealBlock>
         );
+      case 'subTask': {
+        // Sub-tasks: a first, then each next one when the learner (or the teacher) opens it.
+        const i = subs.indexOf(node);
+        const id = String(node.attrs?.id || i);
+        const all = !!results || !!asExample;
+        if (!all && i > 0 && !openSubs.includes(id)) return null;
+        const next = subs[i + 1];
+        const nextOpen = !next || all || openSubs.includes(String(next.attrs?.id || i + 1));
+        return (
+          <section key={key} data-bk={key} className="subtask">
+            <div className="st-head">
+              <b className="st-l">{subLetter(i)}</b>
+              {node.attrs?.instr ? <span className="st-instr">{String(node.attrs.instr)}</span> : null}
+            </div>
+            <div className="st-body">{kids()}</div>
+            {!nextOpen && (
+              <button type="button" className="st-next" onClick={() => setOpenSubs((o) => [...o, String(next.attrs?.id || i + 1)])}>
+                Next: part {subLetter(i + 1)}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </button>
+            )}
+          </section>
+        );
+      }
       case 'collab':
         return node.attrs?.docKey ? (
           <div key={key} data-bk={key} className="task-collab">

@@ -56,7 +56,8 @@ export type Block =
   | { kind: 'draw'; prompt?: string }
   | { kind: 'timeline'; a: TlAttrs }
   | { kind: 'diagram'; dkind: string; title: string; labels: string[]; cells: { label: string; blocks: Block[] }[] }
-  | { kind: 'media'; id: string; title: string; video: boolean; mode: string };
+  | { kind: 'media'; id: string; title: string; video: boolean; mode: string }
+  | { kind: 'subtask'; letter: string; text: string; blocks: Block[] };
 
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
@@ -70,6 +71,19 @@ export type MediaMap = Record<string, { data: string; w: number; h: number }>;
 export type MediaInfo = { url: string; svg: string; png: string; title: string; video: boolean; script: string[] };
 export type Options = { header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string; size?: 'standard' | 'large' | 'xl'; clear?: boolean };
 
+const abc = (x: string, y: string) => x.localeCompare(y, undefined, { sensitivity: 'base' });
+// The same order every time for the same words (a jumbled sentence stays jumbled the same way).
+const seeded = (list: string[], seed: string) => {
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    h = (h * 1103515245 + 12345) | 0;
+    const j = Math.abs(h) % (i + 1);
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+};
 const LET = 'abcdefghijklmnop';
 const UP = 'ABCDEFGHIJKLMNOP';
 const text = (n?: JSONContent): string => (n ? (n.text ?? '') + (n.content ?? []).map(text).join('') : '');
@@ -98,6 +112,7 @@ export function flattenTask(t: ExportTask): WsTask {
   const picCount: Record<string, number> = {};
   const mediaUsed: string[] = [];
   const online: string[] = []; // what only works on a screen, left off the paper
+  let subN = 0; // sub-tasks so far: a, b, c
   let lastDef = '';
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
     const out: Run[] = [];
@@ -242,20 +257,20 @@ export function flattenTask(t: ExportTask): WsTask {
         n++;
         const pairs: { left: string; right: string }[] = a.pairs ?? [];
         const extras: string[] = a.extras ?? [];
-        const right = [...pairs.map((p) => p.right), ...extras].sort(() => 0.5 - Math.random());
+        const right = [...pairs.map((p) => p.right), ...extras].sort(abc);
         marks += pairs.length;
         answers.push({ n, text: pairs.map((p, i) => `${i + 1}–${LET[right.indexOf(p.right)]}`).join(', ') });
         cur.push({ kind: 'match', n, left: pairs.map((p) => p.left), right });
         return;
       }
       case 'wordbank':
-        cur.push({ kind: 'box', words: [...bank, ...(a.extras ?? [])].sort(() => 0.5 - Math.random()), label: 'Words' });
+        cur.push({ kind: 'box', words: [...bank, ...(a.extras ?? [])].sort(abc), label: 'Words' });
         return;
       case 'order': {
         n++;
         marks++;
         answers.push({ n, text: a.sentence ?? '' });
-        const words = String(a.sentence ?? '').split(/\s+/).sort(() => 0.5 - Math.random());
+        const words = seeded(String(a.sentence ?? '').split(/\s+/), String(a.sentence ?? ''));
         cur.push({ kind: 'p', runs: [{ num: n }, { t: words.join(' / '), italic: true }] });
         cur.push({ kind: 'lines', n, count: 1 });
         return;
@@ -426,6 +441,16 @@ export function flattenTask(t: ExportTask): WsTask {
         const kinds = (a.kinds ?? []) as string[];
         const what = kinds.includes('any') || !kinds.length ? 'your file' : kinds.map((k) => ({ documents: 'a document', pictures: 'a photo', sound: 'a recording', video: 'a video' })[k] ?? k).join(' or ');
         cur.push({ kind: 'note', text: `${a.note ? a.note + ' ' : ''}Hand in ${what} in ELT Suite.` });
+        return;
+      }
+      case 'subTask': {
+        // A part of the exercise: a, b, c, each with its own instruction and its questions under it.
+        const inner: Block[] = [];
+        const prev = cur;
+        cur = inner;
+        node.content?.forEach((c) => walk(c));
+        cur = prev;
+        cur.push({ kind: 'subtask', letter: String.fromCharCode(97 + (subN++ % 26)), text: String(a.instr ?? ''), blocks: inner });
         return;
       }
       case 'media':
@@ -665,6 +690,10 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [label('TIMELINE  '), new TextRun({ text: [t.title, (t.items ?? []).map((i) => i.label).filter(Boolean).join(' · '), t.sentence].filter(Boolean).join(' — '), font: SERIF })], spacing: { after: 100 } }));
       } else if (b.kind === 'note') out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.text, italics: true, color: '8A847D', font: SANS, size: S(18) })] }));
       else if (b.kind === 'box') out.push(shaded('F7EFE9', [new Paragraph({ keepNext: kn, keepLines: true, children: [label(b.label + '   '), new TextRun({ text: b.words.join('     '), font: SERIF })] })]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
+      else if (b.kind === 'subtask') {
+        out.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 120, after: 60 }, children: [new TextRun({ text: b.letter + '  ', bold: true, font: SANS, color: ACC_INK }), new TextRun({ text: b.text, font: SERIF })] }));
+        out.push(...toParas(b.blocks, kn));
+      }
       else if (b.kind === 'callout') out.push(shaded(ACC_TINT, [...(b.label ? [new Paragraph({ keepNext: kn, keepLines: true, children: [label((b.symbol ? b.symbol + '  ' : '') + b.label)], spacing: { after: 80 } })] : []), ...(toParas(b.blocks, kn).filter((x) => x instanceof Paragraph) as Paragraph[])]), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       else if (b.kind === 'lines') {
         if (b.prompt) out.push(new Paragraph({ keepNext: kn, keepLines: true, children: [new TextRun({ text: b.prompt, font: SANS, size: S(16), color: '8A847D' })] }));
@@ -797,7 +826,7 @@ export function collectMedia(items: WsItem[]): { id: string; mode: string }[] {
   const walk = (bs: Block[]) =>
     bs.forEach((b) => {
       if (b.kind === 'media' && !out.has(b.id)) out.set(b.id, b.mode);
-      if (b.kind === 'callout') walk(b.blocks);
+      if (b.kind === 'callout' || b.kind === 'subtask') walk(b.blocks);
     });
   items.forEach((it) => it.kind === 'task' && walk(it.task.blocks));
   return [...out].map(([id, mode]) => ({ id, mode }));
@@ -812,7 +841,7 @@ export function collectPictures(items: WsItem[]): { key: string; src: string; cr
   const blocks = (bs: Block[]) =>
     bs.forEach((b) => {
       if (b.kind === 'p') b.runs.forEach((r) => r.pic && out.set(r.pic.key ?? r.pic.src, { key: r.pic.key ?? r.pic.src, src: r.pic.src, crop: r.pic.crop, filter: r.pic.filter }));
-      if (b.kind === 'callout') blocks(b.blocks);
+      if (b.kind === 'callout' || b.kind === 'subtask') blocks(b.blocks);
     });
   items.forEach((it) => {
     if (it.kind !== 'task') return;

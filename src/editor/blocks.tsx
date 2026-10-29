@@ -153,7 +153,7 @@ function WordBankView(props: NodeViewProps) {
           onBlur={() => updateAttributes({ extras: extraText.split(',').map((x) => x.trim()).filter(Boolean) })}
         />
       </label>
-      <span className="hint">Learners see these words shuffled.</span>
+      <span className="hint">Learners see these words in alphabetical order.</span>
     </NodeViewWrapper>
   );
 }

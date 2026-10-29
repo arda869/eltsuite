@@ -186,6 +186,8 @@ function block(b: Block): string {
         .map((r, ri) => (ri === 0 && puzzle ? '' : `<tr>${r.map((c, ci) => { const rich = b.cells?.[ri]?.[ci]; const inner = rich && !puzzle ? runs(rich) : esc(c); return ri === 0 ? `<th>${inner}</th>` : c === '■' ? '<td class="blk"></td>' : `<td>${/^\d+$/.test(c) && puzzle ? `<i>${esc(c)}</i>` : inner}</td>`; }).join('')}</tr>`))
         .join('')}</tbody></table>`;
     }
+    case 'subtask':
+      return `<div class="subex"><div class="subex-h"><b class="subex-l">${esc(b.letter)}</b><span>${esc(b.text)}</span></div><div class="subex-b">${b.blocks.map(block).join('')}</div></div>`;
     case 'callout': {
       // Text boxes print exactly as they look on screen: the same drawing and the same styles.
       if (b.box) return boxHtml(b.box, b.blocks.map(block).join(''));
@@ -349,6 +351,10 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .ex-ic i { display: grid; place-items: center; width: 1.15em; height: 1.15em; border-radius: .2em; background: var(--accent); color: #fff; }
 .ex-ic i svg { width: .8em; height: .8em; }
 .ex-ic b { font: 700 .86em Karla, sans-serif; color: var(--accent-ink); }
+.subex { margin: 1.6mm 0 2.4mm; break-inside: avoid; }
+.subex-h { display: flex; gap: 2.2mm; margin-bottom: 1.2mm; }
+.subex-l { flex: none; min-width: 3.4mm; font: 700 .98em Karla, sans-serif; color: var(--accent-ink); }
+.subex-b { padding-left: 5.6mm; }
 /* Inline language tools on paper */
 .ipa { font-family: 'Noto Sans', 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Lucida Sans Unicode', 'Segoe UI', 'Arial Unicode MS', sans-serif; color: #6f6a64; font-size: .9em; white-space: nowrap; }
 .ipa-acc { font: 700 .62em Karla, sans-serif; letter-spacing: .06em; color: var(--accent-ink); margin-right: .25em; vertical-align: .15em; }
