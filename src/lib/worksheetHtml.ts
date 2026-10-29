@@ -206,6 +206,14 @@ const markBox = (n: number) => `<span class="markbox"><span class="mb-blank"></s
 
 function taskUnit(t: WsTask, num: number, marks: boolean) {
   const head = t.instructions?.trim() || t.title;
+  const runsText = (t.instrRuns ?? []).map((r) => r.t ?? '').join('').trim();
+  const first = t.blocks[0];
+  // A task with no title or instruction that starts with a sub-task: "1  a  The sub-task's instruction"
+  // on one line, as in a coursebook.
+  if (!head?.trim() && !runsText && first?.kind === 'subtask') {
+    const rest = t.blocks.slice(1);
+    return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><b class="subex-l">${esc(first.letter)}</b><span class="ex-text">${exIcons(t)}${esc(first.text)}</span></div><div class="ex-body"><div class="subex-b">${first.blocks.map(block).join('')}</div>${rest.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
+  }
   return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${exIcons(t)}${t.instrRuns ? runs(t.instrRuns) : esc(head)}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
 }
 
@@ -357,6 +365,7 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .subex { margin: 1.6mm 0 2.4mm; break-inside: avoid; }
 .subex-h { display: flex; gap: 2.2mm; margin-bottom: 1.2mm; }
 .subex-l { flex: none; min-width: 3.4mm; font: 700 .98em Karla, sans-serif; color: var(--accent-ink); }
+.ex-head .subex-l { line-height: inherit; align-self: baseline; }
 .subex-b { padding-left: 5.6mm; }
 /* Inline language tools on paper */
 .ipa { font-family: 'Noto Sans', 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Lucida Sans Unicode', 'Segoe UI', 'Arial Unicode MS', sans-serif; color: #6f6a64; font-size: .9em; white-space: nowrap; }
