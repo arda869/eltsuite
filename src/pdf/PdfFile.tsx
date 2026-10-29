@@ -194,23 +194,6 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
             {B(<Svg d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
           </span>
         )}
-        {pages.length > 1 && (
-          <span className="pdff-grp pdff-pg" role="group" aria-label="Pages">
-            {B(<Svg d="m15 6-6 6 6 6" />, false, () => goPage(cur - 1), 'Page before', cur === 0)}
-            <span className="pdff-pgn" aria-live="polite">
-              {cur + 1}
-              <span className="pdff-of"> of {pages.length}</span>
-            </span>
-            {B(<Svg d="m9 6 6 6-6 6" />, false, () => goPage(cur + 1), 'Next page', cur >= pages.length - 1)}
-          </span>
-        )}
-        <span className="pdff-grp pdff-zoom" role="group" aria-label="Zoom">
-          {B(<Svg d="M6 12h12" />, false, () => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2))), 'Smaller', zoom <= 0.5)}
-          <button type="button" className="ne-btn pdff-zv" onClick={() => setZoom(1)} data-tip={zoom === 1 ? 'The pages fit the width' : 'Fit the width again'}>
-            {zoom === 1 ? 'Fit' : `${Math.round(zoom * 100)}%`}
-          </button>
-          {B(<Svg d="M6 12h12M12 6v12" />, false, () => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2))), 'Bigger', zoom >= 2.5)}
-        </span>
         <span className="pdff-grp">
           <button type="button" className={'pdff-act' + (reading ? ' on' : '')} aria-pressed={reading} onClick={() => void readAloud()} data-tip={reading ? 'Stop reading' : `Read page ${cur + 1} aloud`}>
             <UiIcon name="music" size={15} />
@@ -269,6 +252,25 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
             <EditorContent editor={editor} />
           </EditorClassContext.Provider>
         </div>
+      </div>
+      <div className="pdff-float" role="toolbar" aria-label="Pages and zoom">
+        {pages.length > 1 && (
+          <span className="pdff-pg" role="group" aria-label="Pages">
+            {B(<Svg d="m15 6-6 6 6 6" />, false, () => goPage(cur - 1), 'Page before', cur === 0)}
+            <span className="pdff-pgn" aria-live="polite">
+              {cur + 1}
+              <span className="pdff-of"> of {pages.length}</span>
+            </span>
+            {B(<Svg d="m9 6 6 6-6 6" />, false, () => goPage(cur + 1), 'Next page', cur >= pages.length - 1)}
+          </span>
+        )}
+        <span className="pdff-zoom" role="group" aria-label="Zoom">
+          {B(<Svg d="M6 12h12" />, false, () => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2))), 'Smaller', zoom <= 0.5)}
+          <button type="button" className="ne-btn pdff-zv" onClick={() => setZoom(1)} data-tip={zoom === 1 ? 'The pages fit the width' : 'Fit the width again'}>
+            {zoom === 1 ? 'Fit' : `${Math.round(zoom * 100)}%`}
+          </button>
+          {B(<Svg d="M6 12h12M12 6v12" />, false, () => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2))), 'Bigger', zoom >= 2.5)}
+        </span>
       </div>
       {canEdit && <SlashMenu editor={editor} slash={slash} groups={DOC_GROUPS} />}
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />

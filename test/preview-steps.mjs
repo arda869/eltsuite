@@ -25,9 +25,13 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   const pg = await tab.locator('.pdf-page').first().boundingBox();
   await tab.mouse.click(pg.x + pg.width * 0.62, pg.y + pg.height * 0.36);
   await tab.waitForTimeout(500);
+  say('after click', await tab.evaluate(() => { const a = document.activeElement; const sel = getSelection(); const n = sel?.anchorNode; const el = n && (n.nodeType === 1 ? n : n.parentElement); return (a?.className || a?.tagName) + ' | anchor in box: ' + !!el?.closest?.('.pdf-box') + ' | ' + (el?.className || el?.tagName); }));
   await tab.keyboard.type('Lisbon');
   await tab.waitForTimeout(400);
   say('box text', await tab.locator('.pdf-box').first().innerText().catch(() => '?'));
+  await tab.locator('.pdf-box .pdf-box-body').first().click();
+  await tab.keyboard.type(' (clicked)');
+  say('box text after clicking in it', await tab.locator('.pdf-box').first().innerText().catch(() => '?'));
   await s('02-text-box');
   // a highlight
   await tab.keyboard.press('Escape');

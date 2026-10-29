@@ -8058,3 +8058,11 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .pdff-act { padding: 0; width: 34px; justify-content: center; }
 @media (max-width: 1340px) { .pdff-ctx-t { display: none; } }
 @media (max-width: 1240px) { .pdf-tb-l { display: none; } .pdf-tb { padding: 0 9px; } .pdf-tb.q .pdf-tb-l { display: none; } }
+
+/* Pages and zoom: a small bar floating at the bottom of the pages, out of the way of the tools */
+.pdff-float { position: sticky; bottom: 18px; z-index: 11; align-self: center; display: flex; align-items: center; gap: 4px; margin-top: -6px; padding: 5px 6px; border-radius: 14px; background: color-mix(in srgb, var(--paper) 94%, transparent); backdrop-filter: blur(8px); box-shadow: 0 0 0 1px var(--hair), 0 12px 28px -12px rgba(0, 0, 0, .35); }
+.pdff-float .ne-btn { min-width: 32px; height: 32px; border-radius: 8px; display: inline-grid; place-items: center; }
+.pdff-float .ne-btn:disabled { opacity: .3; cursor: default; }
+.pdff-float .pdff-pg, .pdff-float .pdff-zoom { display: inline-flex; align-items: center; gap: 2px; }
+.pdff-float .pdff-zoom { padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--hair); }
+@media (max-width: 1240px) { .pdff-float .pdff-of { display: inline; } }
