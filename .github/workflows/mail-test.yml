@@ -1,0 +1,29 @@
+name: Test email
+
+on:
+  workflow_dispatch:
+    inputs:
+      to:
+        description: Who gets the test email
+        default: arda@eltsuite.com
+  push:
+    branches: [main]
+    paths: [scripts/mail-test.mjs, .github/workflows/mail-test.yml]
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Send a test email
+        env:
+          SMTP_URL: ${{ secrets.SMTP_URL }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          TO: ${{ inputs.to || 'arda@eltsuite.com' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/m" && cp scripts/mail-test.mjs "$RUNNER_TEMP/m/" && cd "$RUNNER_TEMP/m"
+          npm init -y >/dev/null && npm install --no-audit --no-fund nodemailer@6 >/dev/null
+          node mail-test.mjs
