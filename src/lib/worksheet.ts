@@ -741,9 +741,15 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       body.push(new Paragraph({ keepNext: true, spacing: { before: 240, after: 120 }, border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: ACC, space: 2 } }, children: [new TextRun({ text: it.title.toUpperCase(), font: SANS, size: S(21), bold: true, color: ACC_INK, characterSpacing: 20 })] }));
       continue;
     }
-    const t = it.task;
+    let t = it.task;
     num++;
     secMarks += t.marks;
+    const lead = !(t.instructions?.trim() || t.title?.trim()) && !(t.instrRuns ?? []).some((r) => (r.t ?? '').trim()) && t.blocks[0]?.kind === 'subtask' ? (t.blocks[0] as Extract<Block, { kind: 'subtask' }>) : null;
+    if (lead) {
+      // No title or instruction: the first sub-task goes on the task's own line.
+      body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: S(23), color: ACC_INK }), new TextRun({ text: lead.letter + '  ', bold: true, font: SANS, color: ACC_INK }), new TextRun({ text: lead.text, font: SERIF, size: S(23) })] }));
+      t = { ...t, blocks: [...lead.blocks, ...t.blocks.slice(1)] };
+    } else
     body.push(new Paragraph({ keepNext: true, keepLines: true, spacing: { before: 160, after: 80 }, children: [new TextRun({ text: `${num}  `, bold: true, font: SERIF, size: S(23), color: ACC_INK }), ...(t.instrRuns ? runsToDocx(t.instrRuns) : [new TextRun({ text: t.instructions?.trim() || t.title, font: SERIF, size: S(23) })])] }));
     body.push(...toParas(t.blocks, true));
     body.push(new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 160 }, children: opts.marks && t.marks ? [markRun(t.marks)] : [] }));
