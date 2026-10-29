@@ -351,7 +351,7 @@ const J = {
     const s = await session(b);
     await s.p.goto(`${BASE}/classes`);
     await s.p.click('.apps-btn');
-    await s.p.click('.apps-pop .app-tile:has-text("Guide")');
+    await s.p.click('.apps-pop a[role=menuitem]:has-text("Guide")');
     await see(s.p, 'h1:has-text("How ELT Suite works")', 'the Guide');
     await axe(s.p, 'Guide', A11Y_FOUND);
     await s.p.fill('input[aria-label="Gap 1"]', 'has lived');
