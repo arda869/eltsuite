@@ -223,16 +223,16 @@ export function ToolButtons({ editor, options = true, labels = true }: { editor:
         </button>
       ))}
       {QUESTIONS.length > 0 && (
-        <button type="button" className={'pdf-tb q' + (store.pending ? ' on' : '')} aria-haspopup="menu" aria-label={store.pending ? store.pending.label : 'Question'} data-tip="A question on the page: choose one, then click where it goes" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, QUESTIONS.map((q) => ({ label: q.label, icon: '', onClick: () => setPdfTool(editor, 'text', undefined, q) })))}>
+        <button type="button" className={'pdf-tb q' + (store.pending && store.pending.key !== 'media' ? ' on' : '')} aria-haspopup="menu" aria-label={store.pending ? store.pending.label : 'Question'} data-tip="A question on the page: choose one, then click where it goes" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, QUESTIONS.map((q) => ({ label: q.label, icon: '', onClick: () => setPdfTool(editor, 'text', undefined, q) })))}>
           <Ic d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" />
-          {labels && <span className="pdf-tb-l">{store.pending ? store.pending.label : 'Question'}</span>}
+          {labels && store.pending && store.pending.key !== 'media' && <span className="pdf-tb-l">{store.pending.label}</span>}
           <span className="pdf-tb-caret" aria-hidden="true">▾</span>
         </button>
       )}
       {!!editor.schema.nodes.media && (
         <button type="button" className={'pdf-tb' + (store.pending?.key === 'media' ? ' on' : '')} aria-label="Recording" data-tip="A recording or video on the page: then click where it goes" onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'text', undefined, RECORDING)}>
           <Ic d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
-          {labels && <span className="pdf-tb-l">Recording</span>}
+
         </button>
       )}
       {options && <ToolOptions editor={editor} />}

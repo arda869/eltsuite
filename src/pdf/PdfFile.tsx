@@ -46,7 +46,32 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const [ready, setReady] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const [showKey, setShowKey] = useState(true);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoomRaw] = useState(1);
+  // Zooming keeps the middle of what you see in the middle, across and down.
+  const setZoom = (f: (z: number) => number) =>
+    setZoomRaw((z) => {
+      const n = f(z);
+      const box = document.querySelector<HTMLElement>('.pdff-page');
+      if (box && n !== z) {
+        const fx = (box.scrollLeft + box.clientWidth / 2) / Math.max(1, box.scrollWidth);
+        const y = window.scrollY + window.innerHeight / 2;
+        requestAnimationFrame(() => {
+          box.scrollLeft = fx * box.scrollWidth - box.clientWidth / 2;
+          window.scrollTo({ top: y * (n / z) - window.innerHeight / 2 });
+        });
+      }
+      return n;
+    });
+  // Ctrl (or ⌘) and the mouse wheel, or a pinch on a trackpad, zooms the pages.
+  useEffect(() => {
+    const wheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || !(e.target as HTMLElement).closest?.('.pdff-page')) return;
+      e.preventDefault();
+      setZoom((z) => Math.min(2.5, Math.max(0.5, +(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)).toFixed(2))));
+    };
+    window.addEventListener('wheel', wheel, { passive: false });
+    return () => window.removeEventListener('wheel', wheel);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [cur, setCur] = useState(0);
   const [reading, setReading] = useState(false);
   // The page in view: the last one whose top has passed the upper part of the screen.
