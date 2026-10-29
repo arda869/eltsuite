@@ -793,6 +793,10 @@ export function LessonEditor() {
       return n;
     });
   }, [task?.id]);
+  // The editor beside the worksheet: closed by clicking the paper around the tasks, open again
+  // by clicking a task (here or in the list).
+  const [sheetEdit, setSheetEdit] = useState(true);
+  useEffect(() => setSheetEdit(true), [task?.id]);
   const sheetTasks = useMemo(
     () =>
       tasks
@@ -1285,7 +1289,7 @@ export function LessonEditor() {
                 </div>
               </div>
             ) : sheet && sheetData ? (
-              <div className="sh-split" style={{ ['--sh-w' as string]: `${sheetW}%` }}>
+              <div className={'sh-split' + (sheetEdit ? '' : ' solo')} style={{ ['--sh-w' as string]: `${sheetW}%` }}>
                 <section className="sh-left" aria-label="The worksheet">
                   <div className="sh-left-bar">
                     <span className="sh-switch" role="radiogroup" aria-label="Size of the page">
@@ -1296,19 +1300,21 @@ export function LessonEditor() {
                         Whole page
                       </button>
                     </span>
-                    <span className="hint">Click a task to edit it</span>
+                    <span className="hint">{sheetEdit ? 'Click a task to edit it, or outside the tasks to close the editor' : 'Click a task to edit it'}</span>
                   </div>
                   <SheetView
                     parts={sheetData.parts}
                     zoom={sheetZoom}
                     focus={task.id}
+                    onBlank={() => setSheetEdit(false)}
                     onMove={(id, before) => void reorder(id, before ? tasks.findIndex((x) => x.id === before) : tasks.length)}
                     blocks={sheetTasks.map((t) => {
                       const p = sheetData.byId[t.id];
-                      const on = t.id === task.id;
+                      const on = t.id === task.id && sheetEdit;
+                      const pick = () => (setSheetEdit(true), void select(t.id));
                       const del = t.kind === 'section' ? { onDelete: () => void deleteTask(classId, itemId, t.id), deleteLabel: 'Remove this heading (its tasks stay)' } : { onDelete: () => void remove(t), deleteLabel: `Delete the task “${t.title || 'Untitled task'}”` };
-                      if (!p) return { id: t.id, title: t.title, ...del, on, onClick: () => void select(t.id), label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : t.print?.show === 'screen' ? `${t.title || 'Task'} · only on screen, so not printed` : 'One moment…'}</div> };
-                      return { id: t.id, title: t.title, ...del, on: on && t.kind !== 'section', html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : () => void select(t.id), label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
+                      if (!p) return { id: t.id, title: t.title, ...del, on, onClick: pick, label: `Edit ${t.title}`, node: <div className="sh-hidden">{t.hidden ? `${t.title || 'Task'} · hidden from learners, so not printed` : t.print?.show === 'screen' ? `${t.title || 'Task'} · only on screen, so not printed` : 'One moment…'}</div> };
+                      return { id: t.id, title: t.title, ...del, on: on && t.kind !== 'section', html: p.html, heading: t.kind === 'section', onClick: t.kind === 'section' ? undefined : pick, label: `Edit ${t.title}`, note: p.online.length ? `Online only, not printed: ${p.online.join(', ')}` : undefined };
                     })}
                     after={
                       <button type="button" className="sh-add" onClick={() => void newTask()}>

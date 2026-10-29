@@ -581,6 +581,28 @@ ${sheetCss(opts)}
     return cols;
   }
   var over = function (col) { return col.scrollHeight > col.clientHeight + 1; };
+  // Move the last parts of el into restEl (an empty copy of it) until the column is no longer too
+  // full, going inside the last part when it is too tall on its own. Pictures, tables and drawings
+  // are never cut.
+  var SOLID = 'svg, img, table, figure, .qr-block, .tl, .dgw, .dcut-wrap, .wordbox, .sbw-p, .ws-lines, p, li';
+  function cut(col, el, restEl) {
+    while (over(col) && el.children.length) {
+      var last = el.lastElementChild;
+      var solid = !last.children.length || last.matches(SOLID);
+      // Without it, would the column fit? If not, it goes on whole.
+      el.removeChild(last);
+      var fits = !over(col);
+      el.appendChild(last);
+      if (!fits && el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); continue; }
+      if (solid) { if (el.children.length > 1) restEl.insertBefore(last, restEl.firstChild); return; }
+      // It fits partly: the rest of it goes on, in a copy of it.
+      var part = last.cloneNode(false);
+      restEl.insertBefore(part, restEl.firstChild);
+      cut(col, last, part);
+      if (!part.children.length) restEl.removeChild(part);
+      return;
+    }
+  }
   function flow(templateId, bandId) {
     var units = Array.prototype.slice.call(document.getElementById(templateId).content.children).map(function (n) { return n.cloneNode(true); });
     if (!units.length) return;
@@ -600,14 +622,16 @@ ${sheetCss(opts)}
       col.appendChild(u);
       if (!over(col)) continue;
       if (hasOther(col, u)) { col.removeChild(u); nextCol(); i--; continue; }
-      // taller than a whole column: split it between its blocks
+      // taller than a whole column: split it between its blocks, and inside a block (a text box,
+      // a list, a dialogue) that is itself taller than the column
       var body = u.querySelector('.ex-body');
-      if (!body || body.children.length < 2) { nextCol(); continue; }
+      if (!body || !body.children.length) { nextCol(); continue; }
       var rest = u.cloneNode(true), restBody = rest.querySelector('.ex-body');
       restBody.innerHTML = '';
       var mark = u.querySelector('.ex-mark');
       if (mark) u.removeChild(mark);
-      while (over(col) && body.children.length > 1) restBody.insertBefore(body.lastElementChild, restBody.firstChild);
+      cut(col, body, restBody);
+      if (!restBody.children.length) { nextCol(); continue; }
       var n = rest.querySelector('.ex-n'); if (n) n.textContent = n.textContent.replace(/ ?\\(cont\\.\\)$/, '') + ' (cont.)';
       units.splice(i + 1, 0, rest);
       nextCol();

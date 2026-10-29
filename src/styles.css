@@ -8077,3 +8077,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .toolbar.tb-compact { position: relative; flex-wrap: nowrap; overflow-x: clip; overflow-y: visible; padding-right: 34px; }
 .toolbar.tb-compact > * { flex: 0 0 auto; }
 .toolbar.tb-compact.open { flex-wrap: wrap; overflow: visible; }
+
+/* The worksheet on its own: the editor beside it is closed until you click a task */
+.sh-split.solo { grid-template-columns: minmax(0, 1fr) 0 0; }
+.sh-split.solo > .sh-divider, .sh-split.solo > .sh-right { display: none; }
