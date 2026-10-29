@@ -100,11 +100,9 @@ const TEXT: Record<string, CSSProperties> = {
   caption: { font: '600 18px/1.3 Karla, var(--sans, sans-serif)' },
   label: { font: '600 18px Karla, var(--sans, sans-serif)' },
 };
-export function SceneStill({ scene, items, width }: { scene: SbScene; items: SbItem[]; width: number }) {
-  const k = width / STAGE.w;
-  return (
-    <div style={{ position: 'relative', width, height: STAGE.h * k, overflow: 'hidden', borderRadius: 4, boxShadow: '0 0 0 1px #d6d3cd', background: '#fff' }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, width: STAGE.w, height: STAGE.h, transform: `scale(${k})`, transformOrigin: '0 0', overflow: 'hidden', background: BG[scene.bg ?? 'white'] }}>
+export function SceneStill({ scene, items, width }: { scene: SbScene; items: SbItem[]; width: number | 'fluid' }) {
+  const stage = (inner: CSSProperties) => (
+      <div style={{ position: 'absolute', left: 0, top: 0, width: STAGE.w, height: STAGE.h, overflow: 'hidden', background: BG[scene.bg ?? 'white'], ...inner }}>
         {scene.bg === 'floor' && <div style={{ position: 'absolute', left: 0, right: 0, top: 470, bottom: 0, background: 'linear-gradient(#f1efeb, #e9e6e1)', borderTop: '2.5px solid #3b3833' }} />}
         {[...items]
           .sort((a, b) => (a.z ?? 1) - (b.z ?? 1))
@@ -123,6 +121,22 @@ export function SceneStill({ scene, items, width }: { scene: SbScene; items: SbI
             );
           })}
       </div>
+  );
+  // On paper the scene scales with the width it is given (a column, A5…), as a picture does.
+  if (width === 'fluid')
+    return (
+      <div style={{ border: '0.6pt solid #d6d3cd', borderRadius: '1.2mm', overflow: 'hidden', background: '#fff' }}>
+        <svg viewBox={`0 0 ${STAGE.w} ${STAGE.h}`} width="100%" style={{ display: 'block', height: 'auto' }}>
+          <foreignObject x="0" y="0" width={STAGE.w} height={STAGE.h}>
+            <div style={{ position: 'relative', width: STAGE.w, height: STAGE.h }}>{stage({})}</div>
+          </foreignObject>
+        </svg>
+      </div>
+    );
+  const k = width / STAGE.w;
+  return (
+    <div style={{ position: 'relative', width, height: STAGE.h * k, overflow: 'hidden', borderRadius: 4, boxShadow: '0 0 0 1px #d6d3cd', background: '#fff' }}>
+      {stage({ transform: `scale(${k})`, transformOrigin: '0 0' })}
     </div>
   );
 }
@@ -130,14 +144,14 @@ export function SceneStill({ scene, items, width }: { scene: SbScene; items: SbI
 // A storyboard as it is put into a lesson, a message or a document: its scenes, numbered, in rows,
 // each with its caption. `cols` scenes a row; `width` is the whole width in px.
 export type SbSnap = { scenes: SbScene[]; items: SbItem[] };
-export function StoryStrip({ snap, cols = 2, width, title }: { snap: SbSnap; cols?: number; width: number; title?: string }) {
+export function StoryStrip({ snap, cols = 2, width, title }: { snap: SbSnap; cols?: number; width: number | 'fluid'; title?: string }) {
   const gap = 12;
-  const w = Math.floor((width - gap * (cols - 1)) / cols);
+  const w = width === 'fluid' ? 'fluid' : Math.floor((width - gap * (cols - 1)) / cols);
   const scenes = [...(snap.scenes ?? [])].sort((a, b) => a.order - b.order);
   return (
     <figure className="sbw" style={{ margin: 0 }}>
       {title && <figcaption className="sbw-t">{title}</figcaption>}
-      <div className="sbw-g" style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${w}px)`, gap }}>
+      <div className="sbw-g" style={{ display: 'grid', gridTemplateColumns: w === 'fluid' ? `repeat(${cols}, minmax(0, 1fr))` : `repeat(${cols}, ${w}px)`, gap: w === 'fluid' ? '3mm 4mm' : gap }}>
         {scenes.map((s, n) => (
           <div key={s.id} className="sbw-s" style={{ breakInside: 'avoid' }}>
             <div style={{ position: 'relative' }}>

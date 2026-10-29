@@ -7963,9 +7963,9 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 /* A storyboard in a lesson, a message or a Collab document (src/storyboard/StoryboardNode.tsx) */
 .sbn { padding: 10px 0; }
 .sbn .mcq-tools { flex-wrap: wrap; gap: 8px; }
-.sbn-title { font: 600 14px var(--serif); color: var(--ink); }
-.sbn-cols { display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--sans); color: var(--muted); }
-.sbn-b { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--hair-strong); background: var(--card, #fff); font: 600 12px var(--sans); color: var(--ink); text-decoration: none; cursor: pointer; }
+.sbn .sbn-title { font: 600 14px var(--serif); color: var(--ink); text-transform: none; letter-spacing: 0; }
+.sbn .sbn-cols { text-transform: none; letter-spacing: 0; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--sans); color: var(--muted); }
+.sbn .sbn-b { text-transform: none; letter-spacing: 0; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--hair-strong); background: var(--card, #fff); font: 600 12px var(--sans); color: var(--ink); text-decoration: none; cursor: pointer; }
 .sbn-b:hover { border-color: var(--accent); }
 .sbn-pick { padding: 12px 14px; border: 1px dashed var(--hair-strong); border-radius: 12px; }
 .sbn-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
