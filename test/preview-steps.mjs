@@ -1,5 +1,5 @@
 // What test/preview.mjs does, step by step: a task longer than a page, printed under a section heading.
-export default async function steps({ p, ctx, say, BASE }) {
+export default async function steps({ p, ctx, say, shot, demo, BASE }) {
   await p.goto(`${BASE}/`);
   await p.waitForTimeout(1500);
   const para = (t) => ({ type: 'paragraph', content: [{ type: 'text', text: t }] });
@@ -29,4 +29,19 @@ export default async function steps({ p, ctx, say, BASE }) {
     await w.screenshot({ path: `preview-out/${name}.png`, fullPage: true });
     await w.close();
   }
+  // the worksheet view: clicking outside the tasks closes the editor beside it
+  await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
+  await p.locator('.ProseMirror').first().waitFor({ timeout: 20000 });
+  await p.getByRole('radio', { name: /Worksheet/ }).click();
+  await p.locator('.sh-block').first().waitFor({ timeout: 15000 });
+  await p.waitForTimeout(2000);
+  await shot('sheet-editing');
+  const d = await p.locator('.sh-desk').boundingBox();
+  await p.mouse.click(d.x + 8, d.y + d.height - 20);
+  await p.waitForTimeout(600);
+  say('editor closed', await p.locator('.sh-split.solo').count());
+  await shot('sheet-closed');
+  await p.locator('.sh-block.pick').nth(1).click();
+  await p.waitForTimeout(800);
+  say('editor open again', await p.locator('.sh-split:not(.solo)').count());
 }
