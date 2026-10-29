@@ -837,6 +837,10 @@ service cloud.firestore {
         && request.resource.data.get('name', '') is string && request.resource.data.get('name', '').size() <= 80;
       allow delete: if isOwner();
     }
+    // Each time a super admin signed in as someone (functions/index.js writes it): super admins read it.
+    match /proxyLog/{id} {
+      allow read: if isOwner();
+    }
     // Support tickets and conversations with Claude were removed: their old documents
     // (tickets, claudeThreads) are kept but nobody can read or change them.
 {

@@ -85,3 +85,7 @@ export async function getRedirectResult() { return null; }
 export const initializeAuth = (app: { name: string }) => getAuth(app);
 export const browserSessionPersistence = {};
 export const browserPopupRedirectResolver = {};
+// A one-time pass from the server function (a super admin signing in as someone): not used in tests.
+export async function signInWithCustomToken(_auth: unknown, _token: string): Promise<never> {
+  throw Object.assign(new Error('Not in tests'), { code: 'auth/invalid-custom-token' });
+}

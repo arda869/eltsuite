@@ -4,7 +4,8 @@ import { UiIcon } from '../../components/UiIcon';
 import { Avatar } from '../../components/avatars';
 import { SfxSettings } from '../../components/SfxSettings';
 import { SoundRecordings } from '../../components/SoundRecordings';
-import { ask } from '../../lib/ask';
+import { ask, tell } from '../../lib/ask';
+import { openAsUser } from '../../lib/proxy';
 import { APP_LIST, PLANS, addSuperAdmin, newOrg, removeSuperAdmin, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, useSuperAdmins, type Plan, type Teacher } from '../../lib/admin';
 import { useAuth } from '../../lib/auth';
 import { OWNER_EMAIL } from '../../lib/phonAudio';
@@ -283,9 +284,14 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
       pic={<Avatar k={t.avatar} name={name} size={46} />}
       onClose={onClose}
       foot={
+        <>
+        <button type="button" className="btn small-btn" onClick={() => void openAsUser({ uid: t.uid, name }).then((m) => m && void tell(m))} data-tip="A new tab, signed in as them, to see ELT Suite as they do">
+          Sign in as {name.split(' ')[0]}
+        </button>
         <button type="button" className={'btn small-btn' + (a.suspended ? ' primary' : ' danger')} onClick={() => void ask(a.suspended ? `Let ${name} use ELT Suite again?` : `Pause ${name}'s account? They can’t open ELT Suite until you turn it back on. Nothing is deleted.`, { ok: a.suspended ? 'Turn back on' : 'Pause' }).then((ok) => ok && void saveAccount(t, { suspended: !a.suspended }))}>
           {a.suspended ? 'Turn the account back on' : 'Pause the account'}
         </button>
+        </>
       }
     >
       <div className="hq-dfacts">
