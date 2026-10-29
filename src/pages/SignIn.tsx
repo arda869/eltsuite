@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useState, type FormEvent } from 'react';
-import { live, learnOrigin } from '../lib/site';
+import { learnReady, live, learnOrigin } from '../lib/site';
 import { Link } from 'react-router-dom';
 import {
   createUserWithEmailAndPassword,
@@ -274,12 +274,12 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
               Back to sign-in
             </button>
           )}
-          {live() ? (
+          {live() && learnReady() ? (
             <a href={learnOrigin()} className="small">
               I’m a learner
             </a>
           ) : (
-            <Link to="/?site=learn" className="small">
+            <Link to={live() ? '/join' : '/?site=learn'} className="small">
               I’m a learner
             </Link>
           )}

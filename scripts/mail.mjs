@@ -18,7 +18,8 @@ const FROM = process.env.MAIL_FROM || 'ELT Suite <hello@eltsuite.com>';
 const REPLY = process.env.MAIL_REPLY || '';
 const IMAP = process.env.IMAP_URL || '';
 const SITE = 'https://eltsuite.com';
-const LEARN = 'https://learn.eltsuite.com'; // learners' own address
+// The learners' own address, once it answers (set up in Firebase Hosting); until then eltsuite.com.
+const LEARN = await fetch('https://learn.eltsuite.com/version.json', { signal: AbortSignal.timeout(8000) }).then((r) => (r.ok ? 'https://learn.eltsuite.com' : SITE), () => SITE);
 initializeApp({ credential: applicationDefault() });
 const db = getFirestore();
 const mail = nodemailer.createTransport(SMTP);

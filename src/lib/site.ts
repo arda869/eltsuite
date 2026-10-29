@@ -20,7 +20,39 @@ function testSite(): string {
 }
 export const onLearnSite = () => host().startsWith('learn.') || (!live() && testSite() === 'learn');
 
-export const learnOrigin = () => (live() ? LEARN : location.origin);
+// learn.eltsuite.com is used once it answers (its address set up in Firebase Hosting); until then
+// learners stay on eltsuite.com and links point there. Checked once a page load, remembered.
+let learnUp = (() => {
+  try {
+    return localStorage.getItem('ll.learnUp') === '1';
+  } catch {
+    return false;
+  }
+})();
+export const learnReady = () => learnUp || onLearnSite();
+export function probeLearn(then?: () => void) {
+  if (!live() || onLearnSite()) return;
+  fetch(LEARN + '/version.json', { mode: 'no-cors', cache: 'no-store' }).then(
+    () => {
+      learnUp = true;
+      try {
+        localStorage.setItem('ll.learnUp', '1');
+      } catch {
+        /* private window */
+      }
+      then?.();
+    },
+    () => {
+      learnUp = false;
+      try {
+        localStorage.removeItem('ll.learnUp');
+      } catch {
+        /* private window */
+      }
+    },
+  );
+}
+export const learnOrigin = () => (live() ? (learnReady() ? LEARN : MAIN) : location.origin);
 export const mainOrigin = () => (live() ? MAIN : location.origin);
 
 // Paths only learners use: on the teachers' address they move to the learners' one.

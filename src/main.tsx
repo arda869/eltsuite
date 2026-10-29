@@ -6,7 +6,7 @@ import { startTilt } from './lib/tilt';
 import { startTheme } from './lib/theme';
 import { startViewport } from './lib/viewport';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
-import { StrictMode, Suspense, lazy, useEffect } from 'react';
+import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
@@ -23,7 +23,7 @@ import { OrgLook } from './components/OrgLook';
 import { StatusBeat } from './lib/status';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
-import { goTo, isLearnerPath, isSharedPath, learnOrigin, live, mainOrigin, onLearnSite } from './lib/site';
+import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainOrigin, onLearnSite, probeLearn } from './lib/site';
 import './styles.css';
 
 // Pages load when they are first opened, so the first screen comes up quickly.
@@ -107,6 +107,7 @@ function Home() {
 function SiteGate() {
   const { user, ready } = useAuth();
   const { pathname } = useLocation();
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!live()) return;
     // A "view as a learner" tab stays where it is: its sign-in is only in this tab.
@@ -116,9 +117,10 @@ function SiteGate() {
       /* private window */
     }
     const learnSite = onLearnSite();
+    if (!learnSite && !learnReady()) return void probeLearn(() => setTick((n) => n + 1));
     if (!learnSite && (isLearnerPath(pathname) || (ready && user && isLearnerEmail(user.email)))) goTo(learnOrigin());
     else if (learnSite && ready && user && !isLearnerEmail(user.email) && !isSharedPath(pathname)) goTo(mainOrigin());
-  }, [user, ready, pathname]);
+  }, [user, ready, pathname, tick]);
   return null;
 }
 
