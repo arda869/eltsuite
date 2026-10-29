@@ -548,3 +548,4 @@ textarea.hq-in { height: auto; padding: 10px 12px; line-height: 1.5; resize: ver
   .us-list { max-height: 280px; }
 }
 .us-side .hq-search { flex: none; min-height: 38px; }
+.hq-warn { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, #c07a12 12%, var(--paper)); font-size: 13.5px; }
