@@ -8177,12 +8177,13 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .chat-box:has(.chat-in > :nth-child(4)) .chat-editor .ProseMirror { padding-right: 160px !important; }
 .chat-box .chat-editor .doc { padding: 0 !important; }
 .chat-box:not(.tall) .chat-in { bottom: 50%; transform: translateY(50%); }
-.chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; padding-bottom: 46px !important; }
+.chat-box.tall .chat-editor .ProseMirror, .chat-box.tall:has(.chat-in > :nth-child(4)) .chat-editor .ProseMirror { padding-right: 12px !important; padding-bottom: 46px !important; }
 .chat-box.tall .chat-in { bottom: 6px; transform: none; }
 .chat-in .icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; }
 .chat-in .chat-send { margin-left: 2px; }
 .chat-box .chat-editor { overflow-y: auto; }
-.chat-box .chat-editor.plain .ProseMirror p.is-editor-empty:first-child::before { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.chat-box:not(.tall) .chat-editor .ProseMirror p.is-editor-empty:first-child { overflow: hidden; }
+.chat-box:not(.tall) .chat-editor .ProseMirror p.is-editor-empty:first-child::before { white-space: nowrap; }
 @media (max-width: 720px) {
   .chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; }
 }
