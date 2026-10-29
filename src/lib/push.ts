@@ -30,6 +30,7 @@ const note = (uid: string, step: string, err = '') =>
   updateDoc(doc(db, 'users', uid), { [`pushLog.${(isIos() ? 'ios' : /android/i.test(navigator.userAgent) ? 'android' : 'computer') + (isStandalone() ? '-app' : '-browser')}`]: { step, err: err.slice(0, 300), at: Date.now() } }).catch(() => {});
 export async function enablePush(uid: string, key: string, role: string, classId = '') {
   let step = 'permission';
+  let token = '';
   try {
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') return void note(uid, step, perm), false;
@@ -37,7 +38,7 @@ export async function enablePush(uid: string, key: string, role: string, classId
     const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     await navigator.serviceWorker.ready;
     step = 'token';
-    const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
     if (!token) return void note(uid, step, 'no token'), false;
     step = 'save';
     await setDoc(doc(db, 'pushTokens', token), { token, uid, key, role, classId, at: serverTimestamp(), device: navigator.userAgent.slice(0, 160) });
