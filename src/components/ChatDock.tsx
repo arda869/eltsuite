@@ -283,7 +283,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [w.max]);
   return (
-    <div ref={winRef} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
+    <div ref={winRef} onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('[role=menu]') && go('min')} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
       {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
       <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && toggleMax(w.id, !w.max)}>
         {cur ? (

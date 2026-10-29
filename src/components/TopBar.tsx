@@ -1,3 +1,4 @@
+import { isLearnerEmail } from '../lib/learners';
 import { OrgLogo } from './OrgLook';
 import { currentOrg, libName } from '../lib/admin';
 import { AppGrid, AppLogo, HOME_COLOR } from './AppGrid';
@@ -39,7 +40,9 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const mine = useStatus(isTeacher && user ? [user.uid] : [])[user?.uid ?? ''];
   const set = useMySet();
   const dot = statusOf(mine ? { ...mine, set } : undefined).dot;
-  const name = user?.displayName || user?.email?.split('@')[0] || '';
+  // Learners sign in with an address made for them: they see their name and class, not that address.
+  const learnerAcct = isLearnerEmail(user?.email);
+  const name = (learnerAcct ? (profile as { displayName?: string } | null)?.displayName : '') || user?.displayName || (learnerAcct ? 'Learner' : user?.email?.split('@')[0]) || '';
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +74,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
           <div className="menu" role="menu">
             <div className="who">
               <strong>{name}</strong>
-              <span className="hint">{user?.email}</span>
+              <span className="hint">{learnerAcct ? 'Learner' : user?.email}</span>
             </div>
             {isTeacher && (
               <div className="menu-status" role="group" aria-label="Your status">
@@ -146,6 +149,8 @@ function AppMark() {
             ? { name: libName(currentOrg()), color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', color: '#5d6f80' }
+          : pathname.startsWith('/storyboard')
+            ? { name: 'Storyboards', color: '#4f7a55' }
           : pathname.startsWith('/timetable')
             ? { name: 'Timetable', color: '#8a6a4a' }
           : pathname.startsWith('/guide')

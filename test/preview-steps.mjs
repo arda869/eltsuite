@@ -1,135 +1,151 @@
-// What test/preview.mjs does, step by step: Design's editing tools, one after another.
+// What test/preview.mjs does, step by step: an audit of all of ELT Suite. Every page, as a teacher or a
+// learner, on a computer or a phone (chosen by the preview branch's name: audit-td, audit-tp, audit-ld,
+// audit-lp), clicking every button that is safe to click and writing down everything that goes wrong.
 import { writeFileSync } from 'node:fs';
-export default async function steps({ p, ctx, say, BASE }) {
-  const mk = await ctx.newPage();
-  await mk.setViewportSize({ width: 1000, height: 700 });
-  await mk.setContent(`<body style="margin:0;background:#fff"><div style="width:1000px;height:700px;position:relative;background:#ffffff">
-    <div style="position:absolute;left:260px;top:120px;width:480px;height:460px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ffcf6b,#e0882f)"></div>
-    <div style="position:absolute;left:470px;top:60px;width:40px;height:90px;background:#6b4a2b;border-radius:10px"></div></div></body>`);
-  writeFileSync('preview-out/orange.png', await mk.screenshot());
-  await mk.close();
-  await p.setViewportSize({ width: 1500, height: 940 });
-  await p.goto(`${BASE}/design`);
-  await p.waitForTimeout(2000);
-  const [tab] = await Promise.all([ctx.waitForEvent('page'), p.getByRole('button', { name: 'New design' }).first().click()]);
-  tab.on('pageerror', (e) => say('CRASH', e.message));
-  tab.on('console', (m) => m.type() === 'error' && say('console', m.text().slice(0, 200)));
-  await tab.setViewportSize({ width: 1500, height: 940 });
-  await tab.locator('.dz-start').waitFor({ timeout: 30000 });
-  const s = async (n) => (await tab.screenshot({ path: `preview-out/${n}.png` }), say('shot', n));
-  const count = async () => { if (!(await tab.locator('.dz-layers').count())) await tab.locator('.dz-railb', { hasText: 'Layers' }).click(); await tab.waitForTimeout(300); return tab.locator('.dz-layers li').count(); };
-  await tab.locator('.dz-start-card', { hasText: 'Classroom poster' }).click();
-  await tab.locator('.dz-paper canvas').waitFor({ timeout: 20000 });
-  await tab.waitForTimeout(2500);
-  const box = await tab.locator('.dz-paper').boundingBox();
-  const z = box.width / 794;
-  const at = (x, y) => [box.x + x * z, box.y + y * z];
-  // The picture into the frame.
-  await tab.mouse.click(...at(400, 540));
-  await tab.locator('.dz-railb', { hasText: 'Pictures' }).click();
-  await tab.setInputFiles('.dz-drawer input[type=file]', 'preview-out/orange.png');
-  await tab.waitForTimeout(3000);
-  await s('01-poster');
-  // Crop: double-click the picture, drag it, done.
-  await tab.mouse.dblclick(...at(400, 540));
-  await tab.waitForTimeout(600);
-  await s('02-crop');
-  await tab.mouse.move(...at(400, 540));
-  await tab.mouse.down();
-  await tab.mouse.move(...at(470, 580), { steps: 8 });
-  await tab.mouse.up();
-  await tab.waitForTimeout(300);
-  await s('03-crop-moved');
-  await tab.getByRole('button', { name: 'Done' }).click();
-  // A star, turned.
-  await tab.locator('.dz-railb', { hasText: 'Elements' }).click();
-  await tab.getByRole('button', { name: 'Star' }).click();
-  await tab.waitForTimeout(400);
-  const rot = await tab.locator('.dz-rot').boundingBox();
-  await tab.mouse.move(rot.x + 13, rot.y + 13);
-  await tab.mouse.down();
-  await tab.mouse.move(rot.x + 120, rot.y - 40, { steps: 10 });
-  await tab.mouse.up();
-  say('star turned', await tab.locator('.dz-props input[aria-label="↻"]').inputValue());
-  // Resize it from a corner.
-  const h = tab.locator('.dz-sel.one .dz-h').nth(4);
-  const hb = await h.boundingBox();
-  await tab.mouse.move(hb.x + 6, hb.y + 6);
-  await tab.mouse.down();
-  await tab.mouse.move(hb.x + 80, hb.y + 80, { steps: 8 });
-  await tab.mouse.up();
-  say('star size', await tab.locator('.dz-props input[aria-label="W"]').inputValue(), await tab.locator('.dz-props input[aria-label="H"]').inputValue());
-  await s('04-star');
-  // Text: press T, type, click away.
-  await tab.mouse.click(box.x - 20, box.y + 40);
-  await tab.keyboard.press('t');
-  await tab.waitForTimeout(300);
-  await tab.keyboard.type('Be kind. Be brave.');
-  await tab.mouse.click(box.x - 20, box.y + 40);
-  await tab.waitForTimeout(500);
-  await s('05-text');
-  // Blur part of the picture.
-  await tab.mouse.click(...at(400, 540));
-  await tab.locator('.dz-railb', { hasText: 'Teaching' }).click();
-  await tab.getByRole('button', { name: 'Pixels' }).click();
-  await tab.waitForTimeout(800);
-  await s('06-pixels');
-  // Draw.
-  await tab.locator('.dz-railb', { hasText: 'Draw' }).click();
-  await tab.mouse.move(...at(120, 1000));
-  await tab.mouse.down();
-  for (let i = 0; i < 20; i++) await tab.mouse.move(...at(120 + i * 25, 1000 + Math.sin(i / 2) * 30));
-  await tab.mouse.up();
-  await tab.waitForTimeout(400);
-  await tab.getByRole('button', { name: 'Highlighter' }).click();
-  await tab.mouse.move(...at(120, 120));
-  await tab.mouse.down();
-  await tab.mouse.move(...at(680, 130), { steps: 15 });
-  await tab.mouse.up();
-  await tab.waitForTimeout(400);
-  await s('07-drawn');
-  await tab.locator('.dz-toolnote button').click();
-  const n1 = await count();
-  await tab.keyboard.press('Control+z');
-  await tab.waitForTimeout(600);
-  const n2 = await count();
-  say('undo', n1, '→', n2);
-  await s('08-layers');
-  // Learner A and B: the title only for B.
-  await tab.locator('.dz-layers .dz-lname', { hasText: 'Be kind' }).click();
-  await tab.locator('.dz-railb', { hasText: 'Teaching' }).click();
-  await tab.getByRole('button', { name: 'Only B' }).click();
-  await tab.getByRole('radio', { name: 'Learner A', exact: true }).click();
-  await tab.waitForTimeout(600);
-  await s('09-learner-a');
-  await tab.getByRole('radio', { name: 'Everything', exact: true }).click();
-  // Take away the background of the picture.
-  await tab.keyboard.press('Escape');
-  await tab.mouse.click(...at(640, 380));
-  await tab.waitForTimeout(300);
-  await tab.getByRole('button', { name: 'Take away the background' }).first().click();
-  await tab.mouse.click(...at(140, 360));
-  await tab.waitForTimeout(3000);
-  await s('10-background-gone');
-  await tab.keyboard.press('Escape');
-  await tab.keyboard.press('Escape');
-  // Free pictures.
-  await tab.locator('.dz-railb', { hasText: 'Pictures' }).click();
-  await tab.getByRole('tab', { name: 'Free pictures' }).click();
-  await tab.getByLabel('Search for pictures').fill('kitchen');
-  await tab.keyboard.press('Enter');
-  await tab.waitForTimeout(5000);
-  say('web pictures', await tab.locator('.dz-pics.web button').count());
-  await s('11-free-pictures');
-  // Cut into cards.
-  await tab.getByRole('button', { name: 'Download' }).click();
-  await tab.getByRole('menuitem', { name: /Cut into cards/ }).click();
-  await tab.waitForTimeout(300);
-  await s('12-cards-dialog');
-  const [dl] = await Promise.all([tab.waitForEvent('download', { timeout: 30000 }), tab.getByRole('button', { name: 'Download the cards' }).click()]);
-  await dl.saveAs('preview-out/cards.pdf');
-  say('cards', dl.suggestedFilename());
-  const [dl2] = await Promise.all([tab.waitForEvent('download', { timeout: 30000 }), (async () => { await tab.getByRole('button', { name: 'Download' }).click(); await tab.getByRole('menuitem', { name: /Picture \(PNG\)/ }).click(); })()]);
-  await dl2.saveAs('preview-out/page.png');
-  say('png', dl2.suggestedFilename());
+export default async function steps({ p, ctx, say, demo, BASE }) {
+  const branch = process.env.GITHUB_REF_NAME ?? 'preview/audit-td';
+  const code = (branch.match(/audit-(\w\w)/) ?? [, 'td'])[1];
+  const learner = code[0] === 'l';
+  const phone = code[1] === 'p';
+  const t0 = Date.now();
+  const late = () => Date.now() - t0 > 17 * 60 * 1000;
+  const W = phone ? { width: 390, height: 844 } : { width: 1440, height: 900 };
+  await p.setViewportSize(W);
+  if (learner) {
+    await p.goto(`${BASE}/dev.html?as=Mia`);
+    await p.waitForTimeout(2500);
+  }
+  const fresh = await p.evaluate(() => JSON.parse(localStorage.getItem('mockdemo') || '{}')).catch(() => ({}));
+  const { classId, itemId } = demo;
+  const packId = fresh.packId ?? demo.packId;
+  const pages = learner
+    ? ['/', `/learn/${itemId}`, `/learn/${packId}`, `/recap/${itemId}`, '/discuss', '/messages', '/settings']
+    : ['/', '/classes', `/class/${classId}`, `/class/${classId}/lesson/${itemId}`, `/class/${classId}/lesson/${packId}`, '/timetable', '/rooms', '/archive', '/collab', '/reading', '/pdf', '/design', '/recordings', '/library', '/colleagues', '/messages', '/settings', '/guide', '/tour', '/storyboard/library', '/admin', '/org-admin', '/'];
+  const errs = [];
+  let where = '';
+  const note = (kind, m) => {
+    const line = `${kind} [${where}] ${String(m).replace(/\s+/g, ' ').slice(0, 260)}`;
+    if (!errs.includes(line)) errs.push(line), say(line);
+  };
+  p.on('pageerror', (e) => note('CRASH', e.message));
+  p.on('console', (m) => m.type() === 'error' && !/Failed to load resource|net::|DevTools|favicon|Future Flag|daily|ERR_|CORS|fonts\.g/i.test(m.text()) && note('CONSOLE', m.text()));
+  p.on('dialog', (d) => (note('BROWSER DIALOG', d.message()), d.dismiss().catch(() => {})));
+  // A new tab (a new document, say): its page is visited too, later.
+  const extra = [];
+  ctx.on('page', async (np) => {
+    if (np === p) return;
+    await np.waitForURL(/\/doc\/|\/studio\/|\/class\//, { timeout: 8000 }).catch(() => {});
+    const u = np.url().replace(BASE, '');
+    if (u.startsWith('/') && !pages.includes(u) && !extra.includes(u)) extra.push(u), pages.push(u), say('queued', u);
+    setTimeout(() => np.close().catch(() => {}), 500);
+  });
+  const SKIP = /delete|remove|sign out|log out|leave|end (the )?(call|lesson|class)|archive (this|the)|reset|clear|block|unshare|stop sharing|revoke|kick|ban|discard|take back|cancel invitation|turn off|disconnect|install|print|download|^messages$|all chats/i;
+  const safeName = (s) => s.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').slice(0, 40) || 'home';
+  let n = 0;
+  for (let pi = 0; pi < pages.length; pi++) {
+    const path = pages[pi];
+    if (late()) {
+      say('OUT OF TIME before', path);
+      break;
+    }
+    where = path;
+    try {
+      await p.goto(BASE + path, { timeout: 30000 });
+    } catch (e) {
+      note('LOAD', e.message);
+      continue;
+    }
+    await p.waitForTimeout(3000);
+    const file = `preview-out/${String(++n).padStart(2, '0')}-${safeName(path)}.png`;
+    await p.screenshot({ path: file }).catch(() => {});
+    // Wider than the screen, on a phone: what sticks out.
+    const wide = await p.evaluate(() => {
+      const w = innerWidth;
+      if (document.documentElement.scrollWidth <= w + 2) return [];
+      const out = [];
+      for (const el of document.querySelectorAll('body *')) {
+        const r = el.getBoundingClientRect();
+        if (r.right > w + 2 && r.width > 0 && getComputedStyle(el).position !== 'fixed' && !el.closest('[aria-hidden=true]')) {
+          const cs = el.className && typeof el.className === 'string' ? '.' + el.className.split(' ')[0] : '';
+          out.push(`${el.tagName.toLowerCase()}${cs} ${Math.round(r.right)}px`);
+        }
+        if (out.length > 6) break;
+      }
+      return [document.documentElement.scrollWidth + 'px wide', ...out];
+    });
+    if (wide.length) note('TOO WIDE', wide.join(', '));
+    // Small things to tap, on a phone.
+    if (phone) {
+      const small = await p.evaluate(() => [...document.querySelectorAll('button, a[href], [role=button], input:not([type=hidden])')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top < innerHeight && (r.width < 24 || r.height < 24); }).length);
+      if (small > 3) note('SMALL TAP TARGETS', small + ' buttons or links under 24px');
+    }
+    // Every button, one by one, coming back to the page after each.
+    const total = await p.locator('main button:visible, [role=main] button:visible, button:visible').count().catch(() => 0);
+    const limit = Math.min(total, phone ? 30 : 45);
+    let clicked = 0;
+    let shots = 0;
+    for (let i = 0; i < limit && !late(); i++) {
+      const b = p.locator('button:visible').nth(i);
+      const label = ((await b.getAttribute('aria-label', { timeout: 800 }).catch(() => null)) || (await b.innerText({ timeout: 800 }).catch(() => '')) || '').trim().split('\n')[0].slice(0, 50);
+      if (!label || SKIP.test(label)) continue;
+      const before = errs.length;
+      const url = p.url();
+      try {
+        await b.click({ timeout: 1500 });
+        clicked++;
+        await p.waitForTimeout(350);
+      } catch {
+        continue;
+      }
+      // A dialog, menu or panel that opened: a picture of it, to look at.
+      const opened = await p.locator('.scrim:visible, [role=dialog]:visible, [role=menu]:visible, [role=alertdialog]:visible').count().catch(() => 0);
+      if (opened && shots < (phone ? 6 : 10)) {
+        shots++;
+        await p.screenshot({ path: `preview-out/d-${String(n).padStart(2, '0')}-${safeName(label)}.png` }).catch(() => {});
+      }
+      if (errs.length > before) {
+        say('  after clicking', JSON.stringify(label));
+        await p.screenshot({ path: `preview-out/zz-${safeName(path)}-${safeName(label)}.png` }).catch(() => {});
+      }
+      // Close what opened, and come back if it went somewhere else.
+      for (let k = 0; k < 2; k++) await p.keyboard.press('Escape').catch(() => {});
+      if (p.url() !== url) {
+        await p.goto(url).catch(() => {});
+        await p.waitForTimeout(1500);
+      }
+    }
+    say('page', path, 'buttons', total, 'clicked', clicked);
+  }
+  // Design, used for real: a template, a picture frame, the sheets on a phone.
+  if (!learner) {
+    where = 'design check';
+    const [tab] = await Promise.all([ctx.waitForEvent('page'), (async () => { await p.goto(`${BASE}/design`); await p.getByRole('button', { name: 'New design' }).first().click(); })()]);
+    await tab.setViewportSize(W);
+    tab.on('pageerror', (e) => note('CRASH', e.message));
+    await tab.locator('.dz-start').waitFor({ timeout: 30000 }).catch(() => {});
+    await tab.locator('.dz-start-card', { hasText: 'Label the picture' }).click();
+    await tab.waitForTimeout(3000);
+    await tab.screenshot({ path: 'preview-out/zd-1-design.png' });
+    await tab.locator('.dz-railb', { hasText: 'Elements' }).click();
+    await tab.waitForTimeout(600);
+    await tab.screenshot({ path: 'preview-out/zd-2-elements.png' });
+    await tab.getByRole('button', { name: 'Speech bubble' }).click();
+    await tab.waitForTimeout(400);
+    await tab.keyboard.type('Hello');
+    await tab.keyboard.press('Escape');
+    await tab.waitForTimeout(400);
+    await tab.screenshot({ path: 'preview-out/zd-3-bubble.png' });
+    if (phone) {
+      await tab.locator('.dz-float').getByRole('button', { name: 'Settings' }).click().catch((e) => note('FAIL', 'settings sheet ' + e.message));
+      await tab.waitForTimeout(500);
+      await tab.screenshot({ path: 'preview-out/zd-4-settings.png' });
+    } else {
+      const b = await tab.locator('.dz-paper').boundingBox();
+      await tab.mouse.click(b.x + b.width / 2, b.y + b.height * 0.42, { button: 'right' });
+      await tab.waitForTimeout(400);
+      await tab.screenshot({ path: 'preview-out/zd-4-menu.png' });
+    }
+  }
+  say('SUMMARY', code, 'problems', errs.length, 'minutes', Math.round((Date.now() - t0) / 60000));
+  writeFileSync('preview-out/problems.txt', errs.join('\n'));
 }

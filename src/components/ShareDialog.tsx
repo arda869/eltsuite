@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { ask } from '../lib/ask';
 import { FileIcon, type FileKind } from './FileIcon';
 import { useEffect, useState } from 'react';
@@ -46,7 +47,7 @@ export function ShareDialog({ what, onClose }: { what: ShareWhat; onClose: () =>
       await createShare({ ...what, owner: user.uid, ownerName: user.displayName || 'A colleague', ownerEmail: user.email ?? '', mode, people: mode === 'people' ? people : [], notes, about: what.about ?? '' });
     });
   const copy = (id: string) => {
-    navigator.clipboard?.writeText(shareLink(id)).then(() => (setCopied(true), window.setTimeout(() => setCopied(false), 1800)));
+    copyText(shareLink(id)).then(() => (setCopied(true), window.setTimeout(() => setCopied(false), 1800)));
   };
   const toggle = (id: string) => setPeople((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const canShare = mode === 'link' || people.length > 0;

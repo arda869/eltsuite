@@ -412,7 +412,7 @@ export const TOOL_FACE: Record<string, React.ReactNode> = {
   add: ICON(<><rect x="1.5" y="1.5" width="5" height="5" rx="1.2" /><rect x="9.5" y="1.5" width="5" height="5" rx="1.2" /><rect x="1.5" y="9.5" width="5" height="5" rx="1.2" /><path d="M12 9.5v5M9.5 12h5" /></>),
 };
 const BTN = (label: string, active: boolean, onClick: () => void, text: React.ReactNode) => (
-  <button type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
+  <button key={label} type="button" className={'tool' + (active ? ' on' : '')} aria-label={label} title={label} onMouseDown={(e) => e.preventDefault()} onClick={onClick}>
     {text}
   </button>
 );

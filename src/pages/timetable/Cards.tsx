@@ -1,3 +1,4 @@
+import { copyText } from '../../lib/copyText';
 import { useState, type CSSProperties } from 'react';
 import { theme } from '../../lib/themes';
 import { addSession, isNow, useZones, zoneOf, type Occurrence, type Session, type SessionKind } from '../../lib/sessions';
@@ -234,7 +235,7 @@ function GuestInvite({ s, o, mine }: { s: Session; o: Occurrence; mine: boolean 
           <span>People without ELT Suite join with this link:</span>
           <span className="ttb-guest-link">{url.replace(/^https:\/\//, '')}</span>
           <span className="ttb-guest-acts">
-            <button type="button" className="btn small-btn" onClick={() => (void navigator.clipboard?.writeText(url), setCopied(true), window.setTimeout(() => setCopied(false), 1500))}>
+            <button type="button" className="btn small-btn" onClick={() => (void copyText(url), setCopied(true), window.setTimeout(() => setCopied(false), 1500))}>
               {copied ? 'Copied' : 'Copy the link'}
             </button>
             <a className="btn small-btn" href={mail}>

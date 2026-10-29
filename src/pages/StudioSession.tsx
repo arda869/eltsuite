@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
@@ -216,7 +217,7 @@ export function StudioSession() {
         <span className="studio-where">{s.title || 'Recording session'}</span>
         <span style={{ flex: 1 }} />
         {recording && !count && <span className="ss-live">● Recording</span>}
-        <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(sessionLink(id)).then(() => setStatus('The link is copied.'))}>
+        <button type="button" className="btn small-btn" onClick={() => void copyText(sessionLink(id)).then(() => setStatus('The link is copied.'))}>
           <UiIcon name="link" size={13} /> Copy the link
         </button>
       </header>

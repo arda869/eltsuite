@@ -286,7 +286,7 @@ export function Start({ tour = false }: { tour?: boolean }) {
 }
 
 // A small picture of each app's screen, drawn rather than a screenshot, so it reads at any size.
-const ln = (x: number, y: number, w: number, o = 1) => <rect x={x} y={y} width={w} height="6" rx="3" className="gu-s-soft" opacity={o} />;
+const ln = (x: number, y: number, w: number, o = 1) => <rect key={`${x},${y}`} x={x} y={y} width={w} height="6" rx="3" className="gu-s-soft" opacity={o} />;
 function AppScreen({ k, c }: { k: string; c: string }) {
   const tint = (o: number) => ({ fill: c, opacity: o });
   const pic = (() => {

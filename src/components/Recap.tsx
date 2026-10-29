@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useMemo, useState } from 'react';
 import { getDocs, orderBy, query } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
@@ -137,7 +138,7 @@ export function RecapDialog({ c, item, items, onClose }: { c: ClassDoc; item: It
     const url = await parentLink(c.id, { ...cur, comment });
     setLink(url);
     try {
-      await navigator.clipboard.writeText(url);
+      await copyText(url);
       setMsg('Link copied. Anyone with it can read this recap, so share it privately.');
     } catch {
       setMsg('Copy the link below and share it privately.');

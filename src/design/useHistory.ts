@@ -19,6 +19,12 @@ export function useEdits(designId: string, els: El[]) {
   const redo = useRef<Step[]>([]);
   const [, tick] = useState(0);
   const timer = useRef<number>(0);
+  const [pending, setPending] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const track = (p: Promise<void>) => {
+    setPending((n) => n + 1);
+    p.then(() => setFailed(false), () => setFailed(true)).finally(() => setPending((n) => n - 1));
+  };
 
   const byId = () => new Map(elsRef.current.map((e) => [e.id, e]));
 
@@ -59,7 +65,7 @@ export function useEdits(designId: string, els: El[]) {
       if (undo.current.length > 200) undo.current.shift();
       redo.current = [];
       tick((n) => n + 1);
-      void writeSnap(after).catch(() => {});
+      track(writeSnap(after));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [writeSnap],
@@ -120,15 +126,15 @@ export function useEdits(designId: string, els: El[]) {
     if (!s) return;
     redo.current.push(s);
     tick((n) => n + 1);
-    void writeSnap(s.before);
+    track(writeSnap(s.before));
   }, [flush, writeSnap]);
   const doRedo = useCallback(() => {
     const s = redo.current.pop();
     if (!s) return;
     undo.current.push(s);
     tick((n) => n + 1);
-    void writeSnap(s.after);
+    track(writeSnap(s.after));
   }, [writeSnap]);
 
-  return { live, setLive, flush, commit, patch, undo: doUndo, redo: doRedo, canUndo: undo.current.length > 0, canRedo: redo.current.length > 0 };
+  return { live, setLive, flush, commit, patch, undo: doUndo, redo: doRedo, canUndo: undo.current.length > 0, canRedo: redo.current.length > 0, saving: pending > 0 || Object.keys(live).length > 0, failed };
 }

@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { keyLabel } from '../lib/keys';
 import { tell } from '../lib/ask';
@@ -43,7 +44,7 @@ export function MenuHost() {
       const link = t.closest('a[href]') as HTMLAnchorElement | null;
       const text = window.getSelection()?.toString() ?? '';
       const items: MenuItem[] = [];
-      const copy = (v: string) => void navigator.clipboard?.writeText(v).catch(() => {});
+      const copy = (v: string) => void copyText(v).catch(() => {});
       if (field) {
         items.push(
           { label: 'Cut', icon: '', hint: keyLabel('Mod+X'), disabled: !text, onClick: () => document.execCommand('cut') },

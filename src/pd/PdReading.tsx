@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useRef, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
@@ -432,7 +433,7 @@ export function PdReading({ d, canEdit }: { d: SharedDoc & { pd?: { style?: Cite
   };
   const patch = (p: Partial<ReadSource>) => cur && void updateDoc(doc(srcCol(d.id), cur.id), JSON.parse(JSON.stringify(p)));
   const copy = (what: string, text: string) => {
-    void navigator.clipboard?.writeText(text);
+    void copyText(text);
     setCopied(what);
     window.setTimeout(() => setCopied(''), 1400);
   };
