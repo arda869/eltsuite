@@ -688,7 +688,24 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
   const training = useTrainingClass(classId);
   const slash = useSlash(editor, bankCmds, textOnly, training);
   const toolPlace = useToolGate();
-  const [moreOpen, setMoreOpen] = useState(false);
+  // The extra tools are out by default; closing them is remembered on this device.
+  const [moreOpen, setMoreOpenState] = useState(() => {
+    try {
+      return localStorage.getItem('ll.tb.more') !== '0';
+    } catch {
+      return true;
+    }
+  });
+  const setMoreOpen = (f: (v: boolean) => boolean) =>
+    setMoreOpenState((v) => {
+      const n = f(v);
+      try {
+        localStorage.setItem('ll.tb.more', n ? '1' : '0');
+      } catch {
+        /* fine */
+      }
+      return n;
+    });
   const [gallery, setGallery] = useState(false);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
@@ -713,7 +730,14 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       const r = el.getBoundingClientRect();
       const kids = Array.from(el.children).filter((k) => !(k as HTMLElement).classList.contains('tb-more-tools')) as HTMLElement[];
       kids.forEach((k) => (k.style.visibility = ''));
-      const over = kids.filter((k) => k.getBoundingClientRect().right > r.right - 34 || k.offsetTop > 4);
+      // A slot has no box of its own (display: contents): measure the tool in it.
+      const box = (k: HTMLElement) => ((getComputedStyle(k).display === 'contents' ? k.firstElementChild : k) as HTMLElement | null)?.getBoundingClientRect();
+      const rows = kids.map(box).filter((b): b is DOMRect => !!b && b.width > 0);
+      const top = rows.length ? Math.min(...rows.map((b) => b.top)) : r.top;
+      const over = kids.filter((k) => {
+        const b = box(k);
+        return !!b && b.width > 0 && (b.right > r.right - 34 || b.top > top + 6);
+      });
       setToolsOver(over.length > 0);
       // Closed: a tool that only partly fits is hidden, so the row ends cleanly at the arrow.
       if (!toolsOpen) over.forEach((k) => (k.style.visibility = 'hidden'));
@@ -817,19 +841,21 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                   {n}
                 </span>
               ))}
-              {more.length > 0 && (
-                <button type="button" className={'tool tb-more-arrow' + (moreOpen ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} aria-label={moreOpen ? 'Hide the extra tools' : 'More tools'} title={moreOpen ? 'Hide the extra tools' : 'More tools'}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-                    <path d={moreOpen ? 'M7.5 3l-3 3 3 3' : 'M4.5 3l3 3-3 3'} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              )}
+              {moreOpen && more.length > 0 && <span className="tool-sep tb-extra-sep" aria-hidden="true" />}
               {moreOpen &&
                 more.map(([k, n]) => (
                   <span key={k} className="tb-slot tb-extra">
                     {n}
                   </span>
                 ))}
+              {more.length > 0 && (
+                <button type="button" className={'tool tb-more-arrow' + (moreOpen ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} aria-label={moreOpen ? 'Fewer tools' : 'More tools'} data-tip={moreOpen ? `Fewer tools: hide ${more.length === 1 ? 'the extra tool' : `the ${more.length} extra tools`}` : `More tools: ${more.length} more`}>
+                  <svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
+                    <path d={moreOpen ? 'M7.5 3l-3 3 3 3' : 'M4.5 3l3 3-3 3'} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {!moreOpen && <span className="tb-more-n">{more.length}</span>}
+                </button>
+              )}
             </>
           );
         })()}

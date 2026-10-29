@@ -8066,3 +8066,14 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .pdff-float .pdff-pg, .pdff-float .pdff-zoom { display: inline-flex; align-items: center; gap: 2px; }
 .pdff-float .pdff-zoom { padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--hair); }
 @media (max-width: 1240px) { .pdff-float .pdff-of { display: inline; } }
+
+/* The extra tools: after a thin line, with the arrow at the very end (› shows them, ‹ hides them) */
+.tb-more-arrow { display: inline-flex; align-items: center; gap: 2px; padding: 0 6px; color: var(--muted); }
+.tb-more-arrow:hover { color: var(--ink); }
+.tb-more-arrow.on { background: none; color: var(--muted); }
+.tb-more-n { font: 700 10.5px var(--sans); color: var(--accent-text, var(--accent)); }
+.tb-extra-sep { animation: tb-in .18s ease-out; }
+/* A narrow toolbar (lessons and chat): one row, the tools that don't fit behind the corner arrow */
+.toolbar.tb-compact { position: relative; flex-wrap: nowrap; overflow-x: clip; overflow-y: visible; padding-right: 34px; }
+.toolbar.tb-compact > * { flex: 0 0 auto; }
+.toolbar.tb-compact.open { flex-wrap: wrap; overflow: visible; }
