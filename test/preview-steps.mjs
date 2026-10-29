@@ -51,36 +51,11 @@ trailer<</Root 1 0 R>>
   await p.waitForTimeout(1500);
   await shot('pdf-zoom-150');
 
-  // Print or PDF → PDF, then the viewer's close arrow, then the browser's back button.
-  await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
-  await p.waitForSelector('.sh-split', { timeout: 30000 });
-  await p.waitForTimeout(2000);
-  await p.click('button:has-text("Print or PDF")');
-  await p.waitForSelector('.ws-dialog', { timeout: 10000 });
-  await p.waitForTimeout(1200);
-  await p.click('.ws-dialog button:has-text("PDF")');
-  await p.waitForSelector('.pv', { timeout: 150000 }).catch(async () => say('no viewer; dialog says', (await p.locator('.ws-dialog').innerText().catch(() => '')).slice(-200)));
-  await p.waitForTimeout(2500);
-  await shot('pdf-viewer');
-  await p.click('.pv-bar button[aria-label="Close"]');
-  await p.waitForTimeout(600);
-  await shot('viewer-close-arrow');
-  say('after close arrow', 'viewer:', await p.locator('.pv').count(), 'confirm:', await p.locator('.ask-scrim').count());
-  const ok = p.locator('.ask-scrim button:has-text("Close without saving")');
-  if (await ok.count()) await ok.click();
-  await p.waitForTimeout(500);
-  say('after confirming', 'viewer:', await p.locator('.pv').count(), 'dialog:', await p.locator('.ws-dialog').count());
-  if (!(await p.locator('.ws-dialog').count())) await p.click('button:has-text("Print or PDF")');
-  await p.waitForTimeout(800);
-  await p.click('.ws-dialog button:has-text("PDF")');
-  await p.waitForSelector('.pv', { timeout: 150000 }).catch(async () => say('no viewer; dialog says', (await p.locator('.ws-dialog').innerText().catch(() => '')).slice(-200)));
-  await p.waitForTimeout(1500);
-  await p.goBack();
-  await p.waitForTimeout(1200);
-  await shot('after-browser-back');
-  say('after browser back', p.url().replace(BASE, ''), 'viewer:', await p.locator('.pv').count(), 'confirm:', await p.locator('.ask-scrim').count(), 'dialog:', await p.locator('.ws-dialog').count());
-
-  await p.evaluate(() => localStorage.setItem('ll.sheetView', ''));
+  // A question asked over the PDF viewer comes on top of it.
+  await p.evaluate(async () => void (await import('/src/lib/ask.tsx')).ask('This PDF isn’t saved in your Files. You can make it again at any time.'));
+  await p.waitForTimeout(400);
+  say('question layer', await p.$eval('.ask-scrim', (e) => getComputedStyle(e).zIndex), 'viewer layer 80');
+  await p.keyboard.press('Escape');
 
   // The sign-in page on a phone.
   await p.evaluate(async () => (await import('/src/lib/firebase.ts')).auth.signOut());
