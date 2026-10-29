@@ -25,7 +25,7 @@ export default async function steps({ p, shot, say, demo, BASE }) {
   await wait(400);
   await crop('03-bar-closed-again');
   await p.locator('.frame-body .task-editor .ProseMirror').first().click();
-  await p.locator('[aria-label="Pronunciation"]').first().click().catch((e) => say('pron', e.message));
+  await bar.locator('[aria-label="Pronunciation"]').click().catch((e) => say('pron', e.message));
   await wait(500);
   await crop('04-pron');
   await p.setViewportSize({ width: 1100, height: 900 });
