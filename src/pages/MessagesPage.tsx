@@ -14,6 +14,7 @@ import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { tickOf, deleteChat, deletesForAll, type Tick } from '../lib/chat';
+import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
@@ -73,6 +74,39 @@ export function MessagesPage() {
   const openRef = useRef(open);
   openRef.current = open;
   useEffect(() => () => void (openRef.current && !window.matchMedia('(max-width: 640px)').matches && dockOpen(openRef.current, true)), []);
+  // A chat's menu: right-click on a computer, a long press on a phone. Deleting asks first.
+  const delChat = async (c: Chat) => {
+    if (!me) return;
+    const all = deletesForAll(c, me.key) && !isSelf(c);
+    const ok = await ask(all ? 'Delete this chat? It goes for everyone in it, with all its messages. You can’t undo this.' : isSelf(c) ? 'Delete your notes to self? You can’t undo this.' : 'Delete this chat? It goes from your list, with its messages so far. The others keep theirs. If someone writes again, it comes back.', { ok: 'Delete chat', cancel: 'Keep it' });
+    if (!ok) return;
+    if (c.id === open) pick('');
+    await deleteChat(c, me.key).catch(() => void tell('We couldn’t delete the chat just now. Try again.'));
+  };
+  const rowMenu = (c: Chat): MenuItem[] => [
+    { label: 'Open', icon: 'message', onClick: () => pick(c.id) },
+    ...(unreadIn(c, me?.key ?? '') ? [{ label: 'Mark as read', icon: 'check', onClick: () => void markRead(c, me!.key) } as MenuItem] : []),
+    'sep',
+    { label: deletesForAll(c, me?.key ?? '') && !isSelf(c) ? 'Delete chat for everyone' : 'Delete chat', icon: 'trash', danger: true, onClick: () => void delChat(c) },
+  ];
+  const held = useRef(false);
+  const timer = useRef(0);
+  const hold = (c: Chat) => ({
+    onTouchStart: (e: React.TouchEvent) => {
+      const t = e.touches[0];
+      const x = t.clientX;
+      const y = t.clientY;
+      held.current = false;
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => {
+        held.current = true;
+        navigator.vibrate?.(12);
+        openMenu(new MouseEvent('contextmenu', { clientX: x, clientY: y }), rowMenu(c));
+      }, 520);
+    },
+    onTouchMove: () => window.clearTimeout(timer.current),
+    onTouchEnd: () => window.clearTimeout(timer.current),
+  });
   const shown = (chats ?? []).filter((c) => !q.trim() || chatTitle(c, me?.key ?? '').toLowerCase().includes(q.trim().toLowerCase()) || Object.values(c.names).some((n) => n.toLowerCase().includes(q.trim().toLowerCase())));
   const pick = (id: string) => setParams(id ? { c: id } : {});
 
@@ -118,7 +152,7 @@ export function MessagesPage() {
                 const tagged = un && c.last?.mentions?.includes(me.key);
                 const title = chatTitle(c, me.key);
                 return (
-                  <button key={c.id} type="button" role="option" aria-selected={c.id === open} className={'msg-row' + (c.id === open ? ' on' : '') + (un ? ' unread' : '')} onClick={() => pick(c.id)}>
+                  <button key={c.id} type="button" role="option" aria-selected={c.id === open} className={'msg-row' + (c.id === open ? ' on' : '') + (un ? ' unread' : '')} onClick={() => (held.current ? (held.current = false) : pick(c.id))} onContextMenu={(e) => openMenu(e, rowMenu(c))} {...hold(c)}>
                     <span className={'msg-av' + (c.kind === 'group' ? ' group' : '') + (isSelf(c) ? ' self' : '')}>{c.kind === 'group' ? <UiIcon name="groups" size={16} /> : isSelf(c) ? <UiIcon name="pen" size={15} /> : initial(title)}</span>
                     <span className="msg-row-t">
                       <span className="msg-row-top">
@@ -399,21 +433,6 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
             Group
           </button>
         )}
-        <button
-          type="button"
-          className="icon-btn chat-del"
-          aria-label="Delete this chat"
-          data-tip={deletesForAll(c, me.key) && !isSelf(c) ? 'Delete this chat for everyone' : 'Delete this chat'}
-          onClick={async () => {
-            const all = deletesForAll(c, me.key) && !isSelf(c);
-            const ok = await ask(all ? 'Delete this chat? It goes for everyone in it, with all its messages. You can’t undo this.' : isSelf(c) ? 'Delete your notes to self? You can’t undo this.' : 'Delete this chat? It goes from your list, with its messages so far. The others keep theirs. If someone writes again, it comes back.', { ok: 'Delete chat', cancel: 'Keep it' });
-            if (!ok) return;
-            await deleteChat(c, me.key).catch(() => void tell('We couldn’t delete the chat just now. Try again.'));
-            onBack();
-          }}
-        >
-          <UiIcon name="trash" size={16} />
-        </button>
         {onMin && (
           <button type="button" className="btn small-btn chat-min" onClick={onMin} data-tip="Keep this chat in a small window while you work in other apps">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg> Minimise

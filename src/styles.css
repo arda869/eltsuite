@@ -8264,3 +8264,9 @@ html:has(.msg), body:has(.msg) { overflow: hidden; overscroll-behavior: none; he
 .bub.picked { outline: none !important; }
 .chat-del { color: var(--muted); }
 .chat-del:hover { color: #b3261e; }
+/* Chats in the list: a long press opens their menu, without the phone's own text menu. */
+.msg-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+/* Messages fills the screen down to the bottom edge. */
+.shell:has(> .msg) { height: 100dvh; min-height: 0; overflow: hidden; }
+.shell:has(> .msg) > .msg { flex: 1 1 auto; height: auto; min-height: 0; }
+@media (max-width: 640px) { .shell:has(> .msg) { padding-bottom: calc(8px + env(safe-area-inset-bottom)); } }
