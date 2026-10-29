@@ -586,14 +586,22 @@ ${sheetCss(opts)}
   // are never cut.
   var SOLID = 'svg, img, table, figure, .qr-block, .tl, .dgw, .dcut-wrap, .wordbox, .sbw-p, .ws-lines, p, li';
   function cut(col, el, restEl) {
-    while (over(col) && el.children.length > 1) restEl.insertBefore(el.lastElementChild, restEl.firstChild);
-    if (!over(col)) return;
-    var only = el.lastElementChild;
-    if (!only || !only.children.length || only.matches(SOLID)) return;
-    var part = only.cloneNode(false);
-    restEl.insertBefore(part, restEl.firstChild);
-    cut(col, only, part);
-    if (!part.children.length) restEl.removeChild(part);
+    while (over(col) && el.children.length) {
+      var last = el.lastElementChild;
+      var solid = !last.children.length || last.matches(SOLID);
+      // Without it, would the column fit? If not, it goes on whole.
+      el.removeChild(last);
+      var fits = !over(col);
+      el.appendChild(last);
+      if (!fits && el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); continue; }
+      if (solid) { if (el.children.length > 1) restEl.insertBefore(last, restEl.firstChild); return; }
+      // It fits partly: the rest of it goes on, in a copy of it.
+      var part = last.cloneNode(false);
+      restEl.insertBefore(part, restEl.firstChild);
+      cut(col, last, part);
+      if (!part.children.length) restEl.removeChild(part);
+      return;
+    }
   }
   function flow(templateId, bandId) {
     var units = Array.prototype.slice.call(document.getElementById(templateId).content.children).map(function (n) { return n.cloneNode(true); });
