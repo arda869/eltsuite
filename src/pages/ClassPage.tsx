@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
 import { Loader } from '../components/Loader';
@@ -103,7 +104,7 @@ export function ClassPage() {
   async function copyCode() {
     if (!c) return;
     try {
-      await navigator.clipboard.writeText(c.classCode);
+      await copyText(c.classCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {

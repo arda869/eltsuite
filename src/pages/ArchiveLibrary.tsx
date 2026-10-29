@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { NSelect } from '../components/Select';
 import { ask } from '../lib/ask';
 import { useAuth } from '../lib/auth';
@@ -592,7 +593,7 @@ export function ArchiveColleagues({ uid, me, inviteOnly }: { uid: string; me: { 
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState('');
   const fresh = links[0];
-  const copy = (t: string) => navigator.clipboard?.writeText(colleagueLink(t)).then(() => (setCopied(t), window.setTimeout(() => setCopied(''), 1800)));
+  const copy = (t: string) => copyText(colleagueLink(t)).then(() => (setCopied(t), window.setTimeout(() => setCopied(''), 1800)));
   const make = async () => {
     setBusy(true);
     try {

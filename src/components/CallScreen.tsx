@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { typingIn } from '../lib/keys';
 import { createPortal } from 'react-dom';
@@ -493,7 +494,7 @@ function Controls({ s, call, people, setPeople, compact }: { s: EngineState; cal
               {call.code && (
                 <>
                   <span className="ks-k">Link</span>
-                  <button role="menuitem" onClick={() => (void navigator.clipboard?.writeText(callLinkUrl(call.code!)), setMore(false))}>
+                  <button role="menuitem" onClick={() => (void copyText(callLinkUrl(call.code!)), setMore(false))}>
                     <span className="ks-tick">
                       <I n="link" s={14} />
                     </span>
@@ -593,7 +594,7 @@ export function CallScreen({ page }: { page?: boolean }) {
   const sub = s.status === 'joining' ? 'Joining…' : s.status === 'error' ? 'Not connected' : `${people_} ${people_ === 1 ? 'person' : 'people'}${s.startedAt ? ' · ' + clock(now - s.startedAt) : ''}`;
   const copy = () => {
     if (!call.code) return;
-    void navigator.clipboard?.writeText(callLinkUrl(call.code));
+    void copyText(callLinkUrl(call.code));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };

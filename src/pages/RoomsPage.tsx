@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
@@ -124,7 +125,7 @@ export function RoomsPage() {
   };
   const ctx = { uid, chats, classes: classes ?? [], dir, calling, onCall: (key: string, kind: CallKind, c?: Chat) => void call(key, kind, c) };
   const copy = () => {
-    void navigator.clipboard?.writeText(link);
+    void copyText(link);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
   };

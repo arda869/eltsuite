@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { OrgLogo } from '../components/OrgLook';
 import { PdfFile } from '../pdf/PdfFile';
 import { Mark } from '../components/Wordmark';
@@ -135,7 +136,7 @@ export function DocPage() {
             </button>
           )}
           {d && (
-            <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(docLink(d.id))} data-tip="Only people it’s shared with can open it">
+            <button type="button" className="btn small-btn" onClick={() => void copyText(docLink(d.id))} data-tip="Only people it’s shared with can open it">
               <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}

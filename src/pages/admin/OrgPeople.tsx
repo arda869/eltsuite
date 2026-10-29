@@ -1,3 +1,4 @@
+import { copyText } from '../../lib/copyText';
 import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { MultiSelect, Select } from '../../components/Select';
@@ -548,7 +549,7 @@ export function OrgInvites({ d, params, go }: { d: OrgData; params: URLSearchPar
                     <td className="hq-acts" data-label="">
                       {i.status === 'pending' && (
                         <>
-                          <button type="button" className="btn link small" onClick={() => void navigator.clipboard?.writeText(inviteLink(i.id)).then(() => say(`The link for ${i.name || i.email} is copied.`))}>
+                          <button type="button" className="btn link small" onClick={() => void copyText(inviteLink(i.id)).then(() => say(`The link for ${i.name || i.email} is copied.`))}>
                             Copy link
                           </button>
                           {i.mailed && (

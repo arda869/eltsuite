@@ -116,6 +116,36 @@ export default async function steps({ p, ctx, say, demo, BASE }) {
     }
     say('page', path, 'buttons', total, 'clicked', clicked);
   }
+  // Design, used for real: a template, a picture frame, the sheets on a phone.
+  if (!learner) {
+    where = 'design check';
+    const [tab] = await Promise.all([ctx.waitForEvent('page'), (async () => { await p.goto(`${BASE}/design`); await p.getByRole('button', { name: 'New design' }).first().click(); })()]);
+    await tab.setViewportSize(W);
+    tab.on('pageerror', (e) => note('CRASH', e.message));
+    await tab.locator('.dz-start').waitFor({ timeout: 30000 }).catch(() => {});
+    await tab.locator('.dz-start-card', { hasText: 'Label the picture' }).click();
+    await tab.waitForTimeout(3000);
+    await tab.screenshot({ path: 'preview-out/zd-1-design.png' });
+    await tab.locator('.dz-railb', { hasText: 'Elements' }).click();
+    await tab.waitForTimeout(600);
+    await tab.screenshot({ path: 'preview-out/zd-2-elements.png' });
+    await tab.getByRole('button', { name: 'Speech bubble' }).click();
+    await tab.waitForTimeout(400);
+    await tab.keyboard.type('Hello');
+    await tab.keyboard.press('Escape');
+    await tab.waitForTimeout(400);
+    await tab.screenshot({ path: 'preview-out/zd-3-bubble.png' });
+    if (phone) {
+      await tab.locator('.dz-float').getByRole('button', { name: 'Settings' }).click().catch((e) => note('FAIL', 'settings sheet ' + e.message));
+      await tab.waitForTimeout(500);
+      await tab.screenshot({ path: 'preview-out/zd-4-settings.png' });
+    } else {
+      const b = await tab.locator('.dz-paper').boundingBox();
+      await tab.mouse.click(b.x + b.width / 2, b.y + b.height * 0.42, { button: 'right' });
+      await tab.waitForTimeout(400);
+      await tab.screenshot({ path: 'preview-out/zd-4-menu.png' });
+    }
+  }
   say('SUMMARY', code, 'problems', errs.length, 'minutes', Math.round((Date.now() - t0) / 60000));
   writeFileSync('preview-out/problems.txt', errs.join('\n'));
 }

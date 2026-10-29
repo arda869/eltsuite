@@ -1,3 +1,4 @@
+import { copyText } from '../../lib/copyText';
 import { useEffect, useState } from 'react';
 import { LimitError } from '../../lib/limitError';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -51,7 +52,7 @@ export function OrgClasses({ d, params, go }: { d: OrgData; params: URLSearchPar
   if (cur) return <ClassView d={d} c={cur} onBack={() => go({ tab: 'classes', f: f === 'active' ? '' : f })} />;
   const copyCodes = () => {
     const txt = chosen.map((c) => `${c.name}: ${c.classCode}`).join('\n');
-    void navigator.clipboard?.writeText(txt).then(() => say(`${plural(chosen.length, 'class code')} copied.`));
+    void copyText(txt).then(() => say(`${plural(chosen.length, 'class code')} copied.`));
   };
   return (
     <div className="hq-page">

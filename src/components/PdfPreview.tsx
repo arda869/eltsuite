@@ -1,3 +1,4 @@
+import { copyText } from '../lib/copyText';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../lib/auth';
@@ -80,7 +81,7 @@ export function PdfPreview({ bytes, name, onClose }: { bytes: Uint8Array; name: 
               <button type="button" className="btn primary dp-share" disabled={!d} onClick={() => setSharing(true)}>
                 <UiIcon name="lock" size={15} /> Share
               </button>
-              <button type="button" className="btn small-btn" onClick={() => void navigator.clipboard?.writeText(docLink(id)).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1600)))}>
+              <button type="button" className="btn small-btn" onClick={() => void copyText(docLink(id)).then(() => (setCopied(true), setTimeout(() => setCopied(false), 1600)))}>
                 <UiIcon name="link" size={14} /> {copied ? 'Copied' : 'Copy link'}
               </button>
               <a className="btn small-btn" href={`/doc/${id}`} target="_blank" rel="noopener">

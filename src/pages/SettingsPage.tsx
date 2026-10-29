@@ -1,3 +1,4 @@
+import { isLearnerEmail } from '../lib/learners';
 import { NSelect } from '../components/Select';
 import { answerOf, profileFieldsOf, saveProfileAnswer, useMyOrg, useTeacherProfile, type ProfileField } from '../lib/admin';
 import { ProfileIcon } from '../components/ProfileIcons';
@@ -134,7 +135,8 @@ export function SettingsPage() {
       /* fine */
     }
   };
-  const name = user?.displayName || user?.email?.split('@')[0] || '';
+  const learnerAcct = isLearnerEmail(user?.email);
+  const name = (learnerAcct ? (profile as { displayName?: string } | null)?.displayName : '') || user?.displayName || (learnerAcct ? 'Learner' : user?.email?.split('@')[0]) || '';
   // Searching: only the parts and rows that mention the words stay in view.
   const [q, setSearch] = useState('');
   const [none, setNone] = useState(false);
@@ -184,7 +186,7 @@ export function SettingsPage() {
             <span className="set-av">{profile?.avatar ? <Avatar k={profile.avatar} size={56} /> : <span className="set-av-i">{name.slice(0, 1).toUpperCase()}</span>}</span>
             <span className="set-row-t">
               <b className="set-name">{name}</b>
-              <span className="hint">{user?.email || (teacher ? '' : 'Learner')}</span>
+              <span className="hint">{learnerAcct ? 'Learner' : user?.email || (teacher ? '' : 'Learner')}</span>
             </span>
             <button type="button" className="btn small-btn" onClick={() => setPicking(true)}>
               Change picture

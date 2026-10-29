@@ -1,3 +1,4 @@
+import { copyText } from '../../lib/copyText';
 import { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { ask } from '../../lib/ask';
@@ -54,7 +55,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
     setBusy(false);
   };
   const copy = (text: string, what: string) =>
-    void navigator.clipboard?.writeText(text).then(
+    void copyText(text).then(
       () => say(`${what} copied.`),
       () => say('We couldn’t copy it.'),
     );
