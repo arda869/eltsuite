@@ -8081,3 +8081,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 /* The worksheet on its own: the editor beside it is closed until you click a task */
 .sh-split.solo { grid-template-columns: minmax(0, 1fr) 0 0; }
 .sh-split.solo > .sh-divider, .sh-split.solo > .sh-right { display: none; }
+/* A file's name in full in its header (documents, PDFs, storyboards, flashcards, slides): the names
+   take the room the header has, and only a very long name is cut short. */
+.dp-names, .pv-names { flex: 1 1 auto; min-width: 0; }
+input.dp-title, .dp-title { max-width: min(760px, 100%); }

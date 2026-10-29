@@ -6,6 +6,7 @@ import { useEditorClass } from '../editor/context';
 import { openMenuAt } from '../components/ContextMenu';
 import { PdfStack, fromStack, toStack } from './PdfStack';
 import type { PageSize } from './pdfData';
+import { newMedia } from '../editor/MediaNode';
 
 // A PDF with notes on it: text boxes that hold anything a task can (text, IPA, gaps, choices)
 // and highlights. The same nodes work in a lesson and in a PDF in Files.
@@ -99,7 +100,7 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
     if (tool === 'text') {
       const at = fromStack(pages, fx, fy);
       const { schema } = editor.state;
-      const box = schema.nodes.pdfBox.create({ page: at.page, x: Math.min(at.x, 0.7), y: at.y, w: 0.3, tone: 'paper' }, schema.nodes.paragraph.create());
+      const box = schema.nodes.pdfBox.create({ page: at.page, x: Math.min(at.x, 0.7), y: at.y, w: store.pending?.key === 'media' ? 0.46 : 0.3, tone: 'paper' }, schema.nodes.paragraph.create());
       const tr = editor.state.tr.insert(end, box);
       tr.setSelection(TextSelection.create(tr.doc, end + 2));
       editor.view.dispatch(tr.scrollIntoView());
@@ -209,6 +210,7 @@ export const toolHint = (e: Editor) => {
   return TOOLS.find((t) => t.k === s.tool)?.hint ?? '';
 };
 export const usePdfTool = useTool;
+const RECORDING: QCmd = { key: 'media', label: 'Recording', run: (e) => void e.chain().focus().insertContent(newMedia()).run() };
 
 export function ToolButtons({ editor, options = true, labels = true }: { editor: Editor; options?: boolean; labels?: boolean }) {
   const store = useTool(editor);
@@ -225,6 +227,12 @@ export function ToolButtons({ editor, options = true, labels = true }: { editor:
           <Ic d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" />
           {labels && <span className="pdf-tb-l">{store.pending ? store.pending.label : 'Question'}</span>}
           <span className="pdf-tb-caret" aria-hidden="true">▾</span>
+        </button>
+      )}
+      {!!editor.schema.nodes.media && (
+        <button type="button" className={'pdf-tb' + (store.pending?.key === 'media' ? ' on' : '')} aria-label="Recording" data-tip="A recording or video on the page: then click where it goes" onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'text', undefined, RECORDING)}>
+          <Ic d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+          {labels && <span className="pdf-tb-l">Recording</span>}
         </button>
       )}
       {options && <ToolOptions editor={editor} />}

@@ -26,12 +26,13 @@ import { PDF_NODES, ToolButtons, ToolOptions, pdfStore, setPdfTool, toolHint, us
 import type { Editor } from '@tiptap/core';
 import { filePdfInfo, type PageSize } from './pdfData';
 import { PdfThumb, pageText } from './PdfStack';
+import { MediaBlock } from '../editor/MediaNode';
 
 // A PDF in Files: its pages, with text boxes and highlights everyone it is shared with sees and
 // changes live. The boxes hold anything a lesson can: text, IPA, gaps, choices.
 
 const PdfDocument = Document.extend({ content: 'pdfBlock' });
-const NODES = [...DOC_NODES.slice(1), PdfDocument, ...PDF_NODES];
+const NODES = [...DOC_NODES.slice(1), PdfDocument, ...PDF_NODES, MediaBlock];
 
 export function PdfFile({ d, canEdit, me }: { d: SharedDoc; canEdit: boolean; me: { uid: string; name: string } }) {
   const session = useCollabSession(d.docKey, me.uid);
@@ -248,7 +249,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
           </nav>
         )}
         <div className={'pdff-page' + (showKey && teacher ? '' : ' no-key')} style={{ ['--pdf-zoom' as string]: zoom }}>
-          <EditorClassContext.Provider value={{ classId: '', classmates: [] }}>
+          <EditorClassContext.Provider value={{ classId: 'doc:' + d.id, classmates: [] }}>
             <EditorContent editor={editor} />
           </EditorClassContext.Provider>
         </div>
