@@ -2,7 +2,7 @@ import { tr } from '../lib/terms';
 import { LimitError } from '../lib/limitError';
 import { openMenu } from './ContextMenu';
 import { ask, tell } from '../lib/ask';
-import { openAsLearner } from '../lib/proxy';
+import { openAsLearner, openAsUser } from '../lib/proxy';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { addLearners, removeLearner, resetPin, type Learner } from '../lib/learners';
 import { LANGUAGES, saveLearnerLangs } from '../lib/langs';
@@ -13,11 +13,12 @@ import { isOnline, usePresence } from '../lib/presence';
 import { ago } from '../lib/activity';
 import { LearnerDetail } from './LearnerDetail';
 import { useAuth } from '../lib/auth';
-import { useMyOrg } from '../lib/admin';
+import { useMyOrg, useSuper } from '../lib/admin';
 import { openChat, sendMsg, type Chat } from '../lib/chat';
 
 // manage: an organisation admin's view: add and remove learners and their PINs, nothing of their work.
 export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = '', onOpen, manage = false }: { c: ClassDoc; learners: Learner[]; pins: Record<string, string>; own?: Record<string, string>; items?: Item[]; openId?: string; onOpen?: (id: string) => void; manage?: boolean }) {
+  const isSuper = !!useSuper();
   const presence = usePresence(manage ? '' : c.id);
   const [shown, setShown] = useState<Record<string, boolean>>({});
   const [adding, setAdding] = useState(false);
@@ -206,7 +207,12 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
                       )}
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {!manage && <button className="btn small-btn" disabled={!pins[l.id]} title={tr('Open a new tab signed in as this learner')} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
+                      {!manage && isSuper && (
+                        <button className="btn small-btn" title="Super admin: a new tab signed in as this learner, even if they chose their own password" onClick={() => void openAsUser({ uid: l.authUid, name: l.displayName, path: '/' }).then((m) => m && void tell(m))}>
+                          Sign in as {l.displayName.split(' ')[0]}
+                        </button>
+                      )}
+                      {!manage && !isSuper && <button className="btn small-btn" disabled={!pins[l.id]} title={tr('Open a new tab signed in as this learner')} onClick={() => openAsLearner({ classId: c.id, classCode: c.classCode, learnerId: l.id, name: l.displayName, pin: pins[l.id] ?? '' }) || void tell('Your browser blocked the new tab. Allow pop-ups for this site.')}>
                         View as {l.displayName.split(' ')[0]}
                       </button>}
                       <button

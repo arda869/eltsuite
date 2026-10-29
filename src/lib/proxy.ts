@@ -8,7 +8,7 @@ import { learnerEmail, learnerPassword } from './learners';
 // browser copies into a tab opened with window.open, and are wiped as soon as they are used.
 
 const KEY = 'll.proxy';
-export type ProxyInfo = { email?: string; password?: string; name: string; classId: string; path: string; signedIn?: boolean };
+export type ProxyInfo = { email?: string; password?: string; token?: string; name: string; classId: string; path: string; signedIn?: boolean };
 
 export const isProxyTab = () => {
   try {
@@ -52,4 +52,30 @@ export async function loadPins(classId: string, learnerIds: string[]) {
     }),
   );
   return out;
+}
+
+// A super admin signs in as a teacher or a learner (functions/index.js makes a one-time pass).
+// The tab is opened inside the click, so pop-up blockers allow it, and filled once the pass comes.
+export async function openAsUser(opts: { uid: string; name: string; path?: string }): Promise<string> {
+  const w = window.open('about:blank', '_blank');
+  if (!w) return 'Your browser blocked the new tab. Allow pop-ups for this site.';
+  try {
+    w.document.title = 'One moment…';
+    w.document.body.innerHTML = '<p style="font:16px system-ui;margin:40px;color:#555">Opening ' + opts.name.replace(/[<>&]/g, '') + '’s view…</p>';
+  } catch {
+    /* fine */
+  }
+  try {
+    const [{ getFunctions, httpsCallable }, { app }] = await Promise.all([import('firebase/functions'), import('./firebase')]);
+    const r = await httpsCallable<{ uid: string }, { token: string; name: string }>(getFunctions(app, 'us-central1'), 'signInAs')({ uid: opts.uid });
+    w.sessionStorage.setItem(KEY, JSON.stringify({ token: r.data.token, name: r.data.name || opts.name, classId: '', path: opts.path ?? '/' } satisfies ProxyInfo));
+    w.location.href = '/?as-user=1';
+    return '';
+  } catch (e) {
+    w.close();
+    const code = (e as { code?: string }).code ?? '';
+    if (code.includes('not-found') && !code.includes('functions/not-found')) return 'There is no account like that any more.';
+    if (code.includes('permission-denied')) return (e as Error).message || 'Only super admins can do this.';
+    return 'Signing in as someone else isn’t switched on yet: it needs the ELT Suite server, which isn’t set up. Try again once it is.';
+  }
 }

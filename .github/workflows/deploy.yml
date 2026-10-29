@@ -72,6 +72,21 @@ jobs:
           npm install --no-save --no-audit --no-fund google-auth-library@9
           node scripts/deploy-rules.mjs
 
+      - name: Deploy the server function (signing in as someone, for super admins)
+        # Needs the Blaze plan and the deploy key's permissions for Cloud Functions. Until then it
+        # fails without stopping the rest of the deploy.
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npm --prefix functions install --no-audit --no-fund
+          set -o pipefail
+          if ! npx --yes firebase-tools@14 deploy --only functions --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/fn.log"; then
+            msg=$(grep -iE "error|denied|permission|billing|blaze|enable" "$RUNNER_TEMP/fn.log" | tail -6 | tr '\n' ' ')
+            echo "::warning::The server function wasn't deployed: ${msg:-see log}"
+            exit 1
+          fi
+
       - name: Remove key
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"

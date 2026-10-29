@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithCustomToken, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { readProxy, writeProxy } from '../lib/proxy';
 import { useAuth } from '../lib/auth';
@@ -28,15 +28,15 @@ export function ProxyGate({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     if (!info || info.signedIn || !ready) return;
-    if (!info.email || !info.password) return setError('The sign-in details are missing. Close this tab and try again.');
-    signInWithEmailAndPassword(auth, info.email, info.password)
+    if (!info.token && (!info.email || !info.password)) return setError('The sign-in details are missing. Close this tab and try again.');
+    (info.token ? signInWithCustomToken(auth, info.token) : signInWithEmailAndPassword(auth, info.email!, info.password!))
       .then(() => {
         const next = { name: info.name, classId: info.classId, path: info.path, signedIn: true };
-        writeProxy(next); // the password is not kept
+        writeProxy(next); // the password or pass is not kept
         setInfo(next);
         navigate(info.path || '/', { replace: true });
       })
-      .catch(() => setError('We couldn’t open this learner’s view. Their PIN may have changed. Refresh the Learners list and try again.'));
+      .catch(() => setError(info.token ? 'We couldn’t sign in as them. The pass is good for an hour: close this tab and try again.' : 'We couldn’t open this learner’s view. Their PIN may have changed. Refresh the Learners list and try again.'));
   }, [info, ready, navigate]);
   if (!info) return <>{children}</>;
   const close = async () => {
@@ -63,7 +63,7 @@ export function ProxyGate({ children }: { children: ReactNode }) {
     <>
       <div className="proxy-bar" role="status" ref={bar}>
         <span>
-          Viewing as <strong>{info.name}</strong>. Anything you do here counts as {info.name.split(' ')[0]}’s: answers, posts and attendance.
+          Viewing as <strong>{info.name}</strong>. Anything you do here is done as {info.name.split(' ')[0]}{info.classId ? ': answers, posts and attendance' : ''}.
         </span>
         <button type="button" className="btn small-btn" onClick={close}>
           Close this view
