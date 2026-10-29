@@ -3,6 +3,7 @@ import { useState, type CSSProperties } from 'react';
 import { theme } from '../../lib/themes';
 import { addSession, isNow, useZones, zoneOf, type Occurrence, type Session, type SessionKind } from '../../lib/sessions';
 import { cityOf, clockIn, localZone, sameClock } from '../../lib/tz';
+import { isSeries, repeatOf, repeatText } from '../../lib/repeat';
 import { defaultVideo, external, joinText, joinUrl, makeTeamsMeeting, videoLabel, warmTeams, type VideoPrefs } from '../../lib/meetings';
 import { Select, MultiSelect } from '../../components/Select';
 import { IconBtn, UiIcon } from '../../components/UiIcon';
@@ -151,9 +152,10 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
           <span className="ttb-card-when">
             {longDay(o.start)} · {clockRange(o.start, o.end)}
           </span>
-          {(s.weeks ?? 1) > 1 && (
+          {isSeries(s) && (
             <span className="hint ttb-card-rep">
-              Every week, {o.week + 1} of {s.weeks}
+              {repeatText(s, zoneOf(s))}
+              {repeatOf(s)?.end === 'count' ? ` · this is ${o.week + 1} of ${repeatOf(s)?.count}` : ''}
             </span>
           )}
         </div>
@@ -196,6 +198,15 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
           <li>
             <UiIcon name="person" size={16} />
             <span>{[s.ownerName ? `${s.ownerName} (organiser)` : '', ...(s.attendees ?? []).map((a) => s.names?.[a] ?? 'Colleague')].filter(Boolean).join(', ') || 'Just you'}</span>
+          </li>
+        )}
+        {s.kind === 'meeting' && !!s.guests?.length && (
+          <li>
+            <UiIcon name="message" size={16} />
+            <span>
+              Guests: {s.guests.map((g) => g.email).join(', ')}
+              <span className="hint"> · {s.guests.every((g) => g.sent) ? 'invited by email' : 'the invitation goes out within 15 minutes'}</span>
+            </span>
           </li>
         )}
         {s.notes && <li className="ttb-notes">{s.notes}</li>}

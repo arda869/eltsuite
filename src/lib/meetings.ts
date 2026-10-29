@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Session } from './sessions';
+import { lastStart } from './repeat';
+import { localZone, validZone } from './tz';
 
 // Where an online session happens: ELT Suite's own video room, or the tool a teacher already
 // uses. Google Meet links are made with the Google Calendar event (lib/gcal.ts); Microsoft Teams
@@ -124,9 +126,11 @@ export function warmTeams() {
   return p;
 }
 // A Teams meeting for the whole span of a session (all its weeks), and its join link.
-export async function makeTeamsMeeting(s: Pick<Session, 'title' | 'start' | 'mins' | 'weeks'>) {
+export async function makeTeamsMeeting(s: Pick<Session, 'title' | 'start' | 'mins' | 'weeks' | 'repeat' | 'tz'>) {
   const t = await teamsToken();
-  const end = s.start + ((Math.max(1, s.weeks ?? 1) - 1) * 7 * 864e5) + s.mins * 60000 + 3600e3;
+  // Repeating for good: a year, the longest a Teams link is kept for.
+  const last = lastStart(s, s.tz && validZone(s.tz) ? s.tz : localZone()) ?? s.start + 365 * 864e5;
+  const end = last + s.mins * 60000 + 3600e3;
   const r = await fetch('https://graph.microsoft.com/v1.0/me/onlineMeetings', {
     method: 'POST',
     headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },

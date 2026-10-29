@@ -115,7 +115,7 @@ export function ScopeAsk({ req, onDone }: { req: ScopeReq; onDone: () => void })
   });
   return createPortal(
     <div className="scrim ttb-scrim" onMouseDown={(e) => e.target === e.currentTarget && done(null)}>
-      <form className="dialog ttb-scope" role="dialog" aria-label={`${req.verb} a weekly session`} onSubmit={(e) => (e.preventDefault(), done(v))}>
+      <form className="dialog ttb-scope" role="dialog" aria-label={`${req.verb} a repeating session`} onSubmit={(e) => (e.preventDefault(), done(v))}>
         <h2>
           {req.verb} “{req.title}”
         </h2>
@@ -123,7 +123,7 @@ export function ScopeAsk({ req, onDone }: { req: ScopeReq; onDone: () => void })
           {(
             [
               ['one', `Only this one`, req.day],
-              ['all', 'Every week', 'All the times it happens'],
+              ['all', 'Every time', 'All the times it happens'],
             ] as const
           ).map(([k, l, h], i) => (
             <button key={k} type="button" role="radio" aria-checked={v === k} className={v === k ? 'on' : ''} onClick={() => setV(k)} data-autofocus={i === 0 || undefined} autoFocus={i === 0}>

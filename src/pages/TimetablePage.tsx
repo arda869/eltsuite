@@ -7,7 +7,8 @@ import { useTeacherClasses } from '../lib/coteach';
 import { useClassDetails } from './TeacherHome';
 import { theme } from '../lib/themes';
 import { addSession, isNow, occurrences, removeSession, restoreSession, saveMyZone, saveSession, setSessionLive, setSessionZone, skipWeek, useTeacherSessions, whenText, zoneOf, type Occurrence, type Session, type SessionKind } from '../lib/sessions';
-import { fromFields, localZone, shiftInZone } from '../lib/tz';
+import { fromFields, localZone, shiftInZone, wallOf } from '../lib/tz';
+import { isSeries, repeatOf } from '../lib/repeat';
 import { useGcalSetting, useGcalSync } from '../lib/gcal';
 import { external, joinUrl, useVideoPrefs, videoLabel } from '../lib/meetings';
 import { callStartError, openCall, pointGuestLink, takeRoom } from '../lib/calls';
@@ -85,9 +86,22 @@ function useNarrow() {
   }, []);
   return n;
 }
+// Moving a whole weekly series by some days moves the days it repeats on too.
+function shiftDays(s: Session, a: number, b: number) {
+  const r = repeatOf(s);
+  if (!r) return s.repeat ?? null;
+  if (r.freq !== 'week' || !r.days?.length) return r;
+  const tz = zoneOf(s);
+  const day = (t: number) => {
+    const w = wallOf(t, tz);
+    return Math.floor(Date.UTC(w.y, w.mo - 1, w.d) / 864e5);
+  };
+  const by = (((day(b) - day(a)) % 7) + 7) % 7;
+  return by ? { ...r, days: r.days.map((d) => (d + by) % 7) } : r;
+}
 const copyOf = (s: Session): Omit<Session, 'id'> => {
   const { id: _id, at: _at, gcal: _g, ...rest } = s;
-  return { ...rest, live: null, skip: [] };
+  return { ...rest, live: null, skip: [], repeat: null, weeks: 1 };
 };
 
 export function TimetablePage() {
@@ -217,15 +231,15 @@ export function TimetablePage() {
         return say(done, () => removeSession({ id } as Session));
       }
       let which: 'one' | 'all' = 'all';
-      if ((s.weeks ?? 1) > 1) {
+      if (isSeries(s)) {
         setHold({ key: ev.key, start, mins });
         const r = await askScope(moved ? 'Move' : 'Change', ev);
         if (!r) return setHold(null);
         which = r;
       }
       if (which === 'all') {
-        await saveSession({ ...s, start: shiftInZone(s.start, o.start, start, zoneOf(s)), mins });
-        say((s.weeks ?? 1) > 1 ? done + ', every week' : done, () => saveSession(s));
+        await saveSession({ ...s, start: shiftInZone(s.start, o.start, start, zoneOf(s)), mins, repeat: shiftDays(s, o.start, start) });
+        say(isSeries(s) ? done + ', every time' : done, () => saveSession(s));
       } else {
         await skipWeek(s, o.week);
         const id = await addSession({ ...copyOf(s), start, mins, weeks: 1 });
@@ -245,7 +259,7 @@ export function TimetablePage() {
     sync.wake();
     closeAll();
     try {
-      if ((s.weeks ?? 1) > 1) {
+      if (isSeries(s)) {
         const r = await askScope('Take out', ev);
         if (!r) return;
         if (r === 'one') {

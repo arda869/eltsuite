@@ -174,28 +174,49 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
     const view = editor.view;
     const line = document.createElement('div');
     line.className = 'block-drop-line';
+    // What is being moved: a block anywhere, top-level or inside a sub-task.
     const moving = () => {
       const sel = view.state.selection;
-      return (view as unknown as { dragging: unknown }).dragging && sel instanceof NodeSelection && sel.$from.depth === 0 ? sel : null;
+      return (view as unknown as { dragging: unknown }).dragging && sel instanceof NodeSelection && sel.node.isBlock ? sel : null;
     };
-    const targetOf = (y: number) => {
-      let at = { pos: view.state.doc.content.size, y: 0 };
+    // The gaps between blocks, at the top level or inside the sub-task under the pointer (not for
+    // a sub-task itself: sub-tasks don't go inside each other).
+    const targetOf = (x: number, y: number, sel: NodeSelection) => {
+      let base = 0;
+      let parent = view.state.doc;
+      let box = view.dom.getBoundingClientRect();
+      const hit = document.elementFromPoint(x, y)?.closest('.subtask-node .st-ed-body');
+      if (hit && sel.node.type.name !== 'subTask') {
+        const pos = view.posAtDOM(hit, 0);
+        const $p = view.state.doc.resolve(pos);
+        for (let d = $p.depth; d > 0; d--)
+          if ($p.node(d).type.name === 'subTask') {
+            const start = $p.before(d);
+            // Not into the block being moved
+            if (start >= sel.from && start < sel.to) break;
+            base = start + 1;
+            parent = $p.node(d);
+            box = hit.getBoundingClientRect();
+            break;
+          }
+      }
+      let at = { pos: base + parent.content.size, y: 0 };
       let last: DOMRect | null = null;
       let found = false;
-      view.state.doc.forEach((_n, off) => {
+      parent.forEach((_n, off) => {
         if (found) return;
-        const d = view.nodeDOM(off) as HTMLElement | null;
+        const d = view.nodeDOM(base + off) as HTMLElement | null;
         if (!d?.getBoundingClientRect) return;
         const r = d.getBoundingClientRect();
         if (y < r.top + r.height / 2) {
           // halfway into the space above this block
-          at = { pos: off, y: last ? (last.bottom + r.top) / 2 : r.top - 3 };
+          at = { pos: base + off, y: last ? (last.bottom + r.top) / 2 : r.top - 3 };
           found = true;
         }
         last = r;
       });
-      if (!found && last) at = { pos: view.state.doc.content.size, y: (last as DOMRect).bottom + 3 };
-      return at;
+      if (!found && last) at = { pos: base + parent.content.size, y: (last as DOMRect).bottom + 3 };
+      return { ...at, left: box.left, width: box.width };
     };
     const clear = () => line.remove();
     const over = (e: DragEvent) => {
@@ -204,10 +225,9 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
       e.preventDefault();
       e.stopPropagation();
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-      const t = targetOf(e.clientY);
-      const pr = view.dom.getBoundingClientRect();
+      const t = targetOf(e.clientX, e.clientY, sel);
       const same = t.pos === sel.from || t.pos === sel.to;
-      line.style.cssText = `left:${pr.left}px;width:${pr.width}px;top:${t.y}px;opacity:${same ? 0.35 : 1}`;
+      line.style.cssText = `left:${t.left}px;width:${t.width}px;top:${t.y}px;opacity:${same ? 0.35 : 1}`;
       if (!line.isConnected) document.body.append(line);
     };
     const drop = (e: DragEvent) => {
@@ -216,14 +236,22 @@ export function BlockHandles({ editor, host, space }: { editor: Editor; host: HT
       e.preventDefault();
       e.stopPropagation();
       clear();
-      const t = targetOf(e.clientY).pos;
+      const t = targetOf(e.clientX, e.clientY, sel).pos;
       (view as unknown as { dragging: unknown }).dragging = null;
       if (t === sel.from || t === sel.to) return;
       const node = sel.node;
-      const tr = view.state.tr.delete(sel.from, sel.to);
-      const at = t > sel.from ? t - node.nodeSize : t;
-      tr.insert(at, node);
-      tr.setSelection(NodeSelection.create(tr.doc, at));
+      const tr = view.state.tr;
+      // A sub-task always keeps a line: moving out its only block leaves an empty one.
+      const $f = view.state.doc.resolve(sel.from);
+      if ($f.parent.type.name === 'subTask' && $f.parent.childCount === 1) tr.replaceWith(sel.from, sel.to, view.state.schema.nodes.paragraph.create());
+      else tr.delete(sel.from, sel.to);
+      const at = tr.mapping.map(t, -1);
+      try {
+        tr.insert(at, node);
+        tr.setSelection(NodeSelection.create(tr.doc, at));
+      } catch {
+        return; // it doesn't fit there
+      }
       view.dispatch(tr.scrollIntoView());
       view.focus();
     };

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { zoneOf, type Session } from './sessions';
-import { addDaysInZone, toFields } from './tz';
+import { toFields } from './tz';
+import { rrule, timeAt } from './repeat';
 
 // Google Calendar, from the browser alone (there is no server): Google Identity Services gives an
 // access token for calendar.events, kept in memory only, and the Calendar API v3 is called
@@ -158,8 +159,8 @@ export function eventFor(s: Session, x: EventExtras = {}) {
   const tz = zoneOf(s);
   const start = toFields(s.start, tz);
   const end = toFields(s.start + s.mins * 60000, tz);
-  const weeks = Math.max(1, s.weeks ?? 1);
-  const skips = (s.skip ?? []).filter((w) => w >= 0 && w < weeks).sort((a, b) => a - b);
+  const rule = rrule(s, tz);
+  const skips = rule ? (s.skip ?? []).map((w) => timeAt(s, tz, w)).filter((t): t is number => t !== null).sort((a, b) => a - b) : [];
   const who = s.kind === 'meeting' ? [s.ownerName, ...(s.attendees ?? []).map((a) => s.names?.[a] ?? '')].filter(Boolean) : [];
   const lines = [
     s.kind === 'class' ? `Class: ${x.className ?? ''}`.trim() : who.length ? `Meeting with ${who.join(', ')}` : 'Meeting',
@@ -175,7 +176,7 @@ export function eventFor(s: Session, x: EventExtras = {}) {
     location: !s.online && s.place ? s.place : x.video?.url ?? '',
     start: { dateTime: `${start.date}T${start.time}:00`, timeZone: tz },
     end: { dateTime: `${end.date}T${end.time}:00`, timeZone: tz },
-    ...(weeks > 1 ? { recurrence: [`RRULE:FREQ=WEEKLY;COUNT=${weeks}`, ...(skips.length ? [`EXDATE;TZID=${tz}:${skips.map((w) => stamp(addDaysInZone(s.start, 7 * w, tz), tz)).join(',')}`] : [])] } : {}),
+    ...(rule ? { recurrence: [rule, ...(skips.length ? [`EXDATE;TZID=${tz}:${skips.map((t) => stamp(t, tz)).join(',')}`] : [])] } : {}),
     source: { title: 'ELT Suite', url: `${SITE}/timetable` },
     extendedProperties: { private: { eltsuite: '1', session: s.id } },
     status: 'confirmed',
