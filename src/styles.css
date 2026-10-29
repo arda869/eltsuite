@@ -8258,3 +8258,9 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
   .bub.mine.sel .bub-tools { left: auto; right: 0; }
   .bub.sel .bub-box { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
 }
+/* Messages: the page itself doesn't move; only the list and the chat scroll, inside their boxes. */
+html:has(.msg), body:has(.msg) { overflow: hidden; overscroll-behavior: none; height: 100%; }
+.msg-list, .chat-body, .chat-editor { overscroll-behavior: contain; }
+.bub.sel { outline: none !important; }
+.chat-del { color: var(--muted); }
+.chat-del:hover { color: #b3261e; }

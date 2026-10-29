@@ -3,7 +3,7 @@ import { GifPicker } from '../components/GifPicker';
 import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
-import { ask } from '../lib/ask';
+import { ask, tell } from '../lib/ask';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { startSessionWith } from './StudioSession';
 import { isProxyTab } from '../lib/proxy';
@@ -13,7 +13,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { tickOf, type Tick } from '../lib/chat';
+import { tickOf, deleteChat, deletesForAll, type Tick } from '../lib/chat';
 import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
@@ -376,6 +376,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
 
   const days: [string, Msg[]][] = [];
   for (const m of msgs ?? []) {
+    if (m.at <= (c.hidden?.[me.key] ?? 0)) continue; // deleted from my side
     const d = dayOf(m.at);
     if (days[days.length - 1]?.[0] !== d) days.push([d, []]);
     days[days.length - 1][1].push(m);
@@ -398,6 +399,21 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
             Group
           </button>
         )}
+        <button
+          type="button"
+          className="icon-btn chat-del"
+          aria-label="Delete this chat"
+          data-tip={deletesForAll(c, me.key) && !isSelf(c) ? 'Delete this chat for everyone' : 'Delete this chat'}
+          onClick={async () => {
+            const all = deletesForAll(c, me.key) && !isSelf(c);
+            const ok = await ask(all ? 'Delete this chat? It goes for everyone in it, with all its messages. You can’t undo this.' : isSelf(c) ? 'Delete your notes to self? You can’t undo this.' : 'Delete this chat? It goes from your list, with its messages so far. The others keep theirs. If someone writes again, it comes back.', { ok: 'Delete chat', cancel: 'Keep it' });
+            if (!ok) return;
+            await deleteChat(c, me.key).catch(() => void tell('We couldn’t delete the chat just now. Try again.'));
+            onBack();
+          }}
+        >
+          <UiIcon name="trash" size={16} />
+        </button>
         {onMin && (
           <button type="button" className="btn small-btn chat-min" onClick={onMin} data-tip="Keep this chat in a small window while you work in other apps">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg> Minimise
