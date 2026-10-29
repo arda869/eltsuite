@@ -1,0 +1,10 @@
+order before × | 1 | × | 2 | 3 | 4 | × | 5 | 6
+shot preview-out/01-01-hover.png
+shot preview-out/02-02-dragging.png
+order after drag 1 | × | × | 2 | 3 | 4 | × | 5 | 6
+shot preview-out/03-03-moved.png
+order after ArrowDown × | 1 | × | 2 | 3 | 4 | × | 5 | 6
+shot preview-out/04-04-ask.png
+STEP FAILED locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('.ask-dialog button, [role=dialog] button, [role=alertdialog] button').filter({ hasText: /Delete|Remove|Yes/ }).first()
