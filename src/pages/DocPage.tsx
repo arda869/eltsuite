@@ -1,7 +1,7 @@
 import { OrgLogo } from '../components/OrgLook';
 import { PdfFile } from '../pdf/PdfFile';
 import { Mark } from '../components/Wordmark';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { auth } from '../lib/firebase';
@@ -24,7 +24,9 @@ import { FileComments } from '../components/FileComments';
 import { StoryboardFile } from '../storyboard/StoryboardFile';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
 import { AnyFile } from '../components/AnyFile';
+
 import { loadStart } from '../lib/fileStore';
+const DesignFile = lazy(() => import('../design/Editor').then((m) => ({ default: m.DesignFile })));
 
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
 // sharing, and the whole window for writing.
@@ -157,7 +159,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'storyboard' && d ? <StoryboardFile d={d} canEdit={role === 'edit'} /> : kind === 'file' && d ? <AnyFile d={d} /> : <CollabDoc {...props} template={start ?? null} page heading={heading} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'storyboard' && d ? <StoryboardFile d={d} canEdit={role === 'edit'} /> : kind === 'file' && d ? <AnyFile d={d} /> : kind === 'design' && d ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
@@ -170,7 +172,7 @@ export function ShareDialog({ d, onClose }: { d: SharedDoc; onClose: () => void 
   return (
     <SharePeople
       roles={rolesFor(d.kind)}
-      teachersOnly={!['doc', 'slides', 'pdf', 'file'].includes(d.kind)}
+      teachersOnly={!['doc', 'slides', 'pdf', 'file', 'design'].includes(d.kind)}
       title={`Share “${d.title}”`}
       ownerName={d.ownerName}
       members={d.members ?? {}}
@@ -221,7 +223,7 @@ export function SharePeople({ title, ownerName, members, extra = [], onShare, on
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="dialog dp-dialog" role="dialog" aria-label={title}>
         <h2>{title}</h2>
-        {teachersOnly && <span className="hint">You can share this with other teachers. Documents, slides, PDFs and uploaded files can also be shared with learners.</span>}
+        {teachersOnly && <span className="hint">You can share this with other teachers. Documents, slides, designs, PDFs and uploaded files can also be shared with learners.</span>}
         <div className="dp-add">
           <span className="dp-chips">
             {picked.map((p) => (

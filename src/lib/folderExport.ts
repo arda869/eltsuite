@@ -195,6 +195,11 @@ export async function sharedDocFiles(d: SharedDoc): Promise<OutFile[]> {
       return pdfFile(d);
     case 'lesson':
       return lessonFile(d);
+    case 'design': {
+      const { designPdfBytes } = await import('../design/tools');
+      const bytes = await designPdfBytes(d.id, d.title);
+      return bytes ? [{ name: safe(d.title) + '.pdf', data: bytes }] : [];
+    }
     case 'file': {
       const { loadAnyFile, extOf } = await import('./fileStore');
       const x = extOf(d.file?.name ?? '');
