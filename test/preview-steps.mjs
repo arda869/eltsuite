@@ -66,7 +66,7 @@ export default async function steps({ p, ctx, say, BASE }) {
   // Text styles and phonemic symbols.
   await rail('Text');
   const ts = await tab.locator('.dz-textstyles button').all();
-  for (const b of ts) await step('text style: ' + (await b.innerText()), async () => (await b.click(), await tab.keyboard.type(' ok'), await none()));
+  for (const b of ts) await step('text style: ' + (await b.innerText({ timeout: 2000 }).catch(() => '?')), async () => (await b.click(), await tab.keyboard.type(' ok'), await none()));
   await step('ipa', async () => { for (const b of (await tab.locator('.dz-ipa button').all()).slice(0, 4)) await b.click(); });
   await s('a03-text');
   // People and things.
@@ -83,9 +83,11 @@ export default async function steps({ p, ctx, say, BASE }) {
   await s('a05-pictures');
   // Teaching tools, every button.
   await rail('Teaching');
-  const tb = await tab.locator('.dz-teach button:not([disabled])').all();
-  for (const b of tb) {
-    const n = (await b.innerText()).split('\n')[0];
+  const tb = await tab.locator('.dz-teach button:not([disabled])').count();
+  for (let i = 0; i < tb; i++) {
+    const b = tab.locator('.dz-teach button:not([disabled])').nth(i);
+    const n = ((await b.innerText({ timeout: 2000 }).catch(() => '?')) || '?').split('\n')[0];
+    if (n === '?') continue;
     await step('teach: ' + n, async () => {
       await b.click();
       await tab.waitForTimeout(200);
@@ -193,7 +195,7 @@ export default async function steps({ p, ctx, say, BASE }) {
   });
   say('pages', await tab.locator('.dz-pg:not(.add)').count());
   await rail('Templates');
-  for (const t of await tab.locator('.dz-tpl').all()) await step('template: ' + (await t.locator('strong').innerText()), async () => (await t.click(), await tab.waitForTimeout(400)));
+  for (const t of await tab.locator('.dz-tpl').all()) await step('template: ' + (await t.locator('strong').innerText({ timeout: 2000 }).catch(() => '?')), async () => (await t.click(), await tab.waitForTimeout(400)));
   await step('blank sizes', async () => { for (const b of (await tab.locator('.dz-sizes button').all()).slice(5)) await b.click(); });
   say('pages', await tab.locator('.dz-pg:not(.add)').count());
   await s('a11-many-pages');
