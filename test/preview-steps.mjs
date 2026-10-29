@@ -77,4 +77,13 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
   await p.locator('.sh-split').waitFor({ timeout: 10000 });
   await wait(3000);
   await shot('worksheet');
+
+  // 5. the library, in the new pen style
+  await p.goto(`${BASE}/storyboard/library`);
+  await p.locator('.sbl').waitFor({ timeout: 15000 });
+  await wait(1500);
+  await shot('library-people');
+  await p.getByRole('tab', { name: 'Things' }).click();
+  await wait(800);
+  await shot('library-things');
 }
