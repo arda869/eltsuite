@@ -26,11 +26,7 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   await tab.mouse.click(pg.x + pg.width * 0.62, pg.y + pg.height * 0.36);
   await tab.waitForTimeout(500);
   say('after click', await tab.evaluate(() => { const a = document.activeElement; const sel = getSelection(); const n = sel?.anchorNode; const el = n && (n.nodeType === 1 ? n : n.parentElement); return (a?.className || a?.tagName) + ' | anchor in box: ' + !!el?.closest?.('.pdf-box') + ' | ' + (el?.className || el?.tagName); }));
-  await tab.evaluate(() => { for (const t of ['keydown', 'beforeinput', 'input']) document.addEventListener(t, (e) => setTimeout(() => console.warn('EV', t, e.key ?? e.inputType, 'prevented:', e.defaultPrevented, (e.target)?.className?.slice?.(0, 40)), 0), true); });
   await tab.keyboard.type('Lisbon');
-  say('doc', await tab.evaluate(() => { const ed = document.querySelector('.pdf-doc').editor; return JSON.stringify(ed.getJSON()).slice(0, 600) + ' sel ' + JSON.stringify(ed.state.selection.toJSON()); }));
-  await tab.keyboard.insertText('Insert');
-  say('doc2', await tab.evaluate(() => JSON.stringify(document.querySelector('.pdf-doc').editor.getJSON().content[0].content).slice(0, 400)));
   await tab.waitForTimeout(400);
   say('box text', await tab.locator('.pdf-box').first().innerText().catch(() => '?'));
   await tab.locator('.pdf-box .pdf-box-body').first().click();
