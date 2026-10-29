@@ -156,15 +156,20 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
     const d = $p.depth;
     const para = $p.parent;
     if (para.type.name !== 'paragraph' || d < 1) return null;
+    // The picture before: in the nearest line above with something in it, past empty lines.
+    const holder = $p.node(d - 1);
     const i = $p.index(d - 1);
-    const prev = i > 0 ? $p.node(d - 1).child(i - 1) : null;
-    return { pos, para, start: $p.before(d), end: $p.after(d), canJoin: para.childCount === 1 && prev?.type.name === 'paragraph' && prev.lastChild?.type.name === 'picture', canSplit: para.childCount > 1 };
+    let k = i - 1;
+    let at = $p.before(d);
+    while (k >= 0 && holder.child(k).type.name === 'paragraph' && holder.child(k).childCount === 0) at -= holder.child(k).nodeSize, k--;
+    const prev = k >= 0 ? holder.child(k) : null;
+    return { pos, para, start: $p.before(d), end: $p.after(d), joinAt: at - 1, canJoin: para.childCount === 1 && prev?.type.name === 'paragraph' && prev.lastChild?.type.name === 'picture', canSplit: para.childCount > 1 };
   };
   const pl = open ? where() : null;
   const joinPrev = () => {
     const p = where();
     if (!p?.canJoin) return;
-    const tr = editor.state.tr.delete(p.start, p.end).insert(p.start - 1, node);
+    const tr = editor.state.tr.delete(p.start, p.end).insert(p.joinAt, node);
     editor.view.dispatch(tr);
     setOpen(false);
   };
