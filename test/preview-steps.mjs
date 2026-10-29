@@ -104,7 +104,8 @@ export default async function steps({ p, ctx, say, BASE }) {
   await s('09-learner-a');
   await tab.getByRole('radio', { name: 'Everything', exact: true }).click();
   // Take away the background of the picture.
-  await tab.mouse.click(...at(400, 540));
+  await tab.keyboard.press('Escape');
+  await tab.mouse.click(...at(700, 420));
   await tab.waitForTimeout(300);
   await tab.getByRole('button', { name: 'Take away the background' }).first().click();
   await tab.mouse.click(...at(140, 360));

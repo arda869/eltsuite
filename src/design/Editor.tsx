@@ -293,6 +293,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
   };
   const shown = useMemo(() => here.filter((e) => !e.hidden && !(view === 'A' && e.ver === 'B') && !(view === 'B' && e.ver === 'A')), [here, view]);
+  useEffect(() => setSelIds((ids) => ids.filter((id) => shown.some((e) => e.id === id))), [view]); // eslint-disable-line react-hooks/exhaustive-deps
   const topAt = (x: number, y: number) => [...shown].reverse().find((e) => hit(e, x, y, 3 / zoom));
 
   // Snapping to the page's edges and middle, and to other things' edges and middles.
