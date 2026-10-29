@@ -143,10 +143,14 @@ function block(b: Block): string {
     case 'draw':
       return `${b.prompt ? `<p>${esc(b.prompt)}</p>` : ''}<div class="draw-box"></div>`;
     case 'media': {
+      // A recording used again: its number at the start of the exercise is enough.
+      if (MEDIA_SEEN.has(b.id)) return '';
+      MEDIA_SEEN.add(b.id);
       const info = SOUNDS[b.id];
-      const kind = b.video ? 'Scan to watch' : 'Scan to listen';
+      const no = MEDIA_NO[b.id] ? `${b.video ? 'Video' : 'Recording'} ${MEDIA_NO[b.id]} · ` : '';
+      const kind = no + (b.video ? 'Scan to watch' : 'Scan to listen');
       if (QR_ON && info?.svg) return `<div class="qr-block"><span class="qr-code">${info.svg}</span><span class="qr-text"><span class="qr-kind">${kind}</span><strong>${esc(b.title)}</strong><span class="qr-url">${esc(info.url.replace(/^https?:\/\//, '').split('/')[0])}</span></span></div>`;
-      return `<p class="qr-plain"><span class="qr-kind">${b.video ? 'Video' : 'Listening'}</span> <strong>${esc(b.title)}</strong></p>`;
+      return `<p class="qr-plain"><span class="qr-kind">${no || (b.video ? 'Video' : 'Listening')}</span> <strong>${esc(b.title)}</strong></p>`;
     }
     case 'dict':
       return `<div class="dcut-wrap">${renderToStaticMarkup(createElement(DictCutout, { word: b.word, d: b.d }))}</div>`;
@@ -197,13 +201,33 @@ const markBox = (n: number) => `<span class="markbox"><span class="mb-blank"></s
 
 function taskUnit(t: WsTask, num: number, marks: boolean) {
   const head = t.instructions?.trim() || t.title;
-  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${t.instrRuns ? runs(t.instrRuns) : esc(head)}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
+  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${exIcons(t)}${t.instrRuns ? runs(t.instrRuns) : esc(head)}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
 }
 
 // Pictures for this print, set at the start of worksheetHtml.
 let MEDIA: NonNullable<Options['media']> = {};
 let SOUNDS: NonNullable<Options['sounds']> = {};
 let QR_ON = true;
+// Recordings and videos are numbered in the order they first come in the worksheet. One used again
+// keeps its number, and its QR code is printed only the first time.
+let MEDIA_NO: Record<string, number> = {};
+let MEDIA_SEEN = new Set<string>();
+function numberMedia(items: WsItem[]) {
+  MEDIA_NO = {};
+  MEDIA_SEEN = new Set();
+  let k = 0;
+  for (const it of items) if (it.kind === 'task') for (const id of it.task.media ?? []) if (!(id in MEDIA_NO)) MEDIA_NO[id] = ++k;
+}
+const PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2.6v6.8L9.6 6z" fill="currentColor"/></svg>';
+const CARDS = '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.2" y="3.4" width="5.4" height="7" rx=".8" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M4.6 3.2V2.4a.8.8 0 0 1 .8-.8h3.8a.8.8 0 0 1 .8.8v5.4a.8.8 0 0 1-.8.8h-1.4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>';
+// Small square icons at the start of an exercise: a play sign with the recording's number, or cards
+// for an exercise with cards to cut out.
+function exIcons(t: WsTask) {
+  const ids = [...new Set(t.media ?? [])];
+  const play = ids.map((id) => `<span class="ex-ic" title="Recording ${MEDIA_NO[id] ?? ''}"><i>${PLAY}</i><b>${MEDIA_NO[id] ?? ''}</b></span>`).join('');
+  const cards = t.cutouts?.some((c) => c.cards.length) ? `<span class="ex-ic" title="Cards to cut out"><i>${CARDS}</i></span>` : '';
+  return play + cards;
+}
 
 // The worksheet's styles: the house style (see "How printed worksheets look" in CLAUDE.md).
 export function sheetCss(opts: Options) {
@@ -321,6 +345,10 @@ table.puzzle td i { position: absolute; top: .2mm; left: .5mm; font: 700 5pt Kar
 .cut-body .li { gap: 1.4mm; }
 .cut-sym { position: absolute; right: 3mm; bottom: 2.2mm; font-size: 10pt; color: var(--tint-line); }
 
+.ex-ic { display: inline-flex; align-items: center; gap: .9mm; margin-right: 1.6mm; vertical-align: -.2em; }
+.ex-ic i { display: grid; place-items: center; width: 1.15em; height: 1.15em; border-radius: .2em; background: var(--accent); color: #fff; }
+.ex-ic i svg { width: .8em; height: .8em; }
+.ex-ic b { font: 700 .86em Karla, sans-serif; color: var(--accent-ink); }
 /* Inline language tools on paper */
 .ipa { font-family: 'Noto Sans', 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Lucida Sans Unicode', 'Segoe UI', 'Arial Unicode MS', sans-serif; color: #6f6a64; font-size: .9em; white-space: nowrap; }
 .ipa-acc { font: 700 .62em Karla, sans-serif; letter-spacing: .06em; color: var(--accent-ink); margin-right: .25em; vertical-align: .15em; }
@@ -415,6 +443,7 @@ export function sheetParts(title: string, items: WsItem[], opts: Options) {
   SOUNDS = opts.sounds ?? {};
   QR_ON = opts.qr !== false;
   const marks = !!opts.marks;
+  numberMedia(items);
   let num = 0;
   const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks)));
   const html = worksheetHtml(title, items, opts);
@@ -436,6 +465,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   const tasks = items.filter((i): i is { kind: 'task'; task: WsTask } => i.kind === 'task').map((i) => i.task);
 
   // Units in reading order. Section totals (exams) follow the last task of each section.
+  numberMedia(items);
   const units: string[] = [];
   let num = 0;
   let secTitle = '';
