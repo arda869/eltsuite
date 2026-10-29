@@ -8093,9 +8093,9 @@ input.dp-title, .dp-title { max-width: min(760px, 100%); }
 @media (max-width: 420px) { .apps-pop { width: calc(100vw - 24px); } }
 
 /* Pictures side by side: two or more on one line share it, so they fit next to each other. */
-p:has(> .pic-node:not(:has(.pic-full)) ~ .pic-node:not(:has(.pic-full))) .pic:not(.pic-full) { max-width: calc(50% - 10px); }
-p:has(> .pic-node ~ .pic-node ~ .pic-node) .pic:not(.pic-full) { max-width: calc(33.3% - 10px); }
-p:has(> .pic-node ~ .pic-node ~ .pic-node ~ .pic-node) .pic:not(.pic-full) { max-width: calc(25% - 10px); }
+p:has(> .node-picture ~ .node-picture) .pic:not(.pic-full) { max-width: calc(50% - 10px); }
+p:has(> .node-picture ~ .node-picture ~ .node-picture) .pic:not(.pic-full) { max-width: calc(33.3% - 10px); }
+p:has(> .node-picture ~ .node-picture ~ .node-picture ~ .node-picture) .pic:not(.pic-full) { max-width: calc(25% - 10px); }
 p:has(> .pic:not(.pic-full) ~ .pic:not(.pic-full)) > .pic:not(.pic-full) { max-width: calc(50% - 10px); }
 p:has(> .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(33.3% - 10px); }
 p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% - 10px); }
