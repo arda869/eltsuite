@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { addSession, saveSession, useZones, zoneOf, type Session } from '../../lib/sessions';
+import { addSession, saveSession, useZones, zoneOf, type Guest, type Session } from '../../lib/sessions';
+import { nthOf, repeatOf, repeatText, timeAt, type Freq, type Repeat } from '../../lib/repeat';
+import { guestLink } from '../../lib/calls';
 import { allZones, cityOf, clockIn, fromFields, localZone, sameClock, toFields, zoneLabel } from '../../lib/tz';
 import { Select, MultiSelect } from '../../components/Select';
 import { useDirectory } from '../../lib/directory';
@@ -30,7 +32,8 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
   const [time, setTime] = useState(toFields(first, tz).time);
   const zones = useMemo(() => allZones().map((z) => ({ v: z, label: zoneLabel(z, first) })), [first]);
   const others = useZones(s.kind === 'meeting' ? s.attendees ?? [] : []);
-  const [repeat, setRepeat] = useState((init.weeks ?? 1) > 1);
+  const [rep, setRep] = useState<Repeat | null>(() => repeatOf(init));
+  const [guests, setGuests] = useState<Guest[]>(init.guests ?? []);
   const [busy, setBusy] = useState(false);
   const set = (p: Partial<Session>) => setS((x) => ({ ...x, ...p }));
   // The video: ELT Suite's own room, or Meet, Teams, Zoom or another link.
@@ -71,7 +74,8 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
     // A new Teams meeting: Microsoft's window opens from this click, if it is needed.
     const teams = s.online && vk === 'teams' && !(init.video?.kind === 'teams' && init.video.url) ? warmTeams() : null;
     setBusy(true);
-    const start = fromFields(date, time, tz);
+    const picked0 = fromFields(date, time, tz);
+    const start = rep ? timeAt({ start: picked0, repeat: rep }, tz, 0) ?? picked0 : picked0;
     let video: Session['video'] = null;
     if (s.online && vk !== 'eltsuite') {
       if (vk === 'zoom' || vk === 'link') video = { kind: vk, url: cleanUrl(vurl), by: me.uid };
@@ -81,16 +85,24 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
     if (teams && video) {
       try {
         await teams;
-        video = { kind: 'teams', url: await makeTeamsMeeting({ title, start, mins: s.mins ?? 60, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1 }), by: me.uid };
+        video = { kind: 'teams', url: await makeTeamsMeeting({ title, start, mins: s.mins ?? 60, weeks: 1, repeat: rep, tz }), by: me.uid };
       } catch (e) {
         setBusy(false);
         return void tell(e instanceof Error ? e.message : 'We couldn’t make the Teams meeting.');
       }
     }
-    const base = { ...s, video, tz, title, start, weeks: repeat ? Math.max(2, s.weeks ?? 2) : 1, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
+    const meet = s.kind === 'meeting';
+    const kept = meet ? guests : [];
+    const gone = [...(init.gone ?? []), ...(init.guests ?? []).filter((g) => g.sent && !kept.some((k) => k.email === g.email))];
+    // A new rule numbers its times afresh, so times taken out of the old one come back.
+    const sameRule = JSON.stringify(rep) === JSON.stringify(repeatOf(init));
+    const base = { ...s, video, tz, title, start, weeks: 1, repeat: rep, skip: sameRule ? s.skip ?? [] : [], guests: kept, gone, hasGuests: kept.length > 0 || gone.length > 0, classId: s.kind === 'class' ? s.classId : null, itemId: s.kind === 'class' ? s.itemId ?? null : null, attendees: s.kind === 'meeting' ? s.attendees ?? [] : [], names: Object.fromEntries(colleagues.filter((p) => (s.attendees ?? []).includes(p.key)).map((p) => [p.key, p.name])) };
     try {
-      if (s.id) await saveSession(base as Session);
-      else await addSession({ ...base, owner: me.uid, ownerName: me.name, live: null } as Omit<Session, 'id'>);
+      let id = s.id;
+      if (id) await saveSession(base as Session);
+      else id = await addSession({ ...base, owner: me.uid, ownerName: me.name, live: null } as Omit<Session, 'id'>);
+      // Guests join an ELT Suite room with the meeting's guest link, made once.
+      if (kept.length && s.online && vk === 'eltsuite' && !init.guest) await guestLink({ id, title, guest: init.guest, live: init.live ?? null }, me.name).catch(() => '');
       onSaved?.(title, start);
       onClose();
     } catch (e) {
@@ -132,6 +144,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
             <span>Who</span>
             <MultiSelect label="Colleagues" value={s.attendees ?? []} options={colleagues.map((p) => ({ v: p.key, label: p.name }))} onChange={(v) => set({ attendees: v })} none="Nobody yet" foot="" />
             <span className="hint">They see it in their timetable, and are called when it starts.</span>
+            <GuestsField guests={guests} onChange={setGuests} />
           </div>
         )}
         <label className="field">
@@ -152,15 +165,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
             <Select label="How long" value={String(mins)} options={lengths.map((m) => ({ v: String(m), label: lengthText(m) }))} onChange={(v) => set({ mins: Number(v) })} />
           </div>
         </div>
-        <label className="check-row">
-          <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-          Every week, at this time
-          {repeat && (
-            <span className="ttb-weeks">
-              for <input type="number" min={2} max={52} value={s.weeks && s.weeks > 1 ? s.weeks : 10} onChange={(e) => set({ weeks: Math.max(2, Math.min(52, Number(e.target.value) || 2)) })} aria-label="How many weeks" /> weeks
-            </span>
-          )}
-        </label>
+        <RepeatField rep={rep} onChange={setRep} date={date} time={time} tz={tz} />
         <div className="field ttb-tzf">
           <span>Time zone</span>
           <Select label="Time zone" value={tz} options={zones} onChange={setTz} search />
@@ -169,7 +174,7 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
               {[away ? `${shortDay(at)}, ${clock(at)} your time` : '', ...theirs].filter(Boolean).join(' · ')}
             </span>
           )}
-          {repeat && <span className="hint">Every week it stays at {wallText(time)} on this clock, also when the clocks change.</span>}
+          {rep && <span className="hint">Each time it stays at {wallText(time)} on this clock, also when the clocks change.</span>}
         </div>
         <div className="field">
           <span>Where</span>
@@ -216,6 +221,158 @@ export function SessionDialog({ init, classes, items, me, onClose, onSaved }: { 
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// How it repeats, as in a calendar: the kind, how often, on which days, and until when.
+const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const NTH = ['first', 'second', 'third', 'fourth', 'fifth'];
+const UNIT: Record<Freq, [string, string]> = { day: ['day', 'days'], week: ['week', 'weeks'], month: ['month', 'months'], year: ['year', 'years'] };
+function RepeatField({ rep, onChange, date, time, tz }: { rep: Repeat | null; onChange: (r: Repeat | null) => void; date: string; time: string; tz: string }) {
+  const [y, mo, d] = date.split('-').map(Number);
+  const d0 = { y: y || 2026, mo: mo || 1, d: d || 1 };
+  const wd = new Date(Date.UTC(d0.y, d0.mo - 1, d0.d)).getUTCDay();
+  const nth = nthOf(d0);
+  const set = (p: Partial<Repeat>) => rep && onChange({ ...rep, ...p });
+  const kind = !rep ? 'none' : rep.freq === 'day' && rep.weekdays ? 'weekdays' : rep.freq;
+  const pick = (k: string) => {
+    if (k === 'none') return onChange(null);
+    const end = rep?.end ?? 'count';
+    const keep = { end, count: rep?.count ?? 10, until: rep?.until };
+    if (k === 'weekdays') return onChange({ freq: 'day', every: 1, weekdays: true, ...keep });
+    const f = k as Freq;
+    onChange({ freq: f, every: rep?.freq === f ? rep.every : 1, ...(f === 'week' ? { days: rep?.days?.length ? rep.days : [wd] } : {}), ...(f === 'month' || f === 'year' ? { by: rep?.by ?? 'date' } : {}), ...keep });
+  };
+  const at = date && time ? fromFields(date, time, tz) : NaN;
+  const days = rep?.days?.length ? rep.days : [wd];
+  return (
+    <div className="field ttb-rep">
+      <span>Repeat</span>
+      <Select
+        label="Repeat"
+        value={kind}
+        options={[
+          { v: 'none', label: 'Doesn’t repeat' },
+          { v: 'day', label: 'Every day' },
+          { v: 'weekdays', label: 'Every weekday (Monday to Friday)' },
+          { v: 'week', label: `Every week on ${DAY_NAMES[wd]}` },
+          { v: 'month', label: 'Every month' },
+          { v: 'year', label: 'Every year' },
+        ]}
+        onChange={pick}
+      />
+      {rep && (
+        <div className="ttb-rep-box">
+          {!rep.weekdays && (
+            <label className="ttb-rep-row">
+              Every
+              <input type="number" min={1} max={99} value={rep.every} onChange={(e) => set({ every: Math.max(1, Math.min(99, Number(e.target.value) || 1)) })} aria-label="How often" />
+              {UNIT[rep.freq][rep.every === 1 ? 0 : 1]}
+            </label>
+          )}
+          {rep.freq === 'week' && (
+            <span className="ttb-days" role="group" aria-label="On these days">
+              {DAYS.map((l, i) => {
+                const on = days.includes(i);
+                return (
+                  <button key={i} type="button" className={on ? 'on' : ''} aria-pressed={on} aria-label={DAY_NAMES[i]} onClick={() => set({ days: on ? (days.length > 1 ? days.filter((x) => x !== i) : days) : [...days, i].sort((a, b) => a - b) })}>
+                    {l}
+                  </button>
+                );
+              })}
+            </span>
+          )}
+          {(rep.freq === 'month' || rep.freq === 'year') && (
+            <span className="seg small-seg" role="radiogroup" aria-label="On which day">
+              {(
+                [
+                  ['date', rep.freq === 'year' ? `On ${d0.d} ${new Date(Date.UTC(2020, d0.mo - 1, 1)).toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' })}` : `On day ${d0.d}`],
+                  ...(nth.n <= 4 ? [['nth', `On the ${NTH[nth.n - 1]} ${DAY_NAMES[wd]}`]] : []),
+                  ...(nth.last ? [['last', `On the last ${DAY_NAMES[wd]}`]] : []),
+                ] as [Repeat['by'], string][]
+              ).map(([k, l]) => (
+                <button key={k} type="button" role="radio" aria-checked={(rep.by ?? 'date') === k} className={(rep.by ?? 'date') === k ? 'on' : ''} onClick={() => set({ by: k })}>
+                  {l}
+                </button>
+              ))}
+            </span>
+          )}
+          <span className="ttb-rep-row">
+            Ends
+            <span className="seg small-seg" role="radiogroup" aria-label="Ends">
+              {(
+                [
+                  ['count', 'After'],
+                  ['until', 'On a day'],
+                  ['never', 'Never'],
+                ] as const
+              ).map(([k, l]) => (
+                <button key={k} type="button" role="radio" aria-checked={rep.end === k} className={rep.end === k ? 'on' : ''} onClick={() => set({ end: k, ...(k === 'until' && !rep.until ? { until: plusMonths(date, 3) } : {}) })}>
+                  {l}
+                </button>
+              ))}
+            </span>
+            {rep.end === 'count' && (
+              <>
+                <input type="number" min={2} max={730} value={rep.count ?? 10} onChange={(e) => set({ count: Math.max(2, Math.min(730, Number(e.target.value) || 2)) })} aria-label="How many times" /> times
+              </>
+            )}
+            {rep.end === 'until' && <input type="date" value={rep.until ?? ''} min={date} onChange={(e) => set({ until: e.target.value })} aria-label="The last day" />}
+          </span>
+          {Number.isFinite(at) && <span className="hint">{repeatText({ start: at, repeat: rep }, tz)}.{rep.end === 'never' ? ' Shown for two years ahead.' : ''}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+const plusMonths = (date: string, n: number) => {
+  const [y, m, d] = date.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + n, d));
+  return t.toISOString().slice(0, 10);
+};
+
+// People from outside, by email: they get the link and a calendar invitation.
+function GuestsField({ guests, onChange }: { guests: Guest[]; onChange: (g: Guest[]) => void }) {
+  const [text, setText] = useState('');
+  const [err, setErr] = useState('');
+  const add = () => {
+    const list = text.split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+    if (!list.length) return;
+    const bad = list.filter((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x));
+    if (bad.length) return setErr(`“${bad[0]}” doesn’t look like an email address.`);
+    onChange([...guests, ...list.filter((e) => !guests.some((g) => g.email === e)).map((email) => ({ email }))]);
+    setText('');
+    setErr('');
+  };
+  return (
+    <div className="ttb-guests">
+      <span className="ttb-guests-l">Guests from outside</span>
+      {guests.length > 0 && (
+        <span className="ttb-chips">
+          {guests.map((g) => (
+            <span key={g.email} className="ttb-chip">
+              {g.email}
+              <button type="button" aria-label={`Take ${g.email} off`} onClick={() => onChange(guests.filter((x) => x !== g))}>
+                ×
+              </button>
+            </span>
+          ))}
+        </span>
+      )}
+      <input
+        value={text}
+        onChange={(e) => (setText(e.target.value), setErr(''))}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ',') && (e.preventDefault(), add())}
+        onBlur={add}
+        placeholder="Their email, then Enter"
+        aria-label="A guest’s email"
+        inputMode="email"
+        autoComplete="off"
+        spellCheck={false}
+      />
+      {err ? <span className="error">{err}</span> : <span className="hint">They get an email with the link and a calendar invitation, so it goes in their calendar. If you change or cancel it, they get an update.</span>}
     </div>
   );
 }

@@ -306,3 +306,112 @@ for (const r of codes.docs) {
     console.error('Invitation code email failed', e?.message);
   }
 }
+
+// ------------------------------------------------------------------ meeting invitations for guests
+// A meeting's guests from outside get an email with the link and a calendar invitation, and again
+// (as an update, or a cancellation) when it changes. guests[].h is what the last one said.
+// repeat.mjs is src/lib/repeat.ts, built for this job by the workflow.
+let R = null;
+try {
+  R = await import('./repeat.mjs');
+} catch {
+  console.log('No repeat.mjs: meeting invitations wait for the next run.');
+}
+if (R) {
+  const { ics } = await import('./ics.mjs');
+  const L = await import('./email-layout.mjs');
+  const fromAddr = (FROM.match(/<([^>]+)>/)?.[1] ?? FROM).trim();
+  const hash = (x) => crypto.createHash('sha1').update(JSON.stringify(x)).digest('hex').slice(0, 12);
+  const zoneOk = (tz) => {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: tz });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const list = await db.collection('sessions').where('hasGuests', '==', true).get();
+  for (const doc of list.docs) {
+    const s = { ...doc.data(), id: doc.id };
+    try {
+      const tz = s.tz && zoneOk(s.tz) ? s.tz : 'UTC';
+      const rule = R.rrule(s, tz);
+      const exdates = rule ? (s.skip ?? []).map((w) => R.timeAt(s, tz, w)).filter((t) => t !== null) : [];
+      const last = R.lastStart(s, tz);
+      const joinUrl = !s.online ? '' : s.video?.url ? s.video.url : s.guest ? `${SITE}/call/${s.guest}` : '';
+      // An ELT Suite room needs its guest link first (made when the meeting is saved).
+      if (s.online && !joinUrl && !s.cancelled) continue;
+      const fp = hash([s.title, s.start, s.mins, tz, s.repeat ?? null, s.weeks ?? 1, s.skip ?? [], s.online, s.place ?? '', joinUrl, s.notes ?? '']);
+      const ended = last !== null && last + s.mins * 60000 < now;
+      let seq = s.icsSeq ?? 0;
+      const changed = s.icsFp && s.icsFp !== fp;
+      if (changed) seq++;
+      const owner = s.ownerName || 'A teacher';
+      const when = (t) => new Date(t).toLocaleString('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+      const endClock = new Date(s.start + s.mins * 60000).toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
+      const zoneName = new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'long' }).formatToParts(new Date(s.start)).find((x) => x.type === 'timeZoneName')?.value ?? tz;
+      const repeats = R.isSeries(s) ? R.repeatText(s, tz) : '';
+      const where = s.online ? (joinUrl.includes('/call/') ? 'Online, in ELT Suite (no account needed)' : 'Online') : s.place || 'In person';
+      const description = [`${owner} invited you.`, repeats, s.online && joinUrl ? `Join: ${joinUrl}` : '', s.notes ?? ''].filter(Boolean).join('\n');
+      const send = async (g, method) => {
+        const cancel = method === 'CANCEL';
+        const kind = cancel ? 'Cancelled' : g.h ? 'Updated' : 'Invitation';
+        const subject = `${kind}: ${s.title || 'Meeting'}, ${new Date(s.start).toLocaleString('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+        const facts = [`<b>When:</b> ${L.esc(when(s.start))}–${L.esc(endClock)} (${L.esc(zoneName)})`, repeats ? `<b>Repeats:</b> ${L.esc(repeats)}` : '', `<b>Where:</b> ${L.esc(where)}`].filter(Boolean);
+        const body = L.pad(
+          L.kicker(cancel ? 'Cancelled' : g.h ? 'Changed' : 'You’re invited') +
+            L.h1(s.title || 'Meeting') +
+            L.p(cancel ? `${L.esc(owner)} has cancelled this meeting${repeats ? ', every time it was going to happen' : ''}. Your calendar takes it out when you open the attachment.` : g.h ? `${L.esc(owner)} has changed this meeting. The details below are the new ones, and the attachment updates your calendar.` : `${L.esc(owner)} has invited you to a meeting.`) +
+            L.callout(facts.join('<br>')) +
+            (!cancel && s.online && joinUrl ? L.button(joinUrl, 'Join the meeting') + L.small(`Or open this link: ${L.esc(joinUrl)}`) : '') +
+            (!cancel && s.notes ? L.p(L.esc(s.notes).replace(/\n/g, '<br>')) : '') +
+            L.small(cancel ? 'Nothing else to do.' : 'The calendar invitation is attached. Many email apps add it to your calendar for you; if yours doesn’t, open the attachment.'),
+        );
+        await mail.sendMail({
+          from: FROM,
+          to: g.email,
+          subject,
+          html: L.frame({ title: subject, preview: cancel ? 'This meeting is cancelled.' : `${owner} · ${when(s.start)}`, body, footer: `You get this because ${L.esc(owner)} added ${L.esc(g.email)} to a meeting in ELT Suite.` }),
+          icalEvent: {
+            method,
+            filename: cancel ? 'cancel.ics' : 'invite.ics',
+            content: ics({ uid: `${s.id}@eltsuite.com`, seq: cancel ? seq + 1 : seq, method, title: s.title || 'Meeting', description, location: s.online ? joinUrl : s.place ?? '', url: joinUrl, start: s.start, mins: s.mins, tz, rrule: rule, exdates, last: last ?? s.start + 365 * 864e5, organizer: { name: owner, email: fromAddr }, attendee: g }),
+          },
+        });
+      };
+      // Taken out: tell everyone who was told, then it goes.
+      if (s.cancelled) {
+        for (const g of [...(s.guests ?? []), ...(s.gone ?? [])]) if (g.h && !ended) await send(g, 'CANCEL').catch((e) => console.error('Cancellation failed', e?.message));
+        await doc.ref.delete();
+        console.log('Meeting cancelled for its guests:', s.id);
+        continue;
+      }
+      // Taken off the list: a cancellation for them.
+      for (const g of s.gone ?? []) if (g.h && !ended) await send(g, 'CANCEL').catch((e) => console.error('Cancellation failed', e?.message));
+      if (ended) {
+        await doc.ref.update({ gone: [], hasGuests: false });
+        continue;
+      }
+      let sent = 0;
+      const guests = [];
+      for (const g of s.guests ?? []) {
+        if (g.h === fp) {
+          guests.push(g);
+          continue;
+        }
+        try {
+          await send(g, 'REQUEST');
+          guests.push({ ...g, h: fp, sent: now });
+          sent++;
+        } catch (e) {
+          console.error('Invitation failed', e?.message);
+          guests.push(g);
+        }
+      }
+      await doc.ref.update({ guests, gone: [], icsSeq: seq, icsFp: fp, hasGuests: guests.length > 0 });
+      if (sent) console.log(`Meeting ${s.id}: ${sent} invitation${sent === 1 ? '' : 's'} sent.`);
+    } catch (e) {
+      console.error('Meeting invitations failed', s.id, e?.message);
+    }
+  }
+}

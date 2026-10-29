@@ -2,7 +2,8 @@ import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, 
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { updateItem } from './classes';
-import { addDaysInZone, localZone, validZone } from './tz';
+import { localZone, validZone } from './tz';
+import { eachTime, isSeries, type Repeat } from './repeat';
 
 // Timetable: the classes, meetings and one-to-ones a teacher has, with their times. A class
 // session uses the class's own video room, so its link is there from the start; a meeting gets
@@ -20,7 +21,14 @@ export type Session = {
   start: number; // the first time, ms
   mins: number;
   tz?: string; // the time zone a weekly session keeps its time in (IANA name)
-  weeks?: number; // weekly, this many times in all (1 = once)
+  weeks?: number; // before repeat: weekly, this many times in all (1 = once)
+  repeat?: Repeat | null; // how it repeats (lib/repeat.ts); none: once
+  // A meeting's guests from outside: emailed a link and a calendar invitation (scripts/mail.mjs),
+  // and again when it changes. h: what the last email said; gone: taken off, to be told.
+  guests?: Guest[];
+  gone?: Guest[];
+  hasGuests?: boolean;
+  cancelled?: number; // taken out, with guests still to be told; the mail job then deletes it
   online: boolean;
   video?: { kind: 'eltsuite' | 'meet' | 'teams' | 'zoom' | 'link'; url?: string; by?: string } | null; // online in another tool (lib/meetings.ts)
   place?: string; // in person: where
@@ -33,10 +41,11 @@ export type Session = {
   guest?: string; // a meeting's link for people without ELT Suite: callLinks/<code>, pointed at the room when it starts
   at?: number;
 };
-export type Occurrence = { s: Session; start: number; end: number; week: number };
+export type Guest = { email: string; name?: string; h?: string; sent?: number };
+export type Occurrence = { s: Session; start: number; end: number; week: number }; // week: the time's number in its series
+export { isSeries };
 
 const col = collection(db, 'sessions');
-const WEEK = 7 * 864e5;
 
 export async function addSession(s: Omit<Session, 'id'>) {
   const ref = await addDoc(col, JSON.parse(JSON.stringify({ tz: localZone(), ...s, at: Date.now() })));
@@ -50,13 +59,14 @@ export async function saveSession(s: Session) {
   await updateDoc(doc(col, id), JSON.parse(JSON.stringify(rest)));
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
 }
-export const removeSession = (s: Session) => deleteDoc(doc(col, s.id));
+// With guests, they are told first: the mail job sends them the cancellation, then deletes it.
+export const removeSession = (s: Session) => (s.guests?.length ? updateDoc(doc(col, s.id), { cancelled: Date.now() }) : deleteDoc(doc(col, s.id)));
 // A session made before time zones were kept gets its owner's, once.
 export const setSessionZone = (s: Session, tz: string) => updateDoc(doc(col, s.id), { tz });
 // Undo for a session taken out: back, as it was, with the same id.
 export function restoreSession(s: Session) {
   const { id, gcal: _g, ...rest } = s;
-  return setDoc(doc(col, id), JSON.parse(JSON.stringify(rest)));
+  return setDoc(doc(col, id), JSON.parse(JSON.stringify({ ...rest, cancelled: null })));
 }
 export const skipWeek = (s: Session, week: number) => updateDoc(doc(col, s.id), { skip: [...new Set([...(s.skip ?? []), week])] });
 export const setSessionLive = (s: Session, live: Session['live']) => updateDoc(doc(col, s.id), { live });
@@ -66,20 +76,20 @@ export const setSessionLive = (s: Session, live: Session['live']) => updateDoc(d
 export const zoneOf = (s: Pick<Session, 'tz'>) => (s.tz && validZone(s.tz) ? s.tz : localZone());
 export function occurrences(list: Session[], from: number, to: number): Occurrence[] {
   const out: Occurrence[] = [];
-  const slack = 3 * 3600e3;
   for (const s of list) {
-    const n = Math.max(1, s.weeks ?? 1);
+    if (s.cancelled) continue;
     const len = s.mins * 60000;
-    const tz = n > 1 ? zoneOf(s) : '';
-    for (let w = 0; w < n; w++) {
-      const rough = s.start + w * WEEK;
-      if (rough - slack > to) break;
-      if (rough + len + slack < from || s.skip?.includes(w)) continue;
-      const start = w ? addDaysInZone(s.start, 7 * w, tz) : s.start;
-      const end = start + len;
-      if (start > to || end < from) continue;
-      out.push({ s, start, end, week: w });
-    }
+    const tz = zoneOf(s);
+    eachTime(
+      s,
+      tz,
+      (w, start) => {
+        if (start > to) return false;
+        if (start + len < from || s.skip?.includes(w)) return;
+        out.push({ s, start, end: start + len, week: w });
+      },
+      from - len,
+    );
   }
   return out.sort((a, b) => a.start - b.start);
 }
@@ -105,7 +115,7 @@ export function useTeacherSessions(uid?: string, classIds: string[] = []) {
   return useMemo(() => {
     const m = new Map<string, Session>();
     Object.values(parts).flat().forEach((s) => m.set(s.id, s));
-    return [...m.values()];
+    return [...m.values()].filter((s) => !s.cancelled);
   }, [parts]);
 }
 // A learner's: their class's sessions.
@@ -115,7 +125,7 @@ export function useClassSessions(classId?: string) {
     if (!classId) return;
     return onSnapshot(
       query(col, where('classId', '==', classId)),
-      (s) => setList(s.docs.map((d) => ({ ...(d.data() as Omit<Session, 'id'>), id: d.id }))),
+      (s) => setList(s.docs.map((d) => ({ ...(d.data() as Omit<Session, 'id'>), id: d.id })).filter((x) => !x.cancelled)),
       () => setList([]),
     );
   }, [classId]);

@@ -334,3 +334,20 @@
 body.ttb-moving, body.ttb-moving * { cursor: grabbing !important; user-select: none; }
 @media (max-width: 640px) { .ttb-grip { cursor: default; } .ttb-dlg-h { cursor: auto; } }
 .ttb-scrim { background: rgba(32, 30, 28, .2); }
+
+/* Repeat, as in a calendar: how often, on which days, until when. */
+.ttb-rep-box { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; padding: 12px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 4%, var(--paper)); }
+.ttb-rep-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 13.5px; }
+.ttb-rep-row input[type='number'] { width: 64px; height: 32px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
+.ttb-rep-row input[type='date'] { height: 32px; padding: 0 8px; border: 1px solid var(--hair-strong); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; }
+.ttb-days { display: flex; gap: 6px; }
+.ttb-days button { width: 34px; height: 34px; border: 1px solid var(--hair-strong); border-radius: 50%; background: var(--paper); color: var(--ink); font: 600 13px var(--sans); cursor: pointer; }
+.ttb-days button.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.ttb-rep-box .seg { flex-wrap: wrap; }
+/* Guests from outside, by email. */
+.ttb-guests { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ttb-guests-l { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ttb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ttb-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--ink); font-size: 13px; }
+.ttb-chip button { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
+.ttb-chip button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
