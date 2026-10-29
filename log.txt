@@ -1,0 +1,7 @@
+box pages 3 ["Grammar1Read the interview and answer.1. In the box: He works at night, from 8.00 p.m. to ","1 (cont.)Read the interview and answer.25. In the box: He works at night, from 8.00 p.m. t","2The second task.SECOND TASK HEREPrepared by Arda · Made with ELT SuiteThe content of this"]
+paras pages 2 ["Grammar1Read the interview and answer.1. Line He works at night, from 8.00 p.m. to 6.00 in","1 (cont.)Read the interview and answer.38. Line He works at night, from 8.00 p.m. to 6.00 "]
+mixed pages 2 ["Grammar1Read the interview and answer.Read the interview.1. Interview: He works at night, ","1 (cont.)Read the interview and answer.24. Interview: He works at night, from 8.00 p.m. to"]
+shot preview-out/01-sheet-editing.png
+editor closed 1
+shot preview-out/02-sheet-closed.png
+editor open again 1
