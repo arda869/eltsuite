@@ -1,0 +1,8 @@
+ticks Read, Delivered, Sent
+shot preview-out/01-ticks.png
+info Message info | See you at four. | Sent today, 5:47 PM | SL | Sam Lee | Not delivered yet: their app isn’t open | Close
+shot preview-out/02-info.png
+shot preview-out/03-forward-dialog.png
+forwarded Forwarded · Sam, today 5:33 PM | The speaking task is ready. Have a look before Monday. | 5:47 PM | +
+shot preview-out/04-forwarded.png
+shot preview-out/05-settings.png
