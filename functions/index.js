@@ -3,7 +3,7 @@
 // superAdmins/{email} with a verified email, as in firestore.rules) can ask; every use is written
 // to proxyLog. The pass is a Firebase custom token, good for one sign-in within an hour.
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentUpdated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -48,23 +48,14 @@ export const signInAs = onCall({ region: 'us-central1', maxInstances: 2 }, async
 // New messages reach phones and computers within seconds. When a chat gets a new message,
 // each member who didn't send it and hasn't read it yet gets one notification for that chat.
 // scripts/push.mjs still runs every 15 minutes as a back-up: `pushed` stops it sending twice.
-export const pushNewMessage = onDocumentUpdated({ document: 'chats/{chatId}', region: 'us-central1', maxInstances: 5 }, async (event) => {
-  const before = event.data?.before.data();
-  const d = event.data?.after.data();
-  if (!d?.last || !d.lastAt || before?.lastAt === d.lastAt) return;
+// Sends to every device of these people (chat keys). Old devices are removed as we go.
+async function sendTo(keys, data, ttl) {
   const db = getFirestore();
-  const to = (d.members ?? []).filter((k) => k !== d.last.by && (d.seen?.[k] ?? 0) < d.lastAt && (d.pushed?.[k] ?? 0) < d.lastAt);
-  if (!to.length) return;
-  const title = d.kind === 'group' ? d.title || 'Group' : d.names?.[d.last.by] ?? 'New message';
-  const who = String(d.last.name || '').split(' ')[0];
-  const body = d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text || '';
-  const data = { title: String(title).slice(0, 80), body: String(body).slice(0, 180), link: `/messages?c=${event.params.chatId}`, tag: 'chat-' + event.params.chatId };
-  const patch = {};
-  for (let i = 0; i < to.length; i += 30) {
-    const snap = await db.collection('pushTokens').where('key', 'in', to.slice(i, i + 30)).get();
+  for (let i = 0; i < keys.length; i += 30) {
+    const snap = await db.collection('pushTokens').where('key', 'in', keys.slice(i, i + 30)).get();
     for (const t of snap.docs) {
       try {
-        await getMessaging().send({ token: t.get('token'), data, webpush: { headers: { Urgency: 'high', TTL: '86400' } } });
+        await getMessaging().send({ token: t.get('token'), data, webpush: { headers: { Urgency: 'high', TTL: String(ttl) } } });
       } catch (e) {
         const code = e?.errorInfo?.code ?? e?.code ?? '';
         if (/registration-token-not-registered|invalid-registration-token/.test(code)) await t.ref.delete().catch(() => {});
@@ -72,6 +63,39 @@ export const pushNewMessage = onDocumentUpdated({ document: 'chats/{chatId}', re
       }
     }
   }
+}
+
+const callBody = (kind, name) => `${name || 'Someone'} is calling you${kind === 'video' ? ' (video)' : ''}. Tap to answer.`;
+
+export const pushNewMessage = onDocumentUpdated({ document: 'chats/{chatId}', region: 'us-central1', maxInstances: 5 }, async (event) => {
+  const before = event.data?.before.data();
+  const d = event.data?.after.data();
+  // A call just started in this chat: everyone else in it gets an incoming call notification.
+  const call = d?.call;
+  if (call?.at && !call.ended && before?.call?.at !== call.at && Date.now() - call.at < 60e3) {
+    const keys = (d.members ?? []).filter((k) => k !== call.by);
+    const title = d.kind === 'group' ? d.title || 'Group call' : call.byName || 'Incoming call';
+    if (keys.length) await sendTo(keys, { title: String(title).slice(0, 80), body: callBody(call.kind, call.byName), link: `/messages?c=${event.params.chatId}`, tag: 'call-' + event.params.chatId, call: '1' }, 60);
+  }
+  if (!d?.last || !d.lastAt || before?.lastAt === d.lastAt) return;
+  // "Started a call" messages: the call notification already said so.
+  if (call?.at && d.last.by === call.by && Math.abs(d.lastAt - call.at) < 15e3) return;
+  const to = (d.members ?? []).filter((k) => k !== d.last.by && (d.seen?.[k] ?? 0) < d.lastAt && (d.pushed?.[k] ?? 0) < d.lastAt);
+  if (!to.length) return;
+  const title = d.kind === 'group' ? d.title || 'Group' : d.names?.[d.last.by] ?? 'New message';
+  const who = String(d.last.name || '').split(' ')[0];
+  const body = d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text || '';
+  const data = { title: String(title).slice(0, 80), body: String(body).slice(0, 180), link: `/messages?c=${event.params.chatId}`, tag: 'chat-' + event.params.chatId };
+  const patch = {};
+  await sendTo(to, data, 86400);
   for (const k of to) patch[`pushed.${k}`] = d.lastAt;
   await event.data.after.ref.update(patch);
+});
+
+// Someone is called into a call that's already on (a class's video room): their devices ring too.
+export const pushCallRing = onDocumentWritten({ document: 'callRings/{key}', region: 'us-central1', maxInstances: 5 }, async (event) => {
+  const r = event.data?.after.data();
+  const before = event.data?.before.data();
+  if (!r?.at || before?.at === r.at || Date.now() - r.at < 0 || Date.now() - r.at > 60e3) return;
+  await sendTo([event.params.key], { title: String(r.title || r.byName || 'Incoming call').slice(0, 80), body: callBody(r.kind, r.byName), link: '/', tag: 'ring-' + event.params.key, call: '1' }, 60);
 });

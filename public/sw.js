@@ -16,7 +16,9 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   if (payload.notification) return;
   const d = payload.data || {};
-  self.registration.showNotification(d.title || 'ELT Suite', { body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || undefined, data: { link: d.link || '/' } });
+  // Calls stay on screen until answered or dismissed, and buzz harder on phones that can.
+  const call = d.call === '1';
+  self.registration.showNotification(d.title || 'ELT Suite', { body: d.body || '', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag || undefined, renotify: call, requireInteraction: call, vibrate: call ? [400, 200, 400, 200, 400, 200, 400] : undefined, data: { link: d.link || '/' } });
 });
 
 self.addEventListener('notificationclick', (e) => {
