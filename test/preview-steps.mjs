@@ -12,6 +12,7 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   await p.locator('text=+ New').first().waitFor({ timeout: 20000 });
   const [tab] = await Promise.all([ctx.waitForEvent('page'), p.setInputFiles('input[accept="application/pdf,.pdf"]', 'preview-out/sample.pdf')]);
   tab.on('pageerror', (e) => say('CRASH', e.message));
+  tab.on('console', (m) => m.type() !== 'log' && say('console', m.type(), m.text().slice(0, 200)));
   await tab.setViewportSize({ width: 1440, height: 900 });
   await tab.waitForLoadState();
   await tab.locator('.pdff').waitFor({ timeout: 30000 });
@@ -19,17 +20,20 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   const s = async (name) => (await tab.screenshot({ path: `preview-out/${name}.png` }), say('shot', name));
   await s('01-opened');
   // a text box
-  await tab.getByRole('radio', { name: /Text box/ }).click().catch((e) => say('text', e.message));
+  await tab.getByRole('radio', { name: 'Text', exact: true }).click().catch((e) => say('text', e.message));
   await tab.waitForTimeout(300);
   const pg = await tab.locator('.pdf-page').first().boundingBox();
   await tab.mouse.click(pg.x + pg.width * 0.62, pg.y + pg.height * 0.36);
   await tab.waitForTimeout(500);
   await tab.keyboard.type('Lisbon');
   await tab.waitForTimeout(400);
+  say('box text', await tab.locator('.pdf-box').first().innerText().catch(() => '?'));
   await s('02-text-box');
   // a highlight
+  await tab.keyboard.press('Escape');
   await tab.getByRole('radio', { name: /Highlight/ }).click().catch((e) => say('mark', e.message));
   await tab.waitForTimeout(300);
+  await s('03a-highlight-tool');
   await tab.mouse.move(pg.x + pg.width * 0.1, pg.y + pg.height * 0.2);
   await tab.mouse.down();
   await tab.mouse.move(pg.x + pg.width * 0.5, pg.y + pg.height * 0.23, { steps: 6 });
@@ -47,7 +51,7 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   await s('04-draw');
   // the question menu
   await tab.getByRole('radio', { name: /Select/ }).click().catch(() => {});
-  await tab.locator('.pdf-tb:has-text("Question")').click().catch((e) => say('question', e.message));
+  await tab.locator('.pdf-tb.q').click().catch((e) => say('question', e.message));
   await tab.waitForTimeout(500);
   await s('05-question-menu');
   await tab.keyboard.press('Escape');
@@ -56,7 +60,7 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   await tab.waitForTimeout(400);
   await s('06-box-bar');
   // scrolled to page 2
-  await tab.locator('.pdff-rail button').nth(1).click().catch(() => {});
+  await tab.locator('.pdff-th').nth(1).click().catch(() => {});
   await tab.waitForTimeout(1500);
   await s('07-page-2');
   // a smaller screen
