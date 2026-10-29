@@ -195,6 +195,12 @@ export async function sharedDocFiles(d: SharedDoc): Promise<OutFile[]> {
       return pdfFile(d);
     case 'lesson':
       return lessonFile(d);
+    case 'file': {
+      const { loadAnyFile, extOf } = await import('./fileStore');
+      const x = extOf(d.file?.name ?? '');
+      const name = !x || d.title.toLowerCase().endsWith('.' + x) ? d.title : `${d.title}.${x}`;
+      return [{ name: name.replace(/[\\/:*?"<>|]/g, '-'), data: new Uint8Array(await (await loadAnyFile(d.id, d.file)).arrayBuffer()) }];
+    }
     default:
       return [];
   }

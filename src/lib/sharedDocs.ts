@@ -36,6 +36,8 @@ export type SharedDoc = {
   folder?: string; // a shared folder it is in
   ltype?: 'lesson' | 'homework' | 'exam' | 'practice'; // a lesson file: what kind of lesson it becomes in a class
   path?: string; // the folder in the owner's files
+  file?: { name: string; type: string; bytes: number; parts: number }; // any other file: what was uploaded
+  start?: number; // a document made from a Word file: parts of the text it starts with
   createdBy?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -44,8 +46,8 @@ export type SharedDoc = {
 const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
-export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard';
-export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard' };
+export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard' | 'file';
+export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File' };
 export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '') {
   const r = await addDoc(col, {
     owner: owner.uid,
@@ -106,7 +108,7 @@ export const noteClass = (d: SharedDoc, classId: string, name: string, role: Doc
 // A message with the link, to each person (their own chat with you), or into one chat.
 export async function sendDocInChat(d: SharedDoc, me: Person, people: Person[], note = '') {
   const link = docLink(d.id);
-  const what = d.kind === 'slides' ? 'slides' : d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : d.kind === 'lesson' ? 'a lesson' : d.kind === 'storyboard' ? 'a storyboard' : 'a document';
+  const what = d.kind === 'slides' ? 'slides' : d.kind === 'flash' ? 'a flashcard set' : d.kind === 'pd' ? 'my reading notes' : d.kind === 'lesson' ? 'a lesson' : d.kind === 'storyboard' ? 'a storyboard' : d.kind === 'file' ? 'a file' : 'a document';
   const text = note.trim() || `I shared ${what} with you: ${d.title}.`;
   for (const p of people) {
     const chatId = await openChat(me, [p]);
