@@ -7959,3 +7959,21 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .sbf-li { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--hair); border-radius: 10px; background: #fff; cursor: pointer; font: 12px var(--sans); color: var(--muted); }
 .sbf-li:hover { border-color: var(--accent); }
 @media (max-width: 1100px) { .sbf { grid-template-columns: 130px minmax(0, 1fr) 240px; } }
+
+/* A storyboard in a lesson, a message or a Collab document (src/storyboard/StoryboardNode.tsx) */
+.sbn { padding: 10px 0; }
+.sbn .mcq-tools { flex-wrap: wrap; gap: 8px; }
+.sbn .sbn-title { font: 600 14px var(--serif); color: var(--ink); text-transform: none; letter-spacing: 0; }
+.sbn .sbn-cols { text-transform: none; letter-spacing: 0; display: inline-flex; align-items: center; gap: 6px; font: 600 12px var(--sans); color: var(--muted); }
+.sbn .sbn-b { text-transform: none; letter-spacing: 0; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--hair-strong); background: var(--card, #fff); font: 600 12px var(--sans); color: var(--ink); text-decoration: none; cursor: pointer; }
+.sbn-b:hover { border-color: var(--accent); }
+.sbn-pick { padding: 12px 14px; border: 1px dashed var(--hair-strong); border-radius: 12px; }
+.sbn-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.sbn-item { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--hair-strong); background: var(--card, #fff); font: 600 13px var(--sans); color: var(--ink); cursor: pointer; }
+.sbn-item:hover { border-color: var(--accent); }
+.sbn-item.new { border-style: dashed; color: var(--accent-text, var(--accent)); }
+.sbn-read { margin: 12px 0; }
+.sbw-s { position: relative; }
+.sbw-n { position: absolute; left: 8px; top: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--accent); color: #fff; font: 800 12px/22px var(--sans); text-align: center; }
+.sbw-c { margin: 6px 0 0; font: 15px/1.4 var(--serif); color: var(--ink); }
+.sbw-t { font: 800 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
