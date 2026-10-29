@@ -3,7 +3,7 @@ import { UiIcon } from './UiIcon';
 // One look for every kind of thing you keep: a small page with a folded corner, its own colour
 // and symbol, and a label. Folders are folders. Used in the archive, in shares and in messages.
 
-export type FileKind = 'lesson' | 'task' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'image' | 'audio' | 'video' | 'link' | 'media';
+export type FileKind = 'lesson' | 'task' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'design' | 'image' | 'audio' | 'video' | 'link' | 'media';
 
 const LOOK: Record<FileKind, { icon: string; label: string }> = {
   lesson: { icon: 'classes', label: 'Lesson' },
@@ -15,6 +15,7 @@ const LOOK: Record<FileKind, { icon: string; label: string }> = {
   pdf: { icon: 'annotate', label: 'PDF' },
   storyboard: { icon: 'storyboard', label: 'Story' },
   file: { icon: 'archive', label: 'File' },
+  design: { icon: 'design', label: 'Design' },
   image: { icon: 'picture', label: 'Picture' },
   audio: { icon: 'music', label: 'Recording' },
   video: { icon: 'video', label: 'Video' },
@@ -65,7 +66,7 @@ export function FolderIcon({ size = 40, open, locked }: { size?: number; open?: 
 }
 
 // The tab's icon, drawn like the file's icon in Files: the page in the kind's colour and its symbol.
-const FK: Partial<Record<FileKind, string>> = { lesson: '#c8764a', task: '#8b6f4e', doc: '#7c6aa6', slides: '#b7791f', flash: '#8a4f9e', pd: '#3c7c8c', pdf: '#b64a3c', storyboard: '#4f7a55', file: '#5d6b7a', image: '#b8873a', audio: '#a3607f', video: '#4f7192', link: '#6b7480', media: '#b8873a' };
+const FK: Partial<Record<FileKind, string>> = { lesson: '#c8764a', task: '#8b6f4e', doc: '#7c6aa6', slides: '#b7791f', flash: '#8a4f9e', pd: '#3c7c8c', pdf: '#b64a3c', storyboard: '#4f7a55', file: '#5d6b7a', design: '#6d5bd0', image: '#b8873a', audio: '#a3607f', video: '#4f7192', link: '#6b7480', media: '#b8873a' };
 export function setFileFavicon(kind: FileKind) {
   const c = FK[kind] ?? '#c8764a';
   // The symbol comes from the same icon set, drawn off screen and copied in.

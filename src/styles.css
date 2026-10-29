@@ -7881,6 +7881,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .sh-block[data-drop=after]::after { bottom: -2.5mm; }
 .fk-storyboard { --fk: #4f7a55; }
 .fk-file { --fk: #5d6b7a; }
+.fk-design { --fk: #6d5bd0; }
 .dp.k-file { --dp: #5d6b7a; }
 .af { flex: 1; display: grid; place-items: center; padding: 40px 16px; }
 .af-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; max-width: 460px; padding: 36px 32px 32px; background: var(--card, #fff); border: 1px solid var(--hair); border-radius: 18px; box-shadow: 0 10px 30px -18px rgba(38, 36, 32, 0.35); }

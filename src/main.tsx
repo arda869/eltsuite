@@ -171,6 +171,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
+          <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
           <Route path="/s/:id" element={<SharedPage />} />
           <Route path="/call/:code" element={<CallPage />} />

@@ -20,7 +20,7 @@ Every word on the site, in emails and in notifications follows this. Read it bef
 - **Short sentences, everyday words.** Say what a thing does and what to do next. One idea per sentence.
 - **British English:** organisation, colour, centre, programme, licence (noun), enrol, practise (verb).
 - **Sentence case** everywhere: buttons, headings, tabs, menus. Only names keep capitals (Classes,
-  Studio, Rooms, Collab, Slides, Print, Files, Teach live, Super Admin).
+  Studio, Rooms, Collab, Slides, Print, Files, Design, Teach live, Super Admin).
 - **Buttons are verbs** that say what happens: "Make a class", "Save", "Send invitation". Not "OK",
   "Submit" or "Click here". Use "make" over "create" in everyday copy.
 - **Errors:** say what happened, then what to do, and reassure if work is safe. Never blame the teacher.
@@ -88,3 +88,13 @@ the same write that adds them (`countOne` in `src/lib/limitError.ts`, `countedIn
 recounted every 15 minutes by `scripts/space.mjs`; call minutes come from Daily in `scripts/video.mjs`,
 which also pauses the organisation's class rooms past the limit (`video.paused`); the rules stop new
 calls (`callRooms`), new teachers joining and codes being made past the limits.
+
+## Design
+
+Design (`src/design/`, kind `design` in `sharedDocs`) makes posters, flashcards, labelled pictures and
+worksheets. Pages are `dpages`, every thing on a page is its own record in `dels` (so people editing
+together see each other's changes at once), the accent colour is `dmeta/main`, and pictures are the file's
+own media (`doc:<id>`). `src/design/render.ts` draws a page on a canvas, the same way on screen and for
+downloads. Teaching tools: numbered labels with a learners' copy (words become lines), a word bank, covers
+(blur, pixels, a plain cover, a mystery card), learner A / learner B things, cut-out cards, background
+removal and print-friendly pictures. Free pictures come from Wikimedia Commons, with a credit line.

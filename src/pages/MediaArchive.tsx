@@ -45,9 +45,9 @@ const KINDS = [
   { k: 'audio', label: 'Recordings', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
-type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
-const COLLAB_KINDS: Kind[] = ['doc', 'slides', 'pdf', 'file'];
+type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'design';
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, { k: 'design', label: 'Designs' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
+const COLLAB_KINDS: Kind[] = ['doc', 'slides', 'pdf', 'file', 'design'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
 type View = 'icons' | 'list' | 'time';
@@ -61,7 +61,7 @@ const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { mo
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
 const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Recording', lesson: 'Lesson', doc: 'Collab document', pdf: 'PDF', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal' })[k] ?? 'File';
-const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, storyboard: 7, image: 8, audio: 9, video: 10, file: 11 };
+const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, storyboard: 7, image: 8, audio: 9, video: 10, file: 11, design: 7.5 };
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
@@ -575,6 +575,7 @@ export function MediaArchive() {
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
+    { label: 'Design', icon: 'design', hint: 'posters, flashcards, labelled pictures', onClick: () => void makeDoc('design') },
     { label: 'Storyboard', icon: 'storyboard', hint: 'scenes with people and speech bubbles', onClick: () => void makeDoc('storyboard') },
     { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
     { label: 'Upload a file…', icon: 'upload', hint: 'Word, Excel or any other kind', onClick: () => anyIn.current?.click() },
