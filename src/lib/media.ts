@@ -7,8 +7,9 @@ import { db } from './firebase';
 // Where media lives: a class ("classes/<id>/media"), or a teacher's own space for things added
 // straight to the resources library ("user:<uid>" → "users/<uid>/media").
 // A shared copy ("share:<id>") keeps its own media too.
-export const mediaCol = (space: string) => (space.startsWith('user:') ? collection(db, 'users', space.slice(5), 'media') : space.startsWith('share:') ? collection(db, 'shares', space.slice(6), 'media') : space.startsWith('chat:') ? collection(db, 'chats', space.slice(5), 'media') : collection(db, 'classes', space, 'media'));
-export const mediaDoc = (space: string, id: string) => (space.startsWith('user:') ? doc(db, 'users', space.slice(5), 'media', id) : space.startsWith('share:') ? doc(db, 'shares', space.slice(6), 'media', id) : space.startsWith('chat:') ? doc(db, 'chats', space.slice(5), 'media', id) : doc(db, 'classes', space, 'media', id));
+// "doc:<id>": a file in Files (a PDF), whose sounds live with it so everyone it is shared with can play them.
+export const mediaCol = (space: string) => (space.startsWith('doc:') ? collection(db, 'sharedDocs', space.slice(4), 'media') : space.startsWith('user:') ? collection(db, 'users', space.slice(5), 'media') : space.startsWith('share:') ? collection(db, 'shares', space.slice(6), 'media') : space.startsWith('chat:') ? collection(db, 'chats', space.slice(5), 'media') : collection(db, 'classes', space, 'media'));
+export const mediaDoc = (space: string, id: string) => (space.startsWith('doc:') ? doc(db, 'sharedDocs', space.slice(4), 'media', id) : space.startsWith('user:') ? doc(db, 'users', space.slice(5), 'media', id) : space.startsWith('share:') ? doc(db, 'shares', space.slice(6), 'media', id) : space.startsWith('chat:') ? doc(db, 'chats', space.slice(5), 'media', id) : doc(db, 'classes', space, 'media', id));
 
 export const MAX_AUDIO_BYTES = 600 * 1024;
 
