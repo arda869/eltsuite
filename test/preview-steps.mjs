@@ -99,10 +99,10 @@ export default async function steps({ p, ctx, say, BASE }) {
   await tab.locator('.dz-layers .dz-lname', { hasText: 'Be kind' }).click();
   await tab.locator('.dz-railb', { hasText: 'Teaching' }).click();
   await tab.getByRole('button', { name: 'Only B' }).click();
-  await tab.getByRole('radio', { name: 'Learner A' }).click();
+  await tab.getByRole('radio', { name: 'Learner A', exact: true }).click();
   await tab.waitForTimeout(600);
   await s('09-learner-a');
-  await tab.getByRole('radio', { name: 'Everything' }).click();
+  await tab.getByRole('radio', { name: 'Everything', exact: true }).click();
   // Take away the background of the picture.
   await tab.mouse.click(...at(400, 540));
   await tab.waitForTimeout(300);
