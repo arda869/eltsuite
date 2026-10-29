@@ -1,0 +1,50 @@
+queued /doc/dtx45t9nd49qd6n6dn
+queued /doc/93rxw0r7pwfipr0c36
+queued /doc/913sc7genpl4jlrba0
+queued /doc/6i68cls7x6kxhokw50
+page / buttons 6 clicked 6
+page /classes buttons 3 clicked 3
+SMALL TAP TARGETS [/class/34geew48joixel7nv6] 5 buttons or links under 24px
+page /class/34geew48joixel7nv6 buttons 22 clicked 15
+page /class/34geew48joixel7nv6/lesson/l7iuvkjgwkuw5rr9i buttons 13 clicked 13
+page /class/34geew48joixel7nv6/lesson/zyjw09f0qi0xwb3bwq buttons 72 clicked 29
+page /timetable buttons 55 clicked 2
+page /rooms buttons 16 clicked 5
+page /archive buttons 20 clicked 20
+queued /doc/wz99u0dijr10iiwakb
+queued /doc/vrxm980aufoq85p1cx
+page /collab buttons 9 clicked 7
+queued /doc/2k860xx8mfoqkaeshm
+page /reading buttons 8 clicked 6
+page /pdf buttons 6 clicked 6
+queued /doc/i6rfqlj8pdzmd49nq7
+page /design buttons 6 clicked 6
+page /recordings buttons 6 clicked 3
+page /library buttons 2 clicked 2
+page /colleagues buttons 3 clicked 3
+page /messages buttons 6 clicked 6
+page /settings buttons 13 clicked 8
+page /guide buttons 148 clicked 28
+page /tour buttons 32 clicked 28
+page /storyboard/library buttons 29 clicked 12
+page /admin buttons 1 clicked 1
+page /org-admin buttons 1 clicked 1
+queued /doc/ekydkxruts62rpsdtu
+queued /doc/9fk6x6v4b37x52k0re
+queued /doc/lz0h421ynh28gry2m9
+queued /doc/yvux6467his7tglnyy
+page / buttons 6 clicked 6
+page /doc/dtx45t9nd49qd6n6dn buttons 9 clicked 8
+page /doc/93rxw0r7pwfipr0c36 buttons 34 clicked 12
+page /doc/913sc7genpl4jlrba0 buttons 8 clicked 7
+page /doc/6i68cls7x6kxhokw50 buttons 8 clicked 1
+page /doc/wz99u0dijr10iiwakb buttons 34 clicked 12
+page /doc/vrxm980aufoq85p1cx buttons 8 clicked 1
+page /doc/2k860xx8mfoqkaeshm buttons 8 clicked 1
+page /doc/i6rfqlj8pdzmd49nq7 buttons 23 clicked 1
+page /doc/ekydkxruts62rpsdtu buttons 9 clicked 8
+page /doc/9fk6x6v4b37x52k0re buttons 34 clicked 12
+page /doc/lz0h421ynh28gry2m9 buttons 8 clicked 7
+page /doc/yvux6467his7tglnyy buttons 8 clicked 1
+queued /doc/67rxjhpn6q4m9miwir
+STEP FAILED locator.click: Target page, context or browser has been closed
