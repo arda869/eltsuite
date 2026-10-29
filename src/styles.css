@@ -8214,3 +8214,7 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .fw-list label { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
 .fw-list label:hover, .fw-list label.on { background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
 .fw-g { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--ink) 8%, var(--paper)); }
+/* Room at the end of the last line for the time (and, on yours, the ticks), so the words never touch it. */
+.bub-doc:not(.has-blocks) .para:last-child > p::after, .bub-doc:not(.has-blocks) > .task-body > :last-child > p::after { width: 62px; }
+.bub.mine .bub-doc:not(.has-blocks) .para:last-child > p::after, .bub.mine .bub-doc:not(.has-blocks) > .task-body > :last-child > p::after { width: 84px; }
+.bub-meta .bub-ticks { margin-left: 5px; }
