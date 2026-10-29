@@ -1,22 +1,14 @@
-// Teach live only for lessons: the mode menu on a lesson, then on the same item as homework.
+// The worksheet editor sliding, the PDF view's width and zoom, the PDF viewer and the back button,
+// and the sign-in page on a phone.
 export default async function steps({ p, shot, say, demo, BASE }) {
-  const open = async () => {
-    await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
-    await p.waitForSelector('.mode-btn', { timeout: 30000 });
-    await p.waitForTimeout(1500);
-    await p.click('.mode-btn');
-    await p.waitForTimeout(400);
-    say('menu', (await p.locator('.mode-list').innerText()).replace(/\n+/g, ' | '));
-  };
-  await open();
-  await shot('lesson-menu');
-  await p.evaluate(async ({ c, i }) => {
-    const m = await import('/src/lib/classes.ts');
-    await m.updateItem(c, i, { type: 'homework' });
-  }, { c: demo.classId, i: demo.itemId });
-  await open();
-  await shot('homework-menu');
-  await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}?teach=1`);
+  // The sign-in page on a phone.
+  await p.evaluate(async () => { const { auth } = await import('/src/lib/firebase.ts'); const m = await import('/test/mock/auth.ts'); await m.signOut(auth); });
+  await p.setViewportSize({ width: 360, height: 780 });
+  await p.goto(`${BASE}/`);
   await p.waitForTimeout(4000);
-  say('homework with ?teach=1, mode', await p.locator('.mode-btn').innerText());
+  await shot('signin-phone');
+  say('signin widths', await p.evaluate(() => `page ${document.documentElement.scrollWidth} / screen ${innerWidth}; ` + [...document.querySelectorAll('.signin > *, .signin .intro > *')].map((e) => `${e.className || e.tagName}:${Math.round(e.getBoundingClientRect().left)}|${Math.round(innerWidth - e.getBoundingClientRect().right)}`).join(' ')));
+  await p.evaluate(() => window.scrollTo(0, 900));
+  await p.waitForTimeout(400);
+  await shot('signin-phone-lower');
 }

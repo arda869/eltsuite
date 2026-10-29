@@ -4625,7 +4625,7 @@ body.is-resizing-pic, body.is-resizing-pic * { cursor: ew-resize !important; use
 .gl-tl { width: 80%; color: var(--ink); }
 
 /* The app's own confirm, notice and question boxes */
-.ask-scrim { z-index: 200; align-items: center; padding: 16px; background: rgba(38, 36, 32, .36); backdrop-filter: blur(3px) saturate(.9); animation: ask-fade .16s ease-out; }
+.scrim.ask-scrim, .ask-scrim { z-index: 200; align-items: center; padding: 16px; background: rgba(38, 36, 32, .36); backdrop-filter: blur(3px) saturate(.9); animation: ask-fade .16s ease-out; }
 .dialog.ask { position: relative; width: 420px; gap: 0; padding: 28px 28px 22px; border-radius: 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #d98f63) 9%, var(--paper)) 0, var(--paper) 120px); box-shadow: 0 0 0 1px var(--hair), 0 2px 6px rgba(38, 36, 32, .06), 0 30px 70px -10px rgba(38, 36, 32, .32); animation: ask-in .2s cubic-bezier(.2, .9, .3, 1.15); overflow: hidden; }
 .ask-ic { width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 15px; background: var(--paper); color: var(--accent-text, #a05e37); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #d98f63) 30%, transparent), 0 6px 14px -6px color-mix(in srgb, var(--accent, #d98f63) 50%, transparent); }
 .ask.danger .ask-ic { color: var(--ink); box-shadow: 0 0 0 1px var(--hair-strong), 0 6px 14px -8px rgba(38, 36, 32, .4); }
@@ -7761,6 +7761,15 @@ html { touch-action: manipulation; }
   .signin .intro { gap: 12px; }
   .signin .intro .so { margin: 0 auto; }
 }
+/* Sign-in on a phone: the same side margins as the form, with the name and the line under it sized
+   to the screen instead of pushing past its edges. */
+@media (max-width: 720px) {
+  .signin { padding-left: 20px; padding-right: 20px; }
+  .signin .intro { min-width: 0; width: 100%; }
+  .signin .wordmark.big { gap: 12px; }
+  .signin .wordmark.big .wm-name { font-size: clamp(34px, 12vw, 56px); }
+  .signin .intro p.si-tag { font-size: clamp(13px, 4.6vw, 24px); }
+}
 @media (min-width: 721px) and (max-height: 940px) { .signin .intro .so { zoom: 0.86; } }
 @media (min-width: 721px) and (max-height: 860px) { .signin .intro .so { zoom: 0.74; } }
 @media (min-width: 721px) and (max-height: 780px) { .signin .intro .so { zoom: 0.62; } }
@@ -7969,7 +7978,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 /* ------------------------------------------------------------------ PDF editor, redesigned
    One calm bar that never changes height: the tools on the left (icon and name, a key for each),
    what the tool in use needs in the middle, and the page, zoom and file actions on the right. */
-.pdff { max-width: 1160px; gap: 14px; }
+.pdff { max-width: none; gap: 14px; }
 .pdff-bar { flex-wrap: nowrap; gap: 4px; min-height: 52px; padding: 6px 8px; border-radius: 14px; overflow-x: auto; scrollbar-width: none; }
 .pdff-bar::-webkit-scrollbar { display: none; }
 .pdff-bar > * { flex: none; }
@@ -8068,7 +8077,21 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 
 /* The worksheet on its own: the editor beside it is closed until you click a task */
 .sh-split.solo { grid-template-columns: minmax(0, 1fr) 0 0; }
-.sh-split.solo > .sh-divider, .sh-split.solo > .sh-right { display: none; }
+/* The editor slides open beside the worksheet, and slides away when it closes. Its text fades
+   while the column changes width, so it isn't seen squeezing. */
+.sh-split, .sh-split.solo { display: flex; }
+.sh-split > .sh-left { flex: 1 1 0; }
+.sh-split > .sh-divider { flex: 0 0 10px; overflow: hidden; }
+.sh-split > .sh-right { flex: 0 0 calc((100% - 10px) * var(--sh-r, .55)); }
+.sh-split > .sh-right, .sh-split > .sh-divider { transition: flex-basis .34s cubic-bezier(.22, .7, .2, 1), opacity .22s ease .12s, visibility 0s; }
+.sh-split.dragging > * { transition: none; }
+.sh-split.solo > .sh-right, .sh-split.solo > .sh-divider { flex-basis: 0; overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none; transition: flex-basis .34s cubic-bezier(.22, .7, .2, 1), opacity .12s ease, visibility 0s .34s; }
+.sh-split > .sh-right > * { animation: sh-in .3s cubic-bezier(.22, .7, .2, 1); }
+@keyframes sh-in { from { transform: translateX(14px); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sh-split > .sh-right, .sh-split > .sh-divider { transition: none; }
+  .sh-split > .sh-right > * { animation: none; }
+}
 /* A file's name in full in its header (documents, PDFs, storyboards, flashcards, slides): the names
    take the room the header has, and only a very long name is cut short. */
 .dp-names, .pv-names { flex: 1 1 auto; min-width: 0; }

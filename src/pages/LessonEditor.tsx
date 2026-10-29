@@ -1290,7 +1290,7 @@ export function LessonEditor() {
                 </div>
               </div>
             ) : sheet && sheetData ? (
-              <div className={'sh-split' + (sheetEdit ? '' : ' solo')} style={{ ['--sh-w' as string]: `${sheetW}%` }}>
+              <div className={'sh-split' + (sheetEdit ? '' : ' solo')} style={{ ['--sh-w' as string]: `${sheetW}%`, ['--sh-r' as string]: (100 - sheetW) / 100 }}>
                 <section className="sh-left" aria-label="The worksheet">
                   <div className="sh-left-bar">
                     <span className="sh-switch" role="radiogroup" aria-label="Size of the page">
@@ -1331,10 +1331,12 @@ export function LessonEditor() {
                   aria-label="Drag to change the size of the worksheet"
                   tabIndex={0}
                   onPointerDown={(e) => {
-                    const box = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+                    const split = e.currentTarget.parentElement as HTMLElement;
+                    const box = split.getBoundingClientRect();
                     e.currentTarget.setPointerCapture(e.pointerId);
+                    split.classList.add('dragging'); // no sliding while you drag
                     const move = (ev: PointerEvent) => setSheetW(Math.round(Math.min(70, Math.max(25, ((ev.clientX - box.left) / box.width) * 100))));
-                    const up = () => (window.removeEventListener('pointermove', move), window.removeEventListener('pointerup', up));
+                    const up = () => (split.classList.remove('dragging'), window.removeEventListener('pointermove', move), window.removeEventListener('pointerup', up));
                     window.addEventListener('pointermove', move);
                     window.addEventListener('pointerup', up);
                   }}
@@ -1512,7 +1514,8 @@ export function LessonEditor() {
                 <input type="checkbox" checked={task.showScore !== false} onChange={() => setTaskFlags(classId, itemId, task.id, { showScore: task.showScore === false })} />
               </label>
               </Fold>
-              {item && (
+              {/* Only in an exam. A task already in exam mode elsewhere keeps it, so it can be turned off. */}
+              {item && (item.type === 'exam' || !!task.exam) && (
                 <Fold id="exam" title="Exam" open={fold} setOpen={setFold}>
                   <ExamSettings classId={classId} item={item} task={task} />
                 </Fold>
