@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { UiIcon } from '../components/UiIcon';
+import { DOTS } from '../editor/nodes';
 
 // Worksheet view of a lesson: the same tasks, on A4 pages, one column, in the printed house style
 // (see "How printed worksheets look" in CLAUDE.md). Every task you are not editing is drawn by the
@@ -13,7 +15,7 @@ const areaTop = (k: number) => k * P + PAGE.band + PAGE.pad;
 const areaBottom = (k: number) => k * P + PAGE.h - PAGE.foot;
 
 export type SheetParts = { css: string; band: string; foot: string };
-export type SheetBlock = { measure?: string; note?: string; id: string; html?: string; node?: ReactNode; on?: boolean; onClick?: () => void; heading?: boolean; label?: string };
+export type SheetBlock = { measure?: string; note?: string; id: string; html?: string; node?: ReactNode; on?: boolean; onClick?: () => void; heading?: boolean; label?: string; onDelete?: () => void; deleteLabel?: string; title?: string };
 
 // The print styles, for a shadow root: our own copies of the two typefaces under their own names, so
 // the app's own fonts stay as they are.
@@ -51,8 +53,16 @@ function Piece({ css, html, className }: { css: string; html: string; className?
 }
 
 export type Zoom = 'width' | 'page';
-export function SheetView({ parts, blocks, after, zoom = 'width', focus }: { parts: SheetParts; blocks: SheetBlock[]; after?: ReactNode; zoom?: Zoom; focus?: string }) {
+export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove }: { parts: SheetParts; blocks: SheetBlock[]; after?: ReactNode; zoom?: Zoom; focus?: string; onMove?: (id: string, before: string | null) => void }) {
   const css = useShadowCss(parts.css);
+  // Moving a task on the page: drag its six-dot handle in the margin (or use the arrow keys on it).
+  const [drag, setDrag] = useState<string | null>(null);
+  const [drop, setDrop] = useState<number | null>(null); // the block it goes before (blocks.length: at the end)
+  const moveTo = (id: string, at: number) => {
+    const from = blocks.findIndex((b) => b.id === id);
+    if (from < 0 || at === from || at === from + 1) return;
+    onMove?.(id, blocks[at]?.id ?? null);
+  };
   const host = useRef<HTMLDivElement>(null);
   const [pushes, setPushes] = useState<number[]>([]);
   const [pages, setPages] = useState(1);
@@ -153,7 +163,7 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus }: { par
   return (
     <div className="sh-desk" ref={desk}>
       <div className="sh-fit" style={{ width: PAGE.w * scale, height: (pages * P - PAGE.gap + stretch.extra) * scale }}>
-      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale !== 1 ? `scale(${scale})` : undefined }}>
+      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale !== 1 ? `scale(${scale})` : undefined, ['--k' as string]: scale }}>
         {Array.from({ length: pages }, (_, i) => (
           <div key={i} className={'sh-sheet' + (i === stretch.page && stretch.extra > 0 ? ' stretched' : '')} style={{ top: i * P + (i > stretch.page ? stretch.extra : 0), height: PAGE.h + (i === stretch.page ? stretch.extra : 0) }} aria-hidden="true">
             <Piece css={css} html={parts.band} />
@@ -167,13 +177,75 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus }: { par
               data-b={b.id}
               className={'sh-block' + (b.on ? ' on' : '') + (b.heading ? ' is-heading' : '') + (b.onClick ? ' pick' : '')}
               style={{ marginTop: pushes[i] ?? (i === 0 ? areaTop(0) : 0) }}
-              onClick={b.onClick ? () => (keep(b.id), b.onClick?.()) : undefined}
-              onKeyDown={b.onClick ? (e) => e.key === 'Enter' && e.target === e.currentTarget && (keep(b.id), b.onClick?.()) : undefined}
-              role={b.onClick ? 'button' : undefined}
-              tabIndex={b.onClick ? 0 : undefined}
-              aria-label={b.onClick ? b.label ?? 'Edit this task' : undefined}
+              data-drop={drag && drop === i ? 'before' : drag && drop === blocks.length && i === blocks.length - 1 ? 'after' : undefined}
+              data-dragging={drag === b.id ? '' : undefined}
             >
-              {b.html !== undefined ? <Piece css={css} html={b.html} /> : b.node}
+              {(onMove || b.onDelete) && (
+                <span className="sh-tools">
+                  {onMove && (
+                    <button
+                      type="button"
+                      className="sh-grip"
+                      onPointerDown={(e) => {
+                        // Our own pointer drag, so it works with a mouse, a pen and a finger.
+                        if (e.button !== 0) return;
+                        e.preventDefault();
+                        const id = b.id;
+                        const y0 = e.clientY;
+                        let at: number | null = null;
+                        let moved = false;
+                        const move = (ev: PointerEvent) => {
+                          if (!moved && Math.abs(ev.clientY - y0) < 4) return;
+                          moved = true;
+                          setDrag(id);
+                          const kids = [...(host.current?.querySelectorAll<HTMLElement>(':scope > .sh-block') ?? [])];
+                          at = kids.length;
+                          for (let k = 0; k < kids.length; k++) {
+                            const r = kids[k].getBoundingClientRect();
+                            if (ev.clientY < r.top + r.height / 2) {
+                              at = k;
+                              break;
+                            }
+                          }
+                          setDrop(at);
+                        };
+                        const up = () => {
+                          window.removeEventListener('pointermove', move);
+                          window.removeEventListener('pointerup', up);
+                          window.removeEventListener('pointercancel', up);
+                          if (moved && at !== null) moveTo(id, at);
+                          setDrag(null);
+                          setDrop(null);
+                        };
+                        window.addEventListener('pointermove', move);
+                        window.addEventListener('pointerup', up);
+                        window.addEventListener('pointercancel', up);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowUp' && i > 0) (e.preventDefault(), moveTo(b.id, i - 1));
+                        if (e.key === 'ArrowDown' && i < blocks.length - 1) (e.preventDefault(), moveTo(b.id, i + 2));
+                      }}
+                    >
+                      {DOTS}
+                    </button>
+                  )}
+                  {b.onDelete && (
+                    <button type="button" className="sh-del" aria-label={b.deleteLabel ?? 'Delete this task'} data-tip={b.deleteLabel ?? 'Delete this task'} onClick={b.onDelete}>
+                      <UiIcon name="trash" />
+                    </button>
+                  )}
+                </span>
+              )}
+              <div
+                className="sh-hit"
+                onClick={b.onClick ? () => (keep(b.id), b.onClick?.()) : undefined}
+                onKeyDown={b.onClick ? (e) => e.key === 'Enter' && e.target === e.currentTarget && (keep(b.id), b.onClick?.()) : undefined}
+                role={b.onClick ? 'button' : undefined}
+                tabIndex={b.onClick ? 0 : undefined}
+                aria-label={b.onClick ? b.label ?? 'Edit this task' : undefined}
+              >
+                {b.html !== undefined ? <Piece css={css} html={b.html} /> : b.node}
+              </div>
               {b.measure !== undefined && <Piece css={css} className="sh-measure" html={b.measure} />}
               {b.note && <span className="sh-note">{b.note}</span>}
             </div>
