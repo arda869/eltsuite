@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TopBar } from '../components/TopBar';
-import { BUBBLES, FACES, PEOPLE, POSES, PersonArt, Sketch, THINGS } from '../storyboard/art';
+import { BUBBLES, FACES, PEOPLE, POSES, PersonArt, Sketch, THINGS, faceBox } from '../storyboard/art';
 
 // The storyboard library: every person, pose, face, thing and speech bubble there is so far, in the
 // accent colour. Storyboards are made from these.
@@ -60,7 +60,7 @@ export function StoryboardLibrary() {
               <div className="sbl-grid">
                 {Object.entries(FACES).map(([k, f]) => (
                   <button key={k} type="button" className={'sbl-card face' + (face === k ? ' on' : '')} onClick={() => setFace(k)} aria-pressed={face === k}>
-                    <svg viewBox="40 0 120 118" width="84" height="84" aria-hidden="true">
+                    <svg viewBox={faceBox(who)} width="84" height="84" aria-hidden="true">
                       <Sketch id={'sbl-f-' + k}>
                         <PersonArt who={who} p="stand" face={k} />
                       </Sketch>

@@ -4,7 +4,7 @@ import { db } from '../lib/firebase';
 import { newId } from '../lib/tasks';
 import { ask } from '../lib/ask';
 import type { SharedDoc } from '../lib/sharedDocs';
-import { BUBBLES, FACES, PEOPLE, POSES, PersonArt, Sketch, THINGS } from './art';
+import { BUBBLES, FACES, PEOPLE, POSES, PersonArt, Sketch, THINGS, faceBox } from './art';
 import { ItemArt, SceneView, STAGE, heightOf, itemStyle, type SbItem, type SbKind, type SbScene } from './Stage';
 
 // A storyboard: scenes, one after another, each with people, things, speech bubbles and labels from
@@ -305,7 +305,7 @@ export function StoryboardFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean 
               <div className="sbf-who" role="radiogroup" aria-label="Who">
                 {Object.entries(PEOPLE).map(([k2, p]) => (
                   <button key={k2} type="button" role="radio" aria-checked={who === k2} className={who === k2 ? 'on' : ''} onClick={() => setWho(k2)} aria-label={p.name} data-tip={p.name}>
-                    <svg viewBox="40 0 120 118" width="40" height="40" aria-hidden="true">
+                    <svg viewBox={faceBox(k2)} width="40" height="40" aria-hidden="true">
                       <PersonArt who={k2} p="stand" face="happy" />
                     </svg>
                   </button>
