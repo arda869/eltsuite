@@ -191,12 +191,7 @@ const APPS: GuideApp[] = [
     can: ['Type in the gaps, highlight and draw', 'Write on it together, live', 'Print it with everything you added'],
     d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 16.5l2-5 2 5M9.6 15h2.8',
   },
-  {
-    k: 'design', name: 'Design', color: '#6d5bd0', to: '/design', tag: 'Pictures and posters for class',
-    about: 'Make posters, flashcards, picture stories and labelled pictures, like in a design app, with tools made for teaching.',
-    can: ['Label a picture and print a learners’ copy with lines to write on', 'Make learner A and learner B copies for pairwork', 'Blur faces, take away backgrounds, and cut pages into cards'],
-    d: 'M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01',
-  },
+
   {
     k: 'recordings', name: 'Recordings', color: '#a8473a', to: '/recordings', tag: 'Make your own listening',
     about: 'Record yourself, edit like audio software, or record a dialogue with colleagues, each on their own device. The script lights up as it plays, like karaoke.',

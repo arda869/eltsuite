@@ -6,7 +6,7 @@ import { SfxSettings } from '../../components/SfxSettings';
 import { SoundRecordings } from '../../components/SoundRecordings';
 import { ask, tell } from '../../lib/ask';
 import { openAsUser } from '../../lib/proxy';
-import { APP_LIST, PLANS, addSuperAdmin, newOrg, removeOrgAdmin, removeSuperAdmin, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, useSuperAdmins, type Plan, type Teacher } from '../../lib/admin';
+import { APP_LIST, appDefault, PLANS, addSuperAdmin, newOrg, removeOrgAdmin, removeSuperAdmin, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, useSuperAdmins, type Plan, type Teacher } from '../../lib/admin';
 import { useAuth } from '../../lib/auth';
 import { OWNER_EMAIL } from '../../lib/phonAudio';
 import { GB, BulkBar, Check, Drawer, DrawerPart, Empty, GbInput, Meter, PageHead, Panel, Pills, Search, Setting, Sheet, Switch, Who, ago, dateStr, daysSince, fmtBytes, fmtGb, plural, useNote, useSelection } from './ui';
@@ -343,7 +343,7 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
       <DrawerPart title="Apps">
         <p className="hint">Their own switch comes before their organisation's and everyone's.</p>
         {APP_LIST.map((k) => {
-          const on = a.features?.[k.k] ?? true;
+          const on = a.features?.[k.k] ?? appDefault(k.k);
           return (
             <Setting key={k.k} title={k.name} sub>
               <Switch on={on} onChange={(v) => void saveAccount(t, { features: { ...(a.features ?? {}), [k.k]: v } })} label={`${k.name} for ${name}`} />
@@ -521,7 +521,7 @@ export function SuperApps({ d }: { d: SuperData }) {
           const notes = [own ? `${plural(own, 'teacher')} with their own switch` : '', offIn.length ? `off in ${offIn.map((o) => o.name).join(', ')}` : ''].filter(Boolean).join('; ');
           return (
             <Setting key={k.k} title={k.name} about={notes ? `${k.about}. ${notes.charAt(0).toUpperCase() + notes.slice(1)}.` : k.about}>
-              <Switch on={f[k.k] ?? true} onChange={(v) => void setFeature(k.k, v)} label={`${k.name} for everyone`} />
+              <Switch on={f[k.k] ?? appDefault(k.k)} onChange={(v) => void setFeature(k.k, v)} label={`${k.name} for everyone`} />
             </Setting>
           );
         })}

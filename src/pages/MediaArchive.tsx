@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, type DriveFolder } from '../lib/admin';
+import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, useAppOn, type DriveFolder } from '../lib/admin';
 import { copyFile } from '../lib/copyFile';
 import { Select, NSelect } from '../components/Select';
 import { newSharedDoc, removeSharedDoc, renameDoc, setDocPath, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
@@ -562,6 +562,7 @@ export function MediaArchive() {
       setPdfBusy('');
     }
   };
+  const appOn = useAppOn();
   const makeDoc = async (k: DocKind) => {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
@@ -575,7 +576,7 @@ export function MediaArchive() {
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
-    { label: 'Design', icon: 'design', hint: 'posters, flashcards, labelled pictures', onClick: () => void makeDoc('design') },
+    ...(appOn('design') ? [{ label: 'Design', icon: 'design', hint: 'posters, flashcards, labelled pictures', onClick: () => void makeDoc('design') } as MenuItem] : []),
     { label: 'Storyboard', icon: 'storyboard', hint: 'scenes with people and speech bubbles', onClick: () => void makeDoc('storyboard') },
     { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
     { label: 'Upload a file…', icon: 'upload', hint: 'Word, Excel or any other kind', onClick: () => anyIn.current?.click() },
