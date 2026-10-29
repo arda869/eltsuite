@@ -1,0 +1,41 @@
+page / buttons 0 clicked 0
+page /classes buttons 5 clicked 4
+page /class/snirzbqqeichs5pl4r buttons 36 clicked 18
+page /class/snirzbqqeichs5pl4r/lesson/29rn4txgjbof8jsuk4 buttons 101 clicked 28
+page /class/snirzbqqeichs5pl4r/lesson/2talkn73g3bsn3iipk buttons 143 clicked 26
+page /timetable buttons 65 clicked 45
+page /rooms buttons 18 clicked 6
+page /archive buttons 21 clicked 21
+queued /doc/jd0mffw8ffl60oyszj
+queued /doc/hqqizug3qhh37ede18
+page /collab buttons 9 clicked 8
+queued /doc/l6kootxszbkrpzdpvz
+page /reading buttons 8 clicked 7
+page /pdf buttons 8 clicked 7
+queued /doc/4qjn4j43b7b6wos46y
+page /design buttons 8 clicked 7
+page /recordings buttons 8 clicked 3
+page /library buttons 4 clicked 3
+page /colleagues buttons 5 clicked 5
+page /messages buttons 7 clicked 7
+page /settings buttons 41 clicked 14
+page /guide buttons 150 clicked 43
+page /tour buttons 34 clicked 30
+page /storyboard/library buttons 31 clicked 13
+page /admin buttons 4 clicked 3
+page /org-admin buttons 4 clicked 3
+queued /doc/5egu11wimjydd4hzmn
+queued /doc/2zzjlvq84wt2vigqwh
+queued /doc/litcgcsawpzz3r6y7q
+queued /doc/7wqn5a8jjtss1eowpi
+page / buttons 8 clicked 7
+page /doc/jd0mffw8ffl60oyszj buttons 37 clicked 11
+page /doc/hqqizug3qhh37ede18 buttons 16 clicked 3
+page /doc/l6kootxszbkrpzdpvz buttons 10 clicked 3
+page /doc/4qjn4j43b7b6wos46y buttons 25 clicked 3
+page /doc/5egu11wimjydd4hzmn buttons 11 clicked 11
+page /doc/2zzjlvq84wt2vigqwh buttons 37 clicked 11
+page /doc/litcgcsawpzz3r6y7q buttons 10 clicked 10
+page /doc/7wqn5a8jjtss1eowpi buttons 10 clicked 3
+queued /doc/k1y5v69iap7xpfopvb
+STEP FAILED locator.click: Target page, context or browser has been closed
