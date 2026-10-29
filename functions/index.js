@@ -48,6 +48,18 @@ export const signInAs = onCall({ region: 'us-central1', maxInstances: 2 }, async
 // New messages reach phones and computers within seconds. When a chat gets a new message,
 // each member who didn't send it and hasn't read it yet gets one notification for that chat.
 // scripts/push.mjs still runs every 15 minutes as a back-up: `pushed` stops it sending twice.
+// A real notification part, so the phone shows it itself even when ELT Suite is closed.
+// (iPhones don't reliably wake the app to draw data-only messages.)
+const SITE = 'https://eltsuite.com';
+function webpushFor(d, ttl) {
+  const call = d.call === '1';
+  return {
+    headers: { Urgency: 'high', TTL: String(ttl) },
+    notification: { title: d.title, body: d.body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag, renotify: call, requireInteraction: call, ...(call ? { vibrate: [400, 200, 400, 200, 400, 200, 400] } : {}) },
+    fcmOptions: { link: SITE + (d.link || '/') },
+  };
+}
+
 // Sends to every device of these people (chat keys). Old devices are removed as we go.
 async function sendTo(keys, data, ttl) {
   const db = getFirestore();
@@ -55,7 +67,7 @@ async function sendTo(keys, data, ttl) {
     const snap = await db.collection('pushTokens').where('key', 'in', keys.slice(i, i + 30)).get();
     for (const t of snap.docs) {
       try {
-        await getMessaging().send({ token: t.get('token'), data, webpush: { headers: { Urgency: 'high', TTL: String(ttl) } } });
+        await getMessaging().send({ token: t.get('token'), data, webpush: webpushFor(data, ttl) });
       } catch (e) {
         const code = e?.errorInfo?.code ?? e?.code ?? '';
         if (/registration-token-not-registered|invalid-registration-token/.test(code)) await t.ref.delete().catch(() => {});
