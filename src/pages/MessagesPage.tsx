@@ -1,5 +1,4 @@
 import { CallButtons } from '../components/Rooms';
-import { usePhone } from '../lib/useMedia';
 import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
@@ -261,7 +260,6 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   // Every message starts as plain text; Aa shows the writing tools for this one.
   const [rich, setRich] = useState(false);
   const [tall, setTall] = useState(false);
-  const narrow = usePhone();
   const boxRef = useRef<HTMLDivElement>(null);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
@@ -477,7 +475,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
             them, the box grows and the buttons move under the words, as in Teams. */}
         <div className={'chat-box' + (tall || rich ? ' tall' : '')} ref={boxRef}>
           <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
-            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder={elementsOk && !narrow ? 'Write a message. @ to tag, / to add' : 'Write a message'} />
+            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder="" />
           </div>
           <span className="chat-in">
             {teacher && colleaguesHere.length > 0 && (
