@@ -1,6 +1,7 @@
 // Sends one test email through Postmark, to check the email set-up works. Uses the token in the
 // SMTP_URL secret with Postmark's own API, which says straight away if the email was refused.
 // Run from the "Test email" workflow. TO is who gets it.
+import { sample } from './email-sample.mjs';
 const SMTP = process.env.SMTP_URL;
 const TO = process.env.TO;
 if (!SMTP) {
@@ -15,9 +16,9 @@ const res = await fetch('https://api.postmarkapp.com/email', {
   body: JSON.stringify({
     From: FROM,
     To: TO,
-    Subject: 'ELT Suite test email',
-    TextBody: 'This is a test from ELT Suite. If you can read it, email is working.',
-    HtmlBody: '<p style="font:15px/1.6 Georgia,serif;color:#2b2a28">This is a test from ELT Suite.</p><p style="font:15px/1.6 Georgia,serif;color:#2b2a28">If you can read it, email is working.</p>',
+    Subject: sample.subject,
+    TextBody: sample.text,
+    HtmlBody: sample.html,
     MessageStream: 'outbound',
   }),
 });

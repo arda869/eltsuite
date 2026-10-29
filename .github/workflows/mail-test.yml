@@ -8,7 +8,7 @@ on:
         default: arda@eltsuite.com
   push:
     branches: [main]
-    paths: [scripts/mail-test.mjs, .github/workflows/mail-test.yml]
+    paths: [scripts/mail-test.mjs, scripts/email-layout.mjs, scripts/email-sample.mjs, .github/workflows/mail-test.yml]
 
 jobs:
   send:
@@ -24,5 +24,7 @@ jobs:
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           TO: ${{ inputs.to || 'arda@eltsuite.com' }}
         run: |
-          mkdir -p "$RUNNER_TEMP/m" && cp scripts/mail-test.mjs "$RUNNER_TEMP/m/" && cd "$RUNNER_TEMP/m"
+          # Wait for the email pictures to be live on eltsuite.com (the site deploys at the same time).
+          for i in $(seq 1 60); do curl -sI https://eltsuite.com/email/logo.png | grep -qi "content-type: image/png" && break; sleep 10; done
+          mkdir -p "$RUNNER_TEMP/m" && cp scripts/mail-test.mjs scripts/email-layout.mjs scripts/email-sample.mjs "$RUNNER_TEMP/m/" && cd "$RUNNER_TEMP/m"
           node mail-test.mjs
