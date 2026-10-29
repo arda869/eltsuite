@@ -87,7 +87,7 @@ type Thread = { by: string; name: string; color: string; text: string; at: numbe
 export type CollabProps = {
   docKey: string;
   title: string;
-  template?: JSONContent | null;
+  template?: JSONContent | string | null; // a document made from a Word file starts as HTML
   modes: CollabMode[];
   teacher?: boolean;
   me: { uid: string; name: string };

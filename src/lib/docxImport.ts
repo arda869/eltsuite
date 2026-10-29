@@ -292,7 +292,11 @@ export async function docxToHtml(file: Blob, name = ''): Promise<DocxResult> {
   if (zip['word/footnotes.xml'] && text('word/document.xml').includes('footnoteReference')) lost.add('Footnotes and endnotes');
   if (zip['word/comments.xml']) lost.add('Comments');
   const coreTitle = /<dc:title>([^<]*)<\/dc:title>/.exec(text('docProps/core.xml'))?.[1]?.trim();
-  return { html: html || '<p></p>', title: name.replace(/\.docx$/i, '') || coreTitle || 'Word document', lost: [...lost] };
+  // A heading at the very top becomes the document's title, which shows above the text.
+  const top = /^<h1[^>]*>(.*?)<\/h1>/.exec(html);
+  const topText = top ? new DOMParser().parseFromString(top[1], 'text/html').body.textContent?.trim() ?? '' : '';
+  if (topText && !top![1].includes('<img')) html = html.slice(top![0].length);
+  return { html: html || '<p></p>', title: topText || name.replace(/\.docx$/i, '') || coreTitle || 'Word document', lost: [...lost] };
 }
 
 const blobUrl = (b: Blob) =>
