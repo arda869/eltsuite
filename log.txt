@@ -1,0 +1,7 @@
+shot 01-empty
+shot 02-added
+selected 1 toolbar: Maya Leo Sam Grace Omar Zoe Ben Standing Waving Pointing Hands on hips Arms crossed Thinking Shrugging Talking On the phone Holding something Walking Running Si
+shot 03-edited
+shot 04-second-scene
+shot 05-after-reload
+items after reload 4
