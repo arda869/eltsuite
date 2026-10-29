@@ -76,6 +76,9 @@ export async function openAsUser(opts: { uid: string; name: string; path?: strin
     const code = (e as { code?: string }).code ?? '';
     if (code.includes('not-found') && !code.includes('functions/not-found')) return 'There is no account like that any more.';
     if (code.includes('permission-denied')) return (e as Error).message || 'Only super admins can do this.';
-    return 'Signing in as someone else isn’t switched on yet: it needs the ELT Suite server, which isn’t set up. Try again once it is.';
+    const msg = (e as Error).message || '';
+    if (code.includes('failed-precondition')) return msg;
+    if (code.includes('functions/not-found')) return 'The ELT Suite server isn’t set up yet, so signing in as someone isn’t available. (functions/not-found)';
+    return `We couldn’t sign you in as ${opts.name}. Send this to support: ${code || 'no code'}${msg && msg !== code ? ` · ${msg}` : ''}`;
   }
 }

@@ -32,6 +32,13 @@ export const signInAs = onCall({ region: 'us-central1', maxInstances: 2 }, async
   // Not into another super admin: they can sign in themselves.
   if (await isSuper({ email: user.email, email_verified: user.emailVerified })) throw new HttpsError('permission-denied', 'You can’t sign in as another super admin.');
   await getFirestore().collection('proxyLog').add({ by: req.auth.uid, byEmail: req.auth.token.email ?? '', uid, email: user.email ?? '', at: FieldValue.serverTimestamp() });
-  const token = await getAuth().createCustomToken(uid, { proxyBy: req.auth.uid });
+  let token;
+  try {
+    token = await getAuth().createCustomToken(uid, { proxyBy: req.auth.uid });
+  } catch (e) {
+    // Usually the server's account can't sign passes yet (it needs the Service Account Token Creator role).
+    console.error('createCustomToken failed', e);
+    throw new HttpsError('failed-precondition', `The server couldn’t make a sign-in pass: ${e?.message ?? e}`);
+  }
   return { token, name: user.displayName || user.email || 'this person' };
 });
