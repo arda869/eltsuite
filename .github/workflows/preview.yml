@@ -1,7 +1,7 @@
 name: Preview
 
 # Screenshots of the app with stand-ins for Firebase, for checking changes by eye. Runs on preview/*
-# branches only and never deploys. The pictures go to the preview-shots branch.
+# branches only and never deploys. The pictures go to the shots/<name> branch (preview/<name>).
 on:
   push:
     branches: ['preview/**']
@@ -23,12 +23,12 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Take the screenshots
         run: node test/preview.mjs
-      - name: Keep them on the preview-shots branch
+      - name: Keep them on a shots/ branch
         run: |
           cd preview-out
-          git init -q -b preview-shots
+          git init -q -b shots
           git config user.name "preview"
           git config user.email "preview@users.noreply.github.com"
           echo "${GITHUB_SHA}" > sha.txt
           git add -A && git commit -qm "Screenshots for ${GITHUB_SHA}"
-          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" preview-shots
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" "shots:shots/${GITHUB_REF_NAME#preview/}"
