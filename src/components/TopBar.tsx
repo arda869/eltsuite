@@ -135,7 +135,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
 function AppMark() {
   const { pathname } = useLocation();
   // Every app shows its name under ELT Suite, in its own colour.
-  const own = pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'reading', name: 'Reading Journal', color: '#6b5a8a' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname.startsWith('/design') ? { k: 'design', name: 'Design', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
+  const own = pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'reading', name: 'Reading Journal', color: '#6b5a8a' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'storyboard', name: 'Storyboards', color: '#4f7a55' } : pathname.startsWith('/design') ? { k: 'design', name: 'Design', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
   const app = own ??
     (pathname.startsWith('/archive') || pathname.startsWith('/doc')
       ? { name: 'Files', color: '#3667a6' }
