@@ -62,6 +62,7 @@ const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ defa
 const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
+const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
 const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
@@ -151,6 +152,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
           <Route path="/tour" element={<TourPage />} />
+          <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
