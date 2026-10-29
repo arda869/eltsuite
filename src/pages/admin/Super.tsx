@@ -6,7 +6,7 @@ import { SfxSettings } from '../../components/SfxSettings';
 import { SoundRecordings } from '../../components/SoundRecordings';
 import { ask, tell } from '../../lib/ask';
 import { openAsUser } from '../../lib/proxy';
-import { APP_LIST, PLANS, addSuperAdmin, newOrg, removeSuperAdmin, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, useSuperAdmins, type Plan, type Teacher } from '../../lib/admin';
+import { APP_LIST, PLANS, addSuperAdmin, newOrg, removeOrgAdmin, removeSuperAdmin, saveAccount, saveAccountNote, setFeature, setTeacherOrg, useFeatures, useSuperAdmins, type Plan, type Teacher } from '../../lib/admin';
 import { useAuth } from '../../lib/auth';
 import { OWNER_EMAIL } from '../../lib/phonAudio';
 import { GB, BulkBar, Check, Drawer, DrawerPart, Empty, GbInput, Meter, PageHead, Panel, Pills, Search, Setting, Sheet, Switch, Who, ago, dateStr, daysSince, fmtBytes, fmtGb, plural, useNote, useSelection } from './ui';
@@ -300,6 +300,16 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
         <span className="hint">Signed up {t.createdAt ? `${dateStr(t.createdAt)}, ${ago(t.createdAt)}` : 'at a time not recorded'}</span>
       </div>
       <DrawerPart title="Account">
+        {d.orgs
+          .filter((o) => o.id !== a.org && !!t.email && o.adminEmails.includes(t.email.toLowerCase()))
+          .map((o) => (
+            <p key={o.id} className="hq-warn">
+              Still an admin of {o.name}, so they see it in Organisation admin.{' '}
+              <button type="button" className="btn small-btn" onClick={() => void ask(`Stop ${name} being an admin of ${o.name}?`, { ok: 'Stop' }).then((ok) => ok && void removeOrgAdmin(o, t.email.toLowerCase()))}>
+                Stop being its admin
+              </button>
+            </p>
+          ))}
         <div className="field">
           <span>Organisation</span>
           <Select value={a.org ?? ''} options={[{ v: '', label: 'None: on their own' }, ...d.orgs.map((o) => ({ v: o.id, label: o.name }))]} onChange={(v) => void moveTo(v)} label="Organisation" search />

@@ -251,9 +251,14 @@ export const saveOrg = (id: string, p: Partial<Omit<Org, 'id'>>) => updateDoc(do
 export const addOrgAdmin = (o: Org, email: string) => updateDoc(doc(db, 'orgs', o.id), { adminEmails: [...new Set([...o.adminEmails, lower(email)])] });
 export const removeOrgAdmin = (o: Org, email: string) => updateDoc(doc(db, 'orgs', o.id), { adminEmails: o.adminEmails.filter((e) => e !== email) });
 // A teacher in an organisation takes its plan and space.
+// Moving a teacher: out of the old organisation, and out of its admins too (an admin of the old
+// one stays an admin, of the new one), so the organisation admin pages follow them.
 export async function setTeacherOrg(t: Teacher, org: Org | null, from?: Org | null) {
-  if (from && from.id !== org?.id) await updateDoc(doc(db, 'orgs', from.id), { [`teachers.${t.uid}`]: deleteField() });
-  if (org) await updateDoc(doc(db, 'orgs', org.id), { [`teachers.${t.uid}`]: { name: t.name, email: t.email } });
+  const { arrayRemove, arrayUnion } = await import('firebase/firestore');
+  const email = lower(t.email ?? '');
+  const wasAdmin = !!email && !!from?.adminEmails.includes(email);
+  if (from && from.id !== org?.id) await updateDoc(doc(db, 'orgs', from.id), { [`teachers.${t.uid}`]: deleteField(), ...(wasAdmin ? { adminEmails: arrayRemove(email) } : {}) });
+  if (org) await updateDoc(doc(db, 'orgs', org.id), { [`teachers.${t.uid}`]: { name: t.name, email: t.email }, ...(wasAdmin && from?.id !== org.id ? { adminEmails: arrayUnion(email) } : {}) });
   await saveAccount(t, org ? { org: org.id, plan: org.plan, limitGb: org.limitGb } : { org: null });
 }
 export const removeOrg = async (o: Org) => {
