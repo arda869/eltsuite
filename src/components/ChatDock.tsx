@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { autoFocusOk } from '../lib/keys';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
+import { withShownNames, isSelf, chatTitle, chime, markGot, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
 import { useDirectory, whoLine, type Directory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
@@ -137,6 +137,10 @@ export function ChatDock() {
     if (me && user && profile?.avatar) publishFace(me, user.uid, profile.avatar);
   }, [me, user, profile?.avatar]);
 
+  // Delivered: this app has the new messages (two grey ticks for the sender).
+  useEffect(() => {
+    if (chats && me && !isProxyTab()) markGot(chats, me);
+  }, [chats, me]);
   // A chime for each new message from someone else (not for the ones already there).
   const seen = useRef<Record<string, number> | null>(null);
   useEffect(() => {

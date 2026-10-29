@@ -8188,3 +8188,29 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
   .chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; }
 }
 .chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; }
+/* Ticks on your messages: sent, delivered, read. */
+.bub-ticks { display: inline-flex; margin-left: 4px; vertical-align: -1px; color: color-mix(in srgb, currentColor 70%, transparent); }
+.bub-ticks.t-read { color: #2f8fd8; }
+.bub.mine .bub-ticks.t-read { color: #4fb3ff; }
+/* Forwarded: a line saying who sent it first, and the message in a frame. */
+.bub-fwd-h { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; font: italic 12px/1.3 var(--sans); opacity: .8; }
+.bub-box.fwd .bub-doc, .bub-box.fwd .msg-file, .bub-box.fwd .bub-share { border-left: 3px solid color-mix(in srgb, currentColor 30%, transparent); padding-left: 10px; border-radius: 2px; }
+/* Swiping a message on a phone: right to reply, left (yours) for its info. */
+.bub { transition: transform .2s ease; touch-action: pan-y; }
+.bub.swiping { transition: none; }
+.bub-swipe-ic { position: absolute; top: 50%; width: 30px; height: 30px; margin-top: -15px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--ink) 8%, var(--paper)); color: var(--ink); font: 700 14px Georgia, serif; }
+.bub-swipe-ic.r { left: -40px; }
+.bub-swipe-ic.l { right: -40px; }
+/* Message info and forwarding. */
+.mi-dialog, .fw-dialog { width: min(420px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 10px; }
+.mi-dialog h2, .fw-dialog h2 { margin: 0; }
+.mi-text { margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--ink) 5%, var(--paper)); font: 14px/1.45 var(--sans); max-height: 120px; overflow: auto; overflow-wrap: anywhere; }
+.mi-list, .fw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 50vh; overflow: auto; }
+.mi-list li { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--hair); }
+.mi-list .bub-ticks { color: var(--muted); }
+.mi-list .bub-ticks.t-read { color: #2f8fd8; }
+.mi-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; font-size: 14px; }
+.fw-q { height: 38px; padding: 0 12px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; }
+.fw-list label { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.fw-list label:hover, .fw-list label.on { background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
+.fw-g { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--ink) 8%, var(--paper)); }
