@@ -1,0 +1,18 @@
+appAt pdf data:image/svg+xml,%3Csvg%20xmlns%3D%22h links 1
+icon on /pdf data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.o
+shot preview-out/01-apps.png
+apps menu after account opens 0
+console [vite] connecting...
+console [vite] connected.
+console seed done teacher1
+console %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+console ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more informa
+console ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see http
+icon on / http://localhost:5184/favicon.svg
+console [vite] connecting...
+console [vite] connected.
+console seed done teacher1
+console %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+console ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more informa
+console ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see http
+shot preview-out/02-apps-phone.png
