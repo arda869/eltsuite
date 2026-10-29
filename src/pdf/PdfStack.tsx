@@ -64,6 +64,7 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
   const textRef = useRef<HTMLDivElement>(null);
   const [seen, setSeen] = useState(false);
   const [w, setW] = useState(0);
+  const busy = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -77,8 +78,11 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
     if (!seen || !w || !ref.current) return;
     let task: { cancel: () => void; promise: Promise<unknown> } | null = null;
     let live = true;
-    void pdf.getPage(n + 1).then((pg) => {
-      if (!live || !ref.current) return;
+    // One drawing at a time on a canvas: wait for the one before (pdf.js refuses two at once).
+    const run = busy.current
+      .then(() => (live ? pdf.getPage(n + 1) : null))
+      .then((pg) => {
+      if (!pg || !live || !ref.current) return;
       const scale = (w / pg.getViewport({ scale: 1 }).width) * Math.min(2, window.devicePixelRatio || 1);
       const vp = pg.getViewport({ scale });
       const c = ref.current;
@@ -88,7 +92,7 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
       task?.promise.catch(() => {});
       // The words, invisible over the picture of the page, so they can be tapped.
       const host = textRef.current;
-      if (words && host) {
+      if (host) {
         host.replaceChildren();
         const tvp = pg.getViewport({ scale: w / pg.getViewport({ scale: 1 }).width });
         host.style.setProperty('--scale-factor', String(tvp.scale));
@@ -98,18 +102,19 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
           void tl.render().catch(() => {});
         });
       }
+      return task?.promise;
     });
+    busy.current = run.catch(() => {});
     return () => {
       live = false;
       task?.cancel();
     };
   }, [seen, w, pdf, n]);
-  const canvas = <canvas ref={ref} className="pdf-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-label={`Page ${n + 1}`} />;
-  if (!words) return canvas;
+  // Always the same elements, so changing tool never throws away the drawn page.
   return (
     <span className="pdf-pagewrap">
-      {canvas}
-      <div ref={textRef} className="textLayer pdf-words" />
+      <canvas ref={ref} className="pdf-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-label={`Page ${n + 1}`} />
+      <div ref={textRef} className={'textLayer pdf-words' + (words ? '' : ' off')} />
     </span>
   );
 }
@@ -220,4 +225,37 @@ export function PdfStack({ src, classId = '', pages, children, onDown, tool, fir
       {pop && <WordPop at={pop} word={pop.word} onClose={() => setPop(null)} />}
     </div>
   );
+}
+
+// A small picture of one page, for the list of pages.
+export function PdfThumb({ src, classId = '', n, size }: { src: string; classId?: string; n: number; size: PageSize }) {
+  const { pdf } = usePdf(src, classId);
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setSeen(true), { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!pdf || !seen || !ref.current) return;
+    let live = true;
+    let task: { cancel: () => void; promise: Promise<unknown> } | null = null;
+    void pdf.getPage(n + 1).then((pg) => {
+      if (!live || !ref.current) return;
+      const vp = pg.getViewport({ scale: (120 / pg.getViewport({ scale: 1 }).width) * Math.min(2, window.devicePixelRatio || 1) });
+      const c = ref.current;
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      task = pg.render({ canvasContext: c.getContext('2d')!, viewport: vp }) as unknown as typeof task;
+      task?.promise.catch(() => {});
+    });
+    return () => {
+      live = false;
+      task?.cancel();
+    };
+  }, [pdf, seen, n]);
+  return <canvas ref={ref} className="pdf-thumb" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-hidden="true" />;
 }

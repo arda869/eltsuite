@@ -1,89 +1,78 @@
-// What test/preview.mjs does, step by step: a storyboard made in Files, then put into a lesson.
-export default async function steps({ p, ctx, shot, say, demo, BASE }) {
+// What test/preview.mjs does, step by step: a teacher opens a PDF in Files and writes on it.
+import { writeFileSync } from 'node:fs';
+export default async function steps({ p, ctx, shot, say, BASE }) {
   const wait = (ms) => p.waitForTimeout(ms);
-  p.on('pageerror', (e) => say('CRASH', e.message));
-  // 1. a storyboard with two scenes
+  // a three-page worksheet as a PDF
+  const mk = await ctx.newPage();
+  await mk.setContent(`<style>body{font:15px Georgia;margin:0} .pg{height:1040px;padding:60px 70px;box-sizing:border-box;page-break-after:always} h1{font:bold 26px Arial} p{line-height:1.7} .gap{display:inline-block;width:120px;border-bottom:1px solid #000}</style>
+  ${[1, 2, 3].map((n) => `<div class="pg"><h1>Unit ${n} · Free time</h1><p>Read the text and answer the questions.</p><p>Maya lives in Lisbon. Every Saturday she goes to the market with her brother. They buy fruit, bread and fish. After that they have coffee in a small café near the river.</p><p>1 Where does Maya live? <span class="gap"></span></p><p>2 Who does she go with? <span class="gap"></span></p><p>3 What do they buy? <span class="gap"></span></p><p>4 Where do they have coffee? <span class="gap"></span></p></div>`).join('')}`);
+  writeFileSync('preview-out/sample.pdf', await mk.pdf({ format: 'A4' }));
+  await mk.close();
   await p.goto(`${BASE}/archive`);
   await p.locator('text=+ New').first().waitFor({ timeout: 20000 });
-  await p.click('text=+ New');
-  await wait(400);
-  const [tab] = await Promise.all([ctx.waitForEvent('page'), p.click('[role=menuitem]:has-text("Storyboard")')]);
-  await tab.waitForLoadState();
-  tab.on('pageerror', (e) => say('CRASH tab', e.message));
+  const [tab] = await Promise.all([ctx.waitForEvent('page'), p.setInputFiles('input[accept="application/pdf,.pdf"]', 'preview-out/sample.pdf')]);
+  tab.on('pageerror', (e) => say('CRASH', e.message));
+  tab.on('console', (m) => m.type() !== 'log' && say('console', m.type(), m.text().slice(0, 200)));
   await tab.setViewportSize({ width: 1440, height: 900 });
-  await tab.locator('.sbf').waitFor({ timeout: 15000 });
-  await tab.waitForTimeout(1200);
-  await tab.locator('.sbf-li').nth(1).click(); // Maya waving
-  await tab.waitForTimeout(400);
-  await tab.getByRole('tab', { name: 'Bubbles' }).click();
-  await tab.locator('.sbf-li').first().click();
+  await tab.waitForLoadState();
+  await tab.locator('.pdff').waitFor({ timeout: 30000 });
+  await tab.waitForTimeout(3500);
+  const s = async (name) => (await tab.screenshot({ path: `preview-out/${name}.png` }), say('shot', name));
+  await s('01-opened');
+  // a text box
+  await tab.getByRole('radio', { name: 'Text', exact: true }).click().catch((e) => say('text', e.message));
+  await tab.waitForTimeout(300);
+  const pg = await tab.locator('.pdf-page').first().boundingBox();
+  await tab.mouse.click(pg.x + pg.width * 0.62, pg.y + pg.height * 0.36);
   await tab.waitForTimeout(500);
-  await tab.locator('.sbf-stagebox .sb-item.on .sb-text').click();
-  await tab.keyboard.press('Control+A');
-  await tab.keyboard.type('Hi! I’m Maya.');
-  await tab.locator('.sbf-caption').click();
-  await tab.keyboard.type('Maya arrives at the party.');
-  await tab.locator('.sbf-main').click({ position: { x: 5, y: 5 } }).catch(() => {});
-  await tab.click('text=+ Scene');
-  await tab.waitForTimeout(1000);
-  await tab.getByRole('tab', { name: 'People' }).click();
-  await tab.locator('.sbf-who button').nth(1).click();
-  await tab.locator('.sbf-li').nth(7).click(); // Leo talking
+  say('after click', await tab.evaluate(() => { const a = document.activeElement; const sel = getSelection(); const n = sel?.anchorNode; const el = n && (n.nodeType === 1 ? n : n.parentElement); return (a?.className || a?.tagName) + ' | anchor in box: ' + !!el?.closest?.('.pdf-box') + ' | ' + (el?.className || el?.tagName); }));
+  await tab.keyboard.type('Lisbon');
   await tab.waitForTimeout(400);
-  await tab.locator('.sbf-caption').click();
-  await tab.keyboard.type('Leo says hello.');
-  await tab.locator('.sbf-scenes').click({ position: { x: 5, y: 600 } }).catch(() => {});
-  await tab.waitForTimeout(800);
-  await tab.close();
-
-  // 2. into a lesson
-  await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
-  await p.locator('.ProseMirror').first().waitFor({ timeout: 20000 });
-  await wait(800);
-  const dig = p.getByRole('radio', { name: /Digital/ });
-  if (await dig.count()) await dig.click();
-  await p.locator('.task-row').nth(4).click();
-  await wait(1500);
-  const ed = p.locator('.frame-body .task-editor .ProseMirror').first();
-  await ed.click();
-  await p.keyboard.press('Control+End');
-  await p.keyboard.press('Enter');
-  await p.keyboard.type('/storyboard', { delay: 40 });
-  await wait(900);
-  await p.keyboard.press('Enter');
-  await wait(1200);
-  await shot('chooser');
-  await p.locator('.sbn-item').first().click();
-  await wait(2500);
-  say('scenes in the lesson', await p.locator('.sbn .sbw-s').count());
-  await p.locator('.sbn').scrollIntoViewIfNeeded();
-  await shot('in-lesson-editor');
-
-  // 3. what learners see
-  await p.getByRole('button', { name: /Editing/ }).first().click();
-  await wait(400);
-  await p.getByRole('menuitemradio', { name: /Learner view/ }).click().catch((e) => say('learner view', e.message));
-  await wait(1500);
-  await p.locator('.sbn-read').scrollIntoViewIfNeeded().catch(() => {});
-  await shot('learner-view');
-  say('scenes for learners', await p.locator('.sbn-read .sbw-s').count());
-
-  // 4. on paper
-  await p.getByRole('button', { name: /Learner view/ }).first().click().catch(() => {});
-  await wait(300);
-  await p.getByRole('menuitemradio', { name: /Editing/ }).click().catch((e) => say('editing', e.message));
-  await wait(1000);
-  await p.getByRole('radio', { name: /Worksheet/ }).click();
-  await p.locator('.sh-split').waitFor({ timeout: 10000 });
-  await wait(3000);
-  await shot('worksheet');
-
-  // 5. the library, in the new pen style
-  await p.goto(`${BASE}/storyboard/library`);
-  await p.locator('.sbl').waitFor({ timeout: 15000 });
-  await wait(1500);
-  await shot('library-people');
-  await p.getByRole('tab', { name: 'Things' }).click();
-  await wait(800);
-  await shot('library-things');
+  say('box text', await tab.locator('.pdf-box').first().innerText().catch(() => '?'));
+  await tab.locator('.pdf-box .pdf-box-body').first().click();
+  await tab.keyboard.type(' (clicked)');
+  say('box text after clicking in it', await tab.locator('.pdf-box').first().innerText().catch(() => '?'));
+  await s('02-text-box');
+  // a highlight
+  await tab.keyboard.press('Escape');
+  await tab.getByRole('radio', { name: /Highlight/ }).click().catch((e) => say('mark', e.message));
+  await tab.waitForTimeout(300);
+  await s('03a-highlight-tool');
+  await tab.mouse.move(pg.x + pg.width * 0.1, pg.y + pg.height * 0.2);
+  await tab.mouse.down();
+  await tab.mouse.move(pg.x + pg.width * 0.5, pg.y + pg.height * 0.23, { steps: 6 });
+  await tab.mouse.up();
+  await tab.waitForTimeout(400);
+  await s('03-highlight');
+  // drawing
+  await tab.getByRole('radio', { name: /Draw/ }).click().catch((e) => say('draw', e.message));
+  await tab.waitForTimeout(300);
+  await tab.mouse.move(pg.x + pg.width * 0.7, pg.y + pg.height * 0.5);
+  await tab.mouse.down();
+  for (let k = 0; k < 20; k++) await tab.mouse.move(pg.x + pg.width * (0.7 + k * 0.006), pg.y + pg.height * (0.5 + Math.sin(k / 2) * 0.01));
+  await tab.mouse.up();
+  await tab.waitForTimeout(400);
+  await s('04-draw');
+  // the question menu
+  await tab.getByRole('radio', { name: /Select/ }).click().catch(() => {});
+  await tab.locator('.pdf-tb.q').click().catch((e) => say('question', e.message));
+  await tab.waitForTimeout(500);
+  await s('05-question-menu');
+  await tab.keyboard.press('Escape');
+  // the box toolbar
+  await tab.locator('.pdf-box').first().hover().catch(() => {});
+  await tab.waitForTimeout(400);
+  await s('06-box-bar');
+  // scrolled to page 2
+  await tab.locator('.pdff-th').nth(1).click().catch(() => {});
+  await tab.waitForTimeout(1500);
+  await s('07-page-2');
+  // a smaller screen
+  await tab.setViewportSize({ width: 900, height: 1100 });
+  await tab.waitForTimeout(1000);
+  await s('08-tablet');
+  await tab.setViewportSize({ width: 390, height: 844 });
+  await tab.waitForTimeout(1000);
+  await s('09-phone');
+  say('toolbar', (await tab.locator('.pdff-bar').innerText()).replace(/\s+/g, ' '));
 }
