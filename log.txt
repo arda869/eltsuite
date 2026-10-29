@@ -1,0 +1,7 @@
+shot 01-bar bar 886 x 49
+tools Bold | Italic | Underline | Text colour | Highlight | Highlight colours | Heading | Bulleted list | Numbered list | Link the selected words to another task or a web page | Questions | Pronunciation | Everything you can add, with pictures | Strikethrough | Insert a table | Add a definition to the selected word | Add an emoji | Symbols and grammar labels | Fewer tools
+arrow 1
+shot 02-bar-open bar 886 x 49
+shot 03-bar-closed-again bar 886 x 49
+shot 04-pron bar 886 x 49
+shot 05-narrow bar 546 x 79
