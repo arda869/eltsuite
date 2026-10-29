@@ -25,5 +25,4 @@ jobs:
           TO: ${{ inputs.to || 'arda@eltsuite.com' }}
         run: |
           mkdir -p "$RUNNER_TEMP/m" && cp scripts/mail-test.mjs "$RUNNER_TEMP/m/" && cd "$RUNNER_TEMP/m"
-          npm init -y >/dev/null && npm install --no-audit --no-fund nodemailer@6 >/dev/null
           node mail-test.mjs
