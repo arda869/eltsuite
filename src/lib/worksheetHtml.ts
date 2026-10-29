@@ -292,6 +292,8 @@ h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12
 .col { height: 100%; overflow: hidden; }
 .ws-credit { margin-top: 6mm; padding-top: 2.5mm; border-top: .5pt solid #d6d3cd; display: flex; flex-direction: column; gap: .6mm; font: 7.5pt/1.4 Karla, sans-serif; color: #6f6a64; break-inside: avoid; } .ws-credit b { font-weight: 700; color: #4b4843; }
 .foot { flex: none; display: flex; justify-content: space-between; align-items: center; height: ${small ? 11 : 14}mm; padding-left: var(--side); font: 500 6.8pt Karla, sans-serif; color: #4b4843; }
+.foot-l { display: flex; flex-direction: column; gap: .5mm; min-width: 0; padding-right: 4mm; }
+.foot-note { font: 400 5.6pt/1.3 Karla, sans-serif; color: #8a847d; }
 .pn { align-self: center; min-width: 17mm; height: 5mm; padding: 0 2.6mm; white-space: nowrap; display: grid; place-items: center; background: #8d8983; color: #fff; font: 700 8pt Karla, sans-serif; }
 
 /* Sections and exercises */
@@ -468,7 +470,7 @@ export function sheetParts(title: string, items: WsItem[], opts: Options) {
   const pieces = items.map((it) => (it.kind === 'section' ? `<div class="unit section"><h2>${esc(it.title)}</h2></div>` : taskUnit(it.task, ++num, marks)));
   const html = worksheetHtml(title, items, opts);
   const pick = (id: string) => html.match(new RegExp(`<template id="${id}">([\\s\\S]*?)</template>`))?.[1] ?? '';
-  return { css: sheetCss(opts), band: pick('band-main'), foot: pick('foot'), pieces, credit: `<div class="unit ws-credit"><b>${esc(credit().by)}</b><span>${esc(credit().note)}</span></div>` };
+  return { css: sheetCss(opts), band: pick('band-main'), foot: pick('foot'), pieces, credit: '' };
 }
 
 export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
@@ -508,8 +510,6 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   closeSection();
   const grand = tasks.reduce((s, t) => s + t.marks, 0);
   if (marks && grand) units.push(`<div class="unit total grand"><span>Total</span>${markBox(grand)}</div>`);
-  // Who made it, at the end of the worksheet.
-  units.push(`<div class="unit ws-credit"><b>${esc(credit().by)}</b><span>${esc(credit().note)}</span></div>`);
 
   // For the teacher: each exercise's answers and, when chosen, its teacher's notes.
   const keyUnits =
@@ -556,7 +556,9 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
         <div class="brand">${brandLogo ? `<img class="org-logo" src="${brandLogo}" alt="${esc(brandName)}">` : logo(accent)}<span class="kicker">${esc(kicker || 'Worksheet')}</span></div>
       </div>
     </header>`;
-  const foot = `<footer class="foot"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(credit().by)}</span><span class="pn"></span></footer>`;
+  // Every page: the class and lesson, who made it, and the note that the content is theirs and ELT Suite
+  // is only the tool, small, as a footnote.
+  const foot = `<footer class="foot"><span class="foot-l"><span>${esc([opts.className, title].filter(Boolean).join(' · '))} · ${esc(credit().by)}</span><span class="foot-note">${esc(credit().note)}</span></span><span class="pn"></span></footer>`;
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>${opts.clear ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=block">' : ''}
 <style>
