@@ -8068,7 +8068,19 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 
 /* The worksheet on its own: the editor beside it is closed until you click a task */
 .sh-split.solo { grid-template-columns: minmax(0, 1fr) 0 0; }
-.sh-split.solo > .sh-divider, .sh-split.solo > .sh-right { display: none; }
+/* The editor slides open beside the worksheet, and slides away when it closes. Its text fades
+   while the column changes width, so it isn't seen squeezing. */
+.sh-split { transition: grid-template-columns .34s cubic-bezier(.22, .7, .2, 1); }
+.sh-split.dragging { transition: none; }
+.sh-split > .sh-right, .sh-split > .sh-divider { transition: opacity .22s ease .12s, visibility 0s; }
+.sh-split > .sh-divider, .sh-split.solo > .sh-right { overflow: hidden; }
+.sh-split.solo > .sh-right, .sh-split.solo > .sh-divider { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .12s ease, visibility 0s .34s; }
+.sh-split > .sh-right > * { animation: sh-in .3s cubic-bezier(.22, .7, .2, 1); }
+@keyframes sh-in { from { transform: translateX(14px); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sh-split, .sh-split > .sh-right, .sh-split > .sh-divider { transition: none; }
+  .sh-split > .sh-right > * { animation: none; }
+}
 /* A file's name in full in its header (documents, PDFs, storyboards, flashcards, slides): the names
    take the room the header has, and only a very long name is cut short. */
 .dp-names, .pv-names { flex: 1 1 auto; min-width: 0; }

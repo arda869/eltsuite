@@ -44,6 +44,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   const { profile } = useAuth();
   const [people, setPeople] = useState<{ name: string; color: string; uid?: string }[]>([]);
   const [ready, setReady] = useState(false);
+  const [missing, setMissing] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const [showKey, setShowKey] = useState(true);
   const [zoom, setZoomRaw] = useState(1);
@@ -110,17 +111,26 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
   // The first person to open it puts the PDF in place.
   useEffect(() => {
     if (!editor) return;
+    let placeLater = 0;
     session.provider.whenSynced(async () => {
       setReady(true);
       const frag = session.doc.getXmlFragment('default');
-      if (frag.length > 0 || !canEdit) return;
-      const info = await filePdfInfo(d.id);
-      if (!info || !(await claimStart(d.docKey))) return;
-      editor
-        .chain()
-        .command(({ tr }) => (tr.setMeta('collab-ok', true), true))
-        .setContent({ type: 'doc', content: [{ type: 'pdfBlock', attrs: { src: 'file:' + d.id, pages: info.pages, title: d.title }, content: [] }] })
-        .run();
+      if (frag.length > 0) return;
+      const info = await filePdfInfo(d.id).catch(() => null);
+      if (!info) return setMissing(true);
+      if (!canEdit) return;
+      const place = () => {
+        if (editor.isDestroyed || session.doc.getXmlFragment('default').length > 0) return;
+        editor
+          .chain()
+          .command(({ tr }) => (tr.setMeta('collab-ok', true), true))
+          .setContent({ type: 'doc', content: [{ type: 'pdfBlock', attrs: { src: 'file:' + d.id, pages: info.pages, title: d.title }, content: [] }] })
+          .run();
+      };
+      if (await claimStart(d.docKey)) return place();
+      // Someone else started putting the pages in place. If that stopped partway (a tab closed, the
+      // connection dropped), the pages never arrive, so after a moment they are put in place here.
+      placeLater = window.setTimeout(place, 3000);
     });
     const aw = session.provider.awareness;
     const f = () => {
@@ -129,7 +139,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     };
     aw.on('change', f);
     f();
-    return () => aw.off('change', f);
+    return () => (window.clearTimeout(placeLater), aw.off('change', f));
   }, [editor, session, d.id, d.docKey, d.title, canEdit]);
   // Keys for the tools (V, T, H, D, E) when you aren't writing, and Esc to stop.
   useEffect(() => {
@@ -240,6 +250,11 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
       </div>
       {canEdit && <Hint editor={editor} />}
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
+      {missing && !pages.length && (
+        <div className="dp-msg" role="alert">
+          We couldn’t find the pages of this PDF. Its upload may not have finished. Upload the PDF again to Files.
+        </div>
+      )}
       <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
       <div className="pdff-body">
         {pages.length > 1 && (
