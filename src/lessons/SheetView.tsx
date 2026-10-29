@@ -177,25 +177,6 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove 
               data-b={b.id}
               className={'sh-block' + (b.on ? ' on' : '') + (b.heading ? ' is-heading' : '') + (b.onClick ? ' pick' : '')}
               style={{ marginTop: pushes[i] ?? (i === 0 ? areaTop(0) : 0) }}
-              onDragOver={
-                drag
-                  ? (e) => {
-                      e.preventDefault();
-                      const r = e.currentTarget.getBoundingClientRect();
-                      setDrop(e.clientY < r.top + r.height / 2 ? i : i + 1);
-                    }
-                  : undefined
-              }
-              onDrop={
-                drag
-                  ? (e) => {
-                      e.preventDefault();
-                      if (drop !== null) moveTo(drag, drop);
-                      setDrag(null);
-                      setDrop(null);
-                    }
-                  : undefined
-              }
               data-drop={drag && drop === i ? 'before' : drag && drop === blocks.length && i === blocks.length - 1 ? 'after' : undefined}
               data-dragging={drag === b.id ? '' : undefined}
             >
@@ -205,17 +186,41 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove 
                     <button
                       type="button"
                       className="sh-grip"
-                      draggable
-                      aria-label={`Move ${b.title || (b.heading ? 'this heading' : 'this task')}: drag it, or use the up and down arrow keys`}
-                      data-tip="Drag to move"
-                      onDragStart={(e) => {
-                        setDrag(b.id);
-                        e.dataTransfer.effectAllowed = 'move';
-                        e.dataTransfer.setData('text/plain', b.id);
-                        const el = e.currentTarget.closest('.sh-block');
-                        if (el) e.dataTransfer.setDragImage(el, 24, 16);
+                      onPointerDown={(e) => {
+                        // Our own pointer drag, so it works with a mouse, a pen and a finger.
+                        if (e.button !== 0) return;
+                        e.preventDefault();
+                        const id = b.id;
+                        const y0 = e.clientY;
+                        let at: number | null = null;
+                        let moved = false;
+                        const move = (ev: PointerEvent) => {
+                          if (!moved && Math.abs(ev.clientY - y0) < 4) return;
+                          moved = true;
+                          setDrag(id);
+                          const kids = [...(host.current?.querySelectorAll<HTMLElement>(':scope > .sh-block') ?? [])];
+                          at = kids.length;
+                          for (let k = 0; k < kids.length; k++) {
+                            const r = kids[k].getBoundingClientRect();
+                            if (ev.clientY < r.top + r.height / 2) {
+                              at = k;
+                              break;
+                            }
+                          }
+                          setDrop(at);
+                        };
+                        const up = () => {
+                          window.removeEventListener('pointermove', move);
+                          window.removeEventListener('pointerup', up);
+                          window.removeEventListener('pointercancel', up);
+                          if (moved && at !== null) moveTo(id, at);
+                          setDrag(null);
+                          setDrop(null);
+                        };
+                        window.addEventListener('pointermove', move);
+                        window.addEventListener('pointerup', up);
+                        window.addEventListener('pointercancel', up);
                       }}
-                      onDragEnd={() => (setDrag(null), setDrop(null))}
                       onKeyDown={(e) => {
                         if (e.key === 'ArrowUp' && i > 0) (e.preventDefault(), moveTo(b.id, i - 1));
                         if (e.key === 'ArrowDown' && i < blocks.length - 1) (e.preventDefault(), moveTo(b.id, i + 2));

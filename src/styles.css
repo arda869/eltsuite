@@ -7895,7 +7895,7 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .sh-block:hover > .sh-tools, .sh-block.on > .sh-tools, .sh-tools:focus-within { opacity: 1; }
 .sh-tools button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #a9a49d; cursor: pointer; }
 .sh-tools button:hover, .sh-tools button:focus-visible { background: #f1efeb; color: #262420; }
-.sh-tools .sh-grip { cursor: grab; }
+.sh-tools .sh-grip { cursor: grab; touch-action: none; }
 .sh-tools .sh-grip:active { cursor: grabbing; }
 .sh-tools .sh-del:hover { color: #a8473a; }
 .sh-tools .sh-del svg { width: 16px; height: 16px; }
