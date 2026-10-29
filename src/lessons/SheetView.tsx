@@ -53,7 +53,7 @@ function Piece({ css, html, className }: { css: string; html: string; className?
 }
 
 export type Zoom = 'width' | 'page';
-export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove }: { parts: SheetParts; blocks: SheetBlock[]; after?: ReactNode; zoom?: Zoom; focus?: string; onMove?: (id: string, before: string | null) => void }) {
+export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove, onBlank }: { parts: SheetParts; blocks: SheetBlock[]; after?: ReactNode; zoom?: Zoom; focus?: string; onMove?: (id: string, before: string | null) => void; onBlank?: () => void }) {
   const css = useShadowCss(parts.css);
   // Moving a task on the page: drag its six-dot handle in the margin (or use the arrow keys on it).
   const [drag, setDrag] = useState<string | null>(null);
@@ -169,7 +169,7 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove 
   }, [inner, blocks.map((b) => b.id + (b.html?.length ?? 0)).join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="sh-desk" ref={desk}>
+    <div className="sh-desk" ref={desk} onClick={(e) => onBlank && !(e.target as HTMLElement).closest('.sh-block, .sh-after, button, a, input, select, textarea') && onBlank()}>
       <div className="sh-fit" style={{ width: PAGE.w * scale, height: (pages * P - PAGE.gap + stretch.extra) * scale }}>
       <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale !== 1 ? `scale(${scale})` : undefined, ['--k' as string]: scale }}>
         {Array.from({ length: pages }, (_, i) => (
