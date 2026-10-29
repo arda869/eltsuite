@@ -64,6 +64,7 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
   const textRef = useRef<HTMLDivElement>(null);
   const [seen, setSeen] = useState(false);
   const [w, setW] = useState(0);
+  const busy = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -77,8 +78,11 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
     if (!seen || !w || !ref.current) return;
     let task: { cancel: () => void; promise: Promise<unknown> } | null = null;
     let live = true;
-    void pdf.getPage(n + 1).then((pg) => {
-      if (!live || !ref.current) return;
+    // One drawing at a time on a canvas: wait for the one before (pdf.js refuses two at once).
+    const run = busy.current
+      .then(() => (live ? pdf.getPage(n + 1) : null))
+      .then((pg) => {
+      if (!pg || !live || !ref.current) return;
       const scale = (w / pg.getViewport({ scale: 1 }).width) * Math.min(2, window.devicePixelRatio || 1);
       const vp = pg.getViewport({ scale });
       const c = ref.current;
@@ -88,7 +92,7 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
       task?.promise.catch(() => {});
       // The words, invisible over the picture of the page, so they can be tapped.
       const host = textRef.current;
-      if (words && host) {
+      if (host) {
         host.replaceChildren();
         const tvp = pg.getViewport({ scale: w / pg.getViewport({ scale: 1 }).width });
         host.style.setProperty('--scale-factor', String(tvp.scale));
@@ -98,18 +102,19 @@ function Page({ pdf, n, size, words }: { pdf: PDFDocumentProxy; n: number; size:
           void tl.render().catch(() => {});
         });
       }
+      return task?.promise;
     });
+    busy.current = run.catch(() => {});
     return () => {
       live = false;
       task?.cancel();
     };
   }, [seen, w, pdf, n]);
-  const canvas = <canvas ref={ref} className="pdf-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-label={`Page ${n + 1}`} />;
-  if (!words) return canvas;
+  // Always the same elements, so changing tool never throws away the drawn page.
   return (
     <span className="pdf-pagewrap">
-      {canvas}
-      <div ref={textRef} className="textLayer pdf-words" />
+      <canvas ref={ref} className="pdf-page" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-label={`Page ${n + 1}`} />
+      <div ref={textRef} className={'textLayer pdf-words' + (words ? '' : ' off')} />
     </span>
   );
 }

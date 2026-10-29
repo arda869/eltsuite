@@ -105,7 +105,11 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
       editor.view.dispatch(tr.scrollIntoView());
       editor.view.focus();
       // and once more after the box is drawn, so what you type goes in it
-      requestAnimationFrame(() => editor.chain().focus(end + 2).run());
+      requestAnimationFrame(() => {
+        let at = -1;
+        editor.state.doc.descendants((n, pos) => void (n.type.name === 'pdfBox' && (at = pos)));
+        if (at >= 0) editor.chain().focus().setTextSelection(at + 2).run();
+      });
       // A question: it goes straight into the new box.
       const q = store.pending;
       setPdfTool(editor, 'select');

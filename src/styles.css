@@ -8046,6 +8046,15 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .pdf-x:hover { background: color-mix(in srgb, #c0392b 12%, var(--paper)); color: #a8473a; }
 .pdf-mark .pdf-x { width: 24px; height: 24px; }
 /* Smaller screens: the same bar, names hidden, swipe it sideways if it is still too wide */
-@media (max-width: 1180px) { .pdff-act-l, .pdff-ctx-t { display: none; } }
 @media (max-width: 920px) { .pdf-tb-l, .pdff-of { display: none; } .pdf-tb { padding: 0 9px; } .pdff-rail { width: 70px; } }
 @media (max-width: 700px) { .pdff-bar { top: 56px; border-radius: 0; margin: 0 -12px; } .pdff-hint { top: 116px; font-size: 13px; } }
+
+.pdf-words.off { pointer-events: none; visibility: hidden; }
+.pdff-rail .pdff-th, .pdff-rail .pdff-th.on { width: 100%; height: auto; border: 0; box-shadow: none; }
+.pdff-rail .pdff-unit-add { width: 100%; height: auto; }
+.pdff-rail .pdff-unit-x { width: 16px; height: 16px; }
+/* the file's actions are icons, named in their tips, so the bar fits */
+.pdff-act-l { display: none; }
+.pdff-act { padding: 0; width: 34px; justify-content: center; }
+@media (max-width: 1340px) { .pdff-ctx-t { display: none; } }
+@media (max-width: 1240px) { .pdf-tb-l { display: none; } .pdf-tb { padding: 0 9px; } .pdf-tb.q .pdf-tb-l { display: none; } }
