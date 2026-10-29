@@ -534,7 +534,7 @@ function Draw({ cx }: { cx: Ctx }) {
 // ------------------------------------------------------------------ layers
 
 const NAME: Record<string, string> = { image: 'Picture', text: 'Text', shape: 'Shape', path: 'Drawing', art: 'Person or thing', label: 'Label', cover: 'Cover', wordbank: 'Word bank', qr: 'QR code', lines: 'Writing lines' };
-export const nameOf = (e: El) => e.name || (e.t === 'text' || e.t === 'label' ? (e.text ?? '').split('\n')[0].slice(0, 40) || NAME[e.t] : e.t === 'image' && !e.img ? 'Empty frame' : NAME[e.t]);
+export const nameOf = (e: El) => e.name || (e.t === 'text' || e.t === 'label' || (e.t === 'shape' && e.text) ? (e.text ?? '').split('\n')[0].slice(0, 40) || NAME[e.t] : e.t === 'image' && !e.img ? 'Empty frame' : NAME[e.t]);
 
 function Layers({ cx }: { cx: Ctx }) {
   const list = [...cx.here].reverse();

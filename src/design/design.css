@@ -288,8 +288,9 @@
 .dz-ver { margin-left: auto; padding: 1px 6px; border-radius: 4px; background: var(--dz); color: #fff; font: 800 10px var(--sans); font-style: normal; }
 
 /* Cut into cards. */
-.dz-cards { max-width: 460px; }
-.dz-cards-row { display: flex; align-items: flex-end; gap: 10px; margin: 12px 0 16px; }
+.dz-cards { --dz: #6d5bd0; max-width: 460px; }
+.dz-cards .dz-checkrow input { accent-color: #6d5bd0; }
+.dz-cards-row { display: flex; align-items: center; gap: 10px; margin: 12px 0 16px; }
 .dz-cards-row label { display: flex; flex-direction: column; gap: 4px; font: 600 12px var(--sans); color: var(--muted); }
 .dz-cards-row input { width: 70px; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--hair); font: 15px var(--sans); }
 .dz-x { padding-bottom: 8px; color: var(--muted); }
