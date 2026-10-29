@@ -1,7 +1,7 @@
 import { isLearnerEmail } from '../lib/learners';
 import { OrgLogo } from './OrgLook';
 import { currentOrg, libName } from '../lib/admin';
-import { AppGrid, AppLogo, HOME_COLOR } from './AppGrid';
+import { AppGrid, AppLogo, HOME_COLOR, appAt, setAppFavicon } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -143,6 +143,11 @@ export function TopBar({ children }: { children?: ReactNode }) {
 // Top left: the app you are in, within ELT Suite. It always goes home.
 function AppMark() {
   const { pathname } = useLocation();
+  // The tab shows the app's icon, as the page does.
+  useEffect(() => {
+    const a = appAt(pathname);
+    setAppFavicon(a ? { color: a.color, d: a.d } : null);
+  }, [pathname]);
   // Every app shows its name under ELT Suite, in its own colour.
   const own = pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'reading', name: 'Reading Journal', color: '#6b5a8a' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'storyboard', name: 'Storyboards', color: '#4f7a55' } : pathname.startsWith('/design') ? { k: 'design', name: 'Design', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
   const app = own ??
