@@ -1,0 +1,6 @@
+task toxafxtochiazncveq
+shot preview-out/01-before.png
+shot preview-out/02-after.png
+inside the sub-task First line of part a. | Second line of part a. | MOVE ME into the sub-task.
+top level Move the line into part a. | After the sub-task. | 
+ | 
