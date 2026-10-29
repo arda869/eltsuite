@@ -353,7 +353,7 @@ function drawShape(ctx: CanvasRenderingContext2D, e: El, env: Env) {
       ctx.scale(e.flipX ? -1 : 1, e.flipY ? -1 : 1);
     }
     const b = textBox(e);
-    drawText(ctx, e, e.flipX || e.flipY ? { ...b, x: e.flipX ? e.w - b.x - b.w : b.x, y: e.flipY && e.shape !== 'speech' && e.shape !== 'thought' ? e.h - b.y - b.h : b.y } : b);
+    drawText(ctx, e, e.flipX || e.flipY ? { ...b, x: e.flipX ? e.w - b.x - b.w : b.x, y: e.flipY ? e.h - b.y - b.h : b.y } : b);
   }
 }
 
