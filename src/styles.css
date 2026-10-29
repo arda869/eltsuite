@@ -7869,3 +7869,5 @@ html { touch-action: manipulation; }
 .st-next { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0 34px; padding: 5px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--paper); color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
 .st-next:hover { border-color: var(--accent); color: var(--accent-text, var(--accent)); }
 @keyframes gu-slide { from { transform: translateY(8px); } }
+.st-ed-head .remove { flex: none; height: 26px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 7px; background: var(--paper); color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
+.st-ed-head .remove:hover { color: var(--ink); border-color: var(--ink); }

@@ -9,7 +9,7 @@ export default async function steps({ p, shot, say, demo, BASE }) {
   if (await dig.count()) await dig.click();
   await wait(600);
   // the third task in the list
-  await p.locator('.task-row').nth(3).click();
+  await p.locator('.task-row').nth(4).click();
   await wait(1500);
   const ed = p.locator('.frame-body .task-editor .ProseMirror').first();
   await ed.click();
@@ -21,14 +21,11 @@ export default async function steps({ p, shot, say, demo, BASE }) {
     await p.keyboard.press('Enter');
     await wait(700);
     await p.keyboard.type(text, { delay: 10 });
-    const inputs = p.locator('.st-instr-input');
-    await inputs.last().fill(instr);
+    await p.locator('.st-instr-input').last().fill(instr);
     await wait(300);
-    await p.locator('.st-ed-body').last().click();
-    await p.keyboard.press('Control+End');
   };
   await sub('Read the email again. Underline every present perfect.', 'I have just arrived in Lisbon.');
-  await p.keyboard.press('ArrowDown');
+  await ed.click();
   await p.keyboard.press('Control+End');
   await sub('Now write three sentences about your week.', 'This week I have…');
   await wait(1500);

@@ -160,7 +160,17 @@ export const COMMANDS: Cmd[] = [
   { key: 'drawcard', label: 'Draw a card', hint: 'Learners draw a random card from a pile', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('cards'), { type: 'paragraph' }]).run() },
   { key: 'wheel', label: 'Spin the wheel', hint: 'The same cards on a wheel learners spin', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('wheel'), { type: 'paragraph' }]).run() },
   { key: 'boxes', label: 'Open a box', hint: 'The same cards hidden in boxes learners open', group: 'Questions', run: (e) => e.chain().focus().insertContent([newRandomPick('boxes'), { type: 'paragraph' }]).run() },
-  { key: 'subtask', label: 'Sub-task (a, b, c)', hint: 'A part of the task with its own instruction: learners open the next part when they are ready', group: 'Text', run: (e) => e.chain().focus().insertContent([newSubTask(), { type: 'paragraph' }]).run() },
+  { key: 'subtask', label: 'Sub-task (a, b, c)', hint: 'A part of the task with its own instruction: learners open the next part when they are ready', group: 'Text', run: (e) => {
+      // Add it, then put the cursor inside it, ready to type.
+      const from = e.state.selection.from;
+      e.chain().focus().insertContent([newSubTask(), { type: 'paragraph' }]).run();
+      let at = -1;
+      e.state.doc.nodesBetween(Math.max(0, from - 2), Math.min(e.state.doc.content.size, from + 6), (n, pos) => {
+        if (at < 0 && n.type.name === 'subTask') at = pos;
+        return at < 0;
+      });
+      if (at >= 0) e.chain().focus().setTextSelection(at + 2).run();
+    } },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
