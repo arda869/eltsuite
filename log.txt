@@ -1,0 +1,2 @@
+shot preview-out/01-desktop.png
+shot preview-out/02-phone.png
