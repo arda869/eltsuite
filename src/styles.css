@@ -8091,3 +8091,14 @@ input.dp-title, .dp-title { max-width: min(760px, 100%); }
 .apps-chip-ic { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--app); color: #fff; }
 .apps-chip-ic svg { width: 14px; height: 14px; }
 @media (max-width: 420px) { .apps-pop { width: calc(100vw - 24px); } }
+
+/* Pictures side by side: two or more on one line share it, so they fit next to each other. */
+p:has(> .node-picture ~ .node-picture) > .node-picture:not(:has(.pic-full)) { display: inline-block; vertical-align: top; max-width: 50%; }
+p:has(> .node-picture ~ .node-picture ~ .node-picture) > .node-picture:not(:has(.pic-full)) { max-width: 33.3%; }
+p:has(> .node-picture ~ .node-picture ~ .node-picture ~ .node-picture) > .node-picture:not(:has(.pic-full)) { max-width: 25%; }
+p:has(> .node-picture ~ .node-picture) > .node-picture .pic-node { max-width: 100%; }
+p:has(> .node-picture ~ .node-picture) > .node-picture .pic:not(.pic-full) { max-width: calc(100% - 10px); }
+p:has(> .pic:not(.pic-full) ~ .pic:not(.pic-full)) > .pic:not(.pic-full) { max-width: calc(50% - 10px); }
+p:has(> .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(33.3% - 10px); }
+p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% - 10px); }
+.pic-place { display: flex; flex-wrap: wrap; gap: 6px; }

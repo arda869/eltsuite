@@ -413,6 +413,8 @@ svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 .pic.has-tags { overflow: visible; } .pic.has-tags img { border-radius: 1.6mm; }
 .pic-tag { position: absolute; transform: translate(-50%, -50%); padding: .5mm 2mm; border-radius: 1.2mm; background: #fff; box-shadow: 0 0 0 .5pt rgba(51,48,44,.35); font: 600 8pt/1.3 Karla, sans-serif; color: #262420; white-space: nowrap; }
 .pic-s { width: 28mm; } .pic-m { width: 46mm; } .pic-l { width: 70mm; max-width: 100%; } .pic-full { width: 100%; margin-right: 0; }
+p:has(> .pic ~ .pic) > .pic:not(.pic-full), div:has(> .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(50% - 2.4mm); }
+p:has(> .pic ~ .pic ~ .pic) > .pic:not(.pic-full), div:has(> .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(33.3% - 2.4mm); }
 .pic-wait { display: block; aspect-ratio: 4 / 3; }
 .pic-label { position: absolute; top: 1.2mm; left: 1.2mm; min-width: 3.8mm; height: 3.8mm; padding: 0 1mm; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: #fff; font: 700 6.4pt/1 Karla, sans-serif; box-shadow: 0 0 0 .35mm #fff; }
 
