@@ -146,8 +146,6 @@ function AppMark() {
             ? { name: libName(currentOrg()), color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', color: '#5d6f80' }
-          : pathname.startsWith('/support')
-            ? { name: 'Support tickets', color: '#9a4f3c' }
           : pathname.startsWith('/timetable')
             ? { name: 'Timetable', color: '#8a6a4a' }
           : pathname.startsWith('/guide')

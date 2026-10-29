@@ -34,7 +34,6 @@ const CallPage = lazy(() => import('./pages/CallPage').then((m) => ({ default: m
 const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
 const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
 const UsageWatch = lazy(() => import('./lib/usage').then((m) => ({ default: m.UsageWatch })));
-const SupportFloat = lazy(() => import('./components/SupportFloat').then((m) => ({ default: m.SupportFloat })));
 const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
 const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.SharedPage })));
 const ColleaguesPage = lazy(() => import('./pages/ColleaguesPage').then((m) => ({ default: m.ColleaguesPage })));
@@ -59,7 +58,6 @@ const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
-const SupportPage = lazy(() => import('./pages/SupportPage').then((m) => ({ default: m.SupportPage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
@@ -159,7 +157,6 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/invite/:id" element={<InvitePage />} />
           <Route path="/admin" element={<TeacherOnly><ComputerOnly what="Super Admin"><AdminPage mode="super" /></ComputerOnly></TeacherOnly>} />
           <Route path="/org-admin" element={<TeacherOnly><ComputerOnly what="Organisation admin"><AdminPage mode="org" /></ComputerOnly></TeacherOnly>} />
-          <Route path="/support" element={<TeacherOnly><SupportPage /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
@@ -195,7 +192,6 @@ createRoot(document.getElementById('root')!).render(
         </PausedGate>
         <Suspense fallback={null}>
           <ChatDock />
-          <SupportFloat />
           <UsageWatch />
           <CallHost />
           <LiveStartWatch />

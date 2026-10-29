@@ -63,7 +63,6 @@ const PAGES: [RegExp, string][] = [
   [/^\/colleagues?/, 'Colleagues'],
   [/^\/library/, 'Organisation library'],
   [/^\/guide/, 'Guide'],
-  [/^\/support/, 'Support tickets'],
   [/^\/settings/, 'Settings'],
   [/^\/org-admin/, 'Organisation admin'],
   [/^\/admin/, 'Super Admin'],
