@@ -620,7 +620,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   };
   return (
     <div
-      className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '') + (swipe.dx ? ' swiping' : '')}
+      className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' picked' : '') + (swipe.dx ? ' swiping' : '')}
       id={'m-' + m.id}
       style={swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined}
       onTouchStart={(e) => !m.deleted && swipeStart(e)}

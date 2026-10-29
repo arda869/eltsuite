@@ -33,12 +33,12 @@ export default async function steps({ p, shot, say, BASE }) {
   }));
   await p.locator('.bub.mine .bub-box').first().click({ position: { x: 20, y: 12 } });
   await p.waitForTimeout(400);
-  say('menus open', await p.locator('.bub.sel').count());
+  say('menus open', await p.locator('.bub.picked').count());
   await shot('tapped-mine');
   say('page scrolls by', await p.evaluate(() => document.scrollingElement.scrollHeight - innerHeight), 'body overflow', await p.evaluate(() => getComputedStyle(document.body).overflow));
   await p.click('.chat-head', { position: { x: 200, y: 20 } }).catch(() => {});
   await p.waitForTimeout(300);
-  say('after tap elsewhere', await p.locator('.bub.sel').count());
+  say('after tap elsewhere', await p.locator('.bub.picked').count());
   // Deleting the chat (Arda started it: for everyone).
   await p.click('button[aria-label="Delete this chat"]');
   await p.waitForTimeout(400);
