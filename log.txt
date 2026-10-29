@@ -1,0 +1,18 @@
+shot 01-poster
+shot 02-crop
+shot 03-crop-moved
+star turned 101.1
+star size 286 286
+shot 04-star
+shot 05-text
+shot 06-pixels
+shot 07-drawn
+undo 10 → 9
+shot 08-layers
+shot 09-learner-a
+shot 10-background-gone
+web pictures 0
+shot 11-free-pictures
+shot 12-cards-dialog
+cards Untitled design – cards.pdf
+png Untitled design.png
