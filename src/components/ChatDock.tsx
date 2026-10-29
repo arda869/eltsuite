@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { withShownNames, isSelf, chatTitle, chime, markGot, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
 import { useDirectory, whoLine, type Directory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
+import { renewPush } from '../lib/push';
 import { usePhone } from '../lib/useMedia';
 import { publishFace } from '../lib/faces';
 import { useOrgColleagues } from '../lib/admin';
@@ -137,6 +138,11 @@ export function ChatDock() {
     if (me && user && profile?.avatar) publishFace(me, user.uid, profile.avatar);
   }, [me, user, profile?.avatar]);
 
+  // Notifications on this device: renewed once a visit, so they keep arriving.
+  useEffect(() => {
+    if (!user || !me || isProxyTab()) return;
+    void renewPush(user.uid, me, profile?.role ?? 'teacher', profile?.role === 'learner' ? profile.classId ?? '' : '');
+  }, [user, me]); // eslint-disable-line react-hooks/exhaustive-deps
   // Delivered: this app has the new messages (two grey ticks for the sender).
   useEffect(() => {
     if (chats && me && !isProxyTab()) markGot(chats, me);

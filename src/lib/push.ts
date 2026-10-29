@@ -40,6 +40,18 @@ export async function enablePush(uid: string, key: string, role: string, classId
   return true;
 }
 
+// Each time the app opens on a device with notifications on, its sign-up is renewed: the token
+// can change (or was dropped by the server), and the device would then quietly get nothing.
+export async function renewPush(uid: string, key: string, role: string, classId = '') {
+  try {
+    if (!localStorage.getItem(ON) || !('Notification' in window) || Notification.permission !== 'granted') return;
+    if (!(await isSupported().catch(() => false))) return;
+  } catch {
+    return;
+  }
+  await enablePush(uid, key, role, classId).catch((e) => console.warn('Notifications could not be renewed', e));
+}
+
 export async function disablePush() {
   let token = '';
   try {
