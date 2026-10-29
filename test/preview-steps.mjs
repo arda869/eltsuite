@@ -38,7 +38,7 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   await tab.waitForTimeout(600);
   // drag the bubble
   const b = await tab.locator('.sb-item.t-bubble').first().boundingBox();
-  await tab.mouse.move(b.x + 20, b.y + 10);
+  await tab.mouse.move(b.x + 6, b.y + b.height - 8);
   await tab.mouse.down();
   await tab.mouse.move(b.x + 260, b.y + 30, { steps: 8 });
   await tab.mouse.up();
@@ -48,7 +48,8 @@ export default async function steps({ p, ctx, shot, say, BASE }) {
   const lb = await leo.boundingBox();
   await tab.mouse.click(lb.x + lb.width / 2, lb.y + lb.height * 0.6);
   await tab.waitForTimeout(400);
-  await tab.getByRole('button', { name: 'Flip' }).click();
+  say('selected', await tab.locator('.sb-item.on').count(), 'toolbar:', (await tab.locator('.sbf-bar').innerText()).replace(/\s+/g, ' ').slice(0, 160));
+  await tab.locator('.sbf-bar button:has-text("Flip")').click();
   await tab.locator('.sbf-bar select').nth(2).selectOption('surprised');
   await tab.waitForTimeout(800);
   await s('03-edited');

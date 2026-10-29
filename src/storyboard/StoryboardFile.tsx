@@ -51,7 +51,7 @@ export function StoryboardFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean 
     const h = t === 'bubble' ? (ref === 'caption' ? 70 : 120) : undefined;
     const top = Math.max(0, ...here.map((x) => x.z ?? 1)) + 1;
     const n = here.length % 6;
-    const item: Omit<SbItem, 'id'> = clean({ scene: scene.id, t, ref, x: 120 + n * 90, y: t === 'person' ? 520 - w * 1.5 : t === 'thing' ? 520 - w : 40 + (n % 3) * 30, w, h, z: top, text: t === 'bubble' ? (ref === 'label' ? 'Label' : ref === 'caption' ? 'Meanwhile…' : 'Hello!') : undefined, pose: t === 'person' ? 'stand' : undefined, face: t === 'person' ? 'happy' : undefined, ...extra });
+    const item: Omit<SbItem, 'id'> = clean({ scene: scene.id, t, ref, x: t === 'bubble' ? 120 + n * 90 : 80 + n * 150, y: t === 'person' ? 520 - w * 1.5 : t === 'thing' ? 520 - w : 40 + (n % 3) * 30, w, h, z: top, text: t === 'bubble' ? (ref === 'label' ? 'Label' : ref === 'caption' ? 'Meanwhile…' : 'Hello!') : undefined, pose: t === 'person' ? 'stand' : undefined, face: t === 'person' ? 'happy' : undefined, ...extra });
     void setDoc(doc(itemsCol(d.id), id), item);
     setSel(id);
   };
