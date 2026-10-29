@@ -7861,12 +7861,15 @@ html { touch-action: manipulation; }
 .st-instr-input { flex: 1; min-width: 0; height: 30px; padding: 0 8px; border: 1px solid transparent; border-radius: 7px; background: transparent; font: 600 15px var(--serif); color: var(--ink); }
 .st-instr-input:hover, .st-instr-input:focus { border-color: var(--hair-strong); background: var(--paper); outline: none; }
 .st-ed-body { padding-left: 32px; }
-.subtask { margin: 14px 0 6px; animation: gu-slide .3s ease both; }
+.subtask { margin: 18px 0 6px; animation: gu-slide .3s ease both; }
+.st-band { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; padding: 10px 14px; border-radius: 10px; background: linear-gradient(180deg, var(--tint, color-mix(in srgb, var(--accent) 8%, var(--paper))), var(--card, var(--paper))); border-top: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); }
+.st-band .st-l { transform: translateY(-1px); }
+.frame-body > .task-body > .subtask > .st-band { margin: 0 -24px 12px; padding: 10px 24px; border-radius: 0; }
 .st-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .subtask .st-l { transform: translateY(-1px); }
 .st-instr { font-weight: 600; }
-.st-body { padding-left: 34px; }
-.st-next { display: inline-flex; align-items: center; gap: 6px; margin: 10px 0 0 34px; padding: 5px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--paper); color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
+.st-body { padding-left: 0; }
+.st-next { display: inline-flex; align-items: center; gap: 6px; margin: 12px 0 0; padding: 5px 12px; border: 1px solid var(--hair-strong); border-radius: 999px; background: var(--paper); color: var(--muted); font: 600 13px var(--sans); cursor: pointer; }
 .st-next:hover { border-color: var(--accent); color: var(--accent-text, var(--accent)); }
 @keyframes gu-slide { from { transform: translateY(8px); } }
 .st-ed-head .remove { flex: none; height: 26px; padding: 0 10px; border: 1px solid var(--hair-strong); border-radius: 7px; background: var(--paper); color: var(--muted); font: 600 12px var(--sans); cursor: pointer; }
