@@ -1,0 +1,6 @@
+phone gap under the box 8 page scroll 0
+shot preview-out/01-phone-list.png
+desktop gap under the box 18 page scroll 0
+shot preview-out/02-desktop-list.png
+menu Open | Mark as read | Delete chat for everyone
+shot preview-out/03-right-click.png
