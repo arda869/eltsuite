@@ -200,6 +200,15 @@ export function SessionPop({ o, c, uid, lessonTitle, mine, onClose, onStart, onE
             <span>{[s.ownerName ? `${s.ownerName} (organiser)` : '', ...(s.attendees ?? []).map((a) => s.names?.[a] ?? 'Colleague')].filter(Boolean).join(', ') || 'Just you'}</span>
           </li>
         )}
+        {s.kind === 'meeting' && !!s.guests?.length && (
+          <li>
+            <UiIcon name="message" size={16} />
+            <span>
+              Guests: {s.guests.map((g) => g.email).join(', ')}
+              <span className="hint"> · {s.guests.every((g) => g.sent) ? 'invited by email' : 'the invitation goes out within 15 minutes'}</span>
+            </span>
+          </li>
+        )}
         {s.notes && <li className="ttb-notes">{s.notes}</li>}
         {s.kind === 'meeting' && s.online && !external(s) && !lone && (mine || !!s.guest) && <GuestInvite s={s} o={o} mine={mine} />}
       </ul>
