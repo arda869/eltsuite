@@ -1,0 +1,4 @@
+shot preview-out/01-pdf.png
+shot preview-out/02-storyboard.png
+shot preview-out/03-design.png
+shot preview-out/04-apps.png
