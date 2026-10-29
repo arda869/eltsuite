@@ -115,7 +115,9 @@ export async function sendDocInChat(d: SharedDoc, me: Person, people: Person[], 
     const c = { id: chatId, ...((await getDoc(doc(db, 'chats', chatId))).data() as Omit<Chat, 'id'>) } as Chat;
     await sendMsg(c, me, {
       text: `${text} ${link}`,
-      content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: text + ' ' }, { type: 'text', text: `Open ${d.title}`, marks: [{ type: 'link', attrs: { href: link } }] }] }] },
+      // The note in words; the file itself shows as a preview card under it.
+      content: note.trim() ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: note.trim() }] }] } : null,
+      file: { id: d.id, title: d.title, kind: d.kind, ownerName: d.ownerName ?? me.name },
       blocks: 0,
       mentions: [p.key],
     });

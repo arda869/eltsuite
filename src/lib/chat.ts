@@ -42,6 +42,8 @@ export type Msg = {
   mentions?: string[];
   replyTo?: { id: string; name: string; text: string } | null;
   share?: { id: string; title: string; kind: string; ownerName: string } | null;
+  call?: { kind: 'audio' | 'video'; at: number } | null; // a call started in the chat (components/MsgCards)
+  file?: { id: string; title: string; kind: string; ownerName: string } | null; // a file from Files, shown with a preview
   reactions?: Record<string, string[]>;
   edited?: number;
   deleted?: boolean;

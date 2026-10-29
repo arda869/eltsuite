@@ -8132,3 +8132,42 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .signin .lj-points li { display: flex; align-items: center; gap: 12px; font-size: 15.5px; line-height: 1.45; color: var(--ink); }
 .signin .lj-points b { font-weight: 600; }
 .signin .lj-ico { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--accent-text); }
+
+/* Messages: long words and links wrap inside the bubble instead of running out of it. */
+.bub-col { min-width: 0; }
+.bub-box, .bub-doc, .bub-doc :is(p, li, a, code, pre) { overflow-wrap: anywhere; word-break: break-word; }
+.bub-doc pre { white-space: pre-wrap; }
+/* A call in the chat, as a card. */
+.bub-box:has(> .msg-call:only-child), .bub-box:has(> .msg-file:only-child) { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.msg-call { display: flex; align-items: center; gap: 12px; min-width: min(280px, 70vw); padding: 12px 14px; border-radius: 16px; background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 4px 14px -6px rgba(51, 48, 44, .18); }
+.msg-call-ic { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, var(--paper)); color: var(--accent-text); }
+.msg-call.on .msg-call-ic { background: #2f8a5b; color: #fff; animation: msg-call-pulse 1.8s ease-in-out infinite; }
+@keyframes msg-call-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(47, 138, 91, .45); } 50% { box-shadow: 0 0 0 7px rgba(47, 138, 91, 0); } }
+.msg-call-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.msg-call-t b { font: 600 14.5px/1.3 var(--sans); }
+.msg-call-t span { font: 12.5px/1.35 var(--sans); color: var(--muted); }
+.bub-doc + .msg-file, .msg-call + .bub-doc { margin-top: 8px; }
+/* A file from Files: a preview, its name, and Open. */
+.msg-file { display: flex; flex-direction: column; width: min(300px, 72vw); margin-top: 2px; border-radius: 16px; overflow: hidden; background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: 0 0 0 1px var(--hair), 0 6px 18px -8px rgba(51, 48, 44, .22); transition: box-shadow .15s, transform .15s; }
+.msg-file:hover { box-shadow: 0 0 0 1.5px var(--accent), 0 8px 22px -8px rgba(51, 48, 44, .28); transform: translateY(-1px); }
+.msg-file-prev { height: 150px; display: grid; place-items: center; overflow: hidden; background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 10%, var(--paper)), color-mix(in srgb, var(--ink) 5%, var(--paper))); border-bottom: 1px solid var(--hair); }
+.msg-file-prev canvas, .msg-file-prev img { width: 78%; height: auto; margin-top: 24px; border-radius: 4px 4px 0 0; box-shadow: 0 4px 16px rgba(0, 0, 0, .14); align-self: start; }
+.msg-file-t { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 4px; }
+.msg-file-t b { font: 600 14.5px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-file-t span { font: 12.5px/1.35 var(--sans); color: var(--muted); }
+.msg-file-open { display: inline-flex; align-items: center; gap: 4px; padding: 4px 14px 12px; font: 700 13px var(--sans); color: var(--accent-text); }
+/* On a phone, Messages fills the screen: no Minimise. */
+@media (max-width: 720px) {
+  .chat-min, .dock-win .dock-ic[aria-label='Minimise'], .dock-tab-ic[aria-label='Minimise all'] { display: none !important; }
+}
+/* A new message on a phone: a banner at the top, swiped right to go. */
+.msg-banner { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 10px; right: 10px; z-index: 190; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); color: var(--ink); box-shadow: 0 0 0 1px var(--hair), 0 14px 34px -12px rgba(0, 0, 0, .35); touch-action: pan-y; user-select: none; cursor: pointer; animation: msg-banner-in .32s cubic-bezier(.2, .8, .2, 1); transition: transform .22s ease, opacity .22s ease; }
+.msg-banner.dragging { transition: none; }
+.msg-banner.gone { transform: translateX(110%) !important; opacity: 0 !important; }
+@keyframes msg-banner-in { from { transform: translateY(-130%); } to { transform: none; } }
+.msg-banner-ic { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 12px; background: var(--accent); color: #fff; }
+.msg-banner-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.msg-banner-t b { font: 700 14px/1.3 var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg-banner-t span { font: 13.5px/1.35 var(--sans); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.msg-banner-hint { align-self: flex-start; font: 600 11px var(--sans); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .msg-banner { animation: none; } }

@@ -1,4 +1,5 @@
 import { CallButtons } from '../components/Rooms';
+import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
 import { ask } from '../lib/ask';
@@ -546,7 +547,8 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             </span>
           ) : (
             <>
-              {m.content && !isEmptyContent(m.content) && (
+              {callOf(m) && <CallCard m={m} c={c} me={me} mine={mine} />}
+              {m.content && !isEmptyContent(m.content) && !(fileOf(m) && !m.file && /^I shared .* with you/.test(m.text)) && (
                 <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')} onCopy={(e) => setClip(e, clip(), window.getSelection()?.toString() || m.text)}>
                   <TaskRenderer content={m.content} responses={viewing ? (viewing.responses as Responses) : responses} onChange={(id, r) => !viewing && setResponses((x) => ({ ...x, [id]: r }))} results={viewing ? m.key ?? {} : checked} revealed={showKey && !viewing ? m.key ?? {} : null} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
                 </div>
@@ -608,6 +610,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
               ) : !mine && (
                 <span className="hint bub-answers-note">{m.shareAnswers ? 'Answer to see everyone’s answers.' : `Only ${first1(who)} sees the answers.`}</span>
               ))}
+              {fileOf(m) && <FileCard id={fileOf(m)!} hint={m.file} />}
               {m.share && (
                 <button type="button" className="bub-share" onClick={() => onOpenShare(m.share!.id)}>
                   <FileIcon kind={(m.share.kind as FileKind) || 'lesson'} size={36} />
