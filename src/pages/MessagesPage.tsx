@@ -577,7 +577,22 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
     else if (d < -56) onInfo();
   };
   // On a phone there is no hover: a tap on the message shows Reply, reactions and the rest.
-  const [sel, setSel] = useState(false);
+  const [sel, setSelRaw] = useState(false);
+  // One message's menu at a time; a tap anywhere else closes it.
+  const setSel = (v: boolean | ((x: boolean) => boolean)) =>
+    setSelRaw((x) => {
+      const n = typeof v === 'function' ? v(x) : v;
+      if (n) window.dispatchEvent(new CustomEvent('bub-sel', { detail: m.id }));
+      return n;
+    });
+  useEffect(() => {
+    if (!sel) return;
+    const other = (e: Event) => (e as CustomEvent).detail !== m.id && setSelRaw(false);
+    const away = (e: PointerEvent) => !(e.target as HTMLElement).closest?.(`#m-${CSS.escape(m.id)}`) && setSelRaw(false);
+    window.addEventListener('bub-sel', other);
+    document.addEventListener('pointerdown', away);
+    return () => (window.removeEventListener('bub-sel', other), document.removeEventListener('pointerdown', away));
+  }, [sel, m.id]);
   // Copy the message (its text and task elements, with answers) to paste into a task or another chat.
   const clip = (): Clip => ({ v: 1, space: 'chat:' + c.id, content: (m.content ? mergeKey(m.content, m.key ?? {}) : { type: 'doc', content: [] }).content ?? [] });
   // The copy button takes only the task in a message, to paste into a lesson or another message.

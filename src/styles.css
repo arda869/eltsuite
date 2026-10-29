@@ -8240,3 +8240,21 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .gif-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .gif-via { font: 700 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .bub-doc .pic-node:has(img[src*="tenor"]), .bub-doc img[src*="tenor"] { border-radius: 12px; }
+/* A call in the chat: the card is the message (no bubble around it), with the time inside. */
+.bub-box:has(> .msg-call) { background: transparent !important; box-shadow: none !important; padding: 0 !important; }
+.bub-box:has(> .msg-call) .bub-meta { right: 14px; bottom: 9px; color: var(--soft) !important; }
+.msg-call { min-width: 0; width: min(260px, 66vw); padding: 10px 56px 10px 10px; gap: 10px; border-radius: 18px; }
+.msg-call-ic { width: 36px; height: 36px; }
+.msg-call-t b { font-size: 14px; }
+.msg-call-t span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.msg-call .btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+.msg-call { position: relative; }
+.msg-call.on { padding-right: 70px; }
+.bub-box:has(> .msg-call.on) .bub-meta { display: none; }
+/* On a phone, a tap on a message opens its menu floating above it, as hovering does on a computer. */
+@media (max-width: 640px) {
+  .bub.sel .bub-tools { position: absolute; bottom: calc(100% - 6px); left: 30px; right: auto; z-index: 5; display: flex; flex-wrap: nowrap; gap: 0; max-width: calc(100vw - 40px); overflow-x: auto; scrollbar-width: none; padding: 3px 6px; border-radius: 99px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 8px 22px rgba(51, 48, 44, .18); animation: ask-fade .12s ease-out; }
+  .bub.sel .bub-tools::-webkit-scrollbar { display: none; }
+  .bub.mine.sel .bub-tools { left: auto; right: 0; }
+  .bub.sel .bub-box { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+}
