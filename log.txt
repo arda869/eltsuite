@@ -1,0 +1,3 @@
+shot preview-out/01-signin-phone.png
+signin widths page 360 / screen 360; intro:20|20 wordmark big:20|20 soon-badge:20|219 si-tag:20|20 so:49|49 rule:20|276 soon-note:20|20 btn si-tour:20|142 si-ask:20|20 card:20|20
+shot preview-out/02-signin-phone-lower.png
