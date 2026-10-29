@@ -1,4 +1,5 @@
 import { CallButtons } from '../components/Rooms';
+import { GifPicker } from '../components/GifPicker';
 import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
@@ -260,6 +261,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   // Every message starts as plain text; Aa shows the writing tools for this one.
   const [rich, setRich] = useState(false);
   const [tall, setTall] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
@@ -473,6 +475,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         {err && <span className="error">{err}</span>}
         {/* The writing box starts as one line, with its buttons at the right. When the words reach
             them, the box grows and the buttons move under the words, as in Teams. */}
+        {gifOpen && <GifPicker space={'chat:' + c.id} onClose={() => setGifOpen(false)} onPick={(src, alt) => (setGifOpen(false), chime('out'), void sendMsg(c, me, { text: 'GIF', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt, size: 'm', mark: '' } }] }] }, blocks: 0, mentions: [] }).catch(() => setErr('We couldn’t send the GIF. Try again.')))} />}
         <div className={'chat-box' + (tall || rich ? ' tall' : '')} ref={boxRef}>
           <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
             <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder="" />
@@ -488,6 +491,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
                 <UiIcon name="link" size={16} />
               </button>
             )}
+            <button type="button" className={'icon-btn chat-gif' + (gifOpen ? ' on' : '')} onClick={() => setGifOpen((v) => !v)} aria-label="GIF" aria-expanded={gifOpen} data-tip="Send a GIF">
+              GIF
+            </button>
             <button type="button" className={'icon-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} aria-label="Formatting" data-tip={rich ? 'Back to plain text' : 'Formatting: bold, colour, lists, IPA and more'}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />

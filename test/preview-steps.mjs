@@ -1,5 +1,5 @@
-// The space between a message's words and its time.
-export default async function steps({ p, shot, BASE }) {
+// Messages on a phone: the list fits the screen; the GIF button and picker (no Tenor key here).
+export default async function steps({ p, shot, say, BASE }) {
   await p.goto(`${BASE}/`);
   await p.waitForTimeout(2500);
   await p.evaluate(async () => {
@@ -7,15 +7,18 @@ export default async function steps({ p, shot, BASE }) {
     const fs = await import('/test/mock/firestore.ts');
     const uid = auth.currentUser.uid;
     const now = Date.now();
-    const para = (t) => ({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: t }] }] });
-    await fs.setDoc(fs.doc(db, 'chats', 'tchat1'), { members: [uid, 'sam1'], names: { [uid]: 'Arda', sam1: 'Sam Lee' }, roles: { [uid]: 'teacher', sam1: 'teacher' }, kind: 'dm', createdBy: uid, at: now - 9e5, lastAt: now - 1000, last: { text: 'x', name: 'Arda', by: uid }, seen: { [uid]: now }, read: { sam1: now } });
-    const col = fs.collection(db, 'chats', 'tchat1', 'msgs');
-    for (const [by, t, ago] of [['sam1', 'The speaking task is ready.', 8e5], [uid, 'Great, thank you.', 6e5], [uid, 'I’ll add the pictures tonight, and the answer key for part b too.', 3e5], ['sam1', 'Perfect', 2e5]]) await fs.addDoc(col, { by, name: by === uid ? 'Arda' : 'Sam Lee', role: 'teacher', at: now - ago, text: t, content: para(t) });
+    await fs.setDoc(fs.doc(db, 'chats', 'tchat1'), { members: [uid, 'sam1'], names: { [uid]: 'Arda', sam1: 'Sam Lee' }, roles: { [uid]: 'teacher', sam1: 'teacher' }, kind: 'dm', createdBy: uid, at: now - 9e5, lastAt: now - 1000, last: { text: 'I am just casually sending a message to myself to see how long lines look in the list', name: 'Arda', by: uid }, seen: { [uid]: now } });
+    await fs.setDoc(fs.doc(db, 'chats', 'tchat2'), { members: [uid, 'a', 'b', 'c', 'd', 'e', 'f'], names: { [uid]: 'Arda', a: 'Ana', b: 'Ken', c: 'Leo', d: 'Mia', e: 'Sara', f: 'Tom Christopherson' }, roles: { [uid]: 'teacher' }, kind: 'group', createdBy: uid, at: now - 9e6, lastAt: now - 9e6, last: { text: 'I am replying back to myself', name: 'Arda', by: uid }, seen: { [uid]: now } });
   });
-  for (const [w, h, tag] of [[1440, 900, 'desktop'], [390, 844, 'phone']]) {
-    await p.setViewportSize({ width: w, height: h });
-    await p.goto(`${BASE}/messages?c=tchat1`);
-    await p.waitForTimeout(3000);
-    await shot(tag, p.locator('.bub').first().locator('xpath=..'));
-  }
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.goto(`${BASE}/messages`);
+  await p.waitForTimeout(3000);
+  await shot('list-phone');
+  say('widths', await p.evaluate(() => `page ${document.documentElement.scrollWidth}/${innerWidth}; side ${Math.round(document.querySelector('.msg-side').getBoundingClientRect().right)}`));
+  await p.goto(`${BASE}/messages?c=tchat1`);
+  await p.waitForTimeout(2500);
+  await p.click('button[aria-label="GIF"]');
+  await p.waitForTimeout(600);
+  await shot('gif-picker');
+  say('picker', (await p.locator('.gif-pop').innerText()).replace(/\n+/g, ' | '));
 }
