@@ -59,6 +59,15 @@ export function AppGrid() {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const ME = 'apps';
+  // Only one menu at the top is open at a time: opening one closes the other.
+  useEffect(() => {
+    if (!open) return;
+    window.dispatchEvent(new CustomEvent('top-menu', { detail: ME }));
+    const other = (e: Event) => (e as CustomEvent).detail !== ME && setOpen(false);
+    window.addEventListener('top-menu', other);
+    return () => window.removeEventListener('top-menu', other);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);

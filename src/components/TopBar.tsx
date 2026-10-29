@@ -44,6 +44,15 @@ export function TopBar({ children }: { children?: ReactNode }) {
   const learnerAcct = isLearnerEmail(user?.email);
   const name = (learnerAcct ? (profile as { displayName?: string } | null)?.displayName : '') || user?.displayName || (learnerAcct ? 'Learner' : user?.email?.split('@')[0]) || '';
 
+  const ME = 'account';
+  // Only one menu at the top is open at a time: opening one closes the other.
+  useEffect(() => {
+    if (!open) return;
+    window.dispatchEvent(new CustomEvent('top-menu', { detail: ME }));
+    const other = (e: Event) => (e as CustomEvent).detail !== ME && setOpen(false);
+    window.addEventListener('top-menu', other);
+    return () => window.removeEventListener('top-menu', other);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => {
