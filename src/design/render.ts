@@ -246,15 +246,6 @@ function drawPicture(ctx: CanvasRenderingContext2D, e: El, env: Env) {
   const im = e.img ? env.imgs.get(e.img) : undefined;
   const clip = new Path2D();
   clip.roundRect(0, 0, e.w, e.h, Math.min(e.radius ?? 0, e.w / 2, e.h / 2));
-  if (e.shadow) {
-    ctx.save();
-    ctx.shadowColor = 'rgba(38,36,32,0.28)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 6;
-    ctx.fillStyle = '#fff';
-    ctx.fill(clip);
-    ctx.restore();
-  }
   if (!im) {
     if (env.editing) {
       ctx.fillStyle = '#ecebe7';
@@ -292,15 +283,33 @@ function drawPicture(ctx: CanvasRenderingContext2D, e: El, env: Env) {
     }
     return;
   }
-  ctx.save();
-  ctx.clip(clip);
   const iw = (im as HTMLImageElement).naturalWidth || (im as ImageBitmap).width || e.iw || 1;
   const ih = (im as HTMLImageElement).naturalHeight || (im as ImageBitmap).height || e.ih || 1;
   const c = e.crop ?? { x: 0, y: 0, w: 1, h: 1 };
-  ctx.filter = fxFilter(e.fx);
-  ctx.drawImage(im, c.x * iw, c.y * ih, Math.max(1, c.w * iw), Math.max(1, c.h * ih), 0, 0, e.w, e.h);
-  ctx.filter = 'none';
-  ctx.restore();
+  const paint = (g: CanvasRenderingContext2D) => {
+    g.save();
+    g.clip(clip);
+    g.filter = fxFilter(e.fx);
+    g.drawImage(im, c.x * iw, c.y * ih, Math.max(1, c.w * iw), Math.max(1, c.h * ih), 0, 0, e.w, e.h);
+    g.filter = 'none';
+    g.restore();
+  };
+  if (e.shadow) {
+    // The shadow follows the picture's own shape, so a cut-out casts a cut-out shadow.
+    const k = Math.hypot(ctx.getTransform().a, ctx.getTransform().b) || 1;
+    const off = document.createElement('canvas');
+    off.width = Math.max(1, Math.ceil(e.w * k));
+    off.height = Math.max(1, Math.ceil(e.h * k));
+    const g = off.getContext('2d')!;
+    g.scale(k, k);
+    paint(g);
+    ctx.save();
+    ctx.shadowColor = 'rgba(38,36,32,0.3)';
+    ctx.shadowBlur = 18 * k;
+    ctx.shadowOffsetY = 6 * k;
+    ctx.drawImage(off, 0, 0, e.w, e.h);
+    ctx.restore();
+  } else paint(ctx);
   if (e.border) {
     ctx.lineWidth = e.border;
     ctx.strokeStyle = e.borderC ?? '#ffffff';

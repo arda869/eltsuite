@@ -356,7 +356,7 @@ function Pictures({ cx }: { cx: Ctx }) {
               ))}
             </div>
           )}
-          <p className="dz-dr-note small">Openly licensed pictures from Openverse. Check each licence before you share your design outside class.</p>
+          <p className="dz-dr-note small">Openly licensed pictures from Wikimedia Commons. Check each licence before you share your design outside class.</p>
         </>
       )}
     </>
