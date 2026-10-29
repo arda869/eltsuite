@@ -147,6 +147,35 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
+  // Side by side: a picture on a line of its own can join the picture before it, and a picture
+  // sharing a line can go back to a line of its own.
+  const where = () => {
+    const pos = typeof getPos === 'function' ? getPos() : -1;
+    if (pos == null || pos < 0) return null;
+    const $p = editor.state.doc.resolve(pos);
+    const d = $p.depth;
+    const para = $p.parent;
+    if (para.type.name !== 'paragraph' || d < 1) return null;
+    const i = $p.index(d - 1);
+    const prev = i > 0 ? $p.node(d - 1).child(i - 1) : null;
+    return { pos, para, start: $p.before(d), end: $p.after(d), canJoin: para.childCount === 1 && prev?.type.name === 'paragraph' && prev.lastChild?.type.name === 'picture', canSplit: para.childCount > 1 };
+  };
+  const pl = open ? where() : null;
+  const joinPrev = () => {
+    const p = where();
+    if (!p?.canJoin) return;
+    const tr = editor.state.tr.delete(p.start, p.end).insert(p.start - 1, node);
+    editor.view.dispatch(tr);
+    setOpen(false);
+  };
+  const ownLine = () => {
+    const p = where();
+    if (!p?.canSplit) return;
+    const para = editor.schema.nodes.paragraph.create(null, node);
+    const tr = editor.state.tr.insert(p.end, para).delete(p.pos, p.pos + node.nodeSize);
+    editor.view.dispatch(tr);
+    setOpen(false);
+  };
   // Labels on the picture: "Add a label", then click where it goes.
   const [placing, setPlacing] = useState(false);
   const [newTag, setNewTag] = useState('');
@@ -244,6 +273,23 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
             <span className="hint">Size</span>
             {seg(PIC_SIZES, a.w ? ('' as PicSize) : a.size || 'm', (k) => updateAttributes({ size: k, w: 0 }), 'Size')}
           </span>
+          {(pl?.canJoin || pl?.canSplit) && (
+            <span className="pic-row">
+              <span className="hint">Place</span>
+              <span className="pic-place">
+                {pl?.canJoin && (
+                  <button type="button" className="btn small-btn" onClick={joinPrev}>
+                    Next to the picture before
+                  </button>
+                )}
+                {pl?.canSplit && (
+                  <button type="button" className="btn small-btn" onClick={ownLine}>
+                    On a line of its own
+                  </button>
+                )}
+              </span>
+            </span>
+          )}
           <span className="pic-row">
             <span className="hint">Label</span>
             {seg(PIC_MARKS, a.mark || '', (k) => updateAttributes({ mark: k }), 'Label')}

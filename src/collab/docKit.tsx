@@ -135,11 +135,15 @@ export async function addPictures(editor: Editor, files: File[], at?: number) {
   for (const f of files.filter((x) => x.type.startsWith('image/'))) {
     // A copy goes into My files, to use again.
     if (u && !isLearnerEmail(u.email)) void uploadPicture('user:' + u.uid, f).catch(() => {});
-    nodes.push({ type: 'paragraph', content: [{ type: 'picture', attrs: { src: await imageToData(f, 1100), alt: f.name.replace(/\.[a-z0-9]+$/i, ''), size: 'l' } }] });
+    nodes.push({ type: 'picture', attrs: { src: await imageToData(f, 1100), alt: f.name.replace(/\.[a-z0-9]+$/i, ''), size: files.length > 1 ? 'm' : 'l' } });
   }
   if (!nodes.length) return;
   const c = editor.chain().focus();
-  (at != null ? c.insertContentAt(at, nodes) : c.insertContent(nodes)).run();
+  // Several pictures at once sit side by side. One added straight after a picture joins its line.
+  const $at = editor.state.doc.resolve(at ?? editor.state.selection.from);
+  const nextTo = $at.parent.type.name === 'paragraph' && ($at.nodeBefore?.type.name === 'picture' || $at.nodeAfter?.type.name === 'picture');
+  const content = nextTo ? nodes : [{ type: 'paragraph', content: nodes }];
+  (at != null ? c.insertContentAt(at, content) : c.insertContent(content)).run();
 }
 
 const from = (key: string, group: Cmd['group'], over: Partial<Cmd> = {}): Cmd | null => {
