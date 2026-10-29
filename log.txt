@@ -1,0 +1,8 @@
+page / buttons 67 clicked 5
+page /learn/o8no70gxhfitypbsct buttons 13 clicked 13
+page /learn/mgcbi0jazudhp1gkr2 buttons 84 clicked 43
+page /recap/o8no70gxhfitypbsct buttons 3 clicked 3
+page /discuss buttons 7 clicked 7
+page /messages buttons 6 clicked 6
+page /settings buttons 19 clicked 10
+SUMMARY ld problems 0 minutes 2
