@@ -6,6 +6,7 @@ import { PROFILE_ICONS, ProfileIcon } from '../../components/ProfileIcons';
 import { ask } from '../../lib/ask';
 import {
   APP_LIST,
+  EARLY_APPS,
   CEFR,
   EMAIL_CHOICES,
   NAME_CHOICES,
@@ -75,7 +76,7 @@ export function OrgRules({ d }: { d: OrgData }) {
       </Panel>
       <Panel title="Apps">
         <p className="hint">The apps your teachers have. Anything not in your plan shows as off.</p>
-        {APP_LIST.map((k) => {
+        {APP_LIST.filter((k) => !EARLY_APPS.has(k.k) || org.allow?.apps?.[k.k] === true).map((k) => {
           const blocked = org.allow?.apps?.[k.k] === false;
           return (
             <Setting key={k.k} title={k.name} about={blocked ? 'Not part of your plan' : k.about}>
@@ -349,7 +350,7 @@ export function OrgSpace({ d, go }: { d: OrgData; go: Go }) {
     .map(([uid, t]) => ({ uid, t, used: accounts[uid]?.usedBytes ?? 0, gb: orgGbOf(org, uid) }))
     .sort((a, b) => b.used / (b.gb || 1) - a.used / (a.gb || 1))
     .slice(0, 6);
-  const allowed = APP_LIST.filter((a) => org.allow?.apps?.[a.k] !== false);
+  const allowed = APP_LIST.filter((a) => (EARLY_APPS.has(a.k) ? org.allow?.apps?.[a.k] === true : org.allow?.apps?.[a.k] !== false));
   return (
     <div className="hq-page">
       <PageHead title="Plan and limits" lede={`What ${org.name} has from ELT Suite, what it uses, and how its space is shared out.`} />
@@ -472,7 +473,7 @@ function OwnerSettings({ d }: { d: OrgData }) {
       <p className="hint">Its admins can turn these off for their teachers, but not turn on what you leave off.</p>
       {APP_LIST.map((k) => (
         <Setting key={k.k} title={k.name} sub>
-          <Switch on={org.allow?.apps?.[k.k] !== false} onChange={(v) => allow({ apps: { ...(org.allow?.apps ?? {}), [k.k]: v } }, `${k.name} ${v ? 'in' : 'out of'} the plan`)} label={`${k.name} for ${org.name}`} />
+          <Switch on={EARLY_APPS.has(k.k) ? org.allow?.apps?.[k.k] === true : org.allow?.apps?.[k.k] !== false} onChange={(v) => allow({ apps: { ...(org.allow?.apps ?? {}), [k.k]: v } }, `${k.name} ${v ? 'in' : 'out of'} the plan`)} label={`${k.name} for ${org.name}`} />
         </Setting>
       ))}
       <div className="hq-danger">

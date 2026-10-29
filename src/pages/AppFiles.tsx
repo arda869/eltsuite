@@ -6,7 +6,7 @@ import { Loader } from '../components/Loader';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { ask, tell } from '../lib/ask';
-import { libName, useDrive, useMyOrg } from '../lib/admin';
+import { libName, useAppOn, useDrive, useMyOrg } from '../lib/admin';
 import { KIND_LABEL, newSharedDoc, removeSharedDoc, useMyDocs, type DocKind, type SharedDoc } from '../lib/sharedDocs';
 import { useArchive, type ArchiveItem } from '../lib/archive';
 import { useStars, setStar } from '../lib/stars';
@@ -39,6 +39,7 @@ export function AppFiles({ app }: { app: AppKey }) {
   const { user } = useAuth();
   const uid = user?.uid ?? '';
   const a = APP[app];
+  const appOn = useAppOn();
   const { mine, withMe } = useMyDocs(uid || undefined);
   const archive = useArchive(app === 'recordings' ? uid : null);
   // Documents and slides written inside a class's lessons live with the class, not in your files.
@@ -136,6 +137,21 @@ export function AppFiles({ app }: { app: AppKey }) {
       : []),
   ];
 
+  // An app that isn't turned on for this teacher.
+  if (!appOn(app))
+    return (
+      <div className="shell af-shell" style={{ ['--app' as string]: a.color }}>
+        <TopBar>
+          <MainNav on="" />
+        </TopBar>
+        <main className="af">
+          <div className="af-empty">
+            <strong>{a.name} isn’t turned on for you yet</strong>
+            <span className="hint">It’s new, and only some teachers have it for now.</span>
+          </div>
+        </main>
+      </div>
+    );
   return (
     <div className="shell af-shell" style={{ ['--app' as string]: a.color }}>
       <TopBar>

@@ -174,6 +174,11 @@ export function useFeatures() {
   return f;
 }
 // Whether an app is on for this teacher: their own switch, then the one for everyone.
+// Apps still early: off for everyone unless a super admin turns them on, for a teacher, an organisation
+// or everyone.
+export const EARLY_APPS = new Set(['design']);
+export const appDefault = (k: string) => !EARLY_APPS.has(k);
+
 export function useAppOn() {
   const { user } = useAuth();
   const acc = useAccount(user?.uid);
@@ -187,7 +192,7 @@ export function useAppOn() {
     if (acc?.features?.[k] !== undefined) return acc.features[k];
     if (org?.allow?.apps?.[k] === false || org?.policy?.apps?.[k] === false) return false;
     if (org?.allow?.apps?.[k] === true) return true;
-    return all[k] ?? true;
+    return all[k] ?? appDefault(k);
   };
 }
 export const setFeature = (k: string, on: boolean) => setDoc(doc(db, 'admin', 'features'), { apps: { [k]: on } }, { merge: true });
@@ -545,6 +550,7 @@ export const APP_LIST: { k: string; name: string; about: string }[] = [
   { k: 'colleagues', name: 'Colleagues', about: 'Sharing lessons and files with other teachers' },
   { k: 'guide', name: 'Guide', about: 'How ELT Suite works, with things to try' },
   { k: 'library', name: 'Organisation library', about: 'The organisation’s lessons, to copy into classes' },
+  { k: 'design', name: 'Design', about: 'Posters, flashcards and labelled pictures. Early: off unless you turn it on' },
 ];
 
 export type OrgClass = ClassDocLike & { id: string };
