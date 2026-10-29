@@ -7977,3 +7977,75 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .sbw-n { position: absolute; left: 8px; top: 8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--accent); color: #fff; font: 800 12px/22px var(--sans); text-align: center; }
 .sbw-c { margin: 6px 0 0; font: 15px/1.4 var(--serif); color: var(--ink); }
 .sbw-t { font: 800 12px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+
+/* ------------------------------------------------------------------ PDF editor, redesigned
+   One calm bar that never changes height: the tools on the left (icon and name, a key for each),
+   what the tool in use needs in the middle, and the page, zoom and file actions on the right. */
+.pdff { max-width: 1160px; gap: 14px; }
+.pdff-bar { flex-wrap: nowrap; gap: 4px; min-height: 52px; padding: 6px 8px; border-radius: 14px; overflow-x: auto; scrollbar-width: none; }
+.pdff-bar::-webkit-scrollbar { display: none; }
+.pdff-bar > * { flex: none; }
+.pdff-grow { flex: 1 1 0 !important; min-width: 8px; }
+.pdff-bar .pb-sep { display: inline-block; width: 1px; height: 22px; margin: 0 6px; background: var(--hair); }
+.pdf-tool-seg { flex-wrap: nowrap; gap: 2px; padding: 3px; border-radius: 11px; background: var(--surface); }
+.pdf-tb { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: 600 13px var(--sans); white-space: nowrap; transition: background .12s, color .12s; }
+.pdf-tb:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.pdf-tb.on { background: var(--paper); color: var(--accent-text, var(--accent)); box-shadow: 0 1px 2px rgba(0, 0, 0, .1), 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+.pdf-tb:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pdf-tb-caret { margin-left: -2px; font-size: 10px; opacity: .6; }
+.pdf-tools .pdf-tool-seg { flex-wrap: wrap; }
+.pdff-ctx { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.pdff-ctx-t { color: var(--muted); font: 13px var(--sans); white-space: nowrap; }
+.pdff-fmt { display: inline-flex; align-items: center; gap: 2px; }
+.pdff-fmt .ne-btn, .pdff-grp .ne-btn { min-width: 32px; height: 32px; border-radius: 8px; display: inline-grid; place-items: center; }
+.pdff-grp { display: inline-flex; align-items: center; gap: 2px; padding-left: 6px; margin-left: 2px; border-left: 1px solid var(--hair); }
+.pdff-grp .ne-btn:disabled { opacity: .3; cursor: default; }
+.pdff-pgn { min-width: 56px; text-align: center; font: 600 13px var(--sans); color: var(--ink); font-variant-numeric: tabular-nums; }
+.pdff-of { color: var(--muted); font-weight: 500; }
+.pdff-zv { min-width: 48px !important; font: 600 12.5px var(--sans) !important; font-variant-numeric: tabular-nums; }
+.pdff-act { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 600 13px var(--sans); white-space: nowrap; cursor: pointer; }
+.pdff-act:hover { background: var(--surface); }
+.pdff-act.on { background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--accent-text, var(--accent)); }
+.pdf-opts { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; }
+.pdf-sw, .pdf-sw.ink { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--hair-strong); cursor: pointer; padding: 0; transition: transform .1s; }
+.pdf-sw:hover { transform: scale(1.1); }
+.pdf-sw.on { box-shadow: 0 0 0 2px var(--ink); }
+.pdf-sw.mine { outline: 0; }
+/* What to do with the tool in use */
+.pdff-hint { position: sticky; top: 126px; z-index: 11; align-self: center; display: flex; align-items: center; gap: 12px; margin: -6px auto -8px; padding: 7px 8px 7px 16px; border-radius: 999px; background: var(--ink); color: var(--paper); font: 500 13.5px var(--sans); box-shadow: 0 10px 24px -10px rgba(0, 0, 0, .45); animation: pdff-in .16s ease-out; }
+.pdff-hint button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--paper) 16%, transparent); color: var(--paper); font: 600 12.5px var(--sans); cursor: pointer; }
+.pdff-hint kbd { padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, var(--paper) 20%, transparent); font: 600 10.5px var(--sans); }
+@keyframes pdff-in { from { opacity: 0; transform: translateY(-4px); } }
+/* The pages, and the list of them */
+.pdff-body { gap: 18px; }
+.pdff .pdf-page { scroll-margin-top: 132px; }
+.pdff-rail { top: 128px; gap: 10px; width: 96px; padding: 4px 6px 4px 2px; max-height: calc(100vh - 150px); }
+.pdff-rail-i { gap: 6px; }
+.pdff-rail .pdff-th { position: relative; display: block; width: 100%; height: auto; padding: 0; border: 0; border-radius: 6px; background: none; cursor: pointer; }
+.pdf-thumb { display: block; width: 100%; height: auto; border-radius: 5px; background: #fff; box-shadow: 0 0 0 1px var(--hair-strong), 0 3px 8px -5px rgba(0, 0, 0, .3); transition: box-shadow .12s; }
+.pdff-th:hover .pdf-thumb { box-shadow: 0 0 0 1px var(--muted), 0 3px 8px -5px rgba(0, 0, 0, .3); }
+.pdff-th.on .pdf-thumb { box-shadow: 0 0 0 2.5px var(--accent), 0 4px 10px -5px rgba(0, 0, 0, .35); }
+.pdff-th-n { display: block; margin-top: 4px; text-align: center; font: 600 11.5px var(--sans); color: var(--muted); }
+.pdff-th.on .pdff-th-n { color: var(--ink); }
+.pdff-rail .pdff-th.in-unit { border-left: 0; }
+.pdff-th.in-unit .pdf-thumb { box-shadow: -3px 0 0 #a6463a, 0 0 0 1px var(--hair-strong); }
+.pdff-th.in-unit.on .pdf-thumb { box-shadow: -3px 0 0 #a6463a, 0 0 0 2.5px var(--accent); }
+.pdff-unit { width: auto; padding: 4px 6px; font: 700 10.5px/1.2 var(--sans); text-align: left; }
+.pdff-unit-add { width: 100%; padding: 8px 4px; font: 600 11.5px var(--sans); line-height: 1.25; }
+.pdff-unit-add:hover { border-color: var(--accent); color: var(--ink); }
+/* A box's own tools */
+.pdf-box-bar { top: -42px; gap: 2px; padding: 4px; border-radius: 10px; }
+.pdf-grip { width: 30px; height: 30px; border-radius: 7px; touch-action: none; }
+.pdf-grip:active { cursor: grabbing; }
+.pdf-bar-sep { width: 1px; height: 18px; margin: 0 3px; background: var(--hair); }
+.pdf-tones { display: inline-flex; gap: 4px; padding: 0 3px; }
+.pdf-tone { width: 22px; height: 22px; border-radius: 6px; }
+.pdf-tone.on { box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
+.pdf-keybtn { height: 30px; padding: 0 10px; border-radius: 7px; font: 600 12px var(--sans); }
+.pdf-x { width: 30px; height: 30px; display: inline-grid; place-items: center; border-radius: 7px; }
+.pdf-x:hover { background: color-mix(in srgb, #c0392b 12%, var(--paper)); color: #a8473a; }
+.pdf-mark .pdf-x { width: 24px; height: 24px; }
+/* Smaller screens: the same bar, names hidden, swipe it sideways if it is still too wide */
+@media (max-width: 1180px) { .pdff-act-l, .pdff-ctx-t { display: none; } }
+@media (max-width: 920px) { .pdf-tb-l, .pdff-of { display: none; } .pdf-tb { padding: 0 9px; } .pdff-rail { width: 70px; } }
+@media (max-width: 700px) { .pdff-bar { top: 56px; border-radius: 0; margin: 0 -12px; } .pdff-hint { top: 116px; font-size: 13px; } }

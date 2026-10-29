@@ -21,9 +21,11 @@ import { SymbolTool } from '../editor/Symbols';
 import { DefinitionPop } from '../editor/Definition';
 import { UiIcon } from '../components/UiIcon';
 import { ask, askText, tell } from '../lib/ask';
-import { PDF_NODES, ToolButtons, pdfStore } from './PdfNodes';
+import { keyLabel } from '../lib/keys';
+import { PDF_NODES, ToolButtons, ToolOptions, pdfStore, setPdfTool, toolHint, usePdfTool, TOOLS } from './PdfNodes';
+import type { Editor } from '@tiptap/core';
 import { filePdfInfo, type PageSize } from './pdfData';
-import { pageText } from './PdfStack';
+import { PdfThumb, pageText } from './PdfStack';
 
 // A PDF in Files: its pages, with text boxes and highlights everyone it is shared with sees and
 // changes live. The boxes hold anything a lesson can: text, IPA, gaps, choices.
@@ -103,6 +105,26 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     f();
     return () => aw.off('change', f);
   }, [editor, session, d.id, d.docKey, d.title, canEdit]);
+  // Keys for the tools (V, T, H, D, E) when you aren't writing, and Esc to stop.
+  useEffect(() => {
+    if (!editor || !canEdit) return;
+    const key = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement;
+      if (t.closest('input, textarea, select, [role=dialog], [role=menu]')) return;
+      const writing = !!t.closest('.pdf-doc') && editor.isActive('pdfBox');
+      if (e.key === 'Escape') {
+        if (pdfStore(editor).tool !== 'select' || pdfStore(editor).pending) return void setPdfTool(editor, 'select');
+        if (writing) return void (editor.commands.blur(), window.getSelection()?.removeAllRanges());
+        return;
+      }
+      if (writing) return;
+      const tool = TOOLS.find((x) => x.key.toLowerCase() === e.key.toLowerCase());
+      if (tool) (e.preventDefault(), setPdfTool(editor, tool.k));
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [editor, canEdit]);
   const teacher = profile?.role === 'teacher';
   const cmds = useMemo(() => DOC_CMDS.filter((c) => teacher || (!c.key.startsWith('tt-') && c.key !== 'cite')), [teacher]);
   const slash = useSlash(editor, cmds, false, true, () => true);
@@ -145,55 +167,75 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
       {label}
     </button>
   );
+  const src = String(block?.attrs.src ?? '');
+  const first = Number(block?.attrs.first) || 0;
+  const fmt = (
+    <span className="pdff-fmt" role="group" aria-label="The text in the box">
+      {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), `Bold (${keyLabel('Mod+B')})`)}
+      {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), `Italic (${keyLabel('Mod+I')})`)}
+      {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), `Underline (${keyLabel('Mod+U')})`)}
+      <TextColorTool editor={editor} />
+      <HighlightTool editor={editor} />
+      <span className="pb-sep" />
+      {B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition: select a word first', editor.state.selection.empty)}
+      <ProsodyTool editor={editor} />
+      <SymbolTool editor={editor} />
+    </span>
+  );
   return (
     <div className="pdff">
       <div className="pdff-bar" role="toolbar" aria-label="PDF tools">
-        {canEdit && <ToolButtons editor={editor} />}
+        {canEdit && <ToolButtons editor={editor} options={false} />}
+        {canEdit && <Context editor={editor} inBox={inBox} fmt={fmt} />}
+        <span className="pdff-grow" />
         {canEdit && (
-          <span className="pdff-fmt" aria-hidden={!inBox}>
-            <span className="pb-sep" />
-            {B(<b>B</b>, editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold', !inBox)}
-            {B(<i>I</i>, editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic', !inBox)}
-            {B(<u>U</u>, editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline', !inBox)}
-            <TextColorTool editor={editor} />
-            <HighlightTool editor={editor} />
-            <span className="pb-sep" />
-            {B(<span className="ne-def">Aa</span>, editor.isActive('definition'), () => setDefOpen(true), 'Definition', !inBox || editor.state.selection.empty)}
-            <ProsodyTool editor={editor} />
-            <SymbolTool editor={editor} />
+          <span className="pdff-grp" role="group" aria-label="Undo">
+            {B(<Svg d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), `Undo (${keyLabel('Mod+Z')})`, !editor.can().undo())}
+            {B(<Svg d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
           </span>
         )}
-        <span style={{ flex: 1 }} />
-        <span className="pdff-zoom" role="group" aria-label="Zoom">
-          <button type="button" className="ne-btn" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} aria-label="Smaller" data-tip="Smaller">
-            −
+        {pages.length > 1 && (
+          <span className="pdff-grp pdff-pg" role="group" aria-label="Pages">
+            {B(<Svg d="m15 6-6 6 6 6" />, false, () => goPage(cur - 1), 'Page before', cur === 0)}
+            <span className="pdff-pgn" aria-live="polite">
+              {cur + 1}
+              <span className="pdff-of"> of {pages.length}</span>
+            </span>
+            {B(<Svg d="m9 6 6 6-6 6" />, false, () => goPage(cur + 1), 'Next page', cur >= pages.length - 1)}
+          </span>
+        )}
+        <span className="pdff-grp pdff-zoom" role="group" aria-label="Zoom">
+          {B(<Svg d="M6 12h12" />, false, () => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2))), 'Smaller', zoom <= 0.5)}
+          <button type="button" className="ne-btn pdff-zv" onClick={() => setZoom(1)} data-tip={zoom === 1 ? 'The pages fit the width' : 'Fit the width again'}>
+            {zoom === 1 ? 'Fit' : `${Math.round(zoom * 100)}%`}
           </button>
-          <button type="button" className="ne-btn pdff-zv" onClick={() => setZoom(1)} data-tip="Fit the width">
-            {Math.round(zoom * 100)}%
+          {B(<Svg d="M6 12h12M12 6v12" />, false, () => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2))), 'Bigger', zoom >= 2.5)}
+        </span>
+        <span className="pdff-grp">
+          <button type="button" className={'pdff-act' + (reading ? ' on' : '')} aria-pressed={reading} onClick={() => void readAloud()} data-tip={reading ? 'Stop reading' : `Read page ${cur + 1} aloud`}>
+            <UiIcon name="music" size={15} />
+            <span className="pdff-act-l">{reading ? 'Stop' : 'Read aloud'}</span>
           </button>
-          <button type="button" className="ne-btn" onClick={() => setZoom((z) => Math.min(2.5, +(z + 0.1).toFixed(2)))} aria-label="Bigger" data-tip="Bigger">
-            +
+          {teacher && hasKey && (
+            <button type="button" className={'pdff-act' + (showKey ? ' on' : '')} aria-pressed={showKey} onClick={() => setShowKey((v) => !v)} data-tip={showKey ? 'Hide the answer key: see the pages as learners do, or print without it' : 'Show the answer key: the boxes only teachers see'}>
+              <Svg d="M15 7a4 4 0 1 1-3.9 4.8L4 19v-3h2v-2h2l3.1-3.1A4 4 0 0 1 15 7z" />
+              <span className="pdff-act-l">Answer key</span>
+            </button>
+          )}
+          <button type="button" className="pdff-act" onClick={() => printPdf()} data-tip="Print it, or save it as a PDF, with the notes on the pages">
+            <UiIcon name="import" size={15} />
+            <span className="pdff-act-l">Print or save</span>
           </button>
         </span>
-        <button type="button" className={'btn small-btn' + (reading ? ' on' : '')} onClick={() => void readAloud()} data-tip={`Read page ${cur + 1} aloud`}>
-          <UiIcon name="music" size={14} /> {reading ? 'Stop reading' : 'Read aloud'}
-        </button>
-        {teacher && hasKey && (
-          <button type="button" className={'btn small-btn' + (showKey ? ' on' : '')} aria-pressed={showKey} onClick={() => setShowKey((v) => !v)} data-tip="The answer key: boxes only teachers see. Hide it to see the page as learners do, or to print without it">
-            {showKey ? 'Answer key shown' : 'Answer key hidden'}
-          </button>
-        )}
-        <PeopleHere people={people} me={me.uid} max={6} />
-        <button type="button" className="btn small-btn" onClick={() => printPdf()} data-tip="Print it, or save it as a PDF, with the notes on the pages">
-          <UiIcon name="import" size={14} /> Print or save
-        </button>
+        <PeopleHere people={people} me={me.uid} max={4} />
       </div>
+      {canEdit && <Hint editor={editor} />}
       {!ready && <span className="hint pdff-wait">Opening the pages…</span>}
       <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
       <div className="pdff-body">
         {pages.length > 1 && (
           <nav className="pdff-rail" aria-label="Pages">
-            {pages.map((_, i) => {
+            {pages.map((p, i) => {
               const u = units.find((x) => x.from === i + 1);
               const inUnit = units.find((x) => i + 1 >= x.from && i + 1 <= x.to);
               return (
@@ -208,23 +250,21 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
                       )}
                     </span>
                   )}
-                  <button type="button" className={(i === cur ? 'on' : '') + (inUnit ? ' in-unit' : '')} aria-current={i === cur ? 'page' : undefined} onClick={() => goPage(i)}>
-                    {i + 1}
+                  <button type="button" className={'pdff-th' + (i === cur ? ' on' : '') + (inUnit ? ' in-unit' : '')} aria-current={i === cur ? 'page' : undefined} aria-label={`Page ${i + 1}`} onClick={() => goPage(i)}>
+                    <PdfThumb src={src} n={i + first} size={p} />
+                    <span className="pdff-th-n">{i + 1}</span>
                   </button>
                 </span>
               );
             })}
             {canEdit && (
               <button type="button" className="pdff-unit-add" onClick={() => void addUnit()} data-tip="Name a few pages as a unit, to put them into a lesson on their own">
-                + Unit
+                + Name a unit
               </button>
             )}
           </nav>
         )}
-        <div
-          className={'pdff-page' + (showKey && teacher ? '' : ' no-key')}
-          style={{ ['--pdf-zoom' as string]: zoom }}
-        >
+        <div className={'pdff-page' + (showKey && teacher ? '' : ' no-key')} style={{ ['--pdf-zoom' as string]: zoom }}>
           <EditorClassContext.Provider value={{ classId: '', classmates: [] }}>
             <EditorContent editor={editor} />
           </EditorClassContext.Provider>
@@ -232,6 +272,40 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
       </div>
       {canEdit && <SlashMenu editor={editor} slash={slash} groups={DOC_GROUPS} />}
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+    </div>
+  );
+}
+
+const Svg = ({ d }: { d: string }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
+);
+
+// The middle of the bar: the text tools while you write in a box, the colours of the highlighter or
+// pen while you use them, and otherwise a word on what to do.
+function Context({ editor, inBox, fmt }: { editor: Editor; inBox: boolean; fmt: React.ReactNode }) {
+  const st = usePdfTool(editor);
+  const colours = (st.tool === 'mark' && !st.pending) || st.tool === 'draw';
+  return (
+    <span className="pdff-ctx">
+      <span className="pb-sep" />
+      {colours ? <ToolOptions editor={editor} /> : inBox && st.tool === 'select' ? fmt : <span className="pdff-ctx-t">{st.tool === 'select' && !st.pending ? 'Click in a box to write in it' : ''}</span>}
+    </span>
+  );
+}
+
+// What to do with the tool in use, over the page.
+function Hint({ editor }: { editor: Editor }) {
+  usePdfTool(editor);
+  const h = toolHint(editor);
+  if (!h) return null;
+  return (
+    <div className="pdff-hint" role="status">
+      <span>{h}</span>
+      <button type="button" onClick={() => setPdfTool(editor, 'select')}>
+        Done <kbd>Esc</kbd>
+      </button>
     </div>
   );
 }

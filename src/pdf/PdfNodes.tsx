@@ -104,6 +104,8 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
       tr.setSelection(TextSelection.create(tr.doc, end + 2));
       editor.view.dispatch(tr.scrollIntoView());
       editor.view.focus();
+      // and once more after the box is drawn, so what you type goes in it
+      requestAnimationFrame(() => editor.chain().focus(end + 2).run());
       // A question: it goes straight into the new box.
       const q = store.pending;
       setPdfTool(editor, 'select');
@@ -175,41 +177,71 @@ function BlockView({ node, editor, getPos, deleteNode }: NodeViewProps) {
 }
 
 export const myColor = (e: Editor): string => ((e.storage as unknown as { collaborationCursor?: { user?: { color?: string } } }).collaborationCursor?.user?.color ?? '');
-export function ToolButtons({ editor }: { editor: Editor }) {
+// The tools, with an icon, a short name and a key to press for each.
+const Ic = ({ d }: { d: string }) => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={d} />
+  </svg>
+);
+export const TOOLS: { k: PdfTool; label: string; key: string; tip: string; icon: string; hint: string }[] = [
+  { k: 'select', label: 'Select', key: 'V', tip: 'Select: write in boxes, move them by their handle', icon: 'M5 3l13 8-6 1.5L9 19z', hint: '' },
+  { k: 'text', label: 'Text', key: 'T', tip: 'Text box: then click on the page where it goes', icon: 'M5 6V4h14v2M12 4v16M9 20h6', hint: 'Click on the page where the text box goes.' },
+  { k: 'mark', label: 'Highlight', key: 'H', tip: 'Highlight: then drag across the words', icon: 'M4 20h16M7 16l2-6 7-7 3 3-7 7-6 2zM13 6l3 3', hint: 'Drag across the words you want to highlight.' },
+  { k: 'draw', label: 'Draw', key: 'D', tip: 'Draw freely on the page', icon: 'M4 20c3-1 4-4 6-7s4-7 7-8c2-1 3 1 2 3-2 4-8 6-11 9-1.5 1.5-2 3-4 3z', hint: 'Draw on the page with the mouse, a pen or your finger.' },
+  { k: 'erase', label: 'Eraser', key: 'E', tip: 'Eraser: click a drawn line to remove it', icon: 'M8 20h12M4.5 15.5l9-9a2 2 0 0 1 3 0l3 3a2 2 0 0 1 0 3L13 19H8.5z', hint: 'Click a line you drew to rub it out.' },
+];
+export const toolHint = (e: Editor) => {
+  const s = pdfStore(e);
+  if (s.pending) return `Click on the page where the ${s.pending.label.toLowerCase()} goes.`;
+  return TOOLS.find((t) => t.k === s.tool)?.hint ?? '';
+};
+export const usePdfTool = useTool;
+
+export function ToolButtons({ editor, options = true, labels = true }: { editor: Editor; options?: boolean; labels?: boolean }) {
   const store = useTool(editor);
   return (
     <span className="pdf-tool-seg" role="radiogroup" aria-label="Tool">
-      {(
-        [
-          ['select', 'Select', 'Click and type in boxes, move them by their handle'],
-          ['text', '+ Text box', 'Then click on the page where it goes'],
-          ['mark', 'Highlight', 'Then drag across the page'],
-          ['draw', 'Draw', 'Draw freely on the page'],
-          ['erase', 'Eraser', 'Click a drawn line to remove it'],
-        ] as const
-      ).map(([k, l, tip]) => (
-        <button key={k} type="button" role="radio" aria-checked={store.tool === k} className={'pdf-tb' + (store.tool === k ? ' on' : '')} data-tip={tip} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, k)}>
-          {l}
+      {TOOLS.map((t) => (
+        <button key={t.k} type="button" role="radio" aria-checked={store.tool === t.k && !store.pending} aria-keyshortcuts={t.key} aria-label={t.label} className={'pdf-tb' + (store.tool === t.k && !store.pending ? ' on' : '')} data-tip={`${t.tip} (${t.key})`} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, t.k)}>
+          <Ic d={t.icon} />
+          {labels && <span className="pdf-tb-l">{t.label}</span>}
         </button>
       ))}
       {QUESTIONS.length > 0 && (
-        <button type="button" className={'pdf-tb' + (store.pending ? ' on' : '')} data-tip="A question on the page: pick one, then click where it goes" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, QUESTIONS.map((q) => ({ label: q.label, icon: '', onClick: () => setPdfTool(editor, 'text', undefined, q) })))}>
-          {store.pending ? store.pending.label : '+ Question'}
+        <button type="button" className={'pdf-tb q' + (store.pending ? ' on' : '')} aria-haspopup="menu" aria-label={store.pending ? store.pending.label : 'Question'} data-tip="A question on the page: choose one, then click where it goes" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, QUESTIONS.map((q) => ({ label: q.label, icon: '', onClick: () => setPdfTool(editor, 'text', undefined, q) })))}>
+          <Ic d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" />
+          {labels && <span className="pdf-tb-l">{store.pending ? store.pending.label : 'Question'}</span>}
+          <span className="pdf-tb-caret" aria-hidden="true">▾</span>
         </button>
       )}
-      {store.tool === 'mark' &&
-        MARK_COLORS.map((c) => (
-          <button key={c.k} type="button" className={'pdf-sw' + (store.color === c.k ? ' on' : '')} style={{ background: c.bg }} aria-label={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'mark', c.k)} />
-        ))}
-      {store.tool === 'draw' && myColor(editor) && (
-        <button type="button" className={'pdf-sw ink mine' + (store.ink === myColor(editor) ? ' on' : '')} style={{ background: myColor(editor) }} aria-label="My colour" data-tip="My colour: everyone sees who drew what" onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'draw', myColor(editor))} />
-      )}
-      {store.tool === 'draw' &&
-        INK_COLORS.map((c) => (
-          <button key={c.k} type="button" className={'pdf-sw ink' + ((store.ink ?? 'ink') === c.k ? ' on' : '')} style={{ background: c.c }} aria-label={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'draw', c.k)} />
-        ))}
+      {options && <ToolOptions editor={editor} />}
     </span>
   );
+}
+
+// The colours of the tool in use: highlighter or pen.
+export function ToolOptions({ editor }: { editor: Editor }) {
+  const store = useTool(editor);
+  if (store.tool === 'mark' && !store.pending)
+    return (
+      <span className="pdf-opts" role="radiogroup" aria-label="Highlighter colour">
+        {MARK_COLORS.map((c) => (
+          <button key={c.k} type="button" role="radio" aria-checked={store.color === c.k} className={'pdf-sw' + (store.color === c.k ? ' on' : '')} style={{ background: c.bg.replace(/[\d.]+\)$/, '.85)') }} aria-label={c.label} data-tip={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'mark', c.k)} />
+        ))}
+      </span>
+    );
+  if (store.tool === 'draw')
+    return (
+      <span className="pdf-opts" role="radiogroup" aria-label="Pen colour">
+        {myColor(editor) && (
+          <button type="button" role="radio" aria-checked={store.ink === myColor(editor)} className={'pdf-sw ink mine' + (store.ink === myColor(editor) ? ' on' : '')} style={{ background: myColor(editor), color: myColor(editor) }} aria-label="My colour" data-tip="My colour: everyone sees who drew what" onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'draw', myColor(editor))} />
+        )}
+        {INK_COLORS.map((c) => (
+          <button key={c.k} type="button" role="radio" aria-checked={(store.ink ?? 'ink') === c.k} className={'pdf-sw ink' + ((store.ink ?? 'ink') === c.k ? ' on' : '')} style={{ background: c.c }} aria-label={c.label} data-tip={c.label} onMouseDown={(e) => e.preventDefault()} onClick={() => setPdfTool(editor, 'draw', c.k)} />
+        ))}
+      </span>
+    );
+  return null;
 }
 
 function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected }: NodeViewProps) {
@@ -244,17 +276,21 @@ function BoxView({ node, editor, getPos, updateAttributes, deleteNode, selected 
     <NodeViewWrapper ref={ref} className={'pdf-box tone-' + (a.tone || 'paper') + (a.key ? ' is-key' : '') + (selected ? ' on' : '')} style={{ left: `${at.left}%`, top: `${at.top}%`, width: `${a.w * 100}%` }}>
       {editable && (
         <span className="pdf-box-bar" contentEditable={false}>
-          <span className="pdf-grip" onPointerDown={drag('move')} title="Drag to move" aria-label="Move">
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.1" /><circle cx="9" cy="3" r="1.1" /><circle cx="3" cy="9" r="1.1" /><circle cx="9" cy="9" r="1.1" /><circle cx="6" cy="6" r="1.1" /></g></svg>
+          <span className="pdf-grip" onPointerDown={drag('move')} data-tip="Drag to move" aria-label="Move">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" /></svg>
           </span>
-          {(['paper', 'note', 'clear'] as const).map((t) => (
-            <button key={t} type="button" className={'pdf-tone t-' + t + (a.tone === t ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => updateAttributes({ tone: t })} aria-label={t === 'paper' ? 'White box' : t === 'note' ? 'Sticky note' : 'No box'} title={t === 'paper' ? 'White box' : t === 'note' ? 'Sticky note' : 'Just the text'} />
-          ))}
-          <button type="button" className={'pdf-keybtn' + (a.key ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => updateAttributes({ key: !a.key })} aria-pressed={!!a.key} aria-label="Answer key: only teachers see it" title={a.key ? 'Answer key: only teachers see it. Press to show it to everyone' : 'Make it part of the answer key: only teachers see it'}>
-            Key
+          <span className="pdf-bar-sep" />
+          <span className="pdf-tones" role="radiogroup" aria-label="Look">
+            {(['paper', 'note', 'clear'] as const).map((t) => (
+              <button key={t} type="button" role="radio" aria-checked={(a.tone || 'paper') === t} className={'pdf-tone t-' + t + ((a.tone || 'paper') === t ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => updateAttributes({ tone: t })} aria-label={t === 'paper' ? 'White box' : t === 'note' ? 'Sticky note' : 'Just the text'} data-tip={t === 'paper' ? 'White box' : t === 'note' ? 'Sticky note' : 'Just the text, no box'} />
+            ))}
+          </span>
+          <span className="pdf-bar-sep" />
+          <button type="button" className={'pdf-keybtn' + (a.key ? ' on' : '')} onMouseDown={(e) => e.preventDefault()} onClick={() => updateAttributes({ key: !a.key })} aria-pressed={!!a.key} data-tip={a.key ? 'Only teachers see this box. Press to show it to everyone' : 'Make it part of the answer key: only teachers see it'}>
+            Answer key
           </button>
-          <button type="button" className="pdf-x" onMouseDown={(e) => e.preventDefault()} onClick={() => deleteNode()} aria-label="Delete the box" title="Delete the box">
-            ×
+          <button type="button" className="pdf-x" onMouseDown={(e) => e.preventDefault()} onClick={() => deleteNode()} aria-label="Delete the box" data-tip="Delete the box">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V4.5h4V7M6.5 7l1 12.5h9l1-12.5" /></svg>
           </button>
         </span>
       )}

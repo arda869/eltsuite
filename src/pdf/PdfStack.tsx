@@ -221,3 +221,36 @@ export function PdfStack({ src, classId = '', pages, children, onDown, tool, fir
     </div>
   );
 }
+
+// A small picture of one page, for the list of pages.
+export function PdfThumb({ src, classId = '', n, size }: { src: string; classId?: string; n: number; size: PageSize }) {
+  const { pdf } = usePdf(src, classId);
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && setSeen(true), { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (!pdf || !seen || !ref.current) return;
+    let live = true;
+    let task: { cancel: () => void; promise: Promise<unknown> } | null = null;
+    void pdf.getPage(n + 1).then((pg) => {
+      if (!live || !ref.current) return;
+      const vp = pg.getViewport({ scale: (120 / pg.getViewport({ scale: 1 }).width) * Math.min(2, window.devicePixelRatio || 1) });
+      const c = ref.current;
+      c.width = Math.round(vp.width);
+      c.height = Math.round(vp.height);
+      task = pg.render({ canvasContext: c.getContext('2d')!, viewport: vp }) as unknown as typeof task;
+      task?.promise.catch(() => {});
+    });
+    return () => {
+      live = false;
+      task?.cancel();
+    };
+  }, [pdf, seen, n]);
+  return <canvas ref={ref} className="pdf-thumb" style={{ aspectRatio: `${size.w} / ${size.h}` }} aria-hidden="true" />;
+}
