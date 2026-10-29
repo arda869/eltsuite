@@ -1,0 +1,29 @@
+name: Push check
+on:
+  push:
+    branches: ['diag/push']
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - name: Check notifications
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          mkdir -p "$RUNNER_TEMP/c" && cp scripts/push-check.mjs "$RUNNER_TEMP/c/" && cd "$RUNNER_TEMP/c"
+          npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 >/dev/null
+          node push-check.mjs || echo "check failed" > push-check.txt
+          rm -f "$RUNNER_TEMP/sa.json"
+          cp push-check.txt "$GITHUB_WORKSPACE/push-check.txt"
+      - name: Keep the result
+        run: |
+          git config user.name ci; git config user.email ci@users.noreply.github.com
+          git checkout --orphan result && git rm -rqf . && git add push-check.txt && git commit -qm result
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" result:diag/push-result
