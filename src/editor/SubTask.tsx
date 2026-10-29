@@ -88,7 +88,7 @@ export function useOpenSubs() {
 }
 const idOf = (n: JSONContent, i: number) => String(n.attrs?.id || 'st' + i);
 // A sub-task shows when it is the first, or when it has been opened, or when everything shows (answers checked).
-export const subShown = (subs: JSONContent[], i: number, open: Set<string>, all = false) => all || i === 0 || open.has(idOf(subs[i], i));
+export const subShown = (subs: JSONContent[], i: number, open: Set<string>, all = false) => !!subs[i] && (all || i === 0 || open.has(idOf(subs[i], i)));
 
 // The button at the end of an open part that opens the next one.
 export function NextSub({ subs, i }: { subs: JSONContent[]; i: number }) {

@@ -1108,7 +1108,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
               <p className="task-instr">{String(node.attrs?.instr ?? '')}</p>
             </div>
             <div className="st-body">{kids()}</div>
-            {!(!!results || !!asExample) && !subShown(subs, i + 1, openSubs) && <NextSub subs={subs} i={i} />}
+            {!(!!results || !!asExample) && i + 1 < subs.length && !subShown(subs, i + 1, openSubs) && <NextSub subs={subs} i={i} />}
           </section>
         );
       }
