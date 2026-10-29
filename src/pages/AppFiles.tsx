@@ -19,13 +19,14 @@ import { AppLogo } from '../components/AppGrid';
 // apps in Google's suite as well as being in Drive: each lists the teacher's own files of that
 // kind, the ones shared with them, the ones in their organisation's library, and the starred ones.
 
-export type AppKey = 'collab' | 'reading' | 'pdf' | 'recordings' | 'design';
+export type AppKey = 'collab' | 'reading' | 'pdf' | 'recordings' | 'design' | 'storyboard';
 type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
   collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
+  storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
   design: { name: 'Design', kinds: ['design'], color: '#6d5bd0', empty: 'Posters, flashcards, labelled pictures and worksheets, made by you or with others.' },
   pdf: { name: 'PDF', kinds: ['pdf'], color: '#a6463a', empty: 'PDFs to write on, on your own or with others.' },
   recordings: { name: 'Recordings', kinds: [], color: '#a8473a', empty: 'Recordings you make or upload, with scripts, to use in any lesson.' },
@@ -119,6 +120,8 @@ export function AppFiles({ app }: { app: AppKey }) {
         ? [{ label: 'New reading journal', run: () => void make('pd') }]
         : app === 'design'
           ? [{ label: 'New design', run: () => void make('design') }]
+          : app === 'storyboard'
+          ? [{ label: 'New storyboard', run: () => void make('storyboard') }]
           : app === 'pdf'
           ? [{ label: 'Upload a PDF', run: () => pdfIn.current?.click() }]
           : [

@@ -24,18 +24,18 @@ export function AnyFile({ d }: { d: SharedDoc }) {
     }
   };
   return (
-    <div className="af">
-      <div className="af-card">
+    <div className="anyf">
+      <div className="anyf-card">
         <FileIcon kind="file" size={72} sub={x || 'file'} />
-        <h1 className="af-name">{name}</h1>
-        <p className="af-meta">
+        <h1 className="anyf-name">{name}</h1>
+        <p className="anyf-meta">
           {fileKindName(f.name)} · {sizeText(f.bytes)} · from {d.ownerName}
         </p>
-        <p className="af-about">ELT Suite can’t show this kind of file. Download it and open it in the app you use for it.</p>
+        <p className="anyf-about">ELT Suite can’t show this kind of file. Download it and open it in the app you use for it.</p>
         <button type="button" className="btn primary" onClick={() => void go()} disabled={busy}>
           <UiIcon name="import" size={16} /> {busy ? 'Downloading…' : 'Download'}
         </button>
-        {err && <p className="af-err" role="alert">{err}</p>}
+        {err && <p className="anyf-err" role="alert">{err}</p>}
       </div>
     </div>
   );
