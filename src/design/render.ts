@@ -346,7 +346,15 @@ function drawShape(ctx: CanvasRenderingContext2D, e: El, env: Env) {
       if (k === 'double') head(0, -1);
     }
   }
-  if (e.text && e.id !== env.skip && !line) drawText(ctx, e, textBox(e));
+  if (e.text && e.id !== env.skip && !line) {
+    // Words never read backwards, even in a flipped bubble.
+    if (e.flipX || e.flipY) {
+      ctx.translate(e.flipX ? e.w : 0, e.flipY ? e.h : 0);
+      ctx.scale(e.flipX ? -1 : 1, e.flipY ? -1 : 1);
+    }
+    const b = textBox(e);
+    drawText(ctx, e, e.flipX || e.flipY ? { ...b, x: e.flipX ? e.w - b.x - b.w : b.x, y: e.flipY && e.shape !== 'speech' && e.shape !== 'thought' ? e.h - b.y - b.h : b.y } : b);
+  }
 }
 
 function drawPath(ctx: CanvasRenderingContext2D, e: El) {
@@ -615,7 +623,7 @@ export function drawEl(ctx: CanvasRenderingContext2D, e: El, env: Env, nums: Map
   }
   ctx.translate(e.x + e.w / 2, e.y + e.h / 2);
   if (e.rot) ctx.rotate((e.rot * Math.PI) / 180);
-  if (e.flipX || e.flipY) ctx.scale(e.flipX ? -1 : 1, e.flipY ? -1 : 1);
+  if ((e.flipX || e.flipY) && e.t !== 'text') ctx.scale(e.flipX ? -1 : 1, e.flipY ? -1 : 1);
   ctx.translate(-e.w / 2, -e.h / 2);
   switch (e.t) {
     case 'image':

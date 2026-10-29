@@ -511,7 +511,7 @@ function Draw({ cx }: { cx: Ctx }) {
     <>
       <div className="dz-grid two">
         {tools.map(([k, n]) => (
-          <button key={k} type="button" className={'dz-tool' + (cx.tool === k ? ' on' : '')} onClick={() => cx.setTool(k)}>
+          <button key={k} type="button" className={'dz-tool' + (cx.tool === k ? ' on' : '')} onClick={() => (cx.setTool(k), k === 'highlighter' ? cx.setPen({ color: '#ffd84d', size: 26 }) : k === 'marker' ? cx.setPen({ color: cx.accent, size: 14 }) : k === 'pen' && cx.pen.size > 12 && cx.setPen({ color: '#262420', size: 6 }))}>
             <span className={'dz-pen ' + k} style={{ ['--pc' as string]: cx.pen.color }} />
             {n}
           </button>

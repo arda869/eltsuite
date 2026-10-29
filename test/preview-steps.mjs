@@ -17,7 +17,7 @@ export default async function steps({ p, ctx, say, BASE }) {
   await tab.setViewportSize({ width: 1500, height: 940 });
   await tab.locator('.dz-start').waitFor({ timeout: 30000 });
   const s = async (n) => (await tab.screenshot({ path: `preview-out/${n}.png` }), say('shot', n));
-  const count = async () => (await tab.locator('.dz-railb', { hasText: 'Layers' }).click(), await tab.waitForTimeout(300), tab.locator('.dz-layers li').count());
+  const count = async () => { if (!(await tab.locator('.dz-layers').count())) await tab.locator('.dz-railb', { hasText: 'Layers' }).click(); await tab.waitForTimeout(300); return tab.locator('.dz-layers li').count(); };
   await tab.locator('.dz-start-card', { hasText: 'Classroom poster' }).click();
   await tab.locator('.dz-paper canvas').waitFor({ timeout: 20000 });
   await tab.waitForTimeout(2500);
@@ -110,6 +110,7 @@ export default async function steps({ p, ctx, say, BASE }) {
   await tab.mouse.click(...at(140, 360));
   await tab.waitForTimeout(3000);
   await s('10-background-gone');
+  await tab.keyboard.press('Escape');
   await tab.keyboard.press('Escape');
   // Free pictures.
   await tab.locator('.dz-railb', { hasText: 'Pictures' }).click();

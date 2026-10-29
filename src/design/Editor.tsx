@@ -636,7 +636,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       const k = e.key.toLowerCase();
       const map: Record<string, Tool> = { v: 'select', h: 'hand', p: 'pen', m: 'marker', l: 'label', e: 'eraser' };
       if (map[k]) return setTool(map[k]);
-      if (k === 't') return void add([{ t: 'text', text: 'Add some text', font: 'Fraunces', size: 28, color: '#262420', lh: 1.4, x: 120, y: 120, w: 360, h: textHeight({ text: 'Add some text', font: 'Fraunces', size: 28, lh: 1.4 }, 360) }], { edit: true });
+      if (k === 't' && page) return void add([{ t: 'text', text: 'Add some text', font: 'Fraunces', size: 28, color: '#262420', lh: 1.4, x: Math.round(page.w / 2 - 180), y: Math.round(page.h / 2 - 20), w: 360, h: textHeight({ text: 'Add some text', font: 'Fraunces', size: 28, lh: 1.4 }, 360) }], { edit: true });
     }
   };
   useEffect(() => {
