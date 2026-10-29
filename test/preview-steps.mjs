@@ -1,55 +1,66 @@
-// What test/preview.mjs does, step by step: sub-tasks in a lesson, on screen and on paper.
-export default async function steps({ p, shot, say, demo, BASE }) {
+// What test/preview.mjs does, step by step: a teacher makes a storyboard.
+export default async function steps({ p, ctx, shot, say, BASE }) {
   const wait = (ms) => p.waitForTimeout(ms);
-  await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
-  await p.locator('.ProseMirror').first().waitFor({ timeout: 20000 });
-  await wait(800);
-  // make sure we are in Digital
-  const dig = p.getByRole('radio', { name: /Digital/ });
-  if (await dig.count()) await dig.click();
-  await wait(600);
-  // the third task in the list
-  await p.locator('.task-row').nth(4).click();
-  await wait(1500);
-  const ed = p.locator('.frame-body .task-editor .ProseMirror').first();
-  await ed.click();
-  await p.keyboard.press('Control+End');
-  await p.keyboard.press('Enter');
-  const sub = async (instr, text) => {
-    await p.keyboard.type('/sub', { delay: 40 });
-    await wait(900);
-    await p.keyboard.press('Enter');
-    await wait(700);
-    await p.keyboard.type(text, { delay: 10 });
-    await p.locator('.st-instr-input').last().fill(instr);
-    await wait(300);
-  };
-  await sub('Read the email again. Underline every present perfect.', 'I have just arrived in Lisbon.');
-  await ed.click();
-  await p.keyboard.press('Control+End');
-  await sub('Now write three sentences about your week.', 'This week I have…');
-  await wait(1500);
-  await shot('editor-subtasks');
-  say('subtask nodes', await p.locator('.subtask-node').count());
-
-  // learner view
-  await p.getByRole('button', { name: /Editing/ }).first().click();
+  await p.goto(`${BASE}/archive`);
+  await p.locator('text=+ New').first().waitFor({ timeout: 20000 });
+  await p.click('text=+ New');
   await wait(400);
-  await p.getByRole('menuitemradio', { name: /Learner view/ }).click().catch((e) => say('learner view', e.message));
-  await wait(1500);
-  await shot('learner-a-only');
-  say('visible subtasks', await p.locator('.subtask').count(), 'next buttons', await p.locator('.st-next').count());
-  await p.locator('.st-next').first().click().catch((e) => say('next', e.message));
-  await wait(700);
-  await shot('learner-a-and-b');
-
-  // back to editing, then the worksheet
-  await p.getByRole('button', { name: /Learner view/ }).first().click().catch(() => {});
-  await wait(300);
-  await p.getByRole('menuitemradio', { name: /Editing/ }).click().catch((e) => say('editing', e.message));
-  await wait(1000);
-  await p.getByRole('radio', { name: /Worksheet/ }).click();
-  await p.locator('.sh-split').waitFor({ timeout: 10000 });
-  await wait(2500);
-  await shot('worksheet-subtasks');
+  const [tab] = await Promise.all([ctx.waitForEvent('page'), p.click('[role=menuitem]:has-text("Storyboard")')]);
+  await tab.waitForLoadState();
+  tab.on('pageerror', (e) => say('CRASH', e.message));
+  await tab.setViewportSize({ width: 1440, height: 900 });
+  await tab.locator('.sbf').waitFor({ timeout: 15000 });
+  await tab.waitForTimeout(1500);
+  const s = async (name) => {
+    await tab.screenshot({ path: `preview-out/${name}.png` });
+    say('shot', name);
+  };
+  await s('01-empty');
+  // two people, a table and a speech bubble
+  await tab.locator('.sbf-li').nth(1).click(); // Maya waving
+  await tab.waitForTimeout(500);
+  await tab.locator('.sbf-who button').nth(1).click(); // Leo
+  await tab.locator('.sbf-li').nth(7).click(); // Leo talking
+  await tab.waitForTimeout(500);
+  await tab.getByRole('tab', { name: 'Things' }).click();
+  await tab.locator('.sbf-li').first().click(); // table
+  await tab.waitForTimeout(500);
+  await tab.getByRole('tab', { name: 'Bubbles' }).click();
+  await tab.locator('.sbf-li').first().click(); // speech
+  await tab.waitForTimeout(800);
+  await s('02-added');
+  // type in the bubble
+  const t = tab.locator('.sb-item.on .sb-text');
+  await t.click();
+  await tab.keyboard.press('Control+A');
+  await tab.keyboard.type('Have you ever been to Lisbon?');
+  await tab.locator('.sbf-caption').click();
+  await tab.waitForTimeout(600);
+  // drag the bubble
+  const b = await tab.locator('.sb-item.t-bubble').first().boundingBox();
+  await tab.mouse.move(b.x + 20, b.y + 10);
+  await tab.mouse.down();
+  await tab.mouse.move(b.x + 260, b.y + 30, { steps: 8 });
+  await tab.mouse.up();
+  await tab.waitForTimeout(800);
+  // select Leo and turn him
+  const leo = tab.locator('.sb-item.t-person').nth(1);
+  const lb = await leo.boundingBox();
+  await tab.mouse.click(lb.x + lb.width / 2, lb.y + lb.height * 0.6);
+  await tab.waitForTimeout(400);
+  await tab.getByRole('button', { name: 'Flip' }).click();
+  await tab.locator('.sbf-bar select').nth(2).selectOption('surprised');
+  await tab.waitForTimeout(800);
+  await s('03-edited');
+  // a second scene
+  await tab.click('text=+ Scene');
+  await tab.waitForTimeout(1200);
+  await s('04-second-scene');
+  // back to scene 1 and reload: is everything saved?
+  await tab.locator('.sbf-thumb > button').first().click();
+  await tab.reload();
+  await tab.locator('.sbf').waitFor({ timeout: 15000 });
+  await tab.waitForTimeout(1500);
+  await s('05-after-reload');
+  say('items after reload', await tab.locator('.sbf-stagebox .sb-item').count());
 }
