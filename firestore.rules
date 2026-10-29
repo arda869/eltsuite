@@ -837,32 +837,9 @@ service cloud.firestore {
         && request.resource.data.get('name', '') is string && request.resource.data.get('name', '').size() <= 80;
       allow delete: if isOwner();
     }
-    // Conversations with Claude (see lib/claude.ts): super admins only. Claude's answers come from
-    // the Claude workflow (scripts/claude-inbox.mjs), which writes past these rules.
-    match /claudeThreads/{id} {
-      allow read, delete: if isOwner();
-      allow create: if isOwner() && request.resource.data.by == request.auth.uid
-        && request.resource.data.title is string && request.resource.data.title.size() <= 140;
-      allow update: if isOwner() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state', 'seen', 'updatedAt'])
-        && request.resource.data.state in ['waiting', 'answered', 'failed', 'working']
-        && (request.resource.data.state == resource.data.state || request.resource.data.state == 'waiting');
-      match /messages/{mid} {
-        allow read: if isOwner();
-        allow create: if isOwner() && request.resource.data.role == 'admin' && request.resource.data.by == request.auth.uid
-          && request.resource.data.text is string && request.resource.data.text.size() <= 20000;
-      }
-      match /shots/{sid} {
-        allow read: if isOwner();
-        allow create: if isOwner() && request.resource.data.by == request.auth.uid
-          && request.resource.data.data is string && request.resource.data.data.size() < 950000;
-      }
-    }
-    // Support tickets (see lib/tickets.ts): an organisation's admins open them for their
-    // organisation, the owner for anything. The owner sees and moves every ticket; an admin sees
-    // their organisation's, answers them, and closes or reopens them. Nobody but the owner deletes.
-    function ticketOf(id) { return get(/databases/$(database)/documents/tickets/$(id)).data; }
-    function seesTicket(t) { return isOwner() || (signedIn() && (t.by == request.auth.uid || adminOfOrg(t.get('org', null)))); }
-    match /tickets/{id} {
+    // Support tickets and conversations with Claude were removed: their old documents
+    // (tickets, claudeThreads) are kept but nobody can read or change them.
+{
       allow read: if seesTicket(resource.data);
       allow create: if (isOwner() || adminOfOrg(request.resource.data.get('org', null)))
         && request.resource.data.by == request.auth.uid

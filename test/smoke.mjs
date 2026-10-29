@@ -336,72 +336,6 @@ const J = {
     await see(c, 'text=Exam', 'the exam in the class');
     return s;
   },
-  'Support tickets: an admin opens one with pasted screenshots, the owner answers': async (b) => {
-    const s = await session(b);
-    await s.p.evaluate(() => {
-      const fs = JSON.parse(localStorage.getItem('mockfs'));
-      fs['orgs/o1'] = { name: 'Harbour School', plan: 'school', limitGb: 50, adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } } };
-      fs['accounts/teacher1'] = { ...(fs['accounts/teacher1'] ?? {}), org: 'o1' };
-      localStorage.setItem('mockfs', JSON.stringify(fs));
-    });
-    await s.p.goto(`${BASE}/support`);
-    await see(s.p, 'h1:has-text("Support tickets")', 'Support tickets');
-    await s.p.click('.hq-head button:has-text("New ticket")');
-    await s.p.fill('.hq-sheet input[name="title"]', 'The timetable shows Monday twice');
-    await s.p.fill('.hq-sheet textarea[name="description"]', 'Open the timetable, week view.');
-    // Two screenshots pasted, as from the clipboard.
-    await s.p.evaluate(async () => {
-      const shot = async (color) => {
-        const c = document.createElement('canvas');
-        c.width = 320;
-        c.height = 200;
-        const g = c.getContext('2d');
-        g.fillStyle = color;
-        g.fillRect(0, 0, 320, 200);
-        return new File([await new Promise((r) => c.toBlob(r, 'image/png'))], 'shot.png', { type: 'image/png' });
-      };
-      const dt = new DataTransfer();
-      dt.items.add(await shot('#c8764a'));
-      dt.items.add(await shot('#3667a6'));
-      document.querySelector('.hq-sheet textarea').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
-    });
-    await see(s.p, '.hq-sheet .hq-tk-pic >> nth=1', 'both pasted screenshots');
-    await axe(s.p, 'Support tickets: new ticket', A11Y_FOUND);
-    await s.p.click('.hq-sheet button:has-text("Send the ticket")');
-    await see(s.p, '.hq-drawer:has-text("The timetable shows Monday twice") .hq-tk-pic >> nth=1', 'the ticket with its screenshots');
-    await axe(s.p, 'Support tickets: a ticket', A11Y_FOUND);
-    await s.p.click('.hq-drawer .hq-tk-pic >> nth=0');
-    await see(s.p, '.hq-tk-big img', 'a screenshot, big');
-    await s.p.keyboard.press('Escape');
-    await see(s.p, '.hq-drawer', 'the ticket, still open behind it');
-    await s.p.keyboard.press('Escape');
-    await see(s.p, '.hq-table:has-text("The timetable shows Monday twice")', 'the ticket in the list');
-    // A super admin finds it in Super Admin, answers, hands it to Claude and marks it done.
-    await s.p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
-    await s.p.goto(`${BASE}/support`);
-    await see(s.p, '.hq-nav-i.on:has-text("Support tickets")', 'Super Admin, at the support tickets');
-    await s.p.click('.hq-table tbody tr:has-text("Monday twice")');
-    await s.p.fill('.hq-drawer textarea[name="reply"]', 'Fixed, thank you.');
-    await s.p.click('.hq-drawer .hq-tk-zone button:has-text("Send")');
-    await see(s.p, '.hq-tk-notes:has-text("Fixed, thank you.")', 'the answer');
-    await s.p.click('.hq-drawer button:has-text("Ask Claude")');
-    await s.p.fill('.hq-drawer textarea[name="claude"]', 'Week view only.');
-    await s.p.click('.hq-drawer button:has-text("Send to Claude")');
-    await see(s.p, '.hq-drawer:has-text("With Claude")', 'the ticket, with Claude');
-    await s.p.click('.hq-drawer button:has-text("Mark done")');
-    await see(s.p, '.hq-drawer .hq-tk-st.done', 'the ticket, done');
-    await s.p.click('.hq-drawer a:has-text("Open the conversation")');
-    await see(s.p, '.cl-msg.admin:has-text("Week view only.")', 'the conversation with Claude');
-    await see(s.p, '.cl-msg.wait', 'waiting for Claude');
-    await axe(s.p, 'Super Admin: Claude', A11Y_FOUND);
-    await s.p.click('.hq-nav-i:has-text("Super admins")');
-    await s.p.fill('.hq-addrow input[name="email"]', 'sofia@school.org');
-    await s.p.click('.hq-addrow button:has-text("Add")');
-    await s.p.click('.dialog button:has-text("Make them a super admin")');
-    await see(s.p, '.hq-supers:has-text("sofia@school.org")', 'the new super admin');
-    await axe(s.p, 'Super Admin: super admins', A11Y_FOUND);
-    return s;
-  },
   'Super admins: one made by another opens Super Admin': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => {
@@ -425,19 +359,6 @@ const J = {
     await see(s.p, '.gu-result:has-text("1 of 2")', 'the gap fill marked');
     await s.p.click('.gu-nav-i:has-text("Language notation")');
     await see(s.p, '.gu-card', 'the sound cards');
-    return s;
-  },
-  'Support tickets in a window, from any page': async (b) => {
-    const s = await session(b, { owner: true });
-    await s.p.goto(`${BASE}/classes`);
-    await s.p.click('.sf-tab');
-    await see(s.p, '.sf-win h1:has-text("Support tickets")', 'the support window');
-    await s.p.click('.sf-win button:has-text("New ticket")');
-    await see(s.p, '.sf-win .hq-sheet', 'the new ticket form, inside the window');
-    await axe(s.p, 'Support window', A11Y_FOUND);
-    await s.p.keyboard.press('Escape');
-    await s.p.click('.sf-x');
-    await see(s.p, '.sf-tab', 'the tab again');
     return s;
   },
   'Invitation codes: a super admin makes one': async (b) => {
