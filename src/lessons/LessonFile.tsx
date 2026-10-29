@@ -251,11 +251,11 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       </aside>
       <main className="lf-main">
         <span className="sh-switch lf-view" role="radiogroup" aria-label="View">
-          <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)}>
-            Digital
+          <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)} aria-label="Digital: the lesson on screen" data-tip="Digital: the lesson on screen">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M9 20h6M12 16.5V20" /></svg>
           </button>
-          <button type="button" role="radio" aria-checked={sheet} className={sheet ? 'on' : ''} onClick={() => setSheet(true)}>
-            Worksheet
+          <button type="button" role="radio" aria-checked={sheet} className={sheet ? 'on' : ''} onClick={() => setSheet(true)} aria-label="Worksheet: the lesson as printed pages" data-tip="Worksheet: the lesson as printed pages">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 3h7.5L19 7.5V21H7z" /><path d="M14.5 3v4.5H19M10 12h6M10 15.5h6M10 9h2" /></svg>
           </button>
         </span>
         {sheet && rows.length && sheetData ? (
