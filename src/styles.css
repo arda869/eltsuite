@@ -7891,14 +7891,17 @@ button.sbl-card:hover { border-color: var(--hair-strong); }
 .sbl-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); color: var(--ink); }
 .sbl-foot { margin-top: 8px; }
 /* Worksheet view: move and delete tasks from the left margin of the page */
-.sh-tools { position: absolute; left: -10.5mm; top: 0; display: flex; flex-direction: column; gap: 2px; opacity: 0; transition: opacity .12s; z-index: 2; }
+.sh-tools { --b: clamp(26px, calc(24px / var(--k, 1)), 44px); position: absolute; right: calc(100% + 1.2mm); top: 0; display: flex; flex-direction: column; gap: 2px; opacity: 0; transition: opacity .12s; z-index: 2; }
 .sh-block:hover > .sh-tools, .sh-block.on > .sh-tools, .sh-tools:focus-within { opacity: 1; }
-.sh-tools button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #a9a49d; cursor: pointer; }
+.sh-tools button { display: grid; place-items: center; width: var(--b); height: var(--b); padding: 0; border: 0; border-radius: 22%; background: transparent; color: #a9a49d; cursor: pointer; }
 .sh-tools button:hover, .sh-tools button:focus-visible { background: #f1efeb; color: #262420; }
 .sh-tools .sh-grip { cursor: grab; touch-action: none; }
 .sh-tools .sh-grip:active { cursor: grabbing; }
+.sh-tools .sh-grip .dots6 { width: calc(var(--b) * .32); height: auto; }
 .sh-tools .sh-del:hover { color: #a8473a; }
-.sh-tools .sh-del svg { width: 16px; height: 16px; }
+.sh-tools .sh-del svg { width: calc(var(--b) * .6); height: calc(var(--b) * .6); }
+/* A section heading is one line: its buttons sit in a row at the end of its rule */
+.sh-block.is-heading > .sh-tools { right: 0; top: 50%; transform: translateY(-50%); flex-direction: row; padding-left: 4px; background: #fff; border-radius: 8px; }
 .sh-block[data-dragging] { opacity: .45; }
 .sh-block[data-drop=before]::before, .sh-block[data-drop=after]::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; }
 .sh-block[data-drop=before]::before { top: -2.5mm; }

@@ -163,7 +163,7 @@ export function SheetView({ parts, blocks, after, zoom = 'width', focus, onMove 
   return (
     <div className="sh-desk" ref={desk}>
       <div className="sh-fit" style={{ width: PAGE.w * scale, height: (pages * P - PAGE.gap + stretch.extra) * scale }}>
-      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale !== 1 ? `scale(${scale})` : undefined }}>
+      <div className="sh-paper" style={{ width: PAGE.w, height: pages * P - PAGE.gap + stretch.extra, transform: scale !== 1 ? `scale(${scale})` : undefined, ['--k' as string]: scale }}>
         {Array.from({ length: pages }, (_, i) => (
           <div key={i} className={'sh-sheet' + (i === stretch.page && stretch.extra > 0 ? ' stretched' : '')} style={{ top: i * P + (i > stretch.page ? stretch.extra : 0), height: PAGE.h + (i === stretch.page ? stretch.extra : 0) }} aria-hidden="true">
             <Piece css={css} html={parts.band} />
