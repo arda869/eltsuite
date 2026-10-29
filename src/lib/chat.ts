@@ -27,7 +27,9 @@ export type Chat = {
   at: number;
   lastAt: number;
   last?: { text: string; name: string; by: string; mentions?: string[] };
-  seen?: Record<string, number>;
+  seen?: Record<string, number>; // when each person last opened it (for unread counts; private)
+  read?: Record<string, number>; // read receipts: as seen, but only from people who share them
+  got?: Record<string, number>; // when each person's app last received its messages (delivered)
 };
 export type Msg = {
   id: string;
@@ -42,10 +44,13 @@ export type Msg = {
   mentions?: string[];
   replyTo?: { id: string; name: string; text: string } | null;
   share?: { id: string; title: string; kind: string; ownerName: string } | null;
+  call?: { kind: 'audio' | 'video'; at: number } | null; // a call started in the chat (components/MsgCards)
+  file?: { id: string; title: string; kind: string; ownerName: string } | null; // a file from Files, shown with a preview
   reactions?: Record<string, string[]>;
   edited?: number;
   deleted?: boolean;
   shareAnswers?: boolean; // the others see everyone's answers once they have answered
+  fwd?: { name: string; at: number } | null; // forwarded: who first sent it, and when
 };
 // One person's answers to the questions in a message.
 export type ChatAnswer = { by: string; name: string; at: number; responses: Record<string, unknown>; score: number; total: number };
@@ -124,7 +129,29 @@ export async function addToGroup(c: Chat, people: Person[]) {
 }
 export const leaveGroup = (c: Chat, me: string) => updateDoc(doc(col, c.id), { members: arrayRemove(me) });
 export const renameGroup = (c: Chat, title: string) => updateDoc(doc(col, c.id), { title: title.trim() });
-export const markRead = (c: Chat, me: string) => (c.seen?.[me] ?? 0) < c.lastAt && updateDoc(doc(col, c.id), { [`seen.${me}`]: Date.now() }).catch(() => {});
+// Opening a chat marks it read; with read receipts on, the others can see that too.
+export const markRead = (c: Chat, me: string, receipts = true) => {
+  const now = Date.now();
+  const p: Record<string, number> = {};
+  if ((c.seen?.[me] ?? 0) < c.lastAt) p[`seen.${me}`] = now;
+  if (receipts && (c.read?.[me] ?? 0) < c.lastAt) p[`read.${me}`] = now;
+  if ((c.got?.[me] ?? 0) < c.lastAt) p[`got.${me}`] = now;
+  return Object.keys(p).length > 0 && updateDoc(doc(col, c.id), p).catch(() => {});
+};
+// The app has the new messages (it is open somewhere): "delivered", as two grey ticks.
+export function markGot(list: Chat[], me: string) {
+  const now = Date.now();
+  for (const c of list) if (c.last && c.last.by !== me && (c.got?.[me] ?? 0) < c.lastAt) void updateDoc(doc(col, c.id), { [`got.${me}`]: now }).catch(() => {});
+}
+// Where a message of mine has got to with each of the others: sent, delivered, read.
+export type Tick = 'sent' | 'got' | 'read';
+export function tickOf(c: Chat, m: Msg, me: string, receipts: boolean): Tick {
+  const others = c.members.filter((k) => k !== me);
+  if (!others.length) return 'read';
+  if (receipts && others.every((k) => (c.read?.[k] ?? 0) >= m.at)) return 'read';
+  if (others.every((k) => Math.max(c.got?.[k] ?? 0, c.read?.[k] ?? 0, c.seen?.[k] ?? 0) >= m.at)) return 'got';
+  return 'sent';
+}
 
 // Plain text of rich content, and who is tagged in it.
 export function plainOf(n?: JSONContent | null): string {
@@ -249,7 +276,7 @@ export function setSounds(on: boolean) {
 }
 
 // Each teacher chooses whether unread messages come by email, and after how long.
-export type MsgPrefs = { email: boolean; after: number }; // minutes
+export type MsgPrefs = { email: boolean; after: number; receipts?: boolean }; // after: minutes. receipts: off hides when you've read, and when others have
 export const AFTER: [number, string][] = [
   [15, '15 minutes'],
   [60, '1 hour'],
@@ -258,12 +285,12 @@ export const AFTER: [number, string][] = [
   [4320, '3 days'],
 ];
 export function useMsgPrefs(uid?: string) {
-  const [p, setP] = useState<MsgPrefs>({ email: false, after: 60 });
+  const [p, setP] = useState<MsgPrefs>({ email: false, after: 60, receipts: true });
   useEffect(() => {
     if (!uid) return;
     return onSnapshot(doc(db, 'users', uid), (s) => {
       const v = s.data()?.msgPrefs as Partial<MsgPrefs> | undefined;
-      setP({ email: !!v?.email, after: v?.after ?? 60 });
+      setP({ email: !!v?.email, after: v?.after ?? 60, receipts: v?.receipts !== false });
     }, () => {});
   }, [uid]);
   return p;

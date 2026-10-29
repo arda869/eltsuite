@@ -56,7 +56,7 @@ export async function startChatCall(c: Chat, me: Person, kind: CallKind): Promis
   const code = await makeCallLink({ url: r.url, title: chatTitle(c, me.key), kind, byName: me.name, chatId: c.id }).catch(() => undefined);
   const call: ChatCall = { url: r.url, room: r.name, kind, by: me.key, byName: me.name, at: Date.now(), ended: null, declined: [], ...(code ? { code } : {}) };
   await updateDoc(doc(db, 'chats', c.id), { call });
-  void sendMsg(c, me, { text: kind === 'video' ? 'Started a video call' : 'Started an audio call' }).catch(() => {});
+  void sendMsg(c, me, { text: kind === 'video' ? 'Started a video call' : 'Started an audio call', call: { kind, at: call.at } }).catch(() => {});
   return call;
 }
 export const endChatCall = (c: Chat) => updateDoc(doc(db, 'chats', c.id), { 'call.ended': Date.now() }).catch(() => {});

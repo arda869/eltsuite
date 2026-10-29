@@ -1,4 +1,6 @@
 import { CallButtons } from '../components/Rooms';
+import { usePhone } from '../lib/useMedia';
+import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
 import { ask } from '../lib/ask';
@@ -11,6 +13,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
+import { tickOf, type Tick } from '../lib/chat';
 import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
@@ -257,6 +260,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const [enterSends] = useState(enterSendOn);
   // Every message starts as plain text; Aa shows the writing tools for this one.
   const [rich, setRich] = useState(false);
+  const [tall, setTall] = useState(false);
+  const narrow = usePhone();
+  const boxRef = useRef<HTMLDivElement>(null);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
   // What was being typed is kept for this chat until it is sent: switching chats, minimising the
@@ -297,9 +303,15 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   // The class teacher decides whether learners may send task elements.
   const elementsOk = teacher || dir.learnerElements !== false;
   const [err, setErr] = useState('');
+  // Read receipts: a teacher can turn theirs off; then nobody sees when they've read, and they
+  // don't see when others have (as in WhatsApp). Learners always share them.
+  const prefs = useMsgPrefs(teacher ? me.key : undefined);
+  const receipts = !teacher || prefs.receipts !== false;
   useEffect(() => {
-    markRead(c, me.key);
-  }, [c.lastAt]); // eslint-disable-line react-hooks/exhaustive-deps
+    markRead(c, me.key, receipts);
+  }, [c.lastAt, receipts]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [forwarding, setForwarding] = useState<Msg | null>(null);
+  const [info, setInfo] = useState<Msg | null>(null);
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' });
   }, [msgs?.length]);
@@ -307,6 +319,17 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const reset = () => (keepDraft(null), setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
   // Others see that I am typing (sent at most every few seconds).
   const typedAt = useRef(0);
+  // One line until the words reach the buttons (or there is a second line); empty, one line again.
+  const oneLine = useRef(0);
+  useEffect(() => {
+    const pm = boxRef.current?.querySelector<HTMLElement>('.ProseMirror');
+    if (!pm) return;
+    if (isEmptyContent(content)) {
+      oneLine.current = oneLine.current || pm.offsetHeight;
+      return setTall(false);
+    }
+    if (!tall && oneLine.current && pm.scrollHeight > oneLine.current + 6) setTall(true);
+  }, [content, tall]);
   const onType = (v: JSONContent) => {
     setContent(v);
     if (!editing) keepDraft(v);
@@ -325,9 +348,21 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
     try {
       const { content: body, key } = splitKey(content);
       const m = { text: plainOf(content).trim(), content: body, key, blocks: tasky, mentions: [...new Set(mentionsOf(content))], ...(questionIds(content).length ? { shareAnswers: shareAns } : {}) };
-      if (editing) await editMsg(c, editing.id, m);
-      else chime('out'), await sendMsg(c, me, { ...m, replyTo: replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null });
+      // The box clears at once (the reply bar too); if sending fails, what was written comes back.
+      const was = { content, replyTo, editing };
+      const reply = replyTo ? { id: replyTo.id, name: replyTo.name, text: (replyTo.text || (replyTo.blocks ? 'A task element' : replyTo.share ? replyTo.share.title : '')).slice(0, 120) } : null;
       reset();
+      try {
+        if (was.editing) await editMsg(c, was.editing.id, m);
+        else chime('out'), await sendMsg(c, me, { ...m, replyTo: reply });
+      } catch (e) {
+        console.error(e);
+        setContent(was.content);
+        setEdKey((k) => k + 1);
+        setReplyTo(was.replyTo);
+        setEditing(was.editing);
+        setErr('We couldn’t send that just now. Check your connection and try again. Your message is still here.');
+      }
     } finally {
       setBusy(false);
     }
@@ -385,7 +420,10 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
                 first={i === 0 || list[i - 1].by !== m.by || m.at - list[i - 1].at > 5 * 60000}
                 last={i === list.length - 1 || list[i + 1].by !== m.by || list[i + 1].at - m.at > 5 * 60000}
                 teacher={teacher}
-                onReply={() => (setReplyTo(m), setEditing(null))}
+                onReply={() => (setReplyTo(m), setEditing(null), (document.querySelector('.chat-box .ProseMirror') as HTMLElement | null)?.focus())}
+                onForward={() => setForwarding(m)}
+                onInfo={() => setInfo(m)}
+                receipts={receipts}
                 onEdit={() => startEdit(m)}
                 onCopy={() => setCopying(m)}
                 onOpenShare={(id) => setOpenShare(id)}
@@ -435,12 +473,23 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           </span>
         )}
         {err && <span className="error">{err}</span>}
-        {/* The writing box holds its own buttons: formatting and send, at its right. */}
-        <div className="chat-box">
+        {/* The writing box starts as one line, with its buttons at the right. When the words reach
+            them, the box grows and the buttons move under the words, as in Teams. */}
+        <div className={'chat-box' + (tall || rich ? ' tall' : '')} ref={boxRef}>
           <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
-            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
+            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder={elementsOk && !narrow ? 'Write a message. @ to tag, / to add' : 'Write a message'} />
           </div>
           <span className="chat-in">
+            {teacher && colleaguesHere.length > 0 && (
+              <button type="button" className="icon-btn" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
+                <UiIcon name="mic" size={16} />
+              </button>
+            )}
+            {teacher && colleaguesHere.length > 0 && (
+              <button type="button" className="icon-btn" onClick={() => setSharing(true)} aria-label="Share material" data-tip="Share material: a lesson, task, document or media, for colleagues to copy">
+                <UiIcon name="link" size={16} />
+              </button>
+            )}
             <button type="button" className={'icon-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} aria-label="Formatting" data-tip={rich ? 'Back to plain text' : 'Formatting: bold, colour, lists, IPA and more'}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />
@@ -453,35 +502,25 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
             </button>
           </span>
         </div>
-        {((teacher && colleaguesHere.length > 0) || questionIds(content).length > 0) && (
+        {questionIds(content).length > 0 && (
           <span className="chat-actions">
-            {teacher && colleaguesHere.length > 0 && (
-              <button type="button" className="btn small-btn icon-only" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
-                <UiIcon name="mic" size={14} />
-              </button>
-            )}
-            {teacher && colleaguesHere.length > 0 && (
-              <button type="button" className="btn small-btn" onClick={() => setSharing(true)} data-tip="A lesson, task, document or media, for colleagues to copy">
-                <UiIcon name="link" size={14} /> Share material
-              </button>
-            )}
-            {questionIds(content).length > 0 && (
-              <label className="chat-opt" data-tip="Each person sees the others’ answers once they’ve sent their own. You always see everyone’s.">
-                <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
-                Others see answers after answering
-              </label>
-            )}
+            <label className="chat-opt" data-tip="Each person sees the others’ answers once they’ve sent their own. You always see everyone’s.">
+              <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
+              Others see answers after answering
+            </label>
           </span>
         )}
       </div>
       {sharing && <ShareMaterial c={c} me={me} to={colleaguesHere} onClose={() => setSharing(false)} />}
+      {forwarding && <ForwardDialog m={forwarding} from={c} me={me} onClose={() => setForwarding(null)} />}
+      {info && <MsgInfo m={info} c={c} me={me} receipts={receipts} onClose={() => setInfo(null)} />}
       {openShare && <SharedWindow id={openShare} onClose={() => setOpenShare('')} />}
       {copying && <CopyElement c={c} m={copying} onClose={() => setCopying(null)} />}
     </div>
   );
 }
 
-function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpenShare }: { m: Msg; c: Chat; me: Person; first: boolean; last?: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void }) {
+function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpenShare, onForward, onInfo, receipts }: { m: Msg; c: Chat; me: Person; first: boolean; last?: boolean; teacher: boolean; onReply: () => void; onEdit: () => void; onCopy: () => void; onOpenShare: (id: string) => void; onForward: () => void; onInfo: () => void; receipts: boolean }) {
   const [armed, setArmed] = useState(false);
   const mine = m.by === me.key;
   const who = c.names[m.by] ?? m.name; // as the class shows it
@@ -511,6 +550,28 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   const first1 = (n: string) => n.split(' ')[0];
   const tagged = m.mentions?.includes(me.key);
   const [copied, setCopied] = useState(false);
+  // On a phone, as in WhatsApp: swipe a message right to reply; swipe your own left for when it
+  // was sent, delivered and read.
+  const [swipe, setSwipe] = useState<{ dx: number }>({ dx: 0 });
+  const touch = useRef<{ x: number; y: number; on: boolean | null } | null>(null);
+  const swipeStart = (e: React.TouchEvent) => (touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, on: null });
+  const swipeMove = (e: React.TouchEvent) => {
+    const t = touch.current;
+    if (!t) return;
+    const dx = e.touches[0].clientX - t.x;
+    const dy = e.touches[0].clientY - t.y;
+    if (t.on === null && Math.hypot(dx, dy) > 10) t.on = Math.abs(dx) > Math.abs(dy) * 1.4; // sideways, not scrolling
+    if (!t.on) return;
+    const max = 84;
+    setSwipe({ dx: dx > 0 ? Math.min(max, dx) : mine && !isSelf(c) ? Math.max(-max, dx) : 0 });
+  };
+  const swipeEnd = () => {
+    const d = swipe.dx;
+    touch.current = null;
+    setSwipe({ dx: 0 });
+    if (d > 56) onReply();
+    else if (d < -56) onInfo();
+  };
   // On a phone there is no hover: a tap on the message shows Reply, reactions and the rest.
   const [sel, setSel] = useState(false);
   // Copy the message (its text and task elements, with answers) to paste into a task or another chat.
@@ -523,7 +584,17 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
     if (await writeClip(t, plainOf({ type: 'doc', content: t.content }))) setCopied(true), window.setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <div className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '')} id={'m-' + m.id}>
+    <div
+      className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '') + (swipe.dx ? ' swiping' : '')}
+      id={'m-' + m.id}
+      style={swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined}
+      onTouchStart={(e) => !m.deleted && swipeStart(e)}
+      onTouchMove={swipeMove}
+      onTouchEnd={swipeEnd}
+      onTouchCancel={() => setSwipe({ dx: 0 })}
+    >
+      {swipe.dx > 0 && <span className="bub-swipe-ic r" style={{ opacity: Math.min(1, swipe.dx / 60) }} aria-hidden="true"><UiIcon name="reply" size={16} /></span>}
+      {swipe.dx < 0 && <span className="bub-swipe-ic l" style={{ opacity: Math.min(1, -swipe.dx / 60) }} aria-hidden="true">i</span>}
       {/* Like a messaging app: the picture by the last message of a run, the name over the first (in groups), the time inside the bubble. */}
       {!mine && (last ? <span className="bub-av">{initial(who)}</span> : <span className="bub-av-space" />)}
       <div className="bub-col">
@@ -533,7 +604,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             {m.role === 'teacher' && <span className="ld-tag">Teacher</span>}
           </span>
         )}
-        <div className="bub-box" onClick={(e) => !m.deleted && !(e.target as HTMLElement).closest('button, a, input, textarea, select, label, .ProseMirror [contenteditable], [role=button]') && setSel((v) => !v)}>
+        <div className={'bub-box' + (m.fwd ? ' fwd' : '')} onClick={(e) => !m.deleted && !(e.target as HTMLElement).closest('button, a, input, textarea, select, label, .ProseMirror [contenteditable], [role=button]') && setSel((v) => !v)}>
           {m.replyTo && (
             <button type="button" className="bub-quote" onClick={() => document.getElementById('m-' + m.replyTo!.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
               <b>{m.replyTo.name.split(' ')[0]}</b> {m.replyTo.text}
@@ -546,7 +617,13 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             </span>
           ) : (
             <>
-              {m.content && !isEmptyContent(m.content) && (
+              {m.fwd && (
+                <span className="bub-fwd-h">
+                  <ForwardIcon /> Forwarded · {m.fwd.name.split(' ')[0]}, {dayText(m.fwd.at)} {clock(m.fwd.at)}
+                </span>
+              )}
+              {callOf(m) && <CallCard m={m} c={c} me={me} mine={mine} />}
+              {m.content && !isEmptyContent(m.content) && !(fileOf(m) && !m.file && /^I shared .* with you/.test(m.text)) && (
                 <div className={'bub-doc doc' + (m.blocks ? ' has-blocks' : '')} onCopy={(e) => setClip(e, clip(), window.getSelection()?.toString() || m.text)}>
                   <TaskRenderer content={m.content} responses={viewing ? (viewing.responses as Responses) : responses} onChange={(id, r) => !viewing && setResponses((x) => ({ ...x, [id]: r }))} results={viewing ? m.key ?? {} : checked} revealed={showKey && !viewing ? m.key ?? {} : null} classId={'chat:' + c.id} classmates={c.members.map((k) => ({ id: k, name: c.names[k] ?? '' }))} selfId={me.key} />
                 </div>
@@ -608,6 +685,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
               ) : !mine && (
                 <span className="hint bub-answers-note">{m.shareAnswers ? 'Answer to see everyone’s answers.' : `Only ${first1(who)} sees the answers.`}</span>
               ))}
+              {fileOf(m) && <FileCard id={fileOf(m)!} hint={m.file} />}
               {m.share && (
                 <button type="button" className="bub-share" onClick={() => onOpenShare(m.share!.id)}>
                   <FileIcon kind={(m.share.kind as FileKind) || 'lesson'} size={36} />
@@ -624,6 +702,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
           <span className="bub-meta">
             {m.edited && !m.deleted && <span>edited · </span>}
             {clock(m.at)}
+            {mine && !m.deleted && !isSelf(c) && <Ticks t={tickOf(c, m, me.key, receipts)} />}
           </span>
         </div>
         {m.reactions && Object.values(m.reactions).some((l) => l.length) && (
@@ -640,6 +719,16 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
             <button type="button" className="bt-i" onClick={onReply} aria-label="Reply" data-tip="Reply">
               <UiIcon name="reply" size={16} />
             </button>
+            {!callOf(m) && (
+              <button type="button" className="bt-i" onClick={onForward} aria-label="Forward" data-tip="Forward to another chat">
+                <ForwardIcon />
+              </button>
+            )}
+            {mine && !isSelf(c) && (
+              <button type="button" className="bt-i" onClick={onInfo} aria-label="Message info" data-tip="When it was sent, delivered and read">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.01" /></svg>
+              </button>
+            )}
             <span className="bub-emo">
               {QUICK_REACTS.map((k) => (
                 <button key={k} type="button" className={(m.reactions?.[k] ?? []).includes(me.key) ? 'on' : ''} onClick={() => react(c, m, k, me.key)} aria-label={iconByKey(k)?.label} data-tip={iconByKey(k)?.label}>
@@ -931,7 +1020,7 @@ function MsgSettings({ uid }: { uid: string }) {
   return (
     <span className="msg-set" ref={ref}>
       {appOpen && <AppSetupDialog onClose={() => setAppOpen(false)} />}
-      <button type="button" className="cd-icon" aria-label="Message settings" data-tip="Sounds and email" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="cd-icon" aria-label="Message settings" data-tip="Sounds, read receipts and email" onClick={() => setOpen((o) => !o)}>
         <UiIcon name="bell" size={15} />
       </button>
       {open && (
@@ -948,6 +1037,13 @@ function MsgSettings({ uid }: { uid: string }) {
           </button>
           {uid && (
             <>
+              <label className="switch-row">
+                <span>
+                  Read receipts
+                  <span className="hint">{prefs.receipts !== false ? 'Others see when you’ve read their messages, and you see when they’ve read yours' : 'Off: nobody sees when you’ve read, and you don’t see when others have'}</span>
+                </span>
+                <input type="checkbox" checked={prefs.receipts !== false} onChange={(e) => saveMsgPrefs(uid, { ...prefs, receipts: e.target.checked })} />
+              </label>
               <label className="switch-row">
                 <span>
                   Email me about unread messages
@@ -988,5 +1084,144 @@ function UndoDelete({ c, id }: { c: Chat; id: string }) {
     <button type="button" className="btn link small bub-undo" onClick={(e) => (e.stopPropagation(), void undoDelete(c, id))}>
       Undo
     </button>
+  );
+}
+
+const ForwardIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M14 5l7 7-7 7M21 12H10a6 6 0 0 0-6 6v1" />
+  </svg>
+);
+const dayText = (t: number) => {
+  const d = new Date(t);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return 'today';
+  if (d.toDateString() === new Date(Date.now() - 864e5).toDateString()) return 'yesterday';
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+};
+
+// Sent (one grey tick), delivered (two grey), read (two in colour).
+function Ticks({ t }: { t: Tick }) {
+  const label = t === 'read' ? 'Read' : t === 'got' ? 'Delivered' : 'Sent';
+  return (
+    <span className={'bub-ticks t-' + t} aria-label={label} title={label}>
+      <svg width={t === 'sent' ? 12 : 16} height="10" viewBox={t === 'sent' ? '0 0 12 10' : '0 0 16 10'} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M1 5.5 4 8.5 10.5 1.5" />
+        {t !== 'sent' && <path d="M7.5 8 8 8.5 14.5 1.5" />}
+      </svg>
+    </span>
+  );
+}
+
+// Your message: when it was sent, and when each person got it and read it.
+function MsgInfo({ m, c, me, receipts, onClose }: { m: Msg; c: Chat; me: Person; receipts: boolean; onClose: () => void }) {
+  const others = c.members.filter((k) => k !== me.key);
+  const when = (t: number) => `${dayText(t)}, ${clock(t)}`;
+  const row = (k: string) => {
+    const read = receipts && (c.read?.[k] ?? 0) >= m.at ? c.read![k] : 0;
+    const got = Math.max(c.got?.[k] ?? 0, c.read?.[k] ?? 0, c.seen?.[k] ?? 0) >= m.at;
+    return (
+      <li key={k}>
+        <PersonFace id={k} name={c.names[k] ?? ''} size={30} />
+        <span className="mi-who">
+          <b>{c.names[k] ?? 'Someone'}</b>
+          <span className="hint">{read ? `Read by ${when(read)}` : got ? 'Delivered, not read yet' : 'Not delivered yet: their app isn’t open'}</span>
+        </span>
+        <Ticks t={read ? 'read' : got ? 'got' : 'sent'} />
+      </li>
+    );
+  };
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog mi-dialog" role="dialog" aria-label="Message info" onClick={(e) => e.stopPropagation()}>
+        <h2>Message info</h2>
+        <p className="mi-text">{m.text || (m.file ? m.file.title : m.share ? m.share.title : 'A task element')}</p>
+        <p className="hint">Sent {when(m.at)}</p>
+        <ul className="mi-list">{others.map(row)}</ul>
+        {!receipts && <p className="hint">Your read receipts are off, so you don’t see when others read your messages. Turn them on under the bell in Messages.</p>}
+        <div className="row-between" style={{ justifyContent: 'flex-end' }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Forward a message to other chats: it arrives in a frame saying who sent it first, and when.
+function ForwardDialog({ m, from, me, onClose }: { m: Msg; from: Chat; me: Person; onClose: () => void }) {
+  const chats = useChats(me.key);
+  const dirAll = useDirectory();
+  const list = useMemo(() => withShownNames(chats, dirAll?.nameFor) ?? [], [chats, dirAll]);
+  const [q, setQ] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const s = q.trim().toLowerCase();
+  const shown = list.filter((x) => x.id !== from.id && (!s || chatTitle(x, me.key).toLowerCase().includes(s))).slice(0, 60);
+  const go = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      for (const id of picked) {
+        const to = list.find((x) => x.id === id);
+        if (!to) continue;
+        let content = m.content ?? null;
+        // Pictures in it come along, so the people there can see them.
+        if (content) {
+          const map = await carryMedia('chat:' + from.id, 'chat:' + to.id, [content]).catch(() => ({}) as Record<string, string>);
+          content = remap(content, map) as JSONContent;
+        }
+        await sendMsg(to, me, {
+          text: m.text,
+          content,
+          ...(m.key ? { key: m.key } : {}),
+          blocks: m.blocks ?? 0,
+          mentions: [],
+          share: m.share ?? null,
+          file: m.file ?? null,
+          fwd: m.fwd ?? { name: from.names[m.by] ?? m.name, at: m.at },
+        });
+      }
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setErr('We couldn’t forward it just now. Check your connection and try again.');
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="scrim" onClick={onClose}>
+      <div className="dialog fw-dialog" role="dialog" aria-label="Forward" onClick={(e) => e.stopPropagation()}>
+        <h2>Forward to…</h2>
+        <input className="fw-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a chat" aria-label="Find a chat" autoFocus />
+        <ul className="fw-list">
+          {shown.map((x) => {
+            const on = picked.includes(x.id);
+            const other = x.kind === 'dm' ? x.members.find((k) => k !== me.key) : undefined;
+            return (
+              <li key={x.id}>
+                <label className={on ? 'on' : ''}>
+                  <input type="checkbox" checked={on} onChange={() => setPicked((p) => (on ? p.filter((y) => y !== x.id) : [...p, x.id]))} />
+                  {other ? <PersonFace id={other} name={chatTitle(x, me.key)} size={28} /> : <span className="fw-g"><UiIcon name="groups" size={15} /></span>}
+                  <span>{chatTitle(x, me.key)}</span>
+                </label>
+              </li>
+            );
+          })}
+          {!shown.length && <li className="hint">No other chats yet.</li>}
+        </ul>
+        {err && <span className="error">{err}</span>}
+        <div className="row-between" style={{ justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn primary" disabled={!picked.length || busy} onClick={() => void go()}>
+            {busy ? 'Forwarding…' : picked.length > 1 ? `Forward to ${picked.length} chats` : 'Forward'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { autoFocusOk } from '../lib/keys';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { withShownNames, isSelf, chatTitle, chime, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
+import { withShownNames, isSelf, chatTitle, chime, markGot, unreadIn, useChats, useUnread, openChat, type Chat, type Person } from '../lib/chat';
 import { useDirectory, whoLine, type Directory } from '../lib/directory';
 import { isProxyTab } from '../lib/proxy';
 import { usePhone } from '../lib/useMedia';
@@ -137,6 +137,10 @@ export function ChatDock() {
     if (me && user && profile?.avatar) publishFace(me, user.uid, profile.avatar);
   }, [me, user, profile?.avatar]);
 
+  // Delivered: this app has the new messages (two grey ticks for the sender).
+  useEffect(() => {
+    if (chats && me && !isProxyTab()) markGot(chats, me);
+  }, [chats, me]);
   // A chime for each new message from someone else (not for the ones already there).
   const seen = useRef<Record<string, number> | null>(null);
   useEffect(() => {
@@ -144,11 +148,20 @@ export function ChatDock() {
     const prev = seen.current;
     seen.current = Object.fromEntries(chats.map((c) => [c.id, c.lastAt]));
     if (!prev) return;
-    if (chats.some((c) => c.last && c.last.by !== me && c.lastAt > (prev[c.id] ?? 0))) chime('in');
+    const fresh = chats.filter((c) => c.last && c.last.by !== me && c.lastAt > (prev[c.id] ?? 0));
+    if (!fresh.length) return;
+    chime('in');
+    // On a phone, away from Messages: a banner at the top with the message.
+    const c = fresh.sort((a, b) => b.lastAt - a.lastAt)[0];
+    if (phoneRef.current && !location.pathname.startsWith('/messages') && !isProxyTab()) setBanner({ id: c.id, at: c.lastAt, title: chatTitle(c, me), name: c.kind === 'group' ? (c.last?.name ?? '').split(' ')[0] : '', text: c.last?.text ?? '' });
   }, [chats, me]);
+  const [banner, setBanner] = useState<Banner | null>(null);
+  const phoneRef = useRef(phone);
+  phoneRef.current = phone;
+  const bannerEl = banner && phone && !loc.pathname.startsWith('/messages') ? <MsgBanner key={banner.at} b={banner} onDone={() => setBanner(null)} /> : null;
 
   const hidden = !me || isProxyTab() || phone || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || loc.pathname.startsWith('/call/') || document.body.classList.contains('presenting');
-  if (hidden) return null;
+  if (hidden) return bannerEl;
   const list = chats ?? [];
   const unread = list.filter((c) => unreadIn(c, me!)).length;
   const wins = st.wins.filter((w) => w.id === 'list' || list.some((c) => c.id === w.id) || !chats || Date.now() - (w.at ?? 0) < 20000);
@@ -285,7 +298,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
   return (
     <div ref={winRef} onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('[role=menu]') && go('min')} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
       {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
-      <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && toggleMax(w.id, !w.max)}>
+      <div className="dock-head">
         {cur ? (
           <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
             {other ? <PersonFace id={other} name={title} size={28} status /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
@@ -306,9 +319,13 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
         <button type="button" className="icon-btn dock-ic" onClick={() => go('min')} aria-label="Minimise" data-tip="Minimise">
           <WinIcon d="M5 12h14" />
         </button>
-        <button type="button" className="icon-btn dock-ic" onClick={() => toggleMax(w.id, !w.max)} aria-label={w.max ? 'Smaller' : 'Larger'} data-tip={w.max ? 'Smaller' : 'Larger'}>
-          <WinIcon d={w.max ? 'M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5' : 'M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5'} />
-        </button>
+        {/* No "larger": the full Messages page (open in a new tab, next) is the big view. A window
+            left large from before can still go back. */}
+        {w.max && (
+          <button type="button" className="icon-btn dock-ic" onClick={() => toggleMax(w.id, false)} aria-label="Smaller" data-tip="Smaller">
+            <WinIcon d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
+          </button>
+        )}
         <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in Messages" data-tip="Open in Messages" onClick={() => closeWin(w.id)}>
           <WinIcon d="M14 4h6v6M20 4l-8 8M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
         </Link>
@@ -423,5 +440,61 @@ function DockFind({ me, dir, chats, onOpen, q, setQ }: { me: string; dir: Direct
         </>
       )}
     </>
+  );
+}
+
+// A new message on a phone, away from Messages: a banner at the top with who and what. A tap opens
+// the chat; a swipe to the right (or a few seconds) sends it away.
+type Banner = { id: string; at: number; title: string; name: string; text: string };
+function MsgBanner({ b, onDone }: { b: Banner; onDone: () => void }) {
+  const navigate = useNavigate();
+  const [dx, setDx] = useState(0);
+  const [gone, setGone] = useState(false);
+  const start = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const leave = () => (setGone(true), window.setTimeout(onDone, 220));
+  useEffect(() => {
+    const t = window.setTimeout(leave, 6000);
+    return () => window.clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div
+      className={'msg-banner' + (gone ? ' gone' : '') + (start.current?.moved ? ' dragging' : '')}
+      role="status"
+      aria-live="polite"
+      style={dx ? { transform: `translateX(${dx}px)`, opacity: Math.max(0.2, 1 - dx / 260) } : undefined}
+      onPointerDown={(e) => {
+        start.current = { x: e.clientX, y: e.clientY, moved: false };
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      }}
+      onPointerMove={(e) => {
+        const s0 = start.current;
+        if (!s0) return;
+        const d = e.clientX - s0.x;
+        if (Math.abs(d) > 6) s0.moved = true;
+        setDx(Math.max(0, d));
+      }}
+      onPointerUp={() => {
+        const s0 = start.current;
+        start.current = null;
+        if (s0?.moved) return dx > 70 ? leave() : setDx(0);
+        onDone();
+        navigate(`/messages?c=${b.id}`);
+      }}
+      onPointerCancel={() => ((start.current = null), setDx(0))}
+    >
+      <span className="msg-banner-ic" aria-hidden="true">
+        <UiIcon name="message" size={18} />
+      </span>
+      <span className="msg-banner-t">
+        <b>{b.title}</b>
+        <span>
+          {b.name ? `${b.name}: ` : ''}
+          {b.text}
+        </span>
+      </span>
+      <span className="msg-banner-hint" aria-hidden="true">
+        now
+      </span>
+    </div>
   );
 }
