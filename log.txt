@@ -1,0 +1,16 @@
+shot preview-out/01-list-phone.png
+shot preview-out/02-chat-phone.png
+shot preview-out/03-tapped-theirs.png
+at the edge DIV.bub theirs last picked o:none/3px b:0px s:none || DIV.chat-day o:none/3px b:0px s:none || DIV.chat-body o:none/3px b:0px s:none || DIV.chat o:none/3px b:0px s:none || MAIN.msg-main o:none/3px b:0px s:none || DIV.msg has-chat o:none/3px b:0px s:none
+menus open 1
+shot preview-out/04-tapped-mine.png
+page scrolls by 0 body overflow hidden
+after tap elsewhere 0
+question Delete this chat?
+
+It goes for everyone in it, with all its messages. You can’t undo this.
+
+Keep it
+Delete chat
+shot preview-out/05-delete-ask.png
+chats left 0 /messages
