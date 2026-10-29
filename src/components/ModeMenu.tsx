@@ -12,7 +12,7 @@ const LABEL: Record<Mode, { icon: string; label: string }> = {
   preview: { icon: 'revealAll', label: 'Learner view' },
 };
 
-export function ModeMenu({ mode, live, online = 0, onMode, onEnd, endLabel, viewAs, children, noEdit }: { noEdit?: boolean; mode: Mode; live: boolean; online?: number; onMode: (m: Mode) => void; onEnd: () => void; endLabel?: string; viewAs?: ReactNode; children?: ReactNode }) {
+export function ModeMenu({ mode, live, online = 0, onMode, onEnd, endLabel, viewAs, children, noEdit, noTeach }: { noEdit?: boolean; noTeach?: boolean; mode: Mode; live: boolean; online?: number; onMode: (m: Mode) => void; onEnd: () => void; endLabel?: string; viewAs?: ReactNode; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [asOpen, setAsOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -55,6 +55,8 @@ export function ModeMenu({ mode, live, online = 0, onMode, onEnd, endLabel, view
           </button>
           )}
 
+          {/* Only lessons are taught live; homework, tests and practice are done on learners' own time. */}
+          {(!noTeach || live) && (
           <div className={'mode-row' + (mode === 'teach' || mode === 'present' ? ' on' : '')}>
             <button role="menuitemradio" aria-checked={mode === 'teach' || mode === 'present'} className="mode-main" onClick={() => pick('teach')}>
               <UiIcon name="sync" />
@@ -67,6 +69,7 @@ export function ModeMenu({ mode, live, online = 0, onMode, onEnd, endLabel, view
               <span />
             </button>
           </div>
+          )}
           {confirm && (
             <div className="mode-confirm" role="alertdialog" aria-label="Finish teaching?">
               <strong>
