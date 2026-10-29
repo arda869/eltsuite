@@ -405,7 +405,7 @@ export function LearnerAccount({ uid, classId }: { uid: string; classId: string 
   const [mode, setMode] = useState<'off' | 'optional' | 'required' | null>(null);
   const [email, setEmail] = useState('');
   const [saved, setSaved] = useState('');
-  const [google, setGoogle] = useState(() => auth.currentUser?.providerData.find((p) => p.providerId === 'google.com')?.email ?? '');
+  const [google, setGoogle] = useState(() => auth.currentUser?.providerData?.find((p) => p.providerId === 'google.com')?.email ?? '');
   const [msg, setMsg] = useState('');
   useEffect(() => {
     getDoc(doc(db, 'classes', classId)).then((s) => setMode(s.data()?.accounts?.email ?? 'optional'), () => setMode('optional'));
