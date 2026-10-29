@@ -17,17 +17,13 @@ import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Supe
 import { SuperAdmins } from './admin/SuperAdmins';
 import { InviteCodes } from './admin/InviteCodes';
 import { codeState, useCodes } from '../lib/codes';
-import { ClaudeArea } from './admin/Claude';
-import { SupportTickets } from './SupportPage';
-import { useTickets } from '../lib/tickets';
-import { useThreads } from '../lib/claude';
 import { WAIT_DAYS } from './admin/attention';
 import { daysSince, plural } from './admin/ui';
 import type { OrgData, Go, SuperData } from './admin/types';
 import './admin.css';
 
 // Super Admin (/admin) is for super admins (the owner, and whoever they make one): every teacher,
-// organisation and switch, the support tickets, and conversations with Claude.
+// organisation and switch.
 // Organisation admin (/org-admin) is for an organisation's admins: their organisation only.
 // Where you are lives in the address (?org=…&tab=…), so every page can be linked to and Back works.
 
@@ -147,8 +143,6 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
   const accounts = useAccounts(true);
   const classes = useAllClasses(true);
   const invites = useAllInvites(true);
-  const tickets = useTickets(true, null);
-  const threads = useThreads(true);
   const codes = useCodes(true);
   const d: SuperData = { teachers: teachers ?? [], accounts, orgs, classes: classes ?? [], invites, loading: teachers === null || classes === null };
   const items: NavItem[] = [
@@ -158,8 +152,6 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
-    { k: 'tickets', label: 'Support tickets', icon: 'help', n: tickets?.filter((t) => t.status === 'open').length },
-    { k: 'claude', label: 'Claude', icon: 'message', n: threads?.filter((t) => t.state === 'answered' && !t.seen).length || undefined },
     { k: 'activity', label: 'Activity', icon: 'timer' },
     { k: 'supers', label: 'Super admins', icon: 'lock' },
   ];
@@ -205,8 +197,6 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
           {known === 'apps' && <SuperApps d={d} />}
           {known === 'defaults' && <SuperDefaults />}
-          {known === 'tickets' && <SupportTickets owner orgs={orgs} />}
-          {known === 'claude' && <ClaudeArea threads={threads} params={params} go={go} />}
           {known === 'activity' && <SuperUsage teachers={teachers ?? []} />}
           {known === 'supers' && <SuperAdmins />}
         </main>
