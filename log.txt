@@ -1,0 +1,6 @@
+shot preview-out/01-chooser.png
+scenes in the lesson 2
+shot preview-out/02-in-lesson-editor.png
+shot preview-out/03-learner-view.png
+scenes for learners 2
+shot preview-out/04-worksheet.png
