@@ -1,0 +1,128 @@
+ok start: blank A4
+shot a01-blank
+elements 26
+ok element: Square frame
+ok element: Rounded frame
+ok element: Round frame
+ok element: Photo with a border
+ok element: Speech bubble
+ok element: Thought bubble
+ok element: Shout
+ok element: Cloud
+ok element: Rectangle
+ok element: Circle
+ok element: Triangle
+ok element: Diamond
+ok element: Pentagon
+ok element: Hexagon
+ok element: Star
+ok element: Heart
+ok element: Banner
+ok element: Tick
+ok element: Cross
+ok element: Cloud
+ok element: Line
+ok element: Arrow
+ok element: Two-way arrow
+ok element: Writing lines
+ok element: A name box
+ok element: A number
+shot a02-elements
+ok text style: Add a title
+ok text style: Add a heading
+ok text style: Add some text
+ok text style: An instruction
+ok text style: A SMALL LABEL
+ok text style: Handwriting
+ok ipa
+shot a03-text
+ok person
+ok things
+shot a04-people
+ok upload picture
+ok free pictures tab
+ok your files tab
+shot a05-pictures
+ok teach: Add labels
+ok teach: Add a word bank
+ok teach: Blur
+ok teach: Pixels
+ok teach: Cover
+ok teach: Both
+ok teach: Only A
+ok teach: Only B
+ok teach: A QR code
+shot a06-teach
+ok draw: Pen
+ok draw: Marker
+ok draw: Highlighter
+ok draw: rubber
+ok draw: done
+shot a07-draw
+things on the page 50
+ok layer hide
+ok layer lock
+ok layer rename
+ok layer select
+shot a08-layers
+ok props: Picture
+ok props: Text
+ok props: Shape
+ok props: Drawing
+ok props: Person
+FAIL props: Label — no Label on the page
+ok props: Cover
+ok props: Word bank
+ok props: QR code
+ok props: Writing lines
+ok props: Empty frame
+shot a09-after-props
+ok align all
+shot a10-aligned
+ok undo many
+ok redo some
+ok float bar
+ok keys
+ok zoom buttons
+ok page add
+ok page menu: every item
+pages 3
+ok template: Blank A4
+ok template: Label the picture
+ok template: Flashcards
+ok template: Spot the difference
+ok template: Information gap
+ok template: Classroom poster
+ok template: Picture story
+ok template: Bingo card
+ok template: Board slide
+ok template: Certificate
+ok template: Square post
+ok blank sizes
+pages 20
+shot a11-many-pages
+ok page props
+shot a12-page-props
+ok view Learner A
+ok view Learner B
+ok view Everything
+ok learners copy
+  file Untitled design.png
+ok download Picture (PNG)
+  file Untitled design.jpg
+ok download Picture (JPG)
+  file Untitled design.pdf
+ok download PDF
+MESSAGE The page is in your Files as a picture. You can add it to any lesson or task from there. Got it
+ok download Save as a picture in Files
+  file Untitled design – cards.pdf
+ok download cards
+FAILS on a computer 1
+shot m01-phone
+ok phone drawer Elements
+ok phone drawer Text
+ok phone drawer Pictures
+ok phone drawer Teaching
+ok phone drawer Layers
+ok phone: add text and see its settings
+FAILS on a phone 0
