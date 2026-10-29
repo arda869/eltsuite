@@ -137,6 +137,12 @@ function Hatch({ x, y, n = 3, len = 9 }: { x: number; y: number; n?: number; len
   return <path d={Array.from({ length: n }, (_, i) => `M${x + i * 4} ${y}l${-len * 0.45} ${len}`).join('')} stroke={INK} strokeWidth={1.2} opacity={0.35} />;
 }
 
+// The viewBox that shows just a person's head and shoulders (children are drawn smaller, lower down).
+export function faceBox(who: string) {
+  const k = PEOPLE[who]?.scale ?? 1;
+  return `${100 * (1 - k) + 40 * k} ${286 * (1 - k)} ${120 * k} ${118 * k}`;
+}
+
 export function PersonArt({ who = 'maya', p = 'stand', face = 'happy' }: { who?: string; p?: string; face?: string }) {
   const c = PEOPLE[who] ?? PEOPLE.maya;
   const ps = (POSES[p] ?? POSES.stand).p;
