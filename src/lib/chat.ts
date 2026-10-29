@@ -1,6 +1,6 @@
 import { quietNow } from './status';
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, type DocumentData } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDoc, limit, onSnapshot, orderBy, query, setDoc, updateDoc, where, arrayUnion, arrayRemove, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db, rtdb } from './firebase';
 import { onDisconnect, onValue, ref, remove, set } from 'firebase/database';
@@ -30,6 +30,7 @@ export type Chat = {
   seen?: Record<string, number>; // when each person last opened it (for unread counts; private)
   read?: Record<string, number>; // read receipts: as seen, but only from people who share them
   got?: Record<string, number>; // when each person's app last received its messages (delivered)
+  hidden?: Record<string, number>; // deleted from this person's list (and its messages before then); a new message brings it back
 };
 export type Msg = {
   id: string;
@@ -62,7 +63,11 @@ export function useChats(me?: string) {
   const [list, setList] = useState<Chat[] | null>(null);
   useEffect(() => {
     if (!me) return;
-    return onSnapshot(query(col, where('members', 'array-contains', me)), (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Chat, 'id'>) })).sort((a, b) => b.lastAt - a.lastAt)), () => setList([]));
+    return onSnapshot(
+      query(col, where('members', 'array-contains', me)),
+      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Chat, 'id'>) })).filter((c) => !((c.hidden?.[me] ?? 0) >= c.lastAt)).sort((a, b) => b.lastAt - a.lastAt)),
+      () => setList([]),
+    );
   }, [me]);
   return list;
 }
@@ -127,6 +132,10 @@ export async function addToGroup(c: Chat, people: Person[]) {
   if (lc && !c.classId) patch.classId = lc;
   await updateDoc(doc(col, c.id), patch);
 }
+// Deleting a chat: the person who started it deletes it for everyone; anyone else deletes it from
+// their own list, with its messages so far (as in WhatsApp). A new message brings it back.
+export const deletesForAll = (c: Chat, me: string) => c.createdBy === me;
+export const deleteChat = (c: Chat, me: string) => (deletesForAll(c, me) ? deleteDoc(doc(col, c.id)) : updateDoc(doc(col, c.id), { [`hidden.${me}`]: Date.now() }));
 export const leaveGroup = (c: Chat, me: string) => updateDoc(doc(col, c.id), { members: arrayRemove(me) });
 export const renameGroup = (c: Chat, title: string) => updateDoc(doc(col, c.id), { title: title.trim() });
 // Opening a chat marks it read; with read receipts on, the others can see that too.

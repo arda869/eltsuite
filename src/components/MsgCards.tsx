@@ -20,7 +20,7 @@ export function callOf(m: Msg): { kind: 'audio' | 'video'; at: number } | null {
 }
 const mins = (ms: number) => {
   const m = Math.round(ms / 60000);
-  return m < 1 ? 'less than a minute' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}`.trim();
+  return m < 1 ? 'under 1 min' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}`.trim();
 };
 export function CallCard({ m, c, me, mine }: { m: Msg; c: Chat; me: Person; mine: boolean }) {
   const k = callOf(m)!;
@@ -46,7 +46,8 @@ export function CallCard({ m, c, me, mine }: { m: Msg; c: Chat; me: Person; mine
       <span className="msg-call-t">
         <b>{k.kind === 'video' ? 'Video call' : 'Audio call'}</b>
         <span>
-          {who} started it · {status}
+          {status}
+          {!mine && !on ? ` · from ${who}` : ''}
         </span>
       </span>
       {on && call && (

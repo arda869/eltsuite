@@ -1,8 +1,9 @@
 import { CallButtons } from '../components/Rooms';
+import { GifPicker } from '../components/GifPicker';
 import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
 import { NSelect } from '../components/Select';
 import { whoLine } from '../lib/directory';
-import { ask } from '../lib/ask';
+import { ask, tell } from '../lib/ask';
 import { FileIcon, type FileKind } from '../components/FileIcon';
 import { startSessionWith } from './StudioSession';
 import { isProxyTab } from '../lib/proxy';
@@ -12,7 +13,7 @@ import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { tickOf, type Tick } from '../lib/chat';
+import { tickOf, deleteChat, deletesForAll, type Tick } from '../lib/chat';
 import { withShownNames, isSelf, taskPartsOf, addToGroup, blocksIn, chatTitle, deleteWithUndo, undoDelete, undoUntil, editMsg, isEmptyContent, leaveGroup, markRead, mentionsOf, openChat, plainOf, react, QUICK_REACTS, WORD_REACTS, renameGroup, sendMsg, setTyping, unreadIn, saveAnswer, useAnswers, enterSendOn, type ChatAnswer, useChats, useMessages, useTyping, chime, AFTER, saveMsgPrefs, setSounds, soundsOn, useMsgPrefs, type Chat, type Msg, type Person } from '../lib/chat';
 import { useDirectory, type Directory } from '../lib/directory';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey } from '../lib/questions';
@@ -260,6 +261,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   // Every message starts as plain text; Aa shows the writing tools for this one.
   const [rich, setRich] = useState(false);
   const [tall, setTall] = useState(false);
+  const [gifOpen, setGifOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
@@ -374,6 +376,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
 
   const days: [string, Msg[]][] = [];
   for (const m of msgs ?? []) {
+    if (m.at <= (c.hidden?.[me.key] ?? 0)) continue; // deleted from my side
     const d = dayOf(m.at);
     if (days[days.length - 1]?.[0] !== d) days.push([d, []]);
     days[days.length - 1][1].push(m);
@@ -396,6 +399,21 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
             Group
           </button>
         )}
+        <button
+          type="button"
+          className="icon-btn chat-del"
+          aria-label="Delete this chat"
+          data-tip={deletesForAll(c, me.key) && !isSelf(c) ? 'Delete this chat for everyone' : 'Delete this chat'}
+          onClick={async () => {
+            const all = deletesForAll(c, me.key) && !isSelf(c);
+            const ok = await ask(all ? 'Delete this chat? It goes for everyone in it, with all its messages. You can’t undo this.' : isSelf(c) ? 'Delete your notes to self? You can’t undo this.' : 'Delete this chat? It goes from your list, with its messages so far. The others keep theirs. If someone writes again, it comes back.', { ok: 'Delete chat', cancel: 'Keep it' });
+            if (!ok) return;
+            await deleteChat(c, me.key).catch(() => void tell('We couldn’t delete the chat just now. Try again.'));
+            onBack();
+          }}
+        >
+          <UiIcon name="trash" size={16} />
+        </button>
         {onMin && (
           <button type="button" className="btn small-btn chat-min" onClick={onMin} data-tip="Keep this chat in a small window while you work in other apps">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg> Minimise
@@ -473,6 +491,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         {err && <span className="error">{err}</span>}
         {/* The writing box starts as one line, with its buttons at the right. When the words reach
             them, the box grows and the buttons move under the words, as in Teams. */}
+        {gifOpen && <GifPicker space={'chat:' + c.id} onClose={() => setGifOpen(false)} onPick={(src, alt) => (setGifOpen(false), chime('out'), void sendMsg(c, me, { text: 'GIF', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'picture', attrs: { src, alt, size: 'm', mark: '' } }] }] }, blocks: 0, mentions: [] }).catch(() => setErr('We couldn’t send the GIF. Try again.')))} />}
         <div className={'chat-box' + (tall || rich ? ' tall' : '')} ref={boxRef}>
           <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
             <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder="" />
@@ -488,6 +507,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
                 <UiIcon name="link" size={16} />
               </button>
             )}
+            <button type="button" className={'icon-btn chat-gif' + (gifOpen ? ' on' : '')} onClick={() => setGifOpen((v) => !v)} aria-label="GIF" aria-expanded={gifOpen} data-tip="Send a GIF">
+              GIF
+            </button>
             <button type="button" className={'icon-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} aria-label="Formatting" data-tip={rich ? 'Back to plain text' : 'Formatting: bold, colour, lists, IPA and more'}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />
@@ -571,7 +593,22 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
     else if (d < -56) onInfo();
   };
   // On a phone there is no hover: a tap on the message shows Reply, reactions and the rest.
-  const [sel, setSel] = useState(false);
+  const [sel, setSelRaw] = useState(false);
+  // One message's menu at a time; a tap anywhere else closes it.
+  const setSel = (v: boolean | ((x: boolean) => boolean)) =>
+    setSelRaw((x) => {
+      const n = typeof v === 'function' ? v(x) : v;
+      if (n) window.dispatchEvent(new CustomEvent('bub-sel', { detail: m.id }));
+      return n;
+    });
+  useEffect(() => {
+    if (!sel) return;
+    const other = (e: Event) => (e as CustomEvent).detail !== m.id && setSelRaw(false);
+    const away = (e: PointerEvent) => !(e.target as HTMLElement).closest?.(`#m-${CSS.escape(m.id)}`) && setSelRaw(false);
+    window.addEventListener('bub-sel', other);
+    document.addEventListener('pointerdown', away);
+    return () => (window.removeEventListener('bub-sel', other), document.removeEventListener('pointerdown', away));
+  }, [sel, m.id]);
   // Copy the message (its text and task elements, with answers) to paste into a task or another chat.
   const clip = (): Clip => ({ v: 1, space: 'chat:' + c.id, content: (m.content ? mergeKey(m.content, m.key ?? {}) : { type: 'doc', content: [] }).content ?? [] });
   // The copy button takes only the task in a message, to paste into a lesson or another message.
@@ -583,7 +620,7 @@ function Bubble({ m, c, me, first, last, teacher, onReply, onEdit, onCopy, onOpe
   };
   return (
     <div
-      className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' sel' : '') + (swipe.dx ? ' swiping' : '')}
+      className={'bub' + (mine ? ' mine' : ' theirs') + (first ? ' first' : '') + (last ? ' last' : '') + (tagged ? ' tagged' : '') + (sel ? ' picked' : '') + (swipe.dx ? ' swiping' : '')}
       id={'m-' + m.id}
       style={swipe.dx ? { transform: `translateX(${swipe.dx}px)` } : undefined}
       onTouchStart={(e) => !m.deleted && swipeStart(e)}
