@@ -1,5 +1,5 @@
 import { getMessaging, getToken, deleteToken, isSupported } from 'firebase/messaging';
-import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { deleteDoc, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { app, db } from './firebase';
 
 // Notifications on phones and computers (web push). On an iPhone or iPad they work once
@@ -24,14 +24,28 @@ export async function pushState(): Promise<PushState> {
   }
 }
 
+// The last try on each device, kept on the profile, so a device that quietly gets nothing can be
+// looked into (step reached and error, no token).
+const note = (uid: string, step: string, err = '') =>
+  updateDoc(doc(db, 'users', uid), { [`pushLog.${(isIos() ? 'ios' : /android/i.test(navigator.userAgent) ? 'android' : 'computer') + (isStandalone() ? '-app' : '-browser')}`]: { step, err: err.slice(0, 300), at: Date.now() } }).catch(() => {});
 export async function enablePush(uid: string, key: string, role: string, classId = '') {
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') return false;
-  const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-  await navigator.serviceWorker.ready;
-  const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-  if (!token) return false;
-  await setDoc(doc(db, 'pushTokens', token), { token, uid, key, role, classId, at: serverTimestamp(), device: navigator.userAgent.slice(0, 160) });
+  let step = 'permission';
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return void note(uid, step, perm), false;
+    step = 'service worker';
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
+    step = 'token';
+    const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+    if (!token) return void note(uid, step, 'no token'), false;
+    step = 'save';
+    await setDoc(doc(db, 'pushTokens', token), { token, uid, key, role, classId, at: serverTimestamp(), device: navigator.userAgent.slice(0, 160) });
+    void note(uid, 'saved');
+  } catch (e) {
+    void note(uid, step, String((e as Error)?.message ?? e));
+    throw e;
+  }
   try {
     localStorage.setItem(ON, token);
   } catch {
