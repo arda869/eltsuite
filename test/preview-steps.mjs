@@ -26,6 +26,11 @@ export default async function steps({ p, shot, say, BASE }) {
   await p.locator('.bub.theirs .bub-box').last().click({ position: { x: 20, y: 12 } });
   await p.waitForTimeout(400);
   await shot('tapped-theirs');
+  say('at the edge', await p.evaluate(() => {
+    const b = document.querySelectorAll('.bub.theirs');
+    const r = b[b.length - 1].getBoundingClientRect();
+    return document.elementsFromPoint(r.left + 2, r.top + r.height / 2).slice(0, 6).map((e) => { const c = getComputedStyle(e); return `${e.tagName}.${String(e.className).slice(0, 40)} o:${c.outlineStyle}/${c.outlineWidth} b:${c.borderTopWidth} s:${c.boxShadow.slice(0, 40)}`; }).join(' || ');
+  }));
   await p.locator('.bub.mine .bub-box').first().click({ position: { x: 20, y: 12 } });
   await p.waitForTimeout(400);
   say('menus open', await p.locator('.bub.sel').count());
