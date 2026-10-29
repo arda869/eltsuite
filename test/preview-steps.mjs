@@ -2,6 +2,8 @@
 export default async function steps({ p, shot, say, BASE }) {
   await p.goto(BASE + '/pdf');
   await p.waitForTimeout(3000);
+  p.on('console', (m) => say('console', m.text().slice(0, 200)));
+  say('appAt', await p.evaluate(async () => { const m = await import('/src/components/AppGrid.tsx'); const a = m.appAt('/pdf'); m.setAppFavicon(a); return (a?.k ?? 'none') + ' ' + (document.querySelector('link[rel~="icon"]')?.getAttribute('href') ?? '').slice(0, 40) + ' links ' + document.querySelectorAll('link[rel~="icon"]').length; }).catch((e) => 'ERR ' + e.message));
   say('icon on /pdf', (await p.evaluate(() => document.querySelector('link[rel~="icon"]')?.getAttribute('href') ?? '')).slice(0, 60));
   await p.getByRole('button', { name: 'Apps' }).click();
   await p.waitForTimeout(500);
