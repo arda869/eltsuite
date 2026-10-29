@@ -6,9 +6,9 @@ import { startTilt } from './lib/tilt';
 import { startTheme } from './lib/theme';
 import { startViewport } from './lib/viewport';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
-import { StrictMode, Suspense, lazy } from 'react';
+import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { UpdateBanner } from './components/UpdateBanner';
 import { ComputerOnly } from './components/ComputerOnly';
 import { ConnectionBanner } from './components/ConnectionBanner';
@@ -23,6 +23,7 @@ import { OrgLook } from './components/OrgLook';
 import { StatusBeat } from './lib/status';
 import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
+import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainOrigin, onLearnSite, probeLearn } from './lib/site';
 import './styles.css';
 
 // Pages load when they are first opened, so the first screen comes up quickly.
@@ -84,7 +85,8 @@ const Boot = () => <Loader full label="" />;
 function Home() {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
-  if (!user) return <SignIn />;
+  // learn.eltsuite.com: the learners' home page, to join a class.
+  if (!user) return onLearnSite() ? <LearnerJoin home /> : <SignIn />;
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
   }
@@ -98,6 +100,28 @@ function Home() {
   }
   if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
   return <HomePage />;
+}
+
+// Learners on learn.eltsuite.com, teachers on eltsuite.com. Each address keeps its own sign-in,
+// so someone sent across signs in there (a learner with their class code and PIN).
+function SiteGate() {
+  const { user, ready } = useAuth();
+  const { pathname } = useLocation();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!live()) return;
+    // A "view as a learner" tab stays where it is: its sign-in is only in this tab.
+    try {
+      if (sessionStorage.getItem('ll.proxy')) return;
+    } catch {
+      /* private window */
+    }
+    const learnSite = onLearnSite();
+    if (!learnSite && !learnReady()) return void probeLearn(() => setTick((n) => n + 1));
+    if (!learnSite && (isLearnerPath(pathname) || (ready && user && isLearnerEmail(user.email)))) goTo(learnOrigin());
+    else if (learnSite && ready && user && !isLearnerEmail(user.email) && !isSharedPath(pathname)) goTo(mainOrigin());
+  }, [user, ready, pathname, tick]);
+  return null;
 }
 
 function Join() {
@@ -133,6 +157,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
+        <SiteGate />
         <UpdateBanner />
         <OrgLook />
         <StatusBeat />

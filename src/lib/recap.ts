@@ -1,3 +1,4 @@
+import { learnOrigin } from './site';
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
@@ -121,7 +122,7 @@ export async function parentLink(classId: string, r: Recap): Promise<string> {
     await updateDoc(doc(col(classId), r.id), { token });
   }
   await publishShare(classId, { ...r, token });
-  return `${location.origin}/r/${token}`;
+  return `${learnOrigin()}/r/${token}`;
 }
 async function publishShare(classId: string, r: Recap) {
   if (!r.token) return;
