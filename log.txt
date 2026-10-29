@@ -1,0 +1,8 @@
+page / buttons 65 clicked 4
+page /learn/cud9y6wc7gjwrgepxn buttons 10 clicked 10
+page /learn/l9h124ok5bilv2yqcj buttons 81 clicked 23
+page /recap/cud9y6wc7gjwrgepxn buttons 1 clicked 1
+page /discuss buttons 5 clicked 5
+page /messages buttons 5 clicked 5
+page /settings buttons 8 clicked 5
+SUMMARY lp problems 0 minutes 2
