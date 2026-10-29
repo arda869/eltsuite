@@ -1,64 +1,58 @@
-// What test/preview.mjs does, step by step: a teacher working on a lesson in Worksheet view.
+// What test/preview.mjs does, step by step: sub-tasks in a lesson, on screen and on paper.
 export default async function steps({ p, shot, say, demo, BASE }) {
   const wait = (ms) => p.waitForTimeout(ms);
   await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
   await p.locator('.ProseMirror').first().waitFor({ timeout: 20000 });
   await wait(800);
-  await p.getByRole('radio', { name: 'Worksheet' }).click();
-  await p.locator('.sh-split').waitFor({ timeout: 10000 });
-  await wait(2000);
-  await shot('split-fit-width');
-  await p.getByRole('radio', { name: 'Whole page' }).click();
-  await wait(800);
-  await shot('split-whole-page');
-  await p.getByRole('radio', { name: 'Fit width' }).click();
-  await wait(500);
-
-  // click a task on the page
-  const picks = p.locator('.sh-block.pick');
-  say('pickable', await picks.count());
-  await picks.nth(3).click();
-  await wait(1800);
-  await shot('clicked-task');
-
-  // type in the editor on the right and watch the page follow
-  const ed = p.locator('.sh-right .task-editor .ProseMirror').first();
+  // make sure we are in Digital
+  const dig = p.getByRole('radio', { name: /Digital/ });
+  if (await dig.count()) await dig.click();
+  await wait(600);
+  // the third task in the list
+  await p.locator('.task-row').nth(3).click();
+  await wait(1500);
+  const ed = p.locator('.frame-body .task-editor .ProseMirror').first();
   await ed.click();
   await p.keyboard.press('Control+End');
   await p.keyboard.press('Enter');
-  await p.keyboard.type('She has lived here for ten years.', { delay: 20 });
-  await wait(900);
-  await shot('typed-page-follows');
-  await p.keyboard.press('Enter');
-  await p.keyboard.type('/gap', { delay: 40 });
-  await wait(900);
-  await shot('slash');
-  await p.keyboard.press('Enter');
-  await wait(1200);
-  await shot('gap-added');
-
-  // only on screen: the task leaves the page
-  await p.locator('.sh-paperbar select').first().selectOption('screen');
-  await wait(1800);
-  await shot('screen-only');
-  await p.locator('.sh-paperbar select').first().selectOption('both');
-  await wait(1200);
-
-  // pick a task from the list on the left of the screen
-  await p.locator('.task-row').nth(1).click().catch((e) => say('list click', e.message));
+  const sub = async (instr, text) => {
+    await p.keyboard.type('/sub', { delay: 40 });
+    await wait(900);
+    await p.keyboard.press('Enter');
+    await wait(700);
+    await p.keyboard.type(text, { delay: 10 });
+    const inputs = p.locator('.st-instr-input');
+    await inputs.last().fill(instr);
+    await wait(300);
+    await p.locator('.st-ed-body').last().click();
+    await p.keyboard.press('Control+End');
+  };
+  await sub('Read the email again. Underline every present perfect.', 'I have just arrived in Lisbon.');
+  await p.keyboard.press('ArrowDown');
+  await p.keyboard.press('Control+End');
+  await sub('Now write three sentences about your week.', 'This week I have…');
   await wait(1500);
-  await shot('from-list');
+  await shot('editor-subtasks');
+  say('subtask nodes', await p.locator('.subtask-node').count());
 
-  // drag the divider
-  const d = await p.locator('.sh-divider').boundingBox();
-  await p.mouse.move(d.x + 5, d.y + 200);
-  await p.mouse.down();
-  await p.mouse.move(d.x + 200, d.y + 200, { steps: 8 });
-  await p.mouse.up();
-  await wait(800);
-  await shot('wider-page');
+  // learner view
+  await p.getByRole('button', { name: /Editing/ }).first().click();
+  await wait(400);
+  await p.getByRole('menuitemradio', { name: /Learner view/ }).click().catch((e) => say('learner view', e.message));
+  await wait(1500);
+  await shot('learner-a-only');
+  say('visible subtasks', await p.locator('.subtask').count(), 'next buttons', await p.locator('.st-next').count());
+  await p.locator('.st-next').first().click().catch((e) => say('next', e.message));
+  await wait(700);
+  await shot('learner-a-and-b');
 
-  await p.setViewportSize({ width: 1280, height: 800 });
-  await wait(800);
-  await shot('laptop');
+  // back to editing, then the worksheet
+  await p.getByRole('button', { name: /Learner view/ }).first().click().catch(() => {});
+  await wait(300);
+  await p.getByRole('menuitemradio', { name: /Editing/ }).click().catch((e) => say('editing', e.message));
+  await wait(1000);
+  await p.getByRole('radio', { name: /Worksheet/ }).click();
+  await p.locator('.sh-split').waitFor({ timeout: 10000 });
+  await wait(2500);
+  await shot('worksheet-subtasks');
 }
