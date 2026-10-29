@@ -1,55 +1,46 @@
-// What test/preview.mjs does, step by step: sub-tasks in a lesson, on screen and on paper.
+// What test/preview.mjs does, step by step: moving and deleting tasks in the worksheet view.
 export default async function steps({ p, shot, say, demo, BASE }) {
   const wait = (ms) => p.waitForTimeout(ms);
+  p.on('pageerror', (e) => say('CRASH', e.message));
   await p.goto(`${BASE}/class/${demo.classId}/lesson/${demo.itemId}`);
   await p.locator('.ProseMirror').first().waitFor({ timeout: 20000 });
   await wait(800);
-  // make sure we are in Digital
-  const dig = p.getByRole('radio', { name: /Digital/ });
-  if (await dig.count()) await dig.click();
-  await wait(600);
-  // the third task in the list
-  await p.locator('.task-row').nth(4).click();
-  await wait(1500);
-  const ed = p.locator('.frame-body .task-editor .ProseMirror').first();
-  await ed.click();
-  await p.keyboard.press('Control+End');
-  await p.keyboard.press('Enter');
-  const sub = async (instr, text) => {
-    await p.keyboard.type('/sub', { delay: 40 });
-    await wait(900);
-    await p.keyboard.press('Enter');
-    await wait(700);
-    await p.keyboard.type(text, { delay: 10 });
-    await p.locator('.st-instr-input').last().fill(instr);
-    await wait(300);
-  };
-  await sub('Read the email again. Underline every present perfect.', 'I have just arrived in Lisbon.');
-  await ed.click();
-  await p.keyboard.press('Control+End');
-  await sub('Now write three sentences about your week.', 'This week I have…');
-  await wait(1500);
-  await shot('editor-subtasks');
-  say('subtask nodes', await p.locator('.subtask-node').count());
-
-  // learner view
-  await p.getByRole('button', { name: /Editing/ }).first().click();
-  await wait(400);
-  await p.getByRole('menuitemradio', { name: /Learner view/ }).click().catch((e) => say('learner view', e.message));
-  await wait(1500);
-  await shot('learner-a-only');
-  say('visible subtasks', await p.locator('.subtask').count(), 'next buttons', await p.locator('.st-next').count());
-  await p.locator('.st-next').first().click().catch((e) => say('next', e.message));
-  await wait(700);
-  await shot('learner-a-and-b');
-
-  // back to editing, then the worksheet
-  await p.getByRole('button', { name: /Learner view/ }).first().click().catch(() => {});
-  await wait(300);
-  await p.getByRole('menuitemradio', { name: /Editing/ }).click().catch((e) => say('editing', e.message));
-  await wait(1000);
   await p.getByRole('radio', { name: /Worksheet/ }).click();
-  await p.locator('.sh-split').waitFor({ timeout: 10000 });
+  await p.locator('.sh-block').first().waitFor({ timeout: 15000 });
   await wait(2500);
-  await shot('worksheet-subtasks');
+  const order = async () => (await p.locator('.task-row').allInnerTexts()).map((t) => t.split('\n').find((x) => x.trim()) ?? '').join(' | ');
+  say('order before', await order());
+  const second = p.locator('.sh-block').nth(1);
+  await second.hover();
+  await wait(400);
+  await shot('01-hover');
+  // drag the second block above the first
+  const g = await second.locator('.sh-grip').boundingBox();
+  const first = await p.locator('.sh-block').first().boundingBox();
+  await p.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+  await p.mouse.down();
+  await p.mouse.move(first.x + 100, first.y + 10, { steps: 12 });
+  await wait(300);
+  await shot('02-dragging');
+  await p.mouse.up();
+  await wait(2000);
+  say('order after drag', await order());
+  await shot('03-moved');
+  // the keyboard: move the first block down one
+  await p.locator('.sh-block').first().locator('.sh-grip').focus();
+  await p.keyboard.press('ArrowDown');
+  await wait(2000);
+  say('order after ArrowDown', await order());
+  // delete the third block
+  const n0 = await p.locator('.sh-block').count();
+  const third = p.locator('.sh-block').nth(2);
+  await third.hover();
+  await third.locator('.sh-del').click();
+  await wait(500);
+  await shot('04-ask');
+  await p.locator('.ask-dialog button, [role=dialog] button, [role=alertdialog] button').filter({ hasText: /Delete|Remove|Yes/ }).first().click();
+  await wait(2000);
+  say('blocks', n0, '->', await p.locator('.sh-block').count());
+  say('order after delete', await order());
+  await shot('05-deleted');
 }

@@ -7807,7 +7807,7 @@ html { touch-action: manipulation; }
 .sh-block { position: relative; border-radius: 1.5mm; }
 .sh-block.pick { cursor: pointer; transition: box-shadow .15s; }
 .sh-block.pick:hover { box-shadow: 0 0 0 1.5mm color-mix(in srgb, var(--accent) 10%, transparent), 0 0 0 calc(1.5mm + 1px) color-mix(in srgb, var(--accent) 40%, transparent); }
-.sh-block.pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 1.5mm; }
+.sh-block.pick:focus-visible, .sh-hit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1.5mm; border-radius: 1.5mm; }
 .sh-block.on { margin-bottom: 5mm; }
 .sh-edit { position: relative; padding: 4mm 3mm 3mm; margin: 5mm -3mm 0; border-radius: 2mm; box-shadow: 0 0 0 1.5px var(--accent); background: #fff; }
 .sh-edit-tag { position: absolute; top: -9px; left: 10px; padding: 0 8px; border-radius: 999px; background: var(--accent); color: #fff; font: 700 10.5px/18px var(--sans); letter-spacing: .02em; }
@@ -7890,3 +7890,16 @@ button.sbl-card { cursor: pointer; }
 button.sbl-card:hover { border-color: var(--hair-strong); }
 .sbl-card.on { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); color: var(--ink); }
 .sbl-foot { margin-top: 8px; }
+/* Worksheet view: move and delete tasks from the left margin of the page */
+.sh-tools { position: absolute; left: -10.5mm; top: 0; display: flex; flex-direction: column; gap: 2px; opacity: 0; transition: opacity .12s; z-index: 2; }
+.sh-block:hover > .sh-tools, .sh-block.on > .sh-tools, .sh-tools:focus-within { opacity: 1; }
+.sh-tools button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: #a9a49d; cursor: pointer; }
+.sh-tools button:hover, .sh-tools button:focus-visible { background: #f1efeb; color: #262420; }
+.sh-tools .sh-grip { cursor: grab; }
+.sh-tools .sh-grip:active { cursor: grabbing; }
+.sh-tools .sh-del:hover { color: #a8473a; }
+.sh-tools .sh-del svg { width: 16px; height: 16px; }
+.sh-block[data-dragging] { opacity: .45; }
+.sh-block[data-drop=before]::before, .sh-block[data-drop=after]::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; }
+.sh-block[data-drop=before]::before { top: -2.5mm; }
+.sh-block[data-drop=after]::after { bottom: -2.5mm; }
