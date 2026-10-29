@@ -8171,3 +8171,19 @@ p:has(> .pic ~ .pic ~ .pic ~ .pic) > .pic:not(.pic-full) { max-width: calc(25% -
 .msg-banner-t span { font: 13.5px/1.35 var(--sans); color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .msg-banner-hint { align-self: flex-start; font: 600 11px var(--sans); color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .msg-banner { animation: none; } }
+/* The writing box: one line to start, its buttons inside at the right. Once the words reach them,
+   the box grows and the buttons sit in a row under the words. */
+.chat-box .chat-editor .ProseMirror { min-height: 0 !important; padding: 9px 12px !important; padding-right: 92px !important; line-height: 1.45; }
+.chat-box:has(.chat-in > :nth-child(4)) .chat-editor .ProseMirror { padding-right: 160px !important; }
+.chat-box .chat-editor .doc { padding: 0 !important; }
+.chat-box:not(.tall) .chat-in { bottom: 50%; transform: translateY(50%); }
+.chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; padding-bottom: 46px !important; }
+.chat-box.tall .chat-in { bottom: 6px; transform: none; }
+.chat-in .icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; }
+.chat-in .chat-send { margin-left: 2px; }
+.chat-box .chat-editor { overflow-y: auto; }
+.chat-box .chat-editor.plain .ProseMirror p.is-editor-empty:first-child::before { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 720px) {
+  .chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; }
+}
+.chat-box.tall .chat-editor .ProseMirror { padding-right: 12px !important; }

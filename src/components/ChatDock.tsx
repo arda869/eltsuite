@@ -294,7 +294,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
   return (
     <div ref={winRef} onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('[role=menu]') && go('min')} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
       {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
-      <div className="dock-head" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button, a') && toggleMax(w.id, !w.max)}>
+      <div className="dock-head">
         {cur ? (
           <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
             {other ? <PersonFace id={other} name={title} size={28} status /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
@@ -315,9 +315,13 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
         <button type="button" className="icon-btn dock-ic" onClick={() => go('min')} aria-label="Minimise" data-tip="Minimise">
           <WinIcon d="M5 12h14" />
         </button>
-        <button type="button" className="icon-btn dock-ic" onClick={() => toggleMax(w.id, !w.max)} aria-label={w.max ? 'Smaller' : 'Larger'} data-tip={w.max ? 'Smaller' : 'Larger'}>
-          <WinIcon d={w.max ? 'M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5' : 'M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5'} />
-        </button>
+        {/* No "larger": the full Messages page (open in a new tab, next) is the big view. A window
+            left large from before can still go back. */}
+        {w.max && (
+          <button type="button" className="icon-btn dock-ic" onClick={() => toggleMax(w.id, false)} aria-label="Smaller" data-tip="Smaller">
+            <WinIcon d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
+          </button>
+        )}
         <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in Messages" data-tip="Open in Messages" onClick={() => closeWin(w.id)}>
           <WinIcon d="M14 4h6v6M20 4l-8 8M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
         </Link>

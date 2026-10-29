@@ -258,6 +258,8 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const [enterSends] = useState(enterSendOn);
   // Every message starts as plain text; Aa shows the writing tools for this one.
   const [rich, setRich] = useState(false);
+  const [tall, setTall] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [openShare, setOpenShare] = useState('');
   const [shareAns, setShareAns] = useState(true);
   // What was being typed is kept for this chat until it is sent: switching chats, minimising the
@@ -308,6 +310,17 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const reset = () => (keepDraft(null), setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
   // Others see that I am typing (sent at most every few seconds).
   const typedAt = useRef(0);
+  // One line until the words reach the buttons (or there is a second line); empty, one line again.
+  const oneLine = useRef(0);
+  useEffect(() => {
+    const pm = boxRef.current?.querySelector<HTMLElement>('.ProseMirror');
+    if (!pm) return;
+    if (isEmptyContent(content)) {
+      oneLine.current = oneLine.current || pm.offsetHeight;
+      return setTall(false);
+    }
+    if (!tall && oneLine.current && pm.scrollHeight > oneLine.current + 6) setTall(true);
+  }, [content, tall]);
   const onType = (v: JSONContent) => {
     setContent(v);
     if (!editing) keepDraft(v);
@@ -436,12 +449,23 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
           </span>
         )}
         {err && <span className="error">{err}</span>}
-        {/* The writing box holds its own buttons: formatting and send, at its right. */}
-        <div className="chat-box">
+        {/* The writing box starts as one line, with its buttons at the right. When the words reach
+            them, the box grows and the buttons move under the words, as in Teams. */}
+        <div className={'chat-box' + (tall || rich ? ' tall' : '')} ref={boxRef}>
           <div className={'chat-editor' + (elementsOk ? '' : ' text-only') + (rich ? '' : ' plain')}>
-            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder={`Write a message. @ to tag someone, / to add a question, picture or box.`} />
+            <TaskEditor handles={false} compact key={edKey} content={content} onChange={onType} label="Message" enterHint={enterSends && !rich ? 'send' : 'enter'} classmates={people} classId={'chat:' + c.id} placeholder={elementsOk ? 'Write a message. @ to tag, / to add' : 'Write a message'} />
           </div>
           <span className="chat-in">
+            {teacher && colleaguesHere.length > 0 && (
+              <button type="button" className="icon-btn" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
+                <UiIcon name="mic" size={16} />
+              </button>
+            )}
+            {teacher && colleaguesHere.length > 0 && (
+              <button type="button" className="icon-btn" onClick={() => setSharing(true)} aria-label="Share material" data-tip="Share material: a lesson, task, document or media, for colleagues to copy">
+                <UiIcon name="link" size={16} />
+              </button>
+            )}
             <button type="button" className={'icon-btn chat-rich' + (rich ? ' on' : '')} onClick={() => setRich(!rich)} aria-pressed={rich} aria-label="Formatting" data-tip={rich ? 'Back to plain text' : 'Formatting: bold, colour, lists, IPA and more'}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 18 9 5l5 13M5.8 13.5h6.4M15 19.5h5M16.5 8.5h3.5M16.5 12.5h3.5" />
@@ -454,24 +478,12 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
             </button>
           </span>
         </div>
-        {((teacher && colleaguesHere.length > 0) || questionIds(content).length > 0) && (
+        {questionIds(content).length > 0 && (
           <span className="chat-actions">
-            {teacher && colleaguesHere.length > 0 && (
-              <button type="button" className="btn small-btn icon-only" onClick={() => void startSessionWith(me, colleaguesHere.map((k) => ({ key: k, name: c.names[k] ?? 'Colleague', role: 'teacher' as const })), '', c)} aria-label="Record together" data-tip="Record together: a recording session with the colleagues here">
-                <UiIcon name="mic" size={14} />
-              </button>
-            )}
-            {teacher && colleaguesHere.length > 0 && (
-              <button type="button" className="btn small-btn" onClick={() => setSharing(true)} data-tip="A lesson, task, document or media, for colleagues to copy">
-                <UiIcon name="link" size={14} /> Share material
-              </button>
-            )}
-            {questionIds(content).length > 0 && (
-              <label className="chat-opt" data-tip="Each person sees the others’ answers once they’ve sent their own. You always see everyone’s.">
-                <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
-                Others see answers after answering
-              </label>
-            )}
+            <label className="chat-opt" data-tip="Each person sees the others’ answers once they’ve sent their own. You always see everyone’s.">
+              <input type="checkbox" checked={shareAns} onChange={(e) => setShareAns(e.target.checked)} />
+              Others see answers after answering
+            </label>
           </span>
         )}
       </div>
