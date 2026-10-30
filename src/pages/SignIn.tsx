@@ -122,7 +122,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           // sign-in account back, so a failure here is not this form's error.
           try {
             await updateProfile(cred.user, { displayName });
-            await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address, ...inviteFields() }, { merge: true });
+            await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address, onboarding: 'new', ...inviteFields() }, { merge: true });
           } catch {
             /* see above */
           }

@@ -10,3 +10,5 @@
 .signin .intro p.signin-summary{font:400 17px/1.55 var(--sans);max-width:460px}.signin .so-tip,.signin .si-tag-tip{color:var(--muted)}
 
 .signin-jump{display:none}#teacher-sign-in{scroll-margin-top:20px}@media(max-width:720px){.signin-jump{display:block;font-size:14px;align-self:flex-start}}
+
+.welcome h1:focus{outline:none}
