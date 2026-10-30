@@ -36,6 +36,7 @@ export class RtdbProvider {
     this.awareness = new Awareness(doc);
     this.awRef = collabRef(key, `aw/${doc.clientID}`);
     doc.on('update', this.onUpdate);
+    window.addEventListener('pagehide', this.flush);
     this.awareness.on('update', this.onAwareness);
     void this.start();
   }
@@ -116,6 +117,7 @@ export class RtdbProvider {
 
   destroy() {
     this.flush();
+    window.removeEventListener('pagehide', this.flush);
     this.dead = true;
     window.clearTimeout(this.timer);
     this.offs.forEach((f) => f());

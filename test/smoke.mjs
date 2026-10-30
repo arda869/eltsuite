@@ -81,6 +81,96 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Sound chart themes, page gestures and compact title': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const title = d.locator('input.dp-title');
+    await title.fill('Sound notes');
+    await title.press('Enter');
+    const compact = await title.evaluate((el) => el.getBoundingClientRect().width < el.parentElement.getBoundingClientRect().width);
+    if (!compact) throw new Error('The title input stretches across its header.');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.click();
+    await slash(d, 'phonemic');
+    await see(d, '.ph-chart', 'the shared sound chart');
+    await text.press('ControlOrMeta+End');
+    await text.press('Enter');
+    await slash(d, 'phonemic');
+    const pagesFit = await d.locator('.ph-node:has(.ph-chart)').evaluateAll((blocks) => blocks.every((el) => {
+      const paper = el.closest('.pg-paper');
+      const scale = Number(paper.style.zoom);
+      const top = (el.getBoundingClientRect().top - paper.getBoundingClientRect().top) / scale;
+      const height = el.getBoundingClientRect().height / scale;
+      return top + height <= (Math.floor(top / 1123) + 1) * 1123 - 96 + 1;
+    }));
+    if (!pagesFit) throw new Error('A sound chart crosses a page boundary.');
+    for (const colour of ['black', 'white']) {
+      await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+      await d.getByRole('menuitemradio', { name: 'Page colour: ' + colour, exact: true }).click();
+      const colours = await d.locator('.ph-chart').first().evaluate((el) => ({ ink: getComputedStyle(el).color, paperInk: getComputedStyle(el.closest('.pg-paper')).color, background: getComputedStyle(el).backgroundImage }));
+      if (colours.ink !== colours.paperInk || (colour === 'black' && colours.background.includes('255, 255, 255'))) throw new Error('Sound chart does not follow page appearance: ' + JSON.stringify(colours));
+    }
+    const contained = await d.locator('.ph-chart').first().evaluate((el) => {
+      const chart = el.getBoundingClientRect();
+      const content = el.closest('.pg-text').getBoundingClientRect();
+      return chart.right <= content.right + 1 && chart.width <= content.width + 1 && el.scrollWidth <= el.clientWidth + 1;
+    });
+    if (!contained) throw new Error('The sound chart overflows the page.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pageless', exact: true }).click();
+    await see(d, '.ph-chart', 'charts after switching to pageless');
+    if (await d.locator('.ph-chart').count() !== 2) throw new Error('A chart disappeared in pageless mode.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pages', exact: true }).click();
+    await see(d, '.pg-paper .ph-chart', 'charts after switching back to pages');
+    if (await d.locator('.pg-page-info').count()) throw new Error('The paper-size label is still beside zoom.');
+    const before = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
+    await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -30 });
+    await d.waitForFunction((old) => Number(document.querySelector('.pg-paper').style.zoom) > old, before);
+    const after = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
+    await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: false, deltaY: 30 });
+    if (await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom)) !== after) throw new Error('Ordinary scrolling changed page zoom.');
+    await axe(d, 'Responsive sound chart', A11Y_FOUND);
+    return s;
+  },
+  'Document find, replace and format painter': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.fill('Notes and notes. Plain target.');
+    await text.press('ControlOrMeta+Home');
+    for (let i = 0; i < 5; i++) await text.press('Shift+ArrowRight');
+    await d.getByRole('button', { name: /^Bold/ }).click();
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Copy text formatting', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Find and replace…/ }).click();
+    const panel = d.getByRole('dialog', { name: 'Find and replace', exact: true });
+    const find = panel.getByRole('textbox', { name: 'Find', exact: true });
+    await find.fill('Plain target');
+    await see(d, '.document-find-navigation:has-text("1 of 1 matches")', 'the formatting target match');
+    await panel.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Apply text formatting', exact: true }).click();
+    await see(d, '.ProseMirror strong:has-text("Plain target")', 'the copied bold formatting');
+    await text.press('ControlOrMeta+f');
+    await find.fill('notes');
+    await see(d, '.document-find-navigation:has-text("1 of 2 matches")', 'case-insensitive matches');
+    await panel.getByRole('checkbox', { name: 'Match case', exact: true }).check();
+    await see(d, '.document-find-navigation:has-text("1 of 1 matches")', 'case-sensitive matching');
+    await panel.getByRole('checkbox', { name: 'Match case', exact: true }).uncheck();
+    await panel.getByRole('textbox', { name: 'Replace with', exact: true }).fill('$&');
+    await panel.getByRole('button', { name: 'Replace all', exact: true }).click();
+    await see(d, '.ProseMirror:has-text("$& and $&. Plain target.")', 'literal replacement text');
+    await panel.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Undo/ }).click();
+    await see(d, '.ProseMirror:has-text("Notes and notes. Plain target.")', 'one-step replace-all undo');
+    await d.reload();
+    await see(d, '.ProseMirror strong:has-text("Plain target")', 'the saved copied formatting');
+    await axe(d, 'Document editing tools', A11Y_FOUND);
+    return s;
+  },
   'Document font size, page setup and zoom': async (b) => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');
@@ -103,6 +193,8 @@ const J = {
     await d.getByRole('slider', { name: 'Zoom slider', exact: true }).fill('75');
     const state = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, zoom: getComputedStyle(el).zoom, spacing: el.style.getPropertyValue('--pg-line-height') }));
     if (state.width !== '1123px' || Number(state.zoom) !== 0.75 || state.spacing !== '2') throw new Error('Page setup or zoom did not apply: ' + JSON.stringify(state));
+    // The shared provider batches changes for 120 ms; allow its autosave to complete.
+    await d.waitForTimeout(250);
     await d.reload();
     await see(d, '[data-font][style*="19pt"]', 'the saved font size');
     const saved = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, spacing: el.style.getPropertyValue('--pg-line-height') }));
@@ -129,6 +221,14 @@ const J = {
     await see(s.p, '.hm-hero', 'the fixture session');
     const d = await newFile(s, 'Collab document');
     await see(d, '.pg-paper', 'pages by default');
+    await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Picture…', exact: true }).hover();
+    const highlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').map((el) => el.textContent));
+    if (highlight.length !== 1 || !highlight[0].includes('Picture')) throw new Error('The pointer and keyboard highlight different menu rows.');
+    await d.keyboard.press('ArrowDown');
+    const keyboardHighlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').length);
+    if (keyboardHighlight !== 1) throw new Error('The menu shows more than one selection highlight.');
+    await d.keyboard.press('Escape');
     await d.getByRole('textbox', { name: 'Document text', exact: true }).fill('Reading notes ');
     await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
@@ -514,7 +614,7 @@ try {
       s = await run(browser);
       if (s.errors.length) err = s.errors.slice(0, 3).join('\n   ');
     } catch (e) {
-      err = e.message.split('\n')[0] + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
+      err = e.message.slice(0, 3500) + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
     }
     await s?.ctx.close().catch(() => {});
     results.push({ name, ok: !err, err, ms: Date.now() - t });
