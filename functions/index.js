@@ -5,6 +5,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentUpdated, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import { sendDevices } from './push-delivery.js';
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -51,31 +52,23 @@ export const signInAs = onCall({ region: 'us-central1', maxInstances: 2 }, async
 // scripts/push.mjs still runs every 15 minutes as a back-up: `pushed` stops it sending twice.
 // A real notification part, so the phone shows it itself even when ELT Suite is closed.
 // (iPhones don't reliably wake the app to draw data-only messages.)
-const SITE = 'https://eltsuite.com';
-function webpushFor(d, ttl) {
-  const call = d.call === '1';
-  return {
-    headers: { Urgency: 'high', TTL: String(ttl) },
-    notification: { title: d.title, body: d.body, icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: d.tag, renotify: call, requireInteraction: call, ...(call ? { vibrate: [400, 200, 400, 200, 400, 200, 400] } : {}) },
-    fcmOptions: { link: SITE + (d.link || '/') },
-  };
-}
-
-// Sends to every device of these people (chat keys). Old devices are removed as we go.
+// Only recipients whose registered devices were accepted by FCM are acknowledged.
 async function sendTo(keys, data, ttl) {
   const db = getFirestore();
+  const complete = new Set();
   for (let i = 0; i < keys.length; i += 30) {
-    const snap = await db.collection('pushTokens').where('key', 'in', keys.slice(i, i + 30)).get();
-    for (const t of snap.docs) {
-      try {
-        await getMessaging().send({ token: t.get('token'), data, webpush: webpushFor(data, ttl) });
-      } catch (e) {
-        const code = e?.errorInfo?.code ?? e?.code ?? '';
-        if (/registration-token-not-registered|invalid-registration-token/.test(code)) await t.ref.delete().catch(() => {});
-        else console.log('Could not send:', code || e?.message);
-      }
+    const batch = keys.slice(i, i + 30);
+    const snap = await db.collection('pushTokens').where('key', 'in', batch).get();
+    for (const key of batch) {
+      const devices = snap.docs.filter(t => t.get('key') === key).map(t => ({ ...t.data(), id: t.id }));
+      const result = await sendDevices(devices, data, ttl, {
+        send: message => getMessaging().send(message),
+        remove: id => db.collection('pushTokens').doc(id).delete(),
+      });
+      if (result.complete) complete.add(key);
     }
   }
+  return complete;
 }
 
 const callBody = (kind, name) => `${name || 'Someone'} is calling you${kind === 'video' ? ' (video)' : ''}. Tap to answer.`;
@@ -100,9 +93,9 @@ export const pushNewMessage = onDocumentUpdated({ document: 'chats/{chatId}', re
   const body = d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text || '';
   const data = { title: String(title).slice(0, 80), body: String(body).slice(0, 180), link: `/messages?c=${event.params.chatId}`, tag: 'chat-' + event.params.chatId };
   const patch = {};
-  await sendTo(to, data, 86400);
-  for (const k of to) patch[`pushed.${k}`] = d.lastAt;
-  await event.data.after.ref.update(patch);
+  const complete = await sendTo(to, data, 86400);
+  for (const k of complete) patch[`pushed.${k}`] = d.lastAt;
+  if (Object.keys(patch).length) await event.data.after.ref.update(patch);
 });
 
 // Someone is called into a call that's already on (a class's video room): their devices ring too.

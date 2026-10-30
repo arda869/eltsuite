@@ -18,6 +18,8 @@ jobs:
 
       - name: Install
         run: npm ci
+      - name: Push registration and delivery regression checks
+        run: node test/push-notifications.mjs
 
       - name: Build
         env:

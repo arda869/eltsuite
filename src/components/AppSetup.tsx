@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
-import { disablePush, enablePush, isStandalone, pushState, type PushState } from '../lib/push';
+import { disablePush, enablePush, isStandalone, lastPushDiagnostic, pushErrorText, pushState, type PushState } from '../lib/push';
 
 // "ELT Suite on this device": put it on the home screen like an app, and turn on notifications.
 
@@ -21,11 +21,11 @@ export function AppSetupDialog({ onClose }: { onClose: () => void }) {
   const [err, setErr] = useState('');
   const [canInstall, setCanInstall] = useState(!!deferred);
   useEffect(() => {
-    pushState().then(setSt);
+    pushState(user?.uid).then(setSt);
     const on = () => setCanInstall(true);
     window.addEventListener('beforeinstallprompt', on);
     return () => window.removeEventListener('beforeinstallprompt', on);
-  }, []);
+  }, [user?.uid]);
   const key = profile?.role === 'learner' ? profile.learnerId : user?.uid ?? '';
   const turnOn = async () => {
     if (!user) return;
@@ -35,13 +35,20 @@ export function AppSetupDialog({ onClose }: { onClose: () => void }) {
       const ok = await enablePush(user.uid, key, profile?.role ?? 'teacher', profile?.role === 'learner' ? profile.classId ?? '' : '');
       if (!ok) setErr('Notifications aren’t allowed yet. You can allow them in the settings for this site or app.');
     } catch (e) {
-      console.error(e);
-      setErr('We couldn’t turn on notifications here. Try again in a moment.');
+      setErr(pushErrorText(e));
     } finally {
       setBusy(false);
-      setSt(await pushState());
+      setSt(await pushState(user?.uid));
     }
   };
+  const turnOff = async () => {
+    setBusy(true);
+    setErr('');
+    try { await disablePush(); }
+    catch { setErr('We couldn’t turn off notifications. Check your connection and try again.'); }
+    finally { setBusy(false); setSt(await pushState(user?.uid)); }
+  };
+  const diagnostic = lastPushDiagnostic();
   const installed = isStandalone();
   return (
     <div className="scrim ask-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -81,7 +88,7 @@ export function AppSetupDialog({ onClose }: { onClose: () => void }) {
             ) : st === 'install-first' ? (
               <span className="hint">On an iPhone or iPad, add ELT Suite to your home screen first, then open it from there.</span>
             ) : st === 'unsupported' ? (
-              <span className="hint">This browser can’t show notifications. Try Safari on an iPhone, or Chrome.</span>
+              <span className="hint">This browser can’t show notifications. On an iPhone or iPad, use iOS 16.4 or later and open the app from its home-screen icon.</span>
             ) : st === 'not-ready' ? (
               <span className="hint">Notifications are being set up and will be ready soon.</span>
             ) : st === 'denied' ? (
@@ -89,16 +96,20 @@ export function AppSetupDialog({ onClose }: { onClose: () => void }) {
             ) : st === 'on' ? (
               <span className="as-row">
                 <span className="hint">On for this device: messages and announcements.</span>
-                <button type="button" className="btn link small" onClick={() => void disablePush().then(() => pushState().then(setSt))}>
+                <button type="button" className="btn link small" disabled={busy} onClick={() => void turnOff()}>
                   Turn off
                 </button>
               </span>
             ) : (
               <button type="button" className="btn primary small-btn" disabled={busy} onClick={() => void turnOn()}>
-                {busy ? 'One moment…' : 'Turn on notifications'}
+                {busy ? 'One moment…' : st === 'repair' || st === 'unavailable' ? 'Repair notifications' : 'Turn on notifications'}
               </button>
             )}
-            {err && <span className="error">{err}</span>}
+            {st === 'repair' && <span className="hint">Permission is allowed, but this device’s registration needs to be repaired.</span>}
+            {st === 'unavailable' && <span className="hint">We couldn’t check this device’s registration. Check your connection, then try Repair notifications.</span>}
+            {(st === 'repair' || st === 'unavailable') && <button type="button" className="btn link small" disabled={busy} onClick={() => void turnOff()}>Turn off</button>}
+            {err && <span className="error" role="alert">{err}</span>}
+            {diagnostic && diagnostic.step !== 'saved' && <span className="hint">Setup code: {diagnostic.step} · {diagnostic.code || 'unknown'}</span>}
           </div>
         </div>
 

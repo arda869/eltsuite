@@ -23,6 +23,8 @@ jobs:
         run: npm ci
       - name: Invitation template checks
         run: node test/invitation-emails.mjs
+      - name: Push registration and delivery regression checks
+        run: node test/push-notifications.mjs
       - name: Lesson assistant contract and provider checks
         run: node --test test/ai/*.test.mjs
       - uses: actions/setup-java@v4
