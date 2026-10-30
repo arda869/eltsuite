@@ -388,6 +388,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
 
   return (
     <div className="lessons">
+      {import.meta.env.VITE_ELT_AI_PILOT === 'true' && <Link className="btn" to={`/class/${c.id}/assistant`}>Plan with the lesson assistant</Link>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">

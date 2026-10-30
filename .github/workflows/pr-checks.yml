@@ -23,6 +23,8 @@ jobs:
         run: npm ci
       - name: Invitation template checks
         run: node test/invitation-emails.mjs
+      - name: Lesson assistant contract and provider checks
+        run: node --test test/ai/*.test.mjs
       - name: Build and type check
         run: npm run build
       - name: Install Chromium

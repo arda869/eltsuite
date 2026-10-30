@@ -81,6 +81,31 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Lesson assistant approval, private save and reopen': async (b) => {
+    const s = await session(b);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await s.p.getByLabel('Topic', { exact: true }).fill('Travel');
+    await s.p.getByLabel('Objectives', { exact: true }).fill('Compare options and agree on a trip.');
+    await s.p.getByLabel('Context', { exact: true }).fill('Adult B1 class working in pairs.');
+    await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
+    await see(s.p, 'text=2. Review the outline', 'outline approval');
+    if (await s.p.getByRole('button', { name: 'Save private draft' }).count()) throw Error('Plan created before approval');
+    await s.p.getByRole('button', { name: 'Approve outline and make the plan' }).click();
+    await s.p.getByLabel('Main aim', { exact: true }).fill('Explain a choice with two reasons');
+    await s.p.getByRole('button', { name: 'Learner materials', exact: true }).click();
+    await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
+    await s.p.getByRole('button', { name: 'Save private draft' }).click();
+    await see(s.p, 'text=Saved privately.', 'private save confirmation');
+    await s.p.getByRole('button', { name: 'Start a new plan' }).click();
+    await s.p.getByRole('button', { name: 'Open saved plans' }).click();
+    await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
+    if (await s.p.getByLabel('Main aim', { exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
+    await axe(s.p, 'Lesson assistant', A11Y_FOUND);
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Assistant overflows on mobile');
+    return s;
+  },
   'Document font size, page setup and zoom': async (b) => {
     const s = await session(b);
     const d = await newFile(s, 'Collab document');

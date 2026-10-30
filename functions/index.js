@@ -10,6 +10,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
+export { lessonAssistant } from './ai/assistant.js';
 const OWNER = 'ardanurioglu@gmail.com';
 
 async function isSuper(token) {
