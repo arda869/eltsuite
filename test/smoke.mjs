@@ -140,7 +140,7 @@ const J = {
     await text.fill('Notes and notes. Plain target.');
     await text.press('ControlOrMeta+Home');
     for (let i = 0; i < 5; i++) await text.press('Shift+ArrowRight');
-    await d.getByRole('checkbox', { name: /^Bold/ }).click();
+    await d.getByRole('button', { name: /^Bold/ }).click();
     await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Copy text formatting', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
