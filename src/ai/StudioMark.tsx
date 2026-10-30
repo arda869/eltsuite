@@ -1,0 +1,4 @@
+// An open book and a path between ideas; deliberately no sparkle/star motif.
+export function StudioMark() {
+  return <svg className="ai-studio-mark" viewBox="0 0 120 120" fill="none" aria-hidden="true" focusable="false"><path d="M18 43c17-5 29-1 42 9v49C46 91 34 88 18 92V43Z" fill="currentColor" opacity=".12"/><path d="M60 52c14-10 26-14 42-9v49c-16-4-28-1-42 9V52Z" fill="currentColor" opacity=".2"/><path d="M18 43c17-5 29-1 42 9 14-10 26-14 42-9v49c-16-4-28-1-42 9-14-10-26-13-42-9V43Z" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round"/><path d="M60 53v47M29 58c8 0 13 2 20 6M29 70c8 0 13 2 20 6M72 64c7-4 12-6 20-6M72 76c7-4 12-6 20-6M39 29l20-11 22 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/><circle cx="35" cy="31" r="6" fill="currentColor"/><circle cx="60" cy="17" r="7" fill="currentColor"/><circle cx="85" cy="32" r="5" fill="currentColor"/></svg>;
+}

@@ -223,7 +223,13 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Topic', { exact: true }).fill('Travel');
+    const topicBox=s.p.getByLabel('Topic',{exact:true});
+    const shortHeight=await topicBox.evaluate(el=>el.getBoundingClientRect().height);
+    if(shortHeight>70) throw Error('Empty brief field is not compact');
+    await topicBox.fill('Travel\nFood\nWork\nStudy');
+    if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)<=shortHeight) throw Error('Brief field did not expand');
+    await topicBox.fill('Travel');
+    if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)>shortHeight+2) throw Error('Brief field did not shrink');
     await s.p.getByLabel('Objectives', { exact: true }).fill('Compare options and agree on a trip.');
     await s.p.getByLabel('Context', { exact: true }).fill('Adult B1 class working in pairs.');
     await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
@@ -242,6 +248,12 @@ const J = {
     if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
     await s.p.getByRole('button',{name:'Prepare class activities'}).click();
     await see(s.p,'text=READY FOR YOUR REVIEW','activity review');
+    if(await s.p.getByRole('heading',{name:'3. Review and edit'}).count()) throw Error('Step 3 remains visible in step 4');
+    await s.p.getByRole('button',{name:'← Back to teaching plan'}).click();
+    if(await s.p.locator('.ai-ready').count()) throw Error('Step 4 remains visible in step 3');
+    await s.p.getByRole('textbox',{name:'Main aim',exact:true}).fill('Choose and justify a trip with clear reasons');
+    await s.p.getByRole('button',{name:'Prepare class activities'}).click();
+    await see(s.p,'text=READY FOR YOUR REVIEW','rebuilt activity review');
     await s.p.getByRole('button',{name:'Create lesson in Classes'}).click();
     await see(s.p,'text=Created in Classes, hidden','hidden creation');
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);
