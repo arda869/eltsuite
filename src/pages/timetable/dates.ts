@@ -3,9 +3,10 @@
 
 export const DAY = 864e5;
 export const SNAP = 15; // minutes
-export type View = 'day' | 'week' | 'month' | 'schedule';
+export type View = 'day' | 'three-days' | 'week' | 'month' | 'schedule';
 export const VIEWS: { k: View; label: string; key: string }[] = [
   { k: 'day', label: 'Day', key: 'd' },
+  { k: 'three-days', label: '3 days', key: '3' },
   { k: 'week', label: 'Week', key: 'w' },
   { k: 'month', label: 'Month', key: 'm' },
   { k: 'schedule', label: 'Schedule', key: 'a' },
@@ -58,6 +59,10 @@ export const snapDown = (mins: number, to = SNAP) => Math.floor(mins / to) * to;
 
 // The days a view shows, and the time it covers.
 export function span(view: View, anchor: number) {
+  if (view === 'three-days') {
+    const from = startOfDay(anchor);
+    return { from, to: addDays(from, 3), days: Array.from({ length: 3 }, (_, i) => addDays(from, i)) };
+  }
   if (view === 'day') {
     const from = startOfDay(anchor);
     return { from, to: addDays(from, 1), days: [from] };
@@ -77,6 +82,7 @@ export function span(view: View, anchor: number) {
   return { from, to: addDays(from, SCHEDULE_DAYS), days: Array.from({ length: SCHEDULE_DAYS }, (_, i) => addDays(from, i)) };
 }
 export function step(view: View, anchor: number, dir: number) {
+  if (view === 'three-days') return addDays(anchor, 3 * dir);
   if (view === 'day') return addDays(anchor, dir);
   if (view === 'week') return addDays(anchor, 7 * dir);
   if (view === 'month') return addMonths(anchor, dir);

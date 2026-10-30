@@ -4383,8 +4383,8 @@ button.up-name:hover { color: var(--accent-text); text-decoration: underline; }
   .mode-noedit { display: block; padding: 8px 12px; font-size: 12px; }
 }
 @media (max-width: 640px) {
-  /* Building and arranging lessons waits for a larger screen */
-  .item-move, .lessons-tools, .lessons .add-link, .lessons .inline-add, .topic-acts .icon-btn[aria-label^="Move topic"] { display: none !important; }
+  /* Rearranging lessons waits for a larger screen; simple creation stays available. */
+  .item-move, .lessons-tools, .topic-acts .icon-btn[aria-label^="Move topic"] { display: none !important; }
 }
 .theme-choice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; }
 

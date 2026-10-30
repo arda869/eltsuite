@@ -81,6 +81,50 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Mobile class creation and duplicate learner validation': async (b) => {
+    const s = await session(b);
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.goto(BASE + '/class/' + s.demo.classId);
+    await s.p.getByRole('button', { name: '+ New topic', exact: true }).click();
+    await s.p.locator('.inline-add input').fill('Mobile audit topic');
+    await s.p.locator('.inline-add').getByRole('button', { name: 'Add', exact: true }).click();
+    await see(s.p, '.topic-name:has-text("Mobile audit topic")', 'the new mobile topic');
+    await s.p.getByRole('button', { name: /^Learners/ }).click();
+    await s.p.getByRole('button', { name: '+ Add learners', exact: true }).click();
+    const field = s.p.getByRole('textbox', { name: 'One name per line', exact: true });
+    if (!await field.evaluate(el => el === document.activeElement)) throw new Error('Learner form did not receive focus');
+    await field.fill('Audit Name\naudit name');
+    await s.p.getByRole('button', { name: 'Add 2 learners', exact: true }).click();
+    await see(s.p, '.side-form [role=alert]', 'duplicate names explained beside the form');
+    if (await s.p.locator('.learners table tbody tr').count() !== 6) throw new Error('Duplicate submission added learners');
+    await field.fill('Audit Name');
+    await s.p.getByRole('button', { name: 'Add 1 learner', exact: true }).click();
+    await see(s.p, '.learners table:has-text("Audit Name")', 'one learner successfully added');
+    return s;
+  },
+  'Three-day calendar across themes and screen sizes': async (b) => {
+    const s = await session(b);
+    for (const width of [390, 1300]) {
+      await s.p.setViewportSize({ width, height: 844 });
+      for (const theme of ['light', 'dark']) {
+        await s.p.evaluate(t => localStorage.setItem('ll.theme', t), theme);
+        await s.p.goto(BASE + '/timetable?day=2026-12-31');
+        await s.p.getByRole('radio', { name: '3 days', exact: true }).click();
+        await see(s.p, '.ttb-grid[data-cols="3"]', 'three calendar columns');
+        if (await s.p.locator('.ttb-head-day').count() !== 3) throw new Error('Wrong number of days');
+        await s.p.getByRole('button', { name: 'The 3 days after', exact: true }).click();
+        await s.p.getByRole('button', { name: /January 3, open the day/ }).waitFor();
+        const overflow = await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+        if (overflow) throw new Error('Calendar overflows at ' + width + ' in ' + theme);
+        await axe(s.p, 'Calendar ' + width + ' ' + theme, A11Y_FOUND);
+      }
+    }
+    await s.p.goto(BASE + '/timetable');
+    await see(s.p, '.ttb-grid[data-cols="3"]', 'saved three-day preference');
+    return s;
+  },
+
+
   'Super Admin controls AI access, off by default': async (b) => {
     const s = await session(b, { owner: true });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);

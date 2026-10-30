@@ -38,6 +38,12 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const nPicked = Object.values(picked).filter(Boolean).length;
   const nTyped = outsideOk ? names.split('\n').filter((n) => n.trim()).length : 0;
+  const addForm = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (!adding) return;
+    (addForm.current?.querySelector<HTMLElement>('textarea, input') ?? addForm.current?.querySelector<HTMLElement>('button'))?.focus();
+    addForm.current?.scrollIntoView({ block: 'nearest' });
+  }, [adding]);
 
   const sorted = [...learners]
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
@@ -48,12 +54,19 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
 
   async function add(e: FormEvent) {
     e.preventDefault();
+    if (busy === 'add') return;
     const chosen = pickable.filter(([uid]) => picked[uid]);
     const from = Object.fromEntries(chosen.map(([uid, t]) => [t.name || t.email, uid]));
     const list = [...(outsideOk ? names.split('\n').map((n) => n.trim()).filter(Boolean) : []), ...Object.keys(from)];
     const existing = new Set(learners.map((l) => l.displayName.toLowerCase()));
-    const dupes = list.filter((n) => existing.has(n.toLowerCase()));
-    if (dupes.length) return setError(`Already in the class: ${dupes.join(', ')}. Use a surname initial to tell them apart.`);
+    const dupes = list.filter((n) => {
+      const key = n.toLowerCase();
+      if (existing.has(key)) return true;
+      existing.add(key);
+      return false;
+    });
+    if (dupes.length) return setError(`These names are already in the class or repeated in your list: ${[...new Set(dupes)].join(', ')}. Use a surname initial to tell them apart.`);
+    if (!list.length) return;
     if (list.length > 40) return setError(tr('Add up to 40 learners at a time.'));
     setBusy('add');
     setError('');
@@ -148,7 +161,7 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
         </div>
       </div>
 
-      {error && <span className="error" role="alert">{error}</span>}
+      {error && !adding && learners.length > 0 && <span className="error" role="alert">{error}</span>}
 
       <div className="learners-body">
         <div className="table-wrap">
@@ -239,10 +252,11 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
         </div>
 
         {(adding || learners.length === 0) && (
-          <form className="side-form" onSubmit={add}>
+          <form className="side-form" ref={addForm} onSubmit={add}>
+            {error && <span className="error" role="alert">{error}</span>}
             <div className="row-between">
               <h2>{tr('Add learners')}</h2>
-              <button type="button" className="icon-btn" aria-label="Close" onClick={() => setAdding(false)}>
+              <button type="button" className="icon-btn" aria-label="Close" disabled={busy === 'add'} onClick={() => setAdding(false)}>
                 ×
               </button>
             </div>
@@ -275,11 +289,11 @@ export function LearnersTab({ c, learners, pins, own = {}, items = [], openId = 
             )}
             <span className="hint">{tr('Each learner gets a 4-digit PIN. They sign in with the class code, their name and the PIN. No email needed.')}</span>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn" onClick={() => setAdding(false)}>
+              <button type="button" className="btn" disabled={busy === 'add'} onClick={() => setAdding(false)}>
                 Cancel
               </button>
               <button className="btn primary" disabled={busy === 'add' || nTyped + nPicked === 0}>
-                {busy === 'add' ? 'Adding…' : tr(`Add ${nTyped + nPicked || ''} learners`).replace('  ', ' ')}
+                {busy === 'add' ? 'Adding…' : tr(nTyped + nPicked === 1 ? 'Add 1 learner' : `Add ${nTyped + nPicked || ''} learners`).replace('  ', ' ')}
               </button>
             </div>
           </form>

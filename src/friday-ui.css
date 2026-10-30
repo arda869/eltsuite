@@ -137,3 +137,20 @@
 .pg-paper { touch-action: pan-x pan-y; }
 .pg-paper { margin-inline: auto; outline: 1px solid var(--hair-strong); box-shadow: 0 2px 6px #0003, 0 16px 36px #0003; }
 @media print { .pg-zoom { display: none; } .pg-paper { zoom: 1 !important; outline: none; } .pg-desk { background: transparent; min-height: 0; padding: 0; } }
+
+/* Class controls keep names and codes readable at phone widths. */
+.class-meta .code-chip { flex-wrap: wrap; max-width: 100%; border-radius: 12px; white-space: nowrap; }
+.class-meta .code-chip strong, .class-meta .code-chip button { flex-shrink: 0; }
+.class-meta .code-chip button { min-height: 32px; height: auto; }
+.ch-text > div { min-width: 0; }
+.ch-text .page-title, .topic-name { overflow-wrap: anywhere; }
+.tabs[aria-label="Class sections"] { overflow-x: auto; }
+.tabs[aria-label="Class sections"] > button { flex: 0 0 auto; white-space: nowrap; min-height: 44px; }
+.inline-add { flex-wrap: wrap; }
+.inline-add input { min-width: 0; }
+@media (max-width: 640px) {
+  .inline-add input { flex-basis: 100%; min-height: 40px; }
+  .lessons .add-link { white-space: normal; text-align: left; min-height: 44px; }
+  .lessons .add-row { flex-wrap: wrap; }
+  .lessons .add-row > input { min-width: 0; flex-basis: 100%; }
+}

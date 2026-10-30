@@ -119,7 +119,11 @@ export function TimetablePage() {
   // eltsuite.com/timetable?day=2026-10-29 (the link in Google Calendar) opens that day.
   const [params] = useSearchParams();
   const linked = /^\d{4}-\d{2}-\d{2}$/.test(params.get('day') ?? '') ? startOfDay(fromFields(params.get('day')!, '12:00', localZone())) : null;
-  const [view, setViewNow] = useState<View>(() => (linked ? 'day' : narrowNow() ? (store.get('view') === 'schedule' ? 'schedule' : 'day') : (store.get('view') as View) || 'week'));
+  const [view, setViewNow] = useState<View>(() => {
+    if (linked) return 'day';
+    const saved = VIEWS.find((v) => v.k === store.get('view'))?.k;
+    return narrowNow() ? (saved === 'schedule' || saved === 'three-days' ? saved : 'day') : saved ?? 'week';
+  });
   const [anchor, setAnchor] = useState(() => linked ?? startOfDay(Date.now()));
   const [dir, setDir] = useState(0);
   const [side, setSide] = useState(() => store.get('side') !== '0');
@@ -136,7 +140,7 @@ export function TimetablePage() {
   const [scope, setScope] = useState<ScopeReq | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
   const narrow = useNarrow();
-  // Phones show a day, or the schedule: weeks and months need a bigger screen.
+  // Phones show a day, three days or the schedule; weeks and months need a bigger screen.
   useEffect(() => {
     if (narrow && (view === 'week' || view === 'month')) setViewNow('day');
   }, [narrow, view]);
@@ -325,7 +329,7 @@ export function TimetablePage() {
             <UiIcon name="plus" size={20} />
             New
           </button>
-          <MiniMonth anchor={anchor} from={view === "day" || view === "week" ? from : 0} to={view === "day" || view === "week" ? to : 0} busy={(d) => busyDays.has(d)} onPick={(d) => jump(d)} />
+          <MiniMonth anchor={anchor} from={view === "day" || view === "three-days" || view === "week" ? from : 0} to={view === "day" || view === "three-days" || view === "week" ? to : 0} busy={(d) => busyDays.has(d)} onPick={(d) => jump(d)} />
           {next && (
             <div className="ttb-next" style={{ ['--ev' as string]: colorOf(next) } as CSSProperties}>
               <span className="ttb-side-h">{isNow(next) || next.s.live ? 'On now' : 'Up next'}</span>
@@ -368,10 +372,10 @@ export function TimetablePage() {
               Today
             </button>
             <span className="ttb-arrows">
-              <button type="button" className="ttb-arrow" aria-label={`The ${view === 'schedule' ? 'weeks' : view} before`} data-tip={`The ${view === 'schedule' ? 'weeks' : view} before (k)`} onClick={() => go(-1)}>
+              <button type="button" className="ttb-arrow" aria-label={`The ${view === 'schedule' ? 'weeks' : view === 'three-days' ? '3 days' : view} before`} data-tip={`The ${view === 'schedule' ? 'weeks' : view === 'three-days' ? '3 days' : view} before (k)`} onClick={() => go(-1)}>
                 <UiIcon name="prev" size={16} />
               </button>
-              <button type="button" className="ttb-arrow" aria-label={`The ${view === 'schedule' ? 'weeks' : view} after`} data-tip={`The ${view === 'schedule' ? 'weeks' : view} after (j)`} onClick={() => go(1)}>
+              <button type="button" className="ttb-arrow" aria-label={`The ${view === 'schedule' ? 'weeks' : view === 'three-days' ? '3 days' : view} after`} data-tip={`The ${view === 'schedule' ? 'weeks' : view === 'three-days' ? '3 days' : view} after (j)`} onClick={() => go(1)}>
                 <UiIcon name="next" size={16} />
               </button>
             </span>
@@ -380,7 +384,7 @@ export function TimetablePage() {
             </h2>
             <span className="ttb-bar-r">
               <span className="seg ttb-views" role="radiogroup" aria-label="View">
-                {VIEWS.filter((v) => !narrow || v.k === 'day' || v.k === 'schedule').map((v) => (
+                {VIEWS.filter((v) => !narrow || v.k === 'day' || v.k === 'three-days' || v.k === 'schedule').map((v) => (
                   <button key={v.k} type="button" role="radio" aria-checked={view === v.k} className={view === v.k ? 'on' : ''} onClick={() => setView(v.k)} data-tip={`${v.label} (${v.key})`}>
                     {v.label}
                   </button>
@@ -390,7 +394,7 @@ export function TimetablePage() {
             </span>
           </header>
           <div className="ttb-view" key={view}>
-            {view === 'day' || view === 'week' ? (
+            {view === 'day' || view === 'three-days' || view === 'week' ? (
               <TimeGrid days={days} evs={evs} reveal={reveal} pending={pending} hold={hold} picked={pickedKey} dir={dir} onCreate={onCreate} onPick={onPick} onChange={(ev, s, m) => void change(ev, s, m)} onDay={(d) => (jump(d), setView('day'))} />
             ) : view === 'month' ? (
               <MonthGrid days={days} month={monthStart(anchor)} evs={evs} hold={hold} picked={pickedKey} dir={dir} onDay={(d) => (jump(d), setView('day'))} onCreate={(d, at) => { const st = niceStart(d); onCreate(st, st + 3600e3, at); }} onPick={onPick} onMore={(day, list, at) => (setPicked(null), setPending(null), setMore({ day, list, at }))} onMove={(ev, st) => void change(ev, st, Math.round((ev.o.end - ev.o.start) / 60000))} />

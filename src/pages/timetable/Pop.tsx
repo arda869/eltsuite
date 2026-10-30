@@ -154,6 +154,7 @@ export const SHORTCUTS: [string[], string][] = [
   [['j', 'n'], 'Next day, week or month'],
   [['k', 'p'], 'The one before'],
   [['d'], 'Day view'],
+  [['3'], '3-day view'],
   [['w'], 'Week view'],
   [['m'], 'Month view'],
   [['a'], 'Schedule view'],

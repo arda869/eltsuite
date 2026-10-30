@@ -351,3 +351,10 @@ body.ttb-moving, body.ttb-moving * { cursor: grabbing !important; user-select: n
 .ttb-guests .ttb-chip { width: auto; flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--ink); font-size: 13px; }
 .ttb-chip button { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer; }
 .ttb-chip button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink); }
+
+/* Three days remain legible on a phone without widening the page. */
+@media (max-width: 700px) {
+  .ttb-grid[data-cols='3'] .ttb-ev b { white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .ttb-title { white-space: normal; overflow-wrap: anywhere; }
+  .ttb-views button { min-height: 36px; }
+}
