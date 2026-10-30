@@ -7,17 +7,18 @@ import { formatBytes } from '../lib/archive';
 // The space this account uses, out of the free plan's 1 GB.
 export function StorageCard({ uid }: { uid: string }) {
   const space = useSpaceLimit();
-  const items = useArchive(uid) ?? [];
-  const { mine } = useMyDocs(uid);
-  const media = (k: string) => items.filter((i) => i.kind === k).reduce((s, i) => s + (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0), 0);
+  const items = useArchive(uid, true) ?? [];
+  const { mine } = useMyDocs(uid, true);
+  const media = (k: string) => items.filter((i) => i.kind === k && !i.deletedAt).reduce((s, i) => s + (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0), 0);
   const parts: [string, number, string][] = [
     ['Pictures', media('image'), 'k-image'],
     ['Recordings', media('audio'), 'k-audio'],
     ['Videos', media('video'), 'k-video'],
-    ['Collaborative files', (mine ?? []).reduce((s, d) => s + (d.size ?? 0), 0), 'k-docs'],
+    ['Collaborative files', (mine ?? []).filter((d) => !d.deletedAt).reduce((s, d) => s + (d.size ?? 0), 0), 'k-docs'],
+    ['Recycle bin', items.filter((i) => i.deletedAt).reduce((n, i) => n + (i.size || 0) * (1 + Object.keys(i.copies || {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length || 0), 0) + (mine || []).filter((d) => d.deletedAt).reduce((n, d) => n + (d.size || 0), 0), 'k-bin'],
   ];
   const total = parts.reduce((s, p) => s + p[1], 0);
-  const ready = useArchive(uid) !== null && mine !== null;
+  const ready = useArchive(uid, true) !== null && mine !== null;
   useEffect(() => void (ready && noteSpace(uid, total)), [ready, uid, total]);
   return (
     <div className="ma-space st-card">

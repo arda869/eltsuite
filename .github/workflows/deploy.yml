@@ -25,6 +25,8 @@ jobs:
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
 
+      - name: File retention regression checks
+        run: node --test test/file-bin-cleanup.mjs
       - name: Build
         env:
           VITE_ELT_AI_PILOT: 'true'

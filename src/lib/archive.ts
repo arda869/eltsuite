@@ -1,5 +1,6 @@
+import { writeNamedFile } from './fileNames';
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { mediaCol, mediaDoc } from './media';
 
@@ -11,6 +12,9 @@ export type ScriptLine = { t: number | null; text: string; who?: string; e?: num
 export type ArchiveKind = 'image' | 'audio' | 'video';
 export type ArchiveItem = {
   id: string;
+  deletedAt?: number;
+  purgeRequestedAt?: number;
+  purgingAt?: number;
   kind: ArchiveKind;
   name: string;
   folder: string; // '' for the top level
@@ -34,7 +38,7 @@ const withDefaults = (id: string, d: Record<string, unknown>): ArchiveItem => {
   return { ...(x as ArchiveItem), id, folder: x.folder ?? '', tags: x.tags ?? [], size: x.size ?? 0, name: x.name ?? 'Untitled', createdAt: x.createdAt ?? 0 };
 };
 
-export function useArchive(uid?: string | null) {
+export function useArchive(uid?: string | null, includeDeleted = false) {
   const [items, setItems] = useState<ArchiveItem[] | null>(null);
   useEffect(() => {
     if (!uid) return;
@@ -44,12 +48,13 @@ export function useArchive(uid?: string | null) {
       () => setItems([]),
     );
   }, [uid]);
-  return items;
+  return useMemo(() => includeDeleted ? items : items?.filter((i) => !i.deletedAt) ?? null, [items, includeDeleted]);
 }
 
 export async function archiveAdd(uid: string, item: Omit<ArchiveItem, 'id' | 'createdAt'>) {
   const clean = Object.fromEntries(Object.entries(item).filter(([, v]) => v !== undefined));
-  const r = await addDoc(col(uid), { ...clean, createdAt: Date.now() });
+  const r = doc(col(uid));
+  await writeNamedFile(r, { owner: uid, path: item.folder }, item.name, { ...clean, createdAt: Date.now() }, true, true);
   return r.id;
 }
 
@@ -60,7 +65,8 @@ export async function archiveGet(uid: string, id: string): Promise<ArchiveItem |
 
 // Rename, move to a folder, tag, or change the script. A new script reaches every class that uses it.
 export async function archiveUpdate(uid: string, item: ArchiveItem, patch: Partial<Pick<ArchiveItem, 'name' | 'folder' | 'tags' | 'script' | 'duration'>>) {
-  await updateDoc(doc(col(uid), item.id), { ...patch, updatedAt: Date.now() });
+  if (patch.name !== undefined || patch.folder !== undefined) await writeNamedFile(doc(col(uid), item.id), { owner: uid, path: patch.folder ?? item.folder }, patch.name ?? item.name, { ...patch, updatedAt: Date.now() }, false, patch.name === undefined);
+  else await updateDoc(doc(col(uid), item.id), { ...patch, updatedAt: Date.now() });
   if (patch.script !== undefined || patch.name !== undefined) {
     const places = [...(item.home ? [[item.home.classId, item.home.mediaId] as const] : []), ...Object.entries(item.copies ?? {})];
     const seen = new Set<string>();
@@ -75,17 +81,14 @@ export async function archiveUpdate(uid: string, item: ArchiveItem, patch: Parti
 // Removing from the archive leaves the media in the lessons that already use it.
 // Removing a file removes it everywhere: from the library and from every class that uses it, so it
 // takes no space any more. Lessons that showed it say the file was removed.
-export async function archiveRemove(uid: string, id: string, item?: ArchiveItem) {
-  const places = item ? [...(item.home ? [[item.home.classId, item.home.mediaId] as const] : []), ...Object.entries(item.copies ?? {})] : [];
-  await Promise.all(
-    places.map(async ([classId, mediaId]) => {
-      const head = await getDoc(mediaRef(classId, mediaId)).catch(() => null);
-      const parts = Number(head?.data()?.parts) || 0;
-      await Promise.all([...Array.from({ length: parts }, (_, k) => deleteDoc(mediaRef(classId, `${mediaId}_p${k}`)).catch(() => {})), deleteDoc(mediaRef(classId, mediaId)).catch(() => {})]);
-    }),
-  );
-  await deleteDoc(doc(col(uid), id));
+export async function archiveRemove(uid: string, id: string, _item?: ArchiveItem) {
+  await updateDoc(doc(col(uid), id), { deletedAt: Date.now() });
 }
+export async function archiveRestore(uid: string, item: ArchiveItem) {
+  const { deleteField } = await import('firebase/firestore');
+  await writeNamedFile(doc(col(uid), item.id), { owner: uid, path: item.folder }, item.name, { deletedAt: deleteField() }, false, true);
+}
+export const requestArchivePurge = (uid: string, id: string) => updateDoc(doc(col(uid), id), { purgeRequestedAt: Date.now() });
 
 export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`);
 
@@ -213,7 +216,7 @@ export async function removeFolder(uid: string, name: string, items: ArchiveItem
   const up = parentOf(name);
   const b = writeBatch(db);
   Object.entries(places).filter(([, f]) => inTree(f, name)).forEach(([k]) => b.set(doc(db, 'users', uid, 'libPlaces', k), { folder: up, at: Date.now() }));
-  items.filter((i) => inTree(i.folder, name)).forEach((i) => b.update(doc(col(uid), i.id), { folder: up }));
+  for (const i of items.filter((i) => inTree(i.folder, name))) await archiveUpdate(uid, i, { folder: up });
   [name, ...folders.filter((f) => f.startsWith(name + '/'))].forEach((f) => b.delete(doc(db, 'users', uid, 'archiveFolders', folderId(f))));
   if (up) b.set(doc(db, 'users', uid, 'archiveFolders', folderId(up)), { name: up, at: Date.now() });
   await b.commit();
@@ -222,7 +225,7 @@ export async function renameFolder(uid: string, from: string, to: string, items:
   const map = (f: string) => to + f.slice(from.length);
   const b = writeBatch(db);
   Object.entries(places).filter(([, f]) => inTree(f, from)).forEach(([k, f]) => b.set(doc(db, 'users', uid, 'libPlaces', k), { folder: map(f), at: Date.now() }));
-  items.filter((i) => inTree(i.folder, from)).forEach((i) => b.update(doc(col(uid), i.id), { folder: map(i.folder) }));
+  for (const i of items.filter((i) => inTree(i.folder, from))) await archiveUpdate(uid, i, { folder: map(i.folder) });
   [from, ...folders.filter((f) => f.startsWith(from + '/'))].forEach((f) => {
     b.delete(doc(db, 'users', uid, 'archiveFolders', folderId(f)));
     b.set(doc(db, 'users', uid, 'archiveFolders', folderId(map(f))), { name: map(f), at: Date.now() });
@@ -245,9 +248,7 @@ export async function placeTasks(uid: string, keys: string[], folder: string) {
   await b.commit();
 }
 export async function moveItems(uid: string, list: ArchiveItem[], folder: string) {
-  const b = writeBatch(db);
-  list.forEach((i) => b.update(doc(col(uid), i.id), { folder, updatedAt: Date.now() }));
-  await b.commit();
+  for (const i of list) await archiveUpdate(uid, i, { folder });
 }
 
 // YouTube links: the video id, for the player.

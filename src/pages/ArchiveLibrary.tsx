@@ -235,7 +235,7 @@ function DocCard({ d, shared, folders }: { d: SharedDoc; shared: boolean; folder
   const menu = [
     ...(!shared && folders?.length ? folders.filter((f) => f.id !== d.folder).map((f) => ({ label: `Move to ${f.name}`, onClick: () => void moveToFolder(d, f) })) : []),
     ...(!shared && d.folder ? [{ label: 'Move out of the folder', onClick: () => void moveToFolder(d, null) }] : []),
-    ...(!shared ? [{ label: 'Delete', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone it’s shared with?`).then((ok) => void (ok && removeSharedDoc(d.id))) }] : []),
+    ...(!shared ? [{ label: 'Delete', danger: true, onClick: () => void ask(`Delete “${d.title}” to the recycle bin? It can be restored for 30 days.`).then((ok) => void (ok && removeSharedDoc(d.id))) }] : []),
   ];
   return (
     <a href={`/doc/${d.id}`} target="_blank" rel="noopener" className={'al-doc fd-doc k-' + d.kind} onContextMenu={(e) => menu.length && openMenu(e, menu)}>

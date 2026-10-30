@@ -8,14 +8,14 @@ import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
 
 const require = createRequire(import.meta.url);
-const BASE = 'http://localhost:5184';
+const BASE = `http://localhost:${process.env.SMOKE_PORT || '5184'}`;
 const A11Y = process.argv.includes('--a11y');
 const ONLY = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
 const OWNER = 'ardanurioglu@gmail.com';
 
 // ------------------------------------------------------------------ the app
 async function up() {
-  const vite = spawn('npx', ['vite', '--config', 'test/vite.config.ts'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  const vite = spawn('npx', ['vite', '--config', 'test/vite.config.ts', '--port', new URL(BASE).port], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   vite.stdout.on('data', (d) => (log += d));
   vite.stderr.on('data', (d) => (log += d));
@@ -81,6 +81,71 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'File names, recycle bin and organisation sidebar': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/test/file-tools-check.html');
+    await s.p.waitForFunction(() => /ALL PASSED|FAIL/.test(document.querySelector('#result')?.textContent || ''), null, { timeout: 30000 });
+    const result = await s.p.locator('#result').innerText();
+    if (result.includes('FAIL')) throw new Error(result);
+    await s.p.goto(BASE + '/archive');
+    await see(s.p, 'nav[aria-label="Files"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
+    await s.p.getByRole('button', { name: 'Recycle bin', exact: true }).click();
+    await see(s.p, 'h1:has-text("Recycle bin")', 'the recycle bin');
+    await s.p.locator('.file-bin-list li').filter({ hasText: 'Restore me' }).getByRole('button', { name: 'Restore', exact: true }).click();
+    await s.p.locator('.file-bin-list li').filter({ hasText: 'Restore me' }).waitFor({ state: 'detached' });
+    await s.p.locator('.file-bin-list li').filter({ hasText: 'Remove me' }).getByRole('button', { name: /^Permanently delete/ }).click();
+    await s.p.getByRole('button', { name: 'Delete permanently', exact: true }).click();
+    await see(s.p, 'text=Your recycle bin is empty', 'restored and permanently queued files removed from the bin');
+    await axe(s.p, 'Recycle bin', A11Y_FOUND);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['orgs/o1'] = { name: 'Harbour School', adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda' } }, drives: {} };
+      fs['accounts/teacher1'] = { org: 'o1' };
+      fs['sharedFolders/drive-demo'] = { owner: 'teacher1', ownerName: 'Harbour School', name: 'Sample library', org: 'o1', members: {}, memberIds: [] };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.goto(BASE + '/library?f=drive-demo');
+    await see(s.p, 'nav[aria-label="Organisation library"]', 'libraries inside Files');
+    await see(s.p, '.ma-main h1', 'the selected organisation folder');
+    await axe(s.p, 'Unified Files library', A11Y_FOUND);
+    return s;
+  },
+  'Mobile messages use the whole visible screen': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['chats/mobile-check'] = { members: ['teacher1'], names: { teacher1: 'Arda' }, roles: { teacher1: 'teacher' }, kind: 'dm', createdBy: 'teacher1', at: Date.now(), lastAt: Date.now() };
+      fs['chats/mobile-check/msgs/one'] = { by: 'teacher1', name: 'Arda', role: 'teacher', at: Date.now(), text: 'Short conversation', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Short conversation' }] }] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.goto(BASE + '/messages?c=mobile-check');
+    await see(s.p, '.chat-compose', 'the mobile composer');
+    const fits = async () => s.p.waitForFunction(() => {
+      const chat = document.querySelector('.msg.has-chat')?.getBoundingClientRect();
+      const composer = document.querySelector('.chat-compose')?.getBoundingClientRect();
+      const vv = window.visualViewport;
+      const bottom = (vv?.offsetTop || 0) + (vv?.height || innerHeight);
+      return chat && composer && Math.abs(chat.bottom - bottom) <= 2 && Math.abs(composer.bottom - bottom) <= 2;
+    });
+    await fits();
+    await s.p.screenshot({ path: '/tmp/eltsuite-mobile-chat-fixed.png' });
+    await s.p.setViewportSize({ width: 390, height: 460 });
+    await fits();
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      for (let n = 0; n < 55; n++) fs['chats/mobile-check/msgs/long-' + n] = { by: 'teacher1', name: 'Arda', role: 'teacher', at: Date.now() + n, text: 'Message ' + n + ' in a longer conversation.', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Message ' + n + ' in a longer conversation.' }] }] } };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+    });
+    await s.p.reload();
+    await see(s.p, '.chat-compose', 'the composer with long history');
+    await fits();
+    const scrolls = await s.p.locator('.chat-body').evaluate((el) => el.scrollHeight > el.clientHeight);
+    if (!scrolls) throw new Error('Long history does not scroll independently.');
+    await axe(s.p, 'Mobile messages', A11Y_FOUND);
+    return s;
+  },
+
   'Mobile class creation and duplicate learner validation': async (b) => {
     const s = await session(b);
     await s.p.setViewportSize({ width: 390, height: 844 });
