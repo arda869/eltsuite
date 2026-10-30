@@ -442,7 +442,7 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
         )}
       </header>
       {settings && c.kind === 'group' && <GroupSettings c={c} me={me} dir={dir} onLeave={() => (leaveGroup(c, me.key), onBack())} />}
-      <div className="chat-body">
+      <div className="chat-body" tabIndex={0} role="region" aria-label="Message history">
         {msgs === null && <Loader label="Opening the chat" />}
         {msgs && msgs.length === 0 && <span className="hint chat-start">Say hello. You can tag people with @, and add questions, vocabulary boxes and more from + Add.</span>}
         {days.map(([d, list]) => (

@@ -115,7 +115,7 @@ const J = {
     await s.p.evaluate(() => {
       const fs = JSON.parse(localStorage.getItem('mockfs'));
       fs['chats/mobile-check'] = { members: ['teacher1'], names: { teacher1: 'Arda' }, roles: { teacher1: 'teacher' }, kind: 'dm', createdBy: 'teacher1', at: Date.now(), lastAt: Date.now() };
-      fs['chats/mobile-check/msgs/one'] = { by: 'teacher1', name: 'Arda', role: 'teacher', at: Date.now(), text: 'Short conversation' };
+      fs['chats/mobile-check/msgs/one'] = { by: 'teacher1', name: 'Arda', role: 'teacher', at: Date.now(), text: 'Short conversation', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Short conversation' }] }] } };
       localStorage.setItem('mockfs', JSON.stringify(fs));
     });
     await s.p.setViewportSize({ width: 390, height: 844 });
@@ -134,7 +134,7 @@ const J = {
     await fits();
     await s.p.evaluate(() => {
       const fs = JSON.parse(localStorage.getItem('mockfs'));
-      for (let n = 0; n < 55; n++) fs['chats/mobile-check/msgs/long-' + n] = { by: 'teacher1', name: 'Arda', role: 'teacher', at: Date.now() + n, text: 'Message ' + n + ' in a longer conversation.' };
+      for (let n = 0; n < 55; n++) fs['chats/mobile-check/msgs/long-' + n] = { by: 'teacher1', name: 'Arda', role: 'teacher', at: Date.now() + n, text: 'Message ' + n + ' in a longer conversation.', content: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Message ' + n + ' in a longer conversation.' }] }] } };
       localStorage.setItem('mockfs', JSON.stringify(fs));
     });
     await s.p.reload();

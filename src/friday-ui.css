@@ -199,3 +199,6 @@
   .msg.has-chat .chat { flex: 1 1 0; min-height: 0; }
   .msg.has-chat .chat-head, .msg.has-chat .chat-typing { flex-shrink: 0; }
 }
+
+/* Timestamps remain readable on the soft message bubbles in either theme. */
+.chat .bub .bub-meta { color: color-mix(in srgb, var(--ink) 80%, var(--paper)); }
