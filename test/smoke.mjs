@@ -81,6 +81,189 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Mobile class creation and duplicate learner validation': async (b) => {
+    const s = await session(b);
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.goto(BASE + '/class/' + s.demo.classId);
+    await s.p.getByRole('button', { name: '+ New topic', exact: true }).click();
+    await s.p.locator('.inline-add input').fill('Mobile audit topic');
+    await s.p.locator('.inline-add').getByRole('button', { name: 'Add', exact: true }).click();
+    await see(s.p, '.topic-name:has-text("Mobile audit topic")', 'the new mobile topic');
+    await s.p.getByRole('button', { name: /^Learners/ }).click();
+    await s.p.getByRole('button', { name: '+ Add learners', exact: true }).click();
+    const field = s.p.getByRole('textbox', { name: 'One name per line', exact: true });
+    if (!await field.evaluate(el => el === document.activeElement)) throw new Error('Learner form did not receive focus');
+    await field.fill('Audit Name\naudit name');
+    await s.p.getByRole('button', { name: 'Add 2 learners', exact: true }).click();
+    await see(s.p, '.side-form [role=alert]', 'duplicate names explained beside the form');
+    if (await s.p.locator('.learners table tbody tr').count() !== 6) throw new Error('Duplicate submission added learners');
+    await field.fill('Audit Name');
+    await s.p.getByRole('button', { name: 'Add 1 learner', exact: true }).click();
+    await see(s.p, '.learners table:has-text("Audit Name")', 'one learner successfully added');
+    return s;
+  },
+  'Three-day calendar across themes and screen sizes': async (b) => {
+    const s = await session(b);
+    for (const width of [390, 1300]) {
+      await s.p.setViewportSize({ width, height: 844 });
+      for (const theme of ['light', 'dark']) {
+        await s.p.evaluate(t => localStorage.setItem('ll.theme', t), theme);
+        await s.p.goto(BASE + '/timetable?day=2026-12-31');
+        await s.p.getByRole('radio', { name: '3 days', exact: true }).click();
+        await see(s.p, '.ttb-grid[data-cols="3"]', 'three calendar columns');
+        if (await s.p.locator('.ttb-head-day').count() !== 3) throw new Error('Wrong number of days');
+        await s.p.getByRole('button', { name: 'The 3 days after', exact: true }).click();
+        await s.p.getByRole('button', { name: /January 3, open the day/ }).waitFor();
+        const overflow = await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+        if (overflow) throw new Error('Calendar overflows at ' + width + ' in ' + theme);
+        await s.p.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));
+        await axe(s.p, 'Calendar ' + width + ' ' + theme, A11Y_FOUND);
+      }
+    }
+    await s.p.goto(BASE + '/timetable');
+    await see(s.p, '.ttb-grid[data-cols="3"]', 'saved three-day preference');
+    return s;
+  },
+
+
+  'Super Admin controls AI access, off by default': async (b) => {
+    const s = await session(b, { owner: true });
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await see(s.p, 'text=The pilot is not enabled yet.', 'access off for the owner');
+    await s.p.goto(BASE + '/admin?tab=ai');
+    const toggle = s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true });
+    await toggle.waitFor();
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw Error('AI access was not off by default');
+    await axe(s.p, 'Super Admin: AI access', A11Y_FOUND);
+    await toggle.click();
+    await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await s.p.getByLabel('Topic', { exact: true }).waitFor();
+    await s.p.goto(BASE + '/admin?tab=ai');
+    await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
+    await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
+    return s;
+  },
+  'Lesson assistant approval, private save and reopen': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await s.p.getByLabel('Topic', { exact: true }).fill('Travel');
+    await s.p.getByLabel('Objectives', { exact: true }).fill('Compare options and agree on a trip.');
+    await s.p.getByLabel('Context', { exact: true }).fill('Adult B1 class working in pairs.');
+    await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
+    await see(s.p, 'text=2. Review the outline', 'outline approval');
+    if (await s.p.getByRole('button', { name: 'Save private draft' }).count()) throw Error('Plan created before approval');
+    await s.p.getByRole('button', { name: 'Approve outline and make the plan' }).click();
+    await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).fill('Explain a choice with two reasons');
+    await s.p.getByRole('button', { name: 'Learner materials', exact: true }).click();
+    await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
+    await s.p.getByRole('button', { name: 'Save private draft' }).click();
+    await see(s.p, 'text=Saved privately.', 'private save confirmation');
+    await s.p.getByRole('button', { name: 'Start a new plan' }).click();
+    await s.p.getByRole('button', { name: 'Open saved plans' }).click();
+    await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
+    if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
+    await axe(s.p, 'Lesson assistant', A11Y_FOUND);
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Assistant overflows on mobile');
+    return s;
+  },
+
+  'Sound chart themes, page gestures and compact title': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const title = d.locator('input.dp-title');
+    await title.fill('Sound notes');
+    await title.press('Enter');
+    const compact = await title.evaluate((el) => el.getBoundingClientRect().width < el.parentElement.getBoundingClientRect().width);
+    if (!compact) throw new Error('The title input stretches across its header.');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.click();
+    await slash(d, 'phonemic');
+    await see(d, '.ph-chart', 'the shared sound chart');
+    await text.press('ControlOrMeta+End');
+    await text.press('Enter');
+    await slash(d, 'phonemic');
+    const pagesFit = await d.locator('.ph-node:has(.ph-chart)').evaluateAll((blocks) => blocks.every((el) => {
+      const paper = el.closest('.pg-paper');
+      const scale = Number(paper.style.zoom);
+      const top = (el.getBoundingClientRect().top - paper.getBoundingClientRect().top) / scale;
+      const height = el.getBoundingClientRect().height / scale;
+      return top + height <= (Math.floor(top / 1123) + 1) * 1123 - 96 + 1;
+    }));
+    if (!pagesFit) throw new Error('A sound chart crosses a page boundary.');
+    for (const colour of ['black', 'white']) {
+      await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+      await d.getByRole('menuitemradio', { name: 'Page colour: ' + colour, exact: true }).click();
+      const colours = await d.locator('.ph-chart').first().evaluate((el) => ({ ink: getComputedStyle(el).color, paperInk: getComputedStyle(el.closest('.pg-paper')).color, background: getComputedStyle(el).backgroundImage }));
+      if (colours.ink !== colours.paperInk || (colour === 'black' && colours.background.includes('255, 255, 255'))) throw new Error('Sound chart does not follow page appearance: ' + JSON.stringify(colours));
+    }
+    const contained = await d.locator('.ph-chart').first().evaluate((el) => {
+      const chart = el.getBoundingClientRect();
+      const content = el.closest('.pg-text').getBoundingClientRect();
+      return chart.right <= content.right + 1 && chart.width <= content.width + 1 && el.scrollWidth <= el.clientWidth + 1;
+    });
+    if (!contained) throw new Error('The sound chart overflows the page.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pageless', exact: true }).click();
+    await see(d, '.ph-chart', 'charts after switching to pageless');
+    if (await d.locator('.ph-chart').count() !== 2) throw new Error('A chart disappeared in pageless mode.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pages', exact: true }).click();
+    await see(d, '.pg-paper .ph-chart', 'charts after switching back to pages');
+    if (await d.locator('.pg-page-info').count()) throw new Error('The paper-size label is still beside zoom.');
+    const before = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
+    await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -30 });
+    await d.waitForFunction((old) => Number(document.querySelector('.pg-paper').style.zoom) > old, before);
+    const after = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
+    await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: false, deltaY: 30 });
+    if (await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom)) !== after) throw new Error('Ordinary scrolling changed page zoom.');
+    await axe(d, 'Responsive sound chart', A11Y_FOUND);
+    return s;
+  },
+  'Document find, replace and format painter': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.fill('Notes and notes. Plain target.');
+    await text.press('ControlOrMeta+Home');
+    for (let i = 0; i < 5; i++) await text.press('Shift+ArrowRight');
+    await d.getByRole('button', { name: /^Bold/ }).click();
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Copy text formatting', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Find and replace…/ }).click();
+    const panel = d.getByRole('dialog', { name: 'Find and replace', exact: true });
+    const find = panel.getByRole('textbox', { name: 'Find', exact: true });
+    await find.fill('Plain target');
+    await see(d, '.document-find-navigation:has-text("1 of 1 matches")', 'the formatting target match');
+    await panel.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Apply text formatting', exact: true }).click();
+    await see(d, '.ProseMirror strong:has-text("Plain target")', 'the copied bold formatting');
+    await text.press('ControlOrMeta+f');
+    await find.fill('notes');
+    await see(d, '.document-find-navigation:has-text("1 of 2 matches")', 'case-insensitive matches');
+    await panel.getByRole('checkbox', { name: 'Match case', exact: true }).check();
+    await see(d, '.document-find-navigation:has-text("1 of 1 matches")', 'case-sensitive matching');
+    await panel.getByRole('checkbox', { name: 'Match case', exact: true }).uncheck();
+    await panel.getByRole('textbox', { name: 'Replace with', exact: true }).fill('const J = {');
+    await panel.getByRole('button', { name: 'Replace all', exact: true }).click();
+    await see(d, '.ProseMirror:has-text("const J = { and const J = {. Plain target.")', 'literal replacement text');
+    await panel.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Undo/ }).click();
+    await see(d, '.ProseMirror:has-text("Notes and notes. Plain target.")', 'one-step replace-all undo');
+    await d.reload();
+    await see(d, '.ProseMirror strong:has-text("Plain target")', 'the saved copied formatting');
+    await axe(d, 'Document editing tools', A11Y_FOUND);
+    return s;
+  },
+
   'Advanced document export files': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/test/document-tools-check.html');

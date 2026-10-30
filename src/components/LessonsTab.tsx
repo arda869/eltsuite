@@ -33,14 +33,18 @@ function InlineAdd({ placeholder, label, onAdd }: { placeholder: string; label: 
   const [open, setOpen] = useState(false);
   const [v, setV] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!v.trim()) return;
+    if (busy || !v.trim()) return;
     setBusy(true);
+    setError('');
     try {
       await onAdd(v.trim());
       setV('');
       setOpen(false);
+    } catch {
+      setError('We couldn’t add the topic. Check your connection and try again. Your title is still here.');
     } finally {
       setBusy(false);
     }
@@ -59,14 +63,15 @@ function InlineAdd({ placeholder, label, onAdd }: { placeholder: string; label: 
         onChange={(e) => setV(e.target.value)}
         placeholder={placeholder}
         maxLength={120}
-        onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+        onKeyDown={(e) => e.key === 'Escape' && !busy && setOpen(false)}
       />
       <button className="btn primary small-btn" disabled={busy || !v.trim()}>
         Add
       </button>
-      <button type="button" className="btn small-btn" onClick={() => setOpen(false)}>
+      <button type="button" className="btn small-btn" disabled={busy} onClick={() => setOpen(false)}>
         Cancel
       </button>
+      {error && <span className="error" role="alert">{error}</span>}
     </form>
   );
 }
@@ -85,16 +90,20 @@ function AddItem({ onAdd }: { onAdd: (title: string, type: Item['type'], due: nu
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const label = KINDS.find((k) => k.type === type)!.label;
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (busy || !title.trim()) return;
     setBusy(true);
+    setError('');
     try {
       await onAdd(title.trim(), type, due && (type === 'homework' || type === 'exam') ? new Date(due).getTime() : null);
       setTitle('');
       setDue('');
       setOpen(false);
+    } catch {
+      setError('We couldn’t add this item. Check your connection and try again. Your details are still here.');
     } finally {
       setBusy(false);
     }
@@ -106,7 +115,7 @@ function AddItem({ onAdd }: { onAdd: (title: string, type: Item['type'], due: nu
       </button>
     );
   return (
-    <form className="add-item" onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
+    <form className="add-item" onSubmit={submit} onKeyDown={(e) => e.key === 'Escape' && !busy && setOpen(false)}>
       <div className="add-kinds" role="radiogroup" aria-label="What to add">
         {KINDS.map((k) => (
           <button key={k.type} type="button" role="radio" aria-checked={type === k.type} className={'add-kind' + (type === k.type ? ' on' : '')} onClick={() => setType(k.type)}>
@@ -126,10 +135,11 @@ function AddItem({ onAdd }: { onAdd: (title: string, type: Item['type'], due: nu
         <button className="btn primary small-btn" disabled={busy || !title.trim()}>
           Add {label.toLowerCase()}
         </button>
-        <button type="button" className="btn small-btn" onClick={() => setOpen(false)}>
+        <button type="button" className="btn small-btn" disabled={busy} onClick={() => setOpen(false)}>
           Cancel
         </button>
       </span>
+      {error && <span className="error" role="alert">{error}</span>}
     </form>
   );
 }

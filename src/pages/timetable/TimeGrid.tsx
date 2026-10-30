@@ -185,7 +185,7 @@ export function TimeGrid({
           </button>
         ))}
       </div>
-      <div className="ttb-scroll" ref={scroll}>
+      <div className="ttb-scroll" ref={scroll} tabIndex={0} role="region" aria-label="Calendar times">
         <div className="ttb-body" style={{ ...cs, height: 24 * HOUR }}>
           <div className="ttb-hours" aria-hidden="true">
             {Array.from({ length: 23 }, (_, i) => (

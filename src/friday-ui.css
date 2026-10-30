@@ -161,3 +161,20 @@
 .document-version-list pre { white-space: pre-wrap; max-height: 220px; overflow: auto; font: 12px/1.5 var(--sans); }
 .document-version-list summary { cursor: pointer; margin-bottom: 8px; }
 @media print { .doc-page-break { break-before: page; height: 0 !important; min-height: 0; } .doc-page-break > span, .pg-running { display: none; } .doc-section[data-new-page] { break-before: page; margin-top: 0 !important; } .ProseMirror .doc-section { border: 0; padding: 0; } .ProseMirror .doc-section::before { display: none; } }
+
+/* Class controls keep names and codes readable at phone widths. */
+.class-meta .code-chip { flex-wrap: wrap; max-width: 100%; border-radius: 12px; white-space: nowrap; }
+.class-meta .code-chip strong, .class-meta .code-chip button { flex-shrink: 0; }
+.class-meta .code-chip button { min-height: 32px; height: auto; }
+.ch-text > div { min-width: 0; }
+.ch-text .page-title, .topic-name { overflow-wrap: anywhere; }
+.tabs[aria-label="Class sections"] { overflow-x: auto; }
+.tabs[aria-label="Class sections"] > button { flex: 0 0 auto; white-space: nowrap; min-height: 44px; }
+.inline-add { flex-wrap: wrap; }
+.inline-add input { min-width: 0; }
+@media (max-width: 640px) {
+  .inline-add input { flex-basis: 100%; min-height: 40px; }
+  .lessons .add-link { white-space: normal; text-align: left; min-height: 44px; }
+  .lessons .add-row { flex-wrap: wrap; }
+  .lessons .add-row > input { min-width: 0; flex-basis: 100%; }
+}
