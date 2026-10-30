@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { TEACHER_PATHS } from '../lib/teacherPaths';
+import { useAuth } from '../lib/auth';
+import './welcome.css';
 import { Link } from 'react-router-dom';
 import { TopBar } from '../components/TopBar';
 import { playSound } from '../lib/phonAudio';
@@ -28,60 +31,26 @@ const TOPICS: Topic[] = [
 ];
 
 export function GuidePage() {
-  const [on, setOn] = useState(TOPICS[0].id);
-  const main = useRef<HTMLElement>(null);
-  // The topic in view is the one lit in the list.
-  useEffect(() => {
-    const els = TOPICS.map((t) => document.getElementById('gu-' + t.id)).filter(Boolean) as HTMLElement[];
-    const io = new IntersectionObserver(
-      (es) => {
-        const seen = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (seen) setOn(seen.target.id.slice(3));
-      },
-      { rootMargin: '-20% 0px -65% 0px' },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-  const go = (id: string) => {
-    setOn(id);
-    document.getElementById('gu-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  return (
-    <div className="shell">
-      <TopBar />
-      <div className="gu">
-        <nav className="gu-nav" aria-label="Guide topics">
-          <span className="gu-nav-h">Guide</span>
-          {TOPICS.map((t, i) => (
-            <a key={t.id} href={'#gu-' + t.id} className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'true' : undefined} onClick={(e) => (e.preventDefault(), go(t.id))}>
-              <span className="gu-n">{i + 1}</span>
-              {t.short}
-            </a>
-          ))}
-        </nav>
-        <main className="gu-main" ref={main}>
-          <header className="gu-hero">
-            <span className="gu-eyebrow">Guide</span>
-            <h1>How ELT Suite works</h1>
-            <p>Everything an English teacher needs, in one place: make materials, record and edit sound, teach in class or online, print worksheets, keep your reading notes and work with colleagues. Here is each app, with something to try.</p>
-          </header>
-          {TOPICS.map((t, i) => (
-            <section key={t.id} id={'gu-' + t.id} className="gu-sec" aria-labelledby={'gu-h-' + t.id}>
-              <h2 id={'gu-h-' + t.id}>
-                <span className="gu-n big">{i + 1}</span>
-                {t.title}
-              </h2>
-              <t.body />
-            </section>
-          ))}
-          <footer className="gu-end">
-            <b>Ready?</b> Make a class in <Link to="/classes">Classes</Link>, add a lesson, and press <i>/</i> in it to see every element. Stuck? Ask your organisation’s admin, or write to ELT Suite from Support.
-          </footer>
-        </main>
-      </div>
+  const { profile } = useAuth();
+  const initial = new URLSearchParams(window.location.search).get('goal') || profile?.teacherGoal;
+  const [goal, setGoal] = useState(initial || 'lesson');
+  const path = TEACHER_PATHS.find(p => p.id === goal) || TEACHER_PATHS[0];
+  const hashTopic = window.location.hash.replace('#gu-', '');
+  const [on, setOn] = useState(TOPICS.some(t => t.id === hashTopic) ? hashTopic : path.topic);
+  const [query, setQuery] = useState('');
+  const topic = TOPICS.find(t => t.id === on) || TOPICS[0];
+  const matches = TOPICS.filter(t => (t.title + ' ' + t.short).toLowerCase().includes(query.toLowerCase()));
+  function choose(id: string) { setOn(id); window.history.replaceState(null, '', '#gu-' + id); }
+  return <div className="shell"><TopBar /><main className="guide-hub">
+    <header className="guide-hub-hero"><span className="path-eyebrow">Your ELT Suite guide</span><h1>A little help.<br />A lot more possibility.</h1><p className="path-lede">Start with what you want to do. Try an example here, then take it into your own teaching.</p><Link to="/welcome" className="btn">Help me choose a starting point →</Link></header>
+    <section className="guide-route" aria-label="Choose your teaching goal">
+      <label className="field">What would you like to do?<select value={goal} onChange={e => { setGoal(e.target.value); const p = TEACHER_PATHS.find(p => p.id === e.target.value); if (p) choose(p.topic); }}>{TEACHER_PATHS.map(p => <option value={p.id} key={p.id}>{p.title}</option>)}</select></label>
+      <div><span className="path-eyebrow">Your next useful step</span><h2>{path.result}</h2><ol>{path.steps.map(s => <li key={s}>{s}</li>)}</ol><Link className="btn primary" to={path.to}>{path.action} →</Link></div>
+    </section>
+    <div className="gu guide-focused"><nav className="gu-nav" aria-label="Guide topics"><label className="field">Find a topic<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Try lessons or sound" /></label>{matches.map(t => <button key={t.id} type="button" className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'page' : undefined} onClick={() => choose(t.id)}>{t.short}</button>)}{!matches.length && <p role="status">No matching topics. Try “lessons”, “files” or “live”.</p>}</nav>
+      <section className="gu-main gu-sec" id={'gu-' + topic.id} aria-labelledby="guide-topic-title"><span className="path-eyebrow">Explore and try · Illustrative examples</span><h2 id="guide-topic-title">{topic.title}</h2><topic.body key={topic.id} /><footer className="gu-end">Ready to try something with your own work? <Link to="/welcome">Choose your next step →</Link></footer></section>
     </div>
-  );
+  </main></div>;
 }
 
 // ------------------------------------------------------------------ small parts

@@ -440,6 +440,40 @@ const J = {
     await axe(s.p, 'Learner home', A11Y_FOUND);
     return s;
   },
+  'Teacher onboarding and goal-based guide': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const f = JSON.parse(localStorage.getItem('mockfs'));
+      f['users/teacher1'].onboarding = 'new';
+      localStorage.setItem('mockfs', JSON.stringify(f));
+    });
+    await s.p.goto(BASE);
+    await s.p.waitForURL('**/welcome');
+    if (await s.p.getByRole('button', { name: 'Show my starting point' }).isEnabled()) throw new Error('Continue should need a choice');
+    await s.p.getByRole('button', { name: 'Make a listening activity' }).click();
+    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
+    await see(s.p, 'text=A recording you can reuse in your lessons.', 'the selected plan');
+    await s.p.getByRole('button', { name: 'Show me how first' }).click();
+    await s.p.waitForURL('**/guide?goal=audio');
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'relevant guide topic');
+    await s.p.goto(BASE);
+    await see(s.p, '.hm', 'home after completing onboarding');
+    await s.p.goto(BASE + '/guide');
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved preference after reload');
+    await s.p.getByRole('searchbox').fill('no such topic');
+    await see(s.p, 'text=No matching topics', 'search empty state');
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    for (const route of ['/welcome', '/guide', '/tour']) {
+      await s.p.goto(BASE + route);
+      await see(s.p, 'h1', 'mobile heading');
+      if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile overflow: ' + route);
+      await axe(s.p, 'Teacher start ' + route, A11Y_FOUND);
+    }
+    await s.p.goto(BASE + '/welcome');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '.hm', 'skip opens home');
+    return s;
+  },
   'An invitation that is gone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/invite/nothing-here`);
