@@ -47,3 +47,15 @@ A teacher with a synthetic B1 class of six learners has a needs analysis, writin
 
 ## Known risks
 Cloud Functions deployment currently uses continue-on-error in GitHub Actions; deployment success must be independently verified. Another agent may be changing main concurrently. API access, pricing and credits must be verified before paid calls. All changes remain isolated on this branch.
+
+## Agreed first integrated test brief (30 October 2026)
+- Audience: adult English learners.
+- Level: B1 (working estimate; test with needs-analysis evidence).
+- Class size: six fictional learners for the synthetic test fixture, as originally proposed; teacher can change this later.
+- Language focus: contrast **used to + base verb** (past habits or states no longer true), **be used to + noun / -ing** (current familiarity), and **get used to + noun / -ing** (process of becoming familiar).
+- Example contexts: changes in jobs, commuting, living arrangements, technology and routines. Do not assume these apply to real learners without needs analysis.
+- Proposed communicative outcome: learners describe past routines, current familiar situations and adjustments to changes, choosing the three constructions appropriately.
+- Diagnostic evidence: synthetic writing and speaking samples reveal contrasting misconceptions; include learner self-report and teacher observations. Make uncertainty explicit.
+- AI flow under test: needs analysis → evidence-linked class profile → friendly teacher beliefs interview and approval → memory-aware methodology recommendation → teacher-approved outline → full lesson with differentiated tasks, detailed teacher notes, language analysis, CCQs, answer key, optional image and audio → review → editable save → preference memory update.
+- Language checks: distinguish past habits from familiarity and adaptation; **used to work**, **am used to working**, **am getting used to working**. Check auxiliary and negative forms (e.g. **Did you use to...?**, **didn't use to...**) and ensure -ing after **be/get used to** when followed by a verb.
+- Success criteria: grammatical accuracy; natural B1 examples; meaningful personalised communication without invented learner facts; correct answer keys; credible timings; accessible instructions; teacher override and data isolation; safe persistence; no production deployment.
