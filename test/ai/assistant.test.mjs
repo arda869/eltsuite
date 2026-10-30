@@ -24,7 +24,7 @@ test('strict output shape, timing and reference validation', () => {
   assert.throws(() => checkSequence({ ...outline, stages: [outline.stages[0], outline.stages[0]] }, 120));
   assert.throws(() => checkSequence({ stages: [{ id: 'a', minutes: 60, materialIds: ['missing'] }], learnerMaterials: [] }, 60));
 });
-const args = { apiKey: 'test-only', model: 'configured-model', schema: outlineSchema, name: 'outline', input: brief };
+const args = { apiKey: 'test-only', model: 'gpt-6.1-sol', schema: outlineSchema, name: 'outline', input: brief };
 const response = body => async () => ({ ok: true, json: async () => body });
 test('provider requests non-stored structured output and parses only completed content', async () => {
   const result = await generate({ ...args, fetchImpl: async (_url, options) => {

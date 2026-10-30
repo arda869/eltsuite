@@ -4,6 +4,7 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '../lib/firebase';
 import { TopBar } from '../components/TopBar';
 import './assistant.css';
+import { useAiPilot } from './pilot';
 
 type Value = string | number | Value[] | { [key: string]: Value };
 type RecordValue = { [key: string]: Value };
@@ -72,7 +73,7 @@ export function LessonAssistant() {
   }
   const discard = () => !dirty || window.confirm('Leave this unsaved draft? Save it first if you want to keep your edits.');
   const changePlan = (next: RecordValue) => { setPlan(next); setDirty(true); setReview(null); setNotice('Your edits need a fresh teacher review.'); };
-  const enabled = import.meta.env.VITE_ELT_AI_PILOT === 'true';
+  const enabled = useAiPilot();
   if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
   return <><TopBar /><main className="ai-assistant">
     <Link to={`/class/${classId}`} onClick={e => { if (!discard()) e.preventDefault(); }}>Back to class</Link>

@@ -20,6 +20,9 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_ELT_AI_PILOT: 'true'
+          VITE_ELT_AI_PILOT_EMAIL: ardanurioglu@gmail.com
         run: |
           set -o pipefail
           if ! npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"; then
@@ -53,6 +56,26 @@ jobs:
             exit 1
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy account-only lesson assistant
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npm --prefix functions install --no-audit --no-fund
+          node functions/ai/preflight.mjs
+          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\nELT_AI_PILOT_EMAIL=ardanurioglu@gmail.com\n");'
+          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive --force
+
+      - name: Check assistant rejects signed-out requests
+        run: |
+          node --input-type=module - <<'JS'
+          const r = await fetch('https://us-central1-lesson-lit.cloudfunctions.net/lessonAssistant', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: { action: 'list', classId: 'deploy-check' } })
+          });
+          const body = await r.json();
+          if (r.status !== 401 || body.error?.status !== 'UNAUTHENTICATED') throw Error('The assistant did not reject a signed-out request as expected.');
+          console.log('Assistant deployed and rejects signed-out requests. No model call was made.');
+          JS
 
       - name: Deploy site
         env:
