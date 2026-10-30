@@ -81,6 +81,95 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Advanced document export files': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/test/document-tools-check.html');
+    await s.p.waitForFunction(() => ['pass', 'fail'].includes(document.documentElement.dataset.result), null, { timeout: 90000 });
+    const result = await s.p.locator('pre').innerText();
+    if (!result.startsWith('PASS')) throw new Error(result);
+    return s;
+  },
+  'Document sections, page settings and version restore': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.fill('Original notes');
+    await text.press('Tab');
+    await see(d, '.ProseMirror p[data-indent="1"]', 'Tab indentation');
+    await text.press('ControlOrMeta+Enter');
+    await see(d, '[data-doc-page-break]', 'a page break');
+    await text.press('Enter');
+    await d.keyboard.type('A new section');
+    await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Section break', exact: true }).click();
+    await see(d, '[data-doc-section]', 'a document section');
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: '2 columns', exact: true }).click();
+    await see(d, '[data-doc-section][data-columns="2"]', 'section-specific columns');
+    await d.getByRole('menuitem', { name: 'File', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Page setup…', exact: true }).click();
+    await d.getByRole('textbox', { name: 'Page header', exact: true }).fill('Research notes');
+    await d.getByRole('textbox', { name: 'Page footer', exact: true }).fill('Seminar');
+    await d.getByRole('checkbox', { name: 'Show page numbers', exact: true }).check();
+    await d.getByRole('spinbutton', { name: 'Starting page number', exact: true }).fill('4');
+    await d.keyboard.press('Escape');
+    await see(d, '.pg-running-header:has-text("Research notes")', 'the page header');
+    await see(d, '.pg-running-footer:has-text("Seminar")', 'the page footer');
+    await d.getByRole('menuitem', { name: 'File', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Version history…', exact: true }).click();
+    const history = d.getByRole('dialog', { name: 'Version history', exact: true });
+    await history.getByRole('textbox', { name: 'Version name', exact: true }).fill('Before edits');
+    await history.getByRole('button', { name: 'Save version', exact: true }).click();
+    await see(d, '.document-version-list:has-text("Before edits")', 'the saved version');
+    await history.getByRole('button', { name: 'Close version history', exact: true }).click();
+    await text.fill('Changed notes');
+    await d.getByRole('menuitem', { name: 'File', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Version history…', exact: true }).click();
+    await history.getByRole('button', { name: 'Restore this version', exact: true }).first().click();
+    await d.getByRole('button', { name: 'Restore', exact: true }).click();
+    await see(d, '.ProseMirror:has-text("Original notes")', 'restored document content');
+    await see(d, '.document-version-list:has-text("Before restoring")', 'the recovery version saved before restore');
+    await history.getByRole('button', { name: 'Close version history', exact: true }).click();
+    await d.waitForTimeout(300);
+    await d.reload();
+    await see(d, '[data-doc-section][data-columns="2"]', 'saved sections after reload');
+    await see(d, '.pg-running-header:has-text("Research notes")', 'saved header after reload');
+    await axe(d, 'Advanced document structure', A11Y_FOUND);
+    return s;
+  },
+  'Clipboard, font replacement and consistent lesson dropdowns': async (b) => {
+    const s = await session(b);
+    await s.ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const d = await newFile(s, 'Collab document');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.fill('Clipboard sample');
+    await text.press('ControlOrMeta+a');
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Copy/ }).click();
+    await d.waitForFunction(async () => (await navigator.clipboard.readText()) === 'Clipboard sample');
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Cut/ }).click();
+    await d.waitForFunction(() => document.querySelector('.ProseMirror').textContent.trim() === '');
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Paste without formatting/ }).click();
+    await see(d, '.ProseMirror:has-text("Clipboard sample")', 'plain-text paste');
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Find and replace/ }).click();
+    await d.getByRole('textbox', { name: 'Find', exact: true }).fill('Clipboard');
+    await d.getByRole('button', { name: 'Replacement font', exact: true }).click();
+    await d.getByRole('option', { name: 'Consolas', exact: true }).click();
+    await d.getByRole('button', { name: 'Change font for all matches', exact: true }).click();
+    await see(d, '.ProseMirror [data-font][style*="Consolas"]', 'font replacement');
+    await d.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await s.p.goto(BASE + '/class/' + s.demo.classId);
+    const picks = s.p.locator('.sel.type-pick');
+    await picks.first().waitFor();
+    const widths = await picks.evaluateAll((els) => els.map((el) => ({ width: el.getBoundingClientRect().width, clipped: el.querySelector('.sel-v').scrollWidth > el.querySelector('.sel-v').clientWidth })));
+    if (widths.some((v) => v.clipped || Math.abs(v.width - widths[0].width) > 1)) throw new Error('Lesson dropdowns are clipped or different widths.');
+    return s;
+  },
+
+
   'Super Admin controls AI access, off by default': async (b) => {
     const s = await session(b, { owner: true });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);

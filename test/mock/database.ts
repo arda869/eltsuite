@@ -1,5 +1,7 @@
 import { load, persist, subscribe } from './store';
-type Ref = { path: string };
+type Ref = { path: string; limit?: number };
+export const limitToLast = (limit: number) => ({ limit });
+export const query = (r: Ref, ...constraints: { limit?: number }[]) => ({ ...r, ...Object.assign({}, ...constraints) });
 const tree = () => load<Record<string, unknown>>('mockrtdb', {});
 const parts = (p: string) => p.split('/').filter(Boolean);
 function getAt(t: Record<string, unknown>, p: string) {
@@ -19,7 +21,8 @@ export const ref = (_db: unknown, path = '') => ({ path });
 export function onValue(r: Ref, cb: (s: { val: () => unknown; exists: () => boolean }) => void) {
   let last = '';
   const fire = () => {
-    const v = getAt(tree(), r.path) ?? null;
+    const raw = getAt(tree(), r.path) ?? null;
+    const v = r.limit && raw && typeof raw === 'object' ? Object.fromEntries(Object.entries(raw).slice(-r.limit)) : raw;
     const j = JSON.stringify(v);
     if (j === last) return;
     last = j;

@@ -13,7 +13,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 declare const __BUILD__: string;
 export const BUILD = Number(__BUILD__) || 0;
 // Elements older copies of the app may not know.
-const NEWER = new Set(['diagram']);
+const NEWER = new Set(['diagram', 'docPageBreak', 'docSection']);
 
 export type Removed = { node: unknown; pos: number; at: number };
 const key = new PluginKey<Removed[]>('newer-guard');
