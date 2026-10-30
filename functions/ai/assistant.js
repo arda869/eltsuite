@@ -1,3 +1,4 @@
+import { isAbandonedJob } from './jobs.js';
 import { warn } from 'firebase-functions/logger';
 import { GenerationError, describeFailure } from './errors.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
@@ -69,7 +70,13 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     const [j, q, g, b] = await Promise.all([tx.get(job), tx.get(quota), tx.get(globalQuota), tx.get(budget)]);
     if (j.exists) {
       if (j.get('fingerprint') !== fingerprint) fail('Use a new request for a changed brief.');
-      if (j.get('status') === 'completed') return j.get('result');
+      if (j.get('status') === 'completed') return { kind: 'completed', result: j.get('result') };
+      if (isAbandonedJob(j.get('status'), j.get('createdAt')?.toMillis?.())) {
+        // Return instead of throwing here so Firestore commits the status change.
+        // Leave all money and daily reservations untouched: prior usage is unknown.
+        tx.update(job, { status: 'failed', failure: { reason: 'interrupted', phase: 'unknown' } });
+        return { kind: 'abandoned' };
+      }
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This request is still running. Retry shortly with the same request.' : 'This request did not finish. Start a new generation.');
     }
     // Reserve both passes before calling the provider; failed calls still consume allowance.
@@ -83,7 +90,8 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     tx.create(job, { status: 'running', fingerprint, budgetMonth: month, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 86400000) });
     return null;
   });
-  if (existing) return existing;
+  if (existing?.kind === 'completed') return existing.result;
+  if (existing?.kind === 'abandoned') throw new HttpsError('failed-precondition', 'The previous request exceeded its execution window and has been released. Your brief and outline are unchanged. Start a new generation by clicking the generation button again. [request:interrupted]');
   let phase = d.action;
   try {
     const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : planSchema, name: d.action, input: payload });
