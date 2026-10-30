@@ -1,7 +1,7 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
 import { tell } from '../lib/ask';
 import { OverflowToolbar } from '../components/OverflowToolbar';
-import { NSelect } from '../components/Select';
+import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
@@ -442,8 +442,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name="discuss" size={17} />
             {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
           </button>
-          {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : void makePdf({ ...o, style: citeStyle }))} />}
-          {locked && <span className="cd-locked"><UiIcon name="lock" size={14} /> Locked</span>}
+          {locked ? <span className="cd-locked"><UiIcon name="lock" size={14} /> Locked</span> : <span className="cd-mode"><Select value={mode} options={allowed.map((m) => ({ v: m, label: MODE_LABEL[m].label, icon: MODE_LABEL[m].icon }))} onChange={setMode} label="Document mode" search={false} /></span>}
         </>,
         toolSlot,
       )
@@ -512,7 +511,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       {page && writing && profileTeacher && <span className="document-citation"><CiteTool editor={editor} openRequest={citationRequest} /></span>}
       {page && <DocumentMenuBar menus={[
         { label: 'File', items: [
-          ...allowed.map((m) => ({ label: MODE_LABEL[m].label, icon: MODE_LABEL[m].icon, checked: eff === m, disabled: locked, run: () => setMode(m) })), 'sep',
           { label: 'Page setup…', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           { label: 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle }) },
           { label: 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle }) },
@@ -684,18 +682,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
           {!paged && heading}
-          {viewing && (paged ? (
-            <Paper layout={layout} appearance={paperAppearance}>
-              {heading}
-              <div className="cd-view doc cd-doc" ref={setViewEl}>
-                <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
-              </div>
-            </Paper>
-          ) : (
-            <div className={'cd-view' + (page ? ' doc cd-doc' : ' doc')} ref={setViewEl}>
-              <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
-            </div>
-          ))}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
             {(() => {
               const hostEl = (
@@ -707,14 +693,18 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
                   {writing && <TableInsert editor={editor} host={host} />}
                 </div>
               );
-              return paged && !viewing ? (
+              const contents = <>
+                {viewing && <div className={'cd-view' + (page ? ' doc cd-doc' : ' doc')} ref={setViewEl}>
+                  <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
+                </div>}
+                {hostEl}
+              </>;
+              return paged ? (
                 <Paper layout={layout} appearance={paperAppearance}>
                   {heading}
-                  {hostEl}
+                  {contents}
                 </Paper>
-              ) : (
-                hostEl
-              );
+              ) : contents;
             })()}
           </EditorClassContext.Provider>
         </div>

@@ -8,15 +8,20 @@ export function OrgLook() {
   const c = org?.brand?.color;
   useEffect(() => {
     const r = document.documentElement.style;
-    if (c && /^#[0-9a-f]{6}$/i.test(c)) {
+    const valid = !!c && /^#[0-9a-f]{6}$/i.test(c);
+    if (valid) {
+      document.documentElement.dataset.orgBrand = 'true';
       r.setProperty('--accent', c);
       r.setProperty('--brand', c);
       r.setProperty('--accent-text', `color-mix(in srgb, ${c} 66%, #000)`);
-    } else for (const k of ['--accent', '--brand', '--accent-text']) r.removeProperty(k);
+    } else {
+      delete document.documentElement.dataset.orgBrand;
+      for (const k of ['--accent', '--brand', '--accent-text']) r.removeProperty(k);
+    }
     // Remembered, so the loading mark has the colour before the app starts next time.
     try {
-      if (c) localStorage.setItem('ll.brand', c);
-      else if (org) localStorage.removeItem('ll.brand');
+      if (valid) localStorage.setItem('ll.brand', c!);
+      else localStorage.removeItem('ll.brand');
     } catch {
       /* fine */
     }

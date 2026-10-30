@@ -99,3 +99,8 @@
 .document-citation .cite-tool { z-index: 50; }
 .inv-details summary { cursor: pointer; color: var(--accent-text); font: 600 13px var(--sans); padding: 10px 0; }
 .inv-benefits { padding-left: 20px; line-height: 1.8; }
+
+/* App-specific document accents follow an organisation's chosen brand colour. */
+:root[data-org-brand] .dp { --dp: var(--brand); }
+.cd-mode .sel { display: inline-flex; align-items: center; gap: 7px; width: auto; }
+.sel-choice-check { margin-left: auto; color: var(--accent-text); }

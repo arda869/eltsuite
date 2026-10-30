@@ -8,3 +8,7 @@ export async function seedFriday() {
   await setDoc(doc({}, 'sharedDocs', 'friday-research', 'sources', 'nu-1992'), { type: 'book', title: 'Research Methods in Language Learning', authors: [{ first: 'David', last: 'Nunan' }], year: '1992', publisher: 'Cambridge University Press', order: 0 });
   await setDoc(doc({}, 'orgInvites', 'friday-invite'), { org: 'friday-school', orgName: 'Example Academy', email: 'teacher@example.com', name: 'Arda', by: 'sample-admin', byName: 'Alex Lee', status: 'pending', at: Date.now(), existing: true });
 }
+export async function seedFridayBrand() {
+  await setDoc(doc({}, 'orgs', 'friday-brand'), { name: 'Example Academy', plan: 'school', adminEmails: ['teacher@example.com'], teachers: { teacher1: { name: 'Arda', email: 'teacher@example.com' } }, drives: {}, policy: {}, brand: { color: '#2f7f6f' } });
+  await setDoc(doc({}, 'accounts', 'teacher1'), { org: 'friday-brand' }, { merge: true });
+}
