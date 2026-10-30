@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { stepFrom } from './MediaArchive';
-import { Link, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../lib/auth';
-import { TopBar } from '../components/TopBar';
-import { MainNav } from './ColleaguesPage';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { UiIcon } from '../components/UiIcon';
 import { FileIcon, type FileKind } from '../components/FileIcon';
-import { FolderIcon } from '../components/FileIcon';
 import { Loader } from '../components/Loader';
 import { openMenu, openMenuAt, type MenuItem } from '../components/ContextMenu';
 import { ask, askText } from '../lib/ask';
-import { currentOrg, libName, useDrive, useMyOrg, type DriveFolder } from '../lib/admin';
+import { currentOrg, libName, type DriveFolder } from '../lib/admin';
 import { KIND_LABEL, newDocInFolder, removeSharedDoc, renameDoc, useFolderDocs, type DocKind, type SharedDoc, type SharedFolder } from '../lib/sharedDocs';
 import { CopyToClass, LESSON_TYPES } from '../lessons/LessonFile';
 import { copyFile } from '../lib/copyFile';
@@ -28,89 +24,14 @@ const NEW: { label: string; kind: DocKind; ltype?: LType; hint: string }[] = [
 ];
 
 export function LibraryPage() {
-  const { user, profile } = useAuth();
-  const org = useMyOrg();
-  const folders = useDrive(org);
-  const [qs, setQs] = useSearchParams();
-  const uid = user?.uid ?? '';
-  const admin = !!org && !!user?.email && org.adminEmails.map((e) => e.toLowerCase()).includes(user.email.toLowerCase());
-  // Admins see every folder; teachers the ones they may use.
-  const mine = useMemo(() => (folders ?? []).filter((f) => admin || f.owner === uid || f.memberIds.includes(uid)).sort((a, b) => a.name.localeCompare(b.name)), [folders, admin, uid]);
-  const sections = useMemo(() => {
-    const d = { main: { name: 'General' }, ...(org?.drives ?? {}) } as Record<string, { name: string }>;
-    return Object.entries(d)
-      .map(([k, x]) => ({ k, name: x.name, folders: mine.filter((f) => (f.drive ?? 'main') === k) }))
-      .filter((s) => s.folders.length);
-  }, [org?.drives, mine]);
-  const openId = qs.get('f') ?? mine[0]?.id ?? '';
-  const open = mine.find((f) => f.id === openId) ?? null;
-
-  if (org === undefined || (org && !folders)) return <Shell><Loader label="Opening the library" /></Shell>;
-  if (!org)
-    return (
-      <Shell>
-        <div className="lb-empty">
-          <h1 className="page-title">Organisation library</h1>
-          <span className="hint">The organisation library is for teachers in an organisation. Your organisation’s admins keep it.</span>
-        </div>
-      </Shell>
-    );
-  return (
-    <Shell>
-      <div className="ma lb-ma">
-        <aside className="ma-side" aria-label="Folders">
-          {sections.map((s) => (
-            <nav key={s.k} className="ma-nav ma-tree" aria-label={s.name}>
-              <span className="ma-h">{sections.length > 1 ? s.name : org.name}</span>
-              {s.folders.map((f) => (
-                <button key={f.id} type="button" className={f.id === open?.id ? 'on' : ''} aria-current={f.id === open?.id ? 'page' : undefined} onClick={() => setQs({ f: f.id }, { replace: true })}>
-                  <FolderIcon size={16} />
-                  <span className="ma-fname">{f.name}</span>
-                  <RoleTag f={f} uid={uid} />
-                </button>
-              ))}
-            </nav>
-          ))}
-          {!sections.length && <span className="hint">No folders yet.</span>}
-          {admin && (
-            <Link to="/org-admin?tab=drives" className="ma-new lb-manage">
-              <UiIcon name="settings" size={14} /> Folders and who can use them
-            </Link>
-          )}
-        </aside>
-        <main className="ma-main">
-          {open ? (
-            <FolderPane key={open.id} f={open} uid={uid} me={{ uid, name: profile?.displayName || user?.displayName || 'Teacher' }} />
-          ) : (
-            <div className="lb-empty">
-              <h1 className="page-title">{libName(org)}</h1>
-              <span className="hint">{admin ? 'Add folders in Organisation admin, then lessons, documents and flashcards here.' : 'Nothing here yet. Your organisation’s admins add the folders.'}</span>
-            </div>
-          )}
-        </main>
-      </div>
-    </Shell>
-  );
+  const [qs] = useSearchParams();
+  return <Navigate to={'/archive?library=' + encodeURIComponent(qs.get('f') || '')} replace />;
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="shell lib-shell">
-      <TopBar>
-        <MainNav on="" />
-      </TopBar>
-      {children}
-    </div>
-  );
-}
 
 const roleOfFolder = (f: DriveFolder, uid: string) => (f.owner === uid ? 'edit' : ((f as DriveFolder & { members?: Record<string, { role: string }> }).members?.[uid]?.role ?? 'none'));
-function RoleTag({ f, uid }: { f: DriveFolder; uid: string }) {
-  const r = roleOfFolder(f, uid);
-  return r === 'edit' ? null : <span className="lb-role">{r === 'none' ? 'Hidden' : r === 'comment' ? 'Comment' : 'View'}</span>;
-}
 
-function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: string; name: string } }) {
+export function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: string; name: string } }) {
   const sf = f as unknown as SharedFolder;
   const docs = useFolderDocs(sf, uid);
   const [q, setQ] = useState('');
@@ -144,8 +65,8 @@ function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { uid: st
     { label: 'Open', icon: 'next', onClick: () => window.open(`/doc/${d.id}`, '_blank') },
     { label: 'Copy to My files', icon: 'copyall', onClick: () => void toMine(d) },
     ...(d.kind === 'lesson' ? [{ label: 'Copy to a class…', icon: 'copyall', onClick: () => setCopying(d) }] : []),
-    ...(canAdd ? [{ label: 'Rename', icon: 'edit', onClick: () => void askText('New name', d.title, { ok: 'Rename' }).then((v) => typeof v === 'string' && v.trim() && void renameDoc(d.id, v)) } as MenuItem] : []),
-    ...(d.owner === uid ? [{ label: 'Delete', icon: 'trash', danger: true, onClick: () => void ask(`Delete “${d.title}” for everyone?`, { ok: 'Delete' }).then((ok) => ok && void removeSharedDoc(d.id)) } as MenuItem] : []),
+    ...(canAdd ? [{ label: 'Rename', icon: 'edit', onClick: () => void askText('New name', d.title, { ok: 'Rename' }).then((v) => typeof v === 'string' && v.trim() && void renameDoc(d.id, v).catch((e) => { void import('../lib/ask').then(({ tell }) => tell(e.message)); })) } as MenuItem] : []),
+    ...(d.owner === uid ? [{ label: 'Delete', icon: 'trash', danger: true, onClick: () => void ask(`Delete “${d.title}” to the recycle bin? It can be restored for 30 days.`, { ok: 'Delete' }).then((ok) => ok && void removeSharedDoc(d.id)) } as MenuItem] : []),
   ];
   const [pick, setPick] = useState('');
   const chosen = shown.find((d) => d.id === pick) ?? null;

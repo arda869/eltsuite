@@ -80,7 +80,11 @@ service cloud.firestore {
       }
       // A teacher's media archive and its folders
       match /archive/{itemId} {
-        allow read, update, delete: if isSelf(uid) && !learnerAccount();
+        allow read: if isSelf(uid) && !learnerAccount();
+        allow update: if isSelf(uid) && !learnerAccount() && !('purgeRequestedAt' in resource.data) && !('purgingAt' in resource.data)
+          && !('purgingAt' in request.resource.data)
+          && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0);
+        allow delete: if isSelf(uid) && !learnerAccount();
         allow create: if isSelf(uid) && !learnerAccount() && active() && hasRoom(uid);
       }
       match /archiveFolders/{folderId} {
@@ -618,6 +622,20 @@ service cloud.firestore {
     function msgMode() { return classData(myClass()).get('messaging', {}).get('mode', 'free'); }
     function learnerMayStart(c) { return msgMode() == 'free' || (msgMode() != 'off' && c.roles.values().removeAll(['teacher']).size() <= 1); }
     // Collaborative documents in a teacher's files, shared person by person.
+    // Namespace revision locks serialize names across file kinds and browser sessions.
+    match /fileNamespaces/{key} {
+      function permitted(d) {
+        return isTeacher() && (d.owner == request.auth.uid
+          || (d.folder != '' && exists(/databases/$(database)/documents/sharedFolders/$(d.folder))
+            && get(/databases/$(database)/documents/sharedFolders/$(d.folder)).data.owner == d.owner
+            && get(/databases/$(database)/documents/sharedFolders/$(d.folder)).data.get('members', {}).get(request.auth.uid, {}).get('role', '') == 'edit'));
+      }
+      allow read: if isTeacher() && (resource == null || permitted(resource.data));
+      allow create: if permitted(request.resource.data) && request.resource.data.keys().hasOnly(['owner', 'folder', 'path', 'version'])
+        && request.resource.data.owner is string && request.resource.data.folder is string && request.resource.data.path is string && request.resource.data.version == 1;
+      allow update: if permitted(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['version'])
+        && request.resource.data.version == resource.data.version + 1;
+    }
     match /sharedDocs/{id} {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
       // In a shared folder, files belong to the folder's owner, whoever makes them.
@@ -625,8 +643,11 @@ service cloud.firestore {
         || (request.resource.data.folder is string && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.owner == request.resource.data.owner
           && get(/databases/$(database)/documents/sharedFolders/$(request.resource.data.folder)).data.members[request.auth.uid].role == 'edit'
           && request.resource.data.createdBy == request.auth.uid));
-      allow update: if signedIn() && (resource.data.owner == request.auth.uid
-        || (resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype']))
+      allow update: if signedIn() && !('purgeRequestedAt' in resource.data) && !('purgingAt' in resource.data)
+        && !('purgingAt' in request.resource.data)
+        && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0)
+        && (resource.data.owner == request.auth.uid
+        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype']))
         // in an organisation's shared drive, its admins decide who has the files
         || (resource.data.get('folder', null) is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberIds'])
             && get(/databases/$(database)/documents/sharedFolders/$(resource.data.folder)).data.get('org', null) is string

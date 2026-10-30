@@ -42,7 +42,7 @@ export const sizeText = (n: number) => (n >= 1024 * 1024 ? (n / 1024 / 1024).toF
 
 export async function saveAnyFile(owner: { uid: string; name: string }, f: File, folder = ''): Promise<string> {
   const bytes = new Uint8Array(await f.arrayBuffer());
-  const id = await newSharedDoc(owner, 'file', f.name);
+  const id = await newSharedDoc(owner, 'file', f.name, folder);
   const n = Math.max(1, Math.ceil(bytes.length / PART));
   for (let k = 0; k < n; k += 4) await Promise.all(Array.from({ length: Math.min(4, n - k) }, (_, j) => setDoc(partRef(id, k + j), { part: k + j, data: toBase64(bytes.subarray((k + j) * PART, (k + j + 1) * PART)) })));
   const file: FileInfo = { name: f.name, type: f.type || 'application/octet-stream', bytes: bytes.length, parts: n };

@@ -34,7 +34,9 @@ jobs:
       - name: Verify AI access security rules
         run: |
           npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
-          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs'
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs'
+      - name: File retention regression checks
+        run: node --test test/file-bin-cleanup.mjs
       - name: Build and type check
         run: npm run build
       - name: Install Chromium

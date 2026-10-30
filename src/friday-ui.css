@@ -178,3 +178,24 @@
   .lessons .add-row { flex-wrap: wrap; }
   .lessons .add-row > input { min-width: 0; flex-basis: 100%; }
 }
+
+.file-bin-list { list-style: none; padding: 16px 24px; margin: 0; }
+.file-bin-list li { display: flex; align-items: center; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.file-bin-title { flex: 1 1 180px; min-width: 0; display: grid; gap: 4px; overflow-wrap: anywhere; }
+.k-bin { background: var(--muted); }
+
+/* Fixed mobile conversations need an explicit height: the desktop flex override's
+   height:auto otherwise shrink-wraps short chats and leaves the composer mid-screen. */
+@media (max-width: 640px) {
+  .shell:has(> .msg) > .msg.has-chat {
+    flex: none;
+    height: var(--vv-h, 100dvh);
+    min-height: 0;
+    top: var(--vv-top, 0px);
+    bottom: auto;
+    box-sizing: border-box;
+  }
+  .msg.has-chat > .msg-main { height: 100%; min-height: 0; }
+  .msg.has-chat .chat { flex: 1 1 0; min-height: 0; }
+  .msg.has-chat .chat-head, .msg.has-chat .chat-typing { flex-shrink: 0; }
+}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { writeNamedFile } from './fileNames';
+import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { get } from 'firebase/database';
@@ -24,6 +25,9 @@ export const modesFor = (r: DocRole): CollabMode[] => (r === 'edit' ? ['edit', '
 
 export type SharedDoc = {
   id: string;
+  deletedAt?: number;
+  purgeRequestedAt?: number;
+  purgingAt?: number;
   owner: string;
   ownerName: string;
   title: string;
@@ -48,8 +52,10 @@ export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
 export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard' | 'file' | 'design';
 export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File', design: 'Design' };
-export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '') {
-  const r = await addDoc(col, {
+export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '') {
+  const r = doc(col);
+  await writeNamedFile(r, { owner: owner.uid, path }, title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`), {
+    path,
     owner: owner.uid,
     ownerName: owner.name,
     title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
@@ -59,11 +65,11 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     memberIds: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  }, true, true);
   return r.id;
 }
 
-export function useMyDocs(uid?: string) {
+export function useMyDocs(uid?: string, includeDeleted = false) {
   const [mine, setMine] = useState<SharedDoc[] | null>(null);
   const [withMe, setWithMe] = useState<SharedDoc[] | null>(null);
   useEffect(() => {
@@ -73,7 +79,7 @@ export function useMyDocs(uid?: string) {
     const b = onSnapshot(query(col, where('memberIds', 'array-contains', uid)), (s) => setWithMe(map(s)), () => setWithMe([]));
     return () => (a(), b());
   }, [uid]);
-  return { mine, withMe };
+  return useMemo(() => ({ mine: includeDeleted ? mine : mine?.filter((d) => !d.deletedAt) ?? null, withMe: withMe?.filter((d) => !d.deletedAt) ?? null }), [mine, withMe, includeDeleted]);
 }
 
 export function useSharedDoc(id?: string) {
@@ -91,9 +97,17 @@ export function useSharedDoc(id?: string) {
 
 export const roleOf = (d: SharedDoc, uid: string): DocRole | null => (d.owner === uid ? 'edit' : d.members?.[uid]?.role ?? null);
 
-export const renameDoc = (id: string, title: string) => updateDoc(doc(col, id), { title: title.trim().slice(0, 120) || 'Untitled', updatedAt: serverTimestamp() });
+export async function renameDoc(id: string, title: string) {
+  const ref = doc(col, id); const d = (await getDoc(ref)).data() as SharedDoc;
+  if (!d) throw new Error('This file no longer exists.');
+  await writeNamedFile(ref, d, title, { updatedAt: serverTimestamp() });
+}
 export const touchDoc = (id: string) => updateDoc(doc(col, id), { updatedAt: serverTimestamp() }).catch(() => {});
-export const removeSharedDoc = (id: string) => deleteDoc(doc(col, id));
+export const removeSharedDoc = (id: string) => updateDoc(doc(col, id), { deletedAt: Date.now(), updatedAt: serverTimestamp() });
+export async function restoreSharedDoc(d: SharedDoc) {
+  await writeNamedFile(doc(col, d.id), d, d.title, { deletedAt: deleteField(), updatedAt: serverTimestamp() }, false, true);
+}
+export const requestDocPurge = (id: string) => updateDoc(doc(col, id), { purgeRequestedAt: Date.now() });
 
 export async function shareWith(d: SharedDoc, people: Person[], role: DocRole) {
   const patch: Record<string, any> = { updatedAt: serverTimestamp() }; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -164,7 +178,7 @@ export function useFolderDocs(f?: SharedFolder | null, uid?: string) {
     if (!folderId || !uid) return;
     return onSnapshot(
       own ? query(col, where('owner', '==', uid), where('folder', '==', folderId)) : query(col, where('memberIds', 'array-contains', uid), where('folder', '==', folderId)),
-      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SharedDoc, 'id'>) }))),
+      (s) => setList(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<SharedDoc, 'id'>) })).filter((d) => !d.deletedAt)),
       () => setList([]),
     );
   }, [folderId, uid, own]);
@@ -175,7 +189,8 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
   const members = Object.fromEntries(Object.entries(f.members ?? {}).filter(([, m]) => m.kind === 'teacher' || kind === 'doc' || kind === 'slides')) as SharedDoc['members'];
   if (me.uid !== f.owner) members[me.uid] = f.members?.[me.uid] ?? { role: 'edit', name: me.name, kind: 'teacher' };
   delete members[f.owner];
-  const r = await addDoc(col, {
+  const r = doc(col);
+  await writeNamedFile(r, { owner: f.owner, folder: f.id }, extra.title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`), {
     owner: f.owner,
     ownerName: f.ownerName,
     createdBy: me.uid,
@@ -188,7 +203,7 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     memberIds: Object.keys(members),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  }, true, true);
   return r.id;
 }
 // Sharing a folder shares everything in it.
@@ -217,9 +232,9 @@ export async function unshareFolder(f: SharedFolder, uid: string, docs: SharedDo
 }
 export const renameFolder = (f: SharedFolder, name: string) => updateDoc(doc(fcol, f.id), { name: name.trim() || f.name });
 export async function moveToFolder(d: SharedDoc, f: SharedFolder | null) {
-  if (!f) return updateDoc(doc(col, d.id), { folder: deleteField() });
+  if (!f) return writeNamedFile(doc(col, d.id), { ...d, folder: '' }, d.title, { folder: deleteField() }, false, true);
   const members = { ...(d.members ?? {}), ...(f.members ?? {}) };
-  await updateDoc(doc(col, d.id), { folder: f.id, members, memberIds: Object.keys(members) });
+  await writeNamedFile(doc(col, d.id), { ...d, folder: f.id }, d.title, { folder: f.id, members, memberIds: Object.keys(members) }, false, true);
 }
 export const removeFolder = (f: SharedFolder) => deleteDoc(doc(fcol, f.id));
 export async function sendFolderInChat(f: SharedFolder, me: Person, people: Person[], docs: SharedDoc[], note = '') {
@@ -238,4 +253,7 @@ export async function sendFolderInChat(f: SharedFolder, me: Person, people: Pers
   }
 }
 
-export const setDocPath = (id: string, path: string) => updateDoc(doc(col, id), { path });
+export async function setDocPath(id: string, path: string) {
+  const ref = doc(col, id); const d = (await getDoc(ref)).data() as SharedDoc;
+  await writeNamedFile(ref, { ...d, path }, d.title, { path }, false, true);
+}

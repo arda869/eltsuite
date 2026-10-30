@@ -1,3 +1,4 @@
+import { tell } from '../lib/ask';
 import { copyText } from '../lib/copyText';
 import { OrgLogo } from '../components/OrgLook';
 import { PdfFile } from '../pdf/PdfFile';
@@ -93,16 +94,17 @@ export function DocPage() {
   if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
   if (!lesson && d && startN && start === undefined) return <div className="dp-msg">Opening…</div>;
+  if (!lesson && d?.deletedAt) return <div className="dp-msg">This file is in the recycle bin.<Link to="/archive?show=bin">Open Files</Link></div>;
   if (!lesson && (d === null || !role)) return <div className="dp-msg">This document isn’t shared with you, or it’s been deleted.<Link to="/">Back to ELT Suite</Link></div>;
   const docKey = lesson ? key : d!.docKey;
   const cite = ((d as { citeStyle?: CiteStyle } | null | undefined)?.citeStyle ?? 'apa') as CiteStyle;
   const classId = lesson ? qs.get('c') ?? '' : '';
-  const canRename = !lesson && role === 'edit';
+  const canRename = !lesson && role === 'edit' && (teacher || !!d?.folder);
   const others = d ? Object.keys(d.members ?? {}).length : 0;
   const props = { docKey, title, modes, teacher, me: { uid, name }, classId, display: 'inline' as const, canDownload: true };
   // The page title, large at the top of the canvas, as in Loop.
   const heading = canRename ? (
-    <textarea className="dp-h1" rows={1} value={title} placeholder="Untitled" onChange={(e) => setTitle(e.target.value.replace(/\n/g, ''))} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), (e.target as HTMLTextAreaElement).blur())} aria-label="Title" ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} />
+    <textarea className="dp-h1" rows={1} value={title} placeholder="Untitled" onChange={(e) => setTitle(e.target.value.replace(/\n/g, ''))} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title).catch((e) => { setTitle(d!.title); void tell(e.message); })} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), (e.target as HTMLTextAreaElement).blur())} aria-label="Title" ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} />
   ) : (
     <h1 className="dp-h1 ro">{title || 'Untitled'}</h1>
   );

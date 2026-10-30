@@ -133,7 +133,7 @@ export function AppFiles({ app }: { app: AppKey }) {
     { label: 'Open', onClick: e.open },
     { label: stars[e.star] ? 'Remove the star' : 'Star', onClick: () => void setStar(uid, e.star, !stars[e.star]) },
     ...(e.doc && e.doc.owner === uid && !(e.doc.folder && inLib.has(e.doc.folder))
-      ? ['sep' as const, { label: 'Delete', danger: true, onClick: () => void ask(`Delete “${e.title}” for everyone it’s shared with?`).then((ok) => void (ok && removeSharedDoc(e.doc!.id))) }]
+      ? ['sep' as const, { label: 'Delete', danger: true, onClick: () => void ask(`Delete “${e.title}” to the recycle bin? It can be restored for 30 days.`).then((ok) => void (ok && removeSharedDoc(e.doc!.id))) }]
       : []),
   ];
 

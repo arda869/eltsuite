@@ -2,11 +2,15 @@
 // their library (users/{uid}/archive) and the files they own (sharedDocs). A teacher over their
 // space gets accounts/{uid}.over = true, and the database rules stop new uploads until they are
 // under it again. Runs every 15 minutes from GitHub Actions, with the deploy key.
+import { purgeFileBin } from './file-bin-cleanup.mjs';
+import { getDatabase } from 'firebase-admin/database';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
-initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit' });
+initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit', databaseURL: 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app' });
 const db = getFirestore();
+try { console.log(`Recycle bin: ${await purgeFileBin(db, getDatabase())} files permanently deleted.`); }
+catch (e) { console.error('Recycle bin cleanup incomplete; retained files still count towards storage: ' + e.message); }
 const GB = 1024 ** 3;
 const PLAN_GB = { free: 1, teacher: 10, school: 50 };
 

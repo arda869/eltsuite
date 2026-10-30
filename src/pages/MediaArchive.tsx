@@ -1,3 +1,4 @@
+import { FileBin } from './FileBin';
 import { createPortal } from 'react-dom';
 import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, useAppOn, type DriveFolder } from '../lib/admin';
 import { copyFile } from '../lib/copyFile';
@@ -7,7 +8,7 @@ import { ShareDialog as DocShareDialog, SharePeople as DocSharePeople } from './
 import { shareLesson, unshareLesson, useClassLessons, useHandIns, type ClassLesson, type HandIn } from '../lib/classFiles';
 import { useDirectory } from '../lib/directory';
 import { usePhone } from '../lib/useMedia';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { FileDocs, ArchiveDocs, ArchiveShared, downloadTask, taskMd } from './ArchiveLibrary';
 import { moveLibTasks, removeLibTask, renameLibTask, useLibTasks, type LibTask } from '../lib/libtasks';
 import { ChainIcon, FolderDetail, TaskDetail, TaskWindow } from './LibraryParts';
@@ -34,6 +35,8 @@ import { MAX_FILE, downloadAnyFile, extOf, isWord, saveAnyFile, saveStart } from
 import { FileIcon, FolderIcon } from '../components/FileIcon';
 import { ask, tell } from '../lib/ask';
 import { uploadPicture, type PicQuality } from '../editor/PackNode';
+
+const FolderPane = lazy(() => import('./LibraryPage').then((m) => ({ default: m.FolderPane })));
 
 // The resources library: pictures, sounds, videos and tasks the teacher keeps, in folders, to use
 // in any lesson. Works like a folder on a computer: icons, a list or a timeline; click to select,
@@ -80,7 +83,7 @@ const entryOfItem = (i: ArchiveItem): Entry => ({ key: i.id, kind: i.kind, name:
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const entryOfTask = (t: LibTask): Entry => ({ key: 't:' + t.id, kind: 'task', name: t.title, folder: t.folder, at: t.createdAt || t.updatedAt, size: 0, task: t });
 
-type Section = 'media' | 'folders' | 'docs' | 'shared' | 'colleagues';
+type Section = 'media' | 'folders' | 'docs' | 'shared' | 'colleagues' | 'bin' | 'library';
 
 const openStudio = (kind: 'task' | 'sound', id: string) => window.open(`/studio/${kind}/${id}`, '_blank');
 const stored = <T,>(k: string, d: T): T => {
@@ -109,13 +112,15 @@ export function MediaArchive() {
   const touch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
   const [section, setSection] = useState<Section>(() => {
     const v = new URLSearchParams(window.location.search).get('show');
-    return v === 'docs' || v === 'shared' || v === 'folders' ? v : new URLSearchParams(window.location.search).get('folder') ? 'folders' : 'media';
+    if (new URLSearchParams(window.location.search).has('library')) return 'library';
+    return v === 'bin' || v === 'docs' || v === 'shared' || v === 'folders' ? v : new URLSearchParams(window.location.search).get('folder') ? 'folders' : 'media';
   });
   const pick = (k: Section) => {
     setSection(k);
     window.history.replaceState(null, '', k === 'media' ? '/archive' : `/archive?show=${k}`);
   };
-  const items = useArchive(uid);
+  const allItems = useArchive(uid, true);
+  const items = useMemo(() => allItems?.filter((i) => !i.deletedAt) ?? null, [allItems]);
   const libTasks = useLibTasks(uid);
   const markers = useFolders(uid);
   const shares = useMyShares(uid);
@@ -190,13 +195,19 @@ export function MediaArchive() {
     if (rest.length) void uploadRef.current(rest);
   };
 
-  const { mine: myDocsTop } = useMyDocs(uid || undefined);
+  const { mine: allDocs } = useMyDocs(uid || undefined, true);
+  const myDocsTop = useMemo(() => allDocs?.filter((d) => !d.deletedAt) ?? null, [allDocs]);
   const all = items ?? [];
   const tasks = libTasks ?? [];
   const ownDocs = useMemo(() => (myDocsTop ?? []).filter((d) => !d.folder), [myDocsTop]);
   // Folders of the organisation library this teacher may add to.
   const myOrg = useMyOrg();
   const drive = useDrive(myOrg);
+  const [libraryId, setLibraryId] = useState(() => new URLSearchParams(window.location.search).get('library') || '');
+  const orgAdmin = !!myOrg && !!user?.email && myOrg.adminEmails.some((e) => e.toLowerCase() === user.email!.toLowerCase());
+  const libraries = (drive || []).filter((f) => orgAdmin || f.owner === uid || f.memberIds.includes(uid || ''));
+  const openLibrary = libraries.find((f) => f.id === libraryId) || (section === 'library' ? libraries[0] : null);
+  const chooseLibrary = (id: string) => { setLibraryId(id); setSection('library'); window.history.replaceState(null, '', '/archive?library=' + encodeURIComponent(id)); };
   const orgFolders = useMemo(() => (drive ?? []).filter((f) => f.owner === uid || (f as { members?: Record<string, { role: string }> }).members?.[uid ?? '']?.role === 'edit'), [drive, uid]);
   const [toOrg, setToOrg] = useState<SharedDoc | null>(null);
   const classLessons = useClassLessons(uid);
@@ -237,12 +248,12 @@ export function MediaArchive() {
   }, [entries, folder, kinds, tag, q, sort, filtering, view, recent]);
   const subFolders = filtering || view === 'time' || recent ? [] : kidsOf(folder);
   const groups: [string, Entry[]][] = group === 'type' ? ALL_KINDS.map((k) => [k.label, shown.filter((e) => e.kind === k.k)] as [string, Entry[]]).filter(([, l]) => l.length) : [['', shown]];
-  const myDocs = myDocsTop;
-  const docBytes = (myDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
+  const docBytes = (allDocs ?? []).reduce((s, d) => s + (d.size ?? 0), 0);
   // Lessons are measured a few times an hour (scripts/space.mjs) and count too.
   const lessonBytes = acct?.lessonBytes ?? 0;
-  const total = all.reduce((s, i) => s + spaceOf(i), 0) + docBytes + lessonBytes;
-  useEffect(() => void (uid && items !== null && myDocs !== null && noteSpace(uid, total - lessonBytes)), [uid, items, myDocs, total, lessonBytes]);
+  const binBytes = (allItems || []).filter((i) => i.deletedAt).reduce((n, i) => n + spaceOf(i), 0) + (allDocs || []).filter((d) => d.deletedAt).reduce((n, d) => n + (d.size || 0), 0);
+  const total = (allItems || []).reduce((s, i) => s + spaceOf(i), 0) + docBytes + lessonBytes;
+  useEffect(() => void (uid && allItems !== null && allDocs !== null && noteSpace(uid, total - lessonBytes)), [uid, allItems, allDocs, total, lessonBytes]);
 
   // ---------------------------------------------------------------- selecting
   // Click selects one, Ctrl/Cmd or Shift click adds, and dragging on the empty space draws a box
@@ -329,17 +340,19 @@ export function MediaArchive() {
       const leaf = n.replace(/\//g, '-');
       if (leaf === leafOf(f)) return;
       const to = parentOf(f) ? `${parentOf(f)}/${leaf}` : leaf;
+      if (allFolders.some((x) => x.toLocaleLowerCase() === to.toLocaleLowerCase())) return void tell('A folder with that name already exists here.');
       await renameFolder(uid, f, to, all, allFolders).catch(() => {});
       await Promise.all(tasks.filter((t) => inTree(t.folder, f)).map((t) => moveLibTasks(uid, [t.id], to + t.folder.slice(f.length)))).catch(() => {});
+      for (const d of ownDocs.filter((d) => inTree(d.path || '', f))) await setDocPath(d.id, to + (d.path || '').slice(f.length));
       if (inTree(folder, f)) setFolder(to + folder.slice(f.length));
       setSel(new Set(['f:' + to]));
       return;
     }
     const e = entries.find((x) => x.key === key);
     if (!e || n === e.name || e.cls) return;
-    if (e.item) await archiveUpdate(uid, e.item, { name: n }).catch(() => {});
+    if (e.item) await archiveUpdate(uid, e.item, { name: n }).catch((e) => void tell(e.message));
     else if (e.task) await renameLibTask(uid, e.task.id, n).catch(() => {});
-    else if (e.doc) await renameDoc(e.doc.id, n).catch(() => {});
+    else if (e.doc) await renameDoc(e.doc.id, n).catch((e) => void tell(e.message));
   };
   const deleteF = async (f: string) => {
     const n = countIn(f);
@@ -347,14 +360,15 @@ export function MediaArchive() {
     if (!uid) return;
     await removeFolder(uid, f, all, allFolders).catch(() => {});
     await moveLibTasks(uid, tasks.filter((t) => inTree(t.folder, f)).map((t) => t.id), parentOf(f)).catch(() => {});
+    for (const d of ownDocs.filter((d) => inTree(d.path || '', f))) await setDocPath(d.id, parentOf(f));
     if (inTree(folder, f)) setFolder(parentOf(f));
     setSel(new Set());
   };
   const removeE = async (list: Entry[]) => {
     if (!list.length || !uid) return;
     const lessons = list.reduce((s, e) => s + (e.task?.uses.length ?? 0), 0);
-    const media = list.some((e) => e.item);
-    if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}”?` : `Remove ${list.length} items?`} ${media ? 'Pictures, recordings and videos are removed from the lessons that use them too, so they take no more space.' : ''}${lessons ? ' Tasks already in lessons stay there, no longer linked.' : ''}`.trim(), { ok: 'Remove' }))) return;
+    
+    if (!(await ask(`${list.length === 1 ? `Remove “${list[0].name}”?` : `Remove ${list.length} items?`} Files go to the recycle bin for 30 days and still count towards storage. Existing lessons keep their media until permanent deletion.${lessons ? ' Tasks already in lessons stay there, no longer linked.' : ''}`.trim(), { ok: 'Remove' }))) return;
     list = list.filter((e) => !e.cls && !e.hand);
     if (!list.length) return;
     for (const e of list) {
@@ -500,7 +514,7 @@ export function MediaArchive() {
     try {
       const bytes = new Uint8Array(await f.arrayBuffer());
       const pages = await pageSizes(await openPdf(bytes));
-      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'pdf', f.name.replace(/\.pdf$/i, ''));
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'pdf', f.name.replace(/\.pdf$/i, ''), inClasses(folder) ? '' : folder);
       await saveFilePdf(id, bytes, pages);
       if (folder && !inClasses(folder)) await setDocPath(id, folder).catch(() => {});
       if (w) w.location.href = `/doc/${id}`;
@@ -551,7 +565,7 @@ export function MediaArchive() {
     const w = window.open('about:blank', '_blank');
     setPdfBusy('Making the Collab document…');
     try {
-      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'doc', title);
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, 'doc', title, inClasses(folder) ? '' : folder);
       await saveStart(id, html);
       if (folder && !inClasses(folder)) await setDocPath(id, folder).catch(() => {});
       if (w) w.location.href = `/doc/${id}`;
@@ -566,7 +580,7 @@ export function MediaArchive() {
   const makeDoc = async (k: DocKind) => {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
-    const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k);
+    const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k, '', inClasses(folder) ? '' : folder);
     if (folder && !inClasses(folder)) await setDocPath(id, folder).catch(() => {});
     if (w) w.location.href = `/doc/${id}`;
   };
@@ -667,10 +681,11 @@ export function MediaArchive() {
   );
 
   const SECTIONS: { k: Section; label: string; icon: string }[] = [
-    { k: 'media', label: 'My files', icon: 'archive' },
+    { k: 'media', label: 'Personal Files', icon: 'archive' },
     { k: 'folders', label: 'Shared folders', icon: 'groups' },
     { k: 'shared', label: 'Shared with me', icon: 'person' },
     { k: 'docs', label: 'In my classes', icon: 'classes' },
+    { k: 'bin', label: 'Recycle bin', icon: 'trash' },
   ];
   const editTask = tasks.find((t) => t.id === editing) ?? null;
   // The pane on the right: whatever is selected (one thing).
@@ -776,6 +791,7 @@ export function MediaArchive() {
                 </span>
               ))}
             </nav>
+            {myOrg && <nav className="ma-nav ma-tree" aria-label="Organisation library"><span className="ma-h">Organisation library</span>{libraries.map((f) => <button key={f.id} type="button" className={section === 'library' && openLibrary?.id === f.id ? 'on' : ''} aria-current={section === 'library' && openLibrary?.id === f.id ? 'page' : undefined} onClick={() => chooseLibrary(f.id)}><FolderIcon size={16} /><span className="ma-fname">{f.name}</span></button>)}{!libraries.length && <span className="hint small">No libraries available.</span>}</nav>}
             {section === 'media' && (
             <nav className="ma-nav ma-tree" aria-label="Folders">
               <span className="ma-h">Folders</span>
@@ -834,10 +850,13 @@ export function MediaArchive() {
                   <b>{acct?.lessonBytes === undefined ? 'Measuring' : formatBytes(lessonBytes)}</b>
                 </span>
               </span>
+              <span className="ma-space-row"><span>Recycle bin</span><b>{binBytes ? formatBytes(binBytes) : '0 KB'}</b></span>
               <span className="hint small">{quota.org ? `${quota.org} gives you ${quota.gb} GB.` : `Your plan has ${quota.gb} GB for the whole app.`} Lessons, documents, flashcards, reading notes, pictures and recordings all count. Links take no space.</span>
             </div>
           </aside>
 
+        {section === 'library' && uid && <main className="ma-main">{openLibrary ? <Suspense fallback={<Loader label="Opening the library" />}><FolderPane key={openLibrary.id} f={openLibrary} uid={uid} me={{ uid, name: user?.displayName || 'Teacher' }} /></Suspense> : <div className="ma-empty"><strong>No organisation library available</strong></div>}</main>}
+        {section === 'bin' && uid && <main className="ma-main"><FileBin uid={uid} docs={allDocs || []} items={allItems || []} /></main>}
         {section === 'docs' && uid && (
           <main className="ma-main">
             <div className="ma-head">
