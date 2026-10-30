@@ -3,6 +3,7 @@
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import { sendDevices } from '../functions/push-delivery.js';
 
 initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit' });
 const db = getFirestore();
@@ -18,17 +19,15 @@ const byKey = new Map();
 for (const t of tokens) byKey.set(t.key, [...(byKey.get(t.key) ?? []), t]);
 
 const gone = new Set();
+let failures = 0;
 async function send(list, n) {
-  for (const t of list) {
-    if (gone.has(t.id)) continue;
-    try {
-      await fcm.send({ token: t.token, data: { title: String(n.title ?? '').slice(0, 80), body: String(n.body ?? '').slice(0, 180), link: String(n.link ?? '/'), tag: String(n.tag ?? 'eltsuite') } , webpush: { headers: { Urgency: 'high', TTL: '86400' }, notification: { title: n.title.slice(0, 80), body: n.body.slice(0, 180), icon: '/icons/icon-192.png', badge: '/icons/icon-192.png', tag: n.tag }, fcmOptions: { link: 'https://eltsuite.com' + n.link } } });
-    } catch (e) {
-      const code = e?.errorInfo?.code ?? e?.code ?? '';
-      if (/registration-token-not-registered|invalid-registration-token/.test(code)) gone.add(t.id);
-      else console.log('Could not send:', code || e?.message);
-    }
-  }
+  const data = { title: String(n.title ?? '').slice(0, 80), body: String(n.body ?? '').slice(0, 180), link: String(n.link ?? '/'), tag: String(n.tag ?? 'eltsuite') };
+  const result = await sendDevices(list.filter(t => !gone.has(t.id)), data, 86400, {
+    send: message => fcm.send(message),
+    remove: async id => { await db.collection('pushTokens').doc(id).delete(); gone.add(id); },
+  });
+  failures += result.failed;
+  return result;
 }
 
 // New messages: one notification per chat for each member who has not read it yet.
@@ -43,9 +42,8 @@ for (const c of chats.docs) {
     if (!list || d.last.by === k || (d.seen?.[k] ?? 0) >= d.lastAt || (d.pushed?.[k] ?? 0) >= d.lastAt) continue;
     const title = d.kind === 'group' ? d.title || 'Group' : d.names?.[d.last.by] ?? 'New message';
     const who = (d.last.name || '').split(' ')[0];
-    await send(list, { title, body: d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text, link: `/messages?c=${c.id}`, tag: 'chat-' + c.id });
-    patch[`pushed.${k}`] = d.lastAt;
-    sent++;
+    const result = await send(list, { title, body: d.kind === 'group' ? `${who}: ${d.last.text}` : d.last.text, link: `/messages?c=${c.id}`, tag: 'chat-' + c.id });
+    if (result.complete) { patch[`pushed.${k}`] = d.lastAt; sent++; }
   }
   if (Object.keys(patch).length) await c.ref.update(patch);
 }
@@ -58,11 +56,10 @@ for (const cl of classes.docs) {
     const v = a.data();
     if (v.pushed || v.sendAt > now) continue;
     const to = tokens.filter((t) => t.role === 'learner' && t.classId === cl.id && (v.to === 'all' || (Array.isArray(v.to) && v.to.includes(t.key))));
-    await send(to, { title: cl.data().name || 'Announcement', body: v.text || '', link: '/', tag: 'ann-' + a.id });
-    await a.ref.update({ pushed: true });
-    sent++;
+    const result = await send(to, { title: cl.data().name || 'Announcement', body: v.text || '', link: '/', tag: 'ann-' + a.id });
+    if (result.complete) { await a.ref.update({ pushed: true }); sent++; }
   }
 }
 
-for (const id of gone) await db.collection('pushTokens').doc(id).delete();
-console.log(`Sent ${sent} notifications; removed ${gone.size} old devices.`);
+console.log(`Acknowledged ${sent} recipient/announcement batches; removed ${gone.size} old devices.`);
+if (failures) { console.error(`${failures} device sends failed; notifications remain eligible for retry.`); process.exitCode = 1; }
