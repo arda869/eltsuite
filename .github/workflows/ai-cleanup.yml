@@ -1,0 +1,28 @@
+name: Clean up temporary AI requests
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm --prefix functions install --no-audit --no-fund
+      - name: Remove expired AI jobs
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          node functions/ai/cleanup.mjs
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

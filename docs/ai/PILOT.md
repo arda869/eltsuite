@@ -15,7 +15,7 @@ The pilot limits each account to 12 model calls per UTC day and the entire pilot
 
 ## Opt-in deployment in lesson-lit
 
-The existing project is used at the owner's request. The existing GitHub service account deploys the callable before the frontend. Preflight reads OPENAI_API_KEY metadata only, requires an enabled version, and configures asynchronous 24-hour job TTL. It does not retrieve the key value. Deployment stops if the required assistant deployment or unauthenticated-request check fails.
+The existing project is used at the owner's request. The existing GitHub service account deploys the callable before the frontend. Preflight reads OPENAI_API_KEY metadata only and requires an enabled version. Temporary jobs expire after 24 hours; a scheduled GitHub job removes expired records every six hours (subject to scheduler delays), and each deployment also runs cleanup. Only aiPrivate/{uid}/jobs records are deleted; private drafts and spending ledgers persist. Cleanup uses the existing Firestore data permissions without an index-admin grant. It does not retrieve the key value. Deployment stops if the required assistant deployment or unauthenticated-request check fails.
 
 Server configuration: ELT_AI_MODEL=gpt-6.1-sol, ELT_AI_ENABLED=true. Production uses VITE_ELT_AI_PILOT=true, but nobody sees or can use the assistant until explicitly enabled in Super Admin. There are no email bypasses or automatic enrollments. The OPENAI_API_KEY payload remains in Secret Manager and is bound only to the callable. Test builds use isolated mock identities. The US$20 allowance is shared across all enabled teachers.
 

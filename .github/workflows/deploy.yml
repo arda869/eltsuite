@@ -69,6 +69,7 @@ jobs:
         run: |
           npm --prefix functions install --no-audit --no-fund
           node functions/ai/preflight.mjs
+          node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive --force
 
