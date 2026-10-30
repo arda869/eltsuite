@@ -461,6 +461,12 @@ const J = {
     await see(s.p, '.hm', 'home after completing onboarding');
     await s.p.goto(BASE + '/guide');
     await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved preference after reload');
+    const picker = s.p.getByRole('button', { name: 'What would you like to do?', exact: true });
+    await picker.click();
+    await picker.press('End');
+    await picker.press('Enter');
+    await see(s.p, '.guide-next h2:has-text("A connection")', 'custom dropdown updates the goal');
+    if (await s.p.locator('.gu-nav-i .ui-icon').count() !== 14) throw new Error('Guide topic icons missing');
     await s.p.getByRole('searchbox').fill('no such topic');
     await see(s.p, 'text=No matching topics', 'search empty state');
     await s.p.setViewportSize({ width: 390, height: 844 });
@@ -469,6 +475,18 @@ const J = {
       await see(s.p, 'h1', 'mobile heading');
       if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile overflow: ' + route);
       await axe(s.p, 'Teacher start ' + route, A11Y_FOUND);
+    }
+    for (const width of [320, 390, 768, 1280]) {
+      await s.p.setViewportSize({ width, height: 900 });
+      await s.p.goto(BASE + '/guide');
+      for (const topic of ['Colleagues', 'Your blend', 'Questions']) {
+        await s.p.getByRole('button', { name: topic, exact: true }).click();
+        if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Guide overflow at ' + width + ': ' + topic);
+      }
+      await picker.click();
+      const fits = await s.p.getByRole('listbox', { name: 'What would you like to do?' }).evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; });
+      if (!fits) throw new Error('Goal dropdown overflows at ' + width);
+      await picker.press('Escape');
     }
     await s.p.goto(BASE + '/welcome');
     await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();

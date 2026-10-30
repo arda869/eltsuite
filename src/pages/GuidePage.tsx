@@ -3,6 +3,7 @@ import { TEACHER_PATHS } from '../lib/teacherPaths';
 import { useAuth } from '../lib/auth';
 import './welcome.css';
 import { Link } from 'react-router-dom';
+import { UiIcon } from '../components/UiIcon';
 import { Select } from '../components/Select';
 import { TopBar } from '../components/TopBar';
 import { playSound } from '../lib/phonAudio';
@@ -31,6 +32,8 @@ const TOPICS: Topic[] = [
   { id: 'org', title: 'Running an organisation', short: 'Organisation', body: OrgTopic },
 ];
 
+const TOPIC_ICONS: Record<string, string> = { start: 'home', blend: 'design', lessons: 'classes', questions: 'help', notation: 'annotate', live: 'present', games: 'pick', progress: 'poll', studio: 'mic', print: 'task', files: 'folder', week: 'calendar', share: 'groups', org: 'settings' };
+
 export function GuidePage() {
   const { profile } = useAuth();
   const initial = new URLSearchParams(window.location.search).get('goal') || profile?.teacherGoal;
@@ -57,7 +60,7 @@ export function GuidePage() {
         <footer><Link className="btn primary" to={path.to}>{path.action} →</Link><span>Start small. The rest can wait.</span></footer>
       </div>
     </section>
-    <div className="gu guide-focused"><nav className="gu-nav" aria-label="Guide topics"><label className="field">Find a topic<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Try lessons or sound" /></label>{matches.map(t => <button key={t.id} type="button" className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'page' : undefined} onClick={() => choose(t.id)}>{t.short}</button>)}{!matches.length && <p role="status">No matching topics. Try “lessons”, “files” or “live”.</p>}</nav>
+    <div className="gu guide-focused"><nav className="gu-nav" aria-label="Guide topics"><label className="field">Find a topic<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Try lessons or sound" /></label>{matches.map(t => <button key={t.id} type="button" className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'page' : undefined} onClick={() => choose(t.id)}><UiIcon name={TOPIC_ICONS[t.id]} size={18} /><span>{t.short}</span></button>)}{!matches.length && <p role="status">No matching topics. Try “lessons”, “files” or “live”.</p>}</nav>
       <section className="gu-main gu-sec" id={'gu-' + topic.id} aria-labelledby="guide-topic-title"><span className="path-eyebrow">Explore and try · Illustrative examples</span><h2 id="guide-topic-title">{topic.title}</h2><topic.body key={topic.id} /><footer className="gu-end">Ready to try something with your own work? <Link to="/welcome">Choose your next step →</Link></footer></section>
     </div>
   </main></div>;
@@ -2006,13 +2009,13 @@ function Share() {
             <circle cx="30" cy="34" r="13" fill="#3667a6" />
             <text x="30" y="39" textAnchor="middle" style={{ fill: '#fff', font: '600 11px var(--sans)' }}>S</text>
             <rect x="50" y="18" width="200" height="32" rx="14" className="gu-s-soft" />
-            <text x="64" y="38" style={{ fill: 'var(--ink)', font: '12px var(--sans)' }}>Do you have a lesson on small talk?</text>
+            <text x="64" y="38" style={{ fill: 'var(--ink)', font: '12px var(--sans)' }}><tspan x="64" y="32">Do you have a lesson</tspan><tspan x="64" y="45">on small talk?</tspan></text>
             <rect x="110" y="62" width="196" height="32" rx="14" fill="#7a4fa3" />
             <text x="124" y="82" style={{ fill: '#fff', font: '12px var(--sans)' }}>Yes! Use it with your B2s 👇</text>
             <rect x="150" y="102" width="156" height="52" rx="12" className="gu-s-card" />
             <path d="M162 112h18l8 8v24h-26z" fill="#c8764a" opacity="0.9" />
             <text x="198" y="124" className="gu-s-b" style={{ fontSize: 12 }}>Small talk</text>
-            <text x="198" y="142" className="gu-s-small" style={{ fontSize: 10 }}>Lesson · Copy to a class</text>
+            <text x="198" y="139" className="gu-s-small" style={{ fontSize: 10 }}><tspan x="198">Lesson</tspan><tspan x="198" y="150">Copy to a class</tspan></text>
             <rect x="14" y="170" width="292" height="28" rx="14" className="gu-s-card" />
             <text x="30" y="188" className="gu-s-small">Write a message…</text>
           </svg>
