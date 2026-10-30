@@ -81,6 +81,56 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Speech: teacher setup, script writing, preview and speaker tracks': async (b) => {
+    const s=await session(b);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await see(s.p,'.ProseMirror','the lesson editor');
+    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Speaking practice');
+    await see(s.p,'.speak-setup','the speaking task editor');
+    await s.p.waitForTimeout(1000);
+    await s.p.getByLabel('Feedback focus source',{exact:true}).click();await s.p.getByRole('option',{name:'Let the learner choose',exact:true}).click();
+    await s.p.getByRole('button',{name:'+ Feedback option',exact:true}).click();
+    await s.p.getByLabel('Feedback option 3',{exact:true}).fill('Giving reasons');
+    await s.p.getByRole('button',{name:'Save speaking task',exact:true}).click();
+    await see(s.p,'text=Speaking task saved and ready for learners.','saved speaking configuration');
+    await axe(s.p,'Speaking teacher setup',A11Y_FOUND);
+    await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
+    await s.p.getByRole('button',{name:'Create speech',exact:true}).click();
+    await s.p.getByRole('button',{name:'+ Add speaker',exact:true}).click();
+    await s.p.getByRole('button',{name:'Preview voice for Speaker C',exact:true}).click();
+    await s.p.getByLabel('Dialogue line 1',{exact:true}).fill('(hesitates) Is it Friday?');
+    await s.p.getByLabel('Dialogue line 1',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 1',{exact:true}).press('Enter');
+    await s.p.getByLabel('Dialogue line 2',{exact:true}).fill('(laughs) Yes, Friday.');
+    await s.p.getByLabel('Dialogue line 2',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 2',{exact:true}).press('Enter');
+    await s.p.getByLabel('Dialogue line 3',{exact:true}).fill('See you there.');
+    await s.p.getByLabel('Line 3 speaker',{exact:true}).click();
+    await s.p.getByRole('option',{name:'Speaker C',exact:true}).click();
+    await s.p.getByRole('button',{name:'Create missing takes',exact:true}).click();
+    await s.p.getByRole('button',{name:'Add to timeline',exact:true}).waitFor({state:'visible'});
+    await axe(s.p,'Dialogue composer',A11Y_FOUND);
+    await s.p.getByRole('button',{name:'Add to timeline',exact:true}).click();
+    await see(s.p,'text=Speaker A · Is it Friday?','clean spoken captions');
+    await see(s.p,'text=Speaker C · See you there.','the third speaker track');
+    return s;
+  },
+  'Speech: learner choice, timed closing and private teacher monitoring': async (b) => {
+    const s=await session(b);
+    await s.p.goto(BASE+'/test/speech/fixture.html?as=Mia&mode=learner&focus=choice&fakeRtc');
+    const start=s.p.getByRole('button',{name:'Start speaking',exact:true});await start.waitFor({state:'visible'});
+    if(await start.isEnabled())throw Error('Learner choice must be explicit.');
+    await s.p.getByRole('radio',{name:'Giving reasons',exact:true}).check();
+    await axe(s.p,'Learner speaking brief',A11Y_FOUND);
+    await start.click();
+    await see(s.p,'.speak-feedback','feedback after automatic closing',15000);
+    await s.p.getByText('Your conversation · 1 speaking turns').click();
+    await see(s.p,'text=That sounds good. See you then!','the final farewell');
+    await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&mode=teacher&focus=choice');
+    await s.p.locator('.speak-learner').filter({hasText:'Needs help'}).first().click();
+    await see(s.p,'.speak-review','the teacher transcript');
+    await axe(s.p,'Teacher speaking monitor',A11Y_FOUND);
+    return s;
+  },
   'File names, recycle bin and organisation sidebar': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/test/file-tools-check.html');

@@ -3,6 +3,29 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'recordingSpeech') {
+    if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');
+    const bytes=new Uint8Array(48000), view=new DataView(bytes.buffer);
+    for(let i=0;i<24000;i++)view.setInt16(i*2,Math.sin(i/24000*Math.PI*440)*8000,true);
+    let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+    return {data:{pcm:btoa(binary),rate:24000,transcript:d.text}};
+  }
+  if (name === 'recordingDialogue') return {data:{lines:Array.from({length:d.turns},(_,i)=>({speaker:d.speakers[i%d.speakers.length].id,text:i%2?'Of course. I meant this Friday, not Thursday.':'Sorry, could you clarify which day you mean?',direction:'Natural conversational English'}))}};
+  if (name === 'recordingTranscript') return {data:{segments:[{speaker:'A',text:'Could you explain that?',start:0,end:.4},{speaker:'B',text:'Of course.',start:.5,end:1}]}};
+  if (name === 'speakingTask') {
+    const {setDoc,doc,getDoc}=await import('./firestore');
+    if(d.action==='configure'){await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId),{...d.config,enabled:d.enabled!==false});return {data:{saved:true}};}
+    if(d.action==='start'){
+      const config=(await getDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId))).data();
+      const focus=config.feedbackMode==='learner'?config.focusOptions[d.focusChoice]:config.focus;
+      const deadline=Date.now()+(new URLSearchParams(location.search).has('fakeRtc')?4000:config.seconds*1000);
+      const {getAuth}=await import('./auth');const uid=getAuth().currentUser?.uid;
+      await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions','test-session'),{uid,name:'Mia',config:{...config,focus},startedAt:Date.now(),deadline,status:'connecting',turns:[]});
+      return {data:{sdp:'test-answer',sessionId:'test-session',deadline,seconds:config.seconds,focus}};
+    }
+    if(d.action==='progress'){await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions',d.sessionId),{turns:d.turns,status:d.status,help:d.help},{merge:true});return {data:{saved:true}};}
+    if(d.action==='finish'){const feedback={focusFeedback:'You gave a reason for your choice using because.',evidence:['I would choose the park because it is quieter.'],communication:'You kept the conversation moving.',nextStep:'Add a second reason to develop your answer.',retryPrompt:'Another reason is…'};await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions',d.sessionId),{feedback,status:'complete',feedbackState:'complete'},{merge:true});return {data:{feedback}};}
+  }
   if (name !== 'lessonAssistant') throw Error('Unsupported test callable');
   const store = JSON.parse(localStorage.getItem('mockAiDrafts') || '{}');
   if (d.action === 'context') return {data:{classContext:{name:'Demo class',level:'B1',kind:'language',profile:null},evidence:{recent:[],skillLevels:{},counts:{items:0,submittedTasks:0,portfolioRecords:0},limitations:'No recorded evidence yet.'}}};

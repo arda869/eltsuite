@@ -1,4 +1,5 @@
 import { NSelect } from '../components/Select';
+import { VoiceDiversityPrompt } from '../components/VoiceDiversityPrompt';
 import { TeacherLiveVideo } from '../components/LiveVideo';
 import { setActivity } from '../lib/status';
 import { tr, useClassTerms } from '../lib/terms';
@@ -821,6 +822,7 @@ export function LessonEditor() {
                   <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
                 <div className="frame-body">
+                  <VoiceDiversityPrompt key={itemId} />
                   <TaskEditor
                     key={editorKey}
                     compact
@@ -828,6 +830,7 @@ export function LessonEditor() {
                     onChange={(content) => change({ content })}
                     classmates={classmates}
                     classId={classId}
+                    lessonId={itemId}
                     onNotebook={NOTEBOOK ? (word, sentence) => toNotebook({ type: 'vocab', word, example: sentence }) : undefined}
                     onBank={(nodes) => nodes.length && setBankSave({ kind: 'question', content: nodes })}
                     onPickBank={(insert) => setBankPick(() => insert)}

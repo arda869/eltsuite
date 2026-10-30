@@ -39,7 +39,7 @@ export function spreadEvenly(lines: ScriptLine[], duration: number, from = 0): S
   });
 }
 
-export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClose }: { classId: string; mediaId: string; manifest?: Manifest | null; title?: string; onSave: (lines: ScriptLine[]) => void | Promise<void>; onClose: () => void }) {
+export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClose, embedded = false }: { embedded?: boolean; classId: string; mediaId: string; manifest?: Manifest | null; title?: string; onSave: (lines: ScriptLine[]) => void | Promise<void>; onClose: () => void }) {
   const e = useEngine(classId, mediaId, manifest);
   const wave = useWave(classId, mediaId, e.m);
   const [lines, setLines] = useState<ScriptLine[] | null>(null);
@@ -138,9 +138,9 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
     }
   };
 
-  return createPortal(
-    <div className="scrim" {...onBackdrop(onClose)}>
-      <div className="dialog se-dialog" role="dialog" aria-label="Script and timing" onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
+  const content = (
+    <div className={embedded ? "recording-script-page" : "scrim"} {...(!embedded ? onBackdrop(onClose) : {})}>
+      <div className="dialog se-dialog" role={embedded ? "region" : "dialog"} aria-label="Script and timing" onClick={(ev) => ev.stopPropagation()} onKeyDown={(ev) => ev.stopPropagation()}>
         <div className="se-head">
           <h2 style={{ margin: 0 }}>Script and timing</h2>
           <span className="hint">{title || e.m?.title}</span>
@@ -268,9 +268,9 @@ export function ScriptEditor({ classId, mediaId, manifest, title, onSave, onClos
           </button>
         </span>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+  return embedded ? content : createPortal(content, document.body);
 }
 
 function TimeField({ value, onSet, now }: { value: number | null; onSet: (t: number | null) => void; now: number }) {

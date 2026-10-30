@@ -46,7 +46,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (j.get('status') !== 'completed' || j.get('action') !== 'activities' || j.get('classId') !== d.classId) fail('Prepare activities again.');
       const activities=j.get('result.activities'), plan=j.get('sourcePlan'), type=j.get('creationType') ?? 'lesson';
       checkActivities(activities,plan);
-      tx.create(item,{type,title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
+      tx.create(item,{type,speakingFocus:[plan.mainAim,plan.subsidiaryAims].filter(Boolean).join(' ').slice(0,1000),title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
         const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
         const versions=task.roles.length ? task.roles.map((r,j)=>['role'+j,r.input,r.label]) : type!=='exam' && d.createVariants===true ? [['support',task.support,'Easier'],['challenge',task.challenge,'Challenge']].filter(([,text])=>text?.trim()) : [];

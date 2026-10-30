@@ -1,5 +1,7 @@
+import { ScriptEditor } from '../media/ScriptEditor';
+import { saveScript } from '../editor/MediaNode';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
@@ -9,7 +11,7 @@ import { Loader } from '../components/Loader';
 import { TaskEditor } from '../editor/TaskEditor';
 import { InstrEditor } from '../editor/InstrEditor';
 import { updateLibTask, type LibTask } from '../lib/libtasks';
-import { findUses, loadManifest, replaceSound, soundUrl, useArchive } from '../lib/archive';
+import { findUses, loadManifest, replaceSound, soundUrl, useArchive, type ArchiveItem, type Manifest } from '../lib/archive';
 import { decodeSound } from '../lib/sound';
 import { SoundEditor, type SoundSource } from '../media/SoundEditor';
 import { ChainIcon } from './LibraryParts';
@@ -134,60 +136,50 @@ export function TaskStudio() {
 
 export function SoundStudio() {
   const { id = '' } = useParams();
+  const [query] = useSearchParams();
   const { user } = useAuth();
   const uid = user?.uid;
   const items = useArchive(uid);
-  const item = items?.find((i) => i.id === id) ?? (items ? null : undefined);
+  const archived = items?.find(i => i.id === id);
+  const classId = query.get('class') || archived?.home?.classId || '';
+  const mediaId = query.get('media') || archived?.home?.mediaId || '';
   const [source, setSource] = useState<SoundSource | null>(null);
+  const [manifest, setManifest] = useState<Manifest | null>(null);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
-  const opened = useRef(false);
+  const opened = useRef('');
+  const finish = () => window.opener ? window.close() : (window.location.href = '/recordings');
   useEffect(() => {
-    if (!item || !item.home || opened.current) return;
-    opened.current = true;
+    if (!classId || !mediaId || opened.current === classId + '/' + mediaId) return;
+    opened.current = classId + '/' + mediaId;
+    let active = true;
     (async () => {
       try {
-        const m = await loadManifest(item.home!.classId, item.home!.mediaId);
-        if (!m) throw new Error('missing');
-        const url = await soundUrl(item.home!.classId, item.home!.mediaId, m);
-        const buffer = await decodeSound(await (await fetch(url)).blob());
-        const lines = item.script ?? m.script ?? [];
-        setSource({ buffer, name: item.name, script: lines.map((l) => l.text), marks: lines.map((l) => (l.t === null ? NaN : l.t)) });
-      } catch {
-        setError('We couldn’t open the sound.');
-      }
+        const m = await loadManifest(classId, mediaId);
+        if (!m) throw Error('missing');
+        if (!active) return;
+        setManifest(m);
+        if (m.kind === 'link' || m.video) return;
+        const url = await soundUrl(classId, mediaId, m);
+        const response = await fetch(url);
+        if (!response.ok) throw Error('unavailable');
+        const buffer = await decodeSound(await response.blob());
+        if (active) setSource({ buffer, name: archived?.name || m.title || 'Recording', timedScript: m.script ?? archived?.script ?? [] });
+      } catch { if (active) setError('We couldn’t open this recording. Check that you have access to its lesson and try again.'); }
     })();
-  }, [item]);
-  return (
-    <div className="studio studio-dark">
-      <main className="studio-sound">
-        {item === undefined || (item && !source && !error) ? (
-          <Loader label="Opening the sound" />
-        ) : item === null || error ? (
-          <p className="hint studio-missing">{error || 'This sound is no longer in your resources library.'}</p>
-        ) : done ? (
-          <div className="studio-done">
-            <strong>Saved</strong>
-            <span className="hint">The library and every lesson that uses it have the new version.</span>
-            <button type="button" className="btn primary" onClick={() => (window.opener ? window.close() : (window.location.href = '/archive'))}>
-              Done
-            </button>
-          </div>
-        ) : (
-          source &&
-          item && uid && (
-            <SoundEditor
-              source={source}
-              classId={'user:' + uid}
-              folder={item.folder}
-              backLabel="Close without saving"
-              onBack={() => (window.opener ? window.close() : (window.location.href = '/archive'))}
-              onSaved={() => setDone(true)}
-              replace={{ name: item.name, uses: () => findUses(item), run: (blob, meta, p) => replaceSound(uid, item, blob, meta, p) }}
-            />
-          )
-        )}
-      </main>
-    </div>
-  );
+    return () => { active = false; opened.current = ''; };
+  }, [classId, mediaId]);
+  // Include the lesson copy even when a legacy resource omitted it from its copy map.
+  const item: ArchiveItem | null = manifest ? archived ? { ...archived, copies: { ...archived.copies, ...(archived.home?.classId !== classId ? { [classId]: mediaId } : {}) } } : {
+    id: '', kind: 'audio', name: manifest.title || 'Recording', folder: '', tags: [], size: 0, createdAt: 0, home: { classId, mediaId },
+  } : null;
+  const missing = !!items && (!classId || !mediaId);
+  const saveLines = (lines: import('../lib/archive').ScriptLine[]) => saveScript(uid, classId, mediaId, archived?.id || '', lines);
+  if (error || missing) return <div className="studio"><StudioBar app="Recordings" where="Recording unavailable" /><p className="hint studio-missing">{error || 'This recording is no longer available.'}</p></div>;
+  if (done) return <div className="studio"><StudioBar app="Recordings" where="Saved" /><div className="studio-done"><strong>Saved</strong><span className="hint">The linked lessons have the updated recording and script.</span><button type="button" className="btn primary" onClick={finish}>Done</button></div></div>;
+  if (manifest && (manifest.kind === 'link' || manifest.video)) return <div className="studio"><StudioBar app="Recordings" where={archived?.name || manifest.title || 'Script and timing'} /><ScriptEditor embedded classId={classId} mediaId={mediaId} manifest={manifest} title={archived?.name || manifest.title} onSave={saveLines} onClose={finish} /></div>;
+  return <div className="studio studio-dark"><main className="studio-sound">{source && item && uid ? <SoundEditor
+    source={source} classId={classId} folder={item.folder} backLabel="Close without saving" onBack={finish} onSaved={() => setDone(true)} onSaveScript={saveLines}
+    replace={{ name: item.name, uses: () => findUses(item), run: (blob, meta, progress) => replaceSound(uid, item, blob, meta, progress) }}
+  /> : <Loader label="Opening the recording" />}</main></div>;
 }

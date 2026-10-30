@@ -1,3 +1,5 @@
+import { SpeakingActivity } from '../speaking/SpeakingActivity';
+import type { SpeakingConfig } from '../speaking/types';
 import { useCiteStyle } from '../lib/citeContext';
 import { inText, orderFor, reference, refsTitle, type Source } from '../lib/cite';
 import { PdfStack, toStack } from '../pdf/PdfStack';
@@ -1144,6 +1146,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           </div>
         );
       }
+      case 'speakingPractice':
+        return <SpeakingActivity key={key} config={node.attrs as SpeakingConfig} classId={classId ?? ''} teacher={!!teacher} classmates={classmates} disabled={locked} />;
       case 'media':
         return node.attrs?.media ? (
           <div key={key} data-bk={key} className="task-media">

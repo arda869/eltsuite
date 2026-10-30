@@ -22,6 +22,10 @@ jobs:
 
       - name: Install
         run: npm ci
+      - name: Recording and speaking checks
+        run: |
+          npm --prefix functions ci --no-audit --no-fund
+          node --test test/speech/*.test.mjs
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
 
@@ -80,7 +84,7 @@ jobs:
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
 
       - name: Check assistant rejects signed-out requests

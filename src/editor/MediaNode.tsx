@@ -4,13 +4,12 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tip
 import { useState } from 'react';
 import { Grip } from './nodes';
 import { useEditorClass } from './context';
-import { useAuth } from '../lib/auth';
 import { archiveGet, archiveUpdate, setManifestScript, type ScriptLine } from '../lib/archive';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { MediaPlayer, SCRIPT_MODES, type ScriptMode } from '../media/Player';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
-import { ScriptEditor } from '../media/ScriptEditor';
+import { recordingEditorUrl } from '../lib/recordingScript';
 import { UiIcon } from '../components/UiIcon';
 
 // A sound or a video in a task, with an optional karaoke script. The media itself lives with the
@@ -32,10 +31,8 @@ export async function saveScript(uid: string | undefined, classId: string, media
 
 function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selected }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const { user } = useAuth();
   const a = node.attrs as MediaAttrs;
   const [dialog, setDialog] = useState<MediaTab | null>(null);
-  const [script, setScript] = useState(false);
   const label = a.kind === 'video' ? 'Video' : 'Recording';
   return (
     <NodeViewWrapper className={'block-node md-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
@@ -95,8 +92,8 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
               Comments at moments in it: for lesson observation and feedback
             </label>
             <span className="md-btns">
-              <button type="button" className="btn small-btn" onClick={() => setScript(true)}>
-                <UiIcon name="script" size={14} /> Script and timing
+              <button type="button" className="btn small-btn" onClick={() => window.open(recordingEditorUrl(classId, a.media, a.archiveId), '_blank')}>
+                <UiIcon name="script" size={14} /> Edit in Recordings
               </button>
               <button type="button" className="btn small-btn" onClick={() => setDialog('record')}>
                 Replace
@@ -116,7 +113,6 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
           }}
         />
       )}
-      {script && a.media && <ScriptEditor classId={classId} mediaId={a.media} title={a.title} onClose={() => setScript(false)} onSave={(lines) => saveScript(user?.uid, classId, a.media, a.archiveId, lines)} />}
     </NodeViewWrapper>
   );
 }

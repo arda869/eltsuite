@@ -1,3 +1,4 @@
+import { SpeakingBlock, newSpeaking } from './SpeakingNode';
 import { auth } from '../lib/firebase';
 import { imageToData } from '../lib/flash';
 import { Extension } from '@tiptap/core';
@@ -174,6 +175,7 @@ export const COMMANDS: Cmd[] = [
     } },
   { key: 'storyboard', label: 'Storyboard', hint: 'Scenes with people and speech bubbles, from your files', group: 'Text', run: (e) => e.chain().focus().insertContent([newStoryboard(), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
+  { key: 'speaking', label: 'Speaking practice', hint: 'A private AI conversation for each learner, with lesson-focused feedback', group: 'Text', run: (e) => e.chain().focus().insertContent([newSpeaking(), { type: 'paragraph' }]).run() },
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
@@ -504,7 +506,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -571,6 +573,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       ...PDF_NODES,
       LinkCard,
       MediaBlock,
+      SpeakingBlock,
       UploadBlock,
       CollabBlock,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
@@ -717,7 +720,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     setLinkOpen(true);
     return true;
   });
-  const classCtx = useMemo(() => ({ classmates, classId }), [classmates, classId]);
+  const classCtx = useMemo(() => ({ classmates, classId, lessonId }), [classmates, classId, lessonId]);
 
   // A narrow toolbar (in a chat): the tools that fit, and an arrow that opens the rest on new lines.
   const tbRef = useRef<HTMLDivElement>(null);
