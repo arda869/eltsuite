@@ -487,6 +487,10 @@ const J = {
       const fits = await s.p.getByRole('listbox', { name: 'What would you like to do?' }).evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; });
       if (!fits) throw new Error('Goal dropdown overflows at ' + width);
       await picker.press('Escape');
+      await s.p.goto(BASE + '/tour');
+      await see(s.p, '.tour-paths', 'responsive public tour');
+      const clipped = await s.p.locator('.gu-grid2 > *').evaluateAll(els => els.some(el => el.getBoundingClientRect().right > innerWidth + 1));
+      if (clipped) throw new Error('Tour illustration clipped at ' + width);
     }
     await s.p.goto(BASE + '/welcome');
     await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
