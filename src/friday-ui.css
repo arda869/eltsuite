@@ -104,3 +104,18 @@
 :root[data-org-brand] .dp { --dp: var(--brand); }
 .cd-mode .sel { display: inline-flex; align-items: center; gap: 7px; width: auto; }
 .sel-choice-check { margin-left: auto; color: var(--accent-text); }
+.pg-text .ProseMirror, .pg-text .cd-view { line-height: var(--pg-line-height, 1.5); }
+
+.pg-size-controls { display: inline-flex; align-items: center; height: 32px; border: 1px solid var(--hair-strong); border-radius: 7px; overflow: hidden; }
+.pg-size-controls button { border: 0; background: transparent; color: var(--ink); width: 26px; height: 30px; cursor: pointer; font: 16px var(--sans); }
+.pg-size-controls button:hover { background: var(--surface); }
+.pg-size-controls input { width: 38px; min-width: 0; height: 30px; box-sizing: border-box; border: 0; border-inline: 1px solid var(--hair); border-radius: 0; padding: 0 3px; background: transparent; color: var(--ink); text-align: center; font: 13px var(--sans); }
+.pg-zoom { position: fixed; right: 20px; bottom: 64px; z-index: 15; display: flex; align-items: center; gap: 12px; padding: 6px 10px; border: 1px solid var(--hair-strong); border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: 0 3px 14px #0002; }
+.pg-zoom .sel { min-width: 78px; }
+.pg-zoom input { width: 110px; accent-color: var(--accent-text); }
+.pg-page-info { display: flex; flex-direction: column; gap: 3px; font: 12px var(--sans); }
+.pg-page-info small { font-size: 10px; color: var(--muted); }
+@media (max-width: 600px) { .pg-zoom { right: 12px; gap: 8px; max-width: calc(100vw - 24px); box-sizing: border-box; } .pg-zoom input { width: 70px; } .pg-page-info { font-size: 11px; } }
+.pg-desk { justify-content: flex-start; padding: 24px 24px 112px; background: var(--surface); min-height: calc(100vh - 160px); box-sizing: border-box; }
+.pg-paper { margin-inline: auto; outline: 1px solid var(--hair-strong); box-shadow: 0 2px 6px #0003, 0 16px 36px #0003; }
+@media print { .pg-zoom { display: none; } .pg-paper { zoom: 1 !important; outline: none; } .pg-desk { background: transparent; min-height: 0; padding: 0; } }
