@@ -397,8 +397,9 @@ const J = {
     await s.p.goto(`${BASE}/classes`);
     await s.p.click('.apps-btn');
     await s.p.click('.apps-pop a[role=menuitem]:has-text("Guide")');
-    await see(s.p, 'h1:has-text("How ELT Suite works")', 'the Guide');
+    await see(s.p, 'h1:has-text("A little help.")', 'the Guide');
     await axe(s.p, 'Guide', A11Y_FOUND);
+    await s.p.getByRole('button', { name: 'Questions', exact: true }).click();
     await s.p.fill('input[aria-label="Gap 1"]', 'has lived');
     await s.p.locator('.gu-try', { hasText: 'present perfect' }).locator('button:has-text("Check")').click();
     await see(s.p, '.gu-result:has-text("1 of 2")', 'the gap fill marked');
