@@ -27,10 +27,7 @@ test('unknown models, stale prices and oversized UTF-8 requests cannot generate'
   checkRequestSize({ input: 'short' });
   assert.throws(() => checkRequestSize({ input: '字'.repeat(30000) }));
 });
-test('account-only mode requires the configured verified email, regardless of allowlist', () => {
-  assert.equal(isPilotTeacher({ email: 'OWNER@example.com', email_verified: true }, 'owner@example.com', false), true);
-  assert.equal(isPilotTeacher({ email: 'owner@example.com' }, 'owner@example.com', true), false);
-  assert.equal(isPilotTeacher({ email: 'other@example.com', email_verified: true }, 'owner@example.com', true), false);
-  assert.equal(isPilotTeacher({}, '', true), true);
-  assert.equal(isPilotTeacher({}, '', false), false);
+test('access is off unless explicitly enabled by an administrator', () => {
+  for (const value of [undefined, null, false, 'true', 1, {}]) assert.equal(isPilotTeacher(value), false);
+  assert.equal(isPilotTeacher(true), true);
 });

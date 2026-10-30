@@ -17,6 +17,7 @@ import { inviteFields, useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
 import { Wordmark } from '../components/Wordmark';
 import { SuiteOrbit, Tagline } from '../components/SuiteOrbit';
+import './welcome.css';
 
 type Mode = 'signin' | 'create' | 'reset' | 'link' | 'code';
 
@@ -30,7 +31,7 @@ const GOOGLE = (
 );
 
 const TITLES: Record<Mode, string> = {
-  signin: 'Teacher sign-in',
+  signin: 'Welcome back',
   create: 'Make your teacher account',
   reset: 'Reset your password',
   link: 'Sign in with an email link',
@@ -121,7 +122,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           // sign-in account back, so a failure here is not this form's error.
           try {
             await updateProfile(cred.user, { displayName });
-            await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address, ...inviteFields() }, { merge: true });
+            await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address, onboarding: 'new', ...inviteFields() }, { merge: true });
           } catch {
             /* see above */
           }
@@ -155,24 +156,22 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
       {intro ?? (
         <div className="intro">
           <Wordmark big />
-          <span className="soon-badge">{linked || code ? "You’re invited" : "Coming soon"}</span>
+          <span className="soon-badge">{linked || code ? "You’re invited" : "Made for English teachers"}</span>
+          <a className="signin-jump" href="#teacher-sign-in">Already have an account? Sign in ↓</a>
           <Tagline />
           <SuiteOrbit />
-          <div className="rule" />
-          <p className="soon-note">
-            ELT Suite opens to every teacher soon. For now, <b>teachers join by invitation</b>. Learners join with the code their teacher gives them.
-          </p>
-          <Link className="btn si-tour" to="/tour">
-            See what ELT Suite can do →
-          </Link>
+          <p className="signin-summary">More teaching. Less juggling. Prepare a lesson, make language clearer and keep your work together.</p>
+          <Link className="btn primary si-tour" to="/tour">Find what ELT Suite can do for you →</Link>
+          <p className="soon-note">We’re welcoming teachers by invitation while ELT Suite is in beta. <a href="mailto:arda@eltsuite.com?subject=ELT%20Suite%20invitation">Ask for an invitation</a>.</p>
           <p className="si-ask">
             Questions? Email <a href="mailto:arda@eltsuite.com">arda@eltsuite.com</a>
           </p>
         </div>
       )}
 
-      <form className="card" onSubmit={submit} noValidate>
+      <form id="teacher-sign-in" className="card" onSubmit={submit}>
         <h1>{TITLES[mode]}</h1>
+        {mode === 'signin' && <p className="hint">Your lessons, materials and next teaching day are waiting.</p>}
 
         {notInvited && !error && (
           <span className="error" role="alert">

@@ -16,7 +16,7 @@
 .gu-sec { scroll-margin-top: 80px; display: flex; flex-direction: column; gap: 14px; padding: 24px 26px; border: 1px solid var(--hair); border-radius: 20px; background: var(--paper); }
 .gu-sec h2 { display: flex; align-items: center; gap: 12px; margin: 0; font: 500 24px/1.2 var(--serif); }
 .gu-sec > p { margin: 0; max-width: 760px; font-size: 15px; line-height: 1.65; }
-.gu-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.gu-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
 .gu-fig { margin: 0; padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--gu) 5%, var(--paper)); border: 1px solid var(--hair); }
 .gu-fig svg { display: block; width: 100%; height: auto; }
 .gu-fig figcaption { margin-top: 6px; text-align: center; font-size: 13px; color: var(--muted); }
@@ -415,3 +415,30 @@
   .tr-two { grid-template-columns: 1fr; }
   .tr-top { padding: 10px 16px; }
 }
+
+/* Label every glass where it appears; colour alone should never carry the meaning. */
+.gu-blends{grid-template-columns:1fr;gap:14px}
+.gu-blend{padding:20px;text-align:left;align-items:stretch;gap:14px}
+.gu-blend>span{text-align:left}
+.gu-blend .gu-blend-title{display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--ink)}
+.gu-blend-title>b{font-size:18px}
+.gu-blend-title>span{color:var(--accent-text)}
+.gu-blend .gu-blend-recipe{display:flex;align-items:center;gap:24px}
+.gu-blend .gu-glass{width:80px;flex:0 0 80px;margin:0;opacity:1;filter:none}
+.gu-blend .gu-blend-labels{display:grid;gap:14px;min-width:0}
+.gu-blend-labels>span{display:flex;align-items:center;gap:10px;line-height:1.4;font-size:14px;color:var(--ink)}
+.gu-blend-labels i{width:12px;height:12px;border-radius:3px;flex:0 0 12px}
+.gu-blend .gu-blend-description{display:block;color:var(--muted);font-size:14px;line-height:1.6}
+.gu-blend-d{display:none}
+.gu-blend-explainer{display:grid;gap:8px;padding:20px;border-left:3px solid var(--gu);background:color-mix(in srgb,var(--gu) 6%,var(--paper));border-radius:0 12px 12px 0}
+.gu-blend-explainer>b{font:500 22px/1.3 var(--serif)}
+.gu-blend-explainer>span:last-child{font-size:14px;line-height:1.6;color:var(--muted)}
+@media(min-width:1100px){.tr .gu-blends{grid-template-columns:repeat(3,minmax(0,1fr))}.tr .gu-blend-recipe{gap:12px}.tr .gu-blend .gu-glass{width:64px;flex-basis:64px}}
+@media(max-width:480px){.gu-blend{padding:16px}.gu-blend .gu-blend-recipe{gap:16px}.gu-blend-title>b{font-size:16px}.gu-blend-labels>span{font-size:13px}}
+
+/* Labels connect directly to the liquid layers, rather than a separate legend. */
+.gu-blend .gu-blend-recipe{display:block;width:100%;min-width:0}
+.gu-blend .gu-glass,.tr .gu-blend .gu-glass{display:block;width:100%;max-width:340px;height:auto;margin:0 auto;transform:none}
+.gu-liquid-callout text{font:14px var(--sans);fill:var(--ink)}
+.gu-err{position:relative;display:inline-block;margin-top:12px;padding-right:8px}
+.gu-err .ann-code-tag{top:-11px;right:0;line-height:1.3}

@@ -26,7 +26,11 @@ export function DocumentMenuBar({ menus }: { menus: { label: string; items: Docu
   }}>
     {menus.map((m, i) => <span className="document-menu" key={m.label}>
       <button type="button" className={'document-menu-trigger' + (active === i ? ' on' : '')} role="menuitem" aria-haspopup="menu" aria-expanded={active === i} aria-controls={active === i ? id : undefined} onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => active !== null && setActive(i)} onClick={() => setActive(active === i ? null : i)} onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); setActive(i); } }}>{m.label}</button>
-      {active === i && <div className="ctx-menu document-menu-popup" role="menu" aria-label={m.label} id={id} ref={menu}>
+      {active === i && <div className="ctx-menu document-menu-popup" role="menu" aria-label={m.label} id={id} ref={menu} onPointerMove={(e) => {
+        const item = (e.target as Element).closest<HTMLButtonElement>('.ctx-item');
+        if (item && !item.disabled) item.focus({ preventScroll: true });
+        else if (item?.disabled) menu.current?.focus({ preventScroll: true });
+      }}>
         {m.items.map((item, j) => item === 'sep' ? <span key={j} className="ctx-sep" role="separator" /> : <button key={j} type="button" role={item.checked === undefined ? 'menuitem' : 'menuitemradio'} aria-checked={item.checked} className="ctx-item" disabled={item.disabled} onMouseDown={(e) => e.preventDefault()} onClick={() => { setActive(null); item.run(); }}><span className="ctx-ic"><UiIcon name={item.icon ?? commandIcon(item.label)} size={16} /></span><span className="ctx-l">{item.label}</span>{item.checked && <span className="document-menu-check" aria-hidden="true">✓</span>}{item.hint && <span className="ctx-hint">{item.hint}</span>}</button>)}
       </div>}
     </span>)}

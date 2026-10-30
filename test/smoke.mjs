@@ -81,8 +81,29 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Super Admin controls AI access, off by default': async (b) => {
+    const s = await session(b, { owner: true });
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await see(s.p, 'text=The pilot is not enabled yet.', 'access off for the owner');
+    await s.p.goto(BASE + '/admin?tab=ai');
+    const toggle = s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true });
+    await toggle.waitFor();
+    if (await toggle.getAttribute('aria-checked') !== 'false') throw Error('AI access was not off by default');
+    await axe(s.p, 'Super Admin: AI access', A11Y_FOUND);
+    await toggle.click();
+    await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await s.p.getByLabel('Topic', { exact: true }).waitFor();
+    await s.p.goto(BASE + '/admin?tab=ai');
+    await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
+    await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
+    return s;
+  },
   'Lesson assistant approval, private save and reopen': async (b) => {
     const s = await session(b);
+    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
     await s.p.getByLabel('Topic', { exact: true }).fill('Travel');
     await s.p.getByLabel('Objectives', { exact: true }).fill('Compare options and agree on a trip.');
@@ -104,6 +125,97 @@ const J = {
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);
     await s.p.setViewportSize({ width: 390, height: 844 });
     if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Assistant overflows on mobile');
+    return s;
+  },
+
+  'Sound chart themes, page gestures and compact title': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const title = d.locator('input.dp-title');
+    await title.fill('Sound notes');
+    await title.press('Enter');
+    const compact = await title.evaluate((el) => el.getBoundingClientRect().width < el.parentElement.getBoundingClientRect().width);
+    if (!compact) throw new Error('The title input stretches across its header.');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.click();
+    await slash(d, 'phonemic');
+    await see(d, '.ph-chart', 'the shared sound chart');
+    await text.press('ControlOrMeta+End');
+    await text.press('Enter');
+    await slash(d, 'phonemic');
+    const pagesFit = await d.locator('.ph-node:has(.ph-chart)').evaluateAll((blocks) => blocks.every((el) => {
+      const paper = el.closest('.pg-paper');
+      const scale = Number(paper.style.zoom);
+      const top = (el.getBoundingClientRect().top - paper.getBoundingClientRect().top) / scale;
+      const height = el.getBoundingClientRect().height / scale;
+      return top + height <= (Math.floor(top / 1123) + 1) * 1123 - 96 + 1;
+    }));
+    if (!pagesFit) throw new Error('A sound chart crosses a page boundary.');
+    for (const colour of ['black', 'white']) {
+      await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+      await d.getByRole('menuitemradio', { name: 'Page colour: ' + colour, exact: true }).click();
+      const colours = await d.locator('.ph-chart').first().evaluate((el) => ({ ink: getComputedStyle(el).color, paperInk: getComputedStyle(el.closest('.pg-paper')).color, background: getComputedStyle(el).backgroundImage }));
+      if (colours.ink !== colours.paperInk || (colour === 'black' && colours.background.includes('255, 255, 255'))) throw new Error('Sound chart does not follow page appearance: ' + JSON.stringify(colours));
+    }
+    const contained = await d.locator('.ph-chart').first().evaluate((el) => {
+      const chart = el.getBoundingClientRect();
+      const content = el.closest('.pg-text').getBoundingClientRect();
+      return chart.right <= content.right + 1 && chart.width <= content.width + 1 && el.scrollWidth <= el.clientWidth + 1;
+    });
+    if (!contained) throw new Error('The sound chart overflows the page.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pageless', exact: true }).click();
+    await see(d, '.ph-chart', 'charts after switching to pageless');
+    if (await d.locator('.ph-chart').count() !== 2) throw new Error('A chart disappeared in pageless mode.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pages', exact: true }).click();
+    await see(d, '.pg-paper .ph-chart', 'charts after switching back to pages');
+    if (await d.locator('.pg-page-info').count()) throw new Error('The paper-size label is still beside zoom.');
+    const before = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
+    await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -30 });
+    await d.waitForFunction((old) => Number(document.querySelector('.pg-paper').style.zoom) > old, before);
+    const after = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
+    await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: false, deltaY: 30 });
+    if (await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom)) !== after) throw new Error('Ordinary scrolling changed page zoom.');
+    await axe(d, 'Responsive sound chart', A11Y_FOUND);
+    return s;
+  },
+  'Document find, replace and format painter': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.fill('Notes and notes. Plain target.');
+    await text.press('ControlOrMeta+Home');
+    for (let i = 0; i < 5; i++) await text.press('Shift+ArrowRight');
+    await d.getByRole('button', { name: /^Bold/ }).click();
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Copy text formatting', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Find and replace…/ }).click();
+    const panel = d.getByRole('dialog', { name: 'Find and replace', exact: true });
+    const find = panel.getByRole('textbox', { name: 'Find', exact: true });
+    await find.fill('Plain target');
+    await see(d, '.document-find-navigation:has-text("1 of 1 matches")', 'the formatting target match');
+    await panel.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Format', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Apply text formatting', exact: true }).click();
+    await see(d, '.ProseMirror strong:has-text("Plain target")', 'the copied bold formatting');
+    await text.press('ControlOrMeta+f');
+    await find.fill('notes');
+    await see(d, '.document-find-navigation:has-text("1 of 2 matches")', 'case-insensitive matches');
+    await panel.getByRole('checkbox', { name: 'Match case', exact: true }).check();
+    await see(d, '.document-find-navigation:has-text("1 of 1 matches")', 'case-sensitive matching');
+    await panel.getByRole('checkbox', { name: 'Match case', exact: true }).uncheck();
+    await panel.getByRole('textbox', { name: 'Replace with', exact: true }).fill('$&');
+    await panel.getByRole('button', { name: 'Replace all', exact: true }).click();
+    await see(d, '.ProseMirror:has-text("$& and $&. Plain target.")', 'literal replacement text');
+    await panel.getByRole('button', { name: 'Close find and replace', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+    await d.getByRole('menuitem', { name: /^Undo/ }).click();
+    await see(d, '.ProseMirror:has-text("Notes and notes. Plain target.")', 'one-step replace-all undo');
+    await d.reload();
+    await see(d, '.ProseMirror strong:has-text("Plain target")', 'the saved copied formatting');
+    await axe(d, 'Document editing tools', A11Y_FOUND);
     return s;
   },
   'Document font size, page setup and zoom': async (b) => {
@@ -128,6 +240,8 @@ const J = {
     await d.getByRole('slider', { name: 'Zoom slider', exact: true }).fill('75');
     const state = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, zoom: getComputedStyle(el).zoom, spacing: el.style.getPropertyValue('--pg-line-height') }));
     if (state.width !== '1123px' || Number(state.zoom) !== 0.75 || state.spacing !== '2') throw new Error('Page setup or zoom did not apply: ' + JSON.stringify(state));
+    // The shared provider batches changes for 120 ms; allow its autosave to complete.
+    await d.waitForTimeout(250);
     await d.reload();
     await see(d, '[data-font][style*="19pt"]', 'the saved font size');
     const saved = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, spacing: el.style.getPropertyValue('--pg-line-height') }));
@@ -154,6 +268,14 @@ const J = {
     await see(s.p, '.hm-hero', 'the fixture session');
     const d = await newFile(s, 'Collab document');
     await see(d, '.pg-paper', 'pages by default');
+    await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Picture…', exact: true }).hover();
+    const highlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').map((el) => el.textContent));
+    if (highlight.length !== 1 || !highlight[0].includes('Picture')) throw new Error('The pointer and keyboard highlight different menu rows.');
+    await d.keyboard.press('ArrowDown');
+    const keyboardHighlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').length);
+    if (keyboardHighlight !== 1) throw new Error('The menu shows more than one selection highlight.');
+    await d.keyboard.press('Escape');
     await d.getByRole('textbox', { name: 'Document text', exact: true }).fill('Reading notes ');
     await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
@@ -464,8 +586,9 @@ const J = {
     await s.p.goto(`${BASE}/classes`);
     await s.p.click('.apps-btn');
     await s.p.click('.apps-pop a[role=menuitem]:has-text("Guide")');
-    await see(s.p, 'h1:has-text("How ELT Suite works")', 'the Guide');
+    await see(s.p, 'h1:has-text("A little help.")', 'the Guide');
     await axe(s.p, 'Guide', A11Y_FOUND);
+    await s.p.getByRole('button', { name: 'Questions', exact: true }).click();
     await s.p.fill('input[aria-label="Gap 1"]', 'has lived');
     await s.p.locator('.gu-try', { hasText: 'present perfect' }).locator('button:has-text("Check")').click();
     await see(s.p, '.gu-result:has-text("1 of 2")', 'the gap fill marked');
@@ -507,6 +630,62 @@ const J = {
     await axe(s.p, 'Learner home', A11Y_FOUND);
     return s;
   },
+  'Teacher onboarding and goal-based guide': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const f = JSON.parse(localStorage.getItem('mockfs'));
+      f['users/teacher1'].onboarding = 'new';
+      localStorage.setItem('mockfs', JSON.stringify(f));
+    });
+    await s.p.goto(BASE);
+    await s.p.waitForURL('**/welcome');
+    if (await s.p.getByRole('button', { name: 'Show my starting point' }).isEnabled()) throw new Error('Continue should need a choice');
+    await s.p.getByRole('button', { name: 'Make a listening activity' }).click();
+    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
+    await see(s.p, 'text=A recording you can reuse in your lessons.', 'the selected plan');
+    await s.p.getByRole('button', { name: 'Show me how first' }).click();
+    await s.p.waitForURL('**/guide?goal=audio');
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'relevant guide topic');
+    await s.p.goto(BASE);
+    await see(s.p, '.hm', 'home after completing onboarding');
+    await s.p.goto(BASE + '/guide');
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved preference after reload');
+    const picker = s.p.getByRole('button', { name: 'What would you like to do?', exact: true });
+    await picker.click();
+    await picker.press('End');
+    await picker.press('Enter');
+    await see(s.p, '.guide-next h2:has-text("A connection")', 'custom dropdown updates the goal');
+    if (await s.p.locator('.gu-nav-i .ui-icon').count() !== 14) throw new Error('Guide topic icons missing');
+    await s.p.getByRole('searchbox').fill('no such topic');
+    await see(s.p, 'text=No matching topics', 'search empty state');
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    for (const route of ['/welcome', '/guide', '/tour']) {
+      await s.p.goto(BASE + route);
+      await see(s.p, 'h1', 'mobile heading');
+      if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile overflow: ' + route);
+      await axe(s.p, 'Teacher start ' + route, A11Y_FOUND);
+    }
+    for (const width of [320, 390, 768, 1280]) {
+      await s.p.setViewportSize({ width, height: 900 });
+      await s.p.goto(BASE + '/guide');
+      for (const topic of ['Colleagues', 'Your blend', 'Questions']) {
+        await s.p.getByRole('button', { name: topic, exact: true }).click();
+        if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Guide overflow at ' + width + ': ' + topic);
+      }
+      await picker.click();
+      const fits = await s.p.getByRole('listbox', { name: 'What would you like to do?' }).evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; });
+      if (!fits) throw new Error('Goal dropdown overflows at ' + width);
+      await picker.press('Escape');
+      await s.p.goto(BASE + '/tour');
+      await see(s.p, '.tour-paths', 'responsive public tour');
+      const clipped = await s.p.locator('.gu-grid2 > *').evaluateAll(els => els.some(el => el.getBoundingClientRect().right > innerWidth + 1));
+      if (clipped) throw new Error('Tour illustration clipped at ' + width);
+    }
+    await s.p.goto(BASE + '/welcome');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '.hm', 'skip opens home');
+    return s;
+  },
   'An invitation that is gone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/invite/nothing-here`);
@@ -539,7 +718,7 @@ try {
       s = await run(browser);
       if (s.errors.length) err = s.errors.slice(0, 3).join('\n   ');
     } catch (e) {
-      err = e.message.split('\n')[0] + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
+      err = e.message.slice(0, 3500) + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
     }
     await s?.ctx.close().catch(() => {});
     results.push({ name, ok: !err, err, ms: Date.now() - t });

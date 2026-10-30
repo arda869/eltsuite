@@ -34,6 +34,5 @@ export function checkRequestSize(body) {
   // Include the instructions AND output schema, not just the teacher's brief.
   if (Buffer.byteLength(JSON.stringify(body), 'utf8') > 90_000) throw Error('The lesson is too long for this pilot request.');
 }
-export function isPilotTeacher(token, email, pilotEnabled) {
-  return email ? token?.email_verified === true && String(token.email ?? '').toLowerCase() === email.toLowerCase() : pilotEnabled === true;
-}
+// Missing records, owner status and email addresses never grant access.
+export function isPilotTeacher(pilotEnabled) { return pilotEnabled === true; }

@@ -25,6 +25,14 @@ jobs:
         run: node test/invitation-emails.mjs
       - name: Lesson assistant contract and provider checks
         run: node --test test/ai/*.test.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify AI access security rules
+        run: |
+          npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs'
       - name: Build and type check
         run: npm run build
       - name: Install Chromium

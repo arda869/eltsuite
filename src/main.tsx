@@ -60,11 +60,13 @@ const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
+const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
 const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
+
 const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
 
 function NoAccess() {
@@ -101,6 +103,7 @@ function Home() {
     /* fine */
   }
   if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
+  if (profile?.onboarding === 'new') return <Navigate to="/welcome" replace />;
   return <HomePage />;
 }
 
@@ -178,14 +181,15 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
           <Route path="/tour" element={<TourPage />} />
           <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
+          <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
           <Route path="/invite/:id" element={<InvitePage />} />
           <Route path="/admin" element={<TeacherOnly><ComputerOnly what="Super Admin"><AdminPage mode="super" /></ComputerOnly></TeacherOnly>} />
           <Route path="/org-admin" element={<TeacherOnly><ComputerOnly what="Organisation admin"><AdminPage mode="org" /></ComputerOnly></TeacherOnly>} />
-          <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/assistant" element={<TeacherOnly><LessonAssistant /></TeacherOnly>} />
+          <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
           <Route path="/notebook" element={<Navigate to="/" replace />} />

@@ -10,14 +10,14 @@ export type TextSize = 'S' | 'M' | 'L' | 'XL';
 export type Profile = (
   | { role: 'teacher'; displayName?: string }
   | { role: 'learner'; classId: string; learnerId: string; displayName: string }
-) & { textSize?: TextSize; avatar?: string; reading?: Reading; showRecent?: boolean };
+) & { onboarding?: 'new' | 'done'; teacherGoal?: string; textSize?: TextSize; avatar?: string; reading?: Reading; showRecent?: boolean };
 
 // Reading comfort settings: a clearer font, line focus, spacing and high contrast.
 export type Reading = { font?: 'default' | 'clear'; focus?: boolean; letter?: 0 | 1 | 2; line?: 0 | 1 | 2; contrast?: boolean };
 
-type AuthState = { user: User | null; profile: Profile | null; ready: boolean; notInvited: string; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setAvatarLocal: (k: string) => void };
+type AuthState = { user: User | null; profile: Profile | null; ready: boolean; notInvited: string; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setOnboardingLocal: (goal: string) => void; setAvatarLocal: (k: string) => void };
 
-const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, notInvited: '', signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setAvatarLocal: () => {} });
+const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, notInvited: '', signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setOnboardingLocal: () => {}, setAvatarLocal: () => {} });
 export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
 // Teachers join by invitation for now (see firestore.rules, users). An organisation's invitation
@@ -46,25 +46,25 @@ async function loadProfile(user: User): Promise<Profile | null> {
   const code = typed ? await readCode(typed) : null;
   if (code && !codeProblem(code, user.email ?? '')) {
     const b = writeBatch(db);
-    b.set(ref, { role: 'teacher', displayName, email: user.email ?? '', createdAt: serverTimestamp(), code: code.code });
+    b.set(ref, { role: 'teacher', displayName, email: user.email ?? '', onboarding: 'new', createdAt: serverTimestamp(), code: code.code });
     spendCode(b, code, { uid: user.uid, name: displayName, email: user.email ?? '' });
     try {
       await b.commit();
       forgetCode();
-      return { role: 'teacher', displayName };
+      return { role: 'teacher', displayName, onboarding: 'new' };
     } catch (e) {
       if ((e as { code?: string })?.code === 'permission-denied') throw new NotInvited();
       throw e;
     }
   }
-  const profile = { role: 'teacher' as const, displayName, email: user.email ?? '', createdAt: serverTimestamp(), ...inviteFields() };
+  const profile = { role: 'teacher' as const, displayName, email: user.email ?? '', onboarding: 'new', createdAt: serverTimestamp(), ...inviteFields() };
   try {
     await setDoc(ref, profile);
   } catch (e) {
     if ((e as { code?: string })?.code === 'permission-denied') throw new NotInvited();
     throw e;
   }
-  return { role: 'teacher', displayName: profile.displayName };
+  return { role: 'teacher', displayName: profile.displayName, onboarding: 'new' };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     h.style.setProperty('--rd-letter', ['0', '0.04em', '0.09em'][r.letter ?? 0]);
     h.style.setProperty('--rd-line', ['1', '1.25', '1.5'][r.line ?? 0]);
   }, [profile?.reading]);
-  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
 export const useAuth = () => useContext(Ctx);

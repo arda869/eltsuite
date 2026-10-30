@@ -9,7 +9,6 @@ import { checkModel, isPilotTeacher, reserveBudget, settleBudget } from './budge
 const key = defineSecret('OPENAI_API_KEY');
 const model = defineString('ELT_AI_MODEL', { default: '' });
 const enabled = defineString('ELT_AI_ENABLED', { default: 'false' });
-const pilotEmail = defineString('ELT_AI_PILOT_EMAIL', { default: '' });
 const id = v => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(v);
 const fail = message => { throw new HttpsError('invalid-argument', message); };
 const criteria = 'objectives and evidence; coherence; level and context; linguistic accuracy; meaningful communication; scaffolding and differentiation; timing and feasibility; instructions and interaction; assessment and feedback; accessibility and inclusion; teacher notes and keys';
@@ -22,7 +21,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get(), db.doc(`classes/${d.classId}`).get(), db.doc(`aiPilot/${uid}`).get(),
   ]);
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
-  if (enabled.value() !== 'true' || !isPilotTeacher(req.auth.token, pilotEmail.value(), pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
+  if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
   const drafts = db.collection('aiPrivate').doc(uid).collection('drafts');
   if (d.action === 'list') {
     const snap = await drafts.where('classId', '==', d.classId).limit(50).get();

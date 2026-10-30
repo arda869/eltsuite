@@ -22,7 +22,6 @@ jobs:
       - name: Build
         env:
           VITE_ELT_AI_PILOT: 'true'
-          VITE_ELT_AI_PILOT_EMAIL: ardanurioglu@gmail.com
         run: |
           set -o pipefail
           if ! npm run build 2>&1 | tee "$RUNNER_TEMP/build.log"; then
@@ -57,13 +56,20 @@ jobs:
           fi
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
 
-      - name: Deploy account-only lesson assistant
+      - name: Deploy database rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npm install --no-save --no-audit --no-fund google-auth-library@9
+          node scripts/deploy-rules.mjs
+
+      - name: Deploy opt-in lesson assistant
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           npm --prefix functions install --no-audit --no-fund
           node functions/ai/preflight.mjs
-          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\nELT_AI_PILOT_EMAIL=ardanurioglu@gmail.com\n");'
+          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive --force
 
       - name: Check assistant rejects signed-out requests
@@ -87,13 +93,6 @@ jobs:
             echo "::error::Site deploy failed: ${msg:-see log}"
             exit 1
           fi
-
-      - name: Deploy database rules
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: |
-          npm install --no-save --no-audit --no-fund google-auth-library@9
-          node scripts/deploy-rules.mjs
 
       - name: Deploy the server function (signing in as someone, for super admins)
         # Needs the Blaze plan and the deploy key's permissions for Cloud Functions. Until then it
