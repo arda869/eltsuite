@@ -116,6 +116,7 @@ const J = {
         await s.p.getByRole('button', { name: /January 3, open the day/ }).waitFor();
         const overflow = await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
         if (overflow) throw new Error('Calendar overflows at ' + width + ' in ' + theme);
+        await s.p.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));
         await axe(s.p, 'Calendar ' + width + ' ' + theme, A11Y_FOUND);
       }
     }
