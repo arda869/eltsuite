@@ -33,8 +33,9 @@ jobs:
           java-version: '21'
       - name: Verify AI access security rules
         run: |
+          npm install --prefix functions --no-package-lock --no-audit --no-fund
           npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
-          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs'
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/ai/create-integration.mjs'
       - name: File retention regression checks
         run: node --test test/file-bin-cleanup.mjs
       - name: Build and type check

@@ -33,7 +33,7 @@ const p = text => ({ type: 'paragraph', content: text ? [{ type: 'text', text }]
 // Construct public nodes and private keys separately. Model output can never supply arbitrary editor nodes.
 export function nativeTask(t, index) {
   const content = t.input.split('\n').filter(Boolean).map(p), key = {};
-  const notes = [t.teacherNotes, `Optional support: ${t.support || 'None required.'}`, `Optional challenge: ${t.challenge || 'None required.'}`];
+  const notes = [`Stage ${t.stageId} · ${t.minutes} minutes`, t.teacherNotes, `Optional support: ${t.support || 'None required.'}`, `Optional challenge: ${t.challenge || 'None required.'}`];
   if (t.format === 'matching') {
     const id = `q${index}_match`, right = t.questions.map(q => q.answer).reverse();
     content.push({ type: 'match', attrs: { id, left: t.questions.map(q => q.prompt), right } });
