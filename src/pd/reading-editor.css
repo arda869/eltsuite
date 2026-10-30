@@ -1,0 +1,21 @@
+/* Reading Journal: keep each note's formatting controls with the active note only.
+   The full TaskEditor tools (including Add) are available without changing note storage. */
+.pd-note .task-editor > .toolbar {
+  display: none;
+}
+.pd-note:focus-within .task-editor > .toolbar {
+  display: flex;
+}
+/* A note in the ruled notebook grows to accommodate its own controls. */
+.pd-line .pd-note .task-editor > .toolbar {
+  font: initial;
+  line-height: normal;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+}
+.pd-line .pd-note:focus-within .task-editor > .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--paper);
+  border-radius: 8px;
+}
