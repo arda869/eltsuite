@@ -5,12 +5,12 @@ export const teachingInstructions = `You help an experienced English language te
 export async function generate({ apiKey, model, schema, name, input, instructions = teachingInstructions, fetchImpl = fetch }) {
   checkModel(model);
   if (name === 'plan') instructions += '\nUse approvedOutline as the authoritative sequence. Preserve every stage ID, order and minute value exactly. Do not add, remove or merge stages. Expand each stage with concise, complete teaching procedures and materials.';
-  const requestBody = { model, store: false, service_tier: 'default', instructions, input: JSON.stringify(input), max_output_tokens: MAX_OUTPUT_TOKENS,
+  const requestBody = { model, reasoning: { effort: 'low' }, store: false, service_tier: 'default', instructions, input: JSON.stringify(input), max_output_tokens: MAX_OUTPUT_TOKENS,
     text: { format: { type: 'json_schema', name, strict: true, schema } } };
   checkRequestSize(requestBody);
   let response;
   try { response = await fetchImpl('https://api.openai.com/v1/responses', {
-    method: 'POST', signal: AbortSignal.timeout(110000),
+    method: 'POST', signal: AbortSignal.timeout(180000),
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   });

@@ -11,7 +11,7 @@ type RecordValue = { [key: string]: Value };
 type Brief = { topic: string; objectives: string; context: string; level: string; methodology: string; duration: number };
 type Review = { checks: { criterion: string; score: number; evidence: string }[]; criticalErrors: string[]; suggestions: string[] };
 type Result = { outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number }[]; draft?: { brief: Brief; plan: RecordValue; version: number } };
-const call = httpsCallable<Record<string, unknown>, Result>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 300000 });
+const call = httpsCallable<Record<string, unknown>, Result>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 450000 });
 const initial: Brief = { topic: '', objectives: '', context: '', level: 'B1', methodology: 'Recommend', duration: 60 };
 const labels: Record<string, string> = { id: 'Reference', mainAim: 'Main aim', subsidiaryAims: 'Subsidiary aims', assumedKnowledge: 'Assumed knowledge', languageAnalysis: 'Meaning, form, pronunciation and appropriacy', instructionChecks: 'Instruction checks', anticipatedProblems: 'Anticipated problems', materialIds: 'Material references', learnerMaterials: 'Learner materials', answerKey: 'Answer key or response criteria', accessibleAlternative: 'Accessible alternative' };
 const label = (key: string) => labels[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
@@ -96,6 +96,6 @@ export function LessonAssistant() {
       {review ? <aside><h3>AI review · check these yourself</h3>{review.criticalErrors.length > 0 && <div className="ai-error"><strong>Revise before teaching</strong><ul>{review.criticalErrors.map((e, i) => <li key={i}>{e}</li>)}</ul></div>}<ul>{review.checks.map((c, i) => <li key={i}><strong>{c.criterion}: {c.score}/5.</strong> {c.evidence}</li>)}</ul><ul>{review.suggestions.map((s, i) => <li key={i}>{s}</li>)}</ul></aside> : <p>Teacher review needed. An earlier AI review does not cover these edits.</p>}
       <button className="btn primary" disabled={locked} onClick={() => void run('save', { plan, draftId, version })}>Save private draft</button>
     </section>}
-    {busy && <p role="status">{busy === 'plan' ? 'Making the plan and checking it… This may take a few minutes.' : 'One moment…'}</p>}
+    {busy && <p role="status">{busy === 'plan' ? 'Making the plan and checking it… Allow up to six minutes. Keep this page open.' : busy === 'outline' ? 'Suggesting an outline… Allow up to three minutes. Keep this page open.' : 'Loading or saving your private plans…'}</p>}
   </main></>;
 }

@@ -8,7 +8,7 @@ const messages = {
   rate_limit: 'OpenAI temporarily rate-limited this request. Wait before trying again.',
   request: 'OpenAI rejected the request format. The administrator needs to check the integration.',
   provider: 'OpenAI could not complete the request because of a service error.',
-  timeout: 'The AI request exceeded its 110-second time limit.',
+  timeout: 'The AI request exceeded its 180-second time limit.',
   connection: 'The server lost its connection to the AI service.',
   output_limit: 'The AI response reached its output limit before completing.',
   incomplete: 'The AI service returned an incomplete response.',

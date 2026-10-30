@@ -30,7 +30,7 @@ test('provider requests non-stored structured output and parses only completed c
   const result = await generate({ ...args, fetchImpl: async (_url, options) => {
     const body = JSON.parse(options.body);
     assert.equal(body.store, false); assert.equal(body.text.format.strict, true); assert.equal(body.model, args.model);
-    assert.equal(body.max_output_tokens, 12000);
+    assert.equal(body.max_output_tokens, 12000); assert.equal(body.reasoning.effort, 'low');
     return { ok: true, json: async () => ({ status: 'completed', output: [{ content: [{ type: 'output_text', text: JSON.stringify(outline) }] }], usage: { input_tokens: 100, output_tokens: 200 } }) };
   } });
   assert.deepEqual(result.value, outline); assert.deepEqual(result.usage, { inputTokens: 100, outputTokens: 200 });
