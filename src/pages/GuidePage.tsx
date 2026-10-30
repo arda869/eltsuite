@@ -1298,11 +1298,11 @@ function Intonation() {
 
 // What each way of teaching is made of, as a glass filled with its parts.
 const PARTS: Record<string, { n: string; c: string }> = {
-  live: { n: 'Teaching live in ELT Suite', c: '#3b7f4f' },
-  call: { n: 'Video calls: Rooms or your own tool', c: '#3b7f7a' },
-  board: { n: 'Presenting on the board', c: '#c8764a' },
+  live: { n: 'Teach live', c: '#3b7f4f' },
+  call: { n: 'Video calls', c: '#3b7f7a' },
+  board: { n: 'Present in class', c: '#c8764a' },
   print: { n: 'Printed worksheets', c: '#c9a227' },
-  make: { n: 'Making materials and listening', c: '#3667a6' },
+  make: { n: 'Make materials', c: '#3667a6' },
 };
 const BLENDS: { k: string; t: string; d: string; mix: [string, number][]; steps: string[]; uses: string[] }[] = [
   {
@@ -1360,7 +1360,7 @@ export function Blend() {
   const b = BLENDS[k];
   return (
     <>
-      <p>There’s no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class. Think of each glass as a teaching recipe. Each colour is one part of the mix; its label sits beside it. These are examples, not a timetable or a required balance.</p>
+      <p>Each glass is an example teaching mix. Match its colours to the labels beside it, then choose a mix to see the steps. Use as much or as little of ELT Suite as you need.</p>
       <div className="gu-blends" role="radiogroup" aria-label="Ways to teach">
         {BLENDS.map((x, i) => (
           <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-blend' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
