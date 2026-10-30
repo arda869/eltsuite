@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -73,7 +77,9 @@ jobs:
           node functions/ai/preflight.mjs
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
-          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive --force
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
 
       - name: Check assistant rejects signed-out requests
         run: |
@@ -97,10 +103,7 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy the server function (signing in as someone, for super admins)
-        # Needs the Blaze plan and the deploy key's permissions for Cloud Functions. Until then it
-        # fails without stopping the rest of the deploy.
-        continue-on-error: true
+      - name: Deploy server functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
@@ -108,9 +111,11 @@ jobs:
           set -o pipefail
           if ! npx --yes firebase-tools@14 deploy --only functions --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/fn.log"; then
             msg=$(grep -iE "error|denied|permission|billing|blaze|enable" "$RUNNER_TEMP/fn.log" | tail -6 | tr '\n' ' ')
-            echo "::warning::The server function wasn't deployed: ${msg:-see log}"
+            echo "::error::Server functions were not deployed: ${msg:-see log}"
             exit 1
           fi
+
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/fn.log" || { echo '::error::Firebase did not confirm the server function deployment completed.'; exit 1; }
 
       - name: Remove key
         if: always()
