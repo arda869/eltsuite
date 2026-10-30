@@ -347,7 +347,9 @@ export function ChatView({ c, me, dir, teacher, onBack, onMin }: { c: Chat; me: 
   const [forwarding, setForwarding] = useState<Msg | null>(null);
   const [info, setInfo] = useState<Msg | null>(null);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' });
+    // Scroll the conversation itself, not the page or its composer (especially on phones).
+    const scroller = end.current?.closest<HTMLElement>('.chat-body');
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
   }, [msgs?.length]);
 
   const reset = () => (keepDraft(null), setContent(EMPTY), setRich(false), setEdKey((k) => k + 1), setReplyTo(null), setEditing(null), setTyping(c.id, me.key, false));
