@@ -157,6 +157,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         <div className="intro">
           <Wordmark big />
           <span className="soon-badge">{linked || code ? "You’re invited" : "Made for English teachers"}</span>
+          <a className="signin-jump" href="#teacher-sign-in">Already have an account? Sign in ↓</a>
           <Tagline />
           <SuiteOrbit />
           <p className="signin-summary">More teaching. Less juggling. Prepare a lesson, make language clearer and keep your work together.</p>
@@ -168,7 +169,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         </div>
       )}
 
-      <form className="card" onSubmit={submit}>
+      <form id="teacher-sign-in" className="card" onSubmit={submit}>
         <h1>{TITLES[mode]}</h1>
         {mode === 'signin' && <p className="hint">Your lessons, materials and next teaching day are waiting.</p>}
 
