@@ -12,8 +12,12 @@ export const HIGHLIGHTS = [
   { key: 'pink', label: 'Pink', bg: '#f9d5e1' },
   { key: 'lilac', label: 'Lilac', bg: '#e3d9f6' },
   { key: 'peach', label: 'Peach', bg: '#fbdcc4' },
+  { key: 'mint', label: 'Mint', bg: '#bdece1' },
+  { key: 'lavender', label: 'Lavender', bg: '#ccc6fc' },
+  { key: 'orange', label: 'Orange', bg: '#ffd09d' },
+  { key: 'grey', label: 'Grey', bg: '#dedede' },
 ];
-export const highlightBg = (k?: string) => HIGHLIGHTS.find((h) => h.key === k)?.bg ?? HIGHLIGHTS[0].bg;
+export const highlightBg = (k?: string) => k && /^#[0-9a-f]{6}$/i.test(k) ? k : HIGHLIGHTS.find((h) => h.key === k)?.bg ?? HIGHLIGHTS[0].bg;
 
 export const Highlight = Mark.create({
   name: 'highlight',
@@ -55,6 +59,7 @@ export function Swatches({ editor, onDone }: { editor: Editor; onDone?: () => vo
           }}
         />
       ))}
+      <label className="custom-colour">Custom<input type="color" aria-label="Custom highlight colour" value={/^#[0-9a-f]{6}$/i.test(cur) ? cur : '#fbefa0'} onChange={(e) => editor.chain().focus().setMark('highlight', { color: e.target.value }).run()} /></label>
       <button
         type="button"
         className="hl-none"

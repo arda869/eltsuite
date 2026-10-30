@@ -118,7 +118,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (profile?.role === 'learner' && profile.classId) setClassIds([profile.classId]);
   }, [profile]);
-  useEffect(() => void pushState().then(setPush), [appOpen]);
+  useEffect(() => void pushState(user?.uid).then(setPush), [appOpen, user?.uid]);
   const [quality, setQ] = useState<PicQuality>(() => {
     try {
       const v = localStorage.getItem('ll.picQuality');

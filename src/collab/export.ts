@@ -2,34 +2,53 @@ import { credit } from '../lib/brand';
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../editor/TextColor';
 import { highlightBg } from '../editor/Highlight';
+import { pageMetrics, type Layout } from './documentLayout';
+import { questionIds as questionsIn } from '../lib/questions';
 import { inText, orderFor, reference, refsTitle, type CiteStyle, type Piece, type Source } from '../lib/cite';
 
 // Shared documents as files: a Word document, or a page to print or save as PDF. Suggestions
 // are shown as if accepted; comments are left out. Citations and the reference list are written
 // in the document's citation style, so an assignment can go straight to a tutor.
 
-export type ExportOpts = { style: CiteStyle; font: string; size: number; spacing: number; title: boolean; pageNumbers: boolean; wordCount: boolean };
+export type ExportOpts = { style: CiteStyle; font: string; size: number; spacing: number; title: boolean; pageNumbers: boolean; wordCount: boolean; layout?: Layout };
 export const EXPORT_DEFAULT: ExportOpts = { style: 'apa', font: 'Arial', size: 12, spacing: 1.5, title: true, pageNumbers: true, wordCount: false };
 export const FONTS = ['Arial', 'Calibri', 'Times New Roman', 'Georgia', 'Verdana'];
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const cssString = (s: string) => JSON.stringify(s).replace(/</g, '\\3c ');
+const layoutOptions = (o: ExportOpts): ExportOpts => o.layout ? { ...o, font: o.layout.font, size: o.layout.pt, spacing: o.layout.lineSpacing, pageNumbers: o.layout.pageNumbers } : o;
+const worksheetNodes = new WeakMap<JSONContent, string>();
+export async function prepareDocumentPrint(json: JSONContent) {
+  if (!questionsIn(json).length) return;
+  const [{ flattenTask }, { inlineWorksheetHtml }] = await Promise.all([import('../lib/worksheet'), import('../lib/worksheetHtml')]);
+  const walk = (n: JSONContent) => {
+    if (n.type === 'doc' || n.type === 'docSection') { n.content?.forEach(walk); return; }
+    if (questionsIn(n).length) worksheetNodes.set(n, inlineWorksheetHtml(flattenTask({ title: '', content: { type: 'doc', content: [n] } })));
+  };
+  walk(json);
+}
 const hex = (c?: string) => {
   const v = textColor(c) ?? '';
   return v.startsWith('#') ? v : c === 'accent' ? '#b8744e' : '';
 };
 
 // Words in the document, without the reference list (as assignments count them).
-export function wordCount(json: JSONContent): number {
-  let n = 0;
-  const walk = (x: JSONContent) => {
-    if (x.type === 'refList') return;
-    if (x.type === 'text' && !(x.marks ?? []).some((m) => m.type === 'suggestDel')) n += (x.text ?? '').split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
-    if (x.type === 'cite') n += 2;
-    x.content?.forEach(walk);
+export function documentStats(json: JSONContent) {
+  let paragraphs = 0;
+  const textOf = (n: JSONContent): string => {
+    if (n.type === 'refList' || n.marks?.some((m) => m.type === 'suggestDel')) return '';
+    if (n.type === 'text') return n.text ?? '';
+    if (n.type === 'cite') return ' citation reference ';
+    if (n.type === 'hardBreak') return '\n';
+    const text = (n.content ?? []).map(textOf).join('');
+    if (n.type === 'paragraph' || n.type === 'heading') { if (text.trim()) paragraphs++; return text + '\n'; }
+    return text;
   };
-  walk(json);
-  return n;
+  const text = textOf(json).trim();
+  const words = (text.match(/[\p{L}\p{N}]+(?:['’_-][\p{L}\p{N}]+)*/gu) ?? []).length;
+  return { words, characters: Array.from(text).length, charactersNoSpaces: Array.from(text.replace(/\s/g, '')).length, paragraphs, readingMinutes: Math.ceil(words / 200) };
 }
+export const wordCount = (json: JSONContent): number => documentStats(json).words;
 function cited(json: JSONContent, style: CiteStyle): Source[] {
   const m = new Map<string, Source>();
   const walk = (x: JSONContent) => {
@@ -76,10 +95,13 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
   if (n.type === 'image' && n.attrs?.src) return `<img src="${esc(n.attrs.src)}" alt="${esc(n.attrs.alt ?? '')}">`;
   return (n.content ?? []).map((c) => inlineHtml(c, o)).join('');
 }
-const align = (n: JSONContent) => (n.attrs?.textAlign && n.attrs.textAlign !== 'left' ? ` style="text-align:${n.attrs.textAlign}"` : '');
+const align = (n: JSONContent) => {
+  const styles = [n.attrs?.textAlign && ['left', 'right', 'center', 'justify'].includes(n.attrs.textAlign) ? `text-align:${n.attrs.textAlign}` : '', n.attrs?.indent ? `margin-inline-start:${Math.max(0, Math.min(8, Number(n.attrs.indent))) * 12.7}mm` : ''].filter(Boolean).join(';');
+  return styles ? ` style="${styles}"` : '';
+};
 // What the plain exporter writes itself; anything else (text boxes, timelines, sound cards,
 // pronunciation marks) is printed as it looks on screen.
-const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym']);
+const PLAIN_BLOCKS = new Set(['paragraph', 'heading', 'bulletList', 'orderedList', 'listItem', 'taskList', 'taskItem', 'blockquote', 'table', 'tableRow', 'tableHeader', 'tableCell', 'image', 'refList', 'horizontalRule', 'text', 'hardBreak', 'cite', 'ipa', 'stress', 'sym', 'docPageBreak', 'docSection']);
 const PLAIN_MARKS = new Set(['bold', 'italic', 'underline', 'strike', 'textColor', 'highlight', 'definition', 'suggestIns', 'suggestDel', 'comment', 'link']);
 export function plainOnly(n: JSONContent): boolean {
   if (!PLAIN_BLOCKS.has(n.type ?? '')) return false;
@@ -87,12 +109,17 @@ export function plainOnly(n: JSONContent): boolean {
   return (n.content ?? []).every(plainOnly);
 }
 function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Element[]): string {
-  if (n.type === 'doc' && live) return (n.content ?? []).map((c, i) => (plainOnly(c) || !live[i] ? blockHtml(c, o, doc) : `<div class="live doc cd-doc"><div class="ProseMirror">${cleanLive(live[i])}</div></div>`)).join('');
+  if (worksheetNodes.has(n)) return worksheetNodes.get(n)!;
+  if (n.type === 'doc' && live) return (n.content ?? []).map((c, i) => (worksheetNodes.has(c) || c.type === 'docSection' || plainOnly(c) || !live[i] ? blockHtml(c, o, doc) : `<div class="live doc cd-doc"><div class="ProseMirror">${cleanLive(live[i])}</div></div>`)).join('');
   const kids = () => (n.content ?? []).map((c) => blockHtml(c, o, doc)).join('');
   const inl = () => (n.content ?? []).map((c) => inlineHtml(c, o)).join('');
   switch (n.type) {
     case 'doc':
       return kids();
+    case 'docPageBreak':
+      return '<div data-doc-page-break="" class="doc-page-break"></div>';
+    case 'docSection':
+      return `<section data-doc-section="" ${n.attrs?.newPage ? 'data-new-page=""' : ''} style="column-count:${Math.max(1, Math.min(3, Number(n.attrs?.columns) || 1))};column-gap:18pt;column-span:all;${n.attrs?.newPage ? 'break-before:page' : ''}">${kids()}</section>`;
     case 'paragraph':
       return `<p${align(n)}>${inl() || '&nbsp;'}</p>`;
     case 'heading': {
@@ -105,6 +132,10 @@ function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Eleme
       return `<ol>${kids()}</ol>`;
     case 'listItem':
       return `<li>${kids()}</li>`;
+    case 'taskList':
+      return `<ul style="list-style:none">${kids()}</ul>`;
+    case 'taskItem':
+      return `<li>${n.attrs?.checked ? '☑' : '☐'} ${kids()}</li>`;
     case 'blockquote':
       return `<blockquote>${kids()}</blockquote>`;
     case 'table':
@@ -140,19 +171,27 @@ const appStyles = () =>
     .map((x) => x.outerHTML)
     .join('');
 
-export function printDoc(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, liveRoot?: Element | null) {
+export async function printDoc(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, liveRoot?: Element | null) {
+  // Open synchronously so browser popup blocking does not consume the user's click.
+  const w = window.open('', '_blank');
+  if (!w) return;
+  await prepareDocumentPrint(json);
+  o = layoutOptions(o);
   numberAll(json, o.style);
   const live = liveRoot ? Array.from(liveRoot.children) : undefined;
   const needsApp = !!live && (json.content ?? []).some((c) => !plainOnly(c));
-  const w = window.open('', '_blank');
-  if (!w) return;
+  const metrics = o.layout ? pageMetrics(o.layout) : null;
+  const footer = [o.layout?.footer ? cssString(o.layout.footer) : '', o.pageNumbers ? 'counter(page)' : ''].filter(Boolean).join(' " · " ');
   const words = wordCount(json);
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title || 'Document')}</title>${needsApp ? `<base href="${location.origin}/">${appStyles()}` : ''}
 <style>
 html, body { background: #fff !important; min-height: 0 !important; display: block !important; }
 .live { margin: 0 0 3mm; } .live .ProseMirror { min-height: 0 !important; font: inherit; } .live * { break-inside: avoid; }
-@page { size: A4; margin: 25mm 25mm; ${o.pageNumbers ? '@bottom-center { content: counter(page); }' : ''} }
-body { font: ${o.size}pt/${o.spacing} '${o.font}', Arial, sans-serif; color: #111; max-width: 160mm; margin: 0 auto; }
+@page { size: ${metrics ? `${metrics.css} ${o.layout!.orientation}` : 'A4'}; margin: ${metrics ? `${metrics.margin / 96}in` : '25mm'}; @top-center { content: ${cssString(o.layout?.header ?? '')}; } @bottom-center { content: ${footer || 'none'}; } }
+${o.layout?.pageNumbers ? `@page:first { counter-reset: page ${o.layout.pageNumberStart}; }` : ''}
+body { font: ${o.size}pt/${o.spacing} ${cssString(o.font)}, Arial, sans-serif; color: #111; margin: 0; column-count: ${o.layout?.columns ?? 1}; column-gap: 18pt; }
+.doc-page-break { break-before: page; height:0 !important; min-height:0; } .doc-page-break span { display:none; }
+.doc-worksheet .blank { display:inline-block; border-bottom:1px solid #333; min-width:3em; height:1em; vertical-align:baseline; } .doc-worksheet .qn { margin-right:.5em; } .doc-worksheet .stack { display:flex; gap:1em; flex-wrap:wrap; } .doc-worksheet .line { display:block; height:1.5em; border-bottom:1px solid #777; }
 h1 { font-size: ${o.size + 6}pt; margin: 0 0 6mm; text-align: center; } h2 { font-size: ${o.size + 3}pt; margin: 6mm 0 2mm; } h3 { font-size: ${o.size + 1}pt; margin: 5mm 0 2mm; } h4 { font-size: ${o.size}pt; font-style: italic; margin: 4mm 0 2mm; }
 p { margin: 0 0 3mm; } ul, ol { margin: 0 0 3mm; padding-left: 8mm; } blockquote { margin: 0 0 3mm 10mm; }
 table { border-collapse: collapse; width: 100%; margin: 3mm 0; } td, th { border: .5pt solid #666; padding: 1.5mm 2mm; vertical-align: top; text-align: left; } th { background: #f0f0f0; }
@@ -164,7 +203,7 @@ td p, th p { margin: 0; } img { max-width: 100%; }
   w.document.close();
 }
 
-type Run = { text: string; bold?: boolean; italics?: boolean; underline?: object; strike?: boolean; color?: string; shading?: object; font?: string };
+type Run = { text: string; bold?: boolean; italics?: boolean; underline?: object; strike?: boolean; color?: string; shading?: object; font?: string; size?: number };
 function runsOf(nodes: JSONContent[] | undefined, o: ExportOpts, out: Run[] = []): Run[] {
   for (const n of nodes ?? []) {
     if (n.type === 'text') {
@@ -176,6 +215,7 @@ function runsOf(nodes: JSONContent[] | undefined, o: ExportOpts, out: Run[] = []
         else if (m.type === 'italic') r.italics = true;
         else if (m.type === 'underline') r.underline = {};
         else if (m.type === 'strike') r.strike = true;
+        else if (m.type === 'fontStyle') { if (m.attrs?.family) r.font = m.attrs.family; if (m.attrs?.pt) r.size = Number(m.attrs.pt) * 2; }
         else if (m.type === 'textColor' && hex(m.attrs?.color)) r.color = hex(m.attrs?.color).slice(1);
         else if (m.type === 'highlight') r.shading = { type: 'clear', color: 'auto', fill: highlightBg(m.attrs?.color).slice(1) };
       }
@@ -204,16 +244,22 @@ export async function downloadDocx(json: JSONContent, title: string, o: ExportOp
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 export async function docxBlob(json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT, brand: BrandMark | null = null): Promise<Blob> {
+  o = layoutOptions(o);
+  await prepareDocumentPrint(json);
   numberAll(json, o.style);
   const D = await import('docx');
   const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle, Footer, PageNumber, ImageRun } = D;
   const sz = o.size * 2;
   const line = Math.round(o.spacing * 240);
   const al = (n: JSONContent) => ({ center: AlignmentType.CENTER, right: AlignmentType.RIGHT, justify: AlignmentType.JUSTIFIED }[n.attrs?.textAlign as string] ?? undefined);
-  const run = (r: Run, extra: Record<string, unknown> = {}) => new TextRun({ ...r, font: r.font ?? o.font, size: sz, ...extra } as never);
+  const run = (r: Run, extra: Record<string, unknown> = {}) => new TextRun({ ...r, font: r.font ?? o.font, size: r.size ?? sz, ...extra } as never);
   const para = (runs: Run[], opts: Record<string, unknown> = {}) => new Paragraph({ spacing: { after: 160, line }, ...opts, children: runs.map((r) => run(r)) });
   type Block = InstanceType<typeof Paragraph> | InstanceType<typeof Table>;
-  const out: Block[] = [];
+  let out: Block[] = [];
+  const sectionParts: { children: Block[]; columns: number; newPage: boolean }[] = [];
+  let columns = o.layout?.columns ?? 1;
+  let newPage = true;
+  const finishSection = () => { if (out.length) sectionParts.push({ children: out, columns, newPage }); out = []; };
   if (o.title) out.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 320 }, heading: HeadingLevel.TITLE, children: [new TextRun({ text: title || 'Document', bold: true, font: o.font, size: sz + 12 })] }));
   const img = async (src: string) => {
     if (!src.startsWith('data:image/')) return null;
@@ -229,12 +275,31 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   };
   const cellParas = (c: JSONContent, head: boolean) => (c.content ?? []).map((p) => new Paragraph({ spacing: { after: 0, line: 260 }, children: runsOf(p.content, o).map((r) => run(head ? { ...r, bold: true } : r, { size: sz - 2 })) }));
   const walk = async (n: JSONContent, list?: { kind: 'bullet' | 'number'; i: number }) => {
+    if (worksheetNodes.has(n)) {
+      const html = new DOMParser().parseFromString(worksheetNodes.get(n)!, 'text/html');
+      html.querySelectorAll('.blank').forEach((el) => { el.textContent = ' __________ '; });
+      const text = (html.body.textContent ?? '').trim();
+      out.push(para([{ text }]));
+      return;
+    }
     switch (n.type) {
       case 'doc':
         for (const c of n.content ?? []) await walk(c);
         return;
       case 'paragraph':
-        out.push(para(list?.kind === 'number' ? [{ text: `${list.i}. ` }, ...runsOf(n.content, o)] : runsOf(n.content, o), { alignment: al(n), ...(list?.kind === 'bullet' ? { bullet: { level: 0 } } : {}) }));
+        out.push(para(list?.kind === 'number' ? [{ text: `${list.i}. ` }, ...runsOf(n.content, o)] : runsOf(n.content, o), { alignment: al(n), ...(n.attrs?.indent ? { indent: { left: Math.min(8, Number(n.attrs.indent)) * 720 } } : {}), ...(list?.kind === 'bullet' ? { bullet: { level: 0 } } : {}) }));
+        return;
+      case 'docPageBreak':
+        out.push(new Paragraph({ pageBreakBefore: true, children: [] }));
+        return;
+      case 'docSection':
+        finishSection();
+        columns = Math.max(1, Math.min(3, Number(n.attrs?.columns) || 1));
+        newPage = !!n.attrs?.newPage;
+        for (const child of n.content ?? []) await walk(child);
+        finishSection();
+        columns = o.layout?.columns ?? 1;
+        newPage = false;
         return;
       case 'heading': {
         const l = Number(n.attrs?.level ?? 2);
@@ -281,12 +346,14 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
   await walk(json);
   if (o.wordCount) out.push(new Paragraph({ spacing: { before: 360 }, children: [new TextRun({ text: `Word count: ${wordCount(json)} (without the reference list)`, font: o.font, size: sz - 2, color: '555555' })] }));
   const mark = (t: string) => new TextRun({ text: t, font: o.font, size: sz - 4, color: '8A847D' });
-  const footers = { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [...(o.pageNumbers ? [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 }), mark('   ·   ')] : []), mark(credit().by)] }), new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: credit().note, font: o.font, size: sz - 6, color: '8A847D', italics: true })] })] }) };
+  finishSection();
+  const footers = { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [...(o.layout?.footer ? [mark(o.layout.footer + '   ')] : []), ...(o.pageNumbers ? [new TextRun({ children: [PageNumber.CURRENT], font: o.font, size: sz - 2 }), mark('   ·   ')] : []), mark(credit().by)] }), new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: credit().note, font: o.font, size: sz - 6, color: '8A847D', italics: true })] })] }) };
   const { Header } = D;
-  const headers = brand ? { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: brand.png, transformation: { width: Math.round((brand.w / brand.h) * 28), height: 28 }, type: 'png' } as never)] })] }) } : undefined;
+  const headers = brand || o.layout?.header ? { default: new Header({ children: [...(brand ? [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new ImageRun({ data: brand.png, transformation: { width: Math.round((brand.w / brand.h) * 28), height: 28 }, type: 'png' } as never)] })] : []), ...(o.layout?.header ? [new Paragraph({ alignment: AlignmentType.CENTER, children: [mark(o.layout.header)] })] : [])] }) } : undefined;
+  const metrics = o.layout ? pageMetrics(o.layout) : null;
   const doc = new Document({
     styles: { default: { document: { run: { font: o.font, size: sz } } } },
-    sections: [{ properties: { page: { margin: { top: 1440, bottom: 1440, left: 1440, right: 1440 } } }, headers, footers, children: out }],
+    sections: (sectionParts.length ? sectionParts : [{ children: [], columns: 1, newPage: true }]).map((part, i) => ({ properties: { type: part.newPage ? D.SectionType.NEXT_PAGE : D.SectionType.CONTINUOUS, column: { count: part.columns, space: 360 }, page: { ...(metrics ? { size: { width: Math.round(Math.min(metrics.w, metrics.h) * 15), height: Math.round(Math.max(metrics.w, metrics.h) * 15), orientation: o.layout!.orientation === 'landscape' ? D.PageOrientation.LANDSCAPE : D.PageOrientation.PORTRAIT } } : {}), margin: { top: metrics ? metrics.margin * 15 : 1440, bottom: metrics ? metrics.margin * 15 : 1440, left: metrics ? metrics.margin * 15 : 1440, right: metrics ? metrics.margin * 15 : 1440 }, ...(i === 0 && o.layout?.pageNumbers ? { pageNumbers: { start: o.layout.pageNumberStart } } : {}) } }, headers, footers, children: part.children })),
   });
   return Packer.toBlob(doc);
 }
@@ -295,4 +362,9 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
 export const textHtml = (json: JSONContent) => blockHtml(json, EXPORT_DEFAULT, json);
 
 // The document as a page of HTML, for the PDF in a folder download.
-export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) => (numberAll(json, o.style), `${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}`);
+export const docBodyHtml = (json: JSONContent, title: string, o: ExportOpts = EXPORT_DEFAULT) => {
+  o = layoutOptions(o);
+  numberAll(json, o.style);
+  const style = `font-family:${cssString(o.font)};font-size:${o.size}pt;line-height:${o.spacing};column-count:${o.layout?.columns ?? 1};column-gap:18pt`;
+  return `<style>.doc-worksheet .blank{display:inline-block;border-bottom:1px solid #333;min-width:3em;height:1em}.doc-worksheet .qn{margin-right:.5em}.doc-worksheet .stack{display:flex;gap:1em;flex-wrap:wrap}.doc-worksheet .line{display:block;height:1.5em;border-bottom:1px solid #777}.doc-page-break{height:0!important;min-height:0}.doc-page-break span{display:none}</style><div class="doc-export" style="${style.replace(/"/g, '&quot;')}">${o.title ? `<h1>${esc(title || 'Document')}</h1>` : ''}${blockHtml(json, o, json)}</div>`;
+};

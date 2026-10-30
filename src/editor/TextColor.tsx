@@ -11,8 +11,14 @@ export const TEXT_COLORS = [
   { key: 'green', label: 'Green', c: '#3f7a4f' },
   { key: 'plum', label: 'Plum', c: '#7a4a86' },
   { key: 'red', label: 'Red', c: '#a4473b' },
+  { key: 'black', label: 'Black', c: '#111111' },
+  { key: 'white', label: 'White', c: '#ffffff' },
+  { key: 'teal', label: 'Teal', c: '#147d82' },
+  { key: 'orange', label: 'Orange', c: '#b85c12' },
+  { key: 'navy', label: 'Navy', c: '#253a72' },
+  { key: 'rose', label: 'Rose', c: '#ac386a' },
 ];
-export const textColor = (k?: string) => TEXT_COLORS.find((t) => t.key === k)?.c;
+export const textColor = (k?: string) => k && /^#[0-9a-f]{6}$/i.test(k) ? k : TEXT_COLORS.find((t) => t.key === k)?.c;
 
 export const TextColor = Mark.create({
   name: 'textColor',
@@ -46,6 +52,7 @@ export function ColorSwatches({ editor, onDone }: { editor: Editor; onDone?: () 
           A
         </button>
       ))}
+      <label className="custom-colour">Custom<input type="color" aria-label="Custom text colour" value={/^#[0-9a-f]{6}$/i.test(cur) ? cur : '#2f5fa8'} onChange={(e) => editor.chain().focus().setMark('textColor', { color: e.target.value }).run()} /></label>
       <button type="button" className="hl-none" title="Normal colour" onMouseDown={(e) => e.preventDefault()} onClick={() => (editor.chain().focus().unsetMark('textColor').run(), onDone?.())}>
         ×
       </button>

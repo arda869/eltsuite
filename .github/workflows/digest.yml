@@ -25,12 +25,15 @@ jobs:
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           mkdir -p "$RUNNER_TEMP/d" && cp scripts/digest.mjs scripts/push.mjs scripts/mail.mjs scripts/space.mjs scripts/video.mjs scripts/ics.mjs scripts/email-layout.mjs scripts/invitation-emails.mjs "$RUNNER_TEMP/d/"
+          mkdir -p "$RUNNER_TEMP/functions" && cp functions/push-delivery.js functions/package.json "$RUNNER_TEMP/functions/"
           # The app's own repeat rules (src/lib/repeat.ts), for meeting invitations.
           npx --yes esbuild@0.24.0 src/lib/repeat.ts --bundle --format=esm --platform=node --outfile="$RUNNER_TEMP/d/repeat.mjs" --log-level=warning || echo "Could not build the repeat rules this time."
           cd "$RUNNER_TEMP/d"
           npm init -y >/dev/null && npm install --no-audit --no-fund firebase-admin@12 nodemailer@6 imapflow@1 mailparser@3 >/dev/null
           node space.mjs || echo "Space could not be measured this time."
           node video.mjs || echo "Video rooms could not be made this time."
-          node push.mjs || echo "Notifications could not be sent this time."
+          push_status=0
+          node push.mjs || push_status=$?
           if [ -n "$SMTP_URL" ]; then node mail.mjs || echo "Class emails could not be sent this time."; node digest.mjs; else echo "No SMTP_URL secret yet: no emails."; fi
           rm -f "$RUNNER_TEMP/sa.json"
+          exit "$push_status"

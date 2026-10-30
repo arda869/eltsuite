@@ -1,5 +1,8 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
 import { useDocumentTools } from './DocumentEditingTools';
+import { PageBreak, DocumentSection, DocumentIndent, changeIndent, insertDocumentSection, sectionColumns } from './DocumentStructure';
+import { useDocumentHistory } from './DocumentHistory';
+import { documentClipboard } from './documentClipboard';
 import { tell } from '../lib/ask';
 import { OverflowToolbar } from '../components/OverflowToolbar';
 import { NSelect, Select } from '../components/Select';
@@ -44,7 +47,7 @@ import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
-import { downloadDocx, wordCount, printDoc, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
+import { downloadDocx, wordCount, documentStats, printDoc, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
@@ -194,6 +197,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         NewerGuard,
         ShowMarks,
         FontStyle,
+        PageBreak, DocumentSection, DocumentIndent,
       ],
       editable: eff !== 'view',
       editorProps: {
@@ -274,7 +278,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     return () => window.removeEventListener('keydown', esc);
   }, [big]);
 
-  const documentTools = useDocumentTools(editor, eff === 'edit' || eff === 'suggest', eff === 'edit', !!page && eff !== 'view');
+  const documentTools = useDocumentTools(editor, eff === 'edit' || eff === 'suggest', eff === 'edit', !!page && eff !== 'view', layout.font);
+  const history = useDocumentHistory(editor, docKey, me.uid, author.name, layout, setLayout, !!page, eff === 'edit', synced);
   if (!editor) return <div className="cd cd-wait" />;
   // Viewing: the document as learners see it when it is presented, without suggestions still open.
   const viewing = eff === 'view';
@@ -302,8 +307,10 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   // The document as a PDF, opened in the viewer to save in Files or download.
   const makePdf = async (o: ExportOpts) => {
     try {
-      const [{ htmlToPdf }, { docBodyHtml }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
-      const bytes = await htmlToPdf(docBodyHtml(editor.getJSON(), title, o), await brandMark().catch(() => null));
+      const [{ htmlToPdf }, { docBodyHtml, prepareDocumentPrint }, { brandMark }] = await Promise.all([import('../lib/folderExport'), import('./export'), import('../lib/brand')]);
+      const content = editor.getJSON();
+      await prepareDocumentPrint(content);
+      const bytes = await htmlToPdf(docBodyHtml(content, title, o), await brandMark().catch(() => null), o.layout);
       setPdfPrev({ bytes, name: title || 'Document' });
     } catch (e) {
       console.error(e);
@@ -391,7 +398,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         {B(<SV d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />, editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'Bulleted list')}
         {B(<SV d="M10 6h10M10 12h10M10 18h10M4 5.5h1.5V9M4 9h3M4 14.5a1.5 1.5 0 0 1 3 0c0 1.5-3 2-3 3.5h3" />, editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered list')}
         {B(<SV d="M4 6.5l1.5 1.5L8 5.5M4 12.5l1.5 1.5L8 11.5M11 7h9M11 13h9M11 19h9M4.5 18.5h3" />, editor.isActive('taskList'), () => editor.chain().focus().toggleTaskList().run(), 'Checklist')}
-        <button type="button" className="ne-btn" data-tip="Alignment" aria-label="Alignment" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, (['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: { left: 'Left', center: 'Centre', right: 'Right', justify: 'Justify' }[a], icon: '', onClick: () => editor.chain().focus().setTextAlign(a).run() })))}>
+        <button type="button" className="ne-btn" data-tip="Alignment" aria-label="Alignment" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, (['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: { left: 'Left', center: 'Centre', right: 'Right', justify: 'Justify' }[a], icon: 'align' + a[0].toUpperCase() + a.slice(1), onClick: () => editor.chain().focus().setTextAlign(a).run() })))}>
           <SV d={ALIGN_D[alignNow]} />
         </button>
       </span>
@@ -414,6 +421,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {wcOpen && (
             <span className="cd-wc" role="status">
               <b>Word count</b>
+              <span>{documentStats(editor.getJSON()).characters} characters · {documentStats(editor.getJSON()).paragraphs} paragraphs · {documentStats(editor.getJSON()).readingMinutes} min read</span>
               <span className="cd-wc-row">
                 <span>Document</span>
                 <b>{wordCount(editor.getJSON())}</b>
@@ -489,7 +497,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             <UiIcon name={flags.lock ? 'lock' : 'unlock'} size={14} /> {flags.lock ? 'Locked' : 'Lock'}
           </button>
         )}
-        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : void makePdf({ ...o, style: citeStyle }))} />}
+        {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle, layout: page ? layout : undefined }) : void makePdf({ ...o, style: citeStyle, layout: page ? layout : undefined }))} />}
         {page && writing && (
           <button type="button" className="btn small-btn cd-insert" onClick={() => setGallery(true)} data-tip="Everything you can add. You can also type / in the text.">
             + Insert
@@ -514,13 +522,18 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       {page && <DocumentMenuBar menus={[
         { label: 'File', items: [
           { label: 'Page setup…', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
-          { label: 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle }) },
-          { label: 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle }) },
-          'sep', { label: 'Print', disabled: !(teacher || canDownload), run: () => printDoc(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle }) },
+          { label: 'Version history…', icon: 'prev', run: history.open },
+          { label: 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }) },
+          { label: 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle, layout }) },
+          'sep', { label: 'Print', disabled: !(teacher || canDownload), run: () => printDoc(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle, layout }, editor.view.dom) },
         ] },
         { label: 'Edit', items: [
           { label: 'Undo', hint: keyLabel('Mod+Z'), disabled: !writing || !editor.can().undo(), run: () => { editor.chain().focus().undo().run(); } },
           { label: 'Redo', hint: keyLabel('Mod+Shift+Z'), disabled: !writing || !editor.can().redo(), run: () => { editor.chain().focus().redo().run(); } },
+          'sep', { label: 'Cut', icon: 'edit', hint: keyLabel('Mod+X'), disabled: eff !== 'edit' || editor.state.selection.empty, run: () => void documentClipboard(editor, 'cut') },
+          { label: 'Copy', icon: 'copyall', hint: keyLabel('Mod+C'), disabled: viewing || editor.state.selection.empty, run: () => void documentClipboard(editor, 'copy') },
+          { label: 'Paste', icon: 'import', hint: keyLabel('Mod+V'), disabled: !writing, run: () => void documentClipboard(editor, 'paste') },
+          { label: 'Paste without formatting', icon: 'script', hint: keyLabel('Mod+Shift+V'), disabled: !writing, run: () => void documentClipboard(editor, 'plain') },
           'sep', { label: 'Select all', hint: keyLabel('Mod+A'), run: () => { editor.chain().focus().selectAll().run(); } },
           { label: 'Find and replace…', icon: 'search', hint: keyLabel('Mod+F'), disabled: viewing, run: documentTools.openFind },
         ] },
@@ -534,6 +547,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           { label: 'Show paragraph marks', checked: !!marksKey.getState(editor.state), run: () => editor.view.dispatch(editor.state.tr.setMeta(marksKey, !marksKey.getState(editor.state))) },
         ] },
         { label: 'Insert', items: [
+          { label: 'Page break', icon: 'task', hint: keyLabel('Mod+Enter'), disabled: !writing, run: () => { editor.chain().focus().insertContent({ type: 'docPageBreak' }).run(); } },
+          { label: 'Section break', icon: 'task', disabled: !writing, run: () => { if (!insertDocumentSection(editor, layout.columns)) void tell('Place the cursor in a top-level paragraph to start a new section.'); } },
+          { label: 'Header, footer and page numbers…', icon: 'script', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
           ...(profileTeacher ? [{ label: 'Cite a source…', icon: 'classes', disabled: !writing, run: () => setCitationRequest((n) => n + 1) }] : []),
           { label: 'Browse all elements…', disabled: !writing, run: () => setGallery(true) },
           { label: 'Picture…', disabled: !writing, run: () => pickPictures(editor) },
@@ -541,21 +557,25 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           { label: 'Link…', disabled: !writing || editor.state.selection.empty, run: () => setLinkOpen(true) },
         ] },
         { label: 'Format', items: [
+          { label: 'Increase indent', icon: 'next', disabled: !writing, run: () => { changeIndent(editor, 1); } },
+          { label: 'Decrease indent', icon: 'prev', disabled: !writing, run: () => { changeIndent(editor, -1); } },
+          ...[1, 2, 3].map((columns) => ({ label: `${columns} ${columns === 1 ? 'column' : 'columns'}`, icon: 'board', disabled: !writing, checked: (Number(editor.getAttributes('docSection').columns) || layout.columns) === columns, run: () => { if (!sectionColumns(editor, columns)) setLayout({ columns }); } })), 'sep',
           { label: 'Copy text formatting', icon: 'design', disabled: !writing, run: documentTools.copyFormatting },
           { label: 'Apply text formatting', icon: 'design', disabled: !writing || !documentTools.hasFormatting, run: documentTools.applyFormatting }, 'sep',
           { label: 'Bold', disabled: !writing, run: () => { editor.chain().focus().toggleBold().run(); } },
           { label: 'Italic', disabled: !writing, run: () => { editor.chain().focus().toggleItalic().run(); } },
           { label: 'Underline', disabled: !writing, run: () => { editor.chain().focus().toggleUnderline().run(); } },
-          'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
+          'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, icon: 'align' + a[0].toUpperCase() + a.slice(1), disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
           'sep', { label: 'Checklist', disabled: !writing, run: () => { editor.chain().focus().toggleTaskList().run(); } },
           { label: 'Clear text formatting', disabled: !writing, run: () => { editor.chain().focus().unsetMark('bold').unsetMark('italic').unsetMark('underline').unsetMark('strike').unsetMark('textColor').unsetMark('highlight').unsetMark('fontStyle').run(); } },
         ] },
         { label: 'Tools', items: [
-          { label: 'Word count', run: () => { void tell('Document: ' + wordCount(editor.getJSON()) + ' words. Selection: ' + selWords + ' words. Reference list excluded.'); } },
+          { label: 'Word count', run: () => { const s = documentStats(editor.getJSON()); void tell(`Document: ${s.words} words. Selection: ${selWords} words. ${s.characters} characters (${s.charactersNoSpaces} without spaces), ${s.paragraphs} paragraphs. About ${s.readingMinutes} minutes to read. Reference list excluded.`); } },
           { label: 'Contributions', run: () => setSide('people') },
         ] },
       ]} />}
       {page && documentTools.panel}
+      {page && history.panel}
       {writing && page && PageBar()}
       {writing && !page && (
         <div className="ne-bar cd-bar" role="toolbar" aria-label="Formatting">

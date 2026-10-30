@@ -89,7 +89,13 @@
         "flags": {
           ".write": "auth != null"
         },
-        ".write": "auth != null && newData.hasChildren(['snap'])"
+        ".write": "auth != null && newData.hasChildren(['snap'])",
+        "versions": {
+          "$version": {
+            ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid",
+            ".validate": "newData.hasChildren(['name', 'by', 'author', 'at', 'content', 'layout']) && newData.child('content').isString() && newData.child('content').val().length <= 500000 && newData.child('layout').isString() && newData.child('name').isString() && newData.child('name').val().length <= 100"
+          }
+        }
       }
     },
     "collabLocks": {

@@ -1,3 +1,5 @@
+import { warn } from 'firebase-functions/logger';
+import { GenerationError, describeFailure } from './errors.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -82,16 +84,19 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     return null;
   });
   if (existing) return existing;
+  let phase = d.action;
   try {
     const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : planSchema, name: d.action, input: payload });
-    checkSequence(first.value, brief.duration);
-    if (d.action === 'plan' && JSON.stringify(first.value.stages.map(s => [s.id, s.minutes])) !== JSON.stringify(d.outline.stages.map(s => [s.id, s.minutes]))) throw Error('The plan changed the approved sequence.');
+    try { checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
+    if (d.action === 'plan' && JSON.stringify(first.value.stages.map(s => [s.id, s.minutes])) !== JSON.stringify(d.outline.stages.map(s => [s.id, s.minutes]))) throw new GenerationError('sequence');
     let result = { [d.action]: first.value, usage: [first.usage] };
     if (d.action === 'plan') {
+      phase = 'review';
       const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, plan: first.value },
         instructions: `${teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. Mark incorrect language, unsolvable tasks, wrong keys and inaccessible instructions as critical errors. This is advisory AI review, not human approval.` });
       result = { ...result, review: review.value, usage: [...result.usage, review.usage] };
     }
+    phase = 'storage';
     await db.runTransaction(async tx => {
       const [b, j] = await Promise.all([tx.get(budget), tx.get(job)]);
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
@@ -100,11 +105,15 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, result });
     });
     return result;
-  } catch {
-    await db.runTransaction(async tx => {
-      const j = await tx.get(job);
-      if (j.get('status') === 'running') tx.update(job, { status: 'failed' });
-    });
-    throw new HttpsError('unavailable', 'We couldn’t finish this generation. Your existing work is still here. Start a new generation to try again.');
+  } catch (error) {
+    const failure = describeFailure(phase === 'storage' ? new GenerationError('storage') : error, phase);
+    warn('lessonAssistant generation failed', { reason: failure.reason, phase: failure.phase });
+    try {
+      await db.runTransaction(async tx => {
+        const j = await tx.get(job);
+        if (j.get('status') === 'running') tx.update(job, { status: 'failed', failure: { reason: failure.reason, phase: failure.phase } });
+      });
+    } catch { warn('lessonAssistant failure status could not be saved'); }
+    throw new HttpsError('unavailable', failure.message, { reason: failure.reason, phase: failure.phase });
   }
 });
