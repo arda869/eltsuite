@@ -206,7 +206,7 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto' }: { layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black' }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged }: { layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
   const desk = useRef<HTMLDivElement>(null);
@@ -223,7 +223,7 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
   liveZoom.current = zoom;
   useEffect(() => {
     const el = desk.current;
-    if (!el) return;
+    if (!el || !paged) return;
     let startDistance = 0;
     let startZoom = liveZoom.current;
     const change = (value: number) => setZoomChoice(String(Math.max(10, Math.min(200, Math.round(value)))));
@@ -259,7 +259,7 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
       el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', end);
       el.removeEventListener('gesturestart', gestureStart); el.removeEventListener('gesturechange', gestureChange);
     };
-  }, []);
+  }, [paged]);
   useLayoutEffect(() => {
     const el = desk.current;
     if (!el) return;
@@ -278,6 +278,10 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (!paged) {
+      el.querySelectorAll<HTMLElement>('.ph-node:has(.ph-chart), .cd-view .ph-chart').forEach((block) => { block.style.marginBlockStart = ''; });
+      return;
+    }
     const measure = () => {
       const paper = el.closest<HTMLElement>('.pg-paper');
       if (paper) {
@@ -302,33 +306,34 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [m, inner, s.h, zoom]);
+  }, [m, inner, s.h, zoom, paged]);
   useEffect(() => {
+    if (!paged) return;
     const st = document.createElement('style');
     st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${m / 96}in; }`;
     document.head.appendChild(st);
     return () => st.remove();
-  }, [s.css, m, layout.orientation]);
+  }, [s.css, m, layout.orientation, paged]);
   return (
-    <div className="pg-desk" ref={desk}>
-      <div className="pg-paper" data-paper-theme={appearance} style={{ width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, zoom: zoom / 100 }}>
-        <div ref={ref} className="pg-text">
+    <div className={paged ? 'pg-desk' : undefined} ref={desk}>
+      <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, zoom: zoom / 100 } : undefined}>
+        <div ref={ref} className={paged ? 'pg-text' : undefined}>
           {children}
         </div>
-        {Array.from({ length: pages - 1 }, (_, i) => (
+        {paged && Array.from({ length: pages - 1 }, (_, i) => (
           <span key={i} className="pg-break" style={{ top: (i + 1) * s.h }} aria-hidden="true">
             <span>Page {i + 2}</span>
           </span>
         ))}
       </div>
-      <div className="pg-zoom" role="group" aria-label="Document zoom">
+      {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">
         <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>
           <option value="fit">Fit page</option>
           <option value="fill">Fill width</option>
           {[...new Set([50, 75, 90, 100, 125, 150, 175, 200, zoom])].sort((a, b) => a - b).map((n) => <option key={n} value={String(n)}>{n}%</option>)}
         </NSelect>
         <input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} />
-      </div>
+      </div>}
     </div>
   );
 }

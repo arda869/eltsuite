@@ -94,6 +94,11 @@
 .dp.k-doc .cd-side { margin-right: 16px; }
 .document-menu-check { margin-left: auto; padding-left: 8px; color: var(--accent-text); }
 .document-menu-popup .ctx-l { flex: 1; }
+.document-menu-popup .ctx-item:not(:focus), .document-menu-popup .ctx-item:disabled { background: transparent; box-shadow: none; }
+.document-menu-popup .ctx-item:focus:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, var(--paper)); box-shadow: inset 2px 0 0 var(--accent); outline: none; }
+.item > .nsel:has(> .type-pick) { width: max-content; max-width: 100%; flex: 0 0 auto; }
+.item .sel.type-pick { width: max-content; min-width: max-content; box-sizing: border-box; }
+.item .sel.type-pick .sel-v { overflow: visible; text-overflow: clip; }
 .document-citation { position: absolute; left: 120px; top: 36px; z-index: 30; }
 .document-citation > .hl-tool > button { display: none; }
 .document-citation .cite-tool { z-index: 50; }

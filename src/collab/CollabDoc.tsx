@@ -687,7 +687,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           )}
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
-          {!paged && heading}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
             {(() => {
               const hostEl = (
@@ -705,12 +704,12 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
                 </div>}
                 {hostEl}
               </>;
-              return paged ? (
-                <Paper layout={layout} appearance={paperAppearance}>
+              return (
+                <Paper layout={layout} appearance={paperAppearance} paged={paged}>
                   {heading}
                   {contents}
                 </Paper>
-              ) : contents;
+              );
             })()}
           </EditorClassContext.Provider>
         </div>

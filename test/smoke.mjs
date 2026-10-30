@@ -116,6 +116,13 @@ const J = {
       return chart.right <= content.right + 1 && chart.width <= content.width + 1 && el.scrollWidth <= el.clientWidth + 1;
     });
     if (!contained) throw new Error('The sound chart overflows the page.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pageless', exact: true }).click();
+    await see(d, '.ph-chart', 'charts after switching to pageless');
+    if (await d.locator('.ph-chart').count() !== 2) throw new Error('A chart disappeared in pageless mode.');
+    await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+    await d.getByRole('menuitemradio', { name: 'Pages', exact: true }).click();
+    await see(d, '.pg-paper .ph-chart', 'charts after switching back to pages');
     if (await d.locator('.pg-page-info').count()) throw new Error('The paper-size label is still beside zoom.');
     const before = await d.locator('.pg-paper').evaluate((el) => Number(el.style.zoom));
     await d.locator('.pg-paper').dispatchEvent('wheel', { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -30 });
@@ -186,6 +193,8 @@ const J = {
     await d.getByRole('slider', { name: 'Zoom slider', exact: true }).fill('75');
     const state = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, zoom: getComputedStyle(el).zoom, spacing: el.style.getPropertyValue('--pg-line-height') }));
     if (state.width !== '1123px' || Number(state.zoom) !== 0.75 || state.spacing !== '2') throw new Error('Page setup or zoom did not apply: ' + JSON.stringify(state));
+    // The shared provider batches changes for 120 ms; allow its autosave to complete.
+    await d.waitForTimeout(250);
     await d.reload();
     await see(d, '[data-font][style*="19pt"]', 'the saved font size');
     const saved = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, spacing: el.style.getPropertyValue('--pg-line-height') }));
@@ -212,6 +221,14 @@ const J = {
     await see(s.p, '.hm-hero', 'the fixture session');
     const d = await newFile(s, 'Collab document');
     await see(d, '.pg-paper', 'pages by default');
+    await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Picture…', exact: true }).hover();
+    const highlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').map((el) => el.textContent));
+    if (highlight.length !== 1 || !highlight[0].includes('Picture')) throw new Error('The pointer and keyboard highlight different menu rows.');
+    await d.keyboard.press('ArrowDown');
+    const keyboardHighlight = await d.locator('.document-menu-popup .ctx-item').evaluateAll((rows) => rows.filter((el) => getComputedStyle(el).boxShadow !== 'none').length);
+    if (keyboardHighlight !== 1) throw new Error('The menu shows more than one selection highlight.');
+    await d.keyboard.press('Escape');
     await d.getByRole('textbox', { name: 'Document text', exact: true }).fill('Reading notes ');
     await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
     await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
@@ -597,7 +614,7 @@ try {
       s = await run(browser);
       if (s.errors.length) err = s.errors.slice(0, 3).join('\n   ');
     } catch (e) {
-      err = e.message.split('\n')[0] + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
+      err = e.message.slice(0, 3500) + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
     }
     await s?.ctx.close().catch(() => {});
     results.push({ name, ok: !err, err, ms: Date.now() - t });

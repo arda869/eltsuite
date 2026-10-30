@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { yUndoPluginKey } from 'y-prosemirror';
 import { UiIcon } from '../components/UiIcon';
 
 const FORMATTING = ['bold', 'italic', 'underline', 'strike', 'textColor', 'highlight', 'fontStyle', 'superscript', 'subscript'];
@@ -90,9 +91,12 @@ function FindReplace({ editor, canReplace, onClose }: { editor: Editor; canRepla
     if (!canReplace || !matches.length) return;
     // One transaction makes Replace all one undo step and preserves surrounding nodes/marks.
     const selected = all ? matches : [matches[current]];
+    const undoManager = yUndoPluginKey.getState(editor.state)?.undoManager;
+    undoManager?.stopCapturing();
     const tr = editor.state.tr;
     [...selected].reverse().forEach(({ from, to }) => tr.insertText(replacement, from, to));
     editor.view.dispatch(tr);
+    undoManager?.stopCapturing();
     setMessage(`${selected.length} ${selected.length === 1 ? 'match' : 'matches'} replaced.`);
   };
   return <section className="document-find" role="dialog" aria-label="Find and replace" onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}>

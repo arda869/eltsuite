@@ -232,6 +232,7 @@
 .g-mono { --ph-cols: 4; } .g-diph { --ph-cols: 3; } .g-cons { --ph-cols: 8; }
 .ph-chart .ph-tile, .ph-chart.part-cons .ph-tile, .ph-chart.part-all .g-cons .ph-tile { width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: 58px; padding: 6px 2px; box-sizing: border-box; }
 .ph-chart .ph-ex { max-width: 100%; overflow-wrap: anywhere; line-height: 1.15; }
+.ph-chart .ph-ex, .ph-card .ph-ex { color: var(--ink, #23211d); }
 .ph-chart, .ph-node:has(.ph-chart) { break-inside: avoid; page-break-inside: avoid; }
 @container (max-width: 340px) { .ph-chart .ph-ex { font-size: 9px; } .ph-chart .ph-sym { font-size: 19px; } .g-cons .ph-tile { min-height: 72px !important; } }
 
