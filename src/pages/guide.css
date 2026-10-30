@@ -435,3 +435,10 @@
 .gu-blend-explainer>span:last-child{font-size:14px;line-height:1.6;color:var(--muted)}
 @media(min-width:1100px){.tr .gu-blends{grid-template-columns:repeat(3,minmax(0,1fr))}.tr .gu-blend-recipe{gap:12px}.tr .gu-blend .gu-glass{width:64px;flex-basis:64px}}
 @media(max-width:480px){.gu-blend{padding:16px}.gu-blend .gu-blend-recipe{gap:16px}.gu-blend-title>b{font-size:16px}.gu-blend-labels>span{font-size:13px}}
+
+/* Labels connect directly to the liquid layers, rather than a separate legend. */
+.gu-blend .gu-blend-recipe{display:block;width:100%;min-width:0}
+.gu-blend .gu-glass,.tr .gu-blend .gu-glass{display:block;width:100%;max-width:340px;height:auto;margin:0 auto;transform:none}
+.gu-liquid-callout text{font:14px var(--sans);fill:var(--ink)}
+.gu-err{position:relative;display:inline-block;margin-top:12px;padding-right:8px}
+.gu-err .ann-code-tag{top:-11px;right:0;line-height:1.3}

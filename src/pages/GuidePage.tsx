@@ -1334,8 +1334,13 @@ function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: stri
   const top = 34;
   const bottom = 150;
   let y = bottom;
+  const layers = mix.map(([part, amount]) => {
+    const height = (bottom - top) * amount / 100;
+    y -= height;
+    return { part, height, y, centre: y + height / 2 };
+  });
   return (
-    <svg className={'gu-glass' + (on ? ' on' : '')} viewBox="0 0 120 160" aria-hidden="true">
+    <svg className={'gu-glass' + (on ? ' on' : '')} viewBox="0 0 300 170" role="img" aria-label={mix.map(([part]) => PARTS[part].n).reverse().join(", ")}>
       <defs>
         <clipPath id={'gu-gl-' + id}>
           <path d="M16 12h88l-10 136a6 6 0 0 1-6 5.5H32a6 6 0 0 1-6-5.5z" />
@@ -1343,15 +1348,16 @@ function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: stri
       </defs>
       <g clipPath={`url(#gu-gl-${id})`}>
         <rect x="0" y="0" width="120" height="160" className="gu-glass-air" />
-        {mix.map(([p, n], i) => {
-          const h = ((bottom - top) * n) / 100;
-          y -= h;
-          return <rect key={on ? p + '-on' : p} className={on ? 'gu-rise' : undefined} style={{ fill: PARTS[p].c, animationDelay: `${i * 0.28}s` }} x="0" y={y} width="120" height={h + 0.5} />;
-        })}
+        {layers.map(({ part, height, y }, i) => <rect key={part} className={on ? 'gu-rise' : undefined} style={{ fill: PARTS[part].c, animationDelay: `${i * 0.28}s` }} x="0" y={y} width="120" height={height + 0.5} />)}
         <path key={on ? 'top-on' : 'top'} d={`M0 ${top} q15 -4 30 0 t30 0 t30 0 t30 0 v4 H0z`} fill="#fff" opacity="0.35" className={on ? 'gu-rise' : undefined} style={{ animationDelay: `${mix.length * 0.28}s` }} />
         <rect x="26" y="20" width="9" height="118" rx="4.5" fill="#fff" opacity="0.28" />
       </g>
       <path d="M16 12h88l-10 136a6 6 0 0 1-6 5.5H32a6 6 0 0 1-6-5.5z" className="gu-glass-edge" />
+      {layers.map(({ part, centre }) => <g key={part} className="gu-liquid-callout">
+        <circle cx="84" cy={centre} r="2.5" fill="var(--ink)" />
+        <path d={`M84 ${centre} H132`} fill="none" stroke="var(--ink)" strokeOpacity=".55" />
+        <text x="141" y={centre} dominantBaseline="middle">{PARTS[part].n}</text>
+      </g>)}
     </svg>
   );
 }
@@ -1360,12 +1366,12 @@ export function Blend() {
   const b = BLENDS[k];
   return (
     <>
-      <p>Each glass is an example teaching mix. Match its colours to the labels beside it, then choose a mix to see the steps. Use as much or as little of ELT Suite as you need.</p>
+      <p>Each glass is an example teaching mix. The callouts show what each liquid represents. Choose a mix to see the steps. Use as much or as little of ELT Suite as you need.</p>
       <div className="gu-blends" role="radiogroup" aria-label="Ways to teach">
         {BLENDS.map((x, i) => (
           <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-blend' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
             <span className="gu-blend-title"><b>{x.t}</b><span aria-hidden="true">{i === k ? '✓' : '↗'}</span></span>
-            <span className="gu-blend-recipe"><Glass mix={x.mix} on={i === k} id={x.k} /><span className="gu-blend-labels">{[...x.mix].reverse().map(([part]) => <span key={part}><i aria-hidden="true" style={{ background: PARTS[part].c }} />{PARTS[part].n}</span>)}</span></span>
+            <span className="gu-blend-recipe"><Glass mix={x.mix} on={i === k} id={x.k} /></span>
             <span className="gu-blend-description">{x.d}</span>
           </button>
         ))}
@@ -1859,7 +1865,7 @@ export function Progress() {
       <div className="gu-grid2">
         <Try title="Correction codes: tap a code to see what the learner sees">
           <p className="gu-essay">
-            Last summer I <span className={'gu-err' + (code === 'T' ? ' on' : '')}>go</span> to Spain with my family. <span className={'gu-err' + (code === 'WO' ? ' on' : '')}>Usually I</span> stay at home, but the beach was <span className={'gu-err' + (code === 'Sp' ? ' on' : '')}>beatiful</span>.
+            Last summer I <span className={'gu-err' + (code === 'T' ? ' on' : '')}>go<i className="ann-code-tag" title={CODES['T'].name}>T</i></span> to Spain with my family. <span className={'gu-err' + (code === 'WO' ? ' on' : '')}>Usually I<i className="ann-code-tag" title={CODES['WO'].name}>WO</i></span> stay at home, but the beach was <span className={'gu-err' + (code === 'Sp' ? ' on' : '')}>beatiful<i className="ann-code-tag" title={CODES['Sp'].name}>Sp</i></span>.
           </p>
           <span className="gu-codes">
             {Object.entries(CODES).map(([k, v]) => (
