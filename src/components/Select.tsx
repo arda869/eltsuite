@@ -119,7 +119,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
               </button>
             ))}
           </div>,
-          document.body,
+          btn.current?.closest('dialog') ?? document.body,
         )}
     </>
   );
@@ -222,7 +222,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
             )}
             {foot && <span className="sel-foot hint">{foot}</span>}
           </div>,
-          document.body,
+          btn.current?.closest('dialog') ?? document.body,
         )}
     </>
   );

@@ -305,7 +305,7 @@ export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, m
     await setDoc(mediaRef(classId, mediaId), { ...(old ?? {}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, script: meta.script, public: true, v: Date.now() });
     onProgress?.(++done / total);
   }
-  await updateDoc(doc(col(uid), item.id), { size: Math.round((bytes.length * 4) / 3), duration: meta.duration, script: meta.script, updatedAt: Date.now() });
+  if (item.id) await updateDoc(doc(col(uid), item.id), { size: Math.round((bytes.length * 4) / 3), duration: meta.duration, script: meta.script, updatedAt: Date.now() });
 }
 
 // The file itself, to save on the computer.

@@ -1,0 +1,13 @@
+import React from 'react';import {createRoot} from 'react-dom/client';
+import '../mock/seed';
+await (window as any).__mockReady;
+const {AuthProvider}=await import('../../src/lib/auth');
+const {SoundEditor}=await import('../../src/media/SoundEditor');
+const {SpeakingActivity}=await import('../../src/speaking/SpeakingActivity');
+const {setDoc,doc}=await import('../mock/firestore');
+await import('../../src/styles.css');
+const params=new URLSearchParams(location.search),mode=params.get('mode')||'recording';
+const config={feedbackMode:params.get('focus')==='choice'?'learner' as const:'task' as const,focusOptions:['Asking for clarification','Using the target vocabulary','Speaking more fluently','Giving reasons'],id:'speaking-check',title:'Make a plan together',scenario:'Agree on an afternoon out. Suggest an activity, clarify the details, and decide where to meet.',focus:'Ask for clarification and check you have understood your partner.',learnerRole:'A friend suggesting activities',partnerRole:'A friend with different preferences',level:'B1',seconds:120};
+await setDoc(doc({},'classes','speech-class','speakingActivities',config.id),{...config,enabled:true});
+if(mode==='teacher')for(const [i,name,status,help] of [[1,'Mia Chen','speaking',false],[2,'Omar Ali','listening',true],[3,'Lily Wong','complete',false]] as const)await setDoc(doc({},'classes','speech-class','speakingActivities',config.id,'sessions','session'+i),{uid:'learner'+i,name,status,help,startedAt:Date.now(),deadline:Date.now()+120000,updatedAt:Date.now(),turns:[{role:'learner',text:'Could you explain what you mean by a day pass?',at:10}]});
+createRoot(document.getElementById('root')!).render(<AuthProvider>{mode==='recording'?<div className="sx-full"><SoundEditor classId="speech-class" source={{blank:true,name:'Friday plans',buffer:new AudioBuffer({length:1,sampleRate:48000})}} onSaved={()=>{}} onBack={()=>{}} backLabel="Back"/></div>:<main style={{maxWidth:850,margin:'32px auto',padding:16}}><SpeakingActivity classId="speech-class" config={config} teacher={mode==='teacher'} classmates={[{id:'1',name:'Mia'},{id:'2',name:'Omar'},{id:'3',name:'Lily'}]}/></main>}</AuthProvider>);

@@ -12,6 +12,9 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
 export { lessonAssistant } from './ai/assistant.js';
+export { recordingDialogue } from './speech/dialogue.js';
+export { recordingSpeech, recordingTranscript } from './speech/index.js';
+export { speakingTask, closeSpeakingAtDeadline } from './speaking/index.js';
 const OWNER = 'ardanurioglu@gmail.com';
 
 async function isSuper(token) {

@@ -3,6 +3,22 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'recordingSpeech') {
+    if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');
+    const bytes=new Uint8Array(48000), view=new DataView(bytes.buffer);
+    for(let i=0;i<24000;i++)view.setInt16(i*2,Math.sin(i/24000*Math.PI*440)*8000,true);
+    let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+    return {data:{pcm:btoa(binary),rate:24000,transcript:d.text}};
+  }
+  if (name === 'recordingDialogue') return {data:{lines:Array.from({length:d.turns},(_,i)=>({speaker:d.speakers[i%d.speakers.length].id,text:i%2?'Of course. I meant this Friday, not Thursday.':'Sorry, could you clarify which day you mean?',direction:'Natural conversational English'}))}};
+  if (name === 'recordingTranscript') return {data:{segments:[{speaker:'A',text:'Could you explain that?',start:0,end:.4},{speaker:'B',text:'Of course.',start:.5,end:1}]}};
+  if (name === 'speakingTask') {
+    const {setDoc,doc}=await import('./firestore');
+    if(d.action==='configure'){await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId),{...d.config,enabled:d.enabled!==false});return {data:{saved:true}};}
+    if(d.action==='start')return {data:{sdp:'test-answer',sessionId:'test-session',deadline:Date.now()+d.testSeconds*1000 || Date.now()+120000,seconds:120}};
+    if(d.action==='progress')return {data:{saved:true}};
+    if(d.action==='finish')return {data:{feedback:{focusFeedback:'You used a clarification question to resolve uncertainty.',evidence:['Could you explain that?'],communication:'You kept the conversation moving.',nextStep:'Check the detail again in your own words.',retryPrompt:'So, do you mean…?'}}};
+  }
   if (name !== 'lessonAssistant') throw Error('Unsupported test callable');
   const store = JSON.parse(localStorage.getItem('mockAiDrafts') || '{}');
   if (d.action === 'context') return {data:{classContext:{name:'Demo class',level:'B1',kind:'language',profile:null},evidence:{recent:[],skillLevels:{},counts:{items:0,submittedTasks:0,portfolioRecords:0},limitations:'No recorded evidence yet.'}}};

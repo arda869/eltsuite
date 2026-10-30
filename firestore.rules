@@ -137,6 +137,17 @@ service cloud.firestore {
         );
       allow delete: if signedIn() && resource.data.teacherId == request.auth.uid;
 
+      // Speaking attempts are visible only to their learner and class teachers.
+      // All writes go through authenticated server functions, including feedback.
+      match /speakingActivities/{activityId} {
+        allow read: if viewsClass(classId) || memberOf(classId);
+        allow write: if false;
+        match /sessions/{sessionId} {
+          allow read: if teachesClass(classId) || (memberOf(classId) && resource.data.uid == request.auth.uid);
+          allow write: if false;
+        }
+      }
+
       // Content learners can see
       match /topics/{topicId} {
         allow read: if viewsClass(classId) || memberOf(classId);

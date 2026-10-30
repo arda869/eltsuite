@@ -26,7 +26,7 @@ import { useMyShares } from '../lib/sharing';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { useImageSrc } from '../editor/PackNode';
 import { MediaPlayer } from '../media/Player';
-import { ScriptEditor } from '../media/ScriptEditor';
+import { recordingEditorUrl } from '../lib/recordingScript';
 import { fmtTime } from '../lib/sound';
 import { MediaDialog, type MediaTab } from '../media/MediaDialog';
 import { WorksheetDialog } from '../components/WorksheetDialog';
@@ -1402,7 +1402,6 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
   const [uses, setUses] = useState<Awaited<ReturnType<typeof findUses>> | 'loading' | null>(null);
   const [name, setName] = useState(item.name);
   const [tagText, setTagText] = useState('');
-  const [script, setScript] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [dl, setDl] = useState('');
   const [sharing, setSharing] = useState(false);
@@ -1497,7 +1496,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
         <div className="field">
           <span>Karaoke script</span>
           <span className="hint">{item.script?.length ? `${item.script.length} lines${item.script.some((l) => l.t !== null) ? ', timed' : ', not timed yet'}. Changes reach every lesson that uses it.` : 'No script yet.'}</span>
-          <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setScript(true)}>
+          <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => item.home && window.open(recordingEditorUrl(item.home.classId, item.home.mediaId, item.id), '_blank')}>
             <UiIcon name="script" size={14} /> {item.script?.length ? 'Edit the script and timing' : 'Add a script'}
           </button>
         </div>
@@ -1576,7 +1575,6 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
           <UiIcon name="trash" size={14} /> Remove from the library
         </button>
       )}
-      {script && item.home && <ScriptEditor classId={item.home.classId} mediaId={item.home.mediaId} title={item.name} onClose={() => setScript(false)} onSave={(lines) => archiveUpdate(uid, item, { script: lines })} />}
     </aside>
   );
 }

@@ -1,3 +1,9 @@
+import { RecordingTranscript } from './RecordingTranscript';
+import { effectCaption, recordingScript } from '../lib/recordingScript';
+import { transcribeRecording } from '../lib/speech';
+import { transcriptTimeline } from '../lib/transcriptTimeline';
+import { SpeechComposer } from './SpeechComposer';
+import { speechTimeline, type SpeechInsertion } from '../lib/speechTimeline';
 import { NSelect } from '../components/Select';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -21,7 +27,7 @@ import { UiIcon } from '../components/UiIcon';
 // more files, or record a new track while the others play. Undo, and the usual shortcuts.
 
 // extra: more tracks to start with (a recording session: one per person), each at its own time.
-export type SoundSource = { blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
+export type SoundSource = { timedScript?: ScriptLine[]; blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
 export type Use = { cls: string; lesson: string; task: string };
 export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress: (p: number) => void) => Promise<void> };
@@ -49,9 +55,11 @@ type Pick = { kind: 'clip'; track: string; id: string } | { kind: 'line'; id: st
 
 const newTrack = (name: string, kind: Track['kind'] = 'voice'): Track => ({ id: newId(), name, kind, clips: [], gain: 1, mute: false, solo: false, noise: 0, echo: 0 });
 
-export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folder = '', replace }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string; folder?: string; replace?: ReplaceTarget }) {
+export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folder = '', replace, onSaveScript }: { source: SoundSource; classId: string; onSaved: (s: SavedSound) => void; onBack: () => void; backLabel: string; folder?: string; replace?: ReplaceTarget; onSaveScript?: (lines: ScriptLine[]) => Promise<void> }) {
   const { user } = useAuth();
   const rate = source.buffer.sampleRate;
+  const [speechOpen, setSpeechOpen] = useState(false);
+  const [transcriptOpen, setTranscriptOpen] = useState(!!source.timedScript);
 
   // ------------------------------------------------------------ sources (the raw sounds)
   const sources = useRef<Record<string, Float32Array>>({});
@@ -76,7 +84,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const voice = { ...newTrack(source.extra || source.at !== undefined ? source.name : 'Speaker 1'), clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
     const marks = source.marks ?? [];
     const texts = source.script ?? [];
-    const lines: Line[] = texts.map((text, i) => {
+    let lines: Line[] = texts.map((text, i) => {
       const a = Number.isFinite(marks[i]) ? marks[i] : (length0 * i) / Math.max(1, texts.length);
       const nextT = marks.slice(i + 1).find((m) => Number.isFinite(m));
       const b = Math.min(nextT ?? length0, a + 12, length0);
@@ -89,7 +97,21 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       names.current[id] = x.name;
       return { ...newTrack(x.name), clips: [{ id: newId(), src: id, a: 0, b: x.buffer.duration, at: x.at, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }] };
     });
-    return { tracks: [voice, ...extras, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
+    const scriptTracks: Track[] = [];
+    if (source.timedScript) {
+      const byName = new Map<string, string>();
+      lines = source.timedScript.map((l, i) => {
+        const name = l.who || voice.name;
+        if (!byName.has(name)) {
+          if (!byName.size) { voice.name = name; byName.set(name, voice.id); }
+          else { const tr = newTrack(name); scriptTracks.push(tr); byName.set(name, tr.id); }
+        }
+        const a = l.t ?? (length0 * i / Math.max(1, source.timedScript!.length));
+        const b = l.e ?? source.timedScript![i+1]?.t ?? length0;
+        return { id: newId(), text: l.text, who: l.who, track: byName.get(name), a, b: Math.max(a + .05, b) };
+      });
+    }
+    return { tracks: [voice, ...extras, ...scriptTracks, newTrack('Sound effects', 'sfx')], lines, gain: 1, loud: false };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [p, setP] = useState<Project>(initial);
   const past = useRef<Project[]>([]);
@@ -423,7 +445,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       if (got.recorded && !fx.def) len = got.data.length / rate;
     } else if (!fx.def) len = sources.current[id].length / rate;
     let lane = p.tracks.find((t) => t.kind === 'sfx');
-    const clip: Clip = { id: newId(), src: id, a: 0, b: len, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
+    const clip: Clip = { caption: effectCaption(fx.label), id: newId(), src: id, a: 0, b: len, at: head, gain: 1, fx: '', fadeIn: 0, fadeOut: 0 };
     edit((x) => {
       let tracks = x.tracks;
       if (!lane) (lane = newTrack('Sound effects', 'sfx')), (tracks = [...tracks, lane]);
@@ -528,12 +550,29 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   };
   const recorder = useRef<MediaRecorder | null>(null);
   const [recError, setRecError] = useState('');
+  const [autoScript, setAutoScript] = useState(true);
+  const [transcribing, setTranscribing] = useState(false);
+  const transcriptionLock = useRef(false);
+  const makeTranscript = async (clip: Clip) => {
+    if (transcriptionLock.current) return;
+    transcriptionLock.current = true; setTranscribing(true); setRecError('');
+    try {
+      const raw = sources.current[clip.src];
+      if (!raw) throw Error('Select a recorded clip first.');
+      const segments = await transcribeRecording(raw.slice(Math.round(clip.a * rate), Math.round(clip.b * rate)), rate);
+      edit(x => transcriptTimeline(x, clip.id, segments, newId));
+      setTranscriptOpen(true);
+      setRecError('Script added. Review the words and speaker labels; rename speakers by double-clicking their track names.');
+    } catch (e) { setRecError((e as Error).message + ' Your original audio is kept. Select the clip and choose Generate script to retry.'); }
+    finally { transcriptionLock.current = false; setTranscribing(false); }
+  };
   // The take as it comes in: one peak every 50 ms, drawn on the timeline straight away.
   const [livePeaks, setLivePeaks] = useState<number[]>([]);
   const liveStop = useRef<() => void>(() => {});
   // Recording over a track that has a take: that track is silent while you record, and its script shows.
   const [overTrack, setOverTrack] = useState('');
   const startRec = async () => {
+    if (transcriptionLock.current) return;
     setRecError('');
     cue.current = 0;
     cueAt.current = [];
@@ -637,6 +676,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               : [...x.tracks.filter((t) => t.kind === 'voice'), { ...newTr, clips: [clip] }, ...x.tracks.filter((t) => t.kind !== 'voice')];
             return { ...x, tracks, lines };
           });
+          if (autoScript && !open.size) void makeTranscript(clip);
         } catch {
           setRecError('We couldn’t read the recording. Try again.');
         }
@@ -672,6 +712,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const clipBoard = useRef<{ clip: Clip; kind: Track['kind'] } | null>(null);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
+      if (speechOpen) return;
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, select, [contenteditable=true]')) return;
       const mod = e.metaKey || e.ctrlKey;
@@ -739,6 +780,14 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   };
   const [title, setTitle] = useState(source.name);
   const [error, setError] = useState('');
+  const [scriptSaving, setScriptSaving] = useState(false);
+  const saveScriptOnly = async () => {
+    if (!onSaveScript || scriptSaving) return;
+    setScriptSaving(true); setError('');
+    try { await onSaveScript(recordingScript(p)); setError('Script saved to the linked lessons.'); }
+    catch { setError('The script could not be saved. Please try again.'); }
+    finally { setScriptSaving(false); }
+  };
   const [saving, setSaving] = useState<Progress | null>(null);
   const [asking, setAsking] = useState<Use[] | null | 'loading'>(null);
   const est = (total / 60) * storedPerMinute(quality);
@@ -749,15 +798,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     const out = mixdown(heard.project, heard.sources, rate);
     setSaving({ stage: 'Making it smaller', p: 0.08 });
     const blob = await encodeMp3(out, rate, quality, (q) => setSaving({ stage: 'Making it smaller', p: 0.08 + q * 0.52 }));
-    // Scripts on more than one speaker's track: each line's speaker is its track, so the karaoke
-    // player knows who says what without setting speakers again.
-    const said = p.lines.filter((l) => l.text.trim());
-    const many = new Set(said.map(lineTrack)).size > 1;
-    const trackName = (id: string) => p.tracks.find((t) => t.id === id)?.name.trim() || '';
-    const sc: ScriptLine[] = [...said].sort((a, b) => a.a - b.a).map((l) => {
-      const who = l.who || (many ? trackName(lineTrack(l)) : '');
-      return { text: l.text.trim(), t: +l.a.toFixed(2), e: +l.b.toFixed(2), ...(who ? { who } : {}) };
-    });
+    const sc = recordingScript(p);
     return { blob, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.6 };
   };
   const save = async () => {
@@ -1123,8 +1164,18 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const ticks: number[] = [];
   for (let t = Math.floor(scroll / pps / rulerStep) * rulerStep; t <= (scroll + vw) / pps + rulerStep; t += rulerStep) ticks.push(+t.toFixed(3));
 
+  const insertSpeech = (rows: SpeechInsertion[]) => {
+    stop();
+    const result = speechTimeline(p, rows, rate, newId);
+    for (const src of result.sources) addSource(src.id, src.samples, src.name);
+    edit(() => result.project);
+    setSpeechOpen(false);
+    setHead(Math.min(...result.project.lines.slice(-rows.length).map(l => l.a)));
+  };
   return (
     <div className={'daw sx' + (silMode ? ' sil-mode' : '')}>
+      {transcriptOpen && <RecordingTranscript project={p} onLine={(id, patch) => setLine(id, patch, 'script'+id)} onEffect={(track,id,patch) => setClip(track,id,patch,'caption'+id)} onSeek={t => { setHead(t); playFrom(t); }} onClose={() => setTranscriptOpen(false)} />}
+      <SpeechComposer open={speechOpen} onInsert={insertSpeech} onClose={() => setSpeechOpen(false)} />
       <div className="sx-bar">
         <a href="/archive" className="sx-suite" aria-label="ELT Suite" onClick={(e) => e.preventDefault()}>
           <SuiteMark app="Recording editor" color="#e9a77d" dark />
@@ -1134,6 +1185,10 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         <span style={{ flex: 1 }} />
         {error && <span className="hint warn">{error}</span>}
         <span className="sx-acts">
+          <button type="button" className="sx-act" onClick={() => setTranscriptOpen(!transcriptOpen)} aria-expanded={transcriptOpen}><UiIcon name="script" size={18} /><span>Script</span></button>
+          <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSpeechOpen(true); }}>
+            <UiIcon name="script" size={18} /><span>Create speech</span>
+          </button>
           <button type="button" className={'sx-act' + (keysOpen ? ' on' : '')} onClick={() => setKeysOpen((v) => !v)} aria-expanded={keysOpen}>
             <UiIcon name="help" size={18} />
             <span>Shortcuts</span>
@@ -1142,13 +1197,14 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             <UiIcon name="trash" size={18} />
             <span>Discard</span>
           </button>
+          {onSaveScript && <button type="button" className="sx-act" disabled={scriptSaving || transcribing || !!rec} onClick={() => void saveScriptOnly()}><UiIcon name="script" size={18} /><span>{scriptSaving ? 'Saving…' : 'Save script'}</span></button>}
           {replace && (
-            <button type="button" className="sx-act" onClick={() => setSaveAsk('new')} disabled={!hasSound}>
+            <button type="button" className="sx-act" onClick={() => setSaveAsk('new')} disabled={!hasSound || transcribing || !!rec}>
               <UiIcon name="copyall" size={18} />
               <span>Save as</span>
             </button>
           )}
-          <button type="button" className="sx-act primary" onClick={() => setSaveAsk(replace ? 'replace' : 'new')} disabled={!hasSound}>
+          <button type="button" className="sx-act primary" onClick={() => setSaveAsk(replace ? 'replace' : 'new')} disabled={!hasSound || transcribing || !!rec}>
             <UiIcon name="check" size={18} />
             <span>Save</span>
           </button>
@@ -1268,7 +1324,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
               <i />
             </button>
             <strong>Ready when you are</strong>
-            <span>Press the button or R to start. Press it again, or R, to stop.{cueLines.length ? ' Space starts each line of the script.' : ''}</span>
+            <span>Record your voice, or choose Create speech above. Press the button or R to start. Press it again, or R, to stop.{cueLines.length ? ' Space starts each line of the script.' : ''}</span>
             {recError && <span className="sx-err">{recError}</span>}
           </div>
         )}
@@ -1336,7 +1392,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
                 </span>
                 <span className="sx-lane" data-track={tr.id} onPointerDown={backgroundDown} onContextMenu={laneMenu(tr)}>
                   {tr.clips.map((c) => (
-                    <ClipView key={c.id} c={c} kind="voice" onGain={(g, grp) => setClip(tr.id, c.id, { gain: g }, grp)} data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={names.current[c.src] ?? ''} dragging={dragId === c.id} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
+                    <ClipView key={c.id} c={c} kind="voice" onGain={(g, grp) => setClip(tr.id, c.id, { gain: g }, grp)} data={heard.sources[heard.project.tracks.find((t) => t.id === tr.id)?.clips.find((x) => x.id === c.id)?.src ?? c.src] ?? sources.current[c.src]} rate={rate} pps={pps} scroll={scroll} vw={vw} label={c.caption || names.current[c.src] || ''} dragging={dragId === c.id} picked={pick?.kind === 'clip' && pick.id === c.id} onDown={(m) => clipDown(tr, c, m)} onMenu={clipMenu(tr, c)} />
                   ))}
                   {rec && (recTrack.current ? recTrack.current === tr.id : voice[voice.length - 1].id === tr.id) && <span className="sx-recclip" style={{ left: X(rec.at), width: Math.max(4, livePeaks.length * 0.05 * pps, recNow * pps) }}>
                       <svg width="100%" height="100%" preserveAspectRatio="none" aria-hidden="true">
@@ -1411,6 +1467,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           {pickedClip && pick?.kind === 'clip' ? (
             <>
               <h4>{pickedClip.src === 'silence' ? 'Silence' : pickedTrack?.kind === 'sfx' ? 'Sound effect' : 'Clip'} · {pickedLabel}</h4>
+              {pickedTrack?.kind === 'sfx' && <label className="field"><span>Script caption</span><input value={pickedClip.caption ?? ''} placeholder="(phone rings)" onChange={e => setClip(pick.track, pickedClip.id, { caption: e.target.value }, 'caption' + pickedClip.id)} /><span className="hint">Appears in parentheses at this effect’s time. Moving or trimming the effect updates its caption timing.</span></label>}
               {pickedClip.src === 'silence' && <span className="hint">Drag its right edge to make it longer or shorter. Delete takes it out and closes the gap.</span>}
               {pickedClip.src === 'sfx:beep' && <span className="hint">Drag its right edge to make the beep as long as you need.</span>}
               <span className="hint">
@@ -1594,6 +1651,10 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             </button>
             <input ref={fileIn} type="file" accept="audio/*,video/*" multiple hidden onChange={(e) => (e.target.files && void importFiles(e.target.files), (e.target.value = ''))} />
           </div>
+          <label className="check-row"><input type="checkbox" checked={autoScript} disabled={!!rec || transcribing} onChange={e => setAutoScript(e.target.checked)} /> Generate script after recording</label>
+          <span className="hint">Audio is sent to OpenAI for transcription. Scripted takes keep your existing script.</span>
+          <button type="button" className="btn small-btn" disabled={!!rec || transcribing || !pickedClip || pickedTrack?.kind !== 'voice'} onClick={() => pickedClip && void makeTranscript(pickedClip)}>Generate script for selected clip</button>
+          {transcribing && <span className="hint" role="status">Transcribing and identifying speakers… Your audio is safe.</span>}
           {(importBusy || recError) && <span className="hint">{importBusy || recError}</span>}
           {!rec && <span className="hint sx-phones">Recording over other tracks? Wear headphones, so they aren’t recorded again.</span>}
         </aside>
