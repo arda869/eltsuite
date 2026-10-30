@@ -1,10 +1,11 @@
+import { UiIcon } from './UiIcon';
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // A drop-down in the app's own style, in place of the browser's: the choice with a chevron, and
 // a list under it with a tick by the current one. Arrow keys, Enter and Escape work.
 
-export type Option<T extends string> = { v: T; label: string; hint?: string };
+export type Option<T extends string> = { v: T; label: string; hint?: string; icon?: string };
 
 // search: type to narrow the list (a combobox); on by default for long lists.
 export function Select<T extends string>({ value, options: all, onChange, label, placeholder = 'Choose…', className = '', disabled, search, id }: { value: T; options: Option<T>[]; onChange: (v: T) => void; label: string; placeholder?: string; className?: string; disabled?: boolean; search?: boolean; id?: string }) {
@@ -89,7 +90,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
   return (
     <>
       <button ref={btn} id={id} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? uid + '-list' : undefined} aria-activedescendant={open && !typing && options[hi] ? `${uid}-o${hi}` : undefined} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)} onKeyDown={key}>
-        <span className={'sel-v' + (cur ? '' : ' empty')}>{cur?.label ?? placeholder}</span>
+        {cur?.icon && <UiIcon name={cur.icon} size={16} />}<span className={'sel-v' + (cur ? '' : ' empty')}>{cur?.label ?? placeholder}</span>
         <svg className="sel-chev" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -104,7 +105,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
             {options.map((o, i) => (
               <button key={o.v} id={`${uid}-o${i}`} type="button" tabIndex={-1} role="option" aria-selected={o.v === value} className={'sel-o' + (i === hi ? ' hi' : '') + (o.v === value ? ' on' : '')} onMouseMove={() => mouse.current && i !== hi && setHi(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(o.v)}>
                 <span className="sel-tick" aria-hidden="true">
-                  {o.v === value && (
+                  {o.icon ? <UiIcon name={o.icon} size={16} /> : o.v === value && (
                     <svg width="12" height="12" viewBox="0 0 12 12">
                       <path d="M2.5 6.3 5 8.7 9.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -114,6 +115,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
                   {o.label}
                   {o.hint && <span className="hint">{o.hint}</span>}
                 </span>
+              {o.icon && o.v === value && <span className="sel-choice-check" aria-hidden="true">✓</span>}
               </button>
             ))}
           </div>,

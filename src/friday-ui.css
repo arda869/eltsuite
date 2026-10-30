@@ -1,0 +1,106 @@
+
+/* Wrap editor controls without clipping their popovers at narrow widths. */
+.dp.k-doc .ne-bar.cd-pagebar {
+  box-sizing: border-box;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 4px 0;
+  max-width: calc(100% - 24px);
+  border-radius: 12px;
+  overflow: visible;
+}
+.ne-bar, .toolbar { box-sizing: border-box; flex-wrap: wrap; min-width: 0; }
+.cd-pagebar .pb-g { max-width: 100%; flex-wrap: wrap; }
+.ne-bar button, .toolbar button { flex-shrink: 0; }
+.ne-bar, .cd-bar, .toolbar { color: var(--ink); }
+.cite-tool { box-sizing: border-box; max-width: calc(100vw - 24px); }
+.cite-group { display: flex; flex-direction: column; }
+.cite-group + .cite-group { border-top: 1px solid var(--hair); padding-top: 8px; margin-top: 8px; }
+.cite-group-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px; color: var(--muted); }
+.cite-group-title b { overflow-wrap: anywhere; }
+.cite-group-title a { flex-shrink: 0; color: var(--accent-text); font-size: 11px; }
+
+/* Printed pages stay light in either app theme; their text and embedded
+   controls must use the paper palette rather than the surrounding dark UI. */
+.pg-paper {
+  --ink: #23211d;
+  --muted: #69645c;
+  --soft: #777168;
+  --faint: #817a70;
+  --paper: #ffffff;
+  --paper-soft: #fafaf8;
+  --bg: #ffffff;
+  --surface: #f4f4f3;
+  --selected: #efefee;
+  --track: #ececeb;
+  --hair: rgba(35, 33, 29, .12);
+  --hair-strong: rgba(35, 33, 29, .2);
+  --on-ink: #ffffff;
+  color: var(--ink);
+  caret-color: var(--ink);
+  color-scheme: light;
+}
+
+.dp.k-doc .ne-bar.cd-pagebar.single-toolbar {
+  flex-wrap: nowrap;
+  gap: 0;
+  width: min(1280px, calc(100% - 24px));
+  max-width: calc(100% - 24px);
+}
+.single-toolbar .overflow-group { display: inline-flex; flex: none; }
+.single-toolbar .pb-g { flex-wrap: nowrap; }
+.single-toolbar .overflow-toggle { flex: none; margin-left: auto; white-space: nowrap; padding: 0 10px; height: 32px; }
+.overflow-tools {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 0;
+  width: max-content; max-width: min(520px, calc(100vw - 24px));
+  padding: 10px; box-sizing: border-box; border: 1px solid var(--hair);
+  border-radius: 12px; background: var(--paper); color: var(--ink);
+  box-shadow: 0 12px 28px -10px rgba(0,0,0,.25);
+  visibility: hidden; pointer-events: none;
+}
+.overflow-tools.is-open { visibility: visible; pointer-events: auto; }
+.overflow-tools .pb-g { border-left: 0; }
+
+.document-menubar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 4px 24px; background: var(--paper); color: var(--ink); position: relative; z-index: 12; }
+.document-menu { position: relative; }
+.document-menu-trigger { border: 0; background: transparent; color: var(--ink); font: 13px var(--sans); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.document-menu-trigger:hover, .document-menu-trigger.on { background: var(--surface); }
+.document-menu .document-menu-popup { position: absolute; top: calc(100% + 4px); left: 0; min-width: 240px; max-width: calc(100vw - 24px); }
+.single-toolbar .pb-g, .single-toolbar .hl-tool { align-items: center; }
+.dp .cd-pagebar .ne-btn, .cd-pagebar .hl-tool > .tool, .cd-pagebar .tool { display: inline-flex; align-items: center; justify-content: center; height: 32px; box-sizing: border-box; vertical-align: middle; }
+.cd-pagebar .hl-tool { display: inline-flex; vertical-align: middle; }
+.cd-pagebar .tc-icon { line-height: 1; }
+.pg-paper[data-paper-theme='black'], :root[data-theme='dark'] .pg-paper[data-paper-theme='auto'] {
+  --ink: #ece7df; --muted: #b1aba2; --soft: #a8a29a; --faint: #999188;
+  --paper: #191816; --paper-soft: #22211e; --bg: #191816;
+  --surface: #2b2926; --selected: #34322e; --track: #3a3834;
+  --hair: rgba(236,231,223,.14); --hair-strong: rgba(236,231,223,.25);
+  --on-ink: #191816;
+  background: #191816; color: var(--ink); color-scheme: dark;
+}
+@media print { .pg-paper { --ink: #23211d !important; --muted: #69645c !important; background: #fff !important; color: #23211d !important; } .document-menubar { display: none; } }
+.cd { position: relative; }
+.document-page-setup { position: absolute; top: 38px; left: 24px; z-index: 30; }
+.document-page-setup .pg-btn { display: none; }
+.document-page-setup .pg-pop { left: 0; right: auto; top: 0; max-width: calc(100vw - 48px); box-sizing: border-box; }
+
+/* The document chrome spans the window; content keeps its own page margins. */
+.dp.k-doc .dp-main { padding-left: 0; padding-right: 0; }
+.dp.k-doc .dp-main > .cd, .dp.k-doc .dp-main > * > .cd { max-width: none; }
+.dp.k-doc .document-menubar { box-sizing: border-box; width: 100%; padding-left: 8px; padding-right: 8px; }
+.dp.k-doc .ne-bar.cd-pagebar.single-toolbar { width: 100%; max-width: 100%; margin-left: 0; margin-right: 0; border-radius: 0; }
+.dp.k-doc .cd-main { padding-top: 16px; }
+.dp.k-doc .cd-side { margin-right: 16px; }
+.document-menu-check { margin-left: auto; padding-left: 8px; color: var(--accent-text); }
+.document-menu-popup .ctx-l { flex: 1; }
+.document-citation { position: absolute; left: 120px; top: 36px; z-index: 30; }
+.document-citation > .hl-tool > button { display: none; }
+.document-citation .cite-tool { z-index: 50; }
+.inv-details summary { cursor: pointer; color: var(--accent-text); font: 600 13px var(--sans); padding: 10px 0; }
+.inv-benefits { padding-left: 20px; line-height: 1.8; }
+
+/* App-specific document accents follow an organisation's chosen brand colour. */
+:root[data-org-brand] .dp { --dp: var(--brand); }
+.cd-mode .sel { display: inline-flex; align-items: center; gap: 7px; width: auto; }
+.sel-choice-check { margin-left: auto; color: var(--accent-text); }

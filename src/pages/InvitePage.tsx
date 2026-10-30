@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { ADMIN_CAN, ADMIN_SEE, acceptInvite, declineInvite, useInvite, type OrgInvite } from '../lib/admin';
+import { ADMIN_CAN, ADMIN_SEE, acceptInvite, useInvite, type OrgInvite } from '../lib/admin';
 import { AFTER_SIGN_IN } from './SharedPage';
 import { SignIn } from './SignIn';
 import { Loader } from '../components/Loader';
@@ -73,11 +73,12 @@ function About({ inv }: { inv: OrgInvite }) {
   return (
     <div className="intro inv-intro" style={{ ['--org' as string]: inv.color || 'var(--accent)' }}>
       {inv.logo ? <img className="inv-logo" src={inv.logo} alt="" /> : <Wordmark big />}
-      <span className="eyebrow">An invitation from {inv.orgName}</span>
+      <h1>Your whole job in one account</h1>
       <p>
-        {inv.byName || 'An admin'} {inv.existing ? `would like you to join ${inv.orgName}. Sign in as ${inv.email} to answer.` : `has made a place for you at ${inv.orgName}. Make your account with ${inv.email}, or use Google with it.`}
+        {inv.byName || 'An admin'} {inv.existing ? `would like you to join ${inv.orgName}. Sign in as ${inv.email} to answer.` : `has made a place for you at ${inv.orgName}. Create your account with ${inv.email} to start.`}
       </p>
-      <What inv={inv} />
+      <ul className="inv-benefits"><li>Plan in minutes, with questions that mark themselves.</li><li>Teach it live: every learner’s screen follows yours.</li><li>Print it beautifully, like a coursebook page.</li><li>See who needs help, at a glance.</li></ul>
+      <details className="inv-details"><summary>What {inv.orgName} can see and set</summary><What inv={inv} /></details>
     </div>
   );
 }
@@ -119,21 +120,18 @@ function Answer({ inv, me }: { inv: OrgInvite; me: { uid: string; email: string;
       setBusy('');
     }
   };
-  const no = async () => {
-    setBusy('no');
-    await declineInvite(inv, me.uid).catch(() => setError('That didn’t work. Try again.'));
-    setBusy('');
-  };
+  const no = () => nav('/');
+
   return (
     <Frame inv={inv}>
       <span className="eyebrow">An invitation</span>
-      <h1>Join {inv.orgName}?</h1>
+      <h1>Join your colleagues at {inv.orgName}?</h1>
       <p>
         {inv.byName || 'An admin'} would like you to join {inv.orgName}
         {inv.title ? `, as ${inv.title}` : ''}
-        {inv.admin ? ', and to be one of its admins, with the Organisation admin app' : ''}. Your classes, lessons and files stay yours.
+        {inv.admin ? ', and to be one of its admins' : ''}. Sharing lessons and folders with your colleagues there takes one step, and your classes, lessons and files stay yours.
       </p>
-      <What inv={inv} />
+      <details className="inv-details"><summary>What {inv.orgName} can see and set</summary><What inv={inv} /></details>
       {error && (
         <span className="error" role="alert">
           {error}
@@ -141,7 +139,7 @@ function Answer({ inv, me }: { inv: OrgInvite; me: { uid: string; email: string;
       )}
       <span className="inv-acts">
         <button type="button" className="btn" disabled={!!busy} onClick={() => void no()}>
-          {busy === 'no' ? 'One moment…' : 'No, thank you'}
+          {busy === 'no' ? 'One moment…' : 'Not now'}
         </button>
         <button type="button" className="btn primary" disabled={!!busy} onClick={() => void yes()}>
           {busy === 'yes' ? 'Joining…' : `Join ${inv.orgName}`}

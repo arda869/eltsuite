@@ -38,7 +38,7 @@ export function frame({ title, preview = '', body, footer = '', brand = {} }) {
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(preview)}&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
 <table role="presentation" class="outer" width="100%" cellpadding="0" cellspacing="0" style="background:${C.bg}"><tr><td align="center" style="padding:28px 12px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px">
-    <tr><td style="padding:0 4px 18px">${logo}</td></tr>
+    <tr><td style="padding:0 4px 18px"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td bgcolor="#ffffff" style="background:#ffffff;padding:8px 10px;border-radius:12px">${logo}</td></tr></table></td></tr>
     <tr><td class="card" style="background:${C.paper};border-radius:16px;overflow:hidden;border:1px solid ${C.hair}">
       <div style="height:4px;background:${accent}"></div>
       ${body}
@@ -61,15 +61,15 @@ export const p = (html) => `<p class="ink" style="margin:0 0 14px;font:16px/1.65
 export const small = (html) => `<p class="muted" style="margin:0 0 12px;font:14px/1.6 ${SANS};color:${C.muted}">${html}</p>`;
 export const hero = (src, alt) => `<img src="${esc(src)}" alt="${esc(alt)}" width="600" style="width:100%;max-width:600px;height:auto;display:block;border:0">`;
 export const button = (href, label, color = C.accent) =>
-  `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0"><tr><td class="pulse" style="border-radius:10px;background:${color}"><a class="btn" href="${esc(href)}" style="display:inline-block;padding:13px 24px;font:700 16px/1 ${SANS};color:#fff;text-decoration:none;border-radius:10px">${esc(label)}</a></td></tr></table>`;
+  `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0"><tr><td class="pulse" style="border-radius:10px;background:${color}"><a class="btn" href="${esc(href)}" style="display:inline-block;padding:13px 24px;font:700 16px/1 ${SANS};color:${C.ink};text-decoration:none;border-radius:10px">${esc(label)}</a></td></tr></table>`;
 export const textLink = (href, label) => `<a href="${esc(href)}" style="color:${C.accentText};font:700 15px ${SANS};text-decoration:underline">${esc(label)}</a>`;
 export const callout = (html, accent = C.accent) =>
   `<div class="soft" style="margin:18px 0;padding:16px 18px;background:${C.soft};border-left:4px solid ${accent};border-radius:8px;font:15px/1.6 ${SANS};color:${C.ink}">${html}</div>`;
 export const code = (c) =>
-  `<div style="margin:18px 0;text-align:center"><span style="display:inline-block;padding:14px 26px;border:2px dashed ${C.accent};border-radius:12px;font:800 28px/1 ${SANS};letter-spacing:.18em;color:${C.ink}">${esc(c)}</span></div>`;
+  `<div style="margin:18px 0;text-align:center"><span class="ink" style="display:inline-block;padding:14px 26px;border:2px dashed ${C.accent};border-radius:12px;font:800 28px/1 ${SANS};letter-spacing:.18em;color:${C.ink}">${esc(c)}</span></div>`;
 export const list = (items) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 16px">${items
-    .map((t, i) => `<tr><td valign="top" style="padding:4px 12px 4px 0"><span style="display:inline-block;width:24px;height:24px;border-radius:12px;background:${C.accent};color:#fff;font:800 13px/24px ${SANS};text-align:center">${i + 1}</span></td><td class="ink" style="padding:4px 0;font:16px/1.55 ${SERIF};color:${C.ink}">${t}</td></tr>`)
+    .map((t, i) => `<tr><td valign="top" style="padding:4px 12px 4px 0"><span style="display:inline-block;width:24px;height:24px;border-radius:12px;background:${C.accent};color:${C.ink};font:800 13px/24px ${SANS};text-align:center">${i + 1}</span></td><td class="ink" style="padding:4px 0;font:16px/1.55 ${SERIF};color:${C.ink}">${t}</td></tr>`)
     .join('')}</table>`;
 export const chips = (opts) =>
   `<div style="margin:10px 0 18px">${opts.map(([label, href]) => `<a class="chip" href="${esc(href)}" style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1.5px solid ${C.accent};border-radius:20px;font:700 14px ${SANS};color:${C.accentText};text-decoration:none">${esc(label)}</a>`).join('')}</div>`;

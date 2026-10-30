@@ -1,3 +1,4 @@
+import { NSelect } from '../components/Select';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Mark, mergeAttributes, type Editor } from '@tiptap/react';
 import type * as Y from 'yjs';
@@ -12,7 +13,7 @@ import { useDismiss } from '../lib/useDismiss';
 export type PageSize = 'a4' | 'letter' | 'a5';
 export type Margins = 'narrow' | 'normal' | 'wide';
 export type Layout = { paged: boolean; size: PageSize; margins: Margins; font: string; pt: number };
-export const LAYOUT_DEFAULT: Layout = { paged: false, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12 };
+export const LAYOUT_DEFAULT: Layout = { paged: true, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12 };
 
 // At 96 pixels to the inch, as the browser prints.
 export const SIZES: Record<PageSize, { label: string; w: number; h: number; css: string }> = {
@@ -67,9 +68,10 @@ export function useLayout(doc: Y.Doc | undefined) {
 }
 
 // The page setup button and, on a paged document, the font and size of the selected text.
-export function PageTools({ editor, layout, setLayout, part = 'both' }: { editor: Editor; layout: Layout; setLayout: (p: Partial<Layout>) => void; part?: 'both' | 'setup' | 'fonts' }) {
+export function PageTools({ editor, layout, setLayout, part = 'both', openRequest = 0 }: { editor: Editor; layout: Layout; setLayout: (p: Partial<Layout>) => void; part?: 'both' | 'setup' | 'fonts'; openRequest?: number }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
+  useEffect(() => { if (openRequest) setOpen(true); }, [openRequest]);
   const cur = editor.getAttributes('fontStyle') as { family?: string | null; pt?: number | null };
   const apply = (p: { family?: string | null; pt?: number | null }) => {
     const next = { family: cur.family ?? null, pt: cur.pt ?? null, ...p };
@@ -87,25 +89,25 @@ export function PageTools({ editor, layout, setLayout, part = 'both' }: { editor
     <>
       {layout.paged && part !== 'setup' && (
         <span className="pg-fonts">
-          <select className="pg-sel pg-font" aria-label="Font" value={cur.family ?? ''} onChange={(e) => apply({ family: e.target.value || null })} onMouseDown={(e) => e.stopPropagation()}>
+          <NSelect className="pg-sel pg-font" aria-label="Font" value={cur.family ?? ''} onChange={(e) => apply({ family: e.target.value || null })} onMouseDown={(e) => e.stopPropagation()}>
             <option value="">{layout.font}</option>
             {PAGE_FONTS.map((f) => (
               <option key={f} value={f} style={{ fontFamily: f }}>
                 {f}
               </option>
             ))}
-          </select>
-          <select className="pg-sel pg-pt" aria-label="Font size" value={cur.pt ?? ''} onChange={(e) => apply({ pt: Number(e.target.value) || null })}>
+          </NSelect>
+          <NSelect className="pg-sel pg-pt" aria-label="Font size" value={cur.pt ?? ''} onChange={(e) => apply({ pt: Number(e.target.value) || null })}>
             <option value="">{layout.pt}</option>
             {PAGE_SIZES_PT.map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
             ))}
-          </select>
+          </NSelect>
         </span>
       )}
-      {part !== 'fonts' && <span className="pg-wrap" ref={ref}>
+      {part !== 'fonts' && <span className="pg-wrap" ref={ref} onMouseDown={(e) => e.stopPropagation()}>
         <button type="button" className={'tool pg-btn' + (open ? ' on' : '')} aria-expanded={open} onMouseDown={(e) => e.preventDefault()} onClick={() => setOpen((v) => !v)} data-tip="Pageless or pages, page size, margins and font">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M6 3h9l4 4v14H6zM15 3v4h4" />
@@ -129,43 +131,43 @@ export function PageTools({ editor, layout, setLayout, part = 'both' }: { editor
               <div className="pg-grid">
                 <label>
                   <span>Page size</span>
-                  <select className="pg-sel" value={layout.size} onChange={(e) => setLayout({ size: e.target.value as PageSize })}>
+                  <NSelect aria-label="Page size" className="pg-sel" value={layout.size} onChange={(e) => setLayout({ size: e.target.value as PageSize })}>
                     {Object.entries(SIZES).map(([k, v]) => (
                       <option key={k} value={k}>
                         {v.label}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
                 <label>
                   <span>Margins</span>
-                  <select className="pg-sel" value={layout.margins} onChange={(e) => setLayout({ margins: e.target.value as Margins })}>
+                  <NSelect aria-label="Margins" className="pg-sel" value={layout.margins} onChange={(e) => setLayout({ margins: e.target.value as Margins })}>
                     {Object.entries(MARGINS).map(([k, v]) => (
                       <option key={k} value={k}>
                         {v.label}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
                 <label>
                   <span>Font</span>
-                  <select className="pg-sel" value={layout.font} onChange={(e) => setLayout({ font: e.target.value })}>
+                  <NSelect aria-label="Default font" className="pg-sel" value={layout.font} onChange={(e) => setLayout({ font: e.target.value })}>
                     {PAGE_FONTS.map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
                 <label>
                   <span>Size</span>
-                  <select className="pg-sel" value={layout.pt} onChange={(e) => setLayout({ pt: Number(e.target.value) })}>
+                  <NSelect aria-label="Default font size" className="pg-sel" value={layout.pt} onChange={(e) => setLayout({ pt: Number(e.target.value) })}>
                     {PAGE_SIZES_PT.filter((n) => n <= 18).map((n) => (
                       <option key={n} value={n}>
                         {n} pt
                       </option>
                     ))}
-                  </select>
+                  </NSelect>
                 </label>
               </div>
             )}
@@ -179,7 +181,7 @@ export function PageTools({ editor, layout, setLayout, part = 'both' }: { editor
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children }: { layout: Layout; children: ReactNode }) {
+export function Paper({ layout, children, appearance = 'auto' }: { layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black' }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
   const s = SIZES[layout.size];
@@ -203,7 +205,7 @@ export function Paper({ layout, children }: { layout: Layout; children: ReactNod
   }, [s.css, m]);
   return (
     <div className="pg-desk">
-      <div className="pg-paper" style={{ width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt` }}>
+      <div className="pg-paper" data-paper-theme={appearance} style={{ width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt` }}>
         <div ref={ref} className="pg-text">
           {children}
         </div>

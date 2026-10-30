@@ -81,6 +81,51 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Document menus, page appearance and citations': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/dev.html?as=teacher&friday');
+    await see(s.p, '.hm-hero', 'the fixture session');
+    const d = await newFile(s, 'Collab document');
+    await see(d, '.pg-paper', 'pages by default');
+    await d.getByRole('textbox', { name: 'Document text', exact: true }).fill('Reading notes ');
+    await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
+    await see(d, 'text=Classroom research', 'journal grouping');
+    await see(d, 'a[aria-label="Open journal: Language teaching"]', 'the journal link');
+    await d.getByRole('searchbox', { name: 'Find a source' }).fill('Thornbury');
+    await d.getByRole('textbox', { name: 'Page (optional)', exact: true }).fill('24');
+    await d.getByRole('button', { name: 'Thornbury (2006) An A–Z of ELT', exact: true }).click();
+    await see(d, '.cite:has-text("Thornbury, 2006, p. 24")', 'the inserted citation');
+    await d.getByRole('menuitem', { name: 'Insert', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Cite a source…', exact: true }).click();
+    await d.getByRole('button', { name: 'Add the reference list at the end', exact: true }).click();
+    await d.getByRole('button', { name: 'Document mode', exact: true }).click();
+    await d.getByRole('option', { name: 'Viewing', exact: true }).click();
+    await see(d, '.cd-view .cite:has-text("Thornbury, 2006, p. 24")', 'the citation in viewing mode');
+    await see(d, '.cd-view .reflist:has-text("An A–Z of ELT")', 'the reference list in viewing mode');
+    await d.getByRole('button', { name: 'Document mode', exact: true }).click();
+    await d.getByRole('option', { name: 'Editing', exact: true }).click();
+    await d.setViewportSize({ width: 760, height: 850 });
+    const fits = await d.getByRole('toolbar', { name: 'Formatting' }).evaluate((el) => el.scrollWidth <= el.clientWidth && getComputedStyle(el).flexWrap === 'nowrap');
+    if (!fits) throw new Error('Formatting toolbar overflows or wraps.');
+    for (const [label, expected] of [['white', 'rgb(255, 255, 255)'], ['black', 'rgb(25, 24, 22)']]) {
+      await d.getByRole('menuitem', { name: 'View', exact: true }).click();
+      await d.getByRole('menuitemradio', { name: 'Page colour: ' + label, exact: true }).click();
+      const actual = await d.locator('.pg-paper').evaluate((el) => getComputedStyle(el).backgroundColor);
+      if (actual !== expected) throw new Error('Incorrect page colour: ' + actual);
+    }
+    await d.reload();
+    await see(d, '.pg-paper[data-paper-theme="black"]', 'the saved page appearance');
+    await see(d, '.cite:has-text("Thornbury, 2006, p. 24")', 'the saved citation');
+    await s.p.goto(BASE + '/dev.html?as=teacher&friday-brand');
+    await see(s.p, '.hm-hero', 'the organisation-brand fixture');
+    await d.reload();
+    await d.waitForFunction(() => document.documentElement.dataset.orgBrand === 'true');
+    const brand = await d.locator('.dp').evaluate((el) => getComputedStyle(el).getPropertyValue('--dp').trim());
+    if (brand !== '#2f7f6f') throw new Error('Document accent did not follow organisation colour: ' + brand);
+    await axe(d, 'Collab menus', A11Y_FOUND);
+    return s;
+  },
   'Teacher home': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/');

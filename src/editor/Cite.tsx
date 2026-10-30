@@ -1,16 +1,16 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePopPos } from './usePopPos';
 import { CITE_STYLES, inText, isNumbered, orderFor, refsTitle, shortName, type CiteStyle, type Source } from '../lib/cite';
 import { useAuth } from '../lib/auth';
-import { useMyDocs } from '../lib/sharedDocs';
+import { type SharedDoc, useMyDocs } from '../lib/sharedDocs';
 import { allSources, Ref, type ReadSource } from '../pd/PdReading';
 
 // Citations in a document, from the teacher's PD reading, and the reference list made from them.
 
-export const CiteStyleContext = createContext<CiteStyle>('apa');
-export const useCiteStyle = () => useContext(CiteStyleContext);
+import { useCiteStyle } from '../lib/citeContext';
+export { CiteStyleContext, useCiteStyle } from '../lib/citeContext';
 
 const strip = (s: ReadSource | Source): Source => {
   const { notes, sections, paged, order, ...rest } = s as ReadSource;
@@ -128,32 +128,36 @@ export const RefListNode = Node.create({
 });
 
 // The toolbar button: find a source in your Reading Journal and cite it.
-export function CiteTool({ editor }: { editor: Editor }) {
+export function CiteTool({ editor, openRequest = 0 }: { editor: Editor; openRequest?: number }) {
   const { user } = useAuth();
   const { mine, withMe } = useMyDocs(user?.uid);
   const style = useCiteStyle();
   const [open, setOpen] = useState(false);
+  useEffect(() => { if (openRequest) setOpen(true); }, [openRequest]);
+  useEffect(() => { if (!open) return; const close = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false); document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close); }, [open]);
   // "/" then Citation opens this.
   useEffect(() => {
     const f = () => setOpen(true);
     window.addEventListener('ll:cite', f);
     return () => window.removeEventListener('ll:cite', f);
   }, []);
-  const [all, setAll] = useState<{ src: ReadSource; file: { title: string } }[] | null>(null);
+  const [all, setAll] = useState<{ src: ReadSource; file: SharedDoc }[] | null>(null);
   const [q, setQ] = useState('');
   const [page, setPage] = useState('');
   const ref = useRef<HTMLSpanElement>(null);
   const pos = usePopPos(ref, open, 360);
-  const files = useMemo(() => [...(mine ?? []), ...(withMe ?? [])], [mine, withMe]);
+  const files = useMemo(() => [...new Map([...(mine ?? []), ...(withMe ?? [])].map((f) => [f.id, f])).values()], [mine, withMe]);
   useEffect(() => {
     if (!open) return;
-    void allSources(files).then(setAll);
+    let active = true;
+    void allSources(files).then((list) => active && setAll(list));
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as globalThis.Node) && setOpen(false);
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    return () => { active = false; document.removeEventListener('mousedown', close); };
   }, [open, files]);
   const s = q.trim().toLowerCase();
   const found = (all ?? []).filter((x) => !s || `${shortName(x.src)} ${x.src.title} ${x.file.title}`.toLowerCase().includes(s));
+  const groups = [...new Map(found.map((x) => [x.file.id, x.file])).values()].sort((a, b) => a.title.localeCompare(b.title));
   let hasList = false;
   editor.state.doc.descendants((n) => {
     if (n.type.name === 'refList') hasList = true;
@@ -175,9 +179,11 @@ export function CiteTool({ editor }: { editor: Editor }) {
             {all === null ? (
               <span className="hint">Opening your Reading Journal…</span>
             ) : found.length ? (
-              found.map((x) => (
+              groups.map((file) => (<span className="cite-group" key={file.id}>
+                <span className="cite-group-title"><b>{file.title}</b><a href={'/doc/' + file.id} target="_blank" rel="noopener noreferrer" aria-label={'Open journal: ' + file.title}>Open journal ↗</a></span>
+                {found.filter((x) => x.file.id === file.id).map((x) => (
                 <button
-                  key={x.file.title + x.src.id}
+                  key={x.file.id + x.src.id}
                   type="button"
                   className="cite-row"
                   onMouseDown={(e) => e.preventDefault()}
@@ -185,9 +191,8 @@ export function CiteTool({ editor }: { editor: Editor }) {
                 >
                   <b>{shortName(x.src)}</b>
                   <span>{x.src.title}</span>
-                  <span className="hint">{x.file.title}</span>
                 </button>
-              ))
+              ))}</span>))
             ) : (
               <span className="hint cite-empty">{all.length ? 'Nothing matches.' : 'No sources yet. Add them in a Reading Journal file, in the resources library.'}</span>
             )}

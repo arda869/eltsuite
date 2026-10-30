@@ -1,4 +1,7 @@
-import { NSelect } from '../components/Select';
+import { DocumentMenuBar } from '../components/DocumentMenuBar';
+import { tell } from '../lib/ask';
+import { OverflowToolbar } from '../components/OverflowToolbar';
+import { NSelect, Select } from '../components/Select';
 import { BUILD, NewerGuard, OlderCopyBanner } from './guard';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
@@ -40,7 +43,7 @@ import { newId } from '../lib/tasks';
 import { UiIcon } from '../components/UiIcon';
 import { claimStart, collabRef, setLock, watchFlags } from './provider';
 import { CommentMark, commentSpots, listSuggestions, resolveAll, resolveSuggestion, SuggestDel, SuggestIns, Suggestions, type Author, type CollabMode } from './suggest';
-import { downloadDocx, wordCount, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
+import { downloadDocx, wordCount, printDoc, EXPORT_DEFAULT, FONTS, type ExportOpts } from './export';
 import { CiteTool, useCiteStyle } from '../editor/Cite';
 import { useCollabSession, type CollabSession } from './session';
 import { ShowMarks, marksKey } from './marks';
@@ -146,7 +149,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const [synced, setSynced] = useState(false);
   const [defOpen, setDefOpen] = useState(false);
   const [big, setBig] = useState(display === 'full' ? false : false);
+  const [paperAppearance, setPaperAppearance] = useState<'auto' | 'white' | 'black'>(() => {
+    try { const v = localStorage.getItem('ll.paperAppearance'); return v === 'white' || v === 'black' ? v : 'auto'; } catch { return 'auto'; }
+  });
+  const choosePaper = (value: 'auto' | 'white' | 'black') => { setPaperAppearance(value); try { localStorage.setItem('ll.paperAppearance', value); } catch { /* optional preference */ } };
   const [gallery, setGallery] = useState(false);
+  const [citationRequest, setCitationRequest] = useState(0);
+  const [pageSetupRequest, setPageSetupRequest] = useState(0);
   const [wcOpen, setWcOpen] = useState(false);
   const [personAt, setPersonAt] = useState<{ p: { name: string; color: string; uid?: string }; r: DOMRect } | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -356,7 +365,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
   const ALIGN_D = { left: 'M4 6h16M4 10h10M4 14h16M4 18h10', center: 'M4 6h16M7 10h10M4 14h16M7 18h10', right: 'M4 6h16M10 10h10M4 14h16M10 18h10', justify: 'M4 6h16M4 10h16M4 14h16M4 18h16' };
   // The writing tools on a document page, in groups: history, style, text, lists, layout, language, writing, then comment and insert.
   const PageBar = () => (
-    <div className="ne-bar cd-bar cd-pagebar" role="toolbar" aria-label="Formatting">
+    <OverflowToolbar>
       <span className="pb-g">
         {B(<SV d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), `Undo (${keyLabel('Mod+Z')})`, !editor.can().undo())}
         {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
@@ -397,7 +406,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
       </span>
       <span className="pb-g">
         {B(<span className="ws-ic">¶</span>, !!marksKey.getState(editor.state), () => editor.view.dispatch(editor.state.tr.setMeta(marksKey, !marksKey.getState(editor.state))), 'Show spaces and paragraph marks')}
-        {profileTeacher && <CiteTool editor={editor} />}
+        {!page && profileTeacher && <CiteTool editor={editor} />}
         <span className="cd-wc-wrap">
           {B(<span className="cd-wc-ic">123</span>, wcOpen, () => setWcOpen((v) => !v), 'Word count')}
           {wcOpen && (
@@ -422,49 +431,18 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           <UiIcon name="plus" size={14} /> Insert
         </button>
       </span>
-    </div>
+    </OverflowToolbar>
   );
-  const modeCtl = locked ? (
-    <span className="cd-locked">
-      <UiIcon name="lock" size={14} /> Locked
-    </span>
-  ) : allowed.length > 1 ? (
-    <span className="cd-mode">
-      <NSelect value={mode} onChange={(e) => setMode(e.target.value as CollabMode)} aria-label="Mode">
-        {allowed.map((m) => (
-          <option key={m} value={m}>
-            {MODE_LABEL[m].label}
-          </option>
-        ))}
-      </NSelect>
-    </span>
-  ) : (
-    <span className="cd-mode-one">{MODE_LABEL[eff].label}</span>
-  );
-  const modeSeg =
-    !locked && allowed.length > 1 ? (
-      <span className="cd-modeseg" role="radiogroup" aria-label="Mode">
-        {allowed.map((m) => (
-          <button key={m} type="button" role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''} onClick={() => setMode(m)} aria-label={MODE_LABEL[m].label} data-tip={MODE_LABEL[m].about}>
-            <UiIcon name={MODE_LABEL[m].icon} size={15} />
-            <span>{MODE_LABEL[m].label}</span>
-          </button>
-        ))}
-      </span>
-    ) : (
-      modeCtl
-    );
   const pageTools0 = page && toolSlot
     ? createPortal(
         <>
           <PeopleHere people={people} me={me.uid} label="In the document now" />
-          {writing && <PageTools editor={editor} layout={layout} setLayout={setLayout} part="setup" />}
+
           <button type="button" className={'dp-ib cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
             <UiIcon name="discuss" size={17} />
             {sugg.length + open.length > 0 && <b>{sugg.length + open.length}</b>}
           </button>
-          {(teacher || canDownload) && <DownloadMenu onExport={(kind, o) => (kind === 'word' ? void downloadDocx(editor.getJSON(), title, { ...o, style: citeStyle }) : void makePdf({ ...o, style: citeStyle }))} />}
-          {modeSeg}
+          {locked ? <span className="cd-locked"><UiIcon name="lock" size={14} /> Locked</span> : <span className="cd-mode"><Select value={mode} options={allowed.map((m) => ({ v: m, label: MODE_LABEL[m].label, icon: MODE_LABEL[m].icon }))} onChange={setMode} label="Document mode" search={false} /></span>}
         </>,
         toolSlot,
       )
@@ -515,7 +493,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
             + Insert
           </button>
         )}
-        {page && writing && profileTeacher && <CiteTool editor={editor} />}
+        
         {page && (
           <button type="button" className={'cd-icon cd-cmt' + (showSide ? ' on' : '')} onClick={() => setSide(showSide ? 'none' : 'notes')} aria-label="Comments and suggestions" data-tip="Comments and suggestions">
             <UiIcon name="discuss" size={16} />
@@ -529,6 +507,49 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           </button>
         ) : null}
       </div>}
+      {page && writing && <span className="document-page-setup"><PageTools editor={editor} layout={layout} setLayout={setLayout} part="setup" openRequest={pageSetupRequest} /></span>}
+      {page && writing && profileTeacher && <span className="document-citation"><CiteTool editor={editor} openRequest={citationRequest} /></span>}
+      {page && <DocumentMenuBar menus={[
+        { label: 'File', items: [
+          { label: 'Page setup…', disabled: !writing, run: () => setPageSetupRequest((n) => n + 1) }, 'sep',
+          { label: 'Download Word', disabled: !(teacher || canDownload), run: () => void downloadDocx(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle }) },
+          { label: 'Download PDF', disabled: !(teacher || canDownload), run: () => void makePdf({ ...EXPORT_DEFAULT, style: citeStyle }) },
+          'sep', { label: 'Print', disabled: !(teacher || canDownload), run: () => printDoc(editor.getJSON(), title, { ...EXPORT_DEFAULT, style: citeStyle }) },
+        ] },
+        { label: 'Edit', items: [
+          { label: 'Undo', hint: keyLabel('Mod+Z'), disabled: !writing || !editor.can().undo(), run: () => { editor.chain().focus().undo().run(); } },
+          { label: 'Redo', hint: keyLabel('Mod+Shift+Z'), disabled: !writing || !editor.can().redo(), run: () => { editor.chain().focus().redo().run(); } },
+          'sep', { label: 'Select all', hint: keyLabel('Mod+A'), run: () => { editor.chain().focus().selectAll().run(); } },
+        ] },
+        { label: 'View', items: [
+          { label: 'Pages', checked: layout.paged, disabled: !writing, run: () => setLayout({ paged: true }) },
+          { label: 'Pageless', checked: !layout.paged, disabled: !writing, run: () => setLayout({ paged: false }) }, 'sep',
+          { label: 'Page colour: match app theme', checked: paperAppearance === 'auto', run: () => choosePaper('auto') },
+          { label: 'Page colour: white', checked: paperAppearance === 'white', run: () => choosePaper('white') },
+          { label: 'Page colour: black', checked: paperAppearance === 'black', run: () => choosePaper('black') },
+          'sep', { label: 'Comments and suggestions', run: () => setSide(showSide ? 'none' : 'notes') },
+          { label: 'Show paragraph marks', checked: !!marksKey.getState(editor.state), run: () => editor.view.dispatch(editor.state.tr.setMeta(marksKey, !marksKey.getState(editor.state))) },
+        ] },
+        { label: 'Insert', items: [
+          ...(profileTeacher ? [{ label: 'Cite a source…', icon: 'classes', disabled: !writing, run: () => setCitationRequest((n) => n + 1) }] : []),
+          { label: 'Browse all elements…', disabled: !writing, run: () => setGallery(true) },
+          { label: 'Picture…', disabled: !writing, run: () => pickPictures(editor) },
+          { label: 'Table', disabled: !writing, run: () => { editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); } },
+          { label: 'Link…', disabled: !writing || editor.state.selection.empty, run: () => setLinkOpen(true) },
+        ] },
+        { label: 'Format', items: [
+          { label: 'Bold', disabled: !writing, run: () => { editor.chain().focus().toggleBold().run(); } },
+          { label: 'Italic', disabled: !writing, run: () => { editor.chain().focus().toggleItalic().run(); } },
+          { label: 'Underline', disabled: !writing, run: () => { editor.chain().focus().toggleUnderline().run(); } },
+          'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
+          'sep', { label: 'Checklist', disabled: !writing, run: () => { editor.chain().focus().toggleTaskList().run(); } },
+          { label: 'Clear text formatting', disabled: !writing, run: () => { editor.chain().focus().unsetMark('bold').unsetMark('italic').unsetMark('underline').unsetMark('strike').unsetMark('textColor').unsetMark('highlight').unsetMark('fontStyle').run(); } },
+        ] },
+        { label: 'Tools', items: [
+          { label: 'Word count', run: () => { void tell('Document: ' + wordCount(editor.getJSON()) + ' words. Selection: ' + selWords + ' words. Reference list excluded.'); } },
+          { label: 'Contributions', run: () => setSide('people') },
+        ] },
+      ]} />}
       {writing && page && PageBar()}
       {writing && !page && (
         <div className="ne-bar cd-bar" role="toolbar" aria-label="Formatting">
@@ -661,18 +682,6 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
           {!paged && heading}
-          {viewing && (paged ? (
-            <Paper layout={layout}>
-              {heading}
-              <div className="cd-view doc cd-doc" ref={setViewEl}>
-                <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
-              </div>
-            </Paper>
-          ) : (
-            <div className={'cd-view' + (page ? ' doc cd-doc' : ' doc')} ref={setViewEl}>
-              <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
-            </div>
-          ))}
           <EditorClassContext.Provider value={{ classId, classmates: [] }}>
             {(() => {
               const hostEl = (
@@ -684,14 +693,18 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
                   {writing && <TableInsert editor={editor} host={host} />}
                 </div>
               );
-              return paged && !viewing ? (
-                <Paper layout={layout}>
+              const contents = <>
+                {viewing && <div className={'cd-view' + (page ? ' doc cd-doc' : ' doc')} ref={setViewEl}>
+                  <TaskRenderer content={viewDoc} responses={viewResp} onChange={(id, r) => setViewResp((x) => ({ ...x, [id]: r }))} classId={classId} />
+                </div>}
+                {hostEl}
+              </>;
+              return paged ? (
+                <Paper layout={layout} appearance={paperAppearance}>
                   {heading}
-                  {hostEl}
+                  {contents}
                 </Paper>
-              ) : (
-                hostEl
-              );
+              ) : contents;
             })()}
           </EditorClassContext.Provider>
         </div>
