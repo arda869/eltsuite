@@ -14,6 +14,7 @@ import { OrgBrand, OrgRules, OrgSpace } from './admin/OrgSettings';
 import { OrgDrives, OrgForms } from './admin/OrgLibrary';
 import { OrgActivity } from './admin/OrgActivity';
 import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Super';
+import { SuperAi } from './admin/SuperAi';
 import { SuperAdmins } from './admin/SuperAdmins';
 import { InviteCodes } from './admin/InviteCodes';
 import { BrandKit } from './admin/BrandKit';
@@ -151,6 +152,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'teachers', label: 'Teachers', icon: 'person', n: teachers?.length },
     { k: 'codes', label: 'Invitation codes', icon: 'plus', n: codes?.filter((c) => codeState(c) === 'open').length || undefined },
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
+    { k: 'ai', label: 'AI lesson assistant', icon: 'board' },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
     { k: 'activity', label: 'Activity', icon: 'timer' },
@@ -197,6 +199,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'teachers' && <SuperTeachers d={d} go={go} params={params} />}
           {known === 'codes' && <InviteCodes orgs={orgs} />}
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
+          {known === 'ai' && <SuperAi teachers={teachers ?? []} loading={teachers === null} />}
           {known === 'apps' && <SuperApps d={d} />}
           {known === 'defaults' && <SuperDefaults />}
           {known === 'activity' && <SuperUsage teachers={teachers ?? []} />}

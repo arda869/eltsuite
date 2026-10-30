@@ -924,6 +924,23 @@ service cloud.firestore {
       }
     }
 
+    function aiAdmin() {
+      return isOwner() && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('proxyBy', null) == null;
+    }
+    // Explicit grants only, including for the owner. No client spending writes.
+    match /aiPilot/{uid} {
+      allow get: if isSelf(uid) || isOwner();
+      allow list: if isOwner();
+      allow create, update: if aiAdmin()
+        && request.resource.data.keys().hasOnly(['enabled', 'updatedBy', 'updatedAt'])
+        && request.resource.data.enabled is bool
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.updatedAt == request.time
+        && get(/databases/$(database)/documents/users/$(uid)).data.role == 'teacher';
+    }
+    match /aiBudgets/{month} { allow read: if isOwner(); }
+
     // Devices that get notifications: each person adds and removes their own.
     match /pushTokens/{t} {
       allow read, delete: if signedIn() && resource.data.uid == request.auth.uid;

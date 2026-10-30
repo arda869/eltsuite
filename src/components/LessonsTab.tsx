@@ -1,4 +1,5 @@
 import { NSelect } from './Select';
+import { useAiPilot } from '../ai/pilot';
 import { ask } from '../lib/ask';
 import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -356,6 +357,7 @@ function ItemRow({ c, item, list, topics, onResults }: { c: ClassDoc; item: Item
 const toLocal = (ms: number) => { const d = new Date(ms - new Date().getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
 
 export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topics: Topic[]; items: Item[]; onResults?: (item: Item) => void }) {
+  const aiPilot = useAiPilot();
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -388,6 +390,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
 
   return (
     <div className="lessons">
+      {aiPilot && <Link className="btn" to={`/class/${c.id}/assistant`}>Plan with the lesson assistant</Link>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">

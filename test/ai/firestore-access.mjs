@@ -1,0 +1,40 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
+import { doc, collection, getDoc, getDocs, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+const env = await initializeTestEnvironment({ projectId: 'demo-ai-access', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
+try {
+  await env.withSecurityRulesDisabled(async c => {
+    for (const uid of ['teacher', 'other', 'owner']) await setDoc(doc(c.firestore(), 'users', uid), { role: 'teacher' });
+    await setDoc(doc(c.firestore(), 'users', 'learner'), { role: 'learner' });
+    await setDoc(doc(c.firestore(), 'superAdmins', 'super@example.com'), { email: 'super@example.com' });
+    await setDoc(doc(c.firestore(), 'aiBudgets', '2026-10'), { committedMicroUsd: 100 });
+  });
+  const as = (uid, email, extra = {}) => env.authenticatedContext(uid, { email, email_verified: true, ...extra }).firestore();
+  const owner = as('owner', 'ardanurioglu@gmail.com'), teacher = as('teacher', 'teacher@example.com');
+  const grant = (who, enabled = true) => ({ enabled, updatedBy: who, updatedAt: serverTimestamp() });
+  assert.equal((await assertSucceeds(getDoc(doc(owner, 'aiPilot', 'owner')))).exists(), false);
+  assert.equal((await assertSucceeds(getDoc(doc(teacher, 'aiPilot', 'teacher')))).exists(), false);
+  await assertFails(setDoc(doc(teacher, 'aiPilot', 'teacher'), grant('teacher')));
+  await assertFails(getDocs(collection(teacher, 'aiPilot')));
+  await assertFails(getDoc(doc(teacher, 'aiPilot', 'other')));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'aiPilot', 'teacher')));
+  await assertSucceeds(setDoc(doc(owner, 'aiPilot', 'teacher'), grant('owner')));
+  assert.equal((await getDoc(doc(teacher, 'aiPilot', 'teacher'))).data().enabled, true);
+  await assertSucceeds(setDoc(doc(owner, 'aiPilot', 'teacher'), grant('owner', false)));
+  assert.equal((await getDoc(doc(teacher, 'aiPilot', 'teacher'))).data().enabled, false);
+  await assertSucceeds(getDocs(collection(owner, 'aiPilot')));
+  await assertSucceeds(setDoc(doc(as('super', 'super@example.com'), 'aiPilot', 'other'), grant('super')));
+  await assertFails(setDoc(doc(as('unverified', 'ardanurioglu@gmail.com', { email_verified: false }), 'aiPilot', 'teacher'), grant('unverified')));
+  await assertFails(setDoc(doc(as('proxy', 'ardanurioglu@gmail.com', { proxyBy: 'owner' }), 'aiPilot', 'teacher'), grant('proxy')));
+  await assertFails(setDoc(doc(owner, 'aiPilot', 'learner'), grant('owner')));
+  await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), { ...grant('owner'), enabled: 'true' }));
+  await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), grant('forged')));
+  await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), { ...grant('owner'), arbitrary: true }));
+  await assertFails(deleteDoc(doc(teacher, 'aiPilot', 'teacher')));
+  await assertSucceeds(getDoc(doc(owner, 'aiBudgets', '2026-10')));
+  await assertFails(getDoc(doc(teacher, 'aiBudgets', '2026-10')));
+  await assertFails(setDoc(doc(owner, 'aiBudgets', '2026-10'), { committedMicroUsd: 0 }));
+  await assertFails(setDoc(doc(teacher, 'aiPrivate/teacher/drafts/one'), { plan: {} }));
+  console.log('AI access rules passed: default off, admin grant/revoke, self-enrollment denied, audit validation, private spending.');
+} finally { await env.cleanup(); }

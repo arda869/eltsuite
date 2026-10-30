@@ -67,6 +67,8 @@ const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m
 const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
+const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
+
 function NoAccess() {
   const { signOutNow } = useAuth();
   return (
@@ -186,6 +188,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/invite/:id" element={<InvitePage />} />
           <Route path="/admin" element={<TeacherOnly><ComputerOnly what="Super Admin"><AdminPage mode="super" /></ComputerOnly></TeacherOnly>} />
           <Route path="/org-admin" element={<TeacherOnly><ComputerOnly what="Organisation admin"><AdminPage mode="org" /></ComputerOnly></TeacherOnly>} />
+          <Route path="/class/:classId/assistant" element={<TeacherOnly><LessonAssistant /></TeacherOnly>} />
           <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
           <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
           <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
