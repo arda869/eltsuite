@@ -81,6 +81,48 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Document font size, page setup and zoom': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    await see(d, '.pg-paper', 'a paged document');
+    const text = d.getByRole('textbox', { name: 'Document text', exact: true });
+    await text.fill('Teaching notes');
+    await text.press('ControlOrMeta+a');
+    const size = d.getByRole('textbox', { name: 'Font size', exact: true });
+    await size.fill('18');
+    await size.press('Enter');
+    await d.getByRole('button', { name: 'Increase font size', exact: true }).click();
+    await see(d, '[data-font][style*="19pt"]', 'the selected text at 19 pt');
+    await d.getByRole('menuitem', { name: 'File', exact: true }).click();
+    await d.getByRole('menuitem', { name: 'Page setup…', exact: true }).click();
+    await d.getByRole('button', { name: 'Page orientation', exact: true }).click();
+    await d.getByRole('option', { name: 'Landscape', exact: true }).click();
+    await d.getByRole('button', { name: 'Line spacing', exact: true }).click();
+    await d.getByRole('option', { name: 'Double', exact: true }).click();
+    await text.click();
+    await d.getByRole('slider', { name: 'Zoom slider', exact: true }).fill('75');
+    const state = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, zoom: getComputedStyle(el).zoom, spacing: el.style.getPropertyValue('--pg-line-height') }));
+    if (state.width !== '1123px' || Number(state.zoom) !== 0.75 || state.spacing !== '2') throw new Error('Page setup or zoom did not apply: ' + JSON.stringify(state));
+    await d.reload();
+    await see(d, '[data-font][style*="19pt"]', 'the saved font size');
+    const saved = await d.locator('.pg-paper').evaluate((el) => ({ width: el.style.width, spacing: el.style.getPropertyValue('--pg-line-height') }));
+    if (saved.width !== '1123px' || saved.spacing !== '2') throw new Error('Page settings did not survive reload.');
+    const zoom = d.getByRole('button', { name: 'Zoom percentage', exact: true });
+    for (const mode of ['Fill width', 'Fit page']) {
+      await zoom.click();
+      await d.getByRole('option', { name: mode, exact: true }).click();
+      const bounds = await d.locator('.pg-paper').evaluate((el) => {
+        const rect = el.getBoundingClientRect();
+        const desk = el.closest('.pg-desk').getBoundingClientRect();
+        return { width: rect.width, height: rect.height, available: desk.width - 48, visibleHeight: innerHeight - Math.max(0, desk.top) - 112 };
+      });
+      if (bounds.width > bounds.available + 1 || (mode === 'Fit page' && bounds.height > bounds.visibleHeight + 1)) throw new Error(mode + ' exceeds the available viewing area: ' + JSON.stringify(bounds));
+    }
+    const contrast = await d.locator('.pg-paper').evaluate((el) => getComputedStyle(el).backgroundColor !== getComputedStyle(el.closest('.pg-desk')).backgroundColor);
+    if (!contrast) throw new Error('The sheet blends into the document canvas.');
+    await axe(d, 'Document page tools', A11Y_FOUND);
+    return s;
+  },
   'Document menus, page appearance and citations': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/dev.html?as=teacher&friday');

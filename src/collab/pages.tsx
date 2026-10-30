@@ -12,8 +12,8 @@ import { useDismiss } from '../lib/useDismiss';
 
 export type PageSize = 'a4' | 'letter' | 'a5';
 export type Margins = 'narrow' | 'normal' | 'wide';
-export type Layout = { paged: boolean; size: PageSize; margins: Margins; font: string; pt: number };
-export const LAYOUT_DEFAULT: Layout = { paged: true, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12 };
+export type Layout = { paged: boolean; size: PageSize; margins: Margins; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number };
+export const LAYOUT_DEFAULT: Layout = { paged: true, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12, orientation: 'portrait', lineSpacing: 1.5 };
 
 // At 96 pixels to the inch, as the browser prints.
 export const SIZES: Record<PageSize, { label: string; w: number; h: number; css: string }> = {
@@ -73,11 +73,26 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
   const ref = useDismiss<HTMLSpanElement>(open, () => setOpen(false));
   useEffect(() => { if (openRequest) setOpen(true); }, [openRequest]);
   const cur = editor.getAttributes('fontStyle') as { family?: string | null; pt?: number | null };
+  const selectedSize = cur.pt ?? layout.pt;
+  const [sizeDraft, setSizeDraft] = useState(String(selectedSize));
+  const cancelSize = useRef(false);
+  useEffect(() => setSizeDraft(String(selectedSize)), [selectedSize]);
   const apply = (p: { family?: string | null; pt?: number | null }) => {
     const next = { family: cur.family ?? null, pt: cur.pt ?? null, ...p };
     const c = editor.chain().focus();
     if (!next.family && !next.pt) c.unsetMark('fontStyle').run();
     else c.setMark('fontStyle', next).run();
+  };
+  const changeSize = (value: number) => {
+    const pt = Math.min(400, Math.max(1, Math.round(value * 2) / 2));
+    setSizeDraft(String(pt));
+    apply({ pt });
+  };
+  const commitSize = () => {
+    if (cancelSize.current) { cancelSize.current = false; return; }
+    const value = Number(sizeDraft);
+    if (!sizeDraft.trim() || !Number.isFinite(value)) { setSizeDraft(String(selectedSize)); return; }
+    changeSize(value);
   };
   const toPageless = async () => {
     if (!(await ask('Make it pageless again? The page size and margins go, and so do the fonts and sizes you chose for parts of the text.'))) return;
@@ -97,14 +112,11 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
               </option>
             ))}
           </NSelect>
-          <NSelect className="pg-sel pg-pt" aria-label="Font size" value={cur.pt ?? ''} onChange={(e) => apply({ pt: Number(e.target.value) || null })}>
-            <option value="">{layout.pt}</option>
-            {PAGE_SIZES_PT.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </NSelect>
+          <span className="pg-size-controls">
+            <button type="button" aria-label="Decrease font size" onMouseDown={(e) => e.preventDefault()} onClick={() => changeSize(selectedSize - 1)}>−</button>
+            <input aria-label="Font size" inputMode="decimal" value={sizeDraft} onChange={(e) => setSizeDraft(e.target.value)} onBlur={() => commitSize()} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitSize(); } if (e.key === 'Escape') { cancelSize.current = true; setSizeDraft(String(selectedSize)); editor.commands.focus(); } }} />
+            <button type="button" aria-label="Increase font size" onMouseDown={(e) => e.preventDefault()} onClick={() => changeSize(selectedSize + 1)}>+</button>
+          </span>
         </span>
       )}
       {part !== 'fonts' && <span className="pg-wrap" ref={ref} onMouseDown={(e) => e.stopPropagation()}>
@@ -129,6 +141,19 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
             </span>
             {layout.paged && (
               <div className="pg-grid">
+                <label>
+                  <span>Orientation</span>
+                  <NSelect aria-label="Page orientation" className="pg-sel" value={layout.orientation} onChange={(e) => setLayout({ orientation: e.target.value as Layout['orientation'] })}>
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </NSelect>
+                </label>
+                <label>
+                  <span>Line spacing</span>
+                  <NSelect aria-label="Line spacing" className="pg-sel" value={layout.lineSpacing} onChange={(e) => setLayout({ lineSpacing: Number(e.target.value) })}>
+                    {[1, 1.15, 1.5, 2, 2.5, 3].map((n) => <option key={n} value={n}>{n === 1 ? 'Single' : n === 2 ? 'Double' : String(n)}</option>)}
+                  </NSelect>
+                </label>
                 <label>
                   <span>Page size</span>
                   <NSelect aria-label="Page size" className="pg-sel" value={layout.size} onChange={(e) => setLayout({ size: e.target.value as PageSize })}>
@@ -184,9 +209,30 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 export function Paper({ layout, children, appearance = 'auto' }: { layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black' }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
-  const s = SIZES[layout.size];
+  const desk = useRef<HTMLDivElement>(null);
+  const [zoomChoice, setZoomChoice] = useState('fit');
+  const [available, setAvailable] = useState({ width: 800, height: 650 });
+  const base = SIZES[layout.size];
+  const s = layout.orientation === 'landscape' ? { ...base, w: base.h, h: base.w } : base;
   const m = MARGINS[layout.margins].px;
   const inner = s.h - 2 * m;
+  const fitWidth = available.width / s.w;
+  const scale = zoomChoice === 'fit' ? Math.min(fitWidth, available.height / s.h) : zoomChoice === 'fill' ? fitWidth : Number(zoomChoice) / 100;
+  const zoom = Math.max(10, Math.min(200, Math.floor(scale * 100)));
+  useLayoutEffect(() => {
+    const el = desk.current;
+    if (!el) return;
+    const measure = () => {
+      const width = Math.max(1, el.clientWidth - 48);
+      const height = Math.max(1, window.innerHeight - Math.max(0, el.getBoundingClientRect().top) - 112);
+      setAvailable((old) => old.width === width && old.height === height ? old : { width, height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener('resize', measure);
+    return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
+  }, []);
   // The text's own height decides how many pages there are.
   useLayoutEffect(() => {
     const el = ref.current;
@@ -199,13 +245,13 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
   }, [m, inner]);
   useEffect(() => {
     const st = document.createElement('style');
-    st.textContent = `@page { size: ${s.css}; margin: ${m / 96}in; }`;
+    st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${m / 96}in; }`;
     document.head.appendChild(st);
     return () => st.remove();
-  }, [s.css, m]);
+  }, [s.css, m, layout.orientation]);
   return (
-    <div className="pg-desk">
-      <div className="pg-paper" data-paper-theme={appearance} style={{ width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt` }}>
+    <div className="pg-desk" ref={desk}>
+      <div className="pg-paper" data-paper-theme={appearance} style={{ width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, zoom: zoom / 100 }}>
         <div ref={ref} className="pg-text">
           {children}
         </div>
@@ -214,6 +260,15 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
             <span>Page {i + 2}</span>
           </span>
         ))}
+      </div>
+      <div className="pg-zoom" role="group" aria-label="Document zoom">
+        <span className="pg-page-info">{layout.size === 'letter' ? 'Letter' : layout.size.toUpperCase()} · {layout.orientation === 'landscape' ? 'Landscape' : 'Portrait'}<small>{layout.size === 'letter' ? (layout.orientation === 'landscape' ? '11 × 8.5 in' : '8.5 × 11 in') : layout.size === 'a5' ? (layout.orientation === 'landscape' ? '21 × 14.8 cm' : '14.8 × 21 cm') : (layout.orientation === 'landscape' ? '29.7 × 21 cm' : '21 × 29.7 cm')}</small></span>
+        <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>
+          <option value="fit">Fit page</option>
+          <option value="fill">Fill width</option>
+          {[...new Set([50, 75, 90, 100, 125, 150, 175, 200, zoom])].sort((a, b) => a - b).map((n) => <option key={n} value={String(n)}>{n}%</option>)}
+        </NSelect>
+        <input type="range" aria-label="Zoom slider" min="10" max="200" step="1" value={zoom} aria-valuetext={`${zoom}%`} onChange={(e) => setZoomChoice(e.target.value)} />
       </div>
     </div>
   );
