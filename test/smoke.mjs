@@ -539,8 +539,9 @@ const J = {
     await s.p.goto(`${BASE}/classes`);
     await s.p.click('.apps-btn');
     await s.p.click('.apps-pop a[role=menuitem]:has-text("Guide")');
-    await see(s.p, 'h1:has-text("How ELT Suite works")', 'the Guide');
+    await see(s.p, 'h1:has-text("A little help.")', 'the Guide');
     await axe(s.p, 'Guide', A11Y_FOUND);
+    await s.p.getByRole('button', { name: 'Questions', exact: true }).click();
     await s.p.fill('input[aria-label="Gap 1"]', 'has lived');
     await s.p.locator('.gu-try', { hasText: 'present perfect' }).locator('button:has-text("Check")').click();
     await see(s.p, '.gu-result:has-text("1 of 2")', 'the gap fill marked');
@@ -580,6 +581,62 @@ const J = {
     }
     await see(s.p, 'text=Present perfect', 'the lesson on the learner home page');
     await axe(s.p, 'Learner home', A11Y_FOUND);
+    return s;
+  },
+  'Teacher onboarding and goal-based guide': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const f = JSON.parse(localStorage.getItem('mockfs'));
+      f['users/teacher1'].onboarding = 'new';
+      localStorage.setItem('mockfs', JSON.stringify(f));
+    });
+    await s.p.goto(BASE);
+    await s.p.waitForURL('**/welcome');
+    if (await s.p.getByRole('button', { name: 'Show my starting point' }).isEnabled()) throw new Error('Continue should need a choice');
+    await s.p.getByRole('button', { name: 'Make a listening activity' }).click();
+    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
+    await see(s.p, 'text=A recording you can reuse in your lessons.', 'the selected plan');
+    await s.p.getByRole('button', { name: 'Show me how first' }).click();
+    await s.p.waitForURL('**/guide?goal=audio');
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'relevant guide topic');
+    await s.p.goto(BASE);
+    await see(s.p, '.hm', 'home after completing onboarding');
+    await s.p.goto(BASE + '/guide');
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved preference after reload');
+    const picker = s.p.getByRole('button', { name: 'What would you like to do?', exact: true });
+    await picker.click();
+    await picker.press('End');
+    await picker.press('Enter');
+    await see(s.p, '.guide-next h2:has-text("A connection")', 'custom dropdown updates the goal');
+    if (await s.p.locator('.gu-nav-i .ui-icon').count() !== 14) throw new Error('Guide topic icons missing');
+    await s.p.getByRole('searchbox').fill('no such topic');
+    await see(s.p, 'text=No matching topics', 'search empty state');
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    for (const route of ['/welcome', '/guide', '/tour']) {
+      await s.p.goto(BASE + route);
+      await see(s.p, 'h1', 'mobile heading');
+      if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile overflow: ' + route);
+      await axe(s.p, 'Teacher start ' + route, A11Y_FOUND);
+    }
+    for (const width of [320, 390, 768, 1280]) {
+      await s.p.setViewportSize({ width, height: 900 });
+      await s.p.goto(BASE + '/guide');
+      for (const topic of ['Colleagues', 'Your blend', 'Questions']) {
+        await s.p.getByRole('button', { name: topic, exact: true }).click();
+        if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Guide overflow at ' + width + ': ' + topic);
+      }
+      await picker.click();
+      const fits = await s.p.getByRole('listbox', { name: 'What would you like to do?' }).evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; });
+      if (!fits) throw new Error('Goal dropdown overflows at ' + width);
+      await picker.press('Escape');
+      await s.p.goto(BASE + '/tour');
+      await see(s.p, '.tour-paths', 'responsive public tour');
+      const clipped = await s.p.locator('.gu-grid2 > *').evaluateAll(els => els.some(el => el.getBoundingClientRect().right > innerWidth + 1));
+      if (clipped) throw new Error('Tour illustration clipped at ' + width);
+    }
+    await s.p.goto(BASE + '/welcome');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '.hm', 'skip opens home');
     return s;
   },
   'An invitation that is gone': async (b) => {

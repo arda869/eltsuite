@@ -1,8 +1,10 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Wordmark } from '../components/Wordmark';
 import { Blend, GapFill, Live, Progress, Start, TimelineDemo } from './GuidePage';
 import './guide.css';
+import './welcome.css';
+import { TEACHER_PATHS } from '../lib/teacherPaths';
 
 // What ELT Suite is, for people who have not signed in yet: the Guide made short, to show why it is
 // worth having rather than how to use it. Linked from the sign-in page.
@@ -25,6 +27,8 @@ function Part({ n, eyebrow, title, lede, children }: { n: number; eyebrow: strin
 }
 
 export function TourPage() {
+  const [goal, setGoal] = useState(0);
+  const path = TEACHER_PATHS[goal];
   useEffect(() => {
     document.title = 'ELT Suite: what it can do';
   }, []);
@@ -42,8 +46,8 @@ export function TourPage() {
       <main className="tr-main">
         <header className="gu-hero tr-hero">
           <span className="gu-eyebrow">For English teachers and their schools</span>
-          <h1>Everything you need to teach English, in one place</h1>
-          <p>Plan the lesson, teach it live in class or online, and see how every learner is doing, without juggling five different tools. Try the parts below: they work just like the real thing.</p>
+          <h1>Your next lesson. Your best ideas. One place.</h1>
+          <p>Spend your energy on the teaching. Bring preparation, materials and feedback together, with tools that understand English teachers. Start with the part of your day you’d like to make easier.</p>
           <ul className="tr-why">
             {WHY.map((w) => (
               <li key={w.t} style={{ ['--c' as string]: w.c }}>
@@ -54,9 +58,7 @@ export function TourPage() {
           </ul>
         </header>
 
-        <Part n={1} eyebrow="One account" title="All your apps, side by side" lede="Tap an app to see what it does.">
-          <Start tour />
-        </Part>
+        <section className="tour-paths" aria-label="Find your starting point"><span className="path-eyebrow">Start with your teaching</span><h2>What would make tomorrow easier?</h2><div className="path-grid">{TEACHER_PATHS.map((p, i) => <button key={p.id} className="path-card" aria-pressed={goal === i} onClick={() => setGoal(i)}><b>{p.title}</b><span>{p.detail}</span></button>)}</div><div className="path-plan" aria-live="polite"><span className="path-eyebrow">Picture your first small win</span><h3>{path.result}</h3><ol>{path.steps.map(s => <li key={s}>{s}</li>)}</ol><a className="btn primary" href="mailto:arda@eltsuite.com?subject=ELT%20Suite%20invitation">Ask for an invitation →</a><p className="hint">Invitation-only beta. Explore the examples below without an account.</p></div></section>
 
         <Part n={2} eyebrow="Questions" title="Questions that mark themselves" lede="Gap fills, matching, word order and more. Learners see what they got right straight away, and you see everyone’s answers. Have a go:">
           <GapFill />
@@ -81,7 +83,7 @@ export function TourPage() {
         <section className="gu-sec tr-sec tr-two" aria-label="For schools, and what is coming">
           <div>
             <span className="gu-eyebrow">For schools</span>
-            <h2>Run your teachers in one place</h2>
+            <h2>Give your teachers a shared starting point</h2>
             <ul className="tr-list">
               <li>Invite teachers and share a library of your own materials</li>
               <li>Your brand on lessons and documents</li>
@@ -95,6 +97,7 @@ export function TourPage() {
           </div>
         </section>
 
+        <details className="tour-directory"><summary>Explore every app in ELT Suite</summary><Start tour /></details>
         <footer className="tr-end">
           <h2>Want to try it with your classes?</h2>
           <p>ELT Suite is in beta and teachers join by invitation for now.</p>

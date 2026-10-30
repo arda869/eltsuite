@@ -1,5 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { TEACHER_PATHS } from '../lib/teacherPaths';
+import { useAuth } from '../lib/auth';
+import './welcome.css';
 import { Link } from 'react-router-dom';
+import { UiIcon } from '../components/UiIcon';
+import { Select } from '../components/Select';
 import { TopBar } from '../components/TopBar';
 import { playSound } from '../lib/phonAudio';
 import './guide.css';
@@ -27,61 +32,38 @@ const TOPICS: Topic[] = [
   { id: 'org', title: 'Running an organisation', short: 'Organisation', body: OrgTopic },
 ];
 
+const TOPIC_ICONS: Record<string, string> = { start: 'home', blend: 'design', lessons: 'classes', questions: 'help', notation: 'annotate', live: 'present', games: 'pick', progress: 'poll', studio: 'mic', print: 'task', files: 'folder', week: 'calendar', share: 'groups', org: 'settings' };
+
 export function GuidePage() {
-  const [on, setOn] = useState(TOPICS[0].id);
-  const main = useRef<HTMLElement>(null);
-  // The topic in view is the one lit in the list.
-  useEffect(() => {
-    const els = TOPICS.map((t) => document.getElementById('gu-' + t.id)).filter(Boolean) as HTMLElement[];
-    const io = new IntersectionObserver(
-      (es) => {
-        const seen = es.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (seen) setOn(seen.target.id.slice(3));
-      },
-      { rootMargin: '-20% 0px -65% 0px' },
-    );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
-  }, []);
-  const go = (id: string) => {
-    setOn(id);
-    document.getElementById('gu-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  return (
-    <div className="shell">
-      <TopBar />
-      <div className="gu">
-        <nav className="gu-nav" aria-label="Guide topics">
-          <span className="gu-nav-h">Guide</span>
-          {TOPICS.map((t, i) => (
-            <a key={t.id} href={'#gu-' + t.id} className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'true' : undefined} onClick={(e) => (e.preventDefault(), go(t.id))}>
-              <span className="gu-n">{i + 1}</span>
-              {t.short}
-            </a>
-          ))}
-        </nav>
-        <main className="gu-main" ref={main}>
-          <header className="gu-hero">
-            <span className="gu-eyebrow">Guide</span>
-            <h1>How ELT Suite works</h1>
-            <p>Everything an English teacher needs, in one place: make materials, record and edit sound, teach in class or online, print worksheets, keep your reading notes and work with colleagues. Here is each app, with something to try.</p>
-          </header>
-          {TOPICS.map((t, i) => (
-            <section key={t.id} id={'gu-' + t.id} className="gu-sec" aria-labelledby={'gu-h-' + t.id}>
-              <h2 id={'gu-h-' + t.id}>
-                <span className="gu-n big">{i + 1}</span>
-                {t.title}
-              </h2>
-              <t.body />
-            </section>
-          ))}
-          <footer className="gu-end">
-            <b>Ready?</b> Make a class in <Link to="/classes">Classes</Link>, add a lesson, and press <i>/</i> in it to see every element. Stuck? Ask your organisation’s admin, or write to ELT Suite from Support.
-          </footer>
-        </main>
+  const { profile } = useAuth();
+  const initial = new URLSearchParams(window.location.search).get('goal') || profile?.teacherGoal;
+  const [goal, setGoal] = useState(initial || 'lesson');
+  const path = TEACHER_PATHS.find(p => p.id === goal) || TEACHER_PATHS[0];
+  const hashTopic = window.location.hash.replace('#gu-', '');
+  const [on, setOn] = useState(TOPICS.some(t => t.id === hashTopic) ? hashTopic : path.topic);
+  const [query, setQuery] = useState('');
+  const topic = TOPICS.find(t => t.id === on) || TOPICS[0];
+  const matches = TOPICS.filter(t => (t.title + ' ' + t.short).toLowerCase().includes(query.toLowerCase()));
+  function choose(id: string) { setOn(id); window.history.replaceState(null, '', '#gu-' + id); }
+  return <div className="shell"><TopBar /><main className="guide-hub">
+    <header className="guide-hub-hero"><span className="path-eyebrow">Your ELT Suite guide</span><h1>A little help.<br />A lot more possibility.</h1><p className="path-lede">Start with what you want to do. Try an example here, then take it into your own teaching.</p><Link to="/welcome" className="btn">Help me choose a starting point →</Link></header>
+    <section className="guide-route" aria-label="Choose your teaching goal">
+      <div className="guide-route-choice">
+        <span className="path-eyebrow">Make it yours</span>
+        <label className="field" htmlFor="guide-goal">What would you like to do?</label>
+        <Select id="guide-goal" value={goal} label="What would you like to do?" options={TEACHER_PATHS.map(p => ({ v: p.id, label: p.title, hint: p.detail }))} onChange={value => { setGoal(value); const p = TEACHER_PATHS.find(p => p.id === value); if (p) choose(p.topic); }} />
+        <p>One starting point. Three small steps.<br />Change your choice whenever you like.</p>
       </div>
+      <div className="guide-next" key={path.id}>
+        <header><span className="path-eyebrow">Your next useful step</span><h2>{path.result}</h2></header>
+        <ol className="guide-next-steps">{path.steps.map((s, i) => <li key={s}><span className="guide-step-number" aria-hidden="true">{i + 1}</span><span><b>{['Start here', 'Build on it', 'Put it to use'][i]}</b><span>{s}</span></span></li>)}</ol>
+        <footer><Link className="btn primary" to={path.to}>{path.action} →</Link><span>Start small. The rest can wait.</span></footer>
+      </div>
+    </section>
+    <div className="gu guide-focused"><nav className="gu-nav" aria-label="Guide topics"><label className="field">Find a topic<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Try lessons or sound" /></label>{matches.map(t => <button key={t.id} type="button" className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'page' : undefined} onClick={() => choose(t.id)}><UiIcon name={TOPIC_ICONS[t.id]} size={18} /><span>{t.short}</span></button>)}{!matches.length && <p role="status">No matching topics. Try “lessons”, “files” or “live”.</p>}</nav>
+      <section className="gu-main gu-sec" id={'gu-' + topic.id} aria-labelledby="guide-topic-title"><span className="path-eyebrow">Explore and try · Illustrative examples</span><h2 id="guide-topic-title">{topic.title}</h2><topic.body key={topic.id} /><footer className="gu-end">Ready to try something with your own work? <Link to="/welcome">Choose your next step →</Link></footer></section>
     </div>
-  );
+  </main></div>;
 }
 
 // ------------------------------------------------------------------ small parts
@@ -1316,11 +1298,11 @@ function Intonation() {
 
 // What each way of teaching is made of, as a glass filled with its parts.
 const PARTS: Record<string, { n: string; c: string }> = {
-  live: { n: 'Teaching live in ELT Suite', c: '#3b7f4f' },
-  call: { n: 'Video calls: Rooms or your own tool', c: '#3b7f7a' },
-  board: { n: 'Presenting on the board', c: '#c8764a' },
+  live: { n: 'Teach live', c: '#3b7f4f' },
+  call: { n: 'Video calls', c: '#3b7f7a' },
+  board: { n: 'Present in class', c: '#c8764a' },
   print: { n: 'Printed worksheets', c: '#c9a227' },
-  make: { n: 'Making materials and listening', c: '#3667a6' },
+  make: { n: 'Make materials', c: '#3667a6' },
 };
 const BLENDS: { k: string; t: string; d: string; mix: [string, number][]; steps: string[]; uses: string[] }[] = [
   {
@@ -1343,7 +1325,7 @@ const BLENDS: { k: string; t: string; d: string; mix: [string, number][]; steps:
     k: 'make',
     t: 'Make materials only',
     d: 'Use ELT Suite to make your materials and listening, then print them or take them to whatever you teach with.',
-    mix: [['call', 15], ['print', 25], ['make', 60]],
+    mix: [['print', 40], ['make', 60]],
     steps: ['Make the lesson and its tasks', 'Record and edit the listening in Studio', 'Print a worksheet or download Word and MP3', 'Teach with them anywhere'],
     uses: ['Classes', 'Studio', 'Print', 'Files'],
   },
@@ -1352,8 +1334,13 @@ function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: stri
   const top = 34;
   const bottom = 150;
   let y = bottom;
+  const layers = mix.map(([part, amount]) => {
+    const height = (bottom - top) * amount / 100;
+    y -= height;
+    return { part, height, y, centre: y + height / 2 };
+  });
   return (
-    <svg className={'gu-glass' + (on ? ' on' : '')} viewBox="0 0 120 160" aria-hidden="true">
+    <svg className={'gu-glass' + (on ? ' on' : '')} viewBox="0 0 300 170" role="img" aria-label={mix.map(([part]) => PARTS[part].n).reverse().join(", ")}>
       <defs>
         <clipPath id={'gu-gl-' + id}>
           <path d="M16 12h88l-10 136a6 6 0 0 1-6 5.5H32a6 6 0 0 1-6-5.5z" />
@@ -1361,15 +1348,16 @@ function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: stri
       </defs>
       <g clipPath={`url(#gu-gl-${id})`}>
         <rect x="0" y="0" width="120" height="160" className="gu-glass-air" />
-        {mix.map(([p, n], i) => {
-          const h = ((bottom - top) * n) / 100;
-          y -= h;
-          return <rect key={on ? p + '-on' : p} className={on ? 'gu-rise' : undefined} style={{ fill: PARTS[p].c, animationDelay: `${i * 0.28}s` }} x="0" y={y} width="120" height={h + 0.5} />;
-        })}
+        {layers.map(({ part, height, y }, i) => <rect key={part} className={on ? 'gu-rise' : undefined} style={{ fill: PARTS[part].c, animationDelay: `${i * 0.28}s` }} x="0" y={y} width="120" height={height + 0.5} />)}
         <path key={on ? 'top-on' : 'top'} d={`M0 ${top} q15 -4 30 0 t30 0 t30 0 t30 0 v4 H0z`} fill="#fff" opacity="0.35" className={on ? 'gu-rise' : undefined} style={{ animationDelay: `${mix.length * 0.28}s` }} />
         <rect x="26" y="20" width="9" height="118" rx="4.5" fill="#fff" opacity="0.28" />
       </g>
       <path d="M16 12h88l-10 136a6 6 0 0 1-6 5.5H32a6 6 0 0 1-6-5.5z" className="gu-glass-edge" />
+      {layers.map(({ part, centre }) => <g key={part} className="gu-liquid-callout">
+        <circle cx="84" cy={centre} r="2.5" fill="var(--ink)" />
+        <path d={`M84 ${centre} H132`} fill="none" stroke="var(--ink)" strokeOpacity=".55" />
+        <text x="141" y={centre} dominantBaseline="middle">{PARTS[part].n}</text>
+      </g>)}
     </svg>
   );
 }
@@ -1378,26 +1366,18 @@ export function Blend() {
   const b = BLENDS[k];
   return (
     <>
-      <p>There’s no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class. Each glass shows what one way of teaching is made of.</p>
+      <p>Each glass is an example teaching mix. The callouts show what each liquid represents. Choose a mix to see the steps. Use as much or as little of ELT Suite as you need.</p>
       <div className="gu-blends" role="radiogroup" aria-label="Ways to teach">
         {BLENDS.map((x, i) => (
           <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-blend' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
-            <Glass mix={x.mix} on={i === k} id={x.k} />
-            <b>{x.t}</b>
-            <span>{x.d}</span>
+            <span className="gu-blend-title"><b>{x.t}</b><span aria-hidden="true">{i === k ? '✓' : '↗'}</span></span>
+            <span className="gu-blend-recipe"><Glass mix={x.mix} on={i === k} id={x.k} /></span>
+            <span className="gu-blend-description">{x.d}</span>
           </button>
         ))}
       </div>
       <p className="gu-blend-d gu-slide" key={'d' + b.k}>{b.d}</p>
-      <ul className="gu-mix" aria-label={`What “${b.t}” is made of`} key={'m' + b.k}>
-        {[...b.mix].reverse().map(([p, n]) => (
-          <li key={p} className="gu-slide">
-            <i style={{ background: PARTS[p].c }} />
-            {PARTS[p].n}
-            <b>{n}%</b>
-          </li>
-        ))}
-      </ul>
+      <div className="gu-blend-explainer" aria-live="polite"><span className="path-eyebrow">Your example · {b.t}</span><b>Here’s how it works in practice</b><span>{b.d}</span></div>
       <ol className="gu-flow" key={b.k} aria-label={`${b.t}, step by step`}>
         {b.steps.map((st, i) => (
           <li key={st} className="gu-slide" style={{ animationDelay: `${i * 0.08}s` }}>
@@ -1885,7 +1865,7 @@ export function Progress() {
       <div className="gu-grid2">
         <Try title="Correction codes: tap a code to see what the learner sees">
           <p className="gu-essay">
-            Last summer I <span className={'gu-err' + (code === 'T' ? ' on' : '')}>go</span> to Spain with my family. <span className={'gu-err' + (code === 'WO' ? ' on' : '')}>Usually I</span> stay at home, but the beach was <span className={'gu-err' + (code === 'Sp' ? ' on' : '')}>beatiful</span>.
+            Last summer I <span className={'gu-err' + (code === 'T' ? ' on' : '')}>go<i className="ann-code-tag" title={CODES['T'].name}>T</i></span> to Spain with my family. <span className={'gu-err' + (code === 'WO' ? ' on' : '')}>Usually I<i className="ann-code-tag" title={CODES['WO'].name}>WO</i></span> stay at home, but the beach was <span className={'gu-err' + (code === 'Sp' ? ' on' : '')}>beatiful<i className="ann-code-tag" title={CODES['Sp'].name}>Sp</i></span>.
           </p>
           <span className="gu-codes">
             {Object.entries(CODES).map(([k, v]) => (
@@ -2035,13 +2015,13 @@ function Share() {
             <circle cx="30" cy="34" r="13" fill="#3667a6" />
             <text x="30" y="39" textAnchor="middle" style={{ fill: '#fff', font: '600 11px var(--sans)' }}>S</text>
             <rect x="50" y="18" width="200" height="32" rx="14" className="gu-s-soft" />
-            <text x="64" y="38" style={{ fill: 'var(--ink)', font: '12px var(--sans)' }}>Do you have a lesson on small talk?</text>
+            <text x="64" y="38" style={{ fill: 'var(--ink)', font: '12px var(--sans)' }}><tspan x="64" y="32">Do you have a lesson</tspan><tspan x="64" y="45">on small talk?</tspan></text>
             <rect x="110" y="62" width="196" height="32" rx="14" fill="#7a4fa3" />
             <text x="124" y="82" style={{ fill: '#fff', font: '12px var(--sans)' }}>Yes! Use it with your B2s 👇</text>
             <rect x="150" y="102" width="156" height="52" rx="12" className="gu-s-card" />
             <path d="M162 112h18l8 8v24h-26z" fill="#c8764a" opacity="0.9" />
             <text x="198" y="124" className="gu-s-b" style={{ fontSize: 12 }}>Small talk</text>
-            <text x="198" y="142" className="gu-s-small" style={{ fontSize: 10 }}>Lesson · Copy to a class</text>
+            <text x="198" y="139" className="gu-s-small" style={{ fontSize: 10 }}><tspan x="198">Lesson</tspan><tspan x="198" y="150">Copy to a class</tspan></text>
             <rect x="14" y="170" width="292" height="28" rx="14" className="gu-s-card" />
             <text x="30" y="188" className="gu-s-small">Write a message…</text>
           </svg>

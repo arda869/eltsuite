@@ -60,6 +60,7 @@ const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m
 const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
+const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
@@ -100,6 +101,7 @@ function Home() {
     /* fine */
   }
   if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
+  if (profile?.onboarding === 'new') return <Navigate to="/welcome" replace />;
   return <HomePage />;
 }
 
@@ -177,6 +179,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
           <Route path="/tour" element={<TourPage />} />
           <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
+          <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
           <Route path="/auth/link" element={<EmailLinkFinish />} />
           <Route path="/join" element={<Join />} />
