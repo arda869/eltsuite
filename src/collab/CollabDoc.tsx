@@ -398,7 +398,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
         {B(<SV d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01" />, editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'Bulleted list')}
         {B(<SV d="M10 6h10M10 12h10M10 18h10M4 5.5h1.5V9M4 9h3M4 14.5a1.5 1.5 0 0 1 3 0c0 1.5-3 2-3 3.5h3" />, editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), 'Numbered list')}
         {B(<SV d="M4 6.5l1.5 1.5L8 5.5M4 12.5l1.5 1.5L8 11.5M11 7h9M11 13h9M11 19h9M4.5 18.5h3" />, editor.isActive('taskList'), () => editor.chain().focus().toggleTaskList().run(), 'Checklist')}
-        <button type="button" className="ne-btn" data-tip="Alignment" aria-label="Alignment" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, (['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: { left: 'Left', center: 'Centre', right: 'Right', justify: 'Justify' }[a], icon: '', onClick: () => editor.chain().focus().setTextAlign(a).run() })))}>
+        <button type="button" className="ne-btn" data-tip="Alignment" aria-label="Alignment" onMouseDown={(e) => e.preventDefault()} onClick={(e) => openMenuAt(e.currentTarget, (['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: { left: 'Left', center: 'Centre', right: 'Right', justify: 'Justify' }[a], icon: 'align' + a[0].toUpperCase() + a.slice(1), onClick: () => editor.chain().focus().setTextAlign(a).run() })))}>
           <SV d={ALIGN_D[alignNow]} />
         </button>
       </span>
@@ -565,7 +565,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           { label: 'Bold', disabled: !writing, run: () => { editor.chain().focus().toggleBold().run(); } },
           { label: 'Italic', disabled: !writing, run: () => { editor.chain().focus().toggleItalic().run(); } },
           { label: 'Underline', disabled: !writing, run: () => { editor.chain().focus().toggleUnderline().run(); } },
-          'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
+          'sep', ...(['left', 'center', 'right', 'justify'] as const).map((a) => ({ label: 'Align ' + a, icon: 'align' + a[0].toUpperCase() + a.slice(1), disabled: !writing, run: () => { editor.chain().focus().setTextAlign(a).run(); } })),
           'sep', { label: 'Checklist', disabled: !writing, run: () => { editor.chain().focus().toggleTaskList().run(); } },
           { label: 'Clear text formatting', disabled: !writing, run: () => { editor.chain().focus().unsetMark('bold').unsetMark('italic').unsetMark('underline').unsetMark('strike').unsetMark('textColor').unsetMark('highlight').unsetMark('fontStyle').run(); } },
         ] },

@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 
 // Interface icons for the lesson toolbars: thin strokes, rounded ends, in the text colour.
 const P: Record<string, ReactNode> = {
+  alignLeft: <path d="M4 6h16M4 10h10M4 14h16M4 18h10" />,
+  alignCenter: <path d="M4 6h16M7 10h10M4 14h16M7 18h10" />,
+  alignRight: <path d="M4 6h16M10 10h10M4 14h16M10 18h10" />,
+  alignJustify: <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />,
   plus: <path d="M12 6v12M6 12h12" />,
   textSize: <><path d="M3.5 6.5h10M8.5 6.5V19" /><path d="M13.5 11.5h7M17 11.5V19" /></>,
   export: <><path d="M12 4v11" /><path d="M7.5 8.5 12 4l4.5 4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
