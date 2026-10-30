@@ -384,8 +384,12 @@ const J = {
     await d.getByRole('button', { name: 'Document mode', exact: true }).click();
     await d.getByRole('option', { name: 'Editing', exact: true }).click();
     await d.setViewportSize({ width: 760, height: 850 });
-    const fits = await d.getByRole('toolbar', { name: 'Formatting' }).evaluate((el) => el.scrollWidth <= el.clientWidth && getComputedStyle(el).flexWrap === 'nowrap');
-    if (!fits) throw new Error('Formatting toolbar overflows or wraps.');
+    // ResizeObserver moves whole groups into More on the next rendering frame.
+    // Wait for that layout update before asserting the same no-overflow invariant.
+    await d.waitForFunction(() => {
+      const el = document.querySelector('[role="toolbar"][aria-label="Formatting"]');
+      return el && el.scrollWidth <= el.clientWidth && getComputedStyle(el).flexWrap === 'nowrap';
+    }, null, { timeout: 5000 });
     for (const [label, expected] of [['white', 'rgb(255, 255, 255)'], ['black', 'rgb(25, 24, 22)']]) {
       await d.getByRole('menuitem', { name: 'View', exact: true }).click();
       await d.getByRole('menuitemradio', { name: 'Page colour: ' + label, exact: true }).click();
