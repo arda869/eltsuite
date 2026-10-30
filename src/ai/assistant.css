@@ -8,3 +8,43 @@
 .ai-error { border-left: 4px solid #a32c20; padding: 12px 18px; background: #fff1ed; color: #61241e; }
 .ai-assistant li { margin-bottom: 12px; }
 @media (max-width: 600px) { .ai-assistant fieldset { padding: 12px; } }
+.ai-assistant { max-width:1180px; }
+.ai-hero {display:flex;align-items:center;justify-content:space-between;gap:32px;padding:52px 0 40px;}
+.ai-eyebrow {font-size:11px;letter-spacing:.15em;font-weight:700;color:var(--muted,#82796c);}
+.ai-hero h1 {font-size:clamp(38px,5vw,66px);line-height:1.08;margin:18px 0 22px;letter-spacing:-.035em;}
+.ai-hero h1 em {font-weight:400;color:var(--accent,#427778);}
+.ai-hero p {line-height:1.7;max-width:600px;}
+.ai-orbit {width:230px;height:230px;border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#568584) 15%,transparent),transparent 70%);font-size:12px;letter-spacing:.07em;flex-shrink:0;}
+.ai-orbit strong {font-size:76px;font-weight:400;color:var(--accent,#568584);}
+.ai-progress {display:grid;grid-template-columns:repeat(4,1fr);list-style:none;padding:0;margin:0 0 32px;border-block:1px solid color-mix(in srgb,currentColor 16%,transparent);}
+.ai-progress li {padding:18px 12px;margin:0;font-size:13px;color:var(--muted,#82796c);}
+.ai-progress li span {margin-right:10px;opacity:.6;}
+.ai-progress li[aria-current] {color:inherit;border-bottom:3px solid var(--accent,#568584);font-weight:700;}
+.ai-type-grid,.ai-profile-grid,.ai-decisions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.ai-type-grid {grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:28px;}
+.ai-type-grid button {text-align:left;border:1px solid color-mix(in srgb,currentColor 20%,transparent);background:transparent;color:inherit;padding:22px 16px;border-radius:14px;font:inherit;cursor:pointer;}
+.ai-type-grid button strong {display:block;font-size:19px;margin-bottom:8px;}
+.ai-type-grid button span {font-size:12px;line-height:1.5;display:block;opacity:.7;}
+.ai-type-grid button[aria-pressed=true] {border-color:var(--accent,#568584);background:color-mix(in srgb,var(--accent,#568584) 12%,transparent);box-shadow:inset 0 0 0 1px var(--accent,#568584);}
+.ai-context {padding:18px 0;border-block-start:1px solid color-mix(in srgb,currentColor 15%,transparent);margin-bottom:12px;}
+.ai-context summary {cursor:pointer;font-weight:600;}
+.ai-context p {font-size:14px;line-height:1.6;}
+.ai-assistant fieldset {border-color:color-mix(in srgb,currentColor 18%,transparent);border-radius:16px;padding:24px;}
+.ai-assistant section>fieldset>fieldset {border:0;padding:0;}
+.ai-ready {margin-top:48px;}
+.ai-decisions article {border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:16px;padding:22px;line-height:1.6;}
+.ai-task-cards {display:grid;gap:12px;margin:28px 0;}
+.ai-task-cards>details {border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:12px;padding:20px;}
+.ai-task-cards>details>summary {display:flex;align-items:center;gap:16px;cursor:pointer;}
+.ai-task-cards>details>summary>span:last-child {margin-left:auto;font-size:12px;}
+.ai-task-number {color:var(--accent,#568584);font-size:22px;}
+.ai-preserve {white-space:pre-wrap;line-height:1.75;}
+.ai-create-bar {position:sticky;bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px 24px;background:var(--paper,#fff);border:1px solid color-mix(in srgb,currentColor 20%,transparent);border-radius:16px;box-shadow:0 8px 28px #0002;z-index:2;}
+.ai-create-bar p {font-size:13px;max-width:460px;}
+.ai-assistant button:focus-visible,.ai-assistant summary:focus-visible {outline:3px solid var(--accent,#568584);outline-offset:4px;}
+@media(max-width:700px){.ai-orbit{display:none}.ai-type-grid{grid-template-columns:repeat(2,1fr)}.ai-profile-grid,.ai-decisions{grid-template-columns:1fr}.ai-progress li{padding:14px 4px;font-size:11px}.ai-progress li span{display:block}.ai-create-bar{position:static;flex-direction:column;align-items:stretch}.ai-task-cards>details>summary{flex-wrap:wrap}.ai-hero{padding-top:32px}}
+.ai-edit-card {border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent);padding:16px 0;}
+.ai-edit-card>summary {cursor:pointer;font-weight:600;line-height:1.5;}
+.ai-edit-card>fieldset {border:0;margin:12px 0;padding:8px;}
+.ai-hero h1 em,.ai-eyebrow,.ai-progress li,.ai-task-number {color:inherit;}
+.ai-progress li span,.ai-type-grid button span {opacity:1;}

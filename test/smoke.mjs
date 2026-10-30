@@ -240,6 +240,10 @@ const J = {
     await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
     await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
     if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
+    await s.p.getByRole('button',{name:'Prepare class activities'}).click();
+    await see(s.p,'text=READY FOR YOUR REVIEW','activity review');
+    await s.p.getByRole('button',{name:'Create lesson in Classes'}).click();
+    await see(s.p,'text=Created in Classes, hidden','hidden creation');
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);
     await s.p.setViewportSize({ width: 390, height: 844 });
     if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Assistant overflows on mobile');
