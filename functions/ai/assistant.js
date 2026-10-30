@@ -49,11 +49,11 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       tx.create(item,{type,title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
         const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
-        const versions=type!=='exam' && d.createVariants===true ? [['support',task.support],['challenge',task.challenge]].filter(([,text])=>text?.trim()) : [];
-        for (const [suffix,text] of versions) {
+        const versions=task.roles.length ? task.roles.map((r,j)=>['role'+j,r.input,r.label]) : type!=='exam' && d.createVariants===true ? [['support',task.support,'Easier'],['challenge',task.challenge,'Challenge']].filter(([,text])=>text?.trim()) : [];
+        for (const [suffix,text,label] of versions) {
           const v=item.collection('tasks').doc('activity_'+i+'_'+suffix);
-          const content={...native.content,content:[...native.content.content,{type:'paragraph',content:[{type:'text',text:(suffix==='support'?'Optional support: ':'Extension: ')+text}]}]};
-          tx.create(v,{kind:'task',title:task.title,instructions:task.instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:suffix==='support'?'Easier':'Challenge',order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
+          const content={...native.content,content:[...native.content.content,{type:'paragraph',content:[{type:'text',text:(suffix.startsWith('role')?'Role '+label+': ':suffix==='support'?'Optional support: ':'Extension: ')+text}]}]};
+          tx.create(v,{kind:'task',title:task.title,instructions:task.instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:label,order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
           tx.create(v.collection('private').doc('body'),{content});
           tx.create(v.collection('private').doc('key'),native.key);
           tx.create(v.collection('private').doc('notes'),{text:native.notes,updatedAt:Timestamp.now()});
