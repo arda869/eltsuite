@@ -4,7 +4,7 @@ import { useDismiss } from '../lib/useDismiss';
 import { useMenuKeys } from './menuKeys';
 export type DocumentMenuItem = { label: string; run: () => void; disabled?: boolean; checked?: boolean; hint?: string; icon?: string } | 'sep';
 const commandIcon = (label: string) => {
-  const icons: Record<string, string> = { 'Page setup…': 'settings', 'Download Word': 'export', 'Download PDF': 'export', Print: 'script', Undo: 'prev', Redo: 'next', 'Select all': 'copyall', Pages: 'task', Pageless: 'script', 'Comments and suggestions': 'discuss', 'Show paragraph marks': 'script', 'Browse all elements…': 'plus', 'Picture…': 'picture', Table: 'board', 'Link…': 'link', 'Cite a source…': 'classes', Bold: 'textSize', Italic: 'textSize', Underline: 'textSize', Checklist: 'check', 'Clear text formatting': 'eraser', 'Word count': 'textSize', Contributions: 'groups' };
+  const icons: Record<string, string> = { 'Page setup…': 'settings', 'Download Word': 'import', 'Download PDF': 'import', Print: 'script', Undo: 'prev', Redo: 'next', 'Select all': 'copyall', Pages: 'task', Pageless: 'script', 'Comments and suggestions': 'discuss', 'Show paragraph marks': 'script', 'Browse all elements…': 'plus', 'Picture…': 'picture', Table: 'board', 'Link…': 'link', 'Cite a source…': 'classes', Bold: 'textSize', Italic: 'textSize', Underline: 'textSize', Checklist: 'check', 'Clear text formatting': 'eraser', 'Word count': 'textSize', Contributions: 'groups' };
   return icons[label] ?? (label.startsWith('Page colour') ? 'design' : label.startsWith('Align ') ? 'script' : 'settings');
 };
 export function DocumentMenuBar({ menus }: { menus: { label: string; items: DocumentMenuItem[] }[] }) {
