@@ -1,4 +1,5 @@
 import { DocumentMenuBar } from '../components/DocumentMenuBar';
+import { useDocumentTools } from './DocumentEditingTools';
 import { tell } from '../lib/ask';
 import { OverflowToolbar } from '../components/OverflowToolbar';
 import { NSelect, Select } from '../components/Select';
@@ -273,6 +274,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
     return () => window.removeEventListener('keydown', esc);
   }, [big]);
 
+  const documentTools = useDocumentTools(editor, eff === 'edit' || eff === 'suggest', eff === 'edit', !!page && eff !== 'view');
   if (!editor) return <div className="cd cd-wait" />;
   // Viewing: the document as learners see it when it is presented, without suggestions still open.
   const viewing = eff === 'view';
@@ -520,6 +522,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           { label: 'Undo', hint: keyLabel('Mod+Z'), disabled: !writing || !editor.can().undo(), run: () => { editor.chain().focus().undo().run(); } },
           { label: 'Redo', hint: keyLabel('Mod+Shift+Z'), disabled: !writing || !editor.can().redo(), run: () => { editor.chain().focus().redo().run(); } },
           'sep', { label: 'Select all', hint: keyLabel('Mod+A'), run: () => { editor.chain().focus().selectAll().run(); } },
+          { label: 'Find and replace…', icon: 'search', hint: keyLabel('Mod+F'), disabled: viewing, run: documentTools.openFind },
         ] },
         { label: 'View', items: [
           { label: 'Pages', checked: layout.paged, disabled: !writing, run: () => setLayout({ paged: true }) },
@@ -538,6 +541,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           { label: 'Link…', disabled: !writing || editor.state.selection.empty, run: () => setLinkOpen(true) },
         ] },
         { label: 'Format', items: [
+          { label: 'Copy text formatting', icon: 'design', disabled: !writing, run: documentTools.copyFormatting },
+          { label: 'Apply text formatting', icon: 'design', disabled: !writing || !documentTools.hasFormatting, run: documentTools.applyFormatting }, 'sep',
           { label: 'Bold', disabled: !writing, run: () => { editor.chain().focus().toggleBold().run(); } },
           { label: 'Italic', disabled: !writing, run: () => { editor.chain().focus().toggleItalic().run(); } },
           { label: 'Underline', disabled: !writing, run: () => { editor.chain().focus().toggleUnderline().run(); } },
@@ -550,6 +555,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           { label: 'Contributions', run: () => setSide('people') },
         ] },
       ]} />}
+      {page && documentTools.panel}
       {writing && page && PageBar()}
       {writing && !page && (
         <div className="ne-bar cd-bar" role="toolbar" aria-label="Formatting">

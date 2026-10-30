@@ -219,6 +219,47 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
   const fitWidth = available.width / s.w;
   const scale = zoomChoice === 'fit' ? Math.min(fitWidth, available.height / s.h) : zoomChoice === 'fill' ? fitWidth : Number(zoomChoice) / 100;
   const zoom = Math.max(10, Math.min(200, Math.floor(scale * 100)));
+  const liveZoom = useRef(zoom);
+  liveZoom.current = zoom;
+  useEffect(() => {
+    const el = desk.current;
+    if (!el) return;
+    let startDistance = 0;
+    let startZoom = liveZoom.current;
+    const change = (value: number) => setZoomChoice(String(Math.max(10, Math.min(200, Math.round(value)))));
+    const distance = (e: TouchEvent) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    // Trackpads report pinch as Ctrl+wheel; ordinary scrolling remains unchanged.
+    const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey || (e.target as Element).closest('.pg-zoom')) return;
+      e.preventDefault();
+      change(liveZoom.current * Math.exp(-e.deltaY * 0.01));
+    };
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 2) { startDistance = 0; return; }
+      startDistance = distance(e);
+      startZoom = liveZoom.current;
+    };
+    const move = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !startDistance) return;
+      e.preventDefault();
+      change(startZoom * distance(e) / startDistance);
+    };
+    const end = () => { startDistance = 0; };
+    const gestureStart = (e: Event) => { e.preventDefault(); startZoom = liveZoom.current; };
+    const gestureChange = (e: Event) => { e.preventDefault(); change(startZoom * ((e as Event & { scale?: number }).scale ?? 1)); };
+    el.addEventListener('wheel', wheel, { passive: false });
+    el.addEventListener('touchstart', start, { passive: true });
+    el.addEventListener('touchmove', move, { passive: false });
+    el.addEventListener('touchend', end);
+    el.addEventListener('touchcancel', end);
+    el.addEventListener('gesturestart', gestureStart, { passive: false });
+    el.addEventListener('gesturechange', gestureChange, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', wheel); el.removeEventListener('touchstart', start); el.removeEventListener('touchmove', move);
+      el.removeEventListener('touchend', end); el.removeEventListener('touchcancel', end);
+      el.removeEventListener('gesturestart', gestureStart); el.removeEventListener('gesturechange', gestureChange);
+    };
+  }, []);
   useLayoutEffect(() => {
     const el = desk.current;
     if (!el) return;
@@ -237,12 +278,31 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const measure = () => setPages(Math.max(1, Math.ceil(el.offsetHeight / inner)));
+    const measure = () => {
+      const paper = el.closest<HTMLElement>('.pg-paper');
+      if (paper) {
+        const blocks = [...el.querySelectorAll<HTMLElement>('.ph-node:has(.ph-chart), .cd-view .ph-chart')];
+        blocks.forEach((block) => { block.style.marginBlockStart = ''; });
+        const scale = Number.parseFloat(getComputedStyle(paper).zoom) || 1;
+        const sheetTop = paper.getBoundingClientRect().top;
+        blocks.forEach((block) => {
+          const rect = block.getBoundingClientRect();
+          const top = (rect.top - sheetTop) / scale;
+          const height = rect.height / scale;
+          const page = Math.floor(top / s.h);
+          if (height <= inner && top + height > (page + 1) * s.h - m) {
+            const margin = Number.parseFloat(getComputedStyle(block).marginBlockStart) || 0;
+            block.style.marginBlockStart = `${margin + (page + 1) * s.h + m - top}px`;
+          }
+        });
+      }
+      setPages(Math.max(1, Math.ceil(el.offsetHeight / inner)));
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [m, inner]);
+  }, [m, inner, s.h, zoom]);
   useEffect(() => {
     const st = document.createElement('style');
     st.textContent = `@page { size: ${s.css} ${layout.orientation}; margin: ${m / 96}in; }`;
@@ -262,7 +322,6 @@ export function Paper({ layout, children, appearance = 'auto' }: { layout: Layou
         ))}
       </div>
       <div className="pg-zoom" role="group" aria-label="Document zoom">
-        <span className="pg-page-info">{layout.size === 'letter' ? 'Letter' : layout.size.toUpperCase()} · {layout.orientation === 'landscape' ? 'Landscape' : 'Portrait'}<small>{layout.size === 'letter' ? (layout.orientation === 'landscape' ? '11 × 8.5 in' : '8.5 × 11 in') : layout.size === 'a5' ? (layout.orientation === 'landscape' ? '21 × 14.8 cm' : '14.8 × 21 cm') : (layout.orientation === 'landscape' ? '29.7 × 21 cm' : '21 × 29.7 cm')}</small></span>
         <NSelect aria-label="Zoom percentage" value={zoomChoice} onChange={(e) => setZoomChoice(e.target.value)}>
           <option value="fit">Fit page</option>
           <option value="fill">Fill width</option>
