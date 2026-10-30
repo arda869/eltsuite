@@ -1,3 +1,5 @@
+import { organisationInvitation, codeInvitation } from './invitation-emails.mjs';
+import { frame as brandedFrame, pad, h1 } from './email-layout.mjs';
 // Email for classes (runs every 15 minutes with the other notifications):
 // 1. Announcements a teacher also sends by email go to the learners who added an email.
 // 2. Replies to those emails (when IMAP_URL is set) arrive in the app as messages to the teacher.
@@ -104,12 +106,7 @@ function block(n) {
       return kids;
   }
 }
-const frame = (title, inner, foot) => `<div style="max-width:600px;margin:0 auto;padding:26px 24px;font-family:Arial,sans-serif;color:#2b2a28;background:#fffdfb">
-  <div style="font:600 14px Georgia,serif;color:#b8744e;margin-bottom:14px">ELT Suite</div>
-  ${title ? `<div style="font:600 20px Georgia,serif;margin:0 0 14px">${esc(title)}</div>` : ''}
-  ${inner}
-  <div style="margin-top:22px;padding-top:12px;border-top:1px solid #eee6de;font:12px/1.5 Arial,sans-serif;color:#8a847d">${foot}</div>
-</div>`;
+const frame = (title, inner, foot) => brandedFrame({ title, body: pad((title ? h1(title) : '') + inner), footer: foot });
 
 // A thread token in the reply address (and the subject), so a reply finds its way back.
 async function thread(info) {
@@ -242,15 +239,6 @@ for (const c of threads.docs) {
 // A new teacher gets a link to finish making their account; a teacher who already has one gets an
 // invitation to join, with what the organisation's admins can set and see.
 
-const ADMIN_CAN = [
-  'which apps you have, and how much space',
-  'whether you make your own classes, or they make them for you',
-  'class settings for learners: emails, and how names show',
-  'whether you can add colleagues from outside the organisation',
-  'which shared folders you can view or change',
-  'your job title, and whether you’re a teacher trainer',
-];
-const ADMIN_SEE = 'Your name, email, job title and the profile you write, if they ask for one, and the class lists of your classes. Not your lessons, files or messages, unless you share them.';
 const invites = await db.collection('orgInvites').where('status', '==', 'pending').get();
 const { getAuth } = await import('firebase-admin/auth');
 for (const i of invites.docs) {
@@ -258,19 +246,8 @@ for (const i of invites.docs) {
   if (d.mailed) continue;
   try {
     const existing = await getAuth().getUserByEmail(d.email).then(() => true).catch(() => false);
-    const link = `${SITE}/invite/${i.id}`;
-    const first = (d.name || '').split(' ')[0];
-    const btn = (t) => `<p style="margin:18px 0"><a href="${link}" style="display:inline-block;background:${esc(d.color || '#b8744e')};color:#fff;text-decoration:none;font:600 15px Arial,sans-serif;padding:11px 20px;border-radius:9px">${t}</a></p>`;
-    const can = `<p style="margin:14px 0 6px;font:600 14px Arial,sans-serif">In ${esc(d.orgName)}, its admins can set</p><ul style="margin:0 0 12px;padding-left:20px;font:14px/1.6 Arial,sans-serif;color:#3b3935">${ADMIN_CAN.map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p style="margin:0 0 6px;font:600 14px Arial,sans-serif">What they see</p><p style="margin:0 0 12px;font:14px/1.6 Arial,sans-serif;color:#3b3935">${esc(ADMIN_SEE)} The teachers in ${esc(d.orgName)} become your colleagues.</p>`;
-    const intro = existing
-      ? `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} would like you to join <b>${esc(d.orgName)}</b> in ELT Suite${d.admin ? ', as a teacher and one of its admins' : ''}. Your account, classes and files stay yours. You can say no.</p>${btn('See the invitation')}${can}`
-      : `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${esc(d.byName || 'An admin')} has made a place for you at <b>${esc(d.orgName)}</b> in ELT Suite${d.admin ? ', as a teacher and one of its admins' : ''}, for planning lessons and teaching your classes. Choose a password, or use Google, to finish your account.</p>${btn('Finish your account')}${can}`;
-    await mail.sendMail({
-      from: FROM,
-      to: d.email,
-      subject: existing ? `Join ${d.orgName} in ELT Suite` : `Your ELT Suite account at ${d.orgName}`,
-      html: frame(existing ? `An invitation from ${d.orgName}` : `Welcome to ${d.orgName}`, intro, `You get this because an admin of ${esc(d.orgName)} added ${esc(d.email)}. Not expecting it? Ignore this email.`),
-    });
+    const message = organisationInvitation(d, i.id, existing);
+    await mail.sendMail({ from: FROM, to: d.email, ...message });
     await i.ref.update({ mailed: Date.now(), existing });
     console.log('Invitation emailed for', d.orgName);
   } catch (e) {
@@ -286,22 +263,8 @@ for (const r of codes.docs) {
   const d = r.data();
   if (!d.email || d.mailed || d.off || (d.uses ?? 0) >= (d.maxUses ?? 1) || (d.expires && d.expires < Date.now())) continue;
   try {
-    const link = `${SITE}/?code=${encodeURIComponent(r.id)}`;
-    const first = (d.name || '').split(' ')[0];
-    const who = esc(d.byName || 'The ELT Suite team');
-    const where = d.orgName ? ` to join <b>${esc(d.orgName)}</b>` : '';
-    const until = d.expires ? ` It works until ${new Date(d.expires).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.` : '';
-    const intro = `<p style="font:15px/1.6 Georgia,serif">${first ? `Hello ${esc(first)}, ` : ''}${who} has invited you to ELT Suite${where}: everything an English teacher needs, in one place, to plan the lesson, teach it live and follow every learner’s progress.</p>
-<p style="font:15px/1.6 Georgia,serif">ELT Suite is open by invitation for now. Your invitation code is:</p>
-<p style="margin:14px 0;font:700 26px/1 Menlo,Consolas,monospace;letter-spacing:4px;color:#2b2a28">${esc(r.id)}</p>
-<p style="margin:18px 0"><a href="${link}" style="display:inline-block;background:#b8744e;color:#fff;text-decoration:none;font:600 15px Arial,sans-serif;padding:11px 20px;border-radius:9px">Make your account</a></p>
-<p style="font:14px/1.6 Arial,sans-serif;color:#3b3935">Or go to ${SITE.replace('https://', '')}, choose <b>I have an invitation</b> and type the code. Use this email, ${esc(d.email)}, with a password or Google.${until}</p>`;
-    await mail.sendMail({
-      from: FROM,
-      to: d.email,
-      subject: d.orgName ? `Your invitation to ${d.orgName} in ELT Suite` : 'Your invitation to ELT Suite',
-      html: frame('Welcome to ELT Suite', intro, `You get this because ${who} invited ${esc(d.email)}. Not expecting it? Ignore this email.`),
-    });
+    const message = codeInvitation(d, r.id);
+    await mail.sendMail({ from: FROM, to: d.email, ...message });
     await r.ref.update({ mailed: Date.now() });
     console.log('Invitation code emailed');
   } catch (e) {

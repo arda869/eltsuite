@@ -155,7 +155,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
       {intro ?? (
         <div className="intro">
           <Wordmark big />
-          <span className="soon-badge">Coming soon</span>
+          <span className="soon-badge">{linked || code ? "You’re invited" : "Coming soon"}</span>
           <Tagline />
           <SuiteOrbit />
           <div className="rule" />
@@ -181,10 +181,10 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         )}
         {mode === 'create' && code && (
           <span className="code-ok" role="status">
-            <b>{code.orgName ? `An invitation from ${code.orgName}` : 'An invitation to ELT Suite'}</b>
+            <b>{code.orgName ? `You’re invited to ${code.orgName}` : 'You’re invited'}</b>
             <span>
-              Code {code.code}
-              {code.email ? `, for ${code.email}` : ''}. Make your account with Google or a password.
+              Your code {code.code} is filled in
+              {code.email ? `, for ${code.email}` : ''}. Create your account with Google or a password.
             </span>
           </span>
         )}

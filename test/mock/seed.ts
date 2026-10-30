@@ -27,6 +27,7 @@ const p = new URLSearchParams(location.search);
   }
   // ?colleagues : an organisation, colleagues with profiles, who is around, things shared (test/mock/colleagues.ts)
   if (p.has('colleagues')) await (await import('./colleagues')).seedColleagues();
+  if (p.has('friday')) await (await import('./friday')).seedFriday();
   const as = p.get('as');
   if (as === 'teacher') sessionStorage.setItem('mockuid', 'teacher1');
   else if (as) {

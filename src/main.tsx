@@ -25,6 +25,7 @@ import { Loader } from './components/Loader';
 import { isLearnerEmail } from './lib/learners';
 import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainOrigin, onLearnSite, probeLearn } from './lib/site';
 import './styles.css';
+import './friday-ui.css';
 
 // Pages load when they are first opened, so the first screen comes up quickly.
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));

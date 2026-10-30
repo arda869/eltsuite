@@ -1,3 +1,5 @@
+import { useCiteStyle } from '../lib/citeContext';
+import { inText, orderFor, reference, refsTitle, type Source } from '../lib/cite';
 import { PdfStack, toStack } from '../pdf/PdfStack';
 import { InkSvg, MARK_COLORS } from '../pdf/PdfNodes';
 import type { PageSize } from '../pdf/pdfData';
@@ -189,6 +191,13 @@ const QTYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 
 // Reflection blocks are answered but not numbered.
 
 export function TaskRenderer({ content, responses: responsesIn, onChange, results, disabled, hideAnswers, layout = 'single', colScroll = 'separate', revealed, flags, onToggleFlag, shared, onSharedDraw, onSharedReset, teacher, onOpenTask, onOpenNotebook, taskState, classmates, selfId, received, classId, boardMe, teacherMarks, writingReview, liveHere, asExample }: Props) {
+  const citationStyle = useCiteStyle();
+  const citationSources = useMemo(() => {
+    const seen = new Map<string, Source>();
+    const walk = (n: JSONContent) => { if (n.type === 'cite' && n.attrs?.src) { const source = n.attrs.src as Source; const key = source.id || JSON.stringify(source); if (!seen.has(key)) seen.set(key, source); } n.content?.forEach(walk); };
+    if (content) walk(content);
+    return orderFor([...seen.values()], citationStyle);
+  }, [content, citationStyle]);
   const picCount: Record<string, number> = {}; // picture labels count on in reading order
   const [picked, setPicked] = useState<string | null>(null); // word picked from a word bank
   const [pair, setPair] = useState<{ id: string; side: 'l' | 'r'; i: number } | null>(null); // half-made match
@@ -861,6 +870,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
   const render = (node: JSONContent, key: string): ReactNode => {
     const kids = () => node.content?.map((c, i) => render(c, key + '.' + i));
     switch (node.type) {
+      case 'cite': {
+        const source = node.attrs?.src as Source | undefined;
+        const number = source ? citationSources.findIndex((s) => (s.id || JSON.stringify(s)) === (source.id || JSON.stringify(source))) + 1 : 1;
+        return <span key={key} className="cite" title={source?.title}>{source ? inText(source, citationStyle, node.attrs?.page, node.attrs?.narrative, number || 1) : '(source)'}</span>;
+      }
+      case 'refList':
+        return <div key={key} className="reflist"><h2 className="reflist-h">{refsTitle(citationStyle)}</h2>{citationSources.map((source, i) => <p className="reflist-item" key={source.id || i}>{reference(source, citationStyle, i + 1).map((piece, j) => piece.i ? <i key={j}>{piece.t}</i> : <span key={j}>{piece.t}</span>)}</p>)}</div>;
       case 'doc':
         return <>{kids()}</>;
       case 'paragraph':

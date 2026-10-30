@@ -21,6 +21,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Invitation template checks
+        run: node test/invitation-emails.mjs
       - name: Build and type check
         run: npm run build
       - name: Install Chromium

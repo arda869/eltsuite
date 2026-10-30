@@ -1,3 +1,4 @@
+import { frame, pad, h1, small } from './email-layout.mjs';
 // Emails each teacher who asked for it a short summary of messages that have waited unread
 // longer than they chose. Runs every 15 minutes from GitHub Actions.
 // Needs: GOOGLE_APPLICATION_CREDENTIALS (the deploy key) and SMTP_URL (an email account),
@@ -65,11 +66,7 @@ for (const u of users.docs) {
     from: FROM,
     to: email,
     subject: `${n} unread ${n === 1 ? 'message' : 'messages'} on ELT Suite`,
-    html: `<div style="max-width:560px;margin:0 auto;padding:24px;font-family:Arial,sans-serif;color:#2b2a28">
-      <div style="font:600 22px Georgia,serif;margin-bottom:4px">Messages waiting for you</div>
-      <div style="font:13px Arial,sans-serif;color:#8a847d;margin-bottom:18px">You asked for a summary when messages stay unread.</div>
-      ${parts.join('')}
-      <div style="font:12px Arial,sans-serif;color:#8a847d">Change this in Messages, under the bell.</div></div>`,
+    html: frame({ title: 'Messages waiting for you', body: pad(h1('Messages waiting for you') + small('You asked for a summary when messages stay unread.') + parts.join('')), footer: 'Change this in Messages, under the bell.' }),
   });
   for (const c of waiting) await c.ref.update({ [`digested.${uid}`]: c.data().lastAt });
   console.log(`Sent a summary of ${waiting.length} chats.`);
