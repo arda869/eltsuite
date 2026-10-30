@@ -1,4 +1,5 @@
 import { copyText } from '../lib/copyText';
+import './reading-editor.css';
 import { useEffect, useRef, useState } from 'react';
 import type { JSONContent } from '@tiptap/react';
 import { collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, setDoc, updateDoc } from 'firebase/firestore';
@@ -211,7 +212,6 @@ function NoteBox({ value, onSave, placeholder }: { value: JSONContent | null | u
         }}
         handles={false}
         compact
-        textOnly
         placeholder={placeholder}
       />
       <span className="pd-note-state hint" role="status" aria-live="polite">
