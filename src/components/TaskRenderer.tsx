@@ -882,13 +882,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'paragraph':
         return (
           <div key={key} className="para" data-bk={key}>
-            <p>{kids()}</p>
+            <p style={{ textAlign: node.attrs?.textAlign || undefined, marginInlineStart: node.attrs?.indent ? `${Math.max(0, Math.min(8, Number(node.attrs.indent))) * 12.7}mm` : undefined }}>{kids()}</p>
             {notesFor(node)}
           </div>
         );
       case 'heading':
         return (
-          <h3 key={key} data-bk={key} data-level={node.attrs?.level ?? 1}>
+          <h3 key={key} data-bk={key} data-level={node.attrs?.level ?? 1} style={{ textAlign: node.attrs?.textAlign || undefined, marginInlineStart: node.attrs?.indent ? `${Math.max(0, Math.min(8, Number(node.attrs.indent))) * 12.7}mm` : undefined }}>
             {kids()}
           </h3>
         );
@@ -1234,6 +1234,10 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'phonChart':
       case 'phonCard':
         return <PhonView key={key} type={node.type} a={(node.attrs ?? {}) as Record<string, unknown>} />;
+      case 'docPageBreak':
+        return <div key={key} className="doc-page-break" role="separator" aria-label="Page break"><span>Page break</span></div>;
+      case 'docSection':
+        return <section key={key} className="doc-section" data-doc-section="" data-columns={Number(node.attrs?.columns) || 1} data-new-page={node.attrs?.newPage ? '' : undefined} style={{ columnCount: Math.max(1, Math.min(3, Number(node.attrs?.columns) || 1)), columnGap: 24, columnSpan: 'all' }}>{kids()}</section>;
       case 'subst':
         return <SubstSlot key={key} options={(node.attrs?.options as string[]) ?? []} lines={node.attrs?.lines as SubstLines | undefined} />;
       case 'dictCut':

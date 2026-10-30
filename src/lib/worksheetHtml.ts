@@ -460,6 +460,10 @@ h1 { color: var(--ink); }
 
 // The pieces of a worksheet for the worksheet view in the lesson editor: its styles, the header band,
 // the footer, and each item (a section or a task) printed on its own, in order.
+export function inlineWorksheetHtml(task: WsTask) {
+  MEDIA = {}; SOUNDS = {}; QR_ON = false; MEDIA_SEEN.clear();
+  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}</div>`;
+}
 export function sheetParts(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
   SOUNDS = opts.sounds ?? {};
