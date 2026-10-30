@@ -3,6 +3,7 @@ import { TEACHER_PATHS } from '../lib/teacherPaths';
 import { useAuth } from '../lib/auth';
 import './welcome.css';
 import { Link } from 'react-router-dom';
+import { Select } from '../components/Select';
 import { TopBar } from '../components/TopBar';
 import { playSound } from '../lib/phonAudio';
 import './guide.css';
@@ -44,8 +45,17 @@ export function GuidePage() {
   return <div className="shell"><TopBar /><main className="guide-hub">
     <header className="guide-hub-hero"><span className="path-eyebrow">Your ELT Suite guide</span><h1>A little help.<br />A lot more possibility.</h1><p className="path-lede">Start with what you want to do. Try an example here, then take it into your own teaching.</p><Link to="/welcome" className="btn">Help me choose a starting point →</Link></header>
     <section className="guide-route" aria-label="Choose your teaching goal">
-      <label className="field">What would you like to do?<select value={goal} onChange={e => { setGoal(e.target.value); const p = TEACHER_PATHS.find(p => p.id === e.target.value); if (p) choose(p.topic); }}>{TEACHER_PATHS.map(p => <option value={p.id} key={p.id}>{p.title}</option>)}</select></label>
-      <div><span className="path-eyebrow">Your next useful step</span><h2>{path.result}</h2><ol>{path.steps.map(s => <li key={s}>{s}</li>)}</ol><Link className="btn primary" to={path.to}>{path.action} →</Link></div>
+      <div className="guide-route-choice">
+        <span className="path-eyebrow">Make it yours</span>
+        <label className="field" htmlFor="guide-goal">What would you like to do?</label>
+        <Select id="guide-goal" value={goal} label="What would you like to do?" options={TEACHER_PATHS.map(p => ({ v: p.id, label: p.title, hint: p.detail }))} onChange={value => { setGoal(value); const p = TEACHER_PATHS.find(p => p.id === value); if (p) choose(p.topic); }} />
+        <p>One starting point. Three small steps.<br />Change your choice whenever you like.</p>
+      </div>
+      <div className="guide-next" key={path.id}>
+        <header><span className="path-eyebrow">Your next useful step</span><h2>{path.result}</h2></header>
+        <ol className="guide-next-steps">{path.steps.map((s, i) => <li key={s}><span className="guide-step-number" aria-hidden="true">{i + 1}</span><span><b>{['Start here', 'Build on it', 'Put it to use'][i]}</b><span>{s}</span></span></li>)}</ol>
+        <footer><Link className="btn primary" to={path.to}>{path.action} →</Link><span>Start small. The rest can wait.</span></footer>
+      </div>
     </section>
     <div className="gu guide-focused"><nav className="gu-nav" aria-label="Guide topics"><label className="field">Find a topic<input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="Try lessons or sound" /></label>{matches.map(t => <button key={t.id} type="button" className={'gu-nav-i' + (on === t.id ? ' on' : '')} aria-current={on === t.id ? 'page' : undefined} onClick={() => choose(t.id)}>{t.short}</button>)}{!matches.length && <p role="status">No matching topics. Try “lessons”, “files” or “live”.</p>}</nav>
       <section className="gu-main gu-sec" id={'gu-' + topic.id} aria-labelledby="guide-topic-title"><span className="path-eyebrow">Explore and try · Illustrative examples</span><h2 id="guide-topic-title">{topic.title}</h2><topic.body key={topic.id} /><footer className="gu-end">Ready to try something with your own work? <Link to="/welcome">Choose your next step →</Link></footer></section>
@@ -1312,7 +1322,7 @@ const BLENDS: { k: string; t: string; d: string; mix: [string, number][]; steps:
     k: 'make',
     t: 'Make materials only',
     d: 'Use ELT Suite to make your materials and listening, then print them or take them to whatever you teach with.',
-    mix: [['call', 15], ['print', 25], ['make', 60]],
+    mix: [['print', 40], ['make', 60]],
     steps: ['Make the lesson and its tasks', 'Record and edit the listening in Studio', 'Print a worksheet or download Word and MP3', 'Teach with them anywhere'],
     uses: ['Classes', 'Studio', 'Print', 'Files'],
   },
@@ -1347,26 +1357,18 @@ export function Blend() {
   const b = BLENDS[k];
   return (
     <>
-      <p>There’s no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class. Each glass shows what one way of teaching is made of.</p>
+      <p>There’s no one right way to use ELT Suite. Use as much or as little as suits you and your learners, and change it from class to class. Think of each glass as a teaching recipe. Each colour is one part of the mix; its label sits beside it. These are examples, not a timetable or a required balance.</p>
       <div className="gu-blends" role="radiogroup" aria-label="Ways to teach">
         {BLENDS.map((x, i) => (
           <button key={x.k} type="button" role="radio" aria-checked={i === k} className={'gu-blend' + (i === k ? ' on' : '')} onClick={() => setK(i)}>
-            <Glass mix={x.mix} on={i === k} id={x.k} />
-            <b>{x.t}</b>
-            <span>{x.d}</span>
+            <span className="gu-blend-title"><b>{x.t}</b><span aria-hidden="true">{i === k ? '✓' : '↗'}</span></span>
+            <span className="gu-blend-recipe"><Glass mix={x.mix} on={i === k} id={x.k} /><span className="gu-blend-labels">{[...x.mix].reverse().map(([part]) => <span key={part}><i aria-hidden="true" style={{ background: PARTS[part].c }} />{PARTS[part].n}</span>)}</span></span>
+            <span className="gu-blend-description">{x.d}</span>
           </button>
         ))}
       </div>
       <p className="gu-blend-d gu-slide" key={'d' + b.k}>{b.d}</p>
-      <ul className="gu-mix" aria-label={`What “${b.t}” is made of`} key={'m' + b.k}>
-        {[...b.mix].reverse().map(([p, n]) => (
-          <li key={p} className="gu-slide">
-            <i style={{ background: PARTS[p].c }} />
-            {PARTS[p].n}
-            <b>{n}%</b>
-          </li>
-        ))}
-      </ul>
+      <div className="gu-blend-explainer" aria-live="polite"><span className="path-eyebrow">Your example · {b.t}</span><b>Here’s how it works in practice</b><span>{b.d}</span></div>
       <ol className="gu-flow" key={b.k} aria-label={`${b.t}, step by step`}>
         {b.steps.map((st, i) => (
           <li key={st} className="gu-slide" style={{ animationDelay: `${i * 0.08}s` }}>
