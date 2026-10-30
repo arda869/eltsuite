@@ -85,10 +85,9 @@ export type Teacher = { uid: string; name: string; email: string; avatar?: strin
 
 export const APP_KEYS: { k: string; name: string }[] = [
   { k: 'classes', name: 'Classes' },
-  { k: 'files', name: 'Files' },
+  { k: 'files', name: 'Resources' },
   { k: 'messages', name: 'Messages' },
   { k: 'colleagues', name: 'Colleagues' },
-  { k: 'library', name: 'Organisation library' },
 ];
 
 const orgOf = (id: string, d: Record<string, unknown>): Org => {
@@ -545,11 +544,10 @@ export const APP_LIST: { k: string; name: string; about: string }[] = [
   { k: 'classes', name: 'Classes', about: 'Classes, lessons, homework and live teaching' },
   { k: 'timetable', name: 'Timetable', about: 'Classes and meetings, week by week' },
   { k: 'rooms', name: 'Rooms', about: 'Audio and video calls, and each class’s video room' },
-  { k: 'files', name: 'Files', about: 'Lessons, documents, flashcards and reading' },
+  { k: 'files', name: 'Resources', about: 'Lessons, documents, flashcards and reading' },
   { k: 'messages', name: 'Messages', about: 'Chats with learners and other teachers' },
   { k: 'colleagues', name: 'Colleagues', about: 'Sharing lessons and files with other teachers' },
   { k: 'guide', name: 'Guide', about: 'How ELT Suite works, with things to try' },
-  { k: 'library', name: 'Organisation library', about: 'The organisation’s lessons, to copy into classes' },
   { k: 'design', name: 'Design', about: 'Posters, flashcards and labelled pictures. Early: off unless you turn it on' },
 ];
 

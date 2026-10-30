@@ -75,7 +75,7 @@ export function AppFiles({ app }: { app: AppKey }) {
   const s = q.trim().toLowerCase();
   const shown = lists[tab].filter((e) => !s || `${e.title} ${e.who} ${e.where ?? ""}`.toLowerCase().includes(s));
   const tabs: [Tab, string][] = [
-    ['mine', 'My files'],
+    ['mine', 'Personal files'],
     ['shared', 'Shared with me'],
     ...(org ? ([['library', libName(org)]] as [Tab, string][]) : []),
     ['starred', 'Starred'],

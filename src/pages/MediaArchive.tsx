@@ -774,7 +774,7 @@ export function MediaArchive() {
       >
         {over && <div className="ma-drop">Drop pictures or sounds to add them{folder ? ` to ${leafOf(folder)}` : ''}</div>}
         <aside className="ma-side">
-            <nav className="ma-nav ma-places" aria-label="Files">
+            <nav className="ma-nav ma-places" aria-label="Resources">
               {SECTIONS.map((x) => (
                 <span key={x.k} style={{ display: 'contents' }}>
                 <button type="button" className={section === x.k && (x.k !== 'media' || (folder === '' && !recent)) ? 'on' : ''} aria-current={section === x.k ? 'page' : undefined} onClick={() => (pick(x.k), x.k === 'media' && setFolder(''))} {...(x.k === 'media' ? folderDrop('') : {})}>
@@ -921,7 +921,7 @@ export function MediaArchive() {
                     </span>
                   ))}
                 </nav>
-                <h1 className="page-title">{recent ? 'Recent' : folder ? leafOf(folder) : 'My files'}</h1>
+                <h1 className="page-title">{recent ? 'Recent' : folder ? leafOf(folder) : 'Personal files'}</h1>
               </div>
               {/* Classes hold what the classes have; new things are made in My files. */}
               {!inClasses(folder) && (
@@ -1311,7 +1311,7 @@ function MoveDialog({ folders, count, from, onClose, onMove }: { folders: string
           {['', ...folders].map((f) => (
             <button key={f || 'root'} type="button" role="radio" aria-checked={to === f} className={to === f ? 'on' : ''} style={{ ['--d' as string]: f ? f.split('/').length : 0 }} onClick={() => setTo(f)} onDoubleClick={() => onMove(f)}>
               {f ? <FolderIcon size={15} open={to === f} /> : <UiIcon name="archive" size={15} />}
-              {f ? leafOf(f) : 'My files'}
+              {f ? leafOf(f) : 'Personal files'}
             </button>
           ))}
         </div>
@@ -1640,7 +1640,7 @@ function ToOrgDialog({ d, folders, me, onClose }: { d: SharedDoc; folders: Drive
     try {
       await copyFile(d, me, f as unknown as Parameters<typeof copyFile>[2]);
       onClose();
-      void tell(`${d.title} is in ${f.name} now. Your own copy stays in your Files.`);
+      void tell(`${d.title} is in ${f.name} now. Your own copy stays in your Resources.`);
     } catch (e) {
       console.error(e);
       setBusy('We couldn’t make the copy. Try again.');

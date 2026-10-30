@@ -205,7 +205,7 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
     ...extra,
     ['Folders', folders.length],
   ];
-  const name = path ? leafOf(path) : 'My files';
+  const name = path ? leafOf(path) : 'Personal files';
   return (
     <aside className="ma-detail" aria-label={name}>
       <div className="ma-detail-head">
@@ -219,7 +219,7 @@ export function FolderDetail({ path, items, tasks, folders, onOpen, onRename, on
       <div className="lt-folder" onDoubleClick={here ? undefined : onOpen}>
         <FolderIcon size={64} locked={locked} />
         <b>{name}</b>
-        <span className="hint">{!path ? 'Everything you keep' : path.includes('/') ? 'My files › ' + path.split('/').slice(0, -1).join(' › ') : 'In My files'}</span>
+        <span className="hint">{!path ? 'Everything you keep' : path.includes('/') ? 'My files › ' + path.split('/').slice(0, -1).join(' › ') : 'In Personal files'}</span>
         {locked && <span className="hint">This folder follows your class. To move or rename a lesson, do it in the class itself.</span>}
       </div>
       <span className="ma-detail-acts">

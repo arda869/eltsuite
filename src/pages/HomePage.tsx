@@ -233,7 +233,7 @@ export function HomePage() {
             <section className="hm-card" aria-labelledby="hm-files">
               <header>
                 <h2 id="hm-files">Recent files</h2>
-                <Link to="/archive" className="hm-more">Files</Link>
+                <Link to="/archive" className="hm-more">Resources</Link>
               </header>
               {recent.length ? (
                 <div className="hm-files">
@@ -338,7 +338,7 @@ export function HomePage() {
             </section>
 
             {org && (
-              <Link to="/library" className="hm-card hm-lib">
+              <Link to="/archive?library=" className="hm-card hm-lib">
                 <UiIcon name="archive" size={18} />
                 <span>
                   <b>{libName(org)}</b>

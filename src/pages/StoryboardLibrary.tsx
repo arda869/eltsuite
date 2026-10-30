@@ -122,7 +122,7 @@ export function StoryboardLibrary() {
             </div>
           </section>
         )}
-        <p className="hint sbl-foot">Next: storyboards to make with these, in Files, inside lessons, Collab and messages, and to work on together.</p>
+        <p className="hint sbl-foot">Next: storyboards to make with these, in Resources, inside lessons, Collab and messages, and to work on together.</p>
       </main>
     </div>
   );

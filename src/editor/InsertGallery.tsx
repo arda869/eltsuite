@@ -22,7 +22,7 @@ const SECTIONS: Section[] = [
 
 // Longer explanations than the / menu hints: what learners do and how it is marked.
 const ABOUT: Record<string, string> = {
-  storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Files and press Update.',
+  storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Resources and press Update.',
   'dg-mind': 'A word or topic in the middle with ideas around it. Every box is text, so a branch can be a gap or a choice. Up to eight branches.',
   'dg-venn': 'Two circles: what belongs only to one, and what they share. Name each circle; learners can fill the parts with gaps or drag words.',
   'dg-compare': 'A T-chart: two to four columns with titles, for pros and cons, formal and informal, then and now.',

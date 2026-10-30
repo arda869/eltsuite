@@ -237,7 +237,7 @@ export function Props({ cx }: { cx: Ctx }) {
             <span>Under it</span>
             <input value={one.text ?? ''} onChange={(e) => live({ text: e.target.value }, 'cap')} placeholder="Listen" />
           </label>
-          <p className="hint">Copy a recording’s link from Recordings, or a video’s from Files.</p>
+          <p className="hint">Copy a recording’s link from Recordings, or a video’s from Resources.</p>
         </Sec>
       )}
       {one?.t === 'lines' && (

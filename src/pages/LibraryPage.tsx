@@ -55,7 +55,7 @@ export function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { 
     setNote(`Copying ${d.title}…`);
     try {
       await copyFile(d, me, null);
-      setNote(`${d.title} is in your Files now.`);
+      setNote(`${d.title} is in your Resources now.`);
     } catch (e) {
       console.error(e);
       setNote('We couldn’t make the copy. Check how much space you have left, then try again.');
@@ -63,7 +63,7 @@ export function FolderPane({ f, uid, me }: { f: DriveFolder; uid: string; me: { 
   };
   const menuFor = (d: SharedDoc): MenuItem[] => [
     { label: 'Open', icon: 'next', onClick: () => window.open(`/doc/${d.id}`, '_blank') },
-    { label: 'Copy to My files', icon: 'copyall', onClick: () => void toMine(d) },
+    { label: 'Copy to Personal files', icon: 'copyall', onClick: () => void toMine(d) },
     ...(d.kind === 'lesson' ? [{ label: 'Copy to a class…', icon: 'copyall', onClick: () => setCopying(d) }] : []),
     ...(canAdd ? [{ label: 'Rename', icon: 'edit', onClick: () => void askText('New name', d.title, { ok: 'Rename' }).then((v) => typeof v === 'string' && v.trim() && void renameDoc(d.id, v).catch((e) => { void import('../lib/ask').then(({ tell }) => tell(e.message)); })) } as MenuItem] : []),
     ...(d.owner === uid ? [{ label: 'Delete', icon: 'trash', danger: true, onClick: () => void ask(`Delete “${d.title}” to the recycle bin? It can be restored for 30 days.`, { ok: 'Delete' }).then((ok) => ok && void removeSharedDoc(d.id)) } as MenuItem] : []),

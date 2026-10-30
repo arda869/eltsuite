@@ -1,6 +1,5 @@
 import { isLearnerEmail } from '../lib/learners';
 import { OrgLogo } from './OrgLook';
-import { currentOrg, libName } from '../lib/admin';
 import { AppGrid, AppLogo, HOME_COLOR, appAt, setAppFavicon } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -107,7 +106,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
               {profile?.role === 'teacher' && (
                 <Link role="menuitem" className="menu-link" to="/archive" onClick={() => setOpen(false)}>
                   <UiIcon name="archive" size={15} />
-                  Files
+                  Resources
                 </Link>
               )}
             </span>
@@ -151,16 +150,14 @@ function AppMark() {
   // Every app shows its name under ELT Suite, in its own colour.
   const own = pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'reading', name: 'Reading Journal', color: '#6b5a8a' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'storyboard', name: 'Storyboards', color: '#4f7a55' } : pathname.startsWith('/design') ? { k: 'design', name: 'Design', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
   const app = own ??
-    (pathname.startsWith('/archive') || pathname.startsWith('/doc')
-      ? { name: 'Files', color: '#3667a6' }
+    (pathname.startsWith('/archive') || pathname.startsWith('/doc') || pathname.startsWith('/library')
+      ? { name: 'Resources', color: '#3667a6' }
       : pathname.startsWith('/messages')
         ? { name: 'Messages', color: '#7a4fa3' }
         : pathname.startsWith('/colleague')
           ? { name: 'Colleagues', color: '#4f6b7a' }
           : pathname.startsWith('/admin')
             ? { name: 'Super Admin', color: '#2f2e2d' }
-          : pathname.startsWith('/library')
-            ? { name: libName(currentOrg()), color: '#7a5a3a' }
           : pathname.startsWith('/org-admin')
             ? { name: 'Organisation admin', color: '#5d6f80' }
           : pathname.startsWith('/storyboard')

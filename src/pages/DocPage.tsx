@@ -33,7 +33,7 @@ const DesignFile = lazy(() => import('../design/Editor').then((m) => ({ default:
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
 // sharing, and the whole window for writing.
 
-// The same page icon the file has in Files, so the tab and the file look alike.
+// The same page icon the file has in Resources, so the tab and the file look alike.
 export function DocIcon({ kind }: { kind: DocKind }) {
   return (
     <span className="dp-icon" aria-hidden="true">
@@ -94,7 +94,7 @@ export function DocPage() {
   if (!uid) return <div className="dp-msg">Sign in to open this document.</div>;
   if (!lesson && d === undefined) return <div className="dp-msg">Opening…</div>;
   if (!lesson && d && startN && start === undefined) return <div className="dp-msg">Opening…</div>;
-  if (!lesson && d?.deletedAt) return <div className="dp-msg">This file is in the recycle bin.<Link to="/archive?show=bin">Open Files</Link></div>;
+  if (!lesson && d?.deletedAt) return <div className="dp-msg">This file is in the recycle bin.<Link to="/archive?show=bin">Open Resources</Link></div>;
   if (!lesson && (d === null || !role)) return <div className="dp-msg">This document isn’t shared with you, or it’s been deleted.<Link to="/">Back to ELT Suite</Link></div>;
   const docKey = lesson ? key : d!.docKey;
   const cite = ((d as { citeStyle?: CiteStyle } | null | undefined)?.citeStyle ?? 'apa') as CiteStyle;

@@ -26,7 +26,7 @@ const TOPICS: Topic[] = [
   { id: 'progress', title: 'Marking and progress', short: 'Progress', body: Progress },
   { id: 'studio', title: 'Studio: record and edit sound', short: 'Studio', body: Studio },
   { id: 'print', title: 'PDFs, printing and worksheets', short: 'Print and PDF', body: Print },
-  { id: 'files', title: 'Your files and their apps', short: 'Files and apps', body: FilesTopic },
+  { id: 'files', title: 'Your resources and their apps', short: 'Resources and apps', body: FilesTopic },
   { id: 'week', title: 'Timetable and Rooms', short: 'Timetable, Rooms', body: Week },
   { id: 'share', title: 'Colleagues and Messages', short: 'Colleagues', body: Share },
   { id: 'org', title: 'Running an organisation', short: 'Organisation', body: OrgTopic },
@@ -181,7 +181,7 @@ const APPS: GuideApp[] = [
     d: 'M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v3.5',
   },
   {
-    k: 'files', name: 'Files', color: '#3667a6', to: '/archive', tag: 'Everything you keep',
+    k: 'files', name: 'Resources', color: '#3667a6', to: '/archive', tag: 'Everything you keep',
     about: 'Lessons, documents, flashcards, PDFs, pictures and recordings in one place, in folders like on your computer, with your organisation’s library beside them.',
     can: ['Folders, tags and search', 'Share a folder with colleagues', 'Copy from the library into a class'],
     d: 'M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z',
@@ -499,7 +499,7 @@ function AppScreen({ k, c }: { k: string; c: string }) {
       case 'files':
         return (
           <>
-            <text x="20" y="34" className="gu-s-h">Files</text>
+            <text x="20" y="34" className="gu-s-h">Resources</text>
             {[['Term 2', 'folder'], ['Speaking', 'folder'], ['Unit 3 quiz', '#c8764a'], ['Course plan', '#2f6f9f'], ['Phrasal verbs', '#a8701f'], ['Dialogue', '#a8473a'], ['Workbook p.12', '#a6463a'], ['Notes', '#6b5a8a']].map(([n, kind], i) => (
               <g key={n} transform={`translate(${24 + (i % 4) * 80} ${52 + Math.floor(i / 4) * 78})`}>
                 {kind === 'folder' ? (
@@ -1327,7 +1327,7 @@ const BLENDS: { k: string; t: string; d: string; mix: [string, number][]; steps:
     d: 'Use ELT Suite to make your materials and listening, then print them or take them to whatever you teach with.',
     mix: [['print', 40], ['make', 60]],
     steps: ['Make the lesson and its tasks', 'Record and edit the listening in Studio', 'Print a worksheet or download Word and MP3', 'Teach with them anywhere'],
-    uses: ['Classes', 'Studio', 'Print', 'Files'],
+    uses: ['Classes', 'Studio', 'Print', 'Resources'],
   },
 ];
 function Glass({ mix, on, id }: { mix: [string, number][]; on: boolean; id: string }) {
@@ -1479,7 +1479,7 @@ function Studio() {
           { t: 'Record', d: 'Record in the browser, reading your script: press Space at each line so the script follows the sound.' },
           { t: 'Edit', d: 'Split, trim, fade, move clips between speakers, change a clip’s volume, add silence and sound effects.' },
           { t: 'Record with a colleague', d: 'Start a recording session: each of you records on your own device, hearing each other; the takes come in as tracks.' },
-          { t: 'Use it', d: 'Save it to Files and put it into any lesson as karaoke listening, or download the MP3 and each speaker’s track.' },
+          { t: 'Use it', d: 'Save it to Resources and put it into any lesson as karaoke listening, or download the MP3 and each speaker’s track.' },
         ]}
       />
     </>
@@ -1555,7 +1555,7 @@ function Print() {
       </div>
       <Steps
         items={[
-          { t: 'Upload a PDF', d: 'A coursebook page or a worksheet, into the PDF app or into Files.' },
+          { t: 'Upload a PDF', d: 'A coursebook page or a worksheet, into the PDF app or into Resources.' },
           { t: 'Add to the page', d: 'Gaps, text boxes and highlights exactly where learners write.' },
           { t: 'Use it', d: 'Put the page into a lesson, write on it together live, or print it with your additions.' },
         ]}
@@ -1569,7 +1569,7 @@ function Print() {
 function FilesTopic() {
   return (
     <>
-      <p>Everything you make that isn’t a lesson has an app of its own, like Docs and Slides in Google’s suite, and is in Files too. Each app lists <b>your files</b>, the ones <b>shared with you</b>, your <b>organisation’s library</b> and the ones you <b>starred</b>.</p>
+      <p>Everything you make that isn’t a lesson has an app of its own, like Docs and Slides in Google’s suite, and is in Resources too. Each app lists <b>your files</b>, the ones <b>shared with you</b>, your <b>organisation’s library</b> and the ones you <b>starred</b>.</p>
       <div className="gu-grid2">
         <Try title="Flashcards: tap the card to turn it over">
           <FlipCard />

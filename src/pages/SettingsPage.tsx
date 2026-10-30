@@ -241,7 +241,7 @@ export function SettingsPage() {
         </Section>
 
         {teacher && (
-          <Section icon="archive" title="Files">
+          <Section icon="archive" title="Resources">
             <Row title="Picture quality" hint={PIC_QUALITY.find((p) => p.k === quality)?.about}>
               <span className="seg small-seg">
                 {PIC_QUALITY.map((p) => (

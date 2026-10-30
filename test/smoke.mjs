@@ -88,7 +88,12 @@ const J = {
     const result = await s.p.locator('#result').innerText();
     if (result.includes('FAIL')) throw new Error(result);
     await s.p.goto(BASE + '/archive');
-    await see(s.p, 'nav[aria-label="Files"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
+    await s.p.getByRole('button', { name: 'Apps', exact: true }).click();
+    await see(s.p, '.apps-pop a[role="menuitem"]:has-text("Resources")', 'Resources in the app launcher');
+    if (await s.p.locator('.apps-pop a[href="/library"]').count()) throw new Error('Organisation library still appears as a separate app.');
+    if (await s.p.locator('.apps-pop a[href="/archive"]').innerText().then((text) => !text.includes('Resources'))) throw new Error('The Resources app still has its old name.');
+    await s.p.keyboard.press('Escape');
+    await see(s.p, 'nav[aria-label="Resources"] button:has-text("Personal Files")', 'personal files in the sidebar').catch(async (e) => { throw new Error(e.message + ' ' + s.errors.join(';') + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
     await s.p.getByRole('button', { name: 'Recycle bin', exact: true }).click();
     await see(s.p, 'h1:has-text("Recycle bin")', 'the recycle bin');
     await s.p.locator('.file-bin-list li').filter({ hasText: 'Restore me' }).getByRole('button', { name: 'Restore', exact: true }).click();
@@ -107,6 +112,9 @@ const J = {
     await s.p.goto(BASE + '/library?f=drive-demo');
     await see(s.p, 'nav[aria-label="Organisation library"]', 'libraries inside Files');
     await see(s.p, '.ma-main h1', 'the selected organisation folder');
+    await s.p.getByRole('button', { name: 'Apps', exact: true }).click();
+    if (await s.p.locator('.apps-pop a[href="/library"]').count()) throw new Error('Organisation accounts still have a separate Library app.');
+    await s.p.keyboard.press('Escape');
     await axe(s.p, 'Unified Files library', A11Y_FOUND);
     return s;
   },

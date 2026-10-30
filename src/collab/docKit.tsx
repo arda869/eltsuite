@@ -167,7 +167,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('info', 'Basic', { label: 'Callout', hint: 'A coloured box for a rule, a tip or useful language' }),
   from('textbox', 'Basic'),
   from('reveal', 'Basic', { label: 'Toggle', hint: 'Hidden until someone opens it' }),
-  { key: 'image', label: 'Picture', hint: 'Upload, paste or choose from My files', group: 'Media', run: (e) => pickPictures(e) },
+  { key: 'image', label: 'Picture', hint: 'Upload, paste or choose from Personal files', group: 'Media', run: (e) => pickPictures(e) },
   from('storyboard', 'Media'),
   from('linkcard', 'Media', { label: 'Video or web page', hint: 'A YouTube video, a sound file or a web page' }),
   { key: 'cite', label: 'Citation', hint: 'Cite a source from your Reading Journal', group: 'Writing', run: () => void window.dispatchEvent(new CustomEvent('ll:cite')) },

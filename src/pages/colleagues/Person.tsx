@@ -21,7 +21,7 @@ export function Person({ m, st, chat, me, org, uid, between, onBack, onGone }: {
   const [tab, setTab] = useState<Tab>(() => (['theirs', 'mine', 'classes'] as Tab[]).find((k) => lists[k].length) ?? 'theirs');
   const TABS: { k: Tab; label: string; short: string; empty: string }[] = [
     { k: 'theirs', label: 'Shared with you', short: 'With you', empty: `Nothing from ${m.first} yet. What they share with you shows here.` },
-    { k: 'mine', label: 'You shared', short: 'By you', empty: 'Nothing yet. Share a lesson from its menu on the class page, or a file from Files.' },
+    { k: 'mine', label: 'You shared', short: 'By you', empty: 'Nothing yet. Share a lesson from its menu on the class page, or a file from Resources.' },
     { k: 'classes', label: 'Classes together', short: 'Classes', empty: `No classes together yet. Add a co-teacher in a class’s settings.` },
   ];
   const remove = async () => {

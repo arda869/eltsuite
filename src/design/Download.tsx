@@ -7,7 +7,7 @@ import type { Ctx } from './Editor';
 import { downloadCards, downloadImage, downloadPdf, pageBlob, type Copy } from './tools';
 import type { Env } from './render';
 
-// Downloads: pictures and PDFs, each learner's copy, cut-out cards, and a picture in Files to use in
+// Downloads: pictures and PDFs, each learner's copy, cut-out cards, and a picture in Resources to use in
 // lessons.
 export function DownloadMenu({ cx }: { cx: Ctx }) {
   const [open, setOpen] = useState(false);
@@ -35,7 +35,7 @@ export function DownloadMenu({ cx }: { cx: Ctx }) {
     if (!u) return;
     const blob = await pageBlob(cx.page, cx.els, env, 1.6);
     await uploadPicture('user:' + u.uid, blob, 'high', `${name}${cx.pages.length > 1 ? ' – page ' + (cx.pages.indexOf(cx.page) + 1) : ''}`);
-    void tell('The page is in your Files as a picture. You can add it to any lesson or task from there.');
+    void tell('The page is in your Resources as a picture. You can add it to any lesson or task from there.');
   };
   return (
     <>
@@ -56,8 +56,8 @@ export function DownloadMenu({ cx }: { cx: Ctx }) {
               <strong>Picture (JPG)</strong><span>A smaller file, for messages</span>
             </button>
             {!cx.learnerUser && (
-              <button type="button" role="menuitem" onClick={() => void run('Saving to Files…', toFiles)}>
-                <strong>Save as a picture in Files</strong><span>To use in lessons and tasks</span>
+              <button type="button" role="menuitem" onClick={() => void run('Saving to Resources…', toFiles)}>
+                <strong>Save as a picture in Resources</strong><span>To use in lessons and tasks</span>
               </button>
             )}
             <p className="dz-dl-h">All {cx.pages.length} {cx.pages.length === 1 ? 'page' : 'pages'}, to print</p>
