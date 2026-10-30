@@ -6,8 +6,9 @@ import { speakingCall } from './api';
 import type { SpeakingConfig, SpeakingFeedback, SpeakingSession, SpeakingTurn } from './types';
 import './speaking.css';
 const clock = (n: number) => `${Math.floor(Math.max(0,n)/60)}:${String(Math.max(0,n)%60).padStart(2,'0')}`;
-export function SpeakingActivity({ config: initialConfig, classId, teacher = false, disabled = false, classmates = [] }: { config: SpeakingConfig; classId: string; teacher?: boolean; disabled?: boolean; classmates?: { id: string; name: string }[] }) {
+export function SpeakingActivity({ config: initialConfig, classId, teacher = false, preview = false, disabled = false, classmates = [] }: { config: SpeakingConfig; classId: string; teacher?: boolean; preview?: boolean; disabled?: boolean; classmates?: { id: string; name: string }[] }) {
   const { user } = useAuth();
+  const [previewReply,setPreviewReply]=useState(''),[partnerTalking,setPartnerTalking]=useState(false);
   const [published,setPublished]=useState<SpeakingConfig|null>(null);
   const config=teacher?initialConfig:published||initialConfig;
   const [focusChoice,setFocusChoice]=useState<number|null>(null),[chosenFocus,setChosenFocus]=useState(''),[lessonFocus,setLessonFocus]=useState(config.focus);
@@ -16,6 +17,7 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
   const [feedback,setFeedback]=useState<SpeakingFeedback|null>(null),[turns,setTurns]=useState<SpeakingTurn[]>([]),[selected,setSelected]=useState('');
   const pc=useRef<RTCPeerConnection|null>(null),stream=useRef<MediaStream|null>(null),dc=useRef<RTCDataChannel|null>(null),audio=useRef<HTMLAudioElement>(null);
   const sessionId=useRef(''),deadline=useRef(0),turnRef=useRef<SpeakingTurn[]>([]),running=useRef(false),wrapping=useRef(false),closing=useRef(false),responding=useRef(false),finishing=useRef(false),mounted=useRef(true),queue=useRef(Promise.resolve());
+  const inputSpeaking=useRef(false);
   const helpRef=useRef(false),statusRef=useRef('ready');
   const liveStatus=(s:string)=>{statusRef.current=s;setStatus(s);};
   const base={classId,activityId:config.id};
@@ -27,7 +29,14 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
   };
   const finish=async()=>{
     if(finishing.current || !sessionId.current)return;
-    finishing.current=true;disconnect();liveStatus('feedback');setError('');
+    finishing.current=true;running.current=false;
+    const wasSpeaking=inputSpeaking.current;
+    stream.current?.getTracks().forEach(t=>t.stop());
+    if(audio.current)audio.current.pause();
+    if(wasSpeaking&&dc.current?.readyState==='open')dc.current.send(JSON.stringify({type:'input_audio_buffer.commit'}));
+    liveStatus('feedback');setError('');
+    // Let pending final transcription events arrive before closing the data channel.
+    await new Promise(resolve=>window.setTimeout(resolve,1000));disconnect();
     try {await queue.current;const r=await speakingCall<{feedback?:SpeakingFeedback}>({...base,action:'finish',sessionId:sessionId.current,turns:turnRef.current});if(mounted.current){if(r.feedback){setFeedback(r.feedback);liveStatus('complete');}else{liveStatus('ended');setError('Feedback is still being prepared. Try again in a moment.');}}}
     catch(e){if(mounted.current){setError((e as Error).message);liveStatus('ended');}}
     finally{finishing.current=false;}
@@ -40,6 +49,8 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
   const finalTurn=()=>{
     if(closing.current || responding.current || !running.current)return;
     closing.current=true;
+    send({type:'session.update',session:{type:'realtime',audio:{input:{turn_detection:null}}}});
+    if(inputSpeaking.current){send({type:'input_audio_buffer.commit'});inputSpeaking.current=false;}
     stream.current?.getAudioTracks().forEach(t=>t.enabled=false);setMuted(true);
     send({type:'response.create',response:{instructions:'The speaking task time has ended. In your assigned role, say one natural brief closing sentence and goodbye. No question, no feedback, no further conversation.',max_output_tokens:100}});
   };
@@ -73,54 +84,57 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
     if(config.feedbackMode==='learner'&&focusChoice===null){setError('Choose a development area before starting.');return;}
     liveStatus('connecting');setError('');setFeedback(null);setTurns([]);turnRef.current=[];wrapping.current=false;closing.current=false;responding.current=false;finishing.current=false;helpRef.current=false;setHelp(false);setMuted(false);sessionId.current='';deadline.current=0;
     try {
-      if(!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection)throw Error('Use a current browser with microphone access to practise speaking.');
-      stream.current=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
+      if((!preview&&!navigator.mediaDevices?.getUserMedia) || !window.RTCPeerConnection)throw Error('Use a current browser with microphone access to practise speaking.');
+      if(!preview)stream.current=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
       if(!mounted.current){disconnect();return;}
       const connection=new RTCPeerConnection();pc.current=connection;
       const channel=connection.createDataChannel('oai-events');dc.current=channel;
       connection.ontrack=e=>{if(audio.current){audio.current.srcObject=e.streams[0];void audio.current.play().catch(()=>setError('Tap Play partner audio to hear your partner.'));}};
-      stream.current.getTracks().forEach(t=>connection.addTrack(t,stream.current!));
+      if(preview)connection.addTransceiver('audio',{direction:'recvonly'});else stream.current!.getTracks().forEach(t=>connection.addTrack(t,stream.current!));
       channel.onopen=()=>{running.current=true;liveStatus('listening');progress();send({type:'response.create',response:{instructions:'Start the assigned scenario with one short greeting and one question. Keep your turn brief.'}});};
       channel.onmessage=e=>{
         try {const event=JSON.parse(e.data);
-          if(event.type==='input_audio_buffer.speech_started'){if(!wrapping.current)liveStatus('speaking');progress();}
-          if(event.type==='input_audio_buffer.speech_stopped'){if(!wrapping.current)liveStatus('listening');progress();}
+          if(event.type==='input_audio_buffer.speech_started'){inputSpeaking.current=true;if(!wrapping.current)liveStatus('speaking');progress();}
+          if(event.type==='input_audio_buffer.speech_stopped'){inputSpeaking.current=false;if(!wrapping.current)liveStatus('listening');progress();}
           if(event.type==='conversation.item.input_audio_transcription.completed')append('learner',event.transcript || '');
           if(event.type==='response.output_audio_transcript.done')append('partner',event.transcript || '');
-          if(event.type==='response.created')responding.current=true;
-          if(event.type==='output_audio_buffer.stopped'){responding.current=false;if(closing.current)void finish();else if(Date.now()>=deadline.current)finalTurn();}
+          if(event.type==='response.created'){responding.current=true;setPartnerTalking(true);}
+          if(event.type==='output_audio_buffer.cleared'||(event.type==='response.done'&&event.response?.status!=='completed')){responding.current=false;setPartnerTalking(false);}
+          if(event.type==='output_audio_buffer.stopped'){responding.current=false;setPartnerTalking(false);if(closing.current)void finish();else if(Date.now()>=deadline.current)finalTurn();}
           if(event.type==='error')setError('The voice partner had a connection problem. You can end the task and keep your transcript.');
         }catch{/* ignore non-JSON control events */}
       };
       connection.onconnectionstatechange=()=>{if(['failed','disconnected'].includes(connection.connectionState)&&running.current){setError('The voice connection was interrupted. Your transcript is kept.');void finish();}};
       const offer=await connection.createOffer();await connection.setLocalDescription(offer);
-      const response=await speakingCall<{sdp:string;sessionId:string;deadline:number;seconds:number;focus:string}>({...base,action:'start',sdp:offer.sdp,focusChoice});
+      const response=await speakingCall<{sdp:string;sessionId:string;deadline:number;seconds:number;focus:string}>({...base,action:'start',sdp:offer.sdp,focusChoice,preview});
       if(!mounted.current){disconnect();void speakingCall({...base,action:'finish',sessionId:response.sessionId,turns:[]}).catch(()=>{});return;}
       sessionId.current=response.sessionId;deadline.current=response.deadline;setRemaining(response.seconds);setChosenFocus(response.focus);
       await connection.setRemoteDescription({type:'answer',sdp:response.sdp});
     }catch(e){disconnect();liveStatus('ready');setError((e as Error).name==='NotAllowedError'?'Allow microphone access to begin. Nothing has been recorded.':(e as Error).message);if(sessionId.current)void speakingCall({...base,action:'finish',sessionId:sessionId.current,turns:[]}).catch(()=>{});}
   };
   const active=['connecting','listening','speaking','wrapping-up'].includes(status);
-  const latestByUser=[...new Map([...sessions].reverse().map(s=>[s.uid,s])).values()];
+  const latestByUser=[...new Map(sessions.filter(s=>!s.preview).reverse().map(s=>[s.uid,s])).values()];
   const selectedSession=sessions.find(s=>s.id===selected);
   return <section className="speak-card" aria-label="Speaking practice">
     <div className="speak-heading"><span className="speak-kicker">SPEAKING PRACTICE</span><span className="speak-duration">{config.seconds/60} min · {config.level}</span></div>
+    {preview&&<p className="speak-note"><strong>Teacher preview</strong> · Hear the partner and type a learner’s replies. Your microphone stays off. Save the task before trying it.</p>}
     <h3>{config.title}</h3><p className="speak-scenario"><strong>Your task:</strong> {config.scenario}</p>
     <div className="speak-focus"><span>{config.feedbackMode==='learner'?'Your development area':'Today’s focus'}</span><strong>{chosenFocus||(config.feedbackMode==='learner'?(focusChoice===null?'Choose what you want to work on':config.focusOptions?.[focusChoice]):config.feedbackMode==='lesson'?lessonFocus:config.focus)}</strong></div>
     {config.feedbackMode==='learner'&&!teacher&&!active&&status!=='feedback'&&<fieldset className="speak-choices"><legend>What would you like feedback on?</legend><p>Pick the development area that matters to you today.</p>{config.focusOptions?.map((option,i)=><label key={i} className={focusChoice===i?'selected':''}><input type="radio" name={'speaking-focus-'+config.id} checked={focusChoice===i} onChange={()=>{setFocusChoice(i);setChosenFocus('');}}/><span>{option}</span></label>)}</fieldset>}
     {teacher ? <div className="speak-monitor"><div className="speak-monitor-head"><h4>Live class view</h4><span>{latestByUser.length} started{classmates.length?` / ${classmates.length} learners`:''} · {latestByUser.filter(s=>s.status==='complete').length} finished</span></div>
-      {!sessions.length?<p className="speak-note">Learners appear here when they start. Each conversation stays private to that learner and their teachers.</p>:<div className="speak-roster">{latestByUser.map(s=><button type="button" key={s.id} className={'speak-learner'+(s.help?' help':'')} onClick={()=>setSelected(s.id)}><span className="speak-avatar">{s.name.slice(0,1)}</span><span><strong>{s.name}</strong><small>{s.help?'Needs help':s.status==='complete'?'Feedback ready':Date.now()>s.deadline+15000?'Finished':s.status.replaceAll('-',' ')}</small></span><span>{s.turns.filter(t=>t.role==='learner').length} turns</span></button>)}</div>}
+      {!latestByUser.length?<p className="speak-note">Learners appear here when they start. Each conversation stays private to that learner and their teachers.</p>:<div className="speak-roster">{latestByUser.map(s=><button type="button" key={s.id} className={'speak-learner'+(s.help?' help':'')} onClick={()=>setSelected(s.id)}><span className="speak-avatar">{s.name.slice(0,1)}</span><span><strong>{s.name}</strong><small>{s.help?'Needs help':s.status==='complete'?'Feedback ready':Date.now()>s.deadline+15000?'Finished':s.status.replaceAll('-',' ')}</small></span><span>{s.turns.filter(t=>t.role==='learner').length} turns</span></button>)}</div>}
       {selectedSession&&<div className="speak-review"><h4>{selectedSession.name}’s conversation</h4><p className="speak-note">Feedback focus: {selectedSession.config?.focus||config.focus}</p><Transcript turns={selectedSession.turns}/>{selectedSession.feedback?<Feedback value={selectedSession.feedback}/>:<button type="button" className="btn" onClick={()=>void speakingCall({...base,action:'finish',sessionId:selectedSession.id}).catch(e=>setError(e.message))}>End attempt and get feedback</button>}</div>}
     </div> : <>
       <div className="speak-roles"><span>Your role: <b>{config.learnerRole}</b></span><span>Your AI partner’s role: <b>{config.partnerRole}</b></span></div>
       <p className="speak-task-time">This will take approximately {config.seconds/60} {config.seconds===60?'minute':'minutes'}.</p>
       {active?<div className={'speak-live'+(wrapping.current?' wrapping':'')}><div className="speak-orb" aria-hidden="true"><span/><span/><span/><span/><span/></div><div><strong>{status==='connecting'?'Connecting your microphone…':status==='wrapping-up'?'Bringing the conversation to a close':status==='speaking'?'Your turn — I’m listening':'Talk naturally with your partner'}</strong><p>{status==='connecting'?'A moment to get ready.':'A short pause lets your partner respond.'}</p></div><output aria-label="Time remaining">{remaining>0?clock(remaining):'Closing…'}</output></div>:null}
-      <div className="speak-controls">{!active&&status!=='feedback'?<button type="button" className="speak-start" disabled={disabled||!enabled||(config.feedbackMode==='learner'&&focusChoice===null)} onClick={()=>void start()}>{sessions.length?'Practise again':'Start speaking'}</button>:status==='feedback'?<p role="status">Preparing feedback for today’s focus…</p>:<><button type="button" className="btn" disabled={status==='connecting'||closing.current} onClick={()=>{const next=!muted;stream.current?.getAudioTracks().forEach(t=>t.enabled=!next);setMuted(next);}}>{muted?'Unmute microphone':'Mute microphone'}</button><button type="button" className="btn" disabled={!sessionId.current} onClick={()=>{helpRef.current=!helpRef.current;setHelp(helpRef.current);progress();}}>{help?'Help requested':'Ask teacher for help'}</button><button type="button" className="btn" disabled={!sessionId.current} onClick={()=>void finish()}>Finish</button></>}
+      <div className="speak-controls">{!active&&status!=='feedback'?<button type="button" className="speak-start" disabled={disabled||!enabled||(config.feedbackMode==='learner'&&focusChoice===null)} onClick={()=>void start()}>{sessions.length?'Practise again':'Start speaking'}</button>:status==='feedback'?<p role="status">Preparing feedback for today’s focus…</p>:<>{!preview&&<button type="button" className="btn" disabled={status==='connecting'||closing.current} onClick={()=>{const next=!muted;stream.current?.getAudioTracks().forEach(t=>t.enabled=!next);setMuted(next);}}>{muted?'Unmute microphone':'Mute microphone'}</button>}<button type="button" className="btn" disabled={!sessionId.current} onClick={()=>{helpRef.current=!helpRef.current;setHelp(helpRef.current);progress();}}>{help?'Help requested':'Ask teacher for help'}</button><button type="button" className="btn" disabled={!sessionId.current} onClick={()=>void finish()}>Finish</button></>}
       {status==='ended'&&<button type="button" className="btn" onClick={()=>void finish()}>Retry feedback</button>}</div>
+      {preview&&active&&<form className="speak-preview-reply" onSubmit={e=>{e.preventDefault();if(!previewReply.trim()||closing.current||responding.current)return;append('learner',previewReply.trim());send({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:previewReply.trim()}]}});send({type:'response.create'});setPreviewReply('');}}><label>Reply as the learner<input aria-label="Preview learner reply" value={previewReply} maxLength={2000} disabled={status==='connecting'||closing.current} onChange={e=>setPreviewReply(e.target.value)}/></label><button type="submit" className="btn" disabled={!previewReply.trim()||closing.current||partnerTalking}>{partnerTalking?'Partner speaking…':'Send reply'}</button></form>}
       <audio ref={audio} autoPlay playsInline />
       {error.includes('Play partner audio')&&<button type="button" className="btn" onClick={()=>void audio.current?.play().then(()=>setError(''))}>Play partner audio</button>}
       {!enabled&&!active&&<p className="speak-note">Your teacher will make this task available when it’s ready.</p>}
-      <p className="speak-note">AI voice partner · Use headphones in class. Your microphone audio goes to OpenAI; your teacher can see your transcript and feedback. Other learners cannot listen in.</p>
+      <p className="speak-note">{preview?'AI voice partner · Your test replies go to OpenAI. Preview attempts are excluded from the learner count.':'AI voice partner · Use headphones in class. Your microphone audio goes to OpenAI; your teacher can see your transcript and feedback. Other learners cannot listen in.'}</p>
       {feedback&&<Feedback value={feedback}/>}
       {!!turns.length&&<details className="speak-transcript"><summary>Your conversation · {turns.filter(t=>t.role==='learner').length} speaking turns</summary><Transcript turns={turns}/></details>}
       {!active&&sessions[0]&&!sessions[0].feedback&&sessions[0].status==='ended'&&<button type="button" className="btn" onClick={()=>{sessionId.current=sessions[0].id;turnRef.current=sessions[0].turns;void finish();}}>Get feedback for last attempt</button>}

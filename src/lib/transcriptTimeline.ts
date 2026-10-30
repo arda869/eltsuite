@@ -2,10 +2,11 @@ import type { Project, Track, Line } from './mix';
 export type TranscriptSegment = { text: string; speaker: string; start: number; end: number };
 // Keep the original audio exactly once: diarization labels turns, it cannot isolate
 // simultaneous voices. Split at speaker boundaries without dropping inter-turn silence.
-export function transcriptTimeline(p: Project, clipId: string, segments: TranscriptSegment[], id: () => string): Project {
+export function transcriptTimeline(p: Project, clipId: string, segments: TranscriptSegment[], id: () => string, expected?: {src:string;a:number;b:number}): Project {
   const home = p.tracks.find(t => t.clips.some(c => c.id === clipId));
   const original = home?.clips.find(c => c.id === clipId);
   if (!home || !original) return p; // the teacher removed/undid this take while the request ran
+  if(expected&&(original.src!==expected.src||original.a!==expected.a||original.b!==expected.b))return p;
   const clip = original;
   const duration = clip.b - clip.a;
   const rows = segments.filter(s => s.end > 0 && s.start < duration).map(s => ({ ...s, start: Math.max(0,s.start), end: Math.min(duration,s.end) })).sort((a,b) => a.start-b.start);

@@ -560,7 +560,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       const raw = sources.current[clip.src];
       if (!raw) throw Error('Select a recorded clip first.');
       const segments = await transcribeRecording(raw.slice(Math.round(clip.a * rate), Math.round(clip.b * rate)), rate);
-      edit(x => transcriptTimeline(x, clip.id, segments, newId));
+      edit(x => transcriptTimeline(x, clip.id, segments, newId, clip));
       setTranscriptOpen(true);
       setRecError('Script added. Review the words and speaker labels; rename speakers by double-clicking their track names.');
     } catch (e) { setRecError((e as Error).message + ' Your original audio is kept. Select the clip and choose Generate script to retry.'); }

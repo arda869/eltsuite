@@ -35,7 +35,14 @@ export function Select<T extends string>({ value, options: all, onChange, label,
     if (!open) return setQ('');
     setHi(Math.max(0, options.findIndex((o) => o.v === value)));
     const down = (e: MouseEvent) => !list.current?.contains(e.target as Node) && !btn.current?.contains(e.target as Node) && setOpen(false);
-    const away = (e?: Event) => !(e && list.current?.contains(e.target as Node)) && setOpen(false);
+    const away = (e?: Event) => {
+      if(e&&list.current?.contains(e.target as Node))return;
+      const r=btn.current?.getBoundingClientRect();if(!r)return;
+      if(r.bottom<0||r.top>window.innerHeight)return setOpen(false);
+      const h=list.current?.offsetHeight??200,width=Math.max(r.width,200);
+      const up=r.bottom+6+h>window.innerHeight-8&&r.top>h+14;
+      setAt({left:Math.max(8,Math.min(r.left,window.innerWidth-width-8)),top:up?r.top-6-h:r.bottom+6,width,up,bottom:window.innerHeight-r.top+6});
+    };
     // The on-screen keyboard changes the height only: that keeps the list open.
     const w0 = window.innerWidth;
     const resized = () => window.innerWidth !== w0 && setOpen(false);

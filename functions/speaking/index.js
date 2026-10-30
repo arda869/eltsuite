@@ -44,6 +44,7 @@ export const speakingTask = onCall(options,async req=>{
   if (d.action==='start') {
     if (!snap.get('enabled')) throw new HttpsError('failed-precondition','Your teacher has paused this speaking task.');
     if (typeof d.sdp!=='string' || d.sdp.length>30000 || !d.sdp.startsWith('v=')) throw new HttpsError('invalid-argument','The microphone connection could not be prepared.');
+    if(d.preview===true&&!teacher)throw new HttpsError('permission-denied','Only teachers can preview a speaking task.');
     const config=validateActivity(snap.data()), day=new Date().toISOString().slice(0,10);
     const lesson=config.lessonId?await db.doc(`classes/${d.classId}/items/${config.lessonId}`).get():null;
     if(!teacher&&lesson&&(!lesson.exists||lesson.get('hidden')===true||lesson.get('locked')===true))throw new HttpsError('permission-denied','This lesson is not available for speaking practice.');
@@ -60,7 +61,7 @@ export const speakingTask = onCall(options,async req=>{
     if(!callId)throw new HttpsError('unavailable','The voice service did not return a session identifier.');
     const startedAt=Date.now(), deadline=startedAt+config.seconds*1000;
     try {
-      await session.set({uid,name:c.name,status:'connecting',startedAt,deadline,updatedAt:startedAt,config,turns:[],help:false});
+      await session.set({uid,name:c.name,preview:d.preview===true,status:'connecting',startedAt,deadline,updatedAt:startedAt,config,turns:[],help:false});
       await db.doc(`speakingCalls/${session.id}`).set({callId,sessionPath:session.path,deadline:deadline+10000,status:'open'});
     } catch(e){await hangup(callId).catch(()=>{});throw e;}
     return {sdp,sessionId:session.id,deadline,seconds:config.seconds,focus:config.focus};

@@ -97,8 +97,10 @@ export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onI
       }
       return { id: newId(), speaker: speaker.id, text: match ? match[2] : text, direction: '', gap: 0.25 };
     });
-    if (nextSpeakers.length > 8 || parsed.some(l => l.text.length > 1200)) return setError('Use up to 8 speakers and 1,200 characters per utterance.');
-    setSpeakers(nextSpeakers); setLines(parsed); setShowPaste(false); setError('');
+    const used=new Set(parsed.map(l=>l.speaker));
+    const cast=nextSpeakers.filter(s=>used.has(s.id));
+    if (cast.length > 8 || parsed.some(l => l.text.length > 1200)) return setError('Use up to 8 speakers and 1,200 characters per utterance.');
+    setSpeakers(cast); setLines(parsed); setShowPaste(false); setError('');
   };
   const close = () => { if (!busy && !aiBusy) { stop(); onClose(); } };
   const nextLine = (index:number,selection?:{start:number;end:number}) => {
