@@ -1,3 +1,4 @@
+import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { classDefaults, currentOrg, isTrainerIn } from '../lib/admin';
 import { LimitError } from '../lib/limitError';
 import { LevelPicker } from './LevelPicker';
@@ -6,6 +7,7 @@ import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
 export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: string; onClose: () => void; onCreated: (id: string) => void }) {
+  const [learningProfile,setLearningProfile]=useState(defaultProfile);
   const [name, setName] = useState('');
   const [level, setLevel] = useState('B1');
   const [themeColor, setThemeColor] = useState<ThemeKey>('flame');
@@ -32,7 +34,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     try {
       const org = currentOrg();
       const pol = org?.policy;
-      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...classDefaults(pol), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...classDefaults(pol), ...(kind==='language'?{learningProfile}:{}), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -63,6 +65,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
             </datalist>
           </label>
         )}
+<details><summary>Learning profile</summary>{kind==='language' && <ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}</details>
         <ClassDatesFields start={start} end={end} setStart={setStart} setEnd={setEnd} />
         <div className="field">
           Theme colour

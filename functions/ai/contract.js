@@ -17,6 +17,7 @@ export const planSchema = object({ title: string, mainAim: string, subsidiaryAim
 export const reviewSchema = object({ checks: list(object({ criterion: string, score: { type: 'integer', minimum: 1, maximum: 5 }, evidence: string }), 11, 11),
   criticalErrors: list(string, 0), suggestions: list(string, 0) });
 export function validate(schema, value, path = 'output') {
+  if (schema.enum && !schema.enum.includes(value)) throw Error(`${path} has an invalid choice.`);
   if (schema.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error(`${path} must be an object.`);
     if (Object.keys(value).some(k => !Object.hasOwn(schema.properties, k))) throw Error(`${path} has unknown fields.`);

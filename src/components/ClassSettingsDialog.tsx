@@ -1,3 +1,4 @@
+import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { NSelect } from './Select';
 import { emailChoicesOf, nameChoicesOf, useMyOrg } from '../lib/admin';
 import { tr } from '../lib/terms';
@@ -25,6 +26,7 @@ export function meetingProvider(url: string) {
 }
 
 export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () => void }) {
+  const [learningProfile,setLearningProfile]=useState(c.learningProfile ?? defaultProfile);
   const [name, setName] = useState(c.name);
   const [level, setLevel] = useState(c.level);
   const [start, setStart] = useState(c.dates?.start ?? '');
@@ -82,6 +84,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
       await updateClass(c, {
         name: name.trim() || c.name,
         level,
+        learningProfile,
         dates: { start: start || null, end: end || null },
         themeColor,
         cover,
@@ -130,6 +133,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
           </label>
         )}
 
+        {kind === 'language' && <ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">

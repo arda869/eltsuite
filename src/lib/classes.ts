@@ -21,6 +21,7 @@ export type ClassDoc = {
   teacherId: string;
   name: string;
   level: string;
+  learningProfile?: import('../ai/ClassProfileFields').LearningProfile;
   themeColor: ThemeKey;
   classCode: string;
   status: 'active' | 'archived' | 'deleted';
@@ -123,7 +124,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('We couldn’t find a free class code. Try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'learningProfile' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

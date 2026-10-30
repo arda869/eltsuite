@@ -1,3 +1,5 @@
+import { activitySchema, activityInstructions, checkActivities, nativeTask } from './activities.js';
+import { collectEvidence, classProfile } from './context.js';
 import { isAbandonedJob } from './jobs.js';
 import { warn } from 'firebase-functions/logger';
 import { GenerationError, describeFailure } from './errors.js';
@@ -25,6 +27,36 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   ]);
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
+  if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };
+  if (d.action === 'profile') {
+    let profile; try { profile=classProfile(d.profile); } catch(e) { fail(e.message); }
+    if (!['A1','A2','B1','B2','C1','C2','Mixed'].includes(d.level)) fail('Choose a level.');
+    await cls.ref.update({level:d.level,learningProfile:profile});
+    return { profileSaved:true };
+  }
+  if (d.action === 'create') {
+    if (!id(d.sourceRequestId)) fail('Prepare activities first.');
+    const source=db.doc(`aiPrivate/${uid}/jobs/${d.sourceRequestId}`);
+    const itemId='ai_'+createHash('sha256').update(uid+':'+d.sourceRequestId).digest('hex').slice(0,32);
+    const item=cls.ref.collection('items').doc(itemId);
+    await db.runTransaction(async tx => {
+      const [j,old,c,p,a,g,last]=await Promise.all([tx.get(source),tx.get(item),tx.get(cls.ref),tx.get(profile.ref),tx.get(account.ref),tx.get(pilot.ref),tx.get(cls.ref.collection('items').orderBy('order','desc').limit(1))]);
+      if (!canPlan(uid,p.data(),a.data(),c.data()) || !isPilotTeacher(g.get('enabled'))) throw new HttpsError('permission-denied','Your teaching access changed.');
+      if (old.exists) return;
+      if (j.get('status') !== 'completed' || j.get('action') !== 'activities' || j.get('classId') !== d.classId) fail('Prepare activities again.');
+      const activities=j.get('result.activities'), plan=j.get('sourcePlan'), type=j.get('creationType') ?? 'lesson';
+      checkActivities(activities,plan);
+      tx.create(item,{type,title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
+      activities.tasks.forEach((task,i)=>{
+        const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
+        tx.create(ref,{kind:'task',title:task.title,instructions:task.instructions,content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
+        tx.create(ref.collection('private').doc('key'),native.key);
+        tx.create(ref.collection('private').doc('notes'),{text:[i===0?JSON.stringify({mainAim:plan.mainAim,languageAnalysis:plan.languageAnalysis,assessment:plan.assessment,differentiation:activities.differentiation,recycling:activities.recycling}):'',native.notes].filter(Boolean).join('\n\n'),updatedAt:Timestamp.now()});
+      });
+      tx.update(source,{createdItemId:itemId});
+    });
+    return {createdItemId:itemId};
+  }
   const drafts = db.collection('aiPrivate').doc(uid).collection('drafts');
   if (d.action === 'list') {
     const snap = await drafts.where('classId', '==', d.classId).limit(50).get();
@@ -48,20 +80,23 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       const old = await tx.get(ref);
       if (old.exists && old.get('classId') !== d.classId) throw new HttpsError('permission-denied', 'Choose a different plan.');
       if ((old.get('version') ?? 0) !== d.version) throw new HttpsError('aborted', 'This plan changed in another window. Reopen it before saving. Your edits are still here.');
-      tx.set(ref, { classId: d.classId, brief, plan: d.plan, version: d.version + 1, updatedAt: Timestamp.now(), reviewStatus: 'teacher-review-required' });
+      tx.set(ref, { classId: d.classId, creationType:['lesson','exam','homework','practice'].includes(d.creationType)?d.creationType:'lesson', brief, plan: d.plan, version: d.version + 1, updatedAt: Timestamp.now(), reviewStatus: 'teacher-review-required' });
     });
     return { version: d.version + 1 };
   }
-  if (!['outline', 'plan'].includes(d.action) || !id(d.requestId)) fail('Choose a generation action.');
+  if (!['outline', 'plan', 'activities'].includes(d.action) || !id(d.requestId)) fail('Choose a generation action.');
   if (!model.value()) throw new HttpsError('failed-precondition', 'Choose a model on the server before enabling generation.');
   try { checkModel(model.value()); } catch (e) { throw new HttpsError('failed-precondition', e.message); }
   if (d.action === 'plan') {
     if (d.approved !== true) fail('Review and approve the outline first.');
     try { checkSequence(validate(outlineSchema, d.outline), brief.duration); } catch (e) { fail(e.message); }
   }
-  const payload = { brief, ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
-  if (JSON.stringify(payload).length > 30000) fail('Shorten the brief or outline.');
-  const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, payload })).digest('hex');
+  const creationType=['lesson','exam','homework','practice'].includes(d.creationType) ? d.creationType : 'lesson';
+  if (d.action === 'activities') { try { checkSequence(validate(planSchema,d.plan),brief.duration); } catch(e) { fail(e.message); } }
+  const evidence=d.useEvidence===true?await collectEvidence(db,d.classId):null;
+  const payload = { brief, creationType, classProfile:cls.get('learningProfile') ?? null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
+  if (JSON.stringify(payload).length > 75000) fail('Shorten the brief or outline.');
+  const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, useEvidence:d.useEvidence===true, ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
   const job = db.doc(`aiPrivate/${uid}/jobs/${d.requestId}`);
   const day = new Date().toISOString().slice(0, 10), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), globalQuota = db.doc(`aiUsage/${day}`);
   const month = day.slice(0, 7), budget = db.doc(`aiBudgets/${month}`);
@@ -87,15 +122,15 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     tx.set(budget, { committedMicroUsd: reservation.balance, limitMicroUsd: 20_000_000, month }, { merge: true });
     tx.set(quota, { calls: (q.get('calls') ?? 0) + units });
     tx.set(globalQuota, { calls: (g.get('calls') ?? 0) + units });
-    tx.create(job, { status: 'running', fingerprint, budgetMonth: month, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 86400000) });
+    tx.create(job, { status: 'running', fingerprint, classId:d.classId, action:d.action, creationType, duration:brief.duration, ...(d.action==='activities'?{sourcePlan:d.plan}:{}), budgetMonth: month, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 86400000) });
     return null;
   });
   if (existing?.kind === 'completed') return existing.result;
   if (existing?.kind === 'abandoned') throw new HttpsError('failed-precondition', 'The previous request exceeded its execution window and has been released. Your brief and outline are unchanged. Start a new generation by clicking the generation button again. [request:interrupted]');
   let phase = d.action;
   try {
-    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : planSchema, name: d.action, input: payload });
-    try { checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
+    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : d.action === 'activities' ? activitySchema : planSchema, name: d.action, input: payload, instructions: d.action === 'activities' ? activityInstructions : teachingInstructions + '\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.' });
+    try { if(d.action==='activities') checkActivities(first.value,d.plan); else checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
     if (d.action === 'plan' && JSON.stringify(first.value.stages.map(s => [s.id, s.minutes])) !== JSON.stringify(d.outline.stages.map(s => [s.id, s.minutes]))) throw new GenerationError('sequence');
     let result = { [d.action]: first.value, usage: [first.usage] };
     if (d.action === 'plan') {
