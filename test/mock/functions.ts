@@ -3,6 +3,13 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (name === 'helpAssistant') {
+    if (d.action === 'feedback') return { data: { saved: true } };
+    if (d.question.includes('FAIL_TEST')) throw Error('Test help unavailable.');
+    const q = d.question.toLowerCase();
+    const id = /record/.test(q) ? 'recordings' : /learner|join/.test(q) ? 'learners' : /lesson/.test(q) ? 'lessons' : /file/.test(q) ? 'files' : null;
+    return { data: { articleIds: id ? [id] : [], version: '2026-10-31' } };
+  }
   if (name === 'recordingSpeech') {
     if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');
     const bytes=new Uint8Array(48000), view=new DataView(bytes.buffer);

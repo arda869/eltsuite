@@ -11,6 +11,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
+export { helpAssistant } from './help/index.js';
 export { lessonAssistant } from './ai/assistant.js';
 export { recordingDialogue } from './speech/dialogue.js';
 export { recordingSpeech, recordingTranscript } from './speech/index.js';

@@ -19,3 +19,23 @@ for (const owner of await db.collection('aiPrivate').listDocuments()) {
   }
 }
 console.log(`Removed ${deleted} expired temporary assistant jobs. Drafts and budgets were retained.`);
+
+// Help feedback and fair-use counters have a bounded retention window too.
+for (const owner of await db.collection('helpPrivate').listDocuments()) {
+  for (let page = 0; page < 20; page++) {
+    const snapshot = await owner.collection('usage').where('expiresAt', '<=', cutoff).limit(400).get();
+    if (snapshot.empty) break;
+    const batch = db.batch();
+    for (const record of snapshot.docs) batch.delete(record.ref);
+    await batch.commit();
+    if (snapshot.size < 400) break;
+  }
+}
+for (let page = 0; page < 20; page++) {
+  const snapshot = await db.collection('helpFeedback').where('expiresAt', '<=', cutoff).limit(400).get();
+  if (snapshot.empty) break;
+  const batch = db.batch();
+  for (const record of snapshot.docs) batch.delete(record.ref);
+  await batch.commit();
+  if (snapshot.size < 400) break;
+}
