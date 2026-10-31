@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31.1",
+  "version": "2026-10-31.2",
   "articles": [
     {
       "id": "navigation",
@@ -13,7 +13,12 @@
       ],
       "href": "/guide#gu-start",
       "action": "Explore the guide",
-      "source": "src/pages/GuidePage.tsx"
+      "source": "src/pages/GuidePage.tsx",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": ""
     },
     {
       "id": "lessons",
@@ -27,7 +32,14 @@
       ],
       "href": "/classes",
       "action": "Open Classes",
-      "source": "src/pages/ClassPage.tsx; src/pages/LessonEditor.tsx"
+      "source": "src/pages/ClassPage.tsx; src/pages/LessonEditor.tsx",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "ai-lessons"
+      ],
+      "benefit": ""
     },
     {
       "id": "learners",
@@ -41,7 +53,14 @@
       ],
       "href": "/classes",
       "action": "Open Classes",
-      "source": "src/pages/ClassPage.tsx; src/pages/LearnerJoin.tsx"
+      "source": "src/pages/ClassPage.tsx; src/pages/LearnerJoin.tsx",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "live"
+      ],
+      "benefit": ""
     },
     {
       "id": "live",
@@ -55,7 +74,14 @@
       ],
       "href": "/guide#gu-live",
       "action": "Read the live teaching guide",
-      "source": "src/pages/ClassPage.tsx; src/pages/GuidePage.tsx"
+      "source": "src/pages/ClassPage.tsx; src/pages/GuidePage.tsx",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "calls"
+      ],
+      "benefit": "Add a live lesson alongside your video call so learners can follow the tasks on their own screens."
     },
     {
       "id": "calls",
@@ -69,21 +95,35 @@
       ],
       "href": "/rooms",
       "action": "Open Rooms",
-      "source": "src/pages/RoomsPage.tsx; src/components/LiveVideo.tsx"
+      "source": "src/pages/RoomsPage.tsx; src/components/LiveVideo.tsx",
+      "app": "rooms",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "live"
+      ],
+      "benefit": "Teach face to face online using your class’s built-in video room."
     },
     {
       "id": "recordings",
       "title": "Make a listening recording",
-      "keywords": "record recording audio sound microphone studio dialogue mp3",
-      "summary": "Recordings is for making and editing listening audio. This guide does not confirm that video calls or whole live lessons can be recorded.",
+      "keywords": "record recording audio sound microphone studio dialogue mp3 text to speech tts artificial intelligence ai voices script listening",
+      "summary": "Make listening audio by recording your voice, recording with colleagues, or turning a script into AI speech. Whole video-lesson recording is a separate feature and is not confirmed in this guide.",
       "steps": [
-        "Open Recordings to work with your audio files.",
-        "Make or open a recording, then use Studio to record and edit sound.",
-        "Use the finished recording in a lesson or download it as an MP3. For recording a whole video lesson, ask support to confirm what is available."
+        "Open Recordings and make or open an audio recording.",
+        "Record your own voice in Studio, or use Create speech to turn a script into AI voices.",
+        "Edit the audio, use it in a lesson or download it as an MP3. The AI option below explains how to make speech and dialogues."
       ],
       "href": "/recordings",
       "action": "Open Recordings",
-      "source": "src/pages/GuidePage.tsx; src/pages/StudioSession.tsx"
+      "source": "src/pages/GuidePage.tsx; src/pages/StudioSession.tsx; src/media/SoundEditor.tsx; src/media/SpeechComposer.tsx",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "ai-audio"
+      ],
+      "benefit": ""
     },
     {
       "id": "files",
@@ -97,7 +137,14 @@
       ],
       "href": "/archive",
       "action": "Open Resources",
-      "source": "src/pages/MediaArchive.tsx; src/components/StorageCard.tsx; src/components/AppGrid.tsx"
+      "source": "src/pages/MediaArchive.tsx; src/components/StorageCard.tsx; src/components/AppGrid.tsx",
+      "app": "files",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "collab"
+      ],
+      "benefit": ""
     },
     {
       "id": "collab",
@@ -111,7 +158,14 @@
       ],
       "href": "/collab",
       "action": "Open Collab",
-      "source": "src/pages/GuidePage.tsx; src/pages/AppFiles.tsx"
+      "source": "src/pages/GuidePage.tsx; src/pages/AppFiles.tsx",
+      "app": "collab",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "reading"
+      ],
+      "benefit": "Turn your resources into a document you can write and edit together with colleagues or learners."
     },
     {
       "id": "timetable",
@@ -125,7 +179,12 @@
       ],
       "href": "/timetable",
       "action": "Open Timetable",
-      "source": "src/pages/TimetablePage.tsx; src/pages/GuidePage.tsx"
+      "source": "src/pages/TimetablePage.tsx; src/pages/GuidePage.tsx",
+      "app": "timetable",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": ""
     },
     {
       "id": "settings",
@@ -139,7 +198,12 @@
       ],
       "href": "/settings",
       "action": "Open Settings",
-      "source": "src/pages/SettingsPage.tsx; src/lib/push.ts"
+      "source": "src/pages/SettingsPage.tsx; src/lib/push.ts",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": ""
     },
     {
       "id": "limits",
@@ -153,7 +217,12 @@
       ],
       "href": "/settings",
       "action": "Open Settings",
-      "source": "src/pages/admin/OrgLimits.tsx; src/components/StorageCard.tsx"
+      "source": "src/pages/admin/OrgLimits.tsx; src/components/StorageCard.tsx",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": ""
     },
     {
       "id": "troubleshooting",
@@ -167,7 +236,73 @@
       ],
       "href": "/guide",
       "action": "Open the guide",
-      "source": "src/components/ConnectionBanner.tsx; src/pages/SignIn.tsx"
+      "source": "src/components/ConnectionBanner.tsx; src/pages/SignIn.tsx",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": ""
+    },
+    {
+      "id": "ai-audio",
+      "title": "Turn a script into AI speech",
+      "keywords": "ai audio recording text to speech tts voices create speech generate dialogue listening accent",
+      "summary": "Create speech turns your script into editable AI voices. You can also ask AI to draft a dialogue, then review the words before making the audio.",
+      "steps": [
+        "Open Recordings, make or open a recording, then choose Create speech in the recording editor.",
+        "Choose your speakers and voices. Write or import the script. For a new script, choose Draft with AI, describe the situation, level and language focus, then choose Create dialogue.",
+        "Review the script. Choose Create missing takes, listen to the dialogue, then choose Add to timeline. You can edit or regenerate individual lines."
+      ],
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "source": "src/media/SoundEditor.tsx; src/media/SpeechComposer.tsx; functions/speech/access.js",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "recordings"
+      ],
+      "benefit": "Need listening material without recording every voice yourself? Turn a script into AI speech, or draft a dialogue from a situation and learner level."
+    },
+    {
+      "id": "ai-lessons",
+      "title": "Get a head start with AI lesson planning",
+      "keywords": "ai lesson planning generate creation assistant activities training differentiation",
+      "summary": "The lesson assistant can propose an outline, expand a teaching plan and prepare editable activities. It is currently available to accounts with the AI pilot enabled.",
+      "steps": [
+        "Open Classes and choose a class. Choose Create with AI, or Create training with AI for a training class.",
+        "Describe the goals, level, topic and timing. Review and approve the outline before expanding the plan.",
+        "Review the plan and activities, edit what you need, then choose to add them to Classes. AI drafts still need your teaching judgement."
+      ],
+      "href": "/classes",
+      "action": "Open Classes",
+      "source": "src/components/LessonsTab.tsx; src/ai/LessonAssistant.tsx",
+      "app": "classes",
+      "requiresPilot": true,
+      "requiresAi": true,
+      "related": [],
+      "benefit": "Save time starting from a blank page: let AI draft an outline and editable activities for your teaching goals, then review and adapt them."
+    },
+    {
+      "id": "reading",
+      "title": "Keep sources beside your writing",
+      "keywords": "reading journal references citation sources development studio research",
+      "summary": "Reading in Development Studio keeps sources and notes together. You can cite those sources in a Collab document.",
+      "steps": [
+        "Open Development Studio and choose Reading.",
+        "Make a journal, add a source and write your notes under it.",
+        "In Collab, use the citation controls to bring a source into your document."
+      ],
+      "href": "/development?section=reading",
+      "action": "Open Development Studio",
+      "source": "src/coach/DevelopmentStudio.tsx; src/discovery/catalog.ts; src/editor/Cite.tsx",
+      "app": "development",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "collab"
+      ],
+      "benefit": "Writing from your professional reading? Keep the sources in Development Studio so you can add citations in Collab without retyping the reference."
     }
   ]
 }

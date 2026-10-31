@@ -29,10 +29,22 @@ test('catalogue links and source files are verified, recording limitations expli
   const ids = library.articles.map(a => a.id);
   assert.equal(ids.length, new Set(ids).size);
   for (const a of library.articles) {
-    assert.match(a.href, /^\/(guide|classes|rooms|recordings|archive|collab|timetable|settings)(#gu-[a-z]+)?$/);
+    assert.match(a.href, /^\/(guide|classes|rooms|recordings|archive|collab|timetable|settings|development)(#gu-[a-z]+|\?section=reading)?$/);
     assert.ok(a.steps.length >= 2);
     for (const source of a.source.split('; ')) assert.ok(readFileSync(new URL('../../' + source, import.meta.url), 'utf8').length > 0);
     validate(selectionSchema, { articleIds: [a.id] });
   }
-  assert.match(selectedArticles(['recordings'])[0].summary, /does not confirm.*video/);
+  assert.match(selectedArticles(['recordings'])[0].summary, /video-lesson recording.*not confirmed/);
+});
+
+test('related help points only to shipped, verified alternatives', () => {
+  const ids = new Set(library.articles.map(a => a.id));
+  for (const a of library.articles) for (const id of a.related) assert.ok(ids.has(id) && id !== a.id);
+  const recording = selectedArticles(['recordings'])[0];
+  assert.ok(recording.related.includes('ai-audio'));
+  const speech = selectedArticles(['ai-audio'])[0];
+  assert.ok(speech.steps.some(s => s.includes('Create speech')));
+  assert.ok(speech.steps.some(s => s.includes('Draft with AI')));
+  assert.equal(selectedArticles(['ai-lessons'])[0].requiresPilot, true);
+  assert.equal(speech.requiresPilot, false);
 });

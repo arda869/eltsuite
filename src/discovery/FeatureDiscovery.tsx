@@ -20,7 +20,7 @@ function Discovery({ uid, goal }: { uid: string; goal: string }) {
   const [open, setOpen] = useState(false), [tab, setTab] = useState('for-you');
   const [guide, setGuide] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [tick, setTick] = useState(0);
-  const launcher = useRef<HTMLButtonElement>(null), closeButton = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const quietWorkflow = /^\/(call|studio|learn)(\/|$)/.test(location.pathname) || /^\/class\/[^/]+\/lesson\//.test(location.pathname);
   useEffect(() => { const t = window.setInterval(() => setTick(n => n + 1), 60_000); return () => clearInterval(t); }, []);
@@ -46,7 +46,6 @@ function Discovery({ uid, goal }: { uid: string; goal: string }) {
   const next = state ? recommendations(state, allowed, location.pathname, goal)[0]?.feature : undefined;
   const delivered = state && available.find(f => f.id === state.delivery.feature && !state.usage[f.id]?.count && !state.feedback[f.id]?.dismissed && (state.feedback[f.id]?.snoozedUntil ?? 0) <= Date.now());
   const suggestion = delivered || next;
-  const unread = !!(state?.settings.enabled && state.settings.tracking && state.settings.pausedUntil <= Date.now() && delivered && !state.delivery.read);
   const allowedKey = allowed.join(',');
   useEffect(() => {
     if (!open || tab !== 'for-you' || !state?.settings.tracking || !suggestion || state.delivery.feature === suggestion.id) return;
@@ -62,11 +61,16 @@ function Discovery({ uid, goal }: { uid: string; goal: string }) {
     setBusy(true); setError('');
     try { await changeDiscovery(uid, fn); } catch { setError('We couldn’t save that. Check your connection and try again.'); } finally { setBusy(false); }
   }
-  function close() { setOpen(false); launcher.current?.focus(); }
+  function close() { setOpen(false); document.querySelector<HTMLElement>('[data-help-trigger]')?.focus(); }
   function settings(patch: Partial<Settings>) { void change(s => ({ ...s, settings: { ...s.settings, ...patch } })); }
   function feedback(f: Feature, patch: object) {
     return change(s => ({ ...s, feedback: { ...s.feedback, [f.id]: { ...s.feedback[f.id], ...patch } }, delivery: s.delivery.feature === f.id ? { ...s.delivery, read: true } : s.delivery }));
   }
+  useEffect(() => {
+    const requested = () => show();
+    window.addEventListener('elt-open-discovery', requested);
+    return () => window.removeEventListener('elt-open-discovery', requested);
+  }, [state]);
   function show() {
     setOpen(true);
     if (state && !state.delivery.read) void change(s => ({ ...s, delivery: { ...s.delivery, read: true } }));
@@ -76,11 +80,9 @@ function Discovery({ uid, goal }: { uid: string; goal: string }) {
     if (content.current) content.current.scrollTop = 0;
     if (state?.settings.tracking) void feedback(f, { guideStarted: true });
   }
-  if (quietWorkflow || /^\/(welcome|tour|privacy|terms|auth|join|invite)(\/|$)/.test(location.pathname)) return null;
+  if (!open && (quietWorkflow || /^\/(welcome|tour|privacy|terms|auth|join|invite)(\/|$)/.test(location.pathname))) return null;
   return <div className="discovery" data-private>
-    <button ref={launcher} type="button" className="discovery-launch" aria-expanded={open} aria-controls="discovery-panel" aria-label={unread ? 'ELT Suite assistant · new suggestion' : 'ELT Suite assistant'} onClick={() => open ? close() : show()}>
-      <UiIcon name="help" size={20} /><span>Discover</span>{unread && <span className="discovery-dot" aria-hidden="true" />}
-    </button>
+
     {open && <section id="discovery-panel" className={'discovery-panel' + (activeGuide ? ' with-guide' : '')} role="dialog" aria-label="ELT Suite feature discovery" onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
       <header className="discovery-header"><div><span className="discovery-eyebrow">ELT SUITE ASSISTANT</span><h2>A little discovery.</h2></div><button ref={closeButton} className="discovery-close" type="button" aria-label="Close feature discovery" onClick={close}>×</button></header>
       <nav className="discovery-tabs" aria-label="Discovery views">{[['for-you', 'For you'], ['features', 'Your features'], ['preferences', 'Preferences']].map(([id, label]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => { setTab(id); setGuide(''); }}>{label}</button>)}</nav>

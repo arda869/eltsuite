@@ -1,3 +1,4 @@
+import { HelpMenu } from '../help/HelpMenu';
 import { isLearnerEmail } from '../lib/learners';
 import { OrgLogo } from './OrgLook';
 import { AppGrid, AppLogo, HOME_COLOR, appAt, setAppFavicon } from './AppGrid';
@@ -73,6 +74,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
       {children}
       <div className="right" ref={ref}>
         <PhoneMessagesLink />
+        <HelpMenu />
         <AppGrid />
         <button className="avatar" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           {profile?.avatar ? <Avatar k={profile.avatar} size={32} /> : user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : initials(name)}
