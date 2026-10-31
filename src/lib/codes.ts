@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, deleteDoc, deleteField, doc, getDoc, increment, onSnapshot, query, setDoc, updateDoc, where, type WriteBatch } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, increment, onSnapshot, query, setDoc, updateDoc, where, type DocumentReference, type DocumentData } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Invitation codes: ELT Suite is open by invitation for now. A super admin makes a code (for
@@ -140,7 +140,7 @@ export const keptName = () => {
 
 // Making the account with the code, in one write: the profile, one use of the code and, for an
 // organisation's code, the place in the organisation.
-export function spendCode(b: WriteBatch, c: InviteCode, me: { uid: string; name: string; email: string }) {
+export function spendCode(b: { set: (ref: DocumentReference, data: DocumentData) => unknown; update: (ref: DocumentReference, data: DocumentData) => unknown }, c: InviteCode, me: { uid: string; name: string; email: string }) {
   b.update(doc(db, 'inviteCodes', c.code), { uses: increment(1), [`usedBy.${me.uid}`]: { name: me.name.slice(0, 80), email: me.email.toLowerCase(), at: Date.now() } });
   if (c.org) {
     b.update(doc(db, 'orgs', c.org), { [`teachers.${me.uid}`]: { name: me.name || c.name || me.email, email: me.email.toLowerCase(), code: c.code } });

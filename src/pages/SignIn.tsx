@@ -10,10 +10,9 @@ import {
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../lib/firebase';
+import { auth, googleProvider } from '../lib/firebase';
 import { friendlyAuthError } from '../lib/authErrors';
-import { inviteFields, useAuth } from '../lib/auth';
+import { useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
 import { Wordmark } from '../components/Wordmark';
 import { SuiteOrbit, Tagline } from '../components/SuiteOrbit';
@@ -118,13 +117,11 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         const cred = await createUserWithEmailAndPassword(auth, address, password);
         const displayName = name.trim();
         if (displayName) {
-          // Without an invitation the profile is refused: the app then says so and takes the new
-          // sign-in account back, so a failure here is not this form's error.
+          // Profile creation is owned by AuthProvider. Never reset its onboarding progress here.
           try {
             await updateProfile(cred.user, { displayName });
-            await setDoc(doc(db, 'users', cred.user.uid), { role: 'teacher', displayName, email: address, onboarding: 'new', ...inviteFields() }, { merge: true });
           } catch {
-            /* see above */
+            /* The typed name is already saved with the teacher profile. */
           }
         }
       });
@@ -175,7 +172,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
         {notInvited && !error && (
           <span className="error" role="alert">
-            {notInvited} doesn’t have an account yet, and there’s no invitation for it. ELT Suite is invitation-only for now. If you have a code, choose “I have an invitation”.
+            {notInvited} couldn’t finish account setup without a valid invitation. ELT Suite is invitation-only for now. If you have a code, choose “I have an invitation”.
           </span>
         )}
         {mode === 'create' && code && (

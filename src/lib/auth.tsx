@@ -1,78 +1,24 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { isLearnerEmail } from './learners';
-import { AFTER_SIGN_IN } from './afterSignIn';
-import { codeProblem, forgetCode, keptCode, keptName, readCode, spendCode } from './codes';
-
-export type TextSize = 'S' | 'M' | 'L' | 'XL';
-export type Profile = (
-  | { role: 'teacher'; displayName?: string }
-  | { role: 'learner'; classId: string; learnerId: string; displayName: string }
-) & { onboarding?: 'new' | 'done'; teacherGoal?: string; textSize?: TextSize; avatar?: string; reading?: Reading; showRecent?: boolean };
-
-// Reading comfort settings: a clearer font, line focus, spacing and high contrast.
-export type Reading = { font?: 'default' | 'clear'; focus?: boolean; letter?: 0 | 1 | 2; line?: 0 | 1 | 2; contrast?: boolean };
+import { ensureProfile, NotInvited, setupErrorMessage, withSetupTimeout, type Profile, type TextSize, type Reading } from './teacherProfile';
+export type { Profile, TextSize, Reading } from './teacherProfile';
+export { inviteFields } from './teacherProfile';
 
 type AuthState = { user: User | null; profile: Profile | null; ready: boolean; notInvited: string; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setOnboardingLocal: (goal: string) => void; setAvatarLocal: (k: string) => void };
 
 const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, notInvited: '', signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setOnboardingLocal: () => {}, setAvatarLocal: () => {} });
 export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
-// Teachers join by invitation for now (see firestore.rules, users). An organisation's invitation
-// travels with the new profile, from the link the teacher opened before signing in.
-export function inviteFields(): { invite?: string } {
-  try {
-    const after = sessionStorage.getItem(AFTER_SIGN_IN) ?? '';
-    const m = /^\/invite\/([^/?#]+)/.exec(after);
-    return m ? { invite: m[1] } : {};
-  } catch {
-    return {};
-  }
-}
-
-// Thrown when there is no invitation for this email: the account is not made.
-class NotInvited extends Error {}
-
-async function loadProfile(user: User): Promise<Profile | null> {
-  const ref = doc(db, 'users', user.uid);
-  const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data() as Profile;
-  if (isLearnerEmail(user.email)) return null; // learner removed from class
-  const displayName = user.displayName || keptName();
-  // With an invitation code typed in on the sign-in page: the profile and one use of the code, together.
-  const typed = keptCode();
-  const code = typed ? await readCode(typed) : null;
-  if (code && !codeProblem(code, user.email ?? '')) {
-    const b = writeBatch(db);
-    b.set(ref, { role: 'teacher', displayName, email: user.email ?? '', onboarding: 'new', createdAt: serverTimestamp(), code: code.code });
-    spendCode(b, code, { uid: user.uid, name: displayName, email: user.email ?? '' });
-    try {
-      await b.commit();
-      forgetCode();
-      return { role: 'teacher', displayName, onboarding: 'new' };
-    } catch (e) {
-      if ((e as { code?: string })?.code === 'permission-denied') throw new NotInvited();
-      throw e;
-    }
-  }
-  const profile = { role: 'teacher' as const, displayName, email: user.email ?? '', onboarding: 'new', createdAt: serverTimestamp(), ...inviteFields() };
-  try {
-    await setDoc(ref, profile);
-  } catch (e) {
-    if ((e as { code?: string })?.code === 'permission-denied') throw new NotInvited();
-    throw e;
-  }
-  return { role: 'teacher', displayName: profile.displayName, onboarding: 'new' };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ready, setReady] = useState(false);
-  // The email of someone who signed in without an invitation: their account is not kept.
+  // The email of someone whose teacher profile could not be created with an invitation.
   const [notInvited, setNotInvited] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let generation = 0;
@@ -82,32 +28,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const current = ++generation;
         const active = () => !disposed && current === generation && auth.currentUser?.uid === u?.uid;
         setUser(u);
+        setProfileError('');
         setProfile(null);
         setReady(!u);
         let p: Profile | null = null;
         if (u) {
-          // A slow or stuck connection never leaves the app on its loading screen: after a few
-          // seconds it opens with what it knows, and the profile follows when it arrives.
-          const load = loadProfile(u);
+          // Wait for a real profile before opening teacher tools. Slow setup gets a retry screen.
+          const load = ensureProfile(u);
           try {
-            p = await Promise.race([load, new Promise<never>((_, no) => window.setTimeout(() => no(new Error('slow')), 9000))]);
+            p = await withSetupTimeout(load);
           } catch (e) {
             if (!active()) return;
             if (e instanceof NotInvited) {
               setNotInvited(u.email ?? '');
-              // Take back the sign-in account just made, so an invitation later starts afresh.
-              await u.delete().catch(() => {});
+              // Keep the sign-in account intact so a corrected invitation can be retried.
               if (active()) await signOut(auth).catch(() => {});
               return;
             }
-            console.error('Could not load profile', e);
-            p = isLearnerEmail(u.email) ? null : { role: 'teacher' };
+            p = null;
+            setProfileError(setupErrorMessage(e));
             void load
-              .then((late) => active() && late && setProfile(late))
+              .then((late) => { if (active() && late) { setProfile(late); setProfileError(''); setReady(true); } })
               .catch((late) => {
                 if (!active() || !(late instanceof NotInvited)) return;
                 setNotInvited(u.email ?? '');
-                void u.delete().catch(() => {}).finally(() => { if (active()) void signOut(auth).catch(() => {}); });
+                void signOut(auth).catch(() => {});
               });
           }
         }
@@ -122,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ++generation;
       unsubscribe();
     };
-  }, []);
+  }, [attempt]);
 
   const setTextSize = (t: TextSize) => {
     setProfile((p) => (p ? { ...p, textSize: t } : p));
@@ -142,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     h.style.setProperty('--rd-letter', ['0', '0.04em', '0.09em'][r.letter ?? 0]);
     h.style.setProperty('--rd-line', ['1', '1.25', '1.5'][r.line ?? 0]);
   }, [profile?.reading]);
+  if (user && profileError) return <main className="signin"><section className="card" aria-labelledby="profile-setup-title"><h1 id="profile-setup-title">Let’s finish setting up your account</h1><p role="alert">{profileError}</p><button type="button" className="btn primary" onClick={() => { setProfileError(''); setReady(false); setAttempt((n) => n + 1); }}>Retry account setup</button><button type="button" className="btn" onClick={() => void signOut(auth)}>Sign out</button></section></main>;
   return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: () => signOut(auth), setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
