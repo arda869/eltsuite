@@ -119,6 +119,44 @@ const J = {
     if (await s.p.getByLabel('Quiet suggestions', { exact: false }).isChecked()) throw Error('Opting out left proactive suggestions enabled');
     return s;
   },
+  'Help assistant: verified answers, browsing, fallback and phone layout': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    await s.p.getByRole('button', { name: 'Open ELT Suite help', exact: true }).click();
+    const panel = s.p.getByRole('dialog', { name: 'ELT Suite assistant' });
+    await panel.getByRole('button', { name: 'How do I record a lesson?', exact: true }).click();
+    await panel.getByRole('heading', { name: 'Make a listening recording' }).waitFor();
+    if (!await panel.getByText(/does not confirm that video calls/).isVisible()) throw Error('Recording limitation was lost.');
+    await panel.getByRole('button', { name: 'Yes, this helped' }).click();
+    await panel.getByText('Feedback saved', { exact: true }).waitFor();
+    await panel.getByLabel('Ask how to use ELT Suite', { exact: true }).fill('FAIL_TEST');
+    await panel.getByRole('button', { name: 'Send help question' }).click();
+    await panel.getByRole('heading', { name: 'Let’s find another way' }).waitFor();
+    await panel.getByRole('button', { name: 'Browse topics', exact: true }).click();
+    await panel.getByRole('searchbox').fill('files');
+    await panel.locator('summary').filter({ hasText: 'Keep your resources together' }).click();
+    await panel.getByRole('link', { name: 'Open Resources' }).waitFor();
+    await panel.getByRole('button', { name: 'Ask a question', exact: true }).click();
+    await panel.getByRole('button', { name: 'Clear chat' }).click();
+    await panel.getByRole('heading', { name: 'How can I help?' }).waitFor();
+    await axe(s.p, 'Help assistant desktop', A11Y_FOUND);
+    await s.p.setViewportSize({ width: 390, height: 844 });
+    await s.p.waitForTimeout(200);
+    if (await panel.getAttribute('aria-modal') !== 'true') throw Error('Phone help must be modal.');
+    const box = await panel.boundingBox();
+    if (!box || box.x < 0 || box.width > 391 || box.height > 845) throw Error('Phone help overflows the viewport.');
+    await axe(s.p, 'Help assistant phone', A11Y_FOUND);
+    await panel.getByRole('button', { name: 'Close help' }).click();
+    await s.p.getByRole('button', { name: 'Open ELT Suite help', exact: true }).waitFor();
+    await s.p.setViewportSize({ width: 1280, height: 900 });
+    await s.p.locator('.discovery-launch').click();
+    await s.p.locator('#discovery-panel').waitFor();
+    await s.p.getByRole('button', { name: 'Open ELT Suite help', exact: true }).click();
+    await s.p.locator('#discovery-panel').waitFor({ state: 'hidden' });
+    await panel.waitFor();
+    return s;
+  },
+
   'Authentication: signed-out teacher homepage': async (b) => {
     const ctx = await b.newContext();
     const p = await ctx.newPage();

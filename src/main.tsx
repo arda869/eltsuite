@@ -34,6 +34,7 @@ const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default:
 const LiveStartWatch = lazy(() => import('./components/LiveVideo').then((m) => ({ default: m.LiveStartWatch })));
 const CallPage = lazy(() => import('./pages/CallPage').then((m) => ({ default: m.CallPage })));
 const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
+const HelpAssistant = lazy(() => import('./help/HelpAssistant').then(m => ({ default: m.HelpAssistant })));
 const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
 const UsageWatch = lazy(() => import('./lib/usage').then((m) => ({ default: m.UsageWatch })));
 const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
@@ -237,6 +238,7 @@ createRoot(document.getElementById('root')!).render(
         </RouteErrorBoundary>
         </PausedGate>
         <Suspense fallback={null}>
+          <HelpAssistant />
           <ChatDock />
           <UsageWatch />
           <FeatureDiscovery />
