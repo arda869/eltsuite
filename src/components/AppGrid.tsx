@@ -14,7 +14,7 @@ const I = (d: string) => (
 // Home has its own colour, used by the top bar's mark on the home page too.
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
-  { k: 'development', group: 'teach', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M5 4h14v16H5zM8 8h8M8 12h5M8 16h3', icon: I('M5 4h14v16H5zM8 8h8M8 12h5M8 16h3') },
+  { k: 'development', group: 'teach', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3', icon: I('M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3') },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, d: 'M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z', icon: I('M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z') },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', d: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z', icon: I('M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z') },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', d: 'M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z', icon: I('M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z') },
@@ -123,7 +123,7 @@ export function AppGrid() {
                   {list.map((a) => (
                     <Link key={a.k} to={a.to!} role="menuitem" draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
                       <span className="app-ico">{a.icon}</span>
-                      <b>{a.short ?? a.name}</b>
+                      <b className={a.k === 'development' ? 'app-name-wrap' : undefined}>{a.short ?? a.name}</b>
                     </Link>
                   ))}
                 </div>

@@ -957,12 +957,12 @@ const J = {
     await see(s.p, '.ProseMirror', 'the lesson editor');
     await axe(s.p, 'Lesson editor', A11Y_FOUND);
     await s.p.locator('.ProseMirror').nth(1).click();
-    await s.p.keyboard.press('Control+End');
+    await s.p.keyboard.press('End');
     await slash(s.p, 'Flow chart');
     if (!(await count(s.p, '.dg-node'))) {
       // Once more, in case the first keys went in before the editor was ready.
       await s.p.locator('.ProseMirror').nth(1).click();
-      await s.p.keyboard.press('Control+End');
+      await s.p.keyboard.press('End');
       await slash(s.p, 'Flow chart');
     }
     await see(s.p, '.dg-node', 'the diagram in the editor');
@@ -1302,6 +1302,92 @@ const J = {
     await see(s.p, '.hm', 'skip opens home');
     return s;
   },
+  'Development Studio chat profile setup and settings persist': async b => {
+    const s = await session(b);
+    await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
+    await s.p.goto(BASE + '/development?section=coach');
+    await see(s.p, 'text=Let’s start with your teaching', 'first-chat profile setup');
+    if (await s.p.getByLabel('Message your coach').count()) throw Error('Coach allowed chat before profile completion');
+    await s.p.locator('.qualifications-picker > summary:visible').click();
+    await s.p.getByRole('checkbox',{name:'CELTA',exact:true}).check();
+    await s.p.getByRole('checkbox',{name:'TKT Module 1',exact:true}).check();
+    await s.p.getByRole('checkbox',{name:'Other',exact:true}).check();
+    await s.p.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
+    await s.p.getByLabel('Specify your other course or qualification').fill('Local mentoring course');
+    await s.p.getByRole('button',{name:'Teaching experience',exact:true}).click();
+    await s.p.getByRole('option',{name:'10+ years',exact:true}).click();
+    await s.p.getByRole('checkbox', {name:'Teacher',exact:true}).check();
+    await s.p.getByLabel('Who do you teach?', {exact:true}).fill('Adult learners at B1');
+    await s.p.getByRole('button', {name:'Continue to teaching beliefs',exact:true}).click();
+    await see(s.p,'text=What guides your teaching?','beliefs required before chat');
+    if(await s.p.getByLabel('Message your coach').count()) throw Error('Chat allowed without beliefs');
+    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
+    await s.p.getByRole('button',{name:'Save beliefs and start chatting',exact:true}).click();
+    await see(s.p, 'textarea[aria-label="Message your coach"]', 'chat composer after setup');
+    await s.p.getByLabel('Message your coach').fill('My lesson changed direction.');
+    await s.p.getByLabel('Message your coach').press('Enter');
+    await see(s.p, '.coach-message:has-text("What did you notice")', 'chat reply');
+    const initialComposerHeight = await s.p.getByLabel('Message your coach').evaluate(el=>el.clientHeight);
+    if(initialComposerHeight>44) throw Error('Composer does not begin on one line');
+    await s.p.getByLabel('Message your coach').fill(Array(12).fill('A longer message with a new line.').join('\n'));
+    const expanded=await s.p.getByLabel('Message your coach').evaluate(el=>el.clientHeight);
+    if(expanded<=initialComposerHeight || expanded>162) throw Error('Composer did not grow within its limit');
+    await s.p.getByLabel('Message your coach').fill('');
+    for(let i=0;i<8;i++) {
+      await s.p.getByLabel('Message your coach').fill('Classroom observation '+i+': '+ 'I noticed different patterns in participation. '.repeat(12));
+      await s.p.getByRole('button',{name:'Send',exact:true}).click();
+      await s.p.getByRole('button',{name:'Send',exact:true}).waitFor({state:'visible'});
+      await s.p.waitForFunction(()=>!document.querySelector('.coach-chat-typing'));
+    }
+    for(const size of [{width:320,height:568},{width:390,height:844},{width:1280,height:720},{width:1440,height:900},{width:844,height:390}]) {
+      await s.p.setViewportSize(size);
+      const box=await s.p.locator('.coach-chat-thread').boundingBox();
+      await s.p.mouse.move(box.x+box.width/2,box.y+box.height/2);
+      for(let step=0;step<12;step++){await s.p.mouse.wheel(0,-1000);await s.p.waitForTimeout(50);if(await s.p.locator('.coach-chat-thread').evaluate(el=>el.scrollTop<2))break;}
+      await s.p.waitForFunction(()=>document.querySelector('.coach-chat-thread').scrollTop<2).catch(async()=>{throw Error('Cannot reach conversation start '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
+      const up=await s.p.evaluate(()=>({page:document.documentElement.scrollHeight,view:innerHeight,send:document.querySelector('.coach-chat-composer').getBoundingClientRect().bottom,mark:document.querySelector('.suite-mark').getBoundingClientRect().left,chat:document.querySelector('.coach-chat').getBoundingClientRect().left}));
+      if(up.page>up.view+1||up.send>up.view||Math.abs(up.mark-up.chat)>1) throw Error('Viewport, composer or alignment failed '+JSON.stringify({size,up}));
+      for(let step=0;step<12;step++){await s.p.mouse.wheel(0,1000);await s.p.waitForTimeout(50);if(await s.p.locator('.coach-chat-thread').evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop<3))break;}
+      await s.p.waitForFunction(()=>{const el=document.querySelector('.coach-chat-thread');return el.scrollHeight-el.clientHeight-el.scrollTop<3;}).catch(async()=>{throw Error('Cannot reach conversation end '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
+      await s.p.locator('.coach-chat-thread').focus();
+      await s.p.keyboard.press('Home');
+      await s.p.waitForFunction(()=>document.querySelector('.coach-chat-thread').scrollTop<2).catch(async()=>{throw Error('Cannot reach conversation start '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
+      await s.p.keyboard.press('End');
+      await s.p.waitForFunction(()=>{const el=document.querySelector('.coach-chat-thread');return el.scrollHeight-el.clientHeight-el.scrollTop<3;}).catch(async()=>{throw Error('Cannot reach conversation end '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
+    }
+    await s.p.setViewportSize({width:1280,height:900});
+    await s.p.getByLabel('Message your coach').fill('Yes, draft a journal reflection.');
+    await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await see(s.p,'.coach-chat-typing','thinking indicator');
+    await s.p.getByRole('button',{name:'Review journal draft',exact:true}).click();
+    const review=s.p.getByRole('dialog',{name:'Review journal draft'});
+    await review.getByLabel('Your reflection',{exact:true}).fill('My edited reflection: I want to consider other explanations.');
+    await review.getByRole('button',{name:'Save to reflections',exact:true}).click();
+    await see(s.p,'text=Saved privately to Reflections.','journal saved directly');
+    const savedDraft=await s.p.evaluate(()=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).find(([key,value])=>key.startsWith('teachingCoach/teacher1/reflections/')&&value.text==='My edited reflection: I want to consider other explanations.')?.[1]);
+    if(!savedDraft?.content) throw Error('Edited journal draft or rich content missing');
+    if(process.env.COACH_CHAT_SCREENSHOT) await s.p.screenshot({path:process.env.COACH_CHAT_SCREENSHOT});
+    await s.p.getByRole('button', {name:'Reading',exact:true}).click();
+    await s.p.getByRole('button', {name:'Coach',exact:true}).click();
+    await see(s.p, '.coach-message:has-text("What did you notice")', 'chat retained between Studio sections');
+    await s.p.getByRole('link', {name:'Settings',exact:true}).click();
+    await s.p.getByRole('checkbox', {name:/^Professional profile/}).uncheck();
+    await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.profile === false);
+    await s.p.reload();
+    await s.p.waitForFunction(()=>!document.querySelector('.coach-preference-options input')?.disabled);
+    if (await s.p.getByRole('checkbox', {name:/^Professional profile/}).isChecked()) throw Error('Saved context opt-out was not retained');
+    await s.p.goto(BASE+'/development?section=coach');
+    for (const width of [320,390,1280]) {
+      await s.p.setViewportSize({width,height:900});
+      await axe(s.p,'Development Studio chat '+width,A11Y_FOUND);
+      if (await s.p.locator('.coach-chat').evaluate(el => el.getBoundingClientRect().right > innerWidth+1)) throw Error('Chat overflows at '+width);
+      await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+      const fits=await s.p.locator('.app-name-wrap').evaluate(el => el.scrollWidth <= el.clientWidth+1 && getComputedStyle(el).whiteSpace !== 'nowrap');
+      if (!fits) throw Error('Development Studio label is clipped at '+width);
+      await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    }
+    return s;
+  },
   'Development Studio reading, private writing and classroom inquiry': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; fs['sharedDocs/existing-reading'] = {owner:'teacher1',ownerName:'Arda',title:'Classroom interaction notes',kind:'pd',docKey:'reading-test',members:{colleague:{role:'edit',name:'Colleague',kind:'teacher'}},memberIds:['colleague']}; localStorage.setItem('mockfs', JSON.stringify(fs)); });
@@ -1330,6 +1416,15 @@ const J = {
     await see(s.p, 'button.coach-entry:has-text("On Classroom interaction notes")', 'reflection linked to reading');
     await s.p.getByRole('button', { name: 'Profile and beliefs', exact: true }).click();
     await s.p.getByLabel('Professional goals, specialisms and interests').fill('Understand participation in speaking activities.');
+    await s.p.locator('.qualifications-picker > summary:visible').click();
+    await s.p.getByRole('checkbox',{name:'No formal qualification',exact:true}).check();
+    await s.p.getByRole('button',{name:'Done',exact:true}).filter({visible:true}).click();
+    for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
+    await s.p.getByRole('button',{name:'Years of teaching experience',exact:true}).click();
+    await s.p.getByRole('option',{name:'3–5',exact:true}).click();
+    await s.p.getByLabel('Your learners and teaching context').fill('Adults learning English at B1');
+    await s.p.getByRole('checkbox', { name: 'Teacher', exact: true }).check();
+
     await s.p.getByRole('button', { name: 'Save profile and beliefs', exact: true }).click();
     await see(s.p, 'text=Saved privately.', 'saved professional profile');
     await s.p.reload();
@@ -1364,13 +1459,27 @@ const J = {
       const overflow = await s.p.locator('.coach-panel').evaluate(el => el.getBoundingClientRect().right > innerWidth + 1);
       if (overflow) throw Error('Coach content overflows on mobile');
     }
-    await s.p.getByRole('button', { name: 'Coach', exact: true }).click();
-    if (await s.p.getByLabel('Use my professional profile').isChecked() || await s.p.getByLabel('Use my teaching beliefs').isChecked()) throw Error('Coaching context must be off by default');
-    await s.p.getByLabel('Your reflection or question').fill('What else could explain participation?');
-    await s.p.getByRole('button', { name: 'Explore together', exact: true }).click();
+    let frame;
+    for(const tab of ['Home','Reflections','Reading','Research','Coach']) {
+      await s.p.getByRole('button',{name:tab,exact:true}).click();
+      const bounds=await s.p.locator('main.coach').boundingBox();
+      if(frame&&(Math.abs(bounds.width-frame.width)>1||Math.abs(bounds.height-frame.height)>1))throw Error('Studio tabs do not share a frame: '+tab);
+      frame=bounds;
+      if(tab==='Reading') {
+        const fits=await s.p.getByRole('searchbox',{name:'Search Reading Journal'}).evaluate(el=>{const input=el.getBoundingClientRect(),parent=el.closest('label').getBoundingClientRect();return input.bottom<=parent.bottom+1&&input.right<=parent.right+1;});
+        if(!fits)throw Error('Reading search input escapes its container');
+      }
+    }
+    await s.p.getByRole('link', { name: 'Settings', exact: true }).click();
+    for (const label of ['Professional profile','Teaching beliefs','Reflections','Research inquiries']) if (!(await s.p.getByRole('checkbox', { name: new RegExp('^'+label) }).isChecked())) throw Error('Coach context must be on by default: '+label);
+    await s.p.goto(BASE+'/development?section=coach');
+    await s.p.getByLabel('Message your coach').fill('What else could explain participation?');
+    await s.p.getByRole('button', { name: 'Send', exact: true }).click();
     await see(s.p, '.coach-message:has-text("What did you notice")', 'reflective coaching reply');
-    await s.p.getByLabel('Use my teaching beliefs').check();
-    if (await s.p.locator('.coach-message').count()) throw Error('Changing consent did not clear the conversation');
+    await s.p.getByRole('link',{name:'Settings',exact:true}).click();
+    await s.p.getByRole('checkbox', { name: /^Teaching beliefs/ }).uncheck();
+    await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.beliefs === false);
+    if (await s.p.locator('.coach-message').count()) throw Error('Changing coach settings did not clear the conversation');
     const preserved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/existing-reading']);
     if (JSON.stringify(preserved.memberIds) !== JSON.stringify(['colleague'])) throw Error('Reading sharing was changed');
     if (process.env.DEVELOPMENT_SCREENSHOT) { await s.p.getByRole('button', { name: 'Home', exact: true }).click(); await s.p.screenshot({ path: process.env.DEVELOPMENT_SCREENSHOT, fullPage: false }); }

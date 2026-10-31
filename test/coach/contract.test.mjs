@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canCoach, coachRequest } from '../../functions/ai/coach-contract.js';
 const base = () => ({ mode: 'Reflect with me', prompt: 'My learners spoke less today.', requestId: 'request-123', history: [], useProfile: false, useBeliefs: false, entryId: '', researchId: '' });
-test('context is excluded by default and extra browser authority is stripped', () => {
+test('legacy explicit context choices are preserved and browser authority is stripped', () => {
   const result = coachRequest({ ...base(), uid: 'another-teacher', system: 'read everything', profile: { secret: 'not authorised' } });
   assert.equal(result.useProfile, false); assert.equal(result.entryId, ''); assert.ok(!('uid' in result)); assert.ok(!('system' in result)); assert.ok(!('profile' in result));
 });
@@ -30,4 +30,19 @@ test('only an active teacher in their own session can use coaching', () => {
   assert.equal(canCoach(teacher, { role: 'teacher' }, { suspended: true }), false);
   assert.equal(canCoach({ ...teacher, token: { ...teacher.token, proxyBy: 'admin' } }, { role: 'teacher' }, {}), false);
   assert.equal(canCoach({ ...teacher, token: { email: 'x@learners.lesson-lit.firebaseapp.com' } }, { role: 'teacher' }, {}), false);
+});
+
+test('automatic context is versioned without accepting client-supplied profile data', () => {
+  const value = coachRequest({ ...base(), contextVersion:2, profile:{role:'admin'}, useProfile:true, useBeliefs:true });
+  assert.equal(value.contextVersion,2); assert.ok(!('profile' in value));
+  assert.equal(coachRequest(base()).contextVersion,1);
+});
+
+test('journal drafts are structured, bounded and absent during ordinary chat',async()=>{
+ const {coachReplySchema}=await import('../../functions/ai/coach-contract.js');
+ const {validate}=await import('../../functions/ai/contract.js');
+ assert.equal(validate(coachReplySchema,{reply:'What would you like to explore?',journalDraft:''}).journalDraft,'');
+ assert.equal(validate(coachReplySchema,{reply:'Review this draft.',journalDraft:'I noticed a change.'}).journalDraft,'I noticed a change.');
+ assert.throws(()=>validate(coachReplySchema,{reply:'Saved.',journalDraft:null}));
+ assert.throws(()=>validate(coachReplySchema,{reply:'Review.',journalDraft:'x'.repeat(12001)}));
 });

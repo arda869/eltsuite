@@ -13,7 +13,7 @@ source text, can be included with a selected reflection in a coaching conversati
 
 The first release includes:
 
-- An optional, editable professional profile and teaching beliefs. Roles can be combined and
+- An editable professional profile and teaching beliefs. Before the first AI chat, a short setup requires training/qualifications (including none), experience, roles and teaching context. The journal, reading and inquiries remain usable without completing it. Roles can be combined and
   qualifications are free text, including custom qualifications or none.
 - A private journal with free writing, prompts, themes, search, editing, export and deletion.
   Reflections can link to an existing lesson and an inquiry, with plan/actual/next observations.
@@ -34,14 +34,30 @@ Rules allow only the active teacher whose UID matches, excluding admin view-as s
 Organisation and super admins have no coaching read privilege. Version checks prevent concurrent
 windows silently replacing saved writing. Export is a teacher-triggered browser download.
 
-Every AI request explicitly chooses whether to include profile fields, beliefs, one reflection and
-one inquiry. All are off by default. The server retrieves selected records only under the
-caller’s UID and selects an allowlist of fields. It never retrieves lesson bodies or learner data.
-Changing selections clears the conversation. Conversation history lives in the current browser
-window unless the teacher explicitly saves it to the journal. Prompt/history/context are not
-persisted in request jobs; only a hash, response and spending metadata are kept. Retry responses
-expire after 24 hours; the existing six-hour cleanup workflow removes expired jobs. Failed requests
-retain their budget reservation when provider usage is unknown.
+The coach is a chat interface with message bubbles, a scrolling conversation, Enter-to-send,
+Shift+Enter for a new line, a compact composer, a new-chat action and explicit saving to Reflections.
+Conversation state stays available while switching Studio sections in the same window.
+
+Profile, beliefs, reflections and inquiries are available by default, as requested by the product
+owner. Teachers can switch off any category in user Settings → Teaching coach.
+Preferences are private, versioned records at `settings/context`; the server enforces them rather
+than trusting browser flags. Changing preferences clears the current conversation so earlier
+excerpts from disabled sources are not retained in its history. Profile and teaching-beliefs completion are checked on
+both the client and server before any model call or budget reservation; completing the profile and beliefs does
+not override an explicit profile-access opt-out.
+
+For the current chat client (`contextVersion: 2`), the server retrieves up to 40 recent records per
+enabled writing category under the caller’s UID, ranks them against the message, and supplies bounded
+excerpts of up to three reflections and two inquiries. An explicitly linked older reflection can
+be prioritised. Titles are returned as the basis for each response. This is bounded recent retrieval,
+not a claim to search unlimited history. Linked Reading Journal titles are references only; reading
+bodies, lesson plans, learner records and colleagues’ data are not retrieved. Legacy clients retain
+their explicit context flags during rollout.
+
+Prompt/history/context are not persisted in request jobs; only a hash, response and spending metadata
+are kept. Retry responses expire after 24 hours; the six-hour cleanup workflow removes expired jobs.
+Failed requests retain their reservation when provider usage is unknown. The chat sends only recent
+turns and bounds excerpts to stay inside the request envelope.
 
 AI responses are advisory: open questions, alternative interpretations, no teacher ratings, no
 fabricated sources and no asserted causal claims from classroom comparisons. User supplied source
@@ -76,3 +92,23 @@ human must review the report against every criterion; generating a report is not
 No live evaluation runs automatically in CI or spends a teacher's pilot allowance. Contract/access
 and provider tests run in the deployment checks. No claim of live-model evaluation is made by the
 unit or mock-browser tests.
+
+
+## Guided setup and writing
+
+Qualifications use a multi-select with Cambridge CELTA, DELTA and TKT modules, Train the Trainer,
+Trinity CertTESOL, DipTESOL, TYLEC, CertPT and CertOT, TEFL, MA TESOL, Other and no formal
+qualification. Other requires a description. Beliefs use five open questions about learning,
+teacher roles, feedback, inclusion and evidence, with one-line fields that grow with the writing.
+Existing free-written beliefs remain valid and editable. Neither qualification nor belief is scored.
+
+All Studio sections share a viewport-sized frame and scroll internally. Chat keeps its composer
+visible, bounds its height when writing grows, and shows an accessible animated thinking status
+with reduced-motion support. The reflection editor reuses TaskEditor and its inline elements;
+rich content is stored alongside plain text for search, exports and bounded coaching excerpts.
+
+The coach can suggest further reading or viewing, but has no live source retrieval and must not
+invent books, videos, links or findings. When an idea forms it may offer a journal draft. Drafting
+requires teacher agreement. A structured journalDraft response enables Review journal draft;
+the teacher edits it in the rich editor and explicitly saves it privately to Reflections. An
+idempotent transaction protects against duplicate saves. Normal chat has no journal-save button.

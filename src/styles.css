@@ -8315,3 +8315,7 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 @media (prefers-reduced-motion: reduce) {
   .topbar .right > .menu, .apps-pop { animation: none; }
 }
+
+/* Keep the full Development Studio name readable in the app launcher. */
+.app-tile b.app-name-wrap { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; text-wrap: balance; }
+@media (max-width: 360px) { .app-tile b.app-name-wrap { font-size: 10px; } }
