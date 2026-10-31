@@ -44,7 +44,14 @@ export async function writeNamedFile(ref: DocumentReference, scope: FileScope, r
         if (create) tx.set(ref, data); else tx.update(ref, data);
       });
       return name;
-    } catch (e) { if (!(e instanceof RetryNames)) throw e; }
+    } catch (e) {
+      if (e instanceof RetryNames) continue;
+      // A competing commit can advance the namespace before rules validate this
+      // write. Retry only when that revision actually changed; real denials stay errors.
+      if ((e as {code?:string})?.code === 'permission-denied'
+        && Number((await getDoc(lock)).data()?.version ?? 0) !== version) continue;
+      throw e;
+    }
   }
   throw new Error('This folder is changing in another window. Try again.');
 }
