@@ -1,3 +1,4 @@
+import { encodeGenerationResult, readGenerationResult } from './storage.js';
 import { teachingCoach } from './coach.js';
 import { validateTrainingProfile, trainingActivitySchema, trainingInstructions, trainingActivityInstructions } from './training.js';
 import { activitySchema, activityInstructions, checkActivities, nativeTask, nativeVersions } from './activities.js';
@@ -51,7 +52,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (!canPlan(uid,p.data(),a.data(),c.data()) || !isPilotTeacher(g.get('enabled'))) throw new HttpsError('permission-denied','Your teaching access changed.');
       if (old.exists) return;
       if (j.get('status') !== 'completed' || j.get('action') !== 'activities' || j.get('classId') !== d.classId) fail('Prepare activities again.');
-      const activities=j.get('result.activities'), plan=j.get('sourcePlan'), type=j.get('creationType') ?? 'lesson';
+      const activities=readGenerationResult(j.data())?.activities, plan=j.get('sourcePlan'), type=j.get('creationType') ?? 'lesson';
       checkActivities(activities,plan,c.get('kind')==='training');
       tx.create(item,{type,speakingFocus:[plan.mainAim,plan.subsidiaryAims].filter(Boolean).join(' ').slice(0,1000),title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
@@ -120,7 +121,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     const [j, q, g, b] = await Promise.all([tx.get(job), tx.get(quota), tx.get(globalQuota), tx.get(budget)]);
     if (j.exists) {
       if (j.get('fingerprint') !== fingerprint) fail('Use a new request for a changed brief.');
-      if (j.get('status') === 'completed') return { kind: 'completed', result: j.get('result') };
+      if (j.get('status') === 'completed') return { kind: 'completed', result: readGenerationResult(j.data()) };
       if (isAbandonedJob(j.get('status'), j.get('createdAt')?.toMillis?.())) {
         // Return instead of throwing here so Firestore commits the status change.
         // Leave all money and daily reservations untouched: prior usage is unknown.
@@ -160,12 +161,12 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), result.usage);
       tx.update(budget, { committedMicroUsd: settled.balance });
-      tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, result });
+      tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
     });
     return result;
   } catch (error) {
     const failure = describeFailure(phase === 'storage' ? new GenerationError('storage') : error, phase);
-    warn('lessonAssistant generation failed', { reason: failure.reason, phase: failure.phase });
+    warn('lessonAssistant generation failed', { reason: failure.reason, phase: failure.phase, ...(phase==='storage'?{storageCode:typeof error?.code==='number'||typeof error?.code==='string'?error.code:'unknown'}:{}) });
     try {
       await db.runTransaction(async tx => {
         const j = await tx.get(job);
