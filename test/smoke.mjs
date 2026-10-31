@@ -38,6 +38,8 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   ctx.on('page', watch);
   const p = await ctx.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`);
+  await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 30000 });
+  await p.evaluate(async () => { await window.__mockReady; });
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
@@ -1336,7 +1338,7 @@ const J = {
       sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'transaction', path: '', count: 1, delay: 18000 }]));
     });
     await s.p.goto(BASE + '/?code=SLOW-AB23');
-    await see(s.p, 'h1:has-text("Make your teacher account")', 'the signup form');
+    await see(s.p, 'h1:has-text("Make your teacher account")', 'the signup form').catch(async e => { throw Error(e.message + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
     await s.p.getByRole('textbox', { name: 'Your name', exact: true }).fill('Slow Teacher');
     await s.p.getByRole('textbox', { name: 'Email', exact: true }).fill('slow-teacher@example.com');
     await s.p.locator('input[type="password"]').fill('test-password-123');
@@ -1606,7 +1608,9 @@ const browser = await chromium.launch();
   const c = await browser.newContext();
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
-  await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 }).catch(() => {});
+  await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 180000 });
+  await p.evaluate(async () => { await window.__mockReady; });
+  await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 });
   for (const u of ['/archive', '/admin', '/messages', '/settings']) await p.goto(BASE + u, { timeout: 120000 }).catch(() => {});
   await p.waitForTimeout(1500);
   await c.close();
