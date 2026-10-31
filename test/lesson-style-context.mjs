@@ -25,7 +25,7 @@ try {
  const saved=await protectedData();
  for(const style of ['adult','young','adult']) {
   await p.evaluate(async({classId,style})=>{const{getClass,updateClass}=await import('/src/lib/classes.ts');await updateClass(await getClass(classId),{lessonStyle:style});},{classId:demo.classId,style});
-  await l.locator(`.task-frame[data-lesson-style=${style}]`).waitFor();assert.equal(await input.inputValue(),'Monday');await l.reload();await l.locator(`.task-frame[data-lesson-style=${style}]`).waitFor();assert.equal(await input.inputValue(),'Monday');assert.deepEqual(await protectedData(),saved);
+  await l.locator(`.task-frame[data-lesson-style=${style}]`).waitFor();assert.equal(await input.inputValue(),'Monday');await l.reload();await l.locator(`.task-frame[data-lesson-style=${style}]`).waitFor();await l.waitForFunction(()=>document.querySelector('[data-qid="email-gap"] input')?.value==='Monday');assert.equal(await input.inputValue(),'Monday');assert.deepEqual(await protectedData(),saved);
  }
  console.log('PASS Actual learner autosave, cross-tab class updates and reloads preserve nested answers and task/key JSON in both styles');assert.deepEqual(errors,[]);
-} catch(e) {console.log('DIAGNOSTIC',learnerPage?.url(),await learnerPage?.locator('body').innerText(),await learnerPage?.evaluate(()=>({uid:sessionStorage.getItem('mockuid'),auth:localStorage.getItem('mockauth')})));throw e;} finally {await b.close();}
+} catch(e) {console.log('DIAGNOSTIC',learnerPage?.url(),await learnerPage?.locator('body').innerText(),await learnerPage?.evaluate(()=>({uid:sessionStorage.getItem('mockuid')})));throw e;} finally {await b.close();}
