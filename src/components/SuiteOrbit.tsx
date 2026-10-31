@@ -8,9 +8,12 @@ import '../lib/extras.css';
 
 type Orb = { k: string; name: string; about: string; color: string; d: string };
 const MONEY: Orb = { k: 'money', name: 'Money · coming soon', about: 'For freelance teachers: rates, invoices and who has paid', color: '#2f7a5a', d: 'M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z' };
-const pick = (k: string) => SUITE_APPS.find((a) => a.k === k) as Orb;
+// Catalogue entries can be retired without breaking the public sign-in page.
+const pick = (k: string) => SUITE_APPS.find((a) => a.k === k);
+const available = (items: [Orb | undefined, number][]): [Orb, number][] =>
+  items.filter((item): item is [Orb, number] => item[0] !== undefined);
 // [app, size in px]
-const OUTER: [Orb, number][] = [
+const OUTER = available([
   [pick('classes'), 62],
   [pick('timetable'), 44],
   [pick('collab'), 56],
@@ -19,13 +22,13 @@ const OUTER: [Orb, number][] = [
   [pick('messages'), 40],
   [pick('reading'), 50],
   [MONEY, 42],
-];
-const INNER: [Orb, number][] = [
+]);
+const INNER = available([
   [pick('rooms'), 46],
   [pick('files'), 40],
   [pick('colleagues'), 36],
-  [pick('library'), 34],
-];
+  [pick('storyboard'), 34],
+]);
 
 function Ring({ items, r, cls }: { items: [Orb, number][]; r: number; cls: string }) {
   return (

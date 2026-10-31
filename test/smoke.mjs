@@ -81,6 +81,35 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Authentication: signed-out teacher homepage': async (b) => {
+    const ctx = await b.newContext();
+    const p = await ctx.newPage();
+    const errors = [];
+    p.on('pageerror', (e) => errors.push(e.message));
+    await p.goto(BASE + '/');
+    await see(p, '#teacher-sign-in', 'teacher sign-in form');
+    await see(p, '.so-item button', 'suite illustration');
+    await p.reload();
+    await see(p, '#teacher-sign-in', 'teacher sign-in after reload');
+    if (new URL(p.url()).pathname !== '/') throw Error('Teacher homepage redirected');
+    if (await count(p, '.app-err')) throw Error('Sign-in rendered an error');
+    await axe(p, 'Teacher sign-in', A11Y_FOUND);
+    if (errors.length) throw Error(errors.join('; '));
+    return { ctx, errors };
+  },
+  'Authentication: teacher logout from protected page': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/classes');
+    await s.p.getByRole('button', { name: 'Account', exact: true }).click();
+    await s.p.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
+    await see(s.p, '#teacher-sign-in', 'teacher sign-in after logout');
+    if (new URL(s.p.url()).pathname !== '/') throw Error('Logout did not return home');
+    await s.p.reload();
+    await see(s.p, '#teacher-sign-in', 'logout persisted after reload');
+    if (await count(s.p, '.app-err')) throw Error('Logout rendered an error');
+    if (s.errors.length) throw Error(s.errors.join('; '));
+    return s;
+  },
   'Speech: saved previews, line controls and reordering': async (b) => {
     const s=await session(b,{owner:true});
     await s.p.goto(BASE+'/admin?tab=defaults');

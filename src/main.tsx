@@ -97,6 +97,7 @@ function Home() {
   if (!ready) return <Boot />;
   // learn.eltsuite.com: the learners' home page, to join a class.
   if (!user) return onLearnSite() ? <LearnerJoin home /> : <SignIn />;
+  if (!onLearnSite() && isLearnerEmail(user.email) && live()) return <SignIn />;
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
   }
@@ -128,8 +129,12 @@ function SiteGate() {
       /* private window */
     }
     const learnSite = onLearnSite();
-    if (!learnSite && !learnReady()) return void probeLearn(() => setTick((n) => n + 1));
-    if (!learnSite && (isLearnerPath(pathname) || (ready && user && isLearnerEmail(user.email)))) goTo(learnOrigin());
+    // Visiting the teacher homepage never redirects because of a saved learner session.
+    // Cross-domain navigation follows an explicit learner URL only.
+    if (!learnSite && isLearnerPath(pathname)) {
+      if (!learnReady()) return void probeLearn(() => setTick((n) => n + 1));
+      goTo(learnOrigin());
+    }
     else if (learnSite && ready && user && !isLearnerEmail(user.email) && !isSharedPath(pathname)) goTo(mainOrigin());
   }, [user, ready, pathname, tick]);
   return null;

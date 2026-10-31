@@ -37,3 +37,7 @@
 .sel-list[aria-label="What would you like to do?"]{width:min-content;max-width:calc(100vw - 16px)}
 .sel-list[aria-label="What would you like to do?"] .sel-t{min-width:0;overflow-wrap:anywhere}
 .guide-focused .gu-qs{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+
+/* Keep the public sign-in labels readable in both themes. */
+.signin .intro .soon-badge { color: var(--ink); }
+.signin .divider { color: var(--muted); }
