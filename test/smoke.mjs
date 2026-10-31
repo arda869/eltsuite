@@ -113,8 +113,9 @@ const J = {
     await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
     await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Language analysis');
     await see(s.p,'text=Target language','teacher-training language analysis');
-    await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Speaking practice');
-    await see(s.p,'.speak-setup','speaking practice in teacher training');
+    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await s.p.locator('.task-editor .editor-host .ProseMirror').first().click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Speaking practice');
+    await see(s.p,'.speak-setup','speaking practice in teacher training').catch(async e=>{throw Error(e.message+' '+(await s.p.locator('body').innerText()).slice(-5000)+' '+s.errors.join(';'));});
     return s;
   },
   'Speech: teacher setup, script writing, preview and speaker tracks': async (b) => {
