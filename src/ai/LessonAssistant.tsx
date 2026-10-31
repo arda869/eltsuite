@@ -24,7 +24,8 @@ type ActivityVersion = {blocks?:ActivityBlock[];subTasks?:ActivityPart[];label:s
 function Visuals({items=[]}:{items?:ActivityVisual[]}) {return <>{items.map((v,i)=><div className="ai-visual" key={i}><table><caption>{v.title}</caption><thead><tr>{v.headers.map((h,j)=><th key={j} scope="col">{h}</th>)}</tr></thead><tbody>{v.rows.map((r,j)=><tr key={j}>{r.map((c,k)=><td key={k}>{c}</td>)}</tr>)}</tbody></table></div>)}</>;}
 type Activities = {title:string;rationale:string;differentiation:string;recycling:string;tasks:{blocks?:ActivityBlock[];subTasks?:ActivityPart[];visuals?:ActivityVisual[];versions?:ActivityVersion[];title:string;format:string;minutes:number;instructions:string;input:string;support:string;challenge:string;teacherOnlyInput:string;trainingTool?:string;roles:{label:string;input:string}[];questions:{prompt:string;answer:string;explanation:string;options:string[]}[]}[]};
 type Evidence = {recent:{title:string;type:string;tasks:string[];result:{attempts:number;score:number;total:number}|null}[];skillLevels:Record<string,number>;counts:{items:number;submittedTasks:number;portfolioRecords:number};limitations:string};
-type Result = { activities?:Activities;createdItemId?:string;profileSaved?:boolean;classContext?:{name:string;level:string;kind:string;trainingProfile?:TrainingProfile|null;profile:LearningProfile|null};evidence?:Evidence; outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number }[]; draft?: { creationType?:string; brief: Brief; plan: RecordValue; version: number } };
+type Memory = {id:string;name:string;text:string;item:string;task:string};
+type Result = { memories?:Memory[]; activities?:Activities;createdItemId?:string;profileSaved?:boolean;classContext?:{name:string;level:string;kind:string;trainingProfile?:TrainingProfile|null;profile:LearningProfile|null};evidence?:Evidence; outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number }[]; draft?: { creationType?:string; brief: Brief; plan: RecordValue; version: number } };
 const call = httpsCallable<Record<string, unknown>, Result>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 450000 });
 const initial: Brief = { topic: '', objectives: '', context: '', level: 'B1', methodology: 'Recommend', duration: 60 };
 const labels: Record<string, string> = { id: 'Reference', mainAim: 'Main aim', subsidiaryAims: 'Subsidiary aims', assumedKnowledge: 'Assumed knowledge', languageAnalysis: 'Meaning, form, pronunciation and appropriacy', instructionChecks: 'Instruction checks', anticipatedProblems: 'Anticipated problems', materialIds: 'Material references', learnerMaterials: 'Learner materials', answerKey: 'Answer key or response criteria', accessibleAlternative: 'Accessible alternative' };
@@ -93,6 +94,9 @@ export function LessonAssistant() {
   const [className,setClassName]=useState('Your class');
   const [evidence,setEvidence]=useState<Evidence|null>(null);
   const [useEvidence,setUseEvidence]=useState(true);
+  const [useLearnerMemories,setUseLearnerMemories]=useState(false);
+  const [memories,setMemories]=useState<Memory[]>([]);
+  const [memoryIds,setMemoryIds]=useState<string[]>([]);
   const [activities,setActivities]=useState<Activities|null>(null);
   const [sourceRequestId,setSourceRequestId]=useState('');
   const [createVariants,setCreateVariants]=useState(true);
@@ -146,11 +150,11 @@ export function LessonAssistant() {
       document.removeEventListener('click', click, true);
     };
   }, [dirty, locked]);
-  useEffect(()=>{if(enabled) void run('context');},[classId,enabled]);
+  useEffect(()=>{setUseLearnerMemories(false);setMemoryIds([]);setMemories([]);if(enabled) void run('context');},[classId,enabled]);
   async function run(action: string, extra: Record<string, unknown> = {}) {
     setBusy(action); setError(''); setNotice('');
     try {
-      const payload = { classId, brief, action, creationType, useEvidence, ...extra };
+      const payload = { classId, brief, action, creationType, useEvidence, useLearnerMemories, memoryIds:useLearnerMemories?memoryIds:[], ...extra };
       if (action === 'outline' || action === 'plan' || action === 'activities') {
         const fingerprint = JSON.stringify(payload);
         if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, requestId: crypto.randomUUID() };
@@ -161,6 +165,7 @@ export function LessonAssistant() {
       if(result.createdItemId) {setCreatedItemId(result.createdItemId);setDirty(false);setNotice('Created in Classes, hidden from learners. Review the activities before making it visible.');}
       if(result.classContext) {setClassKind(result.classContext.kind);setTrainingProfile(profileFromClass(result.classContext.trainingProfile,result.classContext.level));setClassName(result.classContext.name);setProfile(result.classContext.profile ?? defaultProfile);setBrief(b=>({...b,objectives:b.objectives || result.classContext!.trainingProfile?.goals || result.classContext!.profile?.goals || '',context:b.context || result.classContext!.trainingProfile?.context || result.classContext!.profile?.needs || '',level:result.classContext!.kind==='training'?(result.classContext!.trainingProfile?.experience==='Mixed experience'?'Mixed experience':['Two to five years','Over five years'].includes(result.classContext!.trainingProfile?.experience ?? '')?'Experienced':result.classContext!.trainingProfile?.experience==='Under two years'?'Developing':'Foundation'):['A1','A2','B1','B2','C1','C2'].includes(result.classContext!.level)?result.classContext!.level:b.level}));}
       if(result.evidence) setEvidence(result.evidence);
+      if(result.memories) setMemories(result.memories);
       if(result.profileSaved) {setProfileDirty(false);setNotice('Class settings updated. Future briefs will use these details.');}
       pending.current = null;
       if (result.outline) { setStep(1);setOutline(result.outline); setDirty(true); }
@@ -193,6 +198,15 @@ export function LessonAssistant() {
       <div className="ai-type-grid" role="group" aria-label="What would you like to create?">{[['lesson',isTraining?'Training session':'Lesson',isTraining?'Experience, analyse and rehearse':'Explore, practise and communicate'],['exam',isTraining?'Practice exam':'Exam','Assess clearly and fairly'],['homework','Homework','Extend learning beyond class'],['practice','Practice','Retrieve, repeat and improve']].map(([id,title,desc])=><button type="button" key={id} aria-pressed={creationType===id} onClick={()=>{if(id!==creationType){setCreationType(id);changeBrief(brief);}}}><CreationIcon type={id}/><strong>{title}</strong><span>{desc}</span></button>)}</div>
       <details className="ai-context" open><summary>{isTraining?`Training profile · ${trainingProfile.programme} · ${trainingProfile.experience}`:`Your class · ${brief.level} · ${profile.courseType} · ${profile.ageGroup}`}</summary><p>These shared details come from Class settings. Save changes here to update future briefs too.</p>{isTraining?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setProfileDirty(true);changeBrief({...brief,level:v.experience==='Mixed experience'?'Mixed experience':['Two to five years','Over five years'].includes(v.experience)?'Experienced':v.experience==='Under two years'?'Developing':'Foundation'});}}/>:<ClassProfileFields value={profile} onChange={v=>{setProfile(v);setProfileDirty(true);changeBrief({...brief,objectives:!brief.objectives || brief.objectives===profile.goals?v.goals:brief.objectives,context:!brief.context || brief.context===profile.needs?v.needs:brief.context});}}/>}<button type="button" className="btn ai-profile-save" disabled={!profileDirty} onClick={()=>void run('profile',{profile,trainingProfile,level:brief.level})}>Save to class settings</button></details>
       <details className="ai-context"><summary>Build on what came before {evidence?`· ${evidence.counts.items} recent items`:''}</summary><label><input type="checkbox" checked={useEvidence} onChange={e=>{setUseEvidence(e.target.checked);changeBrief(brief);}}/> Use class history and recorded learning evidence</label><p>{evidence?.limitations ?? 'Loading the available class evidence…'}</p>{evidence && <><p>{evidence.counts.submittedTasks} submitted task records · {evidence.counts.portfolioRecords} portfolio records</p><ul>{evidence.recent.map((x,i)=><li key={i}>{x.title}{x.result?` · ${Math.round(100*x.result.score/x.result.total)}% across ${x.result.attempts} task submissions`: ' · No scored submissions in this sample'}</li>)}</ul></>}</details>
+      {!isTraining && <fieldset className="ai-context"><legend>Classroom memories</legend>
+        <label><input type="checkbox" checked={useLearnerMemories} onChange={e=>{setUseLearnerMemories(e.target.checked);changeBrief(brief);}}/> Refer to learners’ previous responses</label>
+        <p>Off by default. When enabled, choose up to five responses below. Selected text and learner display names are sent to the AI and may appear in new examples. Choose details your learners would be comfortable sharing.</p>
+        {useLearnerMemories && <><button type="button" disabled={!!busy} onClick={()=>void run('memories')}>Read recent responses</button>
+          <p>Submitted writing from this class only. Review the examples before sharing the lesson. Turning this off does not remove references already in a generated plan.</p>
+          {memories.length===0?<p>No responses loaded. If none appear after loading, there may be no recent submitted writing available.</p>:memories.map(m=><label key={m.id} className="ai-field"><span><input type="checkbox" checked={memoryIds.includes(m.id)} disabled={!memoryIds.includes(m.id)&&memoryIds.length>=5} onChange={e=>{setMemoryIds(ids=>e.target.checked?[...ids,m.id]:ids.filter(id=>id!==m.id));changeBrief(brief);}}/> {m.name} · {m.item} · {m.task}</span><span>{m.text}</span></label>)}
+        </>}
+      </fieldset>}
+
       {(['topic', 'objectives', 'context'] as const).map(k => <label className="ai-field" key={k}><span>{formFields[k]}</span><AutoTextarea aria-label={formFields[k]} placeholder={formFields[`${k}Hint`]} required maxLength={2000}  value={brief[k]} onChange={e => { changeBrief({ ...brief, [k]: e.target.value }); }} /></label>)}
       {!isTraining&&<label className="ai-field">Level estimate<select value={brief.level} onChange={e => {changeBrief({ ...brief, level: e.target.value });setProfileDirty(true);}}>{(isTraining?['Foundation','Developing','Experienced','Mixed experience']:['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).map(v => <option key={v}>{v}</option>)}</select></label>}
       <label className="ai-field">{creationType==='exam'?'Time limit (minutes)':creationType==='homework'?'Expected time (minutes)':'Minutes'}<input required type="number" min={15} max={180} value={brief.duration} onChange={e => changeBrief({ ...brief, duration: Number(e.target.value) })} /></label>
