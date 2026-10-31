@@ -33,3 +33,15 @@ test('young-learner standards follow the class profile through generation and re
  const source=readFileSync(new URL('../../functions/ai/assistant.js',import.meta.url),'utf8');
  assert.match(source,/classProfile: payload.classProfile/);
 });
+
+test('originality and distinct language/trainer standards reach every provider request',async()=>{
+ const {originalityStandard,referenceLessonStandard,trainerSessionStandard}=await import('../../functions/ai/pedagogy.js');
+ for(const training of [false,true]) for(const name of ['outline','plan','activities','review']) {
+  let sent;
+  await generate({apiKey:'test',model:'gpt-6.1-sol',name,schema,input:{trainingProfile:training?{programme:'CELTA'}:null},instructions:'Task-specific instructions',
+   fetchImpl:async(_url,options)=>{sent=JSON.parse(options.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:'{"ok":"yes"}'}]}],usage:{input_tokens:10,output_tokens:10}})};}});
+  assert.ok(sent.instructions.includes(originalityStandard));
+  assert.equal(sent.instructions.includes(trainerSessionStandard),training);
+  assert.equal(sent.instructions.includes(referenceLessonStandard),!training);
+ }
+});

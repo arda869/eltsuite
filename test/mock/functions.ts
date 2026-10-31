@@ -46,6 +46,8 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     await new Promise(resolve=>setTimeout(resolve,350));
     return {data:{journalDraft:/draft.*journal|yes.*journal/i.test(d.prompt)?'I noticed a change in participation. I want to consider other explanations before deciding what to try next.':'',reply:'What did you notice about learners’ responses? What other explanation might fit what happened?',basis:[prefs.profile?'Your professional profile':'',prefs.beliefs&&p?.beliefs?'Your teaching beliefs':''].filter(Boolean)}};
   }
+  localStorage.setItem('mockAiLastRequest',JSON.stringify(d));
+  if(d.action==='memories') return {data:{memories:[{id:'a:q',name:'Alex',text:'I visited Rome last year.',item:'Travel stories',task:'Your experience'}]}};
   const store = JSON.parse(localStorage.getItem('mockAiDrafts') || '{}');
   if (d.action === 'context') {const c=(await getDoc(doc(db,'classes',d.classId))).data()||{};return {data:{classContext:{name:c.name||'Demo class',level:c.level||'B1',kind:c.kind||'language',profile:c.learningProfile||null,trainingProfile:c.trainingProfile||null},evidence:{recent:[],skillLevels:{},counts:{items:0,submittedTasks:0,portfolioRecords:0},limitations:'No recorded evidence yet.'}}};}
   if (d.action === 'profile') {const c=(await getDoc(doc(db,'classes',d.classId))).data();await setDoc(doc(db,'classes',d.classId),c?.kind==='training'?{trainingProfile:d.trainingProfile,level:d.trainingProfile.programme}:{learningProfile:d.profile,level:d.level},{merge:true});return {data:{profileSaved:true}};}

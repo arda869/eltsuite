@@ -88,6 +88,33 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Classroom memories are opt-in and selected before generation': async (b) => {
+    const s=await session(b);
+    await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};localStorage.setItem('mockfs',JSON.stringify(fs));});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
+    const toggle=s.p.getByLabel('Refer to learners’ previous responses');
+    await toggle.waitFor();
+    if(await toggle.isChecked()) throw Error('Memories must default off');
+    await toggle.check();
+    await s.p.getByRole('button',{name:'Read recent responses'}).click();
+    const selection=s.p.getByLabel(/Alex · Travel stories/);
+    await selection.waitFor();
+    if(await selection.isChecked()) throw Error('Responses must not be preselected');
+    await selection.check();
+    await s.p.getByLabel('Topic',{exact:true}).fill('Planning a trip');
+    await s.p.getByLabel('Objectives',{exact:true}).fill('Make and compare plans.');
+    await s.p.getByLabel('Context',{exact:true}).fill('Adult learners working in pairs.');
+    await s.p.getByRole('button',{name:'Suggest an outline'}).click();
+    await see(s.p,'text=2. Review the outline','memory outline');
+    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
+    if(request.useLearnerMemories!==true || request.memoryIds?.[0]!=='a:q') throw Error('Selection not sent');
+    s.p.on('dialog',d=>d.accept());
+    await s.p.reload();
+    await toggle.waitFor();
+    if(await toggle.isChecked()) throw Error('Memory permission persisted unexpectedly');
+    await axe(s.p,'Classroom memories',A11Y_FOUND);
+    return s;
+  },
   'New teacher signup, all starting points and save retry': async b => {
     const s = await session(b);
     await s.p.evaluate(() => {

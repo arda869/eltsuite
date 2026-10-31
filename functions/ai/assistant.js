@@ -1,3 +1,4 @@
+import { collectMemories, selectedMemories } from './memories.js';
 import { contentReviewStandard } from './pedagogy.js';
 import { isGenerationAdmin, dailyAllowanceReached, dailyGlobalUsage } from './allowance.js';
 import { encodeGenerationResult, readGenerationResult } from './storage.js';
@@ -33,6 +34,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   ]);
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
+  if (d.action === 'memories') return {memories: await collectMemories(db,d.classId)};
   if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', trainingProfile:cls.get('trainingProfile') ?? null, profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };
   if (d.action === 'profile') {
     if(cls.get('kind')==='training') {
@@ -112,9 +114,10 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const creationType=['lesson','exam','homework','practice'].includes(d.creationType) ? d.creationType : 'lesson';
   if (d.action === 'activities') { try { checkSequence(validate(planSchema,d.plan),brief.duration); } catch(e) { fail(e.message); } }
   const evidence=d.useEvidence===true?await collectEvidence(db,d.classId):null;
-  const payload = { brief, creationType, classProfile:cls.get('kind')==='training'?null:cls.get('learningProfile') ?? null, trainingProfile:cls.get('kind')==='training'?(cls.get('trainingProfile') ?? {programme:cls.get('level'),experience:'Unspecified',goals:brief.objectives}):null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
+  let learnerMemories; try { learnerMemories=await selectedMemories(db,d.classId,d.useLearnerMemories,d.memoryIds); } catch(e) { fail(e.message); }
+  const payload = { brief, creationType, learnerMemories, classProfile:cls.get('kind')==='training'?null:cls.get('learningProfile') ?? null, trainingProfile:cls.get('kind')==='training'?(cls.get('trainingProfile') ?? {programme:cls.get('level'),experience:'Unspecified',goals:brief.objectives}):null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
   if (JSON.stringify(payload).length > 75000) fail('Shorten the brief or outline.');
-  const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, useEvidence:d.useEvidence===true, ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
+  const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, useEvidence:d.useEvidence===true, useLearnerMemories:d.useLearnerMemories===true, memoryIds:d.useLearnerMemories===true?d.memoryIds:[], ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
   const job = db.doc(`aiPrivate/${uid}/jobs/${d.requestId}`);
   const day = new Date().toISOString().slice(0, 10), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), globalQuota = db.doc(`aiUsage/${day}`);
   const month = day.slice(0, 7), budget = db.doc(`aiBudgets/${month}`);
@@ -154,7 +157,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     let result = { [d.action]: first.value, usage: [first.usage] };
     if (d.action === 'plan') {
       phase = 'review';
-      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, creationType, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
+      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, creationType, learnerMemories: payload.learnerMemories, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
         instructions: `${cls.get('kind')==='training'?trainingInstructions:teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. Mark incorrect language, unsolvable tasks, wrong keys, missing referenced media, premature answer disclosure and inaccessible instructions as critical errors. Scrutinise learner-facing wording, receptive-skills sequencing, discovery before explanation, purposeful visual support, and whether differentiation changes the task rather than adding more work. ${contentReviewStandard} This is advisory AI review, not human approval.` });
       result = { ...result, review: review.value, usage: [...result.usage, review.usage] };
     }
