@@ -71,3 +71,5 @@
 @keyframes ai-breathe {50%{transform:scale(.9);opacity:.6;}}
 @media(prefers-reduced-motion:reduce){.ai-generation-mark{animation:none;}}
 @media(max-width:600px){.ai-generation{gap:12px;padding:16px;position:static}.ai-generation-mark .ai-studio-mark{width:28px;height:28px;}}
+
+.ai-choice-icon{display:block;width:28px;height:28px;margin-bottom:16px}.ai-review{margin:24px 0;padding:24px;border:1px solid var(--line,#777);border-radius:16px}.ai-review h3{margin-top:0}.ai-review summary{cursor:pointer;padding:14px 0;font-weight:600}.ai-review li{margin-bottom:14px;line-height:1.6}
