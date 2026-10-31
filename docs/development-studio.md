@@ -110,5 +110,6 @@ rich content is stored alongside plain text for search, exports and bounded coac
 The coach can suggest further reading or viewing, but has no live source retrieval and must not
 invent books, videos, links or findings. When an idea forms it may offer a journal draft. Drafting
 requires teacher agreement. A structured journalDraft response enables Review journal draft;
-the teacher edits it in the rich editor and explicitly saves it privately to Reflections. An
+the teacher edits the draft in a simple text box and explicitly saves it privately to Reflections,
+where the full rich editor is available. An
 idempotent transaction protects against duplicate saves. Normal chat has no journal-save button.

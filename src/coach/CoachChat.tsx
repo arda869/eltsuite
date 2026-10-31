@@ -1,11 +1,7 @@
-// Initialise the shared editor graph in the same order as the document page.
-import '../pdf/PdfFile';
 import { BeliefsForm } from './BeliefsForm';
-import { TaskEditor } from '../editor/TaskEditor';
-import { reflectionDoc, reflectionText } from './model';
-import type { JSONContent } from '@tiptap/core';
+import { reflectionDoc } from './model';
 import { NSelect } from '../components/Select';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, db } from '../lib/firebase';
@@ -32,7 +28,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
   const [busy, setBusy] = useState(false);
   const [pendingText, setPendingText] = useState('');
   const [error, setError] = useState('');
-  const [journal,setJournal] = useState<{id:string;title:string;text:string;content?:JSONContent}|null>(null);
+  const [journal,setJournal] = useState<{id:string;title:string;text:string}|null>(null);
   const [journalSaving,setJournalSaving] = useState(false);
   const [journalSaved,setJournalSaved] = useState('');
   const review = useRef<HTMLDialogElement>(null);
@@ -43,7 +39,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
   const complete = profileComplete(profile) && beliefsComplete(profile);
 
-  useEffect(() => { generation.current++; setMessages([]); request.current = null; setJournal(null); }, [preferences.version,profile.version]);
+  useLayoutEffect(() => { generation.current++; setMessages([]); request.current = null; setJournal(null); }, [preferences.version,profile.version]);
   useEffect(() => { setDraft(initialPrompt); }, [initialPrompt, reflectionId]);
   useEffect(()=>{if(journal && review.current && !review.current.open) review.current.showModal();},[journal]);
   useEffect(() => { if (thread.current) thread.current.scrollTop = thread.current.scrollHeight; }, [messages, busy, complete]);
@@ -77,7 +73,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
     setJournalSaving(true); setError('');
     try { await runTransaction(db,async tx=>{
       const ref=doc(db,'teachingCoach',uid,'reflections',journal.id), existing=await tx.get(ref);
-      if(!existing.exists()) tx.set(ref,{...newReflection(),id:journal.id,title:journal.title.trim(),text:journal.text.trim(),content:journal.content??reflectionDoc(journal.text),version:1});
+      if(!existing.exists()) tx.set(ref,{...newReflection(),id:journal.id,title:journal.title.trim(),text:journal.text.trim(),content:reflectionDoc(journal.text),version:1});
     }); setJournal(null);setJournalSaved('Saved privately to Reflections.'); }
     catch {setError('We couldn’t save your reflection. Your edits are still here.');}
     finally {setJournalSaving(false);}
@@ -98,7 +94,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
         <div className="coach-chat-footer"><small>Enter to send · Shift + Enter for a new line</small></div>
       </div>
     </>}
-    {journal && <dialog ref={review} className="coach-journal-review" aria-label="Review journal draft" onCancel={e=>{e.preventDefault();if(!journalSaving)setJournal(null);}}><form onSubmit={e=>{e.preventDefault();void saveJournal();}}><h3>Your journal draft</h3><p>Make this your own before saving it to Reflections.</p><label>Reflection title<input autoFocus required maxLength={200} value={journal.title} onChange={e=>setJournal({...journal,title:e.target.value})}/></label><div className="coach-reflection-editor"><TaskEditor key={journal.id} label="Your reflection" content={journal.content??reflectionDoc(journal.text)} onChange={content=>setJournal({...journal,content,text:reflectionText(content)})} /></div><div className="coach-actions"><button className="btn" type="button" disabled={journalSaving} onClick={()=>setJournal(null)}>Back to chat</button><button className="btn primary" disabled={journalSaving||!journal.title.trim()||!journal.text.trim()}>{journalSaving?'Saving…':'Save to reflections'}</button></div>{error&&<p role="alert">{error}</p>}</form></dialog>}
+    {journal && <dialog ref={review} className="coach-journal-review" aria-label="Review journal draft" onCancel={e=>{e.preventDefault();if(!journalSaving)setJournal(null);}}><form onSubmit={e=>{e.preventDefault();void saveJournal();}}><h3>Your journal draft</h3><p>Make this your own before saving it to Reflections.</p><label>Reflection title<input autoFocus required disabled={journalSaving} maxLength={160} value={journal.title} onChange={e=>setJournal({...journal,title:e.target.value})}/></label><label>Your reflection<AutoTextarea aria-label="Your reflection" required maxLength={12000} value={journal.text} disabled={journalSaving} onChange={e=>setJournal({...journal,text:e.target.value})}/></label><div className="coach-actions"><button className="btn" type="button" disabled={journalSaving} onClick={()=>setJournal(null)}>Back to chat</button><button className="btn primary" disabled={journalSaving||!journal.title.trim()||!journal.text.trim()}>{journalSaving?'Saving…':'Save to reflections'}</button></div>{error&&<p role="alert">{error}</p>}</form></dialog>}
     {journalSaved&&<p role="status" className="coach-journal-saved">{journalSaved}</p>}
   </section>;
 }
