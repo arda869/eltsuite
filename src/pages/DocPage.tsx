@@ -1,3 +1,4 @@
+import { HelpMenu } from '../help/HelpMenu';
 import { tell } from '../lib/ask';
 import { copyText } from '../lib/copyText';
 import { OrgLogo } from '../components/OrgLook';
@@ -130,6 +131,7 @@ export function DocPage() {
           </span>
         </span>
         <span className="dp-acts">
+          <HelpMenu />
           {kind === 'pd' && d && profile?.role === 'teacher' && <Link className="btn" to={`/development?section=reflections&reading=${encodeURIComponent(d.id)}`}>Reflect on this reading</Link>}
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}

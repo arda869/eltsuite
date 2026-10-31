@@ -5,10 +5,11 @@ export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
   if (name === 'helpAssistant') {
     if (d.action === 'feedback') return { data: { saved: true } };
+    await new Promise(resolve => setTimeout(resolve, 350));
     if (d.question.includes('FAIL_TEST')) throw Error('Test help unavailable.');
     const q = d.question.toLowerCase();
     const id = /record/.test(q) ? 'recordings' : /learner|join/.test(q) ? 'learners' : /lesson/.test(q) ? 'lessons' : /file/.test(q) ? 'files' : null;
-    return { data: { articleIds: id ? [id] : [], version: '2026-10-31.1' } };
+    return { data: { articleIds: id ? [id] : [], version: '2026-10-31.2' } };
   }
   if (name === 'recordingSpeech') {
     if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');

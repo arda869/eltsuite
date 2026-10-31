@@ -78,13 +78,18 @@ async function axe(p, name, out) {
   out.push(...r.map((v) => ({ page: name, ...v })));
 }
 
+async function openAssistant(p, section = 'help') {
+  await p.getByRole('button', { name: 'Help', exact: true }).click();
+  await p.getByRole('menuitem', { name: section === 'help' ? /Ask ELT Suite/ : /Discover/ }).click();
+}
+
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
   'Feature discovery is optional, private and based on completed workflows': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/');
-    const launch = s.p.getByRole('button', { name: 'ELT Suite assistant', exact: true });
+    const launch = { click: () => openAssistant(s.p, 'discovery') };
     await launch.click();
     await s.p.getByRole('button', { name: 'Browse features first →', exact: true }).click();
     const iconsCentered = await s.p.locator('.discovery-feature-icon').evaluateAll(icons => icons.every(icon => {
@@ -149,11 +154,16 @@ const J = {
   'Help assistant: verified answers, browsing, fallback and phone layout': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/');
-    await s.p.getByRole('button', { name: 'Open ELT Suite help', exact: true }).click();
+    await openAssistant(s.p);
     const panel = s.p.getByRole('dialog', { name: 'ELT Suite assistant' });
     await panel.getByRole('button', { name: 'How do I record a lesson?', exact: true }).click();
+    await panel.locator('.help-typing-dots').waitFor();
     await panel.getByRole('heading', { name: 'Make a listening recording' }).waitFor();
-    if (!await panel.getByText(/does not confirm that video calls/).isVisible()) throw Error('Recording limitation was lost.');
+    await panel.getByRole('heading', { name: 'Turn a script into AI speech' }).waitFor();
+    await panel.locator('.help-suggestion summary').click();
+    await panel.getByText(/choose Draft with AI/).waitFor();
+    if (await s.p.locator('.help-launch, .discovery-launch').count()) throw Error('Floating launchers still cover page content.');
+    if (!await panel.getByText(/video-lesson recording.*not confirmed/).isVisible()) throw Error('Recording limitation was lost.');
     await panel.getByRole('button', { name: 'Yes, this helped' }).click();
     await panel.getByText('Feedback saved', { exact: true }).waitFor();
     await panel.getByLabel('Ask how to use ELT Suite', { exact: true }).fill('FAIL_TEST');
@@ -174,11 +184,11 @@ const J = {
     if (!box || box.x < 0 || box.width > 391 || box.height > 845) throw Error('Phone help overflows the viewport.');
     await axe(s.p, 'Help assistant phone', A11Y_FOUND);
     await panel.getByRole('button', { name: 'Close help' }).click();
-    await s.p.getByRole('button', { name: 'Open ELT Suite help', exact: true }).waitFor();
+    await s.p.getByRole('button', { name: 'Help', exact: true }).waitFor();
     await s.p.setViewportSize({ width: 1280, height: 900 });
-    await s.p.locator('.discovery-launch').click();
+    await openAssistant(s.p, 'discovery');
     await s.p.locator('#discovery-panel').waitFor();
-    await s.p.getByRole('button', { name: 'Open ELT Suite help', exact: true }).click();
+    await openAssistant(s.p);
     await s.p.locator('#discovery-panel').waitFor({ state: 'hidden' });
     await panel.waitFor();
     return s;

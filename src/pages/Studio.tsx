@@ -1,3 +1,4 @@
+import { HelpMenu } from '../help/HelpMenu';
 import { ScriptEditor } from '../media/ScriptEditor';
 import { saveScript } from '../editor/MediaNode';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -37,6 +38,7 @@ function StudioBar({ app, where, status, children }: { app: string; where: React
       <span style={{ flex: 1 }} />
       {status}
       {children}
+      <HelpMenu />
       <button type="button" className="btn small-btn" onClick={() => (window.opener ? window.close() : (window.location.href = '/archive'))}>
         Done
       </button>

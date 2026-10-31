@@ -1,3 +1,4 @@
+import { HelpMenu } from '../help/HelpMenu';
 import { RecordingTranscript } from './RecordingTranscript';
 import { effectCaption, recordingScript } from '../lib/recordingScript';
 import { transcribeRecording } from '../lib/speech';
@@ -1185,6 +1186,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
         <span style={{ flex: 1 }} />
         {error && <span className="hint warn">{error}</span>}
         <span className="sx-acts">
+          <HelpMenu />
           <button type="button" className="sx-act" onClick={() => setTranscriptOpen(!transcriptOpen)} aria-expanded={transcriptOpen}><UiIcon name="script" size={18} /><span>Script</span></button>
           <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSpeechOpen(true); }}>
             <UiIcon name="script" size={18} /><span>Create speech</span>
