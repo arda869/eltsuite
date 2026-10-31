@@ -395,7 +395,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
     await Promise.all([updateTopic(c.id, t.id, { order: other.order }), updateTopic(c.id, other.id, { order: t.order === other.order ? t.order + d : t.order })]);
   };
   const byTopic = (id: string | null) => items.filter((i) => (i.topicId ?? null) === id).sort((a, b) => a.order - b.order);
-  const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId));
+  const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId)).sort((a, b) => a.order - b.order);
   const nextOrder = (list: { order: number }[]) => (list.length ? Math.max(...list.map((x) => x.order)) + 1 : 0);
 
   return (

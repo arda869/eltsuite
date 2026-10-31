@@ -33,13 +33,47 @@ const briefFields:Record<string,{topic:string;objectives:string;context:string;t
 function CreationIcon({type}:{type:string}) {return <svg className="ai-choice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{type==='lesson'?<><path d="M12 5v15M3 4c4-1 6 0 9 2 3-2 5-3 9-2v14c-4-1-6 0-9 2-3-2-5-3-9-2Z"/></>:type==='exam'?<><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M8 10l2 2 4-4M8 16h8"/></>:type==='homework'?<><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></>:<><path d="M20 7a9 9 0 0 0-15-1L2 9m0-6v6h6M4 17a9 9 0 0 0 15 1l3-3m0 6v-6h-6"/><path d="m9 12 2 2 4-4"/></>}</svg>;}
 const label = (key: string) => labels[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 
+const stageColumns = ['id', 'title', 'aim', 'minutes', 'interaction'] as const;
+function StageTable({ stages, onChange }: { stages: RecordValue[]; onChange: (v: Value[]) => void }) {
+  const hasProcedures = stages.some(stage => 'procedures' in stage);
+  const columns: string[] = [...stageColumns, ...(hasProcedures ? ['procedures'] : [])];
+  const edit = (index: number, key: string, value: Value) => onChange(stages.map((stage, i) => i === index ? { ...stage, [key]: value } : stage));
+  return <fieldset className="ai-stage-editor"><legend>Stages</legend>
+    <p className="hint ai-stage-hint">Edit each stage in its row. On a smaller screen, scroll across to see every column.</p>
+    <div className="ai-stage-scroll" role="region" aria-label="Editable lesson stages" tabIndex={0}>
+      <table className={'ai-stage-table' + (hasProcedures ? ' with-procedures' : '')}>
+        <caption className="sr-only">Lesson stages</caption>
+        <thead><tr>{columns.map(key => <th key={key} scope="col" className={`ai-stage-${key}`}>{label(key)}</th>)}</tr></thead>
+        {stages.map((stage, index) => {
+          const notes = Object.fromEntries(Object.entries(stage).filter(([key]) => !columns.includes(key)));
+          return <tbody key={index}>
+            <tr>{columns.map(key => <td key={key} className={`ai-stage-${key}`}>
+              {key === 'minutes'
+                ? <input aria-label={`Stage ${index + 1}: ${label(key)}`} type="number" min={1} max={180} value={Number(stage[key] ?? 1)} onChange={e => edit(index, key, Number(e.target.value))} />
+                : <AutoTextarea aria-label={`Stage ${index + 1}: ${label(key)}`} value={String(stage[key] ?? '')} onChange={e => edit(index, key, e.target.value)} />}
+            </td>)}</tr>
+            {Object.keys(notes).length > 0 && <tr className="ai-stage-notes"><td colSpan={columns.length}>
+              <details><summary>Stage {index + 1} · instructions, feedback and materials</summary>
+                <Fields name={`Stage ${index + 1} notes`} value={notes} onChange={value => onChange(stages.map((old, i) => i === index ? { ...old, ...(value as RecordValue) } : old))} />
+              </details>
+            </td></tr>}
+          </tbody>;
+        })}
+        <tfoot><tr><th scope="row" colSpan={3}>Total time</th><td>{stages.reduce((total, stage) => total + Number(stage.minutes ?? 0), 0)} min</td><td colSpan={columns.length - 4} /></tr></tfoot>
+      </table>
+    </div>
+  </fieldset>;
+}
+
 // Every content field stays editable; React renders model text without HTML interpretation.
 function Fields({ value, onChange, name }: { value: Value; onChange: (v: Value) => void; name: string }) {
   if (typeof value === 'string' || typeof value === 'number') return <label className="ai-field"><span>{name}</span>{typeof value === 'number'
     ? <input type="number" min={1} max={180} value={value} onChange={e => onChange(Number(e.target.value))} />
     : <AutoTextarea aria-label={name} value={value} onChange={e => onChange(e.target.value)} />}</label>;
   if (Array.isArray(value)) return <fieldset><legend>{name}</legend>{value.length === 0 && <p>None needed for this plan.</p>}{value.map((v, i) => typeof v === 'object' && !Array.isArray(v) ? <details className="ai-edit-card" key={i} open={i===0}><summary>{String(v.title ?? `${name} ${i+1}`)}{v.minutes ? ` · ${v.minutes} min` : ''}</summary><Fields value={v} name={`${name} ${i+1}`} onChange={next=>onChange(value.map((old,j)=>j===i?next:old))}/></details> : <Fields key={i} value={v} name={`${name} ${i + 1}`} onChange={next => onChange(value.map((old, j) => j === i ? next : old))} />)}</fieldset>;
-  return <fieldset><legend>{name}</legend>{Object.entries(value).map(([key, v]) => <Fields key={key} value={v} name={label(key)} onChange={next => onChange({ ...value, [key]: next })} />)}</fieldset>;
+  return <fieldset><legend>{name}</legend>{Object.entries(value).map(([key, v]) => key === 'stages' && Array.isArray(v) && v.every(stage => stage && typeof stage === 'object' && !Array.isArray(stage))
+    ? <StageTable key={key} stages={v as RecordValue[]} onChange={next => onChange({ ...value, [key]: next })} />
+    : <Fields key={key} value={v} name={label(key)} onChange={next => onChange({ ...value, [key]: next })} />)}</fieldset>;
 }
 
 export function LessonAssistant() {

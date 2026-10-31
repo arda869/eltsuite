@@ -73,3 +73,28 @@
 @media(max-width:600px){.ai-generation{gap:12px;padding:16px;position:static}.ai-generation-mark .ai-studio-mark{width:28px;height:28px;}}
 
 .ai-choice-icon{display:block;width:28px;height:28px;margin-bottom:16px}.ai-review{margin:24px 0;padding:24px;border:1px solid var(--line,#777);border-radius:16px}.ai-review h3{margin-top:0}.ai-review summary{cursor:pointer;padding:14px 0;font-weight:600}.ai-review li{margin-bottom:14px;line-height:1.6}
+
+.ai-assistant .ai-stage-editor {padding:0;border:0;min-width:0;}
+.ai-assistant:has(.ai-stage-table) {max-width:1480px;}
+.ai-stage-hint {font-size:13px;line-height:1.5;margin:0 0 12px;}
+.ai-stage-scroll {max-width:100%;overflow-x:auto;border:1px solid color-mix(in srgb,currentColor 24%,transparent);border-radius:10px;}
+.ai-stage-scroll:focus-visible {outline:3px solid var(--accent,#568584);outline-offset:3px;}
+.ai-stage-table {width:100%;min-width:900px;table-layout:fixed;border-collapse:separate;border-spacing:0;text-align:left;font-size:14px;}
+.ai-stage-table.with-procedures {min-width:1180px;}
+.ai-stage-table caption {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.ai-stage-table th,.ai-stage-table td {vertical-align:top;padding:12px;border-right:1px solid color-mix(in srgb,currentColor 14%,transparent);}
+.ai-stage-table tr>:last-child {border-right:0;}
+.ai-stage-table thead th {font-weight:700;background:color-mix(in srgb,var(--paper,#fff) 93%,currentColor);border-bottom:1px solid color-mix(in srgb,currentColor 24%,transparent);padding-block:15px;}
+.ai-stage-table tbody+tbody>tr:first-child>* {border-top:1px solid color-mix(in srgb,currentColor 24%,transparent);}
+.ai-stage-table .ai-stage-id {width:94px;}
+.ai-stage-table .ai-stage-title {width:180px;}
+.ai-stage-table .ai-stage-minutes {width:86px;}
+.ai-stage-table .ai-stage-procedures {width:340px;}
+.ai-stage-table textarea,.ai-stage-table input {box-sizing:border-box;width:100%;min-width:0;margin:0;padding:7px 6px;border:1px solid transparent;border-radius:4px;color:inherit;background:transparent;font:inherit;line-height:1.6;}
+.ai-stage-table textarea:hover,.ai-stage-table input:hover {border-color:color-mix(in srgb,currentColor 30%,transparent);}
+.ai-stage-table textarea:focus,.ai-stage-table input:focus {outline:2px solid var(--accent,#568584);outline-offset:1px;background:var(--paper,#fff);}
+.ai-stage-table input[type=number] {padding-inline:2px;}
+.ai-stage-table .ai-stage-notes td {padding-top:0;}
+.ai-stage-notes summary {cursor:pointer;font-size:13px;padding:10px 6px;}
+.ai-stage-notes fieldset {margin:10px 0;border:0;padding:12px 6px;}
+.ai-stage-table tfoot th,.ai-stage-table tfoot td {border-top:1px solid color-mix(in srgb,currentColor 24%,transparent);background:color-mix(in srgb,currentColor 4%,transparent);font-weight:600;white-space:nowrap;}
