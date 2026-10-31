@@ -2,6 +2,8 @@
 
 The floating **Discover** button is available to signed-in teachers. It uses the existing ELT Suite typefaces, colour variables and icons; it supports light/dark themes, reduced motion and a full-screen phone layout. Settings also links to Discovery preferences.
 
+Each feature now has an illustrated, interactive three-step flow tree, accessible from **Your features → Visual guide** or a recommendation’s **Show me how** button. Teachers can move between steps, inspect a theme-aware illustration and branch to the feature or the full Guide. These are labelled illustrations, not screenshots or completion claims. Browsing a visual guide works with tracking off and writes no discovery data. Icon frames use a fixed centred grid, aligned beside the feature heading rather than floating in a card corner.
+
 Personalisation and proactive messages are **off by default**. Opting in starts tracking from that point; earlier use is deliberately not inferred from page visits or imported from admin activity logs. This is a deterministic product-help feature, separate from the AI Lesson Assistant and private teaching reflection. It makes no model calls and consumes no AI allowance.
 
 ## Verified catalog and completion hooks

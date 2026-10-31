@@ -86,6 +86,33 @@ const J = {
     await s.p.goto(BASE + '/');
     const launch = s.p.getByRole('button', { name: 'ELT Suite assistant', exact: true });
     await launch.click();
+    await s.p.getByRole('button', { name: 'Browse features first →', exact: true }).click();
+    const iconsCentered = await s.p.locator('.discovery-feature-icon').evaluateAll(icons => icons.every(icon => {
+      const box = icon.getBoundingClientRect(), svg = icon.querySelector('svg').getBoundingClientRect();
+      return Math.abs(box.left + box.width / 2 - svg.left - svg.width / 2) < 1 && Math.abs(box.top + box.height / 2 - svg.top - svg.height / 2) < 1;
+    }));
+    if (!iconsCentered) throw Error('Discovery feature icons are not centered');
+    const guides = await s.p.getByRole('button', { name: /^Show visual guide for / }).all();
+    const labels = await Promise.all(guides.map(g => g.getAttribute('aria-label')));
+    for (const label of labels) {
+      await s.p.getByRole('button', { name: label, exact: true }).click();
+      await see(s.p, '.discovery-visual-guide .discovery-art', 'illustrated workflow');
+      await s.p.getByRole('button', { name: 'Next step', exact: true }).click();
+      await s.p.getByRole('button', { name: 'Next step', exact: true }).click();
+      if (!await s.p.getByRole('button', { name: 'Next step', exact: true }).isDisabled()) throw Error('Visual guide went past its final step');
+      await s.p.getByRole('button', { name: 'Previous step', exact: true }).click();
+      if (!await s.p.locator('.discovery-flow-tree li').nth(1).locator('button').getAttribute('aria-current')) throw Error('Step navigation did not update');
+      if (label.endsWith('Lessons')) {
+        await axe(s.p, 'Feature discovery visual flow', A11Y_FOUND);
+        for (const width of [320, 390, 1280]) {
+          await s.p.setViewportSize({ width, height: 844 });
+          if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Visual guide overflow at ' + width);
+        }
+      }
+      await s.p.getByRole('button', { name: 'Back to discovery', exact: true }).click();
+    }
+    if (await s.p.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('mockfs') || '{}')).some(k => k.startsWith('featureDiscovery/')))) throw Error('Browsing a visual guide enabled tracking or wrote recommendation history');
+    await s.p.getByRole('button', { name: 'For you', exact: true }).click();
     await s.p.getByRole('button', { name: 'Personalise my suggestions', exact: true }).click();
     await s.p.getByRole('button', { name: 'Show me how', exact: true }).click();
     await see(s.p, '.discovery-steps', 'verified feature walkthrough');
