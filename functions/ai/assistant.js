@@ -157,7 +157,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     let result = { [d.action]: first.value, usage: [first.usage] };
     if (d.action === 'plan') {
       phase = 'review';
-      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, creationType, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
+      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, creationType, learnerMemories: payload.learnerMemories, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
         instructions: `${cls.get('kind')==='training'?trainingInstructions:teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. Mark incorrect language, unsolvable tasks, wrong keys, missing referenced media, premature answer disclosure and inaccessible instructions as critical errors. Scrutinise learner-facing wording, receptive-skills sequencing, discovery before explanation, purposeful visual support, and whether differentiation changes the task rather than adding more work. ${contentReviewStandard} This is advisory AI review, not human approval.` });
       result = { ...result, review: review.value, usage: [...result.usage, review.usage] };
     }
