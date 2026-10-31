@@ -8,7 +8,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if (d.question.includes('FAIL_TEST')) throw Error('Test help unavailable.');
     const q = d.question.toLowerCase();
     const id = /record/.test(q) ? 'recordings' : /learner|join/.test(q) ? 'learners' : /lesson/.test(q) ? 'lessons' : /file/.test(q) ? 'files' : null;
-    return { data: { articleIds: id ? [id] : [], version: '2026-10-31' } };
+    return { data: { articleIds: id ? [id] : [], version: '2026-10-31.1' } };
   }
   if (name === 'recordingSpeech') {
     if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');

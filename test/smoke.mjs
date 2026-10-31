@@ -97,7 +97,7 @@ const J = {
     await panel.getByRole('button', { name: 'Browse topics', exact: true }).click();
     await panel.getByRole('searchbox').fill('files');
     await panel.locator('summary').filter({ hasText: 'Keep your resources together' }).click();
-    await panel.getByRole('link', { name: 'Open Files' }).waitFor();
+    await panel.getByRole('link', { name: 'Open Resources' }).waitFor();
     await panel.getByRole('button', { name: 'Ask a question', exact: true }).click();
     await panel.getByRole('button', { name: 'Clear chat' }).click();
     await panel.getByRole('heading', { name: 'How can I help?' }).waitFor();

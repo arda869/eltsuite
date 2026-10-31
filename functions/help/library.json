@@ -1,17 +1,173 @@
 {
-  "version": "2026-10-31",
+  "version": "2026-10-31.1",
   "articles": [
-    {"id":"navigation","title":"Find your way around","keywords":"apps navigation menu home where start","summary":"The nine dots at the top right open ELT Suite’s apps. The name at the top left tells you which app you’re using.","steps":["Open the nine dots at the top right.","Choose the app you need. Classes holds your lessons and learners. Files holds your resources.","For a guided introduction, open the ELT Suite guide."],"href":"/guide#gu-start","action":"Explore the guide","source":"src/pages/GuidePage.tsx"},
-    {"id":"lessons","title":"Make a lesson","keywords":"lesson plan task questions create make add planning","summary":"Each class holds its lessons. A lesson contains tasks with text, pictures, sound and questions.","steps":["Open Classes and choose your class.","Add a lesson, then open it and add a task.","Write your instructions and add the questions or resources you need. Check what learners can see before teaching."],"href":"/classes","action":"Open Classes","source":"src/pages/ClassPage.tsx; src/pages/LessonEditor.tsx"},
-    {"id":"learners","title":"Help learners join","keywords":"learner join code pin invite student login","summary":"Learners join with a class code and their own PIN. They don’t need an email address.","steps":["Open Classes and choose the class.","Find the class code and the learner’s PIN in the class’s learner controls.","Give the learner their sign-in details privately. They can join at learn.eltsuite.com."],"href":"/classes","action":"Open Classes","source":"src/pages/ClassPage.tsx; src/pages/LearnerJoin.tsx"},
-    {"id":"live","title":"Teach a lesson live","keywords":"teach live present presentation follow screens classroom","summary":"Teach live lets learners’ screens follow your lesson. A video call is separate from the lesson.","steps":["Open your class in Classes and choose the lesson.","Start Teach live from the class’s teaching controls.","Use the lesson controls to move through tasks. For a video call alongside it, open the class’s room."],"href":"/guide#gu-live","action":"Read the live teaching guide","source":"src/pages/ClassPage.tsx; src/pages/GuidePage.tsx"},
-    {"id":"calls","title":"Join a video class","keywords":"video call room camera microphone teams zoom meet","summary":"Rooms brings together your class video rooms. You can also keep using your own Zoom, Teams or Meet link.","steps":["Open Rooms and choose the class’s room.","Allow microphone and camera access when your browser asks.","If you can’t connect, check your browser permissions and connection. An organisation’s call-minute limit can also pause its rooms."],"href":"/rooms","action":"Open Rooms","source":"src/pages/RoomsPage.tsx; src/components/LiveVideo.tsx"},
-    {"id":"recordings","title":"Make a listening recording","keywords":"record recording audio sound microphone studio dialogue mp3","summary":"Recordings is for making and editing listening audio. This guide does not confirm that video calls or whole live lessons can be recorded.","steps":["Open Recordings to work with your audio files.","Make or open a recording, then use Studio to record and edit sound.","Use the finished recording in a lesson or download it as an MP3. For recording a whole video lesson, ask support to confirm what is available."],"href":"/recordings","action":"Open Recordings","source":"src/pages/GuidePage.tsx; src/pages/StudioSession.tsx"},
-    {"id":"files","title":"Keep your resources together","keywords":"files folder resources library upload storage space recycle bin","summary":"Files brings together lessons, documents, PDFs, pictures and recordings, with your organisation’s libraries alongside your personal files.","steps":["Open Files to find your resources.","Choose your personal files or an organisation library you can access.","Open a file in its app. If uploads stop, check your storage usage in Settings or ask your organisation’s admin about its limits."],"href":"/archive","action":"Open Files","source":"src/pages/MediaArchive.tsx; src/components/StorageCard.tsx"},
-    {"id":"collab","title":"Write together in Collab","keywords":"collab document collaborate write editing share colleagues","summary":"Collab is for documents and slides that you can edit together. Its editing tools include language notation for teaching.","steps":["Open Collab and make or open a document.","Use the document’s sharing controls to choose who can work with you.","Write together, comment or suggest changes. Keep private teacher notes out of documents shared with learners."],"href":"/collab","action":"Open Collab","source":"src/pages/GuidePage.tsx; src/pages/AppFiles.tsx"},
-    {"id":"timetable","title":"Plan your week","keywords":"timetable calendar schedule session recurring weekly meeting","summary":"Timetable shows class sessions and meetings. A weekly class session can repeat without being added again each week.","steps":["Open Timetable to see your week.","Add a class session or meeting and choose its time.","Open the class or video room from the session when it’s time to teach."],"href":"/timetable","action":"Open Timetable","source":"src/pages/TimetablePage.tsx; src/pages/GuidePage.tsx"},
-    {"id":"settings","title":"Change your account settings","keywords":"settings account profile name notifications password theme dark calendar","summary":"Settings keeps your profile and preferences together, including appearance, notifications and calendar connections.","steps":["Open Settings.","Choose the section you need. Available controls depend on your account and device.","For notification setup, allow notifications in your browser too. On an iPhone or iPad, open ELT Suite from its home-screen icon."],"href":"/settings","action":"Open Settings","source":"src/pages/SettingsPage.tsx; src/lib/push.ts"},
-    {"id":"limits","title":"Understand plans and limits","keywords":"plan subscription billing price payment upgrade allowance limits quota cost","summary":"Plans can set limits on file space, teachers, classes, learners and monthly call minutes. Exact prices and billing terms need confirmation from ELT Suite.","steps":["Check your file-space usage in Settings.","If you belong to an organisation, ask its admin to check Plan and limits.","Contact ELT Suite if you need a different allowance or current billing information. Help questions do not use your lesson-generation allowance."],"href":"/settings","action":"Open Settings","source":"src/pages/admin/OrgLimits.tsx; src/components/StorageCard.tsx"},
-    {"id":"troubleshooting","title":"When something doesn’t work","keywords":"error broken problem not working load save offline trouble connection","summary":"Check your connection first. If the problem continues, support can help you work out what happened.","steps":["Check your internet connection and any browser permission message.","Keep a copy of unsaved text before refreshing the page.","Contact support with the app name, what you were trying to do and any error message. Don’t include learner names, PINs or private class material."],"href":"/guide","action":"Open the guide","source":"src/components/ConnectionBanner.tsx; src/pages/SignIn.tsx"}
+    {
+      "id": "navigation",
+      "title": "Find your way around",
+      "keywords": "apps navigation menu home where start",
+      "summary": "The nine dots at the top right open ELT Suite’s apps. The name at the top left tells you which app you’re using.",
+      "steps": [
+        "Open the nine dots at the top right.",
+        "Choose the app you need. Classes holds your lessons and learners. Resources holds your files.",
+        "For a guided introduction, open the ELT Suite guide."
+      ],
+      "href": "/guide#gu-start",
+      "action": "Explore the guide",
+      "source": "src/pages/GuidePage.tsx"
+    },
+    {
+      "id": "lessons",
+      "title": "Make a lesson",
+      "keywords": "lesson plan task questions create make add planning",
+      "summary": "Each class holds its lessons. A lesson contains tasks with text, pictures, sound and questions.",
+      "steps": [
+        "Open Classes and choose your class.",
+        "Add a lesson, then open it and add a task.",
+        "Write your instructions and add the questions or resources you need. Check what learners can see before teaching."
+      ],
+      "href": "/classes",
+      "action": "Open Classes",
+      "source": "src/pages/ClassPage.tsx; src/pages/LessonEditor.tsx"
+    },
+    {
+      "id": "learners",
+      "title": "Help learners join",
+      "keywords": "learner join code pin invite student login",
+      "summary": "Learners join with a class code and their own PIN. They don’t need an email address.",
+      "steps": [
+        "Open Classes and choose the class.",
+        "Find the class code and the learner’s PIN in the class’s learner controls.",
+        "Give the learner their sign-in details privately. They can join at learn.eltsuite.com."
+      ],
+      "href": "/classes",
+      "action": "Open Classes",
+      "source": "src/pages/ClassPage.tsx; src/pages/LearnerJoin.tsx"
+    },
+    {
+      "id": "live",
+      "title": "Teach a lesson live",
+      "keywords": "teach live present presentation follow screens classroom",
+      "summary": "Teach live lets learners’ screens follow your lesson. A video call is separate from the lesson.",
+      "steps": [
+        "Open your class in Classes and choose the lesson.",
+        "Start Teach live from the class’s teaching controls.",
+        "Use the lesson controls to move through tasks. For a video call alongside it, open the class’s room."
+      ],
+      "href": "/guide#gu-live",
+      "action": "Read the live teaching guide",
+      "source": "src/pages/ClassPage.tsx; src/pages/GuidePage.tsx"
+    },
+    {
+      "id": "calls",
+      "title": "Join a video class",
+      "keywords": "video call room camera microphone teams zoom meet",
+      "summary": "Rooms brings together your class video rooms. You can also keep using your own Zoom, Teams or Meet link.",
+      "steps": [
+        "Open Rooms and choose the class’s room.",
+        "Allow microphone and camera access when your browser asks.",
+        "If you can’t connect, check your browser permissions and connection. An organisation’s call-minute limit can also pause its rooms."
+      ],
+      "href": "/rooms",
+      "action": "Open Rooms",
+      "source": "src/pages/RoomsPage.tsx; src/components/LiveVideo.tsx"
+    },
+    {
+      "id": "recordings",
+      "title": "Make a listening recording",
+      "keywords": "record recording audio sound microphone studio dialogue mp3",
+      "summary": "Recordings is for making and editing listening audio. This guide does not confirm that video calls or whole live lessons can be recorded.",
+      "steps": [
+        "Open Recordings to work with your audio files.",
+        "Make or open a recording, then use Studio to record and edit sound.",
+        "Use the finished recording in a lesson or download it as an MP3. For recording a whole video lesson, ask support to confirm what is available."
+      ],
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "source": "src/pages/GuidePage.tsx; src/pages/StudioSession.tsx"
+    },
+    {
+      "id": "files",
+      "title": "Keep your resources together",
+      "keywords": "files folder resources library upload storage space recycle bin",
+      "summary": "Resources brings together your files: lessons, documents, PDFs, pictures and recordings, with your organisation’s libraries alongside your personal files.",
+      "steps": [
+        "Open Resources to find your files.",
+        "Choose your personal files or an organisation library you can access.",
+        "Open a file in its app. If uploads stop, check your storage usage in Settings or ask your organisation’s admin about its limits."
+      ],
+      "href": "/archive",
+      "action": "Open Resources",
+      "source": "src/pages/MediaArchive.tsx; src/components/StorageCard.tsx; src/components/AppGrid.tsx"
+    },
+    {
+      "id": "collab",
+      "title": "Write together in Collab",
+      "keywords": "collab document collaborate write editing share colleagues",
+      "summary": "Collab is for documents and slides that you can edit together. Its editing tools include language notation for teaching.",
+      "steps": [
+        "Open Collab and make or open a document.",
+        "Use the document’s sharing controls to choose who can work with you.",
+        "Write together, comment or suggest changes. Keep private teacher notes out of documents shared with learners."
+      ],
+      "href": "/collab",
+      "action": "Open Collab",
+      "source": "src/pages/GuidePage.tsx; src/pages/AppFiles.tsx"
+    },
+    {
+      "id": "timetable",
+      "title": "Plan your week",
+      "keywords": "timetable calendar schedule session recurring weekly meeting",
+      "summary": "Timetable shows class sessions and meetings. A weekly class session can repeat without being added again each week.",
+      "steps": [
+        "Open Timetable to see your week.",
+        "Add a class session or meeting and choose its time.",
+        "Open the class or video room from the session when it’s time to teach."
+      ],
+      "href": "/timetable",
+      "action": "Open Timetable",
+      "source": "src/pages/TimetablePage.tsx; src/pages/GuidePage.tsx"
+    },
+    {
+      "id": "settings",
+      "title": "Change your account settings",
+      "keywords": "settings account profile name notifications password theme dark calendar",
+      "summary": "Settings keeps your profile and preferences together, including appearance, notifications and calendar connections.",
+      "steps": [
+        "Open Settings.",
+        "Choose the section you need. Available controls depend on your account and device.",
+        "For notification setup, allow notifications in your browser too. On an iPhone or iPad, open ELT Suite from its home-screen icon."
+      ],
+      "href": "/settings",
+      "action": "Open Settings",
+      "source": "src/pages/SettingsPage.tsx; src/lib/push.ts"
+    },
+    {
+      "id": "limits",
+      "title": "Understand plans and limits",
+      "keywords": "plan subscription billing price payment upgrade allowance limits quota cost",
+      "summary": "Plans can set limits on file space, teachers, classes, learners and monthly call minutes. Exact prices and billing terms need confirmation from ELT Suite.",
+      "steps": [
+        "Check your file-space usage in Settings.",
+        "If you belong to an organisation, ask its admin to check Plan and limits.",
+        "Contact ELT Suite if you need a different allowance or current billing information. Help questions do not use your lesson-generation allowance."
+      ],
+      "href": "/settings",
+      "action": "Open Settings",
+      "source": "src/pages/admin/OrgLimits.tsx; src/components/StorageCard.tsx"
+    },
+    {
+      "id": "troubleshooting",
+      "title": "When something doesn’t work",
+      "keywords": "error broken problem not working load save offline trouble connection",
+      "summary": "Check your connection first. If the problem continues, support can help you work out what happened.",
+      "steps": [
+        "Check your internet connection and any browser permission message.",
+        "Keep a copy of unsaved text before refreshing the page.",
+        "Contact support with the app name, what you were trying to do and any error message. Don’t include learner names, PINs or private class material."
+      ],
+      "href": "/guide",
+      "action": "Open the guide",
+      "source": "src/components/ConnectionBanner.tsx; src/pages/SignIn.tsx"
+    }
   ]
 }
