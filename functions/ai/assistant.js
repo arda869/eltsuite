@@ -1,3 +1,4 @@
+import { isGenerationAdmin, dailyAllowanceReached, dailyGlobalUsage } from './allowance.js';
 import { encodeGenerationResult, readGenerationResult } from './storage.js';
 import { teachingCoach } from './coach.js';
 import { validateTrainingProfile, trainingActivitySchema, trainingInstructions, trainingActivityInstructions } from './training.js';
@@ -117,6 +118,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const day = new Date().toISOString().slice(0, 10), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), globalQuota = db.doc(`aiUsage/${day}`);
   const month = day.slice(0, 7), budget = db.doc(`aiBudgets/${month}`);
   const units = d.action === 'plan' ? 2 : 1;
+  const generationAdmin = await isGenerationAdmin(db,req.auth);
   const existing = await db.runTransaction(async tx => {
     const [j, q, g, b] = await Promise.all([tx.get(job), tx.get(quota), tx.get(globalQuota), tx.get(budget)]);
     if (j.exists) {
@@ -131,13 +133,13 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This request is still running. Retry shortly with the same request.' : 'This request did not finish. Start a new generation.');
     }
     // Reserve both passes before calling the provider; failed calls still consume allowance.
-    if ((q.get('calls') ?? 0) + units > 12 || (g.get('calls') ?? 0) + units > 120) throw new HttpsError('resource-exhausted', 'The daily pilot allowance has been reached. Try again tomorrow.');
+    if (dailyAllowanceReached(q.get('calls') ?? 0,g.get('calls') ?? 0,units,generationAdmin)) throw new HttpsError('resource-exhausted', 'The daily pilot allowance has been reached. Try again tomorrow.');
     let reservation;
     try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, units); }
     catch (e) { throw new HttpsError('resource-exhausted', e.message); }
     tx.set(budget, { committedMicroUsd: reservation.balance, limitMicroUsd: 20_000_000, month }, { merge: true });
     tx.set(quota, { calls: (q.get('calls') ?? 0) + units });
-    tx.set(globalQuota, { calls: (g.get('calls') ?? 0) + units });
+    tx.set(globalQuota, dailyGlobalUsage(g.data(),units,generationAdmin), {merge:true});
     tx.create(job, { status: 'running', fingerprint, classId:d.classId, action:d.action, creationType, duration:brief.duration, ...(d.action==='activities'?{sourcePlan:d.plan}:{}), budgetMonth: month, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 86400000) });
     return null;
   });
