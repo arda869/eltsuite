@@ -3,6 +3,7 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if (d.action === 'activities' && localStorage.getItem('mockAiPause')) await new Promise<void>(resolve => { const timer=setInterval(()=>{if(!localStorage.getItem('mockAiPause')) {clearInterval(timer);resolve();}},50); });
   if (name === 'helpAssistant') {
     if (d.action === 'feedback') return { data: { saved: true } };
     await new Promise(resolve => setTimeout(resolve, 350));

@@ -518,7 +518,26 @@ const J = {
     await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
     await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
     if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
+    await s.p.evaluate(()=>localStorage.setItem('mockAiPause','1'));
     await s.p.getByRole('button',{name:'Prepare class activities'}).click();
+    await s.p.locator('.ai-generation').waitFor();
+    const checkStay = async (action) => {
+      const dialogPromise=s.p.waitForEvent('dialog');
+      const actionPromise=action().catch(()=>{});
+      const dialog=await dialogPromise;
+      if(dialog.type()!=='beforeunload' && !dialog.message().includes('still being created')) throw Error('Missing generation-specific leave warning');
+      await dialog.dismiss();
+      await actionPromise;
+      if(!s.p.url().includes('/assistant')) throw Error('Dismissing leave warning lost the planner');
+    };
+    await checkStay(()=>s.p.getByRole('link',{name:'Back to class',exact:true}).click());
+    await checkStay(()=>s.p.goBack({timeout:1500}));
+    const reloadDialog=s.p.waitForEvent('dialog');
+    const reload=s.p.reload({timeout:3000}).catch(()=>{});
+    const unload=await reloadDialog;
+    if(unload.type()!=='beforeunload') throw Error('Missing reload protection during saved-plan generation');
+    await unload.dismiss();await reload;
+    await s.p.evaluate(()=>localStorage.removeItem('mockAiPause'));
     await see(s.p,'text=READY FOR YOUR REVIEW','activity review');
     await s.p.locator('.ai-task-cards>details>summary').first().click();
     await s.p.getByRole('table',{name:'Travel options'}).waitFor();
