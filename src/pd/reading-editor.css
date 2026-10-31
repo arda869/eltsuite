@@ -19,3 +19,22 @@
   background: var(--paper);
   border-radius: 8px;
 }
+
+/* Development Studio: keep Reading and its return path usable on a phone. */
+@media (max-width: 900px) {
+  .dp.k-pd { height: auto; min-height: 100dvh; overflow: visible; }
+  .dp.k-pd .dp-main { height: auto; overflow: visible; }
+  .dp.k-pd .pd { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .dp.k-pd .pd-side { height: auto; max-height: none; }
+  .dp.k-pd .pd-list { max-height: 220px; }
+  .dp.k-pd .pd-main { height: auto; overflow: visible; }
+  .dp.k-pd .pd-empty { margin-top: 20px; }
+  .dp.k-pd .pd-empty-acts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dp.k-pd .pd-slim-row, .dp.k-pd .pd-slim-acts { flex-wrap: wrap; }
+}
+@media (max-width: 640px) {
+  .dp.k-pd .dp-bar { flex-wrap: wrap; }
+  .dp.k-pd .dp-names { flex: 1 1 180px; }
+  .dp.k-pd .dp-acts { flex: 1 1 100%; margin-left: 0; justify-content: flex-end; }
+  .dp.k-pd .dp-acts > a { flex: 1; justify-content: center; }
+}

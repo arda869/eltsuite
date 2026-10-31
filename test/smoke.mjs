@@ -1258,6 +1258,13 @@ const J = {
     await see(s.p, '.af-open:has-text("Classroom interaction notes")', 'existing reading journal');
     const [readingTab] = await Promise.all([s.ctx.waitForEvent('page'), s.p.locator('.af-open:has-text("Classroom interaction notes")').click()]);
     await see(readingTab, 'text=CITATION STYLE', 'existing reading editor');
+    await readingTab.setViewportSize({ width: 390, height: 844 });
+    const readingFits = await readingTab.locator('.pd-main').evaluate(el => { const r = el.getBoundingClientRect(); return r.width > 250 && r.right <= innerWidth + 1; });
+    if (!readingFits) throw Error('Reading notes are squeezed off-screen on mobile');
+    const readingActionsFit = await readingTab.locator('.dp-acts').evaluate(el => el.getBoundingClientRect().right <= innerWidth + 1);
+    if (!readingActionsFit) throw Error('Reading return and reflection controls overflow');
+    await axe(readingTab, 'Development Studio reading editor on mobile', A11Y_FOUND);
+
     await readingTab.getByRole('link', { name: 'Back to Development Studio', exact: true }).click();
     await see(readingTab, '.af-embedded', 'reading editor returns to Development Studio');
     await readingTab.close();

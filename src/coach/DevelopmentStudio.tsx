@@ -47,7 +47,8 @@ function Workspace({ uid }: { uid: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [dirty, setDirty] = useState(false);
-  useEffect(() => { if (tab === 'Profile & beliefs' && !dirty) setProfileDraft(profile); }, [profile, tab]);
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
   const [editing, setEditing] = useState<Reflection | null>(null);
   const [researchStep, setResearchStep] = useState(0);
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
@@ -87,7 +88,7 @@ function Workspace({ uid }: { uid: string }) {
       const stops = [
         onSnapshot(collection(db, 'teachingCoach', uid, 'reflections'), s => { setReflections(s.docs.map(d => ({ ...d.data(), id: d.id } as Reflection)).sort((a,b) => b.at-a.at)); done('journal'); }, fail),
         onSnapshot(collection(db, 'teachingCoach', uid, 'inquiries'), s => { setInquiries(s.docs.map(d => ({ ...d.data(), id: d.id } as Inquiry)).sort((a,b) => b.at-a.at)); done('research'); }, fail),
-        onSnapshot(doc(db, 'teachingCoach', uid, 'settings', 'profile'), s => { const p = { ...emptyProfile, ...s.data() }; setProfile(p); done('profile'); }, fail),
+        onSnapshot(doc(db, 'teachingCoach', uid, 'settings', 'profile'), s => { const p = { ...emptyProfile, ...s.data() }; setProfile(p); if (!dirtyRef.current) setProfileDraft(p); done('profile'); }, fail),
       ]; return () => stops.forEach(stop => stop());
     })();
   }, [uid]);

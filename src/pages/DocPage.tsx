@@ -139,7 +139,7 @@ export function DocPage() {
             </button>
           )}
           {d && (
-            <button type="button" className="btn small-btn" onClick={() => void copyText(docLink(d.id))} data-tip="Only people it’s shared with can open it">
+            <button type="button" className="btn small-btn" aria-label="Copy link" onClick={() => void copyText(docLink(d.id))} data-tip="Only people it’s shared with can open it">
               <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}
