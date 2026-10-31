@@ -688,6 +688,18 @@ service cloud.firestore {
     }
     // Recordings of the sounds of English. The default set, for everyone, is kept by the app's
     // owner; each teacher can add their own, which learners hear in that teacher's tasks.
+    match /voicePreviews/{voice} {
+      allow read: if signedIn();
+      allow create, update: if isOwner()
+        && voice in ['marin', 'cedar', 'coral', 'ash', 'sage', 'verse', 'alloy', 'ballad', 'echo', 'shimmer']
+        && request.resource.data.keys().hasOnly(['data', 'name', 'updatedAt'])
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 900000
+        && request.resource.data.data.matches('data:audio/mpeg;base64,.*')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 150
+        && request.resource.data.updatedAt is number;
+    }
     match /phonemeAudio/{key} {
       allow read: if signedIn();
       allow write: if signedIn() && request.auth.token.email == 'ardanurioglu@gmail.com';
