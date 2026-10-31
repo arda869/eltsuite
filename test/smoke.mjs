@@ -110,6 +110,29 @@ const J = {
     if (s.errors.length) throw Error(s.errors.join('; '));
     return s;
   },
+
+  'Trainer studio is class-specific and creates native completion forms': async (b) => {
+    const s=await session(b);
+    await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};fs['classes/'+classId].kind='training';fs['classes/'+classId].level='CELTA';fs['classes/'+classId].trainingProfile={programme:'CELTA',stage:'Pre-service',experience:'New to teaching',goals:'Prepare for teaching practice',context:'Teachers beginning their first course',focus:'Checking instructions',examDate:''};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
+    await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
+    await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).waitFor();
+    await s.p.getByLabel('Topic',{exact:true}).fill('Checking instructions');
+    await s.p.getByRole('button',{name:'Suggest an outline'}).click();
+    await s.p.getByRole('button',{name:'Approve outline and make the plan'}).click();
+    await s.p.getByRole('button',{name:'Prepare training activities'}).click();
+    await s.p.locator('.ai-task-cards>details>summary').first().click();
+    await see(s.p,'text=Trainee completion form:','trainer form preview');
+    await s.p.getByRole('button',{name:'Create session in Classes'}).click();
+    await s.p.getByRole('link',{name:'Open in Classes'}).click();
+    await see(s.p,'text=Teaching move and intended learner outcome','native rehearsal form');
+    await axe(s.p,'Trainer completion form',A11Y_FOUND);
+    await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['classes/'+classId].kind='language';fs['classes/'+classId].level='B1';localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
+    await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
+    await s.p.getByLabel('Topic',{exact:true}).waitFor();
+    if(await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).count()) throw Error('Trainer studio leaked into a language class');
+    return s;
+  },
+
   'Speech: saved previews, line controls and reordering': async (b) => {
     const s=await session(b,{owner:true});
     await s.p.goto(BASE+'/admin?tab=defaults');
@@ -143,7 +166,7 @@ const J = {
     await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Language analysis');
     await see(s.p,'text=Target language','teacher-training language analysis');
     await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
-    await s.p.locator('.task-editor .editor-host .ProseMirror').first().click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Speaking practice');
+    await s.p.locator('.task-editor .editor-host .ProseMirror').first().click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'AI conversation');
     await see(s.p,'.speak-setup','speaking practice in teacher training').catch(async e=>{throw Error(e.message+' '+(await s.p.locator('body').innerText()).slice(-5000)+' '+s.errors.join(';'));});
     return s;
   },
@@ -152,14 +175,15 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await see(s.p,'.ProseMirror','the lesson editor');
     await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
-    await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Speaking practice');
+    await s.p.locator('.ProseMirror').nth(1).fill('At the airport, ask the airline representative to replace your damaged suitcase.');await s.p.keyboard.press('ControlOrMeta+End');await s.p.keyboard.press('Enter');await slash(s.p,'AI conversation');
     await see(s.p,'.speak-setup','the speaking task editor');
+    if(!(await s.p.getByLabel('The situation',{exact:true}).inputValue()).includes('damaged suitcase')) throw Error('AI conversation lost its activity context');
     await s.p.waitForTimeout(1000);
     await s.p.getByLabel('Feedback focus source',{exact:true}).click();await s.p.getByRole('option',{name:'Let the learner choose',exact:true}).click();
     await s.p.getByRole('button',{name:'+ Feedback option',exact:true}).click();
     await s.p.getByLabel('Feedback option 3',{exact:true}).fill('Giving reasons');
-    await s.p.getByRole('button',{name:'Save speaking task',exact:true}).click();
-    await see(s.p,'text=Speaking task saved and ready for learners.','saved speaking configuration');
+    await s.p.getByRole('button',{name:'Save AI conversation',exact:true}).click();
+    await see(s.p,'text=AI conversation saved and ready for learners.','saved speaking configuration');
     await axe(s.p,'Speaking teacher setup',A11Y_FOUND);
     await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create speech',exact:true}).click();
@@ -340,6 +364,7 @@ const J = {
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
     const topicBox=s.p.getByLabel('Topic',{exact:true});
+    await topicBox.waitFor({state:'visible'}).catch(async e=>{throw Error(e.message+' '+s.errors.join('; ')+' '+(await s.p.locator('body').innerText()).slice(0,600));});
     const shortHeight=await topicBox.evaluate(el=>el.getBoundingClientRect().height);
     if(shortHeight>70) throw Error('Empty brief field is not compact');
     await topicBox.fill('Travel\nFood\nWork\nStudy');
@@ -364,6 +389,11 @@ const J = {
     if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
     await s.p.getByRole('button',{name:'Prepare class activities'}).click();
     await see(s.p,'text=READY FOR YOUR REVIEW','activity review');
+    await s.p.locator('.ai-task-cards>details>summary').first().click();
+    await s.p.getByRole('table',{name:'Travel options'}).waitFor();
+    await s.p.getByText('Supported · alternative task',{exact:true}).click();
+    await s.p.getByText('Choose a trip. Complete the sentence.',{exact:true}).waitFor();
+    await axe(s.p,'Visual and differentiated activity preview',A11Y_FOUND);
     if(await s.p.getByRole('heading',{name:'3. Review and edit'}).count()) throw Error('Step 3 remains visible in step 4');
     await s.p.getByRole('button',{name:'← Back to teaching plan'}).click();
     if(await s.p.locator('.ai-ready').count()) throw Error('Step 4 remains visible in step 3');
@@ -576,32 +606,6 @@ const J = {
     await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
     await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
-    return s;
-  },
-  'Lesson assistant approval, private save and reopen': async (b) => {
-    const s = await session(b);
-    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
-    await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Topic', { exact: true }).fill('Travel');
-    await s.p.getByLabel('Objectives', { exact: true }).fill('Compare options and agree on a trip.');
-    await s.p.getByLabel('Context', { exact: true }).fill('Adult B1 class working in pairs.');
-    await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
-    await see(s.p, 'text=2. Review the outline', 'outline approval');
-    if (await s.p.getByRole('button', { name: 'Save private draft' }).count()) throw Error('Plan created before approval');
-    await s.p.getByRole('button', { name: 'Approve outline and make the plan' }).click();
-    await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).fill('Explain a choice with two reasons');
-    await s.p.getByRole('button', { name: 'Learner materials', exact: true }).click();
-    await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
-    await s.p.getByRole('button', { name: 'Save private draft' }).click();
-    await see(s.p, 'text=Saved privately.', 'private save confirmation');
-    await s.p.getByRole('button', { name: 'Start a new plan' }).click();
-    await s.p.getByRole('button', { name: 'Open saved plans' }).click();
-    await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
-    await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
-    if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
-    await axe(s.p, 'Lesson assistant', A11Y_FOUND);
-    await s.p.setViewportSize({ width: 390, height: 844 });
-    if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw Error('Assistant overflows on mobile');
     return s;
   },
 
@@ -1223,3 +1227,4 @@ console.log(`\n${results.length - bad.length} of ${results.length} journeys pass
 const a11yBad = A11Y ? A11Y_FOUND.filter((v) => v.impact === 'critical' || v.impact === 'serious').length : 0;
 if (a11yBad) console.log(`${a11yBad} serious accessibility problems: fix them before deploying.`);
 process.exit(bad.length || a11yBad ? 1 : 0);
+

@@ -175,7 +175,7 @@ export const COMMANDS: Cmd[] = [
     } },
   { key: 'storyboard', label: 'Storyboard', hint: 'Scenes with people and speech bubbles, from your files', group: 'Text', run: (e) => e.chain().focus().insertContent([newStoryboard(), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
-  { key: 'speaking', label: 'Speaking practice', hint: 'A private AI conversation for each learner, with lesson-focused feedback', group: 'Text', run: (e) => e.chain().focus().insertContent([newSpeaking(), { type: 'paragraph' }]).run() },
+  { key: 'speaking', label: 'AI conversation', hint: 'A private AI conversation for each learner, with lesson-focused feedback', group: 'Text', run: (e) => e.chain().focus().insertContent([newSpeaking(e), { type: 'paragraph' }]).run() },
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
@@ -210,6 +210,9 @@ export const COMMANDS: Cmd[] = [
   },
   { key: 'dictcut', label: 'Dictionary cutout', hint: 'A word’s entry, as if cut out of a dictionary page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'dictCut', attrs: { word: '', data: {} } }, { type: 'paragraph' }]).run() },
   { key: 'tt-analysis', label: 'Language analysis', hint: 'Meaning, form, pronunciation, concept questions, problems and solutions', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('analysis'), { type: 'paragraph' }]).run() },
+  { key:'tt-rehearsal',label:'Microteaching rehearsal',hint:'Rehearse, observe, give feedback and try again',group:'Text',run:e=>e.chain().focus().insertContent([newTT('rehearsal'),{type:'paragraph'}]).run() },
+  { key:'tt-exam',label:'Exam practice debrief',hint:'Task demands, pacing, evidence and next practice',group:'Text',run:e=>e.chain().focus().insertContent([newTT('exam'),{type:'paragraph'}]).run() },
+  { key:'tt-reflection',label:'Reflective inquiry',hint:'Evidence, interpretation, a change and follow-up',group:'Text',run:e=>e.chain().focus().insertContent([newTT('reflection'),{type:'paragraph'}]).run() },
   { key: 'tt-plan', label: 'Lesson plan', hint: 'Aims, assumptions and stages, from a framework', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('plan'), { type: 'paragraph' }]).run() },
   { key: 'tt-observe', label: 'Observation form', hint: 'Criteria, strengths and action points', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('observe'), { type: 'paragraph' }]).run() },
   {
@@ -375,7 +378,7 @@ function ListStart({ editor }: { editor: Editor }) {
 // A block from "+ Add…" goes after the bullet list (or, for big blocks, after the box) the cursor is in,
 // rather than inside a bullet point.
 const INLINE_KEYS = ['subst', 'phonchart', 'phoncard', 'phonhow', 'dialogue', 'gap', 'lettergap', 'wordform', 'dropdown', 'drop', 'stress', 'ipa', 'heading', 'list', 'numbered', 'quote'];
-const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', 'storyboard', ...DG_KINDS.map((k) => 'dg-' + k)];
+const TOP_ONLY = ['pdf', 'tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org', 'column', 'dictcut', 'drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'drawboard', 'media', 'upload', 'collab', 'collab-slides', 'timeline', 'storyboard', ...DG_KINDS.map((k) => 'dg-' + k)];
 export function placeForBlock(e: Editor, c: { key: string; group: string }) {
   if (INLINE_KEYS.includes(c.key)) return;
   const { $from } = e.state.selection;
@@ -506,7 +509,7 @@ function toolbarKeys(e: React.KeyboardEvent<HTMLDivElement>, editor: Editor) {
   }
 }
 
-export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
+export function TaskEditor({ content, onChange, places = [], classmates = [], classId = '', lessonId = '', taskContext = '', taskTitle = '', onNotebook, onBank, onPickBank, placeholder, handles = true, compact = false, textOnly = false, enterHint, label = 'Task' }: { label?: string; enterHint?: 'send' | 'enter' | 'done'; textOnly?: boolean; compact?: boolean; handles?: boolean; placeholder?: string; content: JSONContent; onChange: (c: JSONContent) => void; places?: LinkPlace[]; classmates?: { id: string; name: string }[]; classId?: string; lessonId?: string; taskContext?: string; taskTitle?: string; onNotebook?: (word: string, sentence: string) => void; onBank?: (nodes: JSONContent[]) => void; onPickBank?: (insert: (nodes: JSONContent[]) => void) => void }) {
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
 
@@ -720,7 +723,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     setLinkOpen(true);
     return true;
   });
-  const classCtx = useMemo(() => ({ classmates, classId, lessonId }), [classmates, classId, lessonId]);
+  const classCtx = useMemo(() => ({ classmates, classId, lessonId, taskContext, taskTitle }), [classmates, classId, lessonId, taskContext, taskTitle]);
 
   // A narrow toolbar (in a chat): the tools that fit, and an arrow that opens the rest on new lines.
   const tbRef = useRef<HTMLDivElement>(null);

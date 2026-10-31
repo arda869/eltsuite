@@ -831,6 +831,8 @@ export function LessonEditor() {
                     classmates={classmates}
                     classId={classId}
                     lessonId={itemId}
+                    taskContext={draft.instructions}
+                    taskTitle={draft.title}
                     onNotebook={NOTEBOOK ? (word, sentence) => toNotebook({ type: 'vocab', word, example: sentence }) : undefined}
                     onBank={(nodes) => nodes.length && setBankSave({ kind: 'question', content: nodes })}
                     onPickBank={(insert) => setBankPick(() => insert)}

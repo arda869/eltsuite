@@ -30,10 +30,10 @@ export function validate(schema, value, path = 'output') {
   } else if (!Number.isInteger(value) || value < schema.minimum || value > schema.maximum) throw Error(`${path} needs a whole number within the limit.`);
   return value;
 }
-export function validateBrief(b) {
+export function validateBrief(b, training = false) {
   if (!b || typeof b !== 'object') throw Error('Add a lesson brief.');
   for (const key of ['topic', 'objectives', 'context']) if (typeof b[key] !== 'string' || b[key].length > 2000 || !b[key].trim()) throw Error(`Add ${key} (up to 2,000 characters).`);
-  if (!['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(b.level) || !methods.includes(b.methodology)) throw Error('Choose a level and approach.');
+  if (!(training ? ['Foundation','Developing','Experienced','Mixed experience'] : ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).includes(b.level) || !(training?['Recommend','Experiential input','Exam preparation','Reflective practice','Workshop']:methods).includes(b.methodology)) throw Error('Choose a level and approach.');
   if (!Number.isInteger(b.duration) || b.duration < 15 || b.duration > 180) throw Error('Choose 15–180 minutes.');
   return { topic: b.topic, objectives: b.objectives, context: b.context, level: b.level, methodology: b.methodology, duration: b.duration };
 }

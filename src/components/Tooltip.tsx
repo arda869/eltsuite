@@ -61,7 +61,7 @@ export function TooltipLayer() {
   }, [tip]);
   if (!tip) return null;
   return (
-    <div ref={box} className={'tip-float' + (tip.below ? ' below' : '')} role="tooltip" style={{ left: tip.x, top: tip.y }}>
+    <div ref={box} className={'tip-float' + (tip.below ? ' below' : '')} role="tooltip" style={{ left: tip.x, top: tip.y, animation: 'none' }}>
       {tip.text}
     </div>
   );

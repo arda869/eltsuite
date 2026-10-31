@@ -1,3 +1,4 @@
+import { TrainingProfileFields, profileFromClass, defaultTrainingProfile } from '../training/TrainingProfileFields';
 import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { classDefaults, currentOrg, isTrainerIn } from '../lib/admin';
 import { LimitError } from '../lib/limitError';
@@ -7,6 +8,7 @@ import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
 export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: string; onClose: () => void; onCreated: (id: string) => void }) {
+  const [trainingProfile,setTrainingProfile]=useState(defaultTrainingProfile);
   const [learningProfile,setLearningProfile]=useState(defaultProfile);
   const [name, setName] = useState('');
   const [level, setLevel] = useState('B1');
@@ -14,7 +16,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   // In an organisation where admins make the classes, a teacher trainer still makes training classes.
   const onlyTraining = currentOrg()?.policy?.createClasses === false && isTrainerIn(currentOrg(), teacherId);
   const [kind, setKind] = useState<ClassKind>(onlyTraining ? 'training' : 'language');
-  const [course, setCourse] = useState('');
+  const [course, setCourse] = useState('CELTA');
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     try {
       const org = currentOrg();
       const pol = org?.policy;
-      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...classDefaults(pol), ...(kind==='language'?{learningProfile}:{}), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...classDefaults(pol), ...(kind==='language'?{learningProfile}:{trainingProfile}), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -57,7 +59,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
         ) : (
           <label className="field">
             Course
-            <input value={course} onChange={(e) => setCourse(e.target.value)} list="tt-courses" placeholder="For example: CELTA, Delta Module 2, in-service training" />
+            <input value={course} onChange={(e) => {setCourse(e.target.value);setTrainingProfile(profileFromClass(null,e.target.value));}} list="tt-courses" placeholder="For example: CELTA, Delta Module 2, in-service training" />
             <datalist id="tt-courses">
               {['CELTA', 'CertTESOL', 'Delta Module 1', 'Delta Module 2', 'Delta Module 3', 'DipTESOL', 'TKT', 'In-service training', 'MA TESOL'].map((c) => (
                 <option key={c} value={c} />
@@ -65,7 +67,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
             </datalist>
           </label>
         )}
-<details><summary>Learning profile</summary>{kind==='language' && <ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}</details>
+<details open={kind==='training'}><summary>{kind==='training'?'Training profile':'Learning profile'}</summary>{kind==='training'?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setCourse(v.programme);}}/>:<ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}</details>
         <ClassDatesFields start={start} end={end} setStart={setStart} setEnd={setEnd} />
         <div className="field">
           Theme colour
