@@ -535,6 +535,33 @@ const J = {
     await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
     return s;
   },
+  'AI native reading, lists and subtasks survive the lesson editor': async (b) => {
+    const s=await session(b);
+    const {nativeTask}=await import('../functions/ai/activities.js');
+    const oral={format:'discussion',acceptedAnswers:[],prompt:'Which place would you choose?',options:[],answer:'Any justified choice.',explanation:'Listen for a reason.'};
+    const task={stageId:'s',title:'Read and compare',format:'reading',minutes:15,instructions:'Read the message.',input:'Summary',blocks:[{kind:'email',title:'From Alex',text:'Shall we visit the museum on Saturday?',items:[]}],visuals:[],roles:[],versions:[],questions:[],teacherOnlyInput:'',teacherNotes:'Monitor pairs.',support:'',challenge:'',subTasks:[{instructions:'Talk to your partner.',input:'',blocks:[],visuals:[],questions:[oral,{...oral,prompt:'Why?'}]}]};
+    const native=nativeTask(task,0);
+    await s.p.evaluate(({classId,native})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      const base='classes/'+classId+'/items/ai-native-shapes';
+      fs[base]={type:'lesson',title:'Native shapes',order:99,hidden:true,locked:false,taskCount:1};
+      fs[base+'/tasks/read']={kind:'task',title:'Read and compare',instructions:'Read the message.',content:native.content,order:0,hidden:false,locked:false};
+      fs[base+'/tasks/read/private/key']={key:native.key};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+    },{classId:s.demo.classId,native});
+    await s.p.goto(BASE+'/class/'+s.demo.classId+'/lesson/ai-native-shapes');
+    await s.p.getByText('Shall we visit the museum on Saturday?',{exact:true}).first().waitFor();
+    await s.p.getByLabel('Instruction for sub-task a',{exact:true}).fill('Compare your ideas.');
+    await s.p.locator('.subtask-node ol li').first().waitFor();
+    if(await s.p.locator('.writing-node').count()) throw Error('Oral prompts became writing responses');
+    await s.p.waitForTimeout(1000);
+    await s.p.reload();
+    await s.p.getByLabel('Instruction for sub-task a',{exact:true}).waitFor();
+    if(await s.p.getByLabel('Instruction for sub-task a',{exact:true}).inputValue()!=='Compare your ideas.') throw Error('Subtask edit did not survive reload');
+    await s.p.locator('.subtask-node ol li').nth(1).waitFor();
+    await axe(s.p,'AI native reading and subtasks',A11Y_FOUND);
+    return s;
+  },
   'Lesson assistant approval, private save and reopen': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
@@ -1036,30 +1063,60 @@ const J = {
   'Lesson: diagram with a gap stays': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await see(s.p, '.ProseMirror', 'the lesson editor');
+    const editor = s.p.locator('.task-editor .ProseMirror').first();
+    await see(s.p, '.task-editor .ProseMirror', 'the lesson editor');
     await axe(s.p, 'Lesson editor', A11Y_FOUND);
-    await s.p.locator('.ProseMirror').nth(1).click();
-    await s.p.keyboard.press('Control+End');
+    // The demo contains editable draw-cards. Ctrl+End does not leave a card on macOS:
+    // use the browser platform's document-end shortcut so this is a top-level diagram.
+    const endKey = await s.p.evaluate(() => navigator.platform.startsWith('Mac') ? 'Meta+ArrowDown' : 'Control+End');
+    await editor.click();
+    await editor.press(endKey);
     await slash(s.p, 'Flow chart');
     if (!(await count(s.p, '.dg-node'))) {
-      // Once more, in case the first keys went in before the editor was ready.
-      await s.p.locator('.ProseMirror').nth(1).click();
-      await s.p.keyboard.press('Control+End');
+      await editor.click();
+      await editor.press(endKey);
       await slash(s.p, 'Flow chart');
     }
     await see(s.p, '.dg-node', 'the diagram in the editor');
+    const diagramId = await editor.evaluate(el => el.editor.getJSON().content.find(n => n.type === 'diagram')?.attrs.id);
+    if (!diagramId) throw new Error('The diagram was not inserted at the task’s top level');
     await s.p.locator('.dg-node .dg-cell-body p').nth(1).click();
     await s.p.keyboard.press('End');
     await s.p.keyboard.type(' and ');
     await slash(s.p, 'Gap fill');
-    await s.p.keyboard.type('coffee');
-    await s.p.keyboard.press('Enter');
-    await s.p.waitForTimeout(3000);
-    if (!(await count(s.p, '.dg-node'))) throw new Error('The diagram went away after it was added');
+    const answers = s.p.getByRole('textbox', { name: 'Right answers, separated by |', exact: true });
+    await answers.fill('coffee');
+    await answers.press('Enter');
+    const original = await editor.evaluate((el, id) => el.editor.getJSON().content.find(n => n.attrs?.id === id), diagramId);
+    const gaps = [];
+    const visit = n => { if (n.type === 'gap') gaps.push(n); (n.content ?? []).forEach(visit); };
+    visit(original);
+    if (gaps.length !== 1 || gaps[0].attrs.answers[0] !== 'coffee') throw new Error('The accepted answer is not saved inside the diagram');
+    const gapId = gaps[0].attrs.id;
+    await s.p.waitForFunction(({ diagramId, gapId }) => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      return Object.entries(fs).some(([path, value]) => value.content?.content?.some(n => n.type === 'diagram' && n.attrs.id === diagramId) && fs[path + '/private/key']?.[gapId]?.answers?.includes('coffee'));
+    }, { diagramId, gapId });
     await s.p.reload();
     await see(s.p, '.dg-node', 'the diagram after reloading');
+    await s.p.waitForFunction(({ diagramId, original }) => {
+      const editor = document.querySelector('.task-editor .ProseMirror')?.editor;
+      return JSON.stringify(editor?.getJSON().content.find(n => n.attrs?.id === diagramId)) === original;
+    }, { diagramId, original: JSON.stringify(original) });
     await s.p.keyboard.press('Control+Shift+P');
-    await see(s.p, '.dg .gap, .dg input, .dg [class*=gap]', 'the gap inside the diagram for learners');
+    const gap = s.p.locator(`.dg [data-qid="${gapId}"] input`);
+    await gap.waitFor({ state: 'visible' });
+    await gap.fill('coffee');
+    for (const style of ['young', 'adult']) {
+      await s.p.evaluate(async ({ classId, style }) => {
+        const { getClass, updateClass } = await import('/src/lib/classes.ts');
+        await updateClass(await getClass(classId), { lessonStyle: style });
+      }, { classId: s.demo.classId, style });
+      await see(s.p, `.task-frame[data-lesson-style="${style}"] .dg [data-qid="${gapId}"] input`, 'the nested gap after changing lesson style');
+      if (await gap.inputValue() !== 'coffee') throw new Error('Changing lesson style reset the nested answer');
+    }
+    await s.p.getByRole('button', { name: 'Check answers', exact: true }).click();
+    await see(s.p, '.dg .gap-result .ans.right:has-text("coffee")', 'the nested answer scored correctly in learner preview');
     return s;
   },
   'Files: every kind opens': async (b) => {

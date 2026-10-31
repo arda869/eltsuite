@@ -63,11 +63,15 @@ checks, separate from the browser stand-ins.
   the pagination script and normalising whitespace.
 - Existing smoke journeys “Class and learners”, “Learner signs in and opens the lesson”
   and “Mobile class creation and duplicate learner validation” passed.
-- Existing “Lesson: diagram with a gap stays” smoke journey failed at its final preview
-  gap assertion. The new context fixture's nested diagram preview and saved/reloaded
-  learner controls pass. The slash-menu insertion journey remains an explicit gap;
-  no claim is made that the entire existing smoke suite passed.
+- The diagram slash-menu journey uses the browser platform's document-end shortcut.
+  On macOS, Ctrl+End left the caret inside a demo draw-card, so the test inserted a
+  hidden card diagram and incorrectly expected it in the unopened learner preview.
+  Cmd+Down inserts at the intended top level. The test now also requires a top-level
+  diagram, a nested gap with its accepted answer, persisted content/key and stable IDs
+  after reload, answers preserved across both style switches, and correct scoring in
+  preview. Its original learner-visible-gap requirement remains and is stronger.
+
 
 Live Firebase, mobile Safari, uploaded media playback, collaborative multi-user editing,
-and every possible teacher-authored document combination were not tested. No deployment,
-main-branch push or merge is included.
+and every possible teacher-authored document combination were not tested. Release status
+and deployment verification are recorded in the pull request.

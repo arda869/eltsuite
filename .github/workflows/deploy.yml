@@ -36,8 +36,9 @@ jobs:
 
       - name: Feature discovery privacy rules
         run: |
-          npm install --no-save --package-lock=false --no-audit --no-fund @firebase/rules-unit-testing@4 firebase-tools@14
-          npx firebase emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs"
+          # Match PR checks: respect the app lockfile and keep the Firebase CLI in npx's tool cache.
+          npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs"
       - name: Help assistant checks
         run: node --test test/ai/help.test.mjs
 
