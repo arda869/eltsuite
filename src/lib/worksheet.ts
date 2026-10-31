@@ -71,7 +71,7 @@ export type Paper = 'A4' | 'Letter' | 'A5';
 export type MediaMap = Record<string, { data: string; w: number; h: number }>;
 // Sounds and videos: a QR code that opens them, and their script for the answer key.
 export type MediaInfo = { url: string; svg: string; png: string; title: string; video: boolean; script: string[] };
-export type Options = { header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string; size?: 'standard' | 'large' | 'xl'; clear?: boolean };
+export type Options = { lessonStyle?: import('./lessonStyle').LessonStyle; header: boolean; key: boolean; notes?: boolean; media?: MediaMap; sounds?: Record<string, MediaInfo>; qr?: boolean; taskIds?: string[]; paper?: Paper; accent?: string; className?: string; level?: string; columns?: 1 | 2; marks?: boolean; exam?: boolean; cover?: string; origin?: string; size?: 'standard' | 'large' | 'xl'; clear?: boolean };
 
 const abc = (x: string, y: string) => x.localeCompare(y, undefined, { sensitivity: 'base' });
 // The same order every time for the same words (a jumbled sentence stays jumbled the same way).
@@ -95,7 +95,7 @@ const GAP: Record<string, number> = { short: 8, medium: 18, long: 36 };
 // Elements that only work on a screen, by name, for the note in the worksheet view.
 const ONLINE: Record<string, string> = { mcq: 'Quiz', reveal: 'Reveal', phonChart: 'Phonemic chart', phonCard: 'Sound card', lessonLink: 'Link to another task', refList: 'Reference list', stress: 'Word stress', poll: 'Poll' };
 
-export function flattenTask(t: ExportTask): WsTask {
+export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsTask {
   const blocks: Block[] = [];
   let cur: Block[] = blocks;
   const answers: { n: number; text: string }[] = [];
@@ -235,7 +235,11 @@ export function flattenTask(t: ExportTask): WsTask {
         const sp: string[] = Array.isArray(a.speakers) && a.speakers.length ? a.speakers : ['A', 'B'];
         (node.content ?? []).forEach((ln, k) => {
           const who = sp[Number(ln.attrs?.who) || 0] ?? '';
+          if (lessonStyle === 'young') {
+            cur.push({ kind: 'callout', label: who, tone: 'grey', symbol: '', style: 'speech', box: { style: 'speech', label: who, side: Number(ln.attrs?.who) % 2 ? 'right' : 'left' }, blocks: [{ kind: 'p', runs: runsOf(ln.content), list, mark: k === 0 ? mark : list ? '' : undefined }] });
+          } else {
           cur.push({ kind: 'p', runs: [{ t: who + '   ', bold: true }, ...runsOf(ln.content)], list, mark: k === 0 ? mark : list ? '' : undefined });
+          }
         });
         return;
       }
@@ -493,14 +497,14 @@ export function flattenTask(t: ExportTask): WsTask {
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only
 // when at least one of its tasks is printed.
-export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>): WsItem[] {
+export function flattenWithSections(tasks: ExportTask[], ids?: Set<number>, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsItem[] {
   const out: WsItem[] = [];
   let pending: string | null = null;
   tasks.forEach((t, i) => {
     if (t.kind === 'section') return void (pending = t.title);
     if (t.hidden || t.print?.show === 'screen' || (ids && !ids.has(i))) return;
     if (pending !== null) out.push({ kind: 'section', title: pending }), (pending = null);
-    out.push({ kind: 'task', task: flattenTask(t) });
+    out.push({ kind: 'task', task: flattenTask(t, lessonStyle) });
   });
   return out;
 }

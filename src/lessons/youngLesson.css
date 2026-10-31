@@ -1,0 +1,76 @@
+@font-face { font-family: 'Lesson IPA'; src: url('/fonts/noto/noto-sans-latin-ext-400-normal.woff2') format('woff2'); unicode-range: U+0100-02FF,U+1D00-1DBF,U+1E00-1EFF; font-display: swap; }
+@font-face { font-family: 'Lesson IPA'; src: url('/fonts/noto/noto-sans-latin-400-normal.woff2') format('woff2'); unicode-range: U+0000-00FF; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible'; src: url('/fonts/atkinson/Italic.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible'; src: url('/fonts/atkinson/Regular.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Atkinson Hyperlegible'; src: url('/fonts/atkinson/Bold.ttf') format('truetype'); font-weight: 700; font-display: swap; }
+@font-face { font-family: Kalam; src: url('/fonts/kalam/kalam-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+
+/* Opt in only on lesson frames. No document JSON, node views or answer state changes. */
+[data-lesson-style='young'] {
+  --yl-panel: color-mix(in srgb, var(--accent) 10%, var(--paper));
+  --yl-edge: color-mix(in srgb, var(--accent) 45%, var(--hair));
+}
+[data-lesson-style='young'] :is(.task-body, .frame-body > .task-editor, .frame-body .ProseMirror) {
+  --serif: 'Atkinson Hyperlegible', Verdana, sans-serif;
+  font-family: 'Atkinson Hyperlegible', Verdana, sans-serif;
+  line-height: 1.7;
+}
+[data-lesson-style='young'] .frame-head { border-bottom: 2px solid var(--yl-edge); }
+[data-lesson-style='young'] .task-title { font-family: Karla, sans-serif; font-weight: 800; }
+[data-lesson-style='young'] .yl-activity-number { color: var(--accent-text); margin-right: .6em; font-size: 1.2em; }
+[data-lesson-style='young'] .task-instr { font-family: Karla, sans-serif; font-weight: 700; line-height: 1.5; }
+[data-lesson-style='young'] :is(.task-body, .ProseMirror) > :is(.para, p) { margin-block: .7em; }
+[data-lesson-style='young'] :is(.subtask, .subtask-node) { border-color: var(--yl-edge); }
+[data-lesson-style='young'] .tbox:is(.s-info, .s-box, .s-email, .s-browser) { border-color: var(--yl-edge); background: var(--yl-panel); }
+[data-lesson-style='young'] .tbox:is(.s-email, .s-browser) .tbox-body { background: var(--paper); }
+[data-lesson-style='young'] .tbox.s-sticky {
+  position: relative; transform: none; background: var(--yl-panel); border: 2px solid var(--yl-edge);
+  border-radius: 8px 8px 28px 8px; box-shadow: 2px 3px 0 color-mix(in srgb, var(--accent) 12%, transparent);
+}
+[data-lesson-style='young'] .tbox.s-sticky .tbox-body { font-family: Kalam, 'Atkinson Hyperlegible', sans-serif; }
+[data-lesson-style='young'] .tbox.s-sticky::after {
+  content: ''; position: absolute; right: 3px; bottom: 3px; width: 24px; height: 15px;
+  border-radius: 0 0 22px 0; border-right: 1px solid var(--yl-edge); background: var(--paper); pointer-events: none;
+}
+[data-lesson-style='young'] .tbox.s-speech { padding-bottom: 12px; }
+[data-lesson-style='young'] .tbox.s-speech .bubble,
+[data-lesson-style='young'] .dialogue .dl-text {
+  position: relative; background: var(--yl-panel); border: 1.5px solid var(--yl-edge);
+  border-radius: 18px; padding: 12px 16px; min-width: 0; overflow-wrap: anywhere;
+}
+/* A single shape shares the bubble's fill and border: no detached or doubled tail. */
+[data-lesson-style='young'] .tbox.s-speech .bubble::after {
+  content: ''; position: absolute; left: 24px; bottom: -7px; width: 12px; height: 12px;
+  border: 0; border-right: 1.5px solid var(--yl-edge); border-bottom: 1.5px solid var(--yl-edge);
+  background: var(--yl-panel); transform: rotate(45deg); border-radius: 0 0 3px 0;
+}
+[data-lesson-style='young'] .tbox.s-speech.side-right .bubble::after { left: auto; right: 24px; }
+[data-lesson-style='young'] .dialogue .dl { align-items: start; margin-block: 10px; }
+[data-lesson-style='young'] .dialogue .dl-text::before {
+  content: ''; position: absolute; top: 17px; left: -7px; width: 12px; height: 12px;
+  border-left: 1.5px solid var(--yl-edge); border-bottom: 1.5px solid var(--yl-edge);
+  background: var(--yl-panel); transform: rotate(45deg);
+}
+[data-lesson-style='young'] .dialogue .dl-who { align-self: start; margin-top: 13px; }
+[data-lesson-style='young'] :is(.bank-word, .word-bank) { border-radius: 3px; }
+[data-lesson-style='young'] .bank-word { box-shadow: 1px 2px 0 var(--yl-edge); }
+[data-lesson-style='young'] .gap-input { background: transparent; border-radius: 0; border-width: 0 0 2px; }
+[data-lesson-style='young'] .slash-opt.on {
+  border-radius: 48% 54% 44% 52%; outline: 2px solid var(--accent-text); outline-offset: 1px;
+}
+@media (max-width: 640px) {
+  [data-lesson-style='young'] .tbox.s-speech .bubble { max-width: 100%; }
+  [data-lesson-style='young'] .tbox.s-speech.side-right { padding-left: 12px; }
+}
+
+
+[data-lesson-style='young'] :is(.dg, .pdf-block, .drawboard, .task-collab) { --serif: Fraunces, Georgia, serif; }
+
+[data-lesson-style='young'] .tbox.s-sticky .tbox-title { color: var(--accent-text); }
+
+[data-lesson-style='young'] { --ipa-font: 'Lesson IPA', 'Noto Sans', 'Charis SIL', sans-serif; }
+
+/* Existing game stages and embedded applications retain their own typefaces. */
+[data-lesson-style='young'] :is(.pk, .pq-crossword, .pq-wordsearch) { --serif: Fraunces, Georgia, serif; --sans: Karla, sans-serif; font-family: var(--sans); }
+
+.rd-clear .task-frame[data-lesson-style='young'] :is(.task-body, .ProseMirror) :is(.ipa, .ipa-play, .dc-ipa) { font-family: var(--ipa-font) !important; }

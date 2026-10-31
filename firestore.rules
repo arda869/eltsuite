@@ -166,12 +166,14 @@ service cloud.firestore {
         || request.auth.uid in resource.data.get('lessonEditorIds', [])
         || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
       allow create: if ((isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId))
+        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young']
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 80
         // within the organisation's limit of classes, counted in the same write
         && countedIn(request.resource.data.get('org', null), 'classes');
       allow update: if signedIn()
+        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young']
         && request.resource.data.teacherId == resource.data.teacherId
         && request.resource.data.classCode == resource.data.classCode
         && (
@@ -748,6 +750,7 @@ service cloud.firestore {
         && request.resource.data.data is string
         && request.resource.data.data.size() < 900000
         && request.resource.data.data.matches('data:audio/mpeg;base64,.*')
+        && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young']
         && request.resource.data.name is string
         && request.resource.data.name.size() <= 150
         && request.resource.data.updatedAt is number;

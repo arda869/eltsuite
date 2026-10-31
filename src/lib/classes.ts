@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { countOne } from './limitError';
 import { db } from './firebase';
+import type { LessonStyle } from './lessonStyle';
 import type { ThemeKey } from './themes';
 
 export type Meeting = { url: string; meetingId?: string; passcode?: string; visibility: 'live' | 'before15' | 'always' };
@@ -24,6 +25,7 @@ export type ClassDoc = {
   trainingProfile?: import('../training/TrainingProfileFields').TrainingProfile;
   learningProfile?: import('../ai/ClassProfileFields').LearningProfile;
   themeColor: ThemeKey;
+  lessonStyle?: LessonStyle;
   classCode: string;
   status: 'active' | 'archived' | 'deleted';
   learnerCount?: number;
@@ -91,7 +93,7 @@ export function makeClassCode(name: string) {
 
 // Creates the class and reserves a unique class code in one transaction.
 export type ClassKind = 'language' | 'training';
-export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey; kind?: ClassKind; org?: string; extra?: Record<string, unknown> }) {
+export async function createClass(teacherId: string, input: { name: string; level: string; themeColor: ThemeKey; lessonStyle?: LessonStyle; kind?: ClassKind; org?: string; extra?: Record<string, unknown> }) {
   const classRef = doc(collection(db, 'classes'));
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = makeClassCode(input.name);
@@ -115,6 +117,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
         meeting: null,
         ...(input.org ? { org: input.org } : {}),
         ...(input.extra ?? {}),
+        lessonStyle: input.lessonStyle ?? 'adult',
         createdAt: serverTimestamp(),
       });
       tx.set(codeRef, { classId: classRef.id, teacherId, className: input.name, roster: [], ...(input.org ? { org: input.org } : {}), createdAt: serverTimestamp() });
@@ -125,7 +128,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('We couldn’t find a free class code. Try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'trainingProfile' | 'learningProfile' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'trainingProfile' | 'learningProfile' | 'level' | 'themeColor' | 'lessonStyle' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

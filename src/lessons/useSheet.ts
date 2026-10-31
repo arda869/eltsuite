@@ -10,14 +10,14 @@ import type { ExportTask } from '../lib/textformat';
 // section as the print engine draws it, with its pictures and QR codes.
 
 export type SheetTask = { print?: { gap?: string; lines?: number | null; instr?: string; show?: string } | null; id: string; kind?: string; title: string; instructions?: string; instrDoc?: JSONContent | null; content: JSONContent | null; hidden?: boolean };
-export type SheetLook = { classId: string; accent: string; className?: string; level?: string; cover?: string | null };
+export type SheetLook = { classId: string; accent: string; className?: string; level?: string; cover?: string | null; lessonStyle?: import('../lib/lessonStyle').LessonStyle };
 
 export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on: boolean) {
   // What prints: sections, and the tasks learners can see, in order.
   const shown = useMemo(() => tasks.filter((t) => t.kind === 'section' || (!t.hidden && t.content && t.print?.show !== 'screen')), [tasks]);
   const items = useMemo<WsItem[]>(
-    () => shown.map((t) => (t.kind === 'section' ? { kind: 'section' as const, title: t.title } : { kind: 'task' as const, task: flattenTask({ ...t, content: t.content! } as ExportTask) })),
-    [shown],
+    () => shown.map((t) => (t.kind === 'section' ? { kind: 'section' as const, title: t.title } : { kind: 'task' as const, task: flattenTask({ ...t, content: t.content! } as ExportTask, look.lessonStyle) })),
+    [shown, look.lessonStyle],
   );
   // Pictures and QR codes take a moment: read again a little after the tasks change.
   const [media, setMedia] = useState<{ media: MediaMap; sounds: Record<string, MediaInfo> }>({ media: {}, sounds: {} });
@@ -42,7 +42,7 @@ export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on:
   }, [on, items, look.classId, look.accent]);
   return useMemo(() => {
     if (!on) return null;
-    const p = sheetParts(title, items, { header: true, key: false, qr: true, paper: 'A4', columns: 1, accent: look.accent, className: look.className ?? '', level: look.level ?? '', cover, origin: location.origin, media: media.media, sounds: media.sounds });
+    const p = sheetParts(title, items, { lessonStyle: look.lessonStyle, header: true, key: false, qr: true, paper: 'A4', columns: 1, accent: look.accent, className: look.className ?? '', level: look.level ?? '', cover, origin: location.origin, media: media.media, sounds: media.sounds });
     const byId: Record<string, { html: string; n: number; online: string[] }> = {};
     let n = 0;
     shown.forEach((t, i) => {
@@ -50,5 +50,5 @@ export function useSheet(title: string, tasks: SheetTask[], look: SheetLook, on:
       byId[t.id] = { html: p.pieces[i], n: t.kind === 'section' ? 0 : ++n, online: it.kind === 'task' ? it.task.online ?? [] : [] };
     });
     return { parts: { css: p.css, band: p.band, foot: p.foot }, byId };
-  }, [on, title, items, shown, look.accent, look.className, look.level, cover, media]);
+  }, [on, title, items, shown, look.accent, look.className, look.level, look.lessonStyle, cover, media]);
 }

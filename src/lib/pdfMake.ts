@@ -1,7 +1,7 @@
 // A worksheet as a real PDF: the worksheet page is laid out in a hidden frame, exactly as it
 // prints, then each page is drawn onto a PDF page of the same paper size.
 
-export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' = 'A4'): Promise<Uint8Array> {
+export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' | 'A5' = 'A4'): Promise<Uint8Array> {
   const [{ jsPDF }, h2i] = await Promise.all([import('jspdf'), import('html-to-image')]);
   const f = document.createElement('iframe');
   // On the page so it lays out, clipped so nobody sees it.
@@ -16,6 +16,7 @@ export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' = 'A4'):
     const w = f.contentWindow as unknown as { __laidOut?: boolean };
     const t0 = Date.now();
     while (!w.__laidOut && Date.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 120));
+    await d.fonts.ready;
     await Promise.all([...d.images].map((i) => (i.complete ? null : new Promise((r) => ((i.onload = r), (i.onerror = r))))));
     // The pages sit centred on a grey desk on screen; for the picture each is taken on its own, with
     // no margin around it, or the PDF page would start with a strip of white and lose its right edge.
@@ -24,8 +25,8 @@ export async function worksheetPdf(html: string, paper: 'A4' | 'Letter' = 'A4'):
     d.head.append(st);
     const pages = [...d.querySelectorAll<HTMLElement>('.page')];
     if (!pages.length) throw new Error('The worksheet has no pages yet.');
-    const size: [number, number] = paper === 'Letter' ? [215.9, 279.4] : [210, 297];
-    const pdf = new jsPDF({ unit: 'mm', format: paper === 'Letter' ? 'letter' : 'a4' });
+    const size: [number, number] = paper === 'Letter' ? [215.9, 279.4] : paper === 'A5' ? [148, 210] : [210, 297];
+    const pdf = new jsPDF({ unit: 'mm', format: paper.toLowerCase() });
     for (let i = 0; i < pages.length; i++) {
       // The browser draws the page itself (through SVG), so every colour and font comes out as on screen.
       const r = pages[i].getBoundingClientRect();

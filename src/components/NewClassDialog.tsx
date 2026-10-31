@@ -1,3 +1,5 @@
+import { LessonStylePicker } from './LessonStylePicker';
+import { type LessonStyle } from '../lib/lessonStyle';
 import { TrainingProfileFields, profileFromClass, defaultTrainingProfile } from '../training/TrainingProfileFields';
 import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { classDefaults, currentOrg, isTrainerIn } from '../lib/admin';
@@ -12,6 +14,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   const [learningProfile,setLearningProfile]=useState(defaultProfile);
   const [name, setName] = useState('');
   const [level, setLevel] = useState('B1');
+  const [lessonStyle, setLessonStyle] = useState<LessonStyle>('adult');
   const [themeColor, setThemeColor] = useState<ThemeKey>('flame');
   // In an organisation where admins make the classes, a teacher trainer still makes training classes.
   const onlyTraining = currentOrg()?.policy?.createClasses === false && isTrainerIn(currentOrg(), teacherId);
@@ -36,7 +39,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
     try {
       const org = currentOrg();
       const pol = org?.policy;
-      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, kind, org: org?.id, extra: { ...classDefaults(pol), ...(kind==='language'?{learningProfile}:{trainingProfile}), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
+      const id = await createClass(teacherId, { name: name.trim(), level: kind === 'training' ? course.trim() || 'Teacher training' : level, themeColor, lessonStyle, kind, org: org?.id, extra: { ...classDefaults(pol), ...(kind==='language'?{learningProfile}:{trainingProfile}), ...(start || end ? { dates: { start: start || null, end: end || null } } : {}) } });
       onCreated(id);
     } catch (err) {
       console.error(err);
@@ -47,7 +50,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
 
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && !busy && onClose()}>
-      <form className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-class-title" onSubmit={submit}>
+      <form className="dialog" style={{ maxHeight: '80dvh', overflowY: 'auto' }} role="dialog" aria-modal="true" aria-labelledby="new-class-title" onSubmit={submit}>
         <h2 id="new-class-title">New class</h2>
         <label className="field">
           Class name
@@ -69,6 +72,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
         )}
 <details open={kind==='training'}><summary>{kind==='training'?'Training profile':'Learning profile'}</summary>{kind==='training'?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setCourse(v.programme);}}/>:<ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}</details>
         <ClassDatesFields start={start} end={end} setStart={setStart} setEnd={setEnd} />
+        <LessonStylePicker value={lessonStyle} onChange={setLessonStyle} />
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">

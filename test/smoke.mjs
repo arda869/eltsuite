@@ -1513,8 +1513,8 @@ const J = {
 };
 
 // ------------------------------------------------------------------ run
-const vite = await up();
-const browser = await chromium.launch();
+const vite = process.env.SMOKE_EXTERNAL_SERVER ? null : await up();
+const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
 // A first visit, so the server has prepared every page before the journeys start.
 {
   const c = await browser.newContext();
@@ -1545,9 +1545,9 @@ try {
 } finally {
   await browser.close();
   try {
-    process.kill(-vite.pid);
+    if (vite) process.kill(-vite.pid);
   } catch {
-    vite.kill();
+    vite?.kill();
   }
 }
 if (A11Y) {

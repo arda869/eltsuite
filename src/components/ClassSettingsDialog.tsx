@@ -1,3 +1,5 @@
+import { LessonStylePicker } from './LessonStylePicker';
+import { lessonStyleOf, type LessonStyle } from '../lib/lessonStyle';
 import { TrainingProfileFields, profileFromClass } from '../training/TrainingProfileFields';
 import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { NSelect } from './Select';
@@ -33,6 +35,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
   const [level, setLevel] = useState(c.level);
   const [start, setStart] = useState(c.dates?.start ?? '');
   const [end, setEnd] = useState(c.dates?.end ?? '');
+  const [lessonStyle, setLessonStyle] = useState<LessonStyle>(lessonStyleOf(c));
   const [themeColor, setThemeColor] = useState<ThemeKey>(c.themeColor);
   const [url, setUrl] = useState(c.meeting?.url ?? '');
   const [meetingId, setMeetingId] = useState(c.meeting?.meetingId ?? '');
@@ -90,6 +93,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         trainingProfile,
         dates: { start: start || null, end: end || null },
         themeColor,
+        lessonStyle,
         cover,
         teaching: { showMarker, seeLearners },
         messaging: { learnerElements, mode: msgMode },
@@ -138,6 +142,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
 
         {kind === 'language' && <ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}
         {kind === 'training' && <TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setLevel(v.programme);}}/>}
+        <LessonStylePicker value={lessonStyle} onChange={setLessonStyle} />
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">
