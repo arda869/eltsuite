@@ -1374,7 +1374,7 @@ const J = {
     await s.p.getByRole('checkbox', {name:/^Professional profile/}).uncheck();
     await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.profile === false);
     await s.p.reload();
-    await s.p.waitForFunction(()=>!document.querySelector('.coach-preference-options input')?.disabled);
+    await s.p.waitForFunction(()=>{const input=document.querySelector('.coach-preference-options input');return input && !input.disabled;});
     if (await s.p.getByRole('checkbox', {name:/^Professional profile/}).isChecked()) throw Error('Saved context opt-out was not retained');
     await s.p.goto(BASE+'/development?section=coach');
     for (const width of [320,390,1280]) {
