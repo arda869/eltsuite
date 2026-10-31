@@ -75,11 +75,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [notInvited, setNotInvited] = useState('');
 
   useEffect(() => {
-    let active=true, generation=0;
-    const unsubscribe=onAuthStateChanged(auth, async (u) => {
-        const ownGeneration=++generation;
-        const current=()=>active && generation===ownGeneration && auth.currentUser?.uid===u?.uid;
-        setUser(u);setProfile(null);setReady(!u);
+    let generation = 0;
+    let disposed = false;
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+        if (disposed) return;
+        const current = ++generation;
+        const active = () => !disposed && current === generation && auth.currentUser?.uid === u?.uid;
+        setUser(u);
+        setProfile(null);
+        setReady(!u);
         let p: Profile | null = null;
         if (u) {
           // A slow or stuck connection never leaves the app on its loading screen: after a few
@@ -88,36 +92,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             p = await Promise.race([load, new Promise<never>((_, no) => window.setTimeout(() => no(new Error('slow')), 9000))]);
           } catch (e) {
-            if(!current()) return;
+            if (!active()) return;
             if (e instanceof NotInvited) {
               setNotInvited(u.email ?? '');
               // Take back the sign-in account just made, so an invitation later starts afresh.
-              await u.delete().catch(() => current()?signOut(auth):undefined);
-              if(current()) await signOut(auth).catch(() => {});
-              if(!active || generation!==ownGeneration) return;
-              setUser(null);
-              setProfile(null);
-              setReady(true);
+              await u.delete().catch(() => {});
+              if (active()) await signOut(auth).catch(() => {});
               return;
             }
             console.error('Could not load profile', e);
             p = isLearnerEmail(u.email) ? null : { role: 'teacher' };
             void load
-              .then((late) => current() && late && setProfile(late))
+              .then((late) => active() && late && setProfile(late))
               .catch((late) => {
-                if (!current() || !(late instanceof NotInvited)) return;
+                if (!active() || !(late instanceof NotInvited)) return;
                 setNotInvited(u.email ?? '');
-                void u.delete().catch(() => {}).finally(() => {if(current()) void signOut(auth).catch(() => {});});
+                void u.delete().catch(() => {}).finally(() => { if (active()) void signOut(auth).catch(() => {}); });
               });
           }
         }
-        if(!current()) return;
+        if (!active()) return;
         if (u) setNotInvited('');
         setUser(u);
         setProfile(p);
         setReady(true);
       });
-    return ()=>{active=false;generation++;unsubscribe();};
+    return () => {
+      disposed = true;
+      ++generation;
+      unsubscribe();
+    };
   }, []);
 
   const setTextSize = (t: TextSize) => {
