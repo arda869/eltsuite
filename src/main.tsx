@@ -72,7 +72,7 @@ const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({
 function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { pathname } = useLocation();
-  return <AppError key={`${user?.uid ?? 'guest'}:${pathname}`}>{children}</RouteErrorBoundary>;
+  return <AppError key={`${user?.uid ?? 'guest'}:${pathname}`}>{children}</AppError>;
 }
 
 function NoAccess() {
@@ -228,7 +228,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
-        </AppError>
+        </RouteErrorBoundary>
         </PausedGate>
         <Suspense fallback={null}>
           <ChatDock />
