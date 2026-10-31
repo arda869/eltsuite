@@ -957,12 +957,12 @@ const J = {
     await see(s.p, '.ProseMirror', 'the lesson editor');
     await axe(s.p, 'Lesson editor', A11Y_FOUND);
     await s.p.locator('.ProseMirror').nth(1).click();
-    await s.p.keyboard.press('End');
+    await s.p.keyboard.press('Control+End');
     await slash(s.p, 'Flow chart');
     if (!(await count(s.p, '.dg-node'))) {
       // Once more, in case the first keys went in before the editor was ready.
       await s.p.locator('.ProseMirror').nth(1).click();
-      await s.p.keyboard.press('End');
+      await s.p.keyboard.press('Control+End');
       await slash(s.p, 'Flow chart');
     }
     await see(s.p, '.dg-node', 'the diagram in the editor');
