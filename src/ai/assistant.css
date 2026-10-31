@@ -60,3 +60,14 @@
 @media(max-width:700px) {.topbar:has(+ .ai-assistant){padding:14px 20px;}}
 
 .ai-visual {overflow-x:auto;margin:24px 0;border:1px solid var(--line,#777);border-radius:12px;padding:16px}.ai-visual table{width:100%;border-collapse:collapse;text-align:left}.ai-visual caption{text-align:left;font-weight:600;padding-bottom:16px}.ai-visual th,.ai-visual td{padding:12px;border-bottom:1px solid var(--line,#777);vertical-align:top}.ai-visual th{background:color-mix(in srgb,currentColor 6%,transparent)}
+
+.ai-profile-save {margin-top:24px;}
+.ai-generation {position:sticky;bottom:16px;z-index:3;display:flex;align-items:flex-start;gap:24px;padding:24px;margin-top:28px;background:var(--paper,#fff);color:var(--ink,inherit);border:1px solid var(--line,#777);border-radius:20px;box-shadow:0 12px 36px #0002;}
+.ai-generation h3 {margin:4px 0 10px;font-size:22px;}
+.ai-generation p {margin:6px 0;line-height:1.5;}
+.ai-generation-mark {flex-shrink:0;padding:10px;border-radius:50%;border:2px solid currentColor;animation:ai-breathe 2s ease-in-out infinite;}
+.ai-generation-mark .ai-studio-mark {width:44px;height:44px;}
+.ai-generation .ai-generation-time,.ai-generation-context {font-size:13px;}
+@keyframes ai-breathe {50%{transform:scale(.9);opacity:.6;}}
+@media(prefers-reduced-motion:reduce){.ai-generation-mark{animation:none;}}
+@media(max-width:600px){.ai-generation{gap:12px;padding:16px;position:static}.ai-generation-mark .ai-studio-mark{width:28px;height:28px;}}
