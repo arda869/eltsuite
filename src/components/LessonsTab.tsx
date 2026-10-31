@@ -395,12 +395,12 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
     await Promise.all([updateTopic(c.id, t.id, { order: other.order }), updateTopic(c.id, other.id, { order: t.order === other.order ? t.order + d : t.order })]);
   };
   const byTopic = (id: string | null) => items.filter((i) => (i.topicId ?? null) === id).sort((a, b) => a.order - b.order);
-  const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId));
+  const unsorted = items.filter((i) => !i.topicId || !topics.some((t) => t.id === i.topicId)).sort((a, b) => a.order - b.order);
   const nextOrder = (list: { order: number }[]) => (list.length ? Math.max(...list.map((x) => x.order)) + 1 : 0);
 
   return (
     <div className="lessons">
-      {aiPilot && <Link className="btn" to={`/class/${c.id}/assistant`}>{c.kind==='training'?'Create training with AI':'Create with AI'}</Link>}
+      {aiPilot && <section style={{padding:'24px',marginBottom:'24px',border:'1px solid var(--accent)',borderRadius:'18px',background:'color-mix(in srgb, var(--accent) 8%, transparent)'}} aria-label="AI creation studio"><h2 style={{marginTop:0}}>{c.kind==='training'?'Your next training session starts here':'Your next lesson starts here'}</h2><p>Turn an idea into editable activities, built around your class. Create a lesson, exam, homework or practice.</p><Link className="btn primary" to={`/class/${c.id}/assistant`}>{c.kind==='training'?'Create training with AI':'Create with AI'} →</Link></section>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">
