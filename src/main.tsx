@@ -1,240 +1,156 @@
-import { AppError, watchChunkErrors } from './components/AppError';
-import { AskHost } from './lib/ask';
-import { MenuHost } from './components/ContextMenu';
-import { startServiceWorker } from './lib/push';
-import { startTilt } from './lib/tilt';
-import { startTheme } from './lib/theme';
-import { startViewport } from './lib/viewport';
-import { AFTER_SIGN_IN } from './lib/afterSignIn';
-import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { UpdateBanner } from './components/UpdateBanner';
-import { ComputerOnly } from './components/ComputerOnly';
-import { ConnectionBanner } from './components/ConnectionBanner';
-import { AuthProvider, useAuth } from './lib/auth';
-import { SignIn } from './pages/SignIn';
-import { ProxyGate } from './components/ProxyGate';
-import { TooltipLayer } from './components/Tooltip';
-import { EscapeToClose } from './components/EscapeToClose';
-import { PopupGuard } from './components/PopupGuard';
-import { PausedGate } from './components/PausedGate';
-import { OrgLook } from './components/OrgLook';
-import { StatusBeat } from './lib/status';
-import { Loader } from './components/Loader';
-import { isLearnerEmail } from './lib/learners';
-import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainOrigin, onLearnSite, probeLearn } from './lib/site';
-import './styles.css';
-import './friday-ui.css';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { auth, db } from './firebase';
+import { isLearnerEmail } from './learners';
+import { AFTER_SIGN_IN } from './afterSignIn';
+import { codeProblem, forgetCode, keptCode, keptName, readCode, spendCode } from './codes';
 
-// Pages load when they are first opened, so the first screen comes up quickly.
-const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
-const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
-const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
-const LiveStartWatch = lazy(() => import('./components/LiveVideo').then((m) => ({ default: m.LiveStartWatch })));
-const CallPage = lazy(() => import('./pages/CallPage').then((m) => ({ default: m.CallPage })));
-const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
-const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
-const UsageWatch = lazy(() => import('./lib/usage').then((m) => ({ default: m.UsageWatch })));
-const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
-const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.SharedPage })));
-const ColleaguesPage = lazy(() => import('./pages/ColleaguesPage').then((m) => ({ default: m.ColleaguesPage })));
-const MessagesPage = lazy(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
-const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
-const SoundStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.SoundStudio })));
-const TaskStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.TaskStudio })));
-const StudioSession = lazy(() => import('./pages/StudioSession').then((m) => ({ default: m.StudioSession })));
-const Legal = lazy(() => import('./pages/Legal').then((m) => ({ default: m.Legal })));
-const EmailLinkFinish = lazy(() => import('./pages/EmailLinkFinish').then((m) => ({ default: m.EmailLinkFinish })));
-const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
-const TeacherHome = lazy(() => import('./pages/TeacherHome').then((m) => ({ default: m.TeacherHome })));
-const ClassPage = lazy(() => import('./pages/ClassPage').then((m) => ({ default: m.ClassPage })));
-const LessonEditor = lazy(() => import('./pages/LessonEditor').then((m) => ({ default: m.LessonEditor })));
-const LearnerLesson = lazy(() => import('./pages/LearnerLesson').then((m) => ({ default: m.LearnerLesson })));
-const LearnerJoin = lazy(() => import('./pages/LearnerJoin').then((m) => ({ default: m.LearnerJoin })));
-const LearnerHome = lazy(() => import('./pages/LearnerHome').then((m) => ({ default: m.LearnerHome })));
-const LearnerRecap = lazy(() => import('./pages/RecapPages').then((m) => ({ default: m.LearnerRecap })));
-const SharedRecap = lazy(() => import('./pages/RecapPages').then((m) => ({ default: m.SharedRecap })));
-const LearnerDiscussion = lazy(() => import('./pages/LearnerDiscussion').then((m) => ({ default: m.LearnerDiscussion })));
-const PlayPage = lazy(() => import('./pages/PlayPage').then((m) => ({ default: m.PlayPage })));
-const MediaArchive = lazy(() => import('./pages/MediaArchive').then((m) => ({ default: m.MediaArchive })));
-const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
-const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
-const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ default: m.WelcomePage })));
-const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
-const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
-const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
-const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
-const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
+export type TextSize = 'S' | 'M' | 'L' | 'XL';
+export type Profile = (
+  | { role: 'teacher'; displayName?: string }
+  | { role: 'learner'; classId: string; learnerId: string; displayName: string }
+) & { onboarding?: 'new' | 'done'; teacherGoal?: string; textSize?: TextSize; avatar?: string; reading?: Reading; showRecent?: boolean };
 
-const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
+// Reading comfort settings: a clearer font, line focus, spacing and high contrast.
+export type Reading = { font?: 'default' | 'clear'; focus?: boolean; letter?: 0 | 1 | 2; line?: 0 | 1 | 2; contrast?: boolean };
 
-function NoAccess() {
-  const { signOutNow } = useAuth();
-  return (
-    <div className="signin">
-      <div className="card">
-        <h1>You’re signed out of this class</h1>
-        <span className="hint">Your teacher may have removed you from the class or reset your PIN.</span>
-        <button className="btn primary tall block" onClick={signOutNow}>
-          Back to sign-in
-        </button>
-      </div>
-    </div>
-  );
-}
+type AuthState = { user: User | null; profile: Profile | null; ready: boolean; notInvited: string; signOutNow: () => Promise<void>; setTextSize: (t: TextSize) => void; setReading: (r: Reading) => void; setOnboardingLocal: (goal: string) => void; setAvatarLocal: (k: string) => void };
 
-const Boot = () => <Loader full label="" />;
+const Ctx = createContext<AuthState>({ user: null, profile: null, ready: false, notInvited: '', signOutNow: async () => {}, setTextSize: () => {}, setReading: () => {}, setOnboardingLocal: () => {}, setAvatarLocal: () => {} });
+export const TEXT_SCALE: Record<TextSize, number> = { S: 0.9, M: 1, L: 1.15, XL: 1.32 };
 
-function Home() {
-  const { user, profile, ready } = useAuth();
-  if (!ready) return <Boot />;
-  // learn.eltsuite.com: the learners' home page, to join a class.
-  if (!user) return onLearnSite() ? <LearnerJoin home /> : <SignIn />;
-  if (isLearnerEmail(user.email)) {
-    return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
-  }
-  // Back to a shared link opened before signing in.
-  let after = '';
+// Teachers join by invitation for now (see firestore.rules, users). An organisation's invitation
+// travels with the new profile, from the link the teacher opened before signing in.
+export function inviteFields(): { invite?: string } {
   try {
-    after = sessionStorage.getItem(AFTER_SIGN_IN) ?? '';
-    if (after) sessionStorage.removeItem(AFTER_SIGN_IN);
+    const after = sessionStorage.getItem(AFTER_SIGN_IN) ?? '';
+    const m = /^\/invite\/([^/?#]+)/.exec(after);
+    return m ? { invite: m[1] } : {};
   } catch {
-    /* fine */
+    return {};
   }
-  if (after.startsWith('/s/') || after.startsWith('/colleague/') || after.startsWith('/invite/')) return <Navigate to={after} replace />;
-  if (profile?.onboarding === 'new') return <Navigate to="/welcome" replace />;
-  return <HomePage />;
 }
 
-// Learners on learn.eltsuite.com, teachers on eltsuite.com. Each address keeps its own sign-in,
-// so someone sent across signs in there (a learner with their class code and PIN).
-function SiteGate() {
-  const { user, ready } = useAuth();
-  const { pathname } = useLocation();
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (!live()) return;
-    // A "view as a learner" tab stays where it is: its sign-in is only in this tab.
+// Thrown when there is no invitation for this email: the account is not made.
+class NotInvited extends Error {}
+
+async function loadProfile(user: User): Promise<Profile | null> {
+  const ref = doc(db, 'users', user.uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return snap.data() as Profile;
+  if (isLearnerEmail(user.email)) return null; // learner removed from class
+  const displayName = user.displayName || keptName();
+  // With an invitation code typed in on the sign-in page: the profile and one use of the code, together.
+  const typed = keptCode();
+  const code = typed ? await readCode(typed) : null;
+  if (code && !codeProblem(code, user.email ?? '')) {
+    const b = writeBatch(db);
+    b.set(ref, { role: 'teacher', displayName, email: user.email ?? '', onboarding: 'new', createdAt: serverTimestamp(), code: code.code });
+    spendCode(b, code, { uid: user.uid, name: displayName, email: user.email ?? '' });
     try {
-      if (sessionStorage.getItem('ll.proxy')) return;
-    } catch {
-      /* private window */
+      await b.commit();
+      forgetCode();
+      return { role: 'teacher', displayName, onboarding: 'new' };
+    } catch (e) {
+      if ((e as { code?: string })?.code === 'permission-denied') throw new NotInvited();
+      throw e;
     }
-    const learnSite = onLearnSite();
-    if (!learnSite && !learnReady()) return void probeLearn(() => setTick((n) => n + 1));
-    if (!learnSite && (isLearnerPath(pathname) || (ready && user && isLearnerEmail(user.email)))) goTo(learnOrigin());
-    else if (learnSite && ready && user && !isLearnerEmail(user.email) && !isSharedPath(pathname)) goTo(mainOrigin());
-  }, [user, ready, pathname, tick]);
-  return null;
+  }
+  const profile = { role: 'teacher' as const, displayName, email: user.email ?? '', onboarding: 'new', createdAt: serverTimestamp(), ...inviteFields() };
+  try {
+    await setDoc(ref, profile);
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'permission-denied') throw new NotInvited();
+    throw e;
+  }
+  return { role: 'teacher', displayName: profile.displayName, onboarding: 'new' };
 }
 
-function Join() {
-  const { user, ready } = useAuth();
-  if (!ready) return <Boot />;
-  return user ? <Navigate to="/" replace /> : <LearnerJoin />;
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [ready, setReady] = useState(false);
+  // The email of someone who signed in without an invitation: their account is not kept.
+  const [notInvited, setNotInvited] = useState('');
+  const authGeneration = useRef(0);
+
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, async (u) => {
+        const generation = ++authGeneration.current;
+        if (!u) {
+          setUser(null);
+          setProfile(null);
+          setNotInvited('');
+          setReady(true);
+          return;
+        }
+        let p: Profile | null = null;
+        if (u) {
+          // A slow or stuck connection never leaves the app on its loading screen: after a few
+          // seconds it opens with what it knows, and the profile follows when it arrives.
+          const load = loadProfile(u);
+          try {
+            p = await Promise.race([load, new Promise<never>((_, no) => window.setTimeout(() => no(new Error('slow')), 9000))]);
+          } catch (e) {
+            if (generation !== authGeneration.current) return;
+            if (e instanceof NotInvited) {
+              setNotInvited(u.email ?? '');
+              // Take back the sign-in account just made, so an invitation later starts afresh.
+              await u.delete().catch(() => signOut(auth));
+              await signOut(auth).catch(() => {});
+              setUser(null);
+              setProfile(null);
+              setReady(true);
+              return;
+            }
+            console.error('Could not load profile', e);
+            p = isLearnerEmail(u.email) ? null : { role: 'teacher' };
+            void load
+              .then((late) => generation === authGeneration.current && late && setProfile(late))
+              .catch((late) => {
+                if (generation !== authGeneration.current || !(late instanceof NotInvited)) return;
+                setNotInvited(u.email ?? '');
+                void u.delete().catch(() => {}).finally(() => void signOut(auth).catch(() => {}));
+              });
+          }
+        }
+        if (generation !== authGeneration.current) return;
+        if (u) setNotInvited('');
+        setUser(u);
+        setProfile(p);
+        setReady(true);
+      }),
+    [],
+  );
+
+  const setTextSize = (t: TextSize) => {
+    setProfile((p) => (p ? { ...p, textSize: t } : p));
+    if (user) updateDoc(doc(db, 'users', user.uid), { textSize: t }).catch(() => {});
+  };
+  const setReading = (r: Reading) => {
+    setProfile((p) => (p ? { ...p, reading: { ...(p.reading ?? {}), ...r } } : p));
+    if (user) updateDoc(doc(db, 'users', user.uid), { reading: { ...(profile?.reading ?? {}), ...r } }).catch(() => {});
+  };
+  // Reading settings apply to the whole app through classes on <html>.
+  useEffect(() => {
+    const r = profile?.reading ?? {};
+    const h = document.documentElement;
+    h.classList.toggle('rd-clear', r.font === 'clear');
+    h.classList.toggle('rd-focus', !!r.focus);
+    h.classList.toggle('rd-contrast', !!r.contrast);
+    h.style.setProperty('--rd-letter', ['0', '0.04em', '0.09em'][r.letter ?? 0]);
+    h.style.setProperty('--rd-line', ['1', '1.25', '1.5'][r.line ?? 0]);
+  }, [profile?.reading]);
+  return <Ctx.Provider value={{ user, profile, ready, notInvited, signOutNow: async () => {
+    authGeneration.current++;
+    setUser(null);
+    setProfile(null);
+    setNotInvited('');
+    setReady(true);
+    try { await signOut(auth); } catch (e) { console.error('Sign out failed', e); window.location.reload(); }
+  }, setTextSize, setReading, setOnboardingLocal: (goal: string) => setProfile(p => p ? { ...p, onboarding: 'done', teacherGoal: goal } : p), setAvatarLocal: (k: string) => setProfile((p) => (p ? { ...p, avatar: k } : p)) }}>{children}</Ctx.Provider>;
 }
 
-function TeacherOnly({ children }: { children: JSX.Element }) {
-  const { user, ready } = useAuth();
-  if (!ready) return <Boot />;
-  return user && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
-}
-
-function SignedIn({ children }: { children: JSX.Element }) {
-  const { user, profile, ready } = useAuth();
-  if (!ready || (user && !profile)) return <Boot />;
-  return user ? children : <Navigate to="/" replace />;
-}
-
-function LearnerOnly({ children }: { children: JSX.Element }) {
-  const { user, profile, ready } = useAuth();
-  if (!ready) return <Boot />;
-  return user && profile?.role === 'learner' ? children : <Navigate to="/" replace />;
-}
-
-startTheme();
-startViewport();
-startTilt();
-watchChunkErrors();
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <AuthProvider>
-      <BrowserRouter>
-        <SiteGate />
-        <UpdateBanner />
-        <OrgLook />
-        <StatusBeat />
-        <TooltipLayer />
-        <EscapeToClose />
-        <PopupGuard />
-        <ConnectionBanner />
-        <ProxyGate>
-        <PausedGate>
-        <AppError>
-        <Suspense fallback={<Loader full label="" />}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
-          <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
-          <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
-          <Route path="/tour" element={<TourPage />} />
-          <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
-          <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
-          <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
-          <Route path="/auth/link" element={<EmailLinkFinish />} />
-          <Route path="/join" element={<Join />} />
-          <Route path="/invite/:id" element={<InvitePage />} />
-          <Route path="/admin" element={<TeacherOnly><ComputerOnly what="Super Admin"><AdminPage mode="super" /></ComputerOnly></TeacherOnly>} />
-          <Route path="/org-admin" element={<TeacherOnly><ComputerOnly what="Organisation admin"><AdminPage mode="org" /></ComputerOnly></TeacherOnly>} />
-          <Route path="/class/:classId/assistant" element={<TeacherOnly><LessonAssistant /></TeacherOnly>} />
-          <Route path="/class/:classId" element={<TeacherOnly><ClassPage /></TeacherOnly>} />
-          <Route path="/class/:classId/lesson/:itemId" element={<TeacherOnly><LessonEditor /></TeacherOnly>} />
-          <Route path="/learn/:itemId" element={<LearnerOnly><LearnerLesson /></LearnerOnly>} />
-          <Route path="/notebook" element={<Navigate to="/" replace />} />
-          <Route path="/recap/:itemId" element={<LearnerOnly><LearnerRecap /></LearnerOnly>} />
-          <Route path="/discuss" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />
-          <Route path="/discuss/:tid" element={<LearnerOnly><LearnerDiscussion /></LearnerOnly>} />
-          <Route path="/r/:token" element={<SharedRecap />} />
-          <Route path="/play/:classId/:mediaId" element={<PlayPage />} />
-          <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
-          <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
-          <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
-          <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
-          <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
-          <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
-          <Route path="/storyboard" element={<TeacherOnly><AppFiles app="storyboard" /></TeacherOnly>} />
-          <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
-          <Route path="/s/:id" element={<SharedPage />} />
-          <Route path="/call/:code" element={<CallPage />} />
-          <Route path="/studio/task/:id" element={<TeacherOnly><ComputerOnly what="The task editor"><TaskStudio /></ComputerOnly></TeacherOnly>} />
-          <Route path="/studio/session/:id" element={<TeacherOnly><ComputerOnly what="The recording studio"><StudioSession /></ComputerOnly></TeacherOnly>} />
-          <Route path="/studio/sound/:id" element={<TeacherOnly><ComputerOnly what="The sound editor"><SoundStudio /></ComputerOnly></TeacherOnly>} />
-          <Route path="/doc/:id" element={<SignedIn><DocPage /></SignedIn>} />
-          <Route path="/doc/k/:key" element={<SignedIn><DocPage /></SignedIn>} />
-          <Route path="/settings" element={<SignedIn><SettingsPage /></SignedIn>} />
-          <Route path="/messages" element={<SignedIn><MessagesPage /></SignedIn>} />
-          <Route path="/colleagues" element={<TeacherOnly><ColleaguesPage /></TeacherOnly>} />
-          <Route path="/colleague/:token" element={<ColleagueJoin />} />
-          <Route path="/privacy" element={<Legal kind="privacy" />} />
-          <Route path="/terms" element={<Legal kind="terms" />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        </Suspense>
-        </AppError>
-        </PausedGate>
-        <Suspense fallback={null}>
-          <ChatDock />
-          <UsageWatch />
-          <CallHost />
-          <LiveStartWatch />
-        </Suspense>
-        <AskHost />
-        <MenuHost />
-        </ProxyGate>
-      </BrowserRouter>
-    </AuthProvider>
-  </StrictMode>,
-);
-startServiceWorker();
+export const useAuth = () => useContext(Ctx);
