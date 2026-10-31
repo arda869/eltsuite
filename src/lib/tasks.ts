@@ -15,6 +15,7 @@ import type { JSONContent } from '@tiptap/react';
 import { db } from './firebase';
 import { splitKey, type AnswerKey, type Responses } from './questions';
 import type { Audience, Dist } from './groups';
+import { noteFeature } from '../discovery/store';
 export * from './questions';
 
 export type Task = {
@@ -90,6 +91,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   }
   batch.update(taskRef(classId, itemId, taskId), data);
   await batch.commit();
+  if (patch.content && JSON.stringify(patch.content).includes('"text"')) noteFeature('lessons', classId + ':' + itemId);
 }
 
 export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print'>>) =>
@@ -119,6 +121,7 @@ export async function setCorrection(classId: string, taskId: string, learnerUid:
 // The teacher's mark and comment for a long answer.
 export async function saveMark(classId: string, taskId: string, learnerUid: string, qid: string, mark: Mark) {
   await updateDoc(answerRef(classId, taskId, learnerUid), { [`marks.${qid}`]: mark });
+  if (mark.score !== null || mark.comment.trim()) noteFeature('assessment', classId + ':' + taskId + ':' + learnerUid);
 }
 
 export const answerRef = (classId: string, taskId: string, uid: string) => doc(db, 'classes', classId, 'answers', `${taskId}_${uid}`);
@@ -139,6 +142,7 @@ export async function loadNotes(classId: string, itemId: string, taskId: string)
 }
 export async function saveNotes(classId: string, itemId: string, taskId: string, text: string, doc?: JSONContent | null) {
   await setDoc(notesRef(classId, itemId, taskId), { text, ...(doc ? { doc } : { doc: null }), updatedAt: serverTimestamp() });
+  if (text.trim()) noteFeature('notes', classId + ':' + itemId + ':' + taskId);
 }
 // Rich notes: the formatted document plus plain text (used for export and the "has notes" dot).
 export async function loadNoteDoc(classId: string, itemId: string, taskId: string): Promise<{ text: string; doc: JSONContent | null }> {

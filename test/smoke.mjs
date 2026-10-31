@@ -81,6 +81,44 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Feature discovery is optional, private and based on completed workflows': async (b) => {
+    const s = await session(b);
+    await s.p.goto(BASE + '/');
+    const launch = s.p.getByRole('button', { name: 'ELT Suite assistant', exact: true });
+    await launch.click();
+    await s.p.getByRole('button', { name: 'Personalise my suggestions', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Show me how', exact: true }).click();
+    await see(s.p, '.discovery-steps', 'verified feature walkthrough');
+    await s.p.getByRole('button', { name: 'Your features', exact: true }).click();
+    const lessons = s.p.locator('.discovery-feature').filter({ has: s.p.getByText('Lessons', { exact: true }) });
+    if (!(await lessons.innerText()).includes('Not explored yet')) throw Error('Reading a guide fabricated feature adoption');
+    await axe(s.p, 'Feature discovery usage', A11Y_FOUND);
+    await s.p.getByRole('button', { name: 'Preferences', exact: true }).click();
+    await s.p.getByLabel('Suggestion frequency', { exact: true }).selectOption('3');
+    await s.p.getByRole('button', { name: 'Pause for 30 days', exact: true }).click();
+    await see(s.p, 'text=Resume suggestions', 'suggestion pause');
+    await axe(s.p, 'Feature discovery preferences', A11Y_FOUND);
+    for (const width of [320, 390, 1280]) {
+      await s.p.setViewportSize({ width, height: 800 });
+      const fits = await s.p.locator('#discovery-panel').evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1; });
+      if (!fits) throw Error('Discovery panel overflows at ' + width);
+    }
+    await s.p.getByRole('button', { name: 'Close feature discovery', exact: true }).click();
+    const d = await newFile(s, 'Collab document');
+    await see(d, '.ProseMirror', 'created Collab document');
+    await d.close();
+    await launch.click();
+    await s.p.getByRole('button', { name: 'Your features', exact: true }).click();
+    await see(s.p, '.discovery-feature:has-text("Collab"):has-text("Tried once")', 'successful workflow activation');
+    await s.p.reload();
+    await launch.click();
+    await s.p.getByRole('button', { name: 'Preferences', exact: true }).click();
+    if (await s.p.getByLabel('Suggestion frequency', { exact: true }).inputValue() !== '3') throw Error('Frequency preference was not saved');
+    await see(s.p, 'text=Resume suggestions', 'pause survives reload');
+    await s.p.getByLabel('Personalise suggestions', { exact: false }).uncheck();
+    if (await s.p.getByLabel('Quiet suggestions', { exact: false }).isChecked()) throw Error('Opting out left proactive suggestions enabled');
+    return s;
+  },
   'Authentication: signed-out teacher homepage': async (b) => {
     const ctx = await b.newContext();
     const p = await ctx.newPage();

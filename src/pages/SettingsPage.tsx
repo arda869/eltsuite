@@ -202,6 +202,7 @@ export function SettingsPage() {
           </Section>
         )}
 
+        {profile?.role === 'teacher' && <Section icon="help" title="Feature discovery"><p>Useful ideas based on the tools you use, with quiet hours and room to explore at your own pace.</p><button className="btn" onClick={() => window.dispatchEvent(new Event('elt-discovery-settings'))}>Discovery preferences</button></Section>}
         <Section icon="message" title="Messages">
           <Row title="Enter to send" hint="Off: Enter starts a new line, and you send with the button">
             <Toggle label="Enter to send" on={enter} onChange={(v) => (saveEnterSend(v), setEnter(v))} />

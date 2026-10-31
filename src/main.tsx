@@ -68,6 +68,7 @@ const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
+const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
 
 function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -238,6 +239,7 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={null}>
           <ChatDock />
           <UsageWatch />
+          <FeatureDiscovery />
           <CallHost />
           <LiveStartWatch />
         </Suspense>

@@ -1,8 +1,8 @@
 import { load, persist } from './store';
 type U = { uid: string; email: string; displayName: string; password?: string };
 const users = () => load<Record<string, U>>('mockauth', {});
-export type User = { uid: string; email: string | null; displayName: string | null; delete: () => Promise<void> };
-const asUser = (u: U): User => ({ uid: u.uid, email: u.email, displayName: u.displayName, delete: async () => {} });
+export type User = { uid: string; email: string | null; displayName: string | null; getIdTokenResult: () => Promise<{ claims: Record<string, unknown> }>; delete: () => Promise<void> };
+const asUser = (u: U): User => ({ uid: u.uid, email: u.email, displayName: u.displayName, getIdTokenResult: async () => ({ claims: {} }), delete: async () => {} });
 const autos: Record<string, { currentUser: User | null; app: { name: string } }> = {};
 export function getAuth(app: { name: string } = { name: '[DEFAULT]' }) {
   if (!autos[app.name]) {

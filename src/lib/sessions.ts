@@ -1,6 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where, type Unsubscribe } from 'firebase/firestore';
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
+import { noteFeature } from '../discovery/store';
 import { updateItem } from './classes';
 import { localZone, validZone } from './tz';
 import { eachTime, isSeries, type Repeat } from './repeat';
@@ -49,6 +50,7 @@ const col = collection(db, 'sessions');
 
 export async function addSession(s: Omit<Session, 'id'>) {
   const ref = await addDoc(col, JSON.parse(JSON.stringify({ tz: localZone(), ...s, at: Date.now() })));
+  noteFeature('timetable', ref.id);
   // The lesson shows its time on the class page and the learners' home too.
   if (s.classId && s.itemId) await updateItem(s.classId, s.itemId, { schedule: { at: s.start } }).catch(() => {});
   return ref.id;

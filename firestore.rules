@@ -107,6 +107,44 @@ service cloud.firestore {
       }
     }
 
+    // Private, opt-in discovery summaries. Never readable by organisations or super admins.
+    match /featureDiscovery/{uid} {
+      function mine() { return isSelf(uid) && isTeacher() && request.auth.token.get('proxyBy', null) == null; }
+      function featureKeys(m) { return m.keys().hasOnly(['lessons', 'notes', 'assessment', 'live', 'timetable', 'collab', 'reading']); }
+      function usageOK(m, k) {
+        return !(k in m) || (m[k] is map && m[k].keys().hasAll(['count', 'lastUsed', 'events', 'guided'])
+          && m[k].keys().hasOnly(['count', 'lastUsed', 'events', 'guided'])
+          && m[k].count is int && m[k].count >= 1 && m[k].count <= 10000
+          && m[k].lastUsed is int && m[k].lastUsed >= 0
+          && m[k].events is list && m[k].events.size() <= 80 && m[k].guided is bool);
+      }
+      function feedbackOK(m, k) {
+        return !(k in m) || (m[k] is map && m[k].keys().hasOnly(['dismissed', 'snoozedUntil', 'offeredAt', 'guideStarted', 'openedAt'])
+          && m[k].get('dismissed', false) is bool && m[k].get('guideStarted', false) is bool
+          && m[k].get('snoozedUntil', 0) is int && m[k].get('offeredAt', 0) is int && m[k].get('openedAt', 0) is int);
+      }
+      function validDiscovery() {
+        let d = request.resource.data;
+        let s = d.settings;
+        return d.keys().hasAll(['settings', 'usage', 'feedback', 'delivery']) && d.keys().hasOnly(['settings', 'usage', 'feedback', 'delivery'])
+          && s.keys().hasAll(['tracking', 'enabled', 'gapDays', 'quietStart', 'quietEnd', 'pausedUntil'])
+          && s.keys().hasOnly(['tracking', 'enabled', 'gapDays', 'quietStart', 'quietEnd', 'pausedUntil'])
+          && s.tracking is bool && s.enabled is bool && (!s.enabled || s.tracking)
+          && s.gapDays in [1, 3, 7] && s.quietStart is int && s.quietStart >= 0 && s.quietStart <= 23
+          && s.quietEnd is int && s.quietEnd >= 0 && s.quietEnd <= 23 && s.pausedUntil is int && s.pausedUntil >= 0
+          && d.usage is map && featureKeys(d.usage) && d.feedback is map && featureKeys(d.feedback)
+          && usageOK(d.usage, 'lessons') && usageOK(d.usage, 'notes') && usageOK(d.usage, 'assessment') && usageOK(d.usage, 'live')
+          && usageOK(d.usage, 'timetable') && usageOK(d.usage, 'collab') && usageOK(d.usage, 'reading')
+          && feedbackOK(d.feedback, 'lessons') && feedbackOK(d.feedback, 'notes') && feedbackOK(d.feedback, 'assessment') && feedbackOK(d.feedback, 'live')
+          && feedbackOK(d.feedback, 'timetable') && feedbackOK(d.feedback, 'collab') && feedbackOK(d.feedback, 'reading')
+          && d.delivery.keys().hasAll(['feature', 'at', 'read']) && d.delivery.keys().hasOnly(['feature', 'at', 'read'])
+          && d.delivery.feature in ['', 'lessons', 'notes', 'assessment', 'live', 'timetable', 'collab', 'reading']
+          && d.delivery.at is int && d.delivery.at >= 0 && d.delivery.read is bool;
+      }
+      allow read, delete: if mine();
+      allow create, update: if mine() && validDiscovery();
+    }
+
     match /classes/{classId} {
       allow read: if isOwner() || (signedIn() && resource.data.get('org', null) is string && adminOfOrg(resource.data.org)) || signedIn() && (resource.data.teacherId == request.auth.uid || memberOf(classId)
         || request.auth.uid in resource.data.get('coTeachers', {})

@@ -1,4 +1,5 @@
 import { writeNamedFile } from './fileNames';
+import { noteFeature } from '../discovery/store';
 import { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
@@ -66,6 +67,8 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, true, true);
+  if (kind === 'doc') noteFeature('collab', r.id);
+  if (kind === 'pd') noteFeature('reading', r.id);
   return r.id;
 }
 

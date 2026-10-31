@@ -58,6 +58,7 @@ export async function deleteTeacherAccount(classes: ClassDoc[], onStep?: (s: str
   }
   const u = auth.currentUser;
   if (!u) return;
+  await deleteDoc(doc(db, 'featureDiscovery', u.uid));
   await deleteDoc(doc(db, 'users', u.uid)).catch(() => {});
   await deleteUser(u);
 }

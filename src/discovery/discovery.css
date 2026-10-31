@@ -1,0 +1,61 @@
+.discovery { --discovery-tone: var(--accent-text); font: 14px/1.5 var(--sans); }
+.discovery button { cursor: pointer; }
+.discovery button:disabled { cursor: default; opacity: .5; }
+.discovery-launch { position: fixed; bottom: calc(64px + env(safe-area-inset-bottom)); left: 20px; z-index: 71; display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 15px; border: 1px solid var(--hair); border-radius: 99px; color: var(--ink); background: var(--paper); box-shadow: 0 4px 18px var(--shadow); font-weight: 600; transition: box-shadow .2s, transform .2s; }
+.discovery-launch:hover { box-shadow: 0 6px 24px var(--shadow); transform: translateY(-2px); }
+.discovery-launch > svg { color: var(--discovery-tone); }
+.discovery-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--discovery-tone); }
+.discovery-panel { position: fixed; left: 20px; bottom: calc(120px + env(safe-area-inset-bottom)); z-index: 75; display: flex; flex-direction: column; width: 408px; max-width: calc(100vw - 40px); height: min(680px, calc(100dvh - 150px)); border: 1px solid var(--hair); border-radius: 24px; background: var(--paper); color: var(--ink); box-shadow: 0 20px 70px var(--shadow); overflow: hidden; animation: discovery-in .22s ease-out; }
+.discovery-header { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 18px; gap: 12px; }
+.discovery-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .14em; color: var(--discovery-tone); }
+.discovery-header h2 { font-size: 27px; letter-spacing: -.035em; margin-top: 5px; }
+.discovery-close { align-self: flex-start; border: 0; background: var(--surface); border-radius: 50%; font-size: 24px; line-height: 1; width: 36px; height: 36px; }
+.discovery-tabs { display: flex; gap: 4px; padding: 4px; margin: 0 24px 4px; border-radius: 12px; background: var(--surface); }
+.discovery-tabs button { flex: 1; border: 0; background: transparent; color: var(--muted); border-radius: 9px; padding: 8px 4px; font-size: 12px; font-weight: 600; }
+.discovery-tabs button[aria-pressed=true] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 4px var(--shadow); }
+.discovery-content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 24px 24px; }
+.discovery-intro { color: var(--muted); font-size: 15px; margin: 16px 0 20px; }
+.discovery-card { padding: 24px; border: 1px solid var(--hair); border-radius: 20px; background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 9%, var(--paper)), var(--paper) 70%); }
+.discovery-symbol { display: inline-flex; width: 54px; height: 54px; align-items: center; justify-content: center; border-radius: 17px; color: var(--discovery-tone); background: color-mix(in srgb, var(--accent) 15%, var(--paper)); }
+.discovery-card-top { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+.discovery-tag { color: var(--discovery-tone); font-size: 11px; font-weight: 600; }
+.discovery-card h3 { font-size: 25px; line-height: 1.15; letter-spacing: -.025em; margin-top: 16px; }
+.discovery-card-top + h3 { margin-top: 0; }
+.discovery-card p { margin: 12px 0 18px; }
+.discovery-reason { font-size: 12px; color: var(--muted); }
+.discovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.discovery-actions .btn { flex: 1; }
+.discovery-secondary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 18px; }
+.discovery-secondary button, .discovery-footer button { border: 0; background: none; color: var(--muted); font-size: 11px; padding: 4px 0; text-decoration: underline; text-underline-offset: 3px; }
+.discovery-fine { font-size: 11.5px; line-height: 1.6; color: var(--muted); margin: 18px 0 0; }
+.discovery-footer { padding: 12px 24px; border-top: 1px solid var(--hair); display: flex; justify-content: space-between; align-items: center; gap: 10px; color: var(--muted); font-size: 11px; }
+.discovery-steps { padding-left: 20px; font-size: 13px; }
+.discovery-steps li { padding: 5px 0 5px 4px; }
+.discovery-help { display: block; margin-top: 18px; color: var(--discovery-tone); font-size: 12px; }
+.discovery-features { margin: 20px 0; }
+.discovery-feature { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--hair); }
+.discovery-feature-icon { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--discovery-tone); background: var(--surface); }
+.discovery-feature > div { flex: 1; }
+.discovery-feature b, .discovery-feature span { display: block; }
+.discovery-feature div span { color: var(--muted); font-size: 11px; }
+.discovery-feature a { display: grid; place-items: center; border: 1px solid var(--hair); width: 36px; height: 36px; border-radius: 50%; text-decoration: none; }
+.discovery-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--hair); }
+.discovery-setting b, .discovery-hours b { display: block; font-size: 13px; }
+.discovery small { display: block; font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
+.discovery input[type=checkbox] { width: 19px; height: 19px; flex: none; accent-color: var(--discovery-tone); }
+.discovery select { border: 1px solid var(--hair); border-radius: 9px; padding: 8px; background: var(--paper); max-width: 160px; font-size: 12px; }
+.discovery-hours { display: flex; flex-wrap: wrap; gap: 12px; padding: 18px 0; }
+.discovery-hours > span { flex-basis: 100%; }
+.discovery-hours label { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.discovery-history { border-top: 1px solid var(--hair); margin-top: 24px; padding-top: 16px; font-size: 12px; }
+.discovery-history summary { cursor: pointer; }
+.discovery :focus-visible { outline: 2px solid var(--discovery-tone); outline-offset: 3px; }
+@keyframes discovery-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) {
+  .discovery-launch { left: 12px; padding: 0 12px; }
+  .discovery-panel { inset: 0; width: 100%; max-width: none; height: 100dvh; border-radius: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); z-index: 180; }
+  .discovery-content { padding-bottom: 28px; }
+  .discovery-setting { gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .discovery-panel { animation: none; } .discovery-launch { transition: none; } }
+@media print { .discovery { display: none; } }

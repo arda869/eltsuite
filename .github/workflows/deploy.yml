@@ -29,6 +29,14 @@ jobs:
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
 
+      - name: Feature discovery checks
+        run: node --test test/discovery/*.test.mjs
+
+      - name: Feature discovery privacy rules
+        run: |
+          npm install --no-save --package-lock=false --no-audit --no-fund @firebase/rules-unit-testing@4 firebase-tools@14
+          npx firebase emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs"
+
       - name: File retention regression checks
         run: node --test test/file-bin-cleanup.mjs
       - name: Build

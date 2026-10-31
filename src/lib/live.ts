@@ -1,6 +1,7 @@
 import type { AnswerKey } from './questions';
 import { doc, serverTimestamp, setDoc, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import { noteFeature } from '../discovery/store';
 
 // Where the teacher is in a lesson. One document per class.
 export type LiveState = {
@@ -31,6 +32,7 @@ export const liveRef = (classId: string) => doc(db, 'classes', classId, 'live', 
 
 export async function setLive(classId: string, patch: Partial<LiveState>) {
   await setDoc(liveRef(classId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+  if (patch.teaching === true && patch.itemId) noteFeature('live', classId + ':' + patch.itemId);
 }
 
 // A lesson counts as live only while the teacher's teaching screen is open: it checks in every
