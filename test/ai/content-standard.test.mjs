@@ -45,3 +45,10 @@ test('originality and distinct language/trainer standards reach every provider r
   assert.equal(sent.instructions.includes(referenceLessonStandard),!training);
  }
 });
+
+test('lesson standards do not change the separate teaching-coach instructions',async()=>{
+ let sent;
+ await generate({apiKey:'test',model:'gpt-6.1-sol',name:'teaching_coach',schema,input:{},instructions:'Reflective coaching only.',
+ fetchImpl:async(_url,options)=>{sent=JSON.parse(options.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:'{"ok":"yes"}'}]}],usage:{input_tokens:10,output_tokens:10}})};}});
+ assert.equal(sent.instructions.trim(),'Reflective coaching only.');
+});
