@@ -103,6 +103,7 @@ const J = {
     await selection.check();
     await s.p.getByLabel('Topic',{exact:true}).fill('Planning a trip');
     await s.p.getByLabel('Objectives',{exact:true}).fill('Make and compare plans.');
+    await s.p.getByLabel('Context',{exact:true}).fill('Adult learners working in pairs.');
     await s.p.getByRole('button',{name:'Suggest an outline'}).click();
     await see(s.p,'text=2. Review the outline','memory outline');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
