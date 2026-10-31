@@ -23,7 +23,17 @@ function Discovery({ uid, goal }: { uid: string; goal: string }) {
   const content = useRef<HTMLDivElement>(null);
   const quietWorkflow = /^\/(call|studio|learn)(\/|$)/.test(location.pathname) || /^\/class\/[^/]+\/lesson\//.test(location.pathname);
   useEffect(() => { const t = window.setInterval(() => setTick(n => n + 1), 60_000); return () => clearInterval(t); }, []);
-  useEffect(() => { if (open) closeButton.current?.focus(); }, [open]);
+  useEffect(() => {
+    if (open) {
+      window.dispatchEvent(new CustomEvent('elt-assistant-panel', { detail: 'discovery' }));
+      closeButton.current?.focus();
+    }
+  }, [open]);
+  useEffect(() => {
+    const other = (e: Event) => { if ((e as CustomEvent).detail !== 'discovery') setOpen(false); };
+    window.addEventListener('elt-assistant-panel', other);
+    return () => window.removeEventListener('elt-assistant-panel', other);
+  }, []);
   useEffect(() => { if (content.current) content.current.scrollTop = 0; }, [tab]);
   useEffect(() => {
     const show = () => { setTab('preferences'); setOpen(true); };
