@@ -13,6 +13,7 @@ test('editorial standard reaches actual outline, plan and native-activity API re
   assert.ok(sent.instructions.includes(contentStandards),name+' lost editorial standards');
   assert.equal(JSON.parse(sent.input).brief.level,level);
   if(name==='plan') assert.match(sent.instructions,/Preserve every stage ID/);
+  if(name==='outline') { assert.match(sent.instructions,/OUTLINE ONLY/); assert.match(sent.instructions,/interaction is only the participation pattern/); }
  }
 });
 test('the existing advisory review evaluates learner material without another paid review step',()=>{
