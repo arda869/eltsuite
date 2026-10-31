@@ -1,3 +1,4 @@
+import { isGenerationAdmin, dailyAllowanceReached, dailyGlobalUsage } from './allowance.js';
 import { contextPermissions, profileComplete, beliefsComplete, relevantWriting, writingExcerpt } from './coach-context.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -57,6 +58,7 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   const fingerprint = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
   const day = new Date().toISOString().slice(0,10), month = day.slice(0,7);
   const job = db.doc(`aiPrivate/${uid}/jobs/coach_${req.data.requestId}`), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), global = db.doc(`aiUsage/${day}`), budget = db.doc(`aiBudgets/${month}`);
+  const generationAdmin = await isGenerationAdmin(db,req.auth);
   const existing = await db.runTransaction(async tx => {
     const [j,q,g,b] = await Promise.all([tx.get(job),tx.get(quota),tx.get(global),tx.get(budget)]);
     if (j.exists) {
@@ -65,10 +67,10 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
       if (j.get('status') === 'completed') return j.get('result');
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This response is still running. Retry shortly. If it remains unavailable, clear the conversation and start again.' : 'This response could not finish. Clear the conversation and try again.');
     }
-    if ((q.get('calls') ?? 0) >= 12 || (g.get('calls') ?? 0) >= 120) throw new HttpsError('resource-exhausted', 'The daily AI pilot allowance has been reached. Your journal and inquiries are still available.');
+    if (dailyAllowanceReached(q.get('calls') ?? 0,g.get('calls') ?? 0,1,generationAdmin)) throw new HttpsError('resource-exhausted', 'The daily AI pilot allowance has been reached. Your journal and inquiries are still available.');
     let reservation; try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, 1); } catch(e) { throw new HttpsError('resource-exhausted', e.message); }
     tx.set(budget, { committedMicroUsd: reservation.balance, month, limitMicroUsd: 20_000_000 }, { merge: true });
-    tx.set(quota, { calls: (q.get('calls') ?? 0)+1 }); tx.set(global, { calls: (g.get('calls') ?? 0)+1 });
+    tx.set(quota, { calls: (q.get('calls') ?? 0)+1 }); tx.set(global, dailyGlobalUsage(g.data(),1,generationAdmin), {merge:true});
     tx.create(job, { action: 'coach', status: 'running', fingerprint, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now()+86400000) });
     return null;
   });
