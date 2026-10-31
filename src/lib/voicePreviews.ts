@@ -21,7 +21,7 @@ export async function uploadVoicePreview(voice: string, file: File) {
   const context = new AudioContext();
   try {
     const audio = await context.decodeAudioData(await file.arrayBuffer());
-    if (audio.duration < 1 || audio.duration > 30) throw Error('Choose a preview between 1 and 30 seconds.');
+    if (audio.duration <= 0 || audio.duration > 30) throw Error('Choose a preview up to 30 seconds.');
     const mono = new Float32Array(audio.length);
     for (let c = 0; c < audio.numberOfChannels; c++) { const channel = audio.getChannelData(c); for(let i=0;i<mono.length;i++) mono[i] += channel[i] / audio.numberOfChannels; }
     const blob = await encodeMp3(mono, audio.sampleRate, 'clear');
