@@ -15,8 +15,8 @@ export function getAuth(app: { name: string } = { name: '[DEFAULT]' }) {
 const cbs: ((u: User | null) => void)[] = [];
 export function onAuthStateChanged(auth: ReturnType<typeof getAuth>, cb: (u: User | null) => void) {
   cbs.push(cb);
-  setTimeout(() => cb(auth.currentUser), 0);
-  return () => {};
+  const timer = setTimeout(() => cb(auth.currentUser), 0);
+  return () => { clearTimeout(timer); const i = cbs.indexOf(cb); if (i >= 0) cbs.splice(i, 1); };
 }
 function setCur(auth: ReturnType<typeof getAuth>, u: User | null) {
   auth.currentUser = u;
@@ -70,6 +70,8 @@ export function mockSignInTeacher(name = 'Arda') {
 }
 export async function sendPasswordResetEmail() {}
 export async function updateProfile(u: User, p: { displayName?: string }) {
+  const delay = Number(sessionStorage.getItem('mockauth-profile-delay') || 0);
+  if (delay) await new Promise((r) => setTimeout(r, delay));
   if (p.displayName) u.displayName = p.displayName;
 }
 export async function sendEmailVerification() {}

@@ -150,9 +150,9 @@ function Join() {
 }
 
 function TeacherOnly({ children }: { children: JSX.Element }) {
-  const { user, ready } = useAuth();
+  const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
-  return user && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
+  return user && profile?.role === 'teacher' && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
 }
 
 function SignedIn({ children }: { children: JSX.Element }) {

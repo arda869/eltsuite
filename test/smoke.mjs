@@ -38,6 +38,8 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   ctx.on('page', watch);
   const p = await ctx.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`);
+  await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 30000 });
+  await p.evaluate(async () => { await window.__mockReady; });
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
@@ -86,6 +88,67 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'New teacher signup, all starting points and save retry': async b => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['inviteCodes/ABCD-EF23'] = { code: 'ABCD-EF23', uses: 0, maxUses: 1, usedBy: {}, by: 'teacher1', byName: 'Arda', at: Date.now(), expires: 0 };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      sessionStorage.removeItem('mockuid'); localStorage.removeItem('mockuid');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/u', count: 1, delay: 1600 }]));
+      sessionStorage.setItem('mockauth-profile-delay', '4000');
+    });
+    await s.p.goto(BASE + '/?code=ABCD-EF23');
+    await see(s.p, 'h1:has-text("Make your teacher account")', 'signup from invitation');
+    await s.p.getByRole('textbox', { name: 'Your name', exact: true }).fill('New Teacher');
+    await s.p.getByRole('textbox', { name: 'Email', exact: true }).fill('new-teacher@example.com');
+    await s.p.locator('input[type="password"]').fill('test-password-123');
+    await s.p.getByRole('button', { name: 'Make my account', exact: true }).click();
+    if (await s.p.locator('.welcome,.hm').count()) throw Error('Teacher UI opened before account setup completed');
+    await s.p.waitForURL('**/welcome');
+    console.log('Signup: profile confirmed and welcome opened');
+    const uid = await s.p.evaluate(() => sessionStorage.getItem('mockuid'));
+    const profile = await s.p.evaluate(id => JSON.parse(localStorage.getItem('mockfs'))['users/' + id], uid);
+    if (profile.role !== 'teacher' || profile.displayName !== 'New Teacher') throw Error('New teacher profile was not confirmed');
+    await s.p.getByRole('button', { name: 'Prepare my next lesson' }).click();
+    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
+    await s.p.getByRole('button', { name: 'Change my choice' }).click();
+    await s.p.getByRole('button', { name: 'Make a listening activity' }).click();
+    await s.p.getByRole('button', { name: 'Show my starting point' }).click();
+    await s.p.evaluate(id => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'update', path: 'users/' + id, count: 1, code: 'unavailable' }])), uid);
+    await s.p.getByRole('button', { name: 'Show me how first' }).click();
+    await see(s.p, '[role="alert"]:has-text("Your choice is kept")', 'a failed connection retains the selection');
+    await s.p.getByRole('button', { name: 'Show me how first' }).click();
+    await s.p.waitForURL('**/guide?goal=audio');
+    console.log('Signup: connection retry saved the goal');
+    await s.p.waitForTimeout(4200); // a late sign-in display-name update must not reset onboarding
+    await s.p.reload();
+    await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved choice after reloading');
+    const saved = await s.p.evaluate(id => { const f = JSON.parse(localStorage.getItem('mockfs')); return { user: f['users/' + id], code: f['inviteCodes/ABCD-EF23'] }; }, uid);
+    if (saved.code.uses !== 1 || saved.user.onboarding !== 'done' || saved.user.teacherGoal !== 'audio') throw Error('Setup was repeated or the goal was lost');
+    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/development?section=reading'], ['Work with other teachers', '/colleagues']]) {
+      await s.p.goto(BASE + '/welcome');
+      await s.p.getByRole('button', { name: title, exact: false }).click();
+      await s.p.getByRole('button', { name: 'Show my starting point' }).click();
+      await s.p.locator('.path-plan .btn.primary').click();
+      await s.p.waitForURL(url => url.pathname + url.search === target);
+      console.log('Signup: starting point opened ' + target);
+      if (await s.p.locator('[role="alert"]:has-text("save your choice")').count()) throw Error('Onboarding save failed for ' + title);
+    }
+    await s.p.goto(BASE + '/welcome');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '.hm', 'skip opens teacher home');
+    await s.p.reload();
+    await see(s.p, '.hm', 'completed signup stays complete');
+    await s.p.evaluate(id => sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'get', path: 'users/' + id, count: 1, code: 'unavailable' }])), uid);
+    await s.p.reload();
+    await see(s.p, 'button:has-text("Retry account setup")', 'profile loading can recover without a fabricated account');
+    if (await s.p.locator('.hm,.welcome').count()) throw Error('Teacher content opened with an unconfirmed profile');
+    await axe(s.p, 'Teacher account setup recovery', A11Y_FOUND);
+    await s.p.getByRole('button', { name: 'Retry account setup' }).click();
+    await see(s.p, '.hm', 'retry reloads the real teacher profile');
+    return s;
+  },
   'Feature discovery is optional, private and based on completed workflows': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/');
@@ -1265,6 +1328,31 @@ const J = {
     await axe(s.p, 'Learner home', A11Y_FOUND);
     return s;
   },
+  'Slow teacher profile setup recovers without opening an unfinished account': async b => {
+    const s = await session(b);
+    await s.p.evaluate(() => {
+      const fs = JSON.parse(localStorage.getItem('mockfs'));
+      fs['inviteCodes/SLOW-AB23'] = { uses: 0, maxUses: 1, usedBy: {}, by: 'teacher1', at: Date.now(), expires: 0 };
+      localStorage.setItem('mockfs', JSON.stringify(fs));
+      sessionStorage.removeItem('mockuid'); localStorage.removeItem('mockuid');
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'transaction', path: '', count: 1, delay: 18000 }]));
+    });
+    await s.p.goto(BASE + '/?code=SLOW-AB23');
+    await see(s.p, 'h1:has-text("Make your teacher account")', 'the signup form').catch(async e => { throw Error(e.message + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
+    await s.p.getByRole('textbox', { name: 'Your name', exact: true }).fill('Slow Teacher');
+    await s.p.getByRole('textbox', { name: 'Email', exact: true }).fill('slow-teacher@example.com');
+    await s.p.locator('input[type="password"]').fill('test-password-123');
+    await s.p.getByRole('button', { name: 'Make my account', exact: true }).click();
+    await see(s.p, 'button:has-text("Retry account setup")', 'slow setup recovery', 25000);
+    if (await s.p.locator('.hm,.welcome').count()) throw Error('A slow setup opened teacher content before its profile existed');
+    await s.p.getByRole('button', { name: 'Retry account setup' }).click();
+    await s.p.waitForURL('**/welcome');
+    await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
+    await see(s.p, '.hm', 'slow setup completed');
+    const uses = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['inviteCodes/SLOW-AB23'].uses);
+    if (uses !== 1) throw Error('Retry spent the invitation more than once');
+    return s;
+  },
   'Teacher onboarding and goal-based guide': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => {
@@ -1520,7 +1608,9 @@ const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSE
   const c = await browser.newContext();
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
-  await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 }).catch(() => {});
+  await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 180000 });
+  await p.evaluate(async () => { await window.__mockReady; });
+  await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 });
   for (const u of ['/archive', '/admin', '/messages', '/settings']) await p.goto(BASE + u, { timeout: 120000 }).catch(() => {});
   await p.waitForTimeout(1500);
   await c.close();
