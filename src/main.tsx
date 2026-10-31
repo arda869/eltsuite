@@ -69,6 +69,12 @@ const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ defaul
 
 const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
 
+function RouteErrorBoundary({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { pathname } = useLocation();
+  return <AppError key={`${user?.uid ?? 'guest'}:${pathname}`}>{children}</AppError>;
+}
+
 function NoAccess() {
   const { signOutNow } = useAuth();
   return (
@@ -172,7 +178,7 @@ createRoot(document.getElementById('root')!).render(
         <ConnectionBanner />
         <ProxyGate>
         <PausedGate>
-        <AppError>
+        <RouteErrorBoundary>
         <Suspense fallback={<Loader full label="" />}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -222,7 +228,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Suspense>
-        </AppError>
+        </RouteErrorBoundary>
         </PausedGate>
         <Suspense fallback={null}>
           <ChatDock />

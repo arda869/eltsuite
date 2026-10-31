@@ -1,3 +1,4 @@
+import { VoicePreviews } from './VoicePreviews';
 import { useEffect, useState } from 'react';
 import { Select } from '../../components/Select';
 import { UiIcon } from '../../components/UiIcon';
@@ -534,6 +535,9 @@ export function SuperDefaults() {
   return (
     <div className="hq-page">
       <PageHead title="Sounds for everyone" lede="The sound effects and recordings every teacher gets, unless they add their own." />
+      <Panel title="Dialogue voice previews">
+        <VoicePreviews />
+      </Panel>
       <Panel title="Sound effects">
         <SfxSettings />
       </Panel>
