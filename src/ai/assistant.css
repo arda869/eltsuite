@@ -58,3 +58,5 @@
 .ai-orbit-labels {display:flex;justify-content:center;gap:16px;width:100%;font-size:10px;letter-spacing:.03em;white-space:nowrap;line-height:1.5;}
 @media(max-width:850px) {.ai-orbit{width:240px;height:240px;padding:32px;margin-right:0;gap:14px}.ai-orbit-labels{gap:12px}.ai-studio-mark{width:88px;height:88px}}
 @media(max-width:700px) {.topbar:has(+ .ai-assistant){padding:14px 20px;}}
+
+.ai-visual {overflow-x:auto;margin:24px 0;border:1px solid var(--line,#777);border-radius:12px;padding:16px}.ai-visual table{width:100%;border-collapse:collapse;text-align:left}.ai-visual caption{text-align:left;font-weight:600;padding-bottom:16px}.ai-visual th,.ai-visual td{padding:12px;border-bottom:1px solid var(--line,#777);vertical-align:top}.ai-visual th{background:color-mix(in srgb,currentColor 6%,transparent)}

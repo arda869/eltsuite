@@ -91,7 +91,7 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
       const channel=connection.createDataChannel('oai-events');dc.current=channel;
       connection.ontrack=e=>{if(audio.current){audio.current.srcObject=e.streams[0];void audio.current.play().catch(()=>setError('Tap Play partner audio to hear your partner.'));}};
       if(preview)connection.addTransceiver('audio',{direction:'recvonly'});else stream.current!.getTracks().forEach(t=>connection.addTrack(t,stream.current!));
-      channel.onopen=()=>{running.current=true;liveStatus('listening');progress();send({type:'response.create',response:{instructions:'Start the assigned scenario with one short greeting and one question. Keep your turn brief.'}});};
+      channel.onopen=()=>{running.current=true;liveStatus('listening');progress();send({type:'response.create'});};
       channel.onmessage=e=>{
         try {const event=JSON.parse(e.data);
           if(event.type==='input_audio_buffer.speech_started'){inputSpeaking.current=true;if(!wrapping.current)liveStatus('speaking');progress();}
@@ -115,7 +115,7 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
   const active=['connecting','listening','speaking','wrapping-up'].includes(status);
   const latestByUser=[...new Map(sessions.filter(s=>!s.preview).reverse().map(s=>[s.uid,s])).values()];
   const selectedSession=sessions.find(s=>s.id===selected);
-  return <section className="speak-card" aria-label="Speaking practice">
+  return <section className="speak-card" aria-label="AI conversation">
     <div className="speak-heading"><span className="speak-kicker">SPEAKING PRACTICE</span><span className="speak-duration">{config.seconds/60} min · {config.level}</span></div>
     {preview&&<p className="speak-note"><strong>Teacher preview</strong> · Hear the partner and type a learner’s replies. Your microphone stays off. Save the task before trying it.</p>}
     <h3>{config.title}</h3><p className="speak-scenario"><strong>Your task:</strong> {config.scenario}</p>

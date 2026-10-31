@@ -1,3 +1,4 @@
+import { TrainingProfileFields, profileFromClass } from '../training/TrainingProfileFields';
 import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
 import { NSelect } from './Select';
 import { emailChoicesOf, nameChoicesOf, useMyOrg } from '../lib/admin';
@@ -26,6 +27,7 @@ export function meetingProvider(url: string) {
 }
 
 export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () => void }) {
+  const [trainingProfile,setTrainingProfile]=useState(profileFromClass(c.trainingProfile,c.level));
   const [learningProfile,setLearningProfile]=useState(c.learningProfile ?? defaultProfile);
   const [name, setName] = useState(c.name);
   const [level, setLevel] = useState(c.level);
@@ -85,6 +87,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         name: name.trim() || c.name,
         level,
         learningProfile,
+        trainingProfile,
         dates: { start: start || null, end: end || null },
         themeColor,
         cover,
@@ -129,11 +132,12 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         ) : (
           <label className="field">
             Course
-            <input value={level} onChange={(e) => setLevel(e.target.value)} placeholder="For example: CELTA" />
+            <input value={level} onChange={(e) => {setLevel(e.target.value);setTrainingProfile(profileFromClass(null,e.target.value));}} placeholder="For example: CELTA" />
           </label>
         )}
 
         {kind === 'language' && <ClassProfileFields value={learningProfile} onChange={setLearningProfile}/>}
+        {kind === 'training' && <TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setLevel(v.programme);}}/>}
         <div className="field">
           Theme colour
           <div className="swatches" role="radiogroup" aria-label="Theme colour">
