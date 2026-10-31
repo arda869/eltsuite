@@ -535,6 +535,33 @@ const J = {
     await see(s.p, 'text=The pilot is not enabled yet.', 'access revoked');
     return s;
   },
+  'AI native reading, lists and subtasks survive the lesson editor': async (b) => {
+    const s=await session(b);
+    const {nativeTask}=await import('../functions/ai/activities.js');
+    const oral={format:'discussion',acceptedAnswers:[],prompt:'Which place would you choose?',options:[],answer:'Any justified choice.',explanation:'Listen for a reason.'};
+    const task={stageId:'s',title:'Read and compare',format:'reading',minutes:15,instructions:'Read the message.',input:'Summary',blocks:[{kind:'email',title:'From Alex',text:'Shall we visit the museum on Saturday?',items:[]}],visuals:[],roles:[],versions:[],questions:[],teacherOnlyInput:'',teacherNotes:'Monitor pairs.',support:'',challenge:'',subTasks:[{instructions:'Talk to your partner.',input:'',blocks:[],visuals:[],questions:[oral,{...oral,prompt:'Why?'}]}]};
+    const native=nativeTask(task,0);
+    await s.p.evaluate(({classId,native})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      const base='classes/'+classId+'/items/ai-native-shapes';
+      fs[base]={type:'lesson',title:'Native shapes',order:99,hidden:true,locked:false,taskCount:1};
+      fs[base+'/tasks/read']={kind:'task',title:'Read and compare',instructions:'Read the message.',content:native.content,order:0,hidden:false,locked:false};
+      fs[base+'/tasks/read/private/key']={key:native.key};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+    },{classId:s.demo.classId,native});
+    await s.p.goto(BASE+'/class/'+s.demo.classId+'/lesson/ai-native-shapes');
+    await s.p.getByText('Shall we visit the museum on Saturday?',{exact:true}).first().waitFor();
+    await s.p.getByLabel('Instruction for sub-task a',{exact:true}).fill('Compare your ideas.');
+    await s.p.locator('.subtask-node ol li').first().waitFor();
+    if(await s.p.locator('.writing-node').count()) throw Error('Oral prompts became writing responses');
+    await s.p.waitForTimeout(1000);
+    await s.p.reload();
+    await s.p.getByLabel('Instruction for sub-task a',{exact:true}).waitFor();
+    if(await s.p.getByLabel('Instruction for sub-task a',{exact:true}).inputValue()!=='Compare your ideas.') throw Error('Subtask edit did not survive reload');
+    await s.p.locator('.subtask-node ol li').nth(1).waitFor();
+    await axe(s.p,'AI native reading and subtasks',A11Y_FOUND);
+    return s;
+  },
   'Lesson assistant approval, private save and reopen': async (b) => {
     const s = await session(b);
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
