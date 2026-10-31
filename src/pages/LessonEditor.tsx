@@ -1,3 +1,5 @@
+import { lessonStyleOf } from '../lib/lessonStyle';
+import '../lessons/youngLesson.css';
 import { NSelect } from '../components/Select';
 import { VoiceDiversityPrompt } from '../components/VoiceDiversityPrompt';
 import { TeacherLiveVideo } from '../components/LiveVideo';
@@ -805,7 +807,7 @@ export function LessonEditor() {
         .map((t) => (t.id === liveId && liveDraft ? { ...t, title: liveDraft.title, instructions: liveDraft.instructions, instrDoc: liveDraft.instrDoc, content: liveDraft.content } : t.content && sheetKeys[t.id] ? { ...t, content: mergeKey(t.content, sheetKeys[t.id]) } : t)),
     [tasks, liveId, liveDraft, sheetKeys], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover }, sheet && mode === 'edit');
+  const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover, lessonStyle: lessonStyleOf(c) }, sheet && mode === 'edit');
 
   // The task being edited, in the digital view or on its worksheet page.
   const editFrame = task && draft ? (
@@ -1174,7 +1176,7 @@ export function LessonEditor() {
               )}
             </div>
           )}
-          <main className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
+          <main data-lesson-style={!boardView ? lessonStyleOf(c) : undefined} data-activity-number={tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1 || undefined} className={'task-frame' + (opening ? ' is-opening' : '')} style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }} aria-busy={!!opening}>
             {opening && !(sheet && mode === 'edit') && (
               <div className="frame-veil" role="status">
                 <Loader label="Opening the task" />
@@ -1229,7 +1231,7 @@ export function LessonEditor() {
                     </button>
                   )}
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
-                  <h1 className="task-title">{draft.title}</h1>
+                  <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{draft.title}</h1>
                   <InstrView doc={draft.instrDoc} text={draft.instructions} />
                 </div>
                 {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}

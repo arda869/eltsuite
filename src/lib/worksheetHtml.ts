@@ -1,3 +1,4 @@
+import { youngSheetCss } from './youngWorksheet';
 import { credit } from './brand';
 import { BoxFrame, type BoxAttrs } from '../editor/TextBox';
 import { MARK } from '../components/Wordmark';
@@ -245,7 +246,7 @@ function exIcons(t: WsTask) {
 // The worksheet's styles: the house style (see "How printed worksheets look" in CLAUDE.md).
 export function sheetCss(opts: Options) {
   const org = currentOrg();
-  const accent = org?.brand?.color || opts.accent || '#d98f63';
+  const accent = (opts.lessonStyle === 'young' ? opts.accent || org?.brand?.color : org?.brand?.color || opts.accent) || '#d98f63';
   const [pw, ph] = SIZES[opts.paper ?? 'A4'] ?? SIZES.A4;
   const small = opts.paper === 'A5';
   const cols = opts.columns ?? 2;
@@ -455,6 +456,7 @@ h1 { color: var(--ink); }
 
 /* Answer key */
 .key .ex-body p { margin-bottom: .6mm; }
+${opts.lessonStyle === 'young' ? youngSheetCss(opts.origin) : ''}
 `;
 }
 
@@ -484,7 +486,7 @@ export function worksheetHtml(title: string, items: WsItem[], opts: Options) {
   // An organisation's teachers print with its logo and colour.
   const org = currentOrg();
   const brandLogo = org?.brand?.wide || org?.brand?.logo || '';
-  const accent = org?.brand?.color || opts.accent || '#d98f63';
+  const accent = (opts.lessonStyle === 'young' ? opts.accent || org?.brand?.color : org?.brand?.color || opts.accent) || '#d98f63';
   const brandName = org?.name ?? '';
   const cols = opts.columns ?? 2;
   const marks = !!opts.marks;
@@ -601,17 +603,24 @@ ${sheetCss(opts)}
   // Move the last parts of el into restEl (an empty copy of it) until the column is no longer too
   // full, going inside the last part when it is too tall on its own. Pictures, tables and drawings
   // are never cut.
-  var SOLID = 'svg, img, table, figure, .qr-block, .tl, .dgw, .dcut-wrap, .wordbox, .sbw-p, .ws-lines, p, li';
+  var SOLID = 'svg, img, table, figure, .qr-block, .tl, .dgw, .dcut-wrap, .wordbox, .sbw-p, .ws-lines, p, li${opts.lessonStyle === 'young' ? ', .ws-box' : ''}';
   function cut(col, el, restEl) {
+    ${opts.lessonStyle === 'young' ? `// Keep normal-sized blocks whole. Recurse only when a single block exceeds a page.
+    while (over(col) && el.children.length > 1) {
+      restEl.insertBefore(el.lastElementChild, restEl.firstChild);
+    }
+    if (!over(col)) return;` : ''}
     while (over(col) && el.children.length) {
       var last = el.lastElementChild;
       var solid = !last.children.length || last.matches(SOLID);
+      ${opts.lessonStyle === 'young' ? `// A box that fits a page stays whole; taller boxes may split between paragraphs.
+      if (last.matches('.ws-box') && last.getBoundingClientRect().height > col.clientHeight - 70) solid = false;` : ''}
       // Without it, would the column fit? If not, it goes on whole.
       el.removeChild(last);
       var fits = !over(col);
       el.appendChild(last);
       if (!fits && el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); continue; }
-      if (solid) { if (el.children.length > 1) restEl.insertBefore(last, restEl.firstChild); return; }
+      if (solid) { if (el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); ${opts.lessonStyle === 'young' ? 'continue;' : ''} } return; }
       // It fits partly: the rest of it goes on, in a copy of it.
       var part = last.cloneNode(false);
       restEl.insertBefore(part, restEl.firstChild);
@@ -687,13 +696,17 @@ ${sheetCss(opts)}
       grid.appendChild(cards[i]);
     }
   }
-  function layout() {
+  function layout(${opts.lessonStyle === 'young' ? 'preparing' : ''}) {
     pagesEl.innerHTML = '';
     // The worksheet, then the answer key, then the cards to cut out: always last, and not numbered.
     flow('u-main', 'band-main');
     flow('u-key', 'band-key');
     var sets = document.getElementById('cards').content.children;
     for (var si = 0; si < sets.length; si++) layoutCards(sets[si]);
+    ${opts.lessonStyle === 'young' ? `// A final split may advance to an unused column. Do not print an empty trailing sheet.
+    Array.prototype.slice.call(pagesEl.querySelectorAll('.page:not(.cut-page)')).forEach(function (page) {
+      if (!page.querySelector('.unit')) page.remove();
+    });` : ''}
     // The worksheet and the teacher's pages are numbered separately; the cut-outs are not numbered.
     var numbered = pagesEl.querySelectorAll('.page:not(.cut-page):not(.key-page)');
     for (var p = 0; p < numbered.length; p++) numbered[p].querySelector('.pn').textContent = (p + 1) + ' / ' + numbered.length;
@@ -705,14 +718,24 @@ ${sheetCss(opts)}
     var cutN = pagesEl.querySelectorAll('.cut-page').length;
     document.getElementById('status').textContent = numbered.length + (numbered.length === 1 ? ' page' : ' pages') + (keyPages.length ? ' + ' + keyPages.length + ' for the teacher' : '') + (cutN ? ' + ' + cutN + ' to cut out' : '');
     void all;
+    ${opts.lessonStyle === 'young' ? 'if (preparing) return;' : ''}
     window.__laidOut = true;
     if (window.__autoPrint) setTimeout(function () { window.print(); }, 120);
   }
   // Lay out only once our fonts have loaded, so the measurements match what is printed.
   var done = false;
-  var go = function () { if (!done) { done = true; layout(); } };
+  var go = function () { if (!done) { done = true; ${opts.lessonStyle === 'young' ? `
+    // Templates are inert: images start loading only once the first layout puts them on pages.
+    // Wait for their intrinsic sizes and any newly used fonts, then measure the final pages.
+    layout(true);
+    Promise.all(Array.prototype.slice.call(pagesEl.querySelectorAll('img')).map(function (img) {
+      if (img.decode) return img.decode().catch(function () {});
+      if (img.complete) return Promise.resolve();
+      return new Promise(function (resolve) { img.onload = resolve; img.onerror = resolve; });
+    })).then(function () { return document.fonts ? document.fonts.ready : null; }).then(function () { layout(); }, function () { layout(); });
+  ` : 'layout();'} } };
   if (document.fonts && document.fonts.load) {
-    Promise.all(['400 10pt Fraunces', '600 10pt Fraunces', 'italic 400 10pt Fraunces', '400 10pt Karla', '700 10pt Karla', '800 10pt Karla'].map(function (f) { return document.fonts.load(f); }))
+    Promise.all(['400 10pt Fraunces', '600 10pt Fraunces', 'italic 400 10pt Fraunces', '400 10pt Karla', '700 10pt Karla', '800 10pt Karla'${opts.lessonStyle === 'young' ? ", '400 10pt Atkinson Hyperlegible', '700 10pt Atkinson Hyperlegible', '400 10pt Kalam', '400 10pt Lesson IPA'" : ''}].map(function (f) { return document.fonts.load(f); }))
       .then(function () { return document.fonts.ready; })
       .then(go, go);
     setTimeout(go, 4000); // never wait for ever

@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { flattenWithSections, lessonDocx, saveBlob, type Paper, type WsItem } from '../lib/worksheet';
 import { sheetPictures, sheetSounds } from '../lib/sheetMedia';
+import { lessonStyleOf } from '../lib/lessonStyle';
 import { worksheetHtml } from '../lib/worksheetHtml';
 import { theme } from '../lib/themes';
 import { coverMarkup } from './Covers';
@@ -105,10 +106,10 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     getDoc(doc(db, 'classes', classId, 'items', itemId)).then((d) => d.exists() && setItem({ id: d.id, ...(d.data() as Omit<Item, 'id'>) }), () => {});
   }, [classId, itemId]);
   const isExam = item?.type === 'exam';
-  const look = () => ({ header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
+  const look = () => ({ lessonStyle: lessonStyleOf(cls), header, key, notes, qr, paper, columns, size, clear, exam: isExam, marks: isExam && marks, accent: theme(cls?.themeColor).accent, className: cls?.name ?? '', level: cls?.level ?? '' });
   const visible = (lesson?.tasks ?? []).map((t, i) => ({ t, i })).filter(({ t }) => t.kind !== 'section' && !t.hidden && t.print?.show !== 'screen');
   const ids = picked ?? new Set(visible.map((x) => x.i));
-  const chosen = () => flattenWithSections(lesson!.tasks, ids);
+  const chosen = () => flattenWithSections(lesson!.tasks, ids, lessonStyleOf(cls));
 
   const [cover, setCover] = useState('');
   useEffect(() => {
@@ -135,7 +136,7 @@ export function WorksheetDialog({ classId, itemId, onClose }: { classId: string;
     try {
       const tasks = chosen();
       const [media, snd] = await Promise.all([pictures(tasks), sounds(tasks)]);
-      const bytes = await worksheetPdf(worksheetHtml(lesson!.title, tasks, { ...look(), cover, origin: location.origin, media, sounds: snd }), paper === 'Letter' ? 'Letter' : 'A4');
+      const bytes = await worksheetPdf(worksheetHtml(lesson!.title, tasks, { ...look(), cover, origin: location.origin, media, sounds: snd }), paper);
       setPreview({ bytes, name: pdfName(lesson!.title, cls?.name, isExam ? 'Exam' : 'Worksheet', key && 'with answers') });
       setBusy('');
     } catch (e) {

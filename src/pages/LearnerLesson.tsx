@@ -1,3 +1,5 @@
+import { lessonStyleOf } from '../lib/lessonStyle';
+import '../lessons/youngLesson.css';
 import { LearnerLiveVideo } from '../components/LiveVideo';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
@@ -424,7 +426,7 @@ export function LearnerLesson() {
             <strong>This lesson is locked.</strong> Your teacher will open it soon.
           </div>
         )}
-        <main className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
+        <main data-lesson-style={lessonStyleOf(c)} data-activity-number={tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1 || undefined} className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
           {task ? (
             <div className="frame-inner">
               <div className="frame-head">
@@ -434,7 +436,7 @@ export function LearnerLesson() {
                     {task.variant ? (/^[A-Z]$/.test(task.variant) ? `Version ${task.variant}` : task.variant) : 'Version A'}
                   </span>
                 )}
-                <h1 className="task-title">{task.title}</h1>
+                <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{task.title}</h1>
                 <InstrView doc={task.instrDoc} text={task.instructions} />
                 {discussions.filter((d) => d.link?.taskId === task.id || (!d.link?.taskId && d.link?.itemId === itemId)).map((d) => (
                   <Link key={d.id} className="disc-chip" to={`/discuss/${d.id}`}>
