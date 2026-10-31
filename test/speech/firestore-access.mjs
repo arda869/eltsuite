@@ -23,5 +23,13 @@ try{
     await assertFails(setDoc(doc(as(uid),'classes/speech/speakingActivities/task'),{enabled:true}));
     await assertFails(getDoc(doc(as(uid),'speakingCalls/private')));
   }
+  const owner=env.authenticatedContext('owner',{email:'ardanurioglu@gmail.com'}).firestore();
+  const sample={data:'data:audio/mpeg;base64,AAAA',name:'sample.mp3',updatedAt:1};
+  await assertSucceeds(setDoc(doc(owner,'voicePreviews/marin'),sample));
+  await assertSucceeds(getDoc(doc(as('teacher'),'voicePreviews/marin')));
+  await assertFails(setDoc(doc(as('teacher'),'voicePreviews/marin'),sample));
+  await assertFails(setDoc(doc(owner,'voicePreviews/unknown'),sample));
+  await assertFails(setDoc(doc(owner,'voicePreviews/marin'),{...sample,data:'https://external.example/audio'}));
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),'voicePreviews/marin')));
   console.log('Speaking privacy checks passed: own attempts only, teachers monitor, no client feedback/config writes, private call IDs.');
 }finally{await env.cleanup();}

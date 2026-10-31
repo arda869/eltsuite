@@ -81,6 +81,43 @@ async function axe(p, name, out) {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Speech: saved previews, line controls and reordering': async (b) => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(BASE+'/admin?tab=defaults');
+    await see(s.p,'text=Dialogue voice previews','voice preview uploads');
+    const wav=Buffer.alloc(44+48000*2);wav.write('RIFF',0);wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(24000,24);wav.writeUInt32LE(48000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(wav.length-44,40);
+    for(let i=0;i<48000;i++)wav.writeInt16LE(Math.round(Math.sin(i*.1)*1500),44+i*2);
+    await s.p.getByLabel('Upload marin preview',{exact:true}).setInputFiles({name:'Marin sample.wav',mimeType:'audio/wav',buffer:wav});
+    await see(s.p,'text=marin preview saved.','saved preview',45000).catch(async e=>{throw Error(e.message+' '+(await s.p.locator('body').innerText()).slice(-2000)+' '+s.errors.join(';'));});
+    await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
+    await s.p.getByRole('button',{name:'Create speech',exact:true}).click();
+    await s.p.getByRole('button',{name:'Preview voice for Speaker A',exact:true}).click();
+    await see(s.p,'text=■ Stop','saved voice playback');
+    if(await s.p.getByLabel('Speaker 1 accent',{exact:true}).count())throw Error('Accent control should be removed');
+    await s.p.getByLabel('Dialogue line 1',{exact:true}).fill('First take.');
+    await s.p.getByLabel('Dialogue line 1',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 1',{exact:true}).press('Enter');
+    await s.p.getByLabel('Dialogue line 2',{exact:true}).fill('(laughs) Second take.');
+    await s.p.getByRole('button',{name:'Move line 2. Use Arrow Up or Arrow Down to reorder.',exact:true}).press('ArrowUp');
+    if(await s.p.getByLabel('Dialogue line 1',{exact:true}).inputValue()!=='(laughs) Second take.')throw Error('Keyboard reorder lost text');
+    await s.p.locator('.speech-drag').first().dragTo(s.p.locator('.speech-script-row').nth(1));
+    if(await s.p.getByLabel('Dialogue line 1',{exact:true}).inputValue()!=='First take.')throw Error('Drag reorder failed');
+    await s.p.getByRole('button',{name:'Regenerate line 1',exact:true}).click();
+    await s.p.getByRole('button',{name:'Listen to line 1',exact:true}).click();
+    await axe(s.p,'Dialogue take table',A11Y_FOUND);
+    return s;
+  },
+  'Speech: teacher training shares dialogue and speaking authoring': async (b) => {
+    const s=await session(b);
+    await s.p.evaluate(id=>{const data=JSON.parse(localStorage.getItem('mockfs'));data['classes/'+id].kind='training';localStorage.setItem('mockfs',JSON.stringify(data));},s.demo.classId);
+    await s.p.goto(BASE+'/class/'+s.demo.classId+'/lesson/'+s.demo.itemId);
+    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Language analysis');
+    await see(s.p,'text=Target language','teacher-training language analysis');
+    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await s.p.locator('.task-editor .editor-host .ProseMirror').first().click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Speaking practice');
+    await see(s.p,'.speak-setup','speaking practice in teacher training').catch(async e=>{throw Error(e.message+' '+(await s.p.locator('body').innerText()).slice(-5000)+' '+s.errors.join(';'));});
+    return s;
+  },
   'Speech: teacher setup, script writing, preview and speaker tracks': async (b) => {
     const s=await session(b);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
