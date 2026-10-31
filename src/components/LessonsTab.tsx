@@ -400,7 +400,7 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
 
   return (
     <div className="lessons">
-      {aiPilot && <Link className="btn" to={`/class/${c.id}/assistant`}>Create with AI</Link>}
+      {aiPilot && <Link className="btn" to={`/class/${c.id}/assistant`}>{c.kind==='training'?'Create training with AI':'Create with AI'}</Link>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">

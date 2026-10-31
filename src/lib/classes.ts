@@ -21,6 +21,7 @@ export type ClassDoc = {
   teacherId: string;
   name: string;
   level: string;
+  trainingProfile?: import('../training/TrainingProfileFields').TrainingProfile;
   learningProfile?: import('../ai/ClassProfileFields').LearningProfile;
   themeColor: ThemeKey;
   classCode: string;
@@ -68,7 +69,7 @@ export function shownName(name: string, id: string, c?: Pick<ClassDoc, 'profile'
 
 export type Topic = { id: string; name: string; order: number; hidden?: boolean; locked?: boolean };
 export type BoardPage = { id: string; title?: string; from?: string }; // from: the lesson a borrowed page belongs to
-export type Item = { id: string; speakingFocus?: string; topicId: string | null; type: 'lesson' | 'homework' | 'exam' | 'practice'; title: string; order: number; hidden: boolean; locked: boolean; boardPages?: BoardPage[]; exam?: { minutes: number | null } | null; examReleased?: boolean; due?: number | null; taskCount?: number; schedule?: { at: number; url?: string } | null; recapShared?: Record<string, boolean> };
+export type Item = { id: string; topicId: string | null; type: 'lesson' | 'homework' | 'exam' | 'practice'; title: string; order: number; hidden: boolean; locked: boolean; boardPages?: BoardPage[]; exam?: { minutes: number | null } | null; examReleased?: boolean; due?: number | null; taskCount?: number; schedule?: { at: number; url?: string } | null; recapShared?: Record<string, boolean> };
 
 export const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2', 'Mixed'];
 
@@ -124,7 +125,7 @@ export async function createClass(teacherId: string, input: { name: string; leve
   throw new Error('We couldn’t find a free class code. Try again.');
 }
 
-export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'learningProfile' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
+export async function updateClass(c: ClassDoc, patch: Partial<Pick<ClassDoc, 'name' | 'trainingProfile' | 'learningProfile' | 'level' | 'themeColor' | 'meeting' | 'status' | 'codes' | 'notebook' | 'cover' | 'teaching' | 'messaging' | 'profile' | 'accounts' | 'nicknames' | 'learnerTools' | 'liveAudio' | 'kind' | 'terms' | 'dates'>>) {
   const batch = writeBatch(db);
   batch.update(doc(db, 'classes', c.id), patch);
   if (patch.name) batch.update(doc(db, 'classCodes', c.classCode), { className: patch.name });

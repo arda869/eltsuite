@@ -1,4 +1,5 @@
-import { activitySchema, activityInstructions, checkActivities, nativeTask } from './activities.js';
+import { validateTrainingProfile, trainingActivitySchema, trainingInstructions, trainingActivityInstructions } from './training.js';
+import { activitySchema, activityInstructions, checkActivities, nativeTask, nativeVersions } from './activities.js';
 import { collectEvidence, classProfile } from './context.js';
 import { isAbandonedJob } from './jobs.js';
 import { warn } from 'firebase-functions/logger';
@@ -27,8 +28,12 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   ]);
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
-  if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };
+  if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', trainingProfile:cls.get('trainingProfile') ?? null, profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };
   if (d.action === 'profile') {
+    if(cls.get('kind')==='training') {
+      let profile;try{profile=validateTrainingProfile(d.trainingProfile);}catch(e){fail(e.message);}
+      await cls.ref.update({trainingProfile:profile,level:profile.programme});return {profileSaved:true};
+    }
     let profile; try { profile=classProfile(d.profile); } catch(e) { fail(e.message); }
     if (!['A1','A2','B1','B2','C1','C2','Mixed'].includes(d.level)) fail('Choose a level.');
     await cls.ref.update({level:d.level,learningProfile:profile});
@@ -45,22 +50,21 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (old.exists) return;
       if (j.get('status') !== 'completed' || j.get('action') !== 'activities' || j.get('classId') !== d.classId) fail('Prepare activities again.');
       const activities=j.get('result.activities'), plan=j.get('sourcePlan'), type=j.get('creationType') ?? 'lesson';
-      checkActivities(activities,plan);
+      checkActivities(activities,plan,c.get('kind')==='training');
       tx.create(item,{type,speakingFocus:[plan.mainAim,plan.subsidiaryAims].filter(Boolean).join(' ').slice(0,1000),title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
         const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
-        const versions=task.roles.length ? task.roles.map((r,j)=>['role'+j,r.input,r.label]) : type!=='exam' && d.createVariants===true ? [['support',task.support,'Easier'],['challenge',task.challenge,'Challenge']].filter(([,text])=>text?.trim()) : [];
-        for (const [suffix,text,label] of versions) {
+        const versions=nativeVersions(task,i,d.createVariants===true,type);
+        for (const {suffix,label,instructions,native:version} of versions) {
           const v=item.collection('tasks').doc('activity_'+i+'_'+suffix);
-          const content={...native.content,content:[...native.content.content,{type:'paragraph',content:[{type:'text',text:(suffix.startsWith('role')?'Role '+label+': ':suffix==='support'?'Optional support: ':'Extension: ')+text}]}]};
-          tx.create(v,{kind:'task',title:task.title,instructions:task.instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:label,order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
-          tx.create(v.collection('private').doc('body'),{content});
-          tx.create(v.collection('private').doc('key'),native.key);
-          tx.create(v.collection('private').doc('notes'),{text:native.notes,updatedAt:Timestamp.now()});
+          tx.create(v,{kind:'task',title:task.title,instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:label,order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
+          tx.create(v.collection('private').doc('body'),{content:version.content});
+          tx.create(v.collection('private').doc('key'),version.key);
+          tx.create(v.collection('private').doc('notes'),{text:version.notes,updatedAt:Timestamp.now()});
         }
-        tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(([suffix])=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',title:task.title,instructions:task.instructions,content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
+        tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(({suffix})=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',title:task.title,instructions:task.instructions,content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
         tx.create(ref.collection('private').doc('key'),native.key);
-        tx.create(ref.collection('private').doc('notes'),{text:[i===0?JSON.stringify({mainAim:plan.mainAim,languageAnalysis:plan.languageAnalysis,assessment:plan.assessment,differentiation:activities.differentiation,recycling:activities.recycling}):'',native.notes].filter(Boolean).join('\n\n'),updatedAt:Timestamp.now()});
+        tx.create(ref.collection('private').doc('notes'),{text:[i===0?Object.entries({'Main aim':plan.mainAim,'Language analysis':plan.languageAnalysis,Assessment:plan.assessment,Differentiation:activities.differentiation,Recycling:activities.recycling}).map(([label,text])=>label.toUpperCase()+'\n'+text).join('\n\n'):'',native.notes].filter(Boolean).join('\n\n'),updatedAt:Timestamp.now()});
       });
       tx.update(source,{createdItemId:itemId});
     });
@@ -79,7 +83,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     return { draft: snap.data() };
   }
   let brief;
-  try { brief = validateBrief(d.brief); } catch (e) { fail(e.message); }
+  try { brief = validateBrief(d.brief,cls.get('kind')==='training'); } catch (e) { fail(e.message); }
   if (d.action === 'save') {
     if (!id(d.draftId) || !Number.isInteger(d.version) || d.version < 0) fail('Choose a plan version.');
     try { checkSequence(validate(planSchema, d.plan), brief.duration); } catch (e) { fail(e.message); }
@@ -103,7 +107,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const creationType=['lesson','exam','homework','practice'].includes(d.creationType) ? d.creationType : 'lesson';
   if (d.action === 'activities') { try { checkSequence(validate(planSchema,d.plan),brief.duration); } catch(e) { fail(e.message); } }
   const evidence=d.useEvidence===true?await collectEvidence(db,d.classId):null;
-  const payload = { brief, creationType, classProfile:cls.get('learningProfile') ?? null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
+  const payload = { brief, creationType, classProfile:cls.get('kind')==='training'?null:cls.get('learningProfile') ?? null, trainingProfile:cls.get('kind')==='training'?(cls.get('trainingProfile') ?? {programme:cls.get('level'),experience:'Unspecified',goals:brief.objectives}):null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
   if (JSON.stringify(payload).length > 75000) fail('Shorten the brief or outline.');
   const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, useEvidence:d.useEvidence===true, ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
   const job = db.doc(`aiPrivate/${uid}/jobs/${d.requestId}`);
@@ -138,14 +142,14 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (existing?.kind === 'abandoned') throw new HttpsError('failed-precondition', 'The previous request exceeded its execution window and has been released. Your brief and outline are unchanged. Start a new generation by clicking the generation button again. [request:interrupted]');
   let phase = d.action;
   try {
-    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : d.action === 'activities' ? activitySchema : planSchema, name: d.action, input: payload, instructions: d.action === 'activities' ? activityInstructions : teachingInstructions + '\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.' });
-    try { if(d.action==='activities') checkActivities(first.value,d.plan); else checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
+    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : d.action === 'activities' ? (cls.get('kind')==='training'?trainingActivitySchema:activitySchema) : planSchema, name: d.action, input: payload, instructions: d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.' });
+    try { if(d.action==='activities') checkActivities(first.value,d.plan,cls.get('kind')==='training'); else checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
     if (d.action === 'plan' && JSON.stringify(first.value.stages.map(s => [s.id, s.minutes])) !== JSON.stringify(d.outline.stages.map(s => [s.id, s.minutes]))) throw new GenerationError('sequence');
     let result = { [d.action]: first.value, usage: [first.usage] };
     if (d.action === 'plan') {
       phase = 'review';
       const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, plan: first.value },
-        instructions: `${teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. Mark incorrect language, unsolvable tasks, wrong keys and inaccessible instructions as critical errors. This is advisory AI review, not human approval.` });
+        instructions: `${cls.get('kind')==='training'?trainingInstructions:teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. Mark incorrect language, unsolvable tasks, wrong keys, missing referenced media, premature answer disclosure and inaccessible instructions as critical errors. Scrutinise learner-facing wording, receptive-skills sequencing, discovery before explanation, purposeful visual support, and whether differentiation changes the task rather than adding more work. This is advisory AI review, not human approval.` });
       result = { ...result, review: review.value, usage: [...result.usage, review.usage] };
     }
     phase = 'storage';

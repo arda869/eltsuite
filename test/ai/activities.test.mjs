@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {checkActivities,nativeTask} from '../../functions/ai/activities.js';
+import {checkActivities,nativeTask,nativeVersions} from '../../functions/ai/activities.js';
 const task={stageId:'s',title:'Choose',format:'choice',teacherOnlyInput:'Private reference.',roles:[],minutes:15,instructions:'Choose the best answer.',input:'A trip tomorrow.',questions:[{format:'choice',acceptedAnswers:[],prompt:'Which is arranged?',options:['I am flying tomorrow.','I flew yesterday.'],answer:'I am flying tomorrow.',explanation:'The present continuous can describe an arrangement.'}],teacherNotes:'Check meaning.',support:'',challenge:''};
 const plan={stages:[{id:'s',minutes:15}]};
 const value={title:'Travel',rationale:'Contextualised choices',differentiation:'No evidence.',recycling:'No history.',tasks:[task]};
@@ -19,4 +19,21 @@ test('reading tasks retain interactive questions and accepted alternative answer
  assert.equal(n.key.q0_0.kind,'mcq');assert.equal(n.key.q0_1.answers.length,3);
  assert.ok(!JSON.stringify(n.content).includes('Hidden answer reference'));
  assert.ok(n.notes.includes('Hidden answer reference'));
+});
+
+test('differentiation replaces task response format and keys instead of adding a footer',()=>{
+ const versions=[{label:'Supported',reason:'Recognition',instructions:'Choose the reply.',input:'A traveller needs a lift.',visuals:[],questions:task.questions},{label:'Stretch',reason:'Recall',instructions:'Complete the reply.',input:'A traveller needs a lift.',visuals:[],questions:[{format:'gap',acceptedAnswers:[],prompt:'I ___ you a lift.',options:[],answer:'will give',explanation:'An offer.'}]}];
+ const t={...task,versions,visuals:[]};checkActivities({...value,tasks:[t]},plan);
+ const v=nativeVersions(t,0);assert.equal(v[0].native.key.q0_0.kind,'mcq');assert.equal(v[1].native.key.q0_0.kind,'gap');assert.equal(v[1].instructions,'Complete the reply.');assert.ok(!JSON.stringify(v[1].native.content).includes('Which is arranged?'));assert.ok(!JSON.stringify(v[1].native.content).includes('will give'));assert.deepEqual(nativeVersions(t,0,true,'exam'),[]);assert.deepEqual(nativeVersions(t,0,false),[]);
+ assert.throws(()=>checkActivities({...value,tasks:[{...t,versions:[{...versions[0],questions:[{...task.questions[0],answer:'not an option'}]}]}]},plan));
+});
+test('visual grids are real editable nodes with consistent columns',()=>{
+ const visuals=[{title:'Meet this week',headers:['Day','Free time'],rows:[['Monday','After 5'],['Tuesday','Before 4']]}];
+ const t={...task,visuals,versions:[]};checkActivities({...value,tasks:[t]},plan);const n=nativeTask(t,0);assert.equal(n.content.content[2].type,'table');assert.equal(n.content.content[2].content[0].content[0].type,'tableHeader');assert.equal(n.content.content[2].content.length,3);
+ assert.throws(()=>checkActivities({...value,tasks:[{...t,visuals:[{...visuals[0],rows:[['Monday','5','extra']]}]}]},plan));
+});
+test('legacy advice is not turned into fake differentiated versions; role cards remain separate',()=>{
+ assert.deepEqual(nativeVersions({...task,support:'Add more work',challenge:'Extra paragraph'},0),[]);
+ const v=nativeVersions({...task,roles:[{label:'A',input:'Private A detail'},{label:'B',input:'Private B detail'}]},0);
+ assert.equal(v.length,2);assert.ok(JSON.stringify(v[0].native.content).includes('Private A detail'));assert.ok(!JSON.stringify(v[0].native.content).includes('Private B detail'));
 });
