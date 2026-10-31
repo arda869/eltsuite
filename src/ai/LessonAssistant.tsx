@@ -110,10 +110,38 @@ export function LessonAssistant() {
   const formFields=briefFields[creationType] ?? briefFields.lesson;
   useEffect(()=>{window.scrollTo({top:0});},[step]);
   useEffect(() => {
-    const warn = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
+    if (!dirty && !locked) return;
+    const message = locked
+      ? 'Your lesson is still being created. Leaving now may lose the result. Leave this page anyway?'
+      : 'You have unsaved lesson changes. Leave this page without saving?';
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    // Navigation API covers SPA links, app navigation and browser Back/Forward.
+    const navigation = (window as unknown as { navigation?: EventTarget }).navigation;
+    const navigate = (event: Event) => {
+      const e = event as Event & { destination?: { url: string; sameDocument: boolean } };
+      if (!e.cancelable || !e.destination?.sameDocument) return;
+      const destination = new URL(e.destination.url);
+      if (destination.pathname === location.pathname && destination.search === location.search) return;
+      if (!window.confirm(message)) e.preventDefault();
+    };
+    // Link fallback for browsers without the Navigation API.
+    const click = (e: MouseEvent) => {
+      if (e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const link = (e.target as Element)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!link || link.target === '_blank' || link.hasAttribute('download')) return;
+      const destination = new URL(link.href);
+      if (destination.pathname === location.pathname && destination.search === location.search) return;
+      if (!window.confirm(message)) { e.preventDefault(); e.stopPropagation(); }
+    };
     window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+    if (navigation) navigation.addEventListener('navigate', navigate);
+    else document.addEventListener('click', click, true);
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+      navigation?.removeEventListener('navigate', navigate);
+      document.removeEventListener('click', click, true);
+    };
+  }, [dirty, locked]);
   useEffect(()=>{if(enabled) void run('context');},[classId,enabled]);
   async function run(action: string, extra: Record<string, unknown> = {}) {
     setBusy(action); setError(''); setNotice('');
@@ -125,7 +153,7 @@ export function LessonAssistant() {
         Object.assign(payload, { requestId: pending.current.requestId });
       }
       const result = (await call(payload)).data;
-      if(result.activities) {setStep(3);setActivities(result.activities);setSourceRequestId(pending.current?.requestId ?? '');setCreatedItemId('');}
+      if(result.activities) {setDirty(true);setStep(3);setActivities(result.activities);setSourceRequestId(pending.current?.requestId ?? '');setCreatedItemId('');}
       if(result.createdItemId) {setCreatedItemId(result.createdItemId);setDirty(false);setNotice('Created in Classes, hidden from learners. Review the activities before making it visible.');}
       if(result.classContext) {setClassKind(result.classContext.kind);setTrainingProfile(profileFromClass(result.classContext.trainingProfile,result.classContext.level));setClassName(result.classContext.name);setProfile(result.classContext.profile ?? defaultProfile);setBrief(b=>({...b,objectives:b.objectives || result.classContext!.trainingProfile?.goals || result.classContext!.profile?.goals || '',context:b.context || result.classContext!.trainingProfile?.context || result.classContext!.profile?.needs || '',level:result.classContext!.kind==='training'?(result.classContext!.trainingProfile?.experience==='Mixed experience'?'Mixed experience':['Two to five years','Over five years'].includes(result.classContext!.trainingProfile?.experience ?? '')?'Experienced':result.classContext!.trainingProfile?.experience==='Under two years'?'Developing':'Foundation'):['A1','A2','B1','B2','C1','C2'].includes(result.classContext!.level)?result.classContext!.level:b.level}));}
       if(result.evidence) setEvidence(result.evidence);
@@ -150,7 +178,7 @@ export function LessonAssistant() {
   const changePlan = (next: RecordValue) => { setPlan(next); setActivities(null);setCreatedItemId(''); setDirty(true); setReview(null); setNotice('Your edits need a fresh teacher review.'); };
   if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
   return <><TopBar /><main className="ai-assistant">
-    <Link to={`/class/${classId}`} onClick={e => { if (!discard()) e.preventDefault(); }}>Back to class</Link>
+    <Link to={`/class/${classId}`}>Back to class</Link>
     <header className="ai-hero"><div><span className="ai-eyebrow">{isTraining?'TRAINER STUDIO':'CREATION STUDIO'} · {className}</span><h1>{isTraining?'Develop teachers.':'Great teaching.'}<br/><em>{isTraining?'Shape their practice.':'Your starting point.'}</em></h1><p>{isTraining?'Purposeful input, rehearsal and reflection, tailored to your trainees.':'Shape an idea into thoughtful, ready-to-teach activities.'}<br/>{isTraining?'Grounded in their course. Led by your judgement.':'Built around your class. Refined by you.'}</p></div><div className="ai-orbit" aria-hidden="true"><span>Discover</span><StudioMark/><div className="ai-orbit-labels"><span>Practise</span><span>Connect</span><span>Grow</span></div></div></header>
     <ol className="ai-progress" aria-label="Creation progress">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li key={x} aria-current={i===step?'step':undefined}><button type="button" disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
     {error && <p role="alert" className="ai-error">{error}</p>}{notice && <p role="status">{notice}</p>}
