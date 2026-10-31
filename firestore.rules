@@ -47,6 +47,19 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
 
+    // Coaching stays private from admins and view-as sessions.
+    match /teachingCoach/{uid}/{kind}/{id} {
+      function ownCoach() { return isSelf(uid) && isTeacher() && request.auth.token.get('proxyBy', null) == null; }
+      allow read, delete: if ownCoach() && kind in ['settings', 'reflections', 'inquiries'];
+      allow create: if ownCoach() && kind in ['settings', 'reflections', 'inquiries']
+        && (kind != 'settings' || id == 'profile')
+        && request.resource.data.size() < 30 && request.resource.data.version == 1;
+      allow update: if ownCoach() && kind in ['settings', 'reflections', 'inquiries']
+        && (kind != 'settings' || id == 'profile')
+        && request.resource.data.size() < 30 && request.resource.data.version is int
+        && request.resource.data.version == resource.data.version + 1;
+    }
+
     // Profiles: teachers create their own; teachers create learner profiles for their class
     match /users/{uid} {
       allow read: if isSelf(uid) || isOwner()

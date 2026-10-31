@@ -35,10 +35,11 @@ const ms = (d: SharedDoc) => d.updatedAt?.toMillis?.() ?? 0;
 const when = (t: number) => (t ? new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }) : '');
 const openDoc = (id: string) => window.open(`/doc/${id}`, '_blank');
 
-export function AppFiles({ app }: { app: AppKey }) {
+export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: boolean }) {
   const { user } = useAuth();
   const uid = user?.uid ?? '';
   const a = APP[app];
+  const Content = embedded ? 'section' : 'main';
   const appOn = useAppOn();
   const { mine, withMe } = useMyDocs(uid || undefined);
   const archive = useArchive(app === 'recordings' ? uid : null);
@@ -138,30 +139,26 @@ export function AppFiles({ app }: { app: AppKey }) {
   ];
 
   // An app that isn't turned on for this teacher.
-  if (!appOn(app))
+  if (!appOn(embedded && app === 'reading' ? 'development' : app))
     return (
-      <div className="shell af-shell" style={{ ['--app' as string]: a.color }}>
-        <TopBar>
-          <MainNav on="" />
-        </TopBar>
-        <main className="af">
+      <div className={embedded ? "af-embedded" : "shell af-shell"} style={{ ['--app' as string]: a.color }}>
+        {!embedded && <TopBar><MainNav on="" /></TopBar>}
+        <Content className="af" aria-label={a.name}>
           <div className="af-empty">
             <strong>{a.name} isn’t turned on for you yet</strong>
             <span className="hint">It’s new, and only some teachers have it for now.</span>
           </div>
-        </main>
+        </Content>
       </div>
     );
   return (
-    <div className="shell af-shell" style={{ ['--app' as string]: a.color }}>
-      <TopBar>
-        <MainNav on="" />
-      </TopBar>
-      <main className="af">
+    <div className={embedded ? "af-embedded" : "shell af-shell"} style={{ ['--app' as string]: a.color }}>
+      {!embedded && <TopBar><MainNav on="" /></TopBar>}
+      <Content className="af" aria-label={a.name}>
         <header className="af-head">
-          <AppLogo k={app} size={44} />
+          {!embedded && <AppLogo k={app} size={44} />}
           <span className="af-title">
-            <h1 className="page-title">{a.name}</h1>
+            {embedded ? <h2 className="page-title">Reading</h2> : <h1 className="page-title">{a.name}</h1>}
             <span className="af-sub">{a.empty}</span>
           </span>
           <span className="af-grow" />
@@ -227,7 +224,7 @@ export function AppFiles({ app }: { app: AppKey }) {
             <span className="hint">{s ? 'Try other words.' : tab === 'starred' ? 'Star a file to find it here quickly.' : tab === 'library' && app === 'recordings' ? 'Recordings aren’t kept in the library yet.' : a.empty}</span>
           </div>
         )}
-      </main>
+      </Content>
       <input ref={pdfIn} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => (e.target.files?.[0] && void makePdf(e.target.files[0]), (e.target.value = ''))} />
       {recording && uid && <MediaDialog classId={'user:' + uid} tab="record" noArchive onClose={() => setRecording(false)} onPick={() => setRecording(false)} />}
     </div>

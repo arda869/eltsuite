@@ -111,7 +111,7 @@ export function DocPage() {
   return (
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
-        <Link to={profile?.role === 'learner' ? '/' : '/archive?s=docs'} className="dp-home" aria-label="Back to ELT Suite">
+        <Link to={profile?.role === 'learner' ? '/' : kind === 'pd' ? '/development?section=reading' : '/archive?s=docs'} className="dp-home" aria-label={kind === 'pd' ? 'Back to Development Studio' : 'Back to ELT Suite'}>
           <Mark size={30} />
         </Link>
         <OrgLogo />
@@ -130,6 +130,7 @@ export function DocPage() {
           </span>
         </span>
         <span className="dp-acts">
+          {kind === 'pd' && d && profile?.role === 'teacher' && <Link className="btn" to={`/development?section=reflections&reading=${encodeURIComponent(d.id)}`}>Reflect on this reading</Link>}
           {kind === 'doc' && <span ref={setSlot} className="dp-slot" />}
           {d && role && ['flash', 'lesson', 'pdf', 'storyboard'].includes(kind) && <FileComments d={d} role={role} me={{ uid, name }} />}
           {d && teacher && (

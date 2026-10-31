@@ -22,6 +22,8 @@ jobs:
 
       - name: Install
         run: npm ci
+      - name: Coaching and lesson AI checks
+        run: node --test test/ai/*.test.mjs test/coach/*.test.mjs
       - name: Recording and speaking checks
         run: |
           npm --prefix functions ci --no-audit --no-fund

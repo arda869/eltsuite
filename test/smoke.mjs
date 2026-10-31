@@ -1247,6 +1247,73 @@ const J = {
     await see(s.p, '.hm', 'skip opens home');
     return s;
   },
+  'Development Studio reading, private writing and classroom inquiry': async (b) => {
+    const s = await session(b);
+    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; fs['sharedDocs/existing-reading'] = {owner:'teacher1',ownerName:'Arda',title:'Classroom interaction notes',kind:'pd',docKey:'reading-test',members:{colleague:{role:'edit',name:'Colleague',kind:'teacher'}},memberIds:['colleague']}; localStorage.setItem('mockfs', JSON.stringify(fs)); });
+    await s.p.goto(BASE + '/development');
+    await see(s.p, 'h1:has-text("Development Studio")', 'development workspace');
+    await s.p.getByRole('button', { name: 'Reading', exact: true }).click();
+    await see(s.p, '.af-embedded h2:has-text("Reading")', 'embedded reading library');
+    if (await s.p.locator('.topbar').count() > 1) throw Error('Reading has a duplicate application header');
+    await see(s.p, '.af-open:has-text("Classroom interaction notes")', 'existing reading journal');
+    const [readingTab] = await Promise.all([s.ctx.waitForEvent('page'), s.p.locator('.af-open:has-text("Classroom interaction notes")').click()]);
+    await see(readingTab, 'text=CITATION STYLE', 'existing reading editor');
+    await readingTab.getByRole('link', { name: 'Back to Development Studio', exact: true }).click();
+    await see(readingTab, '.af-embedded', 'reading editor returns to Development Studio');
+    await readingTab.close();
+    await s.p.getByRole('button', { name: 'Home', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Reflect on this', exact: true }).click();
+    await s.p.getByLabel('Your reflection', { exact: true }).fill('This reading raises a question about my own classroom.');
+    await s.p.getByRole('button', { name: 'Save reflection', exact: true }).click();
+    await see(s.p, 'button.coach-entry:has-text("On Classroom interaction notes")', 'reflection linked to reading');
+    await s.p.getByRole('button', { name: 'Profile and beliefs', exact: true }).click();
+    await s.p.getByLabel('Professional goals, specialisms and interests').fill('Understand participation in speaking activities.');
+    await s.p.getByRole('button', { name: 'Save profile and beliefs', exact: true }).click();
+    await see(s.p, 'text=Saved privately.', 'saved professional profile');
+    await s.p.reload();
+    if (await s.p.getByLabel('Professional goals, specialisms and interests').inputValue() !== 'Understand participation in speaking activities.') throw Error('Profile failed to reopen after reload');
+
+    await s.p.getByRole('button', { name: 'Reflections', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Write a reflection', exact: true }).click();
+    await s.p.getByLabel('Title', { exact: true }).fill('Preparation time and participation');
+    await s.p.getByLabel('Your reflection', { exact: true }).fill('More learners volunteered after a minute to think. I wonder what else changed.').catch(async e => { throw Error('New reflection: ' + e.message + '\n' + await s.p.locator('main').innerText()); });
+    await s.p.getByRole('button', { name: 'Save reflection', exact: true }).click();
+    await see(s.p, 'button.coach-entry:has-text("Preparation time and participation")', 'saved reflection');
+    await s.p.reload();
+    await s.p.getByRole('button', { name: 'Reflections', exact: true }).click();
+    await s.p.getByLabel('Find a reflection').fill('participation');
+    await s.p.getByRole('button', { name: /Preparation time and participation/ }).click();
+    await s.p.getByLabel('Your reflection', { exact: true }).fill('I also changed the task. That may have affected participation.').catch(async e => { throw Error('Reopened reflection: ' + e.message + '\n' + await s.p.locator('main').innerText()); });
+    await s.p.getByRole('button', { name: 'Save reflection', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Research', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Plan an inquiry', exact: true }).click();
+    await s.p.getByLabel('Your classroom question', { exact: true }).fill('Does preparation time affect participation?');
+    await s.p.getByLabel('What happens now?', { exact: true }).fill('Observe the number of volunteers across two lessons.');
+    await s.p.getByRole('button', { name: '2. Evidence and ethics', exact: true }).click();
+    await s.p.getByLabel('Consent, anonymity and care', { exact: true }).fill('Seek consent and record anonymous totals only.');
+    await s.p.getByRole('button', { name: 'Save inquiry', exact: true }).click();
+    await see(s.p, 'button.coach-entry:has-text("Does preparation time")', 'saved inquiry');
+    await s.p.getByRole('button', { name: 'Home', exact: true }).click();
+    await s.p.getByRole('button', { name: 'View my timeline', exact: true }).click();
+    if (await s.p.locator('.coach-timeline article').count() !== 3) throw Error('Reflection and inquiry missing from timeline');
+    for (const width of [390, 1280]) {
+      await s.p.setViewportSize({ width, height: 900 });
+      await axe(s.p, 'Teaching coach at ' + width, A11Y_FOUND);
+      const overflow = await s.p.locator('.coach-panel').evaluate(el => el.getBoundingClientRect().right > innerWidth + 1);
+      if (overflow) throw Error('Coach content overflows on mobile');
+    }
+    await s.p.getByRole('button', { name: 'Coach', exact: true }).click();
+    if (await s.p.getByLabel('Use my professional profile').isChecked() || await s.p.getByLabel('Use my teaching beliefs').isChecked()) throw Error('Coaching context must be off by default');
+    await s.p.getByLabel('Your reflection or question').fill('What else could explain participation?');
+    await s.p.getByRole('button', { name: 'Explore together', exact: true }).click();
+    await see(s.p, '.coach-message:has-text("What did you notice")', 'reflective coaching reply');
+    await s.p.getByLabel('Use my teaching beliefs').check();
+    if (await s.p.locator('.coach-message').count()) throw Error('Changing consent did not clear the conversation');
+    const preserved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/existing-reading']);
+    if (JSON.stringify(preserved.memberIds) !== JSON.stringify(['colleague'])) throw Error('Reading sharing was changed');
+    if (process.env.DEVELOPMENT_SCREENSHOT) { await s.p.getByRole('button', { name: 'Home', exact: true }).click(); await s.p.screenshot({ path: process.env.DEVELOPMENT_SCREENSHOT, fullPage: false }); }
+    return s;
+  },
   'An invitation that is gone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/invite/nothing-here`);

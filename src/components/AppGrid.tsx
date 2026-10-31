@@ -14,6 +14,7 @@ const I = (d: string) => (
 // Home has its own colour, used by the top bar's mark on the home page too.
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
+  { k: 'development', group: 'teach', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M5 4h14v16H5zM8 8h8M8 12h5M8 16h3', icon: I('M5 4h14v16H5zM8 8h8M8 12h5M8 16h3') },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, d: 'M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z', icon: I('M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z') },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', d: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z', icon: I('M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z') },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', d: 'M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z', icon: I('M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z') },
@@ -32,12 +33,12 @@ const APPS: App[] = [
   { k: 'rooms', group: 'teach', name: 'Rooms', about: 'Audio and video calls, and your classes’ video rooms', to: '/rooms', teacher: true, color: '#3b7f7a', d: 'M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3', icon: I('M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3') },
 ];
 // For the sign-in page's picture of the suite.
-export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'd'>[] = APPS;
+export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'd'>[] = APPS.filter(a => a.k !== 'reading');
 
 
 // An app's own logo: its symbol, white, on a square of its colour. Shown top left in the app.
 export function AppLogo({ k, size = 30 }: { k: string; size?: number }) {
-  const a = APPS.find((x) => x.k === k);
+  const a = APPS.find((x) => x.k === (k === 'reading' ? 'development' : k));
   if (!a) return null;
   return (
     <span className="app-logo" style={{ width: size, height: size, ['--app' as string]: a.color }} aria-hidden="true">
@@ -55,7 +56,7 @@ const GROUPS: [App['group'], string][] = [
   ['make', 'Make'],
   ['share', 'Resources and people'],
 ];
-const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
+const ORDER = ['home', 'classes', 'development', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // The app a page belongs to, for the tab's icon.
@@ -101,7 +102,7 @@ export function AppGrid() {
   const owner = useSuper() === true;
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const show = (k: string) => (k === 'home' ? true : k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : on(k));
-  const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k));
+  const apps = APPS.filter((a) => a.k !== 'reading' && (teacher || (!a.teacher && !a.soon)) && show(a.k));
   return (
     <div className="apps" ref={ref}>
       <button type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} data-tip="Apps" onClick={() => setOpen((o) => !o)}>

@@ -162,7 +162,7 @@ const APPS: GuideApp[] = [
     d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 12.5h6M9 16h4',
   },
   {
-    k: 'reading', name: 'Reading Journal', color: '#6b5a8a', to: '/reading', tag: 'Your reading and notes',
+    k: 'reading', name: 'Development Studio', color: '#a56748', to: '/development', tag: 'Reading, reflection and classroom inquiry',
     about: 'For CELTA, Delta, an MA or your own development: each book or article with your notes, and its reference written for you.',
     can: ['Notes under each source', 'References in APA, Harvard and more', 'Cite a source in a Collab document in one click'],
     d: 'M5 4.5h10.5A2.5 2.5 0 0 1 18 7v13H7.5A2.5 2.5 0 0 1 5 17.5zM5 17.5A2.5 2.5 0 0 1 7.5 15H18M9 8.5h5',

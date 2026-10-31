@@ -68,6 +68,7 @@ const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m
 const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
+const DevelopmentStudio = lazy(() => import('./coach/DevelopmentStudio').then(m => ({ default: m.DevelopmentStudio })));
 const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
 const FeatureDiscovery = lazy(() => import('./discovery/FeatureDiscovery').then(m => ({ default: m.FeatureDiscovery })));
 
@@ -189,6 +190,8 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={<Loader full label="" />}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/development" element={<TeacherOnly><DevelopmentStudio /></TeacherOnly>} />
+          <Route path="/coach" element={<Navigate to="/development?section=coach" replace />} />
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
@@ -214,7 +217,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
-          <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
+          <Route path="/reading" element={<Navigate to="/development?section=reading" replace />} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/storyboard" element={<TeacherOnly><AppFiles app="storyboard" /></TeacherOnly>} />

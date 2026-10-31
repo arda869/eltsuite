@@ -1,3 +1,4 @@
+import { teachingCoach } from './coach.js';
 import { validateTrainingProfile, trainingActivitySchema, trainingInstructions, trainingActivityInstructions } from './training.js';
 import { activitySchema, activityInstructions, checkActivities, nativeTask, nativeVersions } from './activities.js';
 import { collectEvidence, classProfile } from './context.js';
@@ -21,6 +22,7 @@ const criteria = 'objectives and evidence; coherence; level and context; linguis
 
 export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], maxInstances: 2, concurrency: 4, timeoutSeconds: 420 }, async req => {
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
+  if (req.data?.action === 'coach') return teachingCoach(req, { apiKey: key.value(), model: model.value(), enabled: enabled.value() });
   const db = getFirestore(), uid = req.auth.uid, d = req.data ?? {};
   if (!id(d.classId)) fail('Choose a class.');
   const [profile, account, cls, pilot] = await Promise.all([
