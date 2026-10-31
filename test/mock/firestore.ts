@@ -129,7 +129,17 @@ function runQuery(q: Q | CollRef) {
   return { docs: list, empty: !list.length, size: list.length, forEach: (f: (d: unknown) => void) => list.forEach(f), metadata: { hasPendingWrites: false, fromCache: false }, docChanges: () => [] };
 }
 
-export async function getDoc(r: DocRef) { return snapDoc(r.path, all()[r.path]); }
+// Explicit, per-tab faults used only by the isolated browser test backend.
+async function beforeOperation(op: string, path: string) {
+  const faults = JSON.parse(sessionStorage.getItem('mockfs-faults') || '[]') as { op: string; path: string; count: number; delay?: number; code?: string }[];
+  const fault = faults.find((f) => f.op === op && path.startsWith(f.path) && f.count > 0);
+  if (!fault) return;
+  fault.count--;
+  sessionStorage.setItem('mockfs-faults', JSON.stringify(faults));
+  if (fault.delay) await new Promise((r) => setTimeout(r, fault.delay));
+  if (fault.code) throw Object.assign(new Error(fault.code), { code: fault.code });
+}
+export async function getDoc(r: DocRef) { await beforeOperation('get', r.path); return snapDoc(r.path, all()[r.path]); }
 export async function getDocs(q: Q | CollRef) { return runQuery(q); }
 export const getDocFromServer = getDoc;
 export function onSnapshot(target: DocRef | Q | CollRef, ...args: unknown[]) {
@@ -165,7 +175,7 @@ const updOp = (r: DocRef, d: Data) => (s: Record<string, Data>) => {
 };
 const delOp = (r: DocRef) => (s: Record<string, Data>) => void delete s[r.path];
 export async function setDoc(r: DocRef, d: Data, opt?: { merge?: boolean }) { write([setOp(r, d, opt)]); }
-export async function updateDoc(r: DocRef, d: Data) { write([updOp(r, d)]); }
+export async function updateDoc(r: DocRef, d: Data) { await beforeOperation('update', r.path); write([updOp(r, d)]); }
 export async function deleteDoc(r: DocRef) { write([delOp(r)]); }
 export async function addDoc(c: CollRef, d: Data) { const r = doc(c); write([setOp(r, d)]); return r; }
 export function writeBatch() {
@@ -179,6 +189,7 @@ export function writeBatch() {
   return b;
 }
 export async function runTransaction<T>(_db: unknown, fn: (t: unknown) => Promise<T>) {
+  await beforeOperation('transaction', '');
   const ops: ((s: Record<string, Data>) => void)[] = [];
   const t = { get: getDoc, set: (r: DocRef, d: Data, o?: { merge?: boolean }) => (ops.push(setOp(r, d, o)), t), update: (r: DocRef, d: Data) => (ops.push(updOp(r, d)), t), delete: (r: DocRef) => (ops.push(delOp(r)), t) };
   const out = await fn(t);
