@@ -35,7 +35,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx --yes firebase-tools@14 deploy --only functions:recordingLyrics --project lesson-lit --non-interactive
+          ELT_AI_ENABLED: 'true'
+          ELT_AI_MODEL: gpt-6.1-sol
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_ENABLED=true\nELT_AI_MODEL=gpt-6.1-sol\n');
+          JS
+          npx --yes firebase-tools@14 deploy --only functions:recordingLyrics --project lesson-lit --non-interactive
       - name: Recheck the deployed binding
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
         env:
