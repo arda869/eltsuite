@@ -27,6 +27,7 @@ import { canPlan, validateBrief, validate, checkSequence, outlineSchema, planSch
 import { generate, teachingInstructions } from './provider.js';
 import { checkModel, isPilotTeacher, reserveBudget, settleBudget } from './budget.js';
 
+import { taskTools } from './task-tools.js';
 const key = defineSecret('OPENAI_API_KEY');
 const model = defineString('ELT_AI_MODEL', { default: '' });
 const enabled = defineString('ELT_AI_ENABLED', { default: 'false' });
@@ -45,6 +46,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
   if (['rebuildPicture','rebuildPictureStatus'].includes(d.action)) return rebuildPicture(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
+  if (['taskTools','taskToolsStatus','taskToolsApply','taskToolsRetryMedia'].includes(d.action)) return taskTools(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (['rebuild','rebuildStatus','importCreate'].includes(d.action)) return rebuildMaterials(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'memories') return {memories: await collectMemories(db,d.classId)};
   if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', trainingProfile:cls.get('trainingProfile') ?? null, profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };

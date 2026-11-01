@@ -1,3 +1,4 @@
+import { LessonTools } from '../ai/LessonTools';
 import { MaterialImport, ImportMaterialsButton, TaskStartChoice } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
@@ -648,7 +649,7 @@ export function LessonEditor() {
   async function flush() {
     window.clearTimeout(timer.current);
     const p = pending.current;
-    if (!p) return;
+    if (!p) return true;
     pending.current = null;
     setStatus('saving');
     try {
@@ -670,7 +671,10 @@ export function LessonEditor() {
     } catch (e) {
       console.error(e);
       setStatus('error');
+      pending.current = pending.current ?? p;
+      return false;
     }
+    return true;
   }
 
   function change(patch: Partial<Draft>) {
@@ -828,7 +832,7 @@ export function LessonEditor() {
                     </button>
                   )}
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
-                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
+                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={async () => { await flush(); }} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
@@ -1114,6 +1118,7 @@ export function LessonEditor() {
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
+          {mode === 'edit' && !preview && !boardView && <LessonTools classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/>}
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
