@@ -20,7 +20,7 @@ const day=new Date().toISOString().slice(0,10),call=(who,data)=>adminAiUsage.run
 await assert.rejects(call(teacher,{action:'get',uid:'teacher'}),{code:'permission-denied'});
 await assert.rejects(call({...owner,token:{...owner.token,email_verified:false}},{action:'get',uid:'teacher'}),{code:'permission-denied'});
 await assert.rejects(call({...owner,token:{...owner.token,proxyBy:'teacher'}},{action:'get',uid:'teacher'}),{code:'permission-denied'});
-let settings=await call(owner,{action:'get',uid:'teacher'});assert.equal(settings.isAdmin,false);assert.equal(settings.features.length,18);
+let settings=await call(owner,{action:'get',uid:'teacher'});assert.equal(settings.isAdmin,false);assert.equal(settings.features.length,AI_FEATURES.length);
 await call(owner,{action:'save',uid:'teacher',version:0,limits:{song:1,lyrics:0,videoScene:null}});
 await assert.rejects(call(owner,{action:'save',uid:'teacher',version:0,limits:{song:99}}),{code:'aborted'});
 await assert.rejects(call(owner,{action:'save',uid:'teacher',version:1,limits:{song:-1}}),{code:'invalid-argument'});
@@ -109,4 +109,4 @@ try{
   else await rules.assertFails(client.getDoc(client.doc(c,'aiAllowances','teacher')));
  }
 }finally{await env.cleanup();await db.terminate();}
-console.log('PASS: 18 features, admin controls + version conflicts, zero/custom/unlimited, last-use concurrency, rollback, revocation, protected rules, real song/video/text/help callables, background media above monthly budgets + dedup and recovery. Provider responses mocked; no billable generation.');
+console.log('PASS: all catalogued features, admin controls + version conflicts, zero/custom/unlimited, last-use concurrency, rollback, revocation, protected rules, real song/video/text/help callables, background media above monthly budgets + dedup and recovery. Provider responses mocked; no billable generation.');

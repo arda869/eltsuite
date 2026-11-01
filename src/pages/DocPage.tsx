@@ -24,12 +24,12 @@ import { useDirectory } from '../lib/directory';
 import type { Person } from '../lib/chat';
 import { UiIcon } from '../components/UiIcon';
 import { FileComments } from '../components/FileComments';
-import { StoryboardFile } from '../storyboard/StoryboardFile';
+import { isImageFile } from '../design/files';
 import { FileIcon, setFileFavicon } from '../components/FileIcon';
 import { AnyFile } from '../components/AnyFile';
 
 import { loadStart } from '../lib/fileStore';
-const DesignFile = lazy(() => import('../design/Editor').then((m) => ({ default: m.DesignFile })));
+const DesignFile = lazy(() => import('../design/DesignerFile').then((m) => ({ default: m.DesignerFile })));
 
 // A collaborative document or slides on a page of its own, in its own tab: the title at the top,
 // sharing, and the whole window for writing.
@@ -165,7 +165,7 @@ export function DocPage() {
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'storyboard' && d ? <StoryboardFile d={d} canEdit={role === 'edit'} /> : kind === 'file' && d ? <AnyFile d={d} /> : kind === 'design' && d ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || kind === 'storyboard' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>

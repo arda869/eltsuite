@@ -5,6 +5,17 @@ import { db } from '../../src/lib/firebase';
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
   if (d.action === 'activities' && localStorage.getItem('mockAiPause')) await new Promise<void>(resolve => { const timer=setInterval(()=>{if(!localStorage.getItem('mockAiPause')) {clearInterval(timer);resolve();}},50); });
+  if(name==='designerImage') {
+    if(d.action==='connection')return {data:{ready:true}};
+    if(d.action==='status')return {data:{status:'completed',resultId:d.requestId}};
+    if(!d.prompt?.trim())throw Error('Add a description.');
+    const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;
+    const g=canvas.getContext('2d')!;g.fillStyle=d.action==='create'?'#5383aa':'#52966d';g.fillRect(0,0,160,120);
+    const data=canvas.toDataURL('image/png').split(',')[1];
+    await setDoc(doc(db,'sharedDocs',d.fileId,'designerResults',d.requestId+'_0'),{data});
+    await setDoc(doc(db,'sharedDocs',d.fileId,'designerResults',d.requestId),{ready:true,parts:1,type:'image/png'});
+    return {data:{status:'completed',resultId:d.requestId}};
+  }
   if (name === 'adminAiUsage') {
     const ref=doc(db,'aiAllowances',d.uid),old=(await getDoc(ref)).data()??{};
     if(d.action==='save'){

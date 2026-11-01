@@ -88,7 +88,7 @@ export type El = {
 };
 
 export type DPage = { id: string; order: number; w: number; h: number; bg: string; name?: string };
-export type DMeta = { accent?: string };
+export type DMeta = { accent?: string; type?: 'image' | 'storyboard' };
 
 export const pagesCol = (id: string) => collection(db, 'sharedDocs', id, 'dpages');
 export const elsCol = (id: string) => collection(db, 'sharedDocs', id, 'dels');
@@ -115,9 +115,9 @@ export const saveMeta = (id: string, m: DMeta) => setDoc(metaRef(id), clean(m), 
 export const MM = 96 / 25.4;
 export type SizeKey = 'a4' | 'a4l' | 'a5' | 'a3' | 'letter' | 'slide' | 'square' | 'story' | 'card' | 'banner';
 export const SIZES: { k: SizeKey; name: string; about: string; w: number; h: number }[] = [
-  { k: 'a4', name: 'A4 worksheet', about: '210 × 297 mm', w: 794, h: 1123 },
+  { k: 'a4', name: 'Portrait (A4)', about: '210 × 297 mm', w: 794, h: 1123 },
   { k: 'a4l', name: 'A4 landscape', about: '297 × 210 mm', w: 1123, h: 794 },
-  { k: 'a5', name: 'A5 handout', about: '148 × 210 mm', w: 559, h: 794 },
+  { k: 'a5', name: 'Small portrait (A5)', about: '148 × 210 mm', w: 559, h: 794 },
   { k: 'a3', name: 'A3 poster', about: '297 × 420 mm', w: 1123, h: 1587 },
   { k: 'letter', name: 'US Letter', about: '8.5 × 11 in', w: 816, h: 1056 },
   { k: 'slide', name: 'Slide', about: '16:9, for the board', w: 1280, h: 720 },

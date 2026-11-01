@@ -762,7 +762,7 @@ service cloud.firestore {
         && !('purgingAt' in request.resource.data)
         && (!('purgeRequestedAt' in request.resource.data) || resource.data.get('deletedAt', 0) > 0)
         && (resource.data.owner == request.auth.uid
-        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype']))
+        || (resource.data.get('deletedAt', 0) == 0 && resource.data.members[request.auth.uid].role == 'edit' && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'updatedAt', 'flash', 'pd', 'size', 'citeStyle', 'ltype', 'designType']))
         // in an organisation's shared drive, its admins decide who has the files
         || (resource.data.get('folder', null) is string && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members', 'memberIds'])
             && get(/databases/$(database)/documents/sharedFolders/$(resource.data.folder)).data.get('org', null) is string

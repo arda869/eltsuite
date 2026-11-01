@@ -12,6 +12,7 @@ export type ScriptLine = { t: number | null; text: string; who?: string; e?: num
 export type ArchiveKind = 'image' | 'audio' | 'video';
 export type ArchiveItem = {
   id: string;
+  designerId?: string;
   deletedAt?: number;
   purgeRequestedAt?: number;
   purgingAt?: number;
@@ -64,7 +65,7 @@ export async function archiveGet(uid: string, id: string): Promise<ArchiveItem |
 }
 
 // Rename, move to a folder, tag, or change the script. A new script reaches every class that uses it.
-export async function archiveUpdate(uid: string, item: ArchiveItem, patch: Partial<Pick<ArchiveItem, 'name' | 'folder' | 'tags' | 'script' | 'duration'>>) {
+export async function archiveUpdate(uid: string, item: ArchiveItem, patch: Partial<Pick<ArchiveItem, 'name' | 'folder' | 'tags' | 'script' | 'duration' | 'designerId'>>) {
   if (patch.name !== undefined || patch.folder !== undefined) await writeNamedFile(doc(col(uid), item.id), { owner: uid, path: patch.folder ?? item.folder }, patch.name ?? item.name, { ...patch, updatedAt: Date.now() }, false, patch.name === undefined);
   else await updateDoc(doc(col(uid), item.id), { ...patch, updatedAt: Date.now() });
   if (patch.script !== undefined || patch.name !== undefined) {

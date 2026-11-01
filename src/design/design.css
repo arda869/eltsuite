@@ -382,3 +382,6 @@
   .dz-start h1 { font-size: 32px; }
   .dz-start-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
 }
+
+.dz-ai{display:grid;gap:16px}.dz-ai label{display:grid;gap:8px}.dz-ai textarea,.dz-ai select{width:100%;box-sizing:border-box}.dz-ai [role="alert"]{color:var(--danger,#a6463a)}
+.dz-ai-progress{padding:22px 16px;border-radius:16px;background:linear-gradient(135deg,#6d5bd018,#3667a612);display:grid;gap:12px;text-align:center}.dz-ai-progress p{margin:0;font-size:13px}.dz-ai-orbit{width:32px;height:32px;margin:auto;border:3px solid #6d5bd033;border-top-color:#6d5bd0;border-radius:50%;animation:designer-spin 1.2s linear infinite}@keyframes designer-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.dz-ai-orbit{animation:none}}

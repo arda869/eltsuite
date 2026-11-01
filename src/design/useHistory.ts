@@ -24,6 +24,7 @@ export function useEdits(designId: string, els: El[]) {
   const track = (p: Promise<void>) => {
     setPending((n) => n + 1);
     p.then(() => setFailed(false), () => setFailed(true)).finally(() => setPending((n) => n - 1));
+    return p;
   };
 
   const byId = () => new Map(elsRef.current.map((e) => [e.id, e]));
@@ -65,7 +66,7 @@ export function useEdits(designId: string, els: El[]) {
       if (undo.current.length > 200) undo.current.shift();
       redo.current = [];
       tick((n) => n + 1);
-      track(writeSnap(after));
+      return track(writeSnap(after));
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [writeSnap],

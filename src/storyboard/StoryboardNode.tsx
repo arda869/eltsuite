@@ -47,7 +47,7 @@ function StoryboardView({ node, updateAttributes, deleteNode, editor, getPos, se
     if (editable && a.docId) void refresh(true);
   }, [a.docId, editable]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const boards = [...(mine ?? []), ...(withMe ?? [])].filter((d, i, all) => d.kind === 'storyboard' && all.findIndex((x) => x.id === d.id) === i);
+  const boards = [...(mine ?? []), ...(withMe ?? [])].filter((d, i, all) => (d.kind === 'storyboard' || (d.kind==='design'&&d.designType==='storyboard')) && all.findIndex((x) => x.id === d.id) === i);
   const make = async () => {
     if (!user) return;
     const w = window.open('about:blank', '_blank');

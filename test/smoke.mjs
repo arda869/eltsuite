@@ -88,6 +88,56 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Designer: create, edit and reopen images and storyboards with optional fields blank': async (b) => {
+    const s=await session(b,{owner:true});await s.p.goto(`${BASE}/design`);
+    await s.p.getByRole('heading',{name:'Designer',exact:true}).waitFor();
+    const [image]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create image'}).click()]);
+    await image.getByRole('button',{name:'AI images',exact:true}).click();
+    await image.getByRole('button',{name:'Generate preview'}).waitFor();
+    await image.getByLabel('Describe your image').fill('An original blue classroom scene');
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    await image.getByAltText('Generated preview').waitFor();
+    await image.getByRole('button',{name:'Apply to canvas'}).click();
+    await image.getByAltText('Generated preview').waitFor({state:'detached'});
+    const fileId=new URL(image.url()).pathname.split('/').pop();
+    await image.waitForFunction(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('sharedDocs/'+id+'/dels/')&&v.t==='image'&&v.img),fileId);
+    await image.getByLabel('What would you like to do?').selectOption('erase');
+    await image.getByLabel('What should be removed?').fill('Remove the bag');
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    await image.getByRole('button',{name:'Apply to canvas'}).click();
+    await image.getByAltText('Generated preview').waitFor({state:'detached'});
+    await image.getByRole('button',{name:'Black and white',exact:true}).click();
+    await image.getByRole('button',{name:'Crop',exact:true}).click();
+    const handle=await image.locator('.dz-ch').first().boundingBox();
+    await image.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await image.mouse.down();await image.mouse.move(handle.x+handle.width/2+10,handle.y+handle.height/2+10,{steps:4});await image.mouse.up();
+    await image.getByRole('button',{name:'Done',exact:true}).click();
+    await image.getByRole('button',{name:'Text',exact:true}).click();await image.getByRole('button',{name:'Add a title',exact:true}).click();
+    await image.getByRole('textbox',{name:'Text',exact:true}).fill('My edited image');await image.getByRole('textbox',{name:'Text',exact:true}).press('ControlOrMeta+Enter');
+    await image.waitForFunction(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const els=Object.entries(fs).filter(([k])=>k.startsWith('sharedDocs/'+id+'/dels/')).map(([,v])=>v);return els.some(e=>e.text==='My edited image')&&els.some(e=>e.fx?.gray===100&&e.crop?.w<1);},fileId);
+    await image.reload();await image.getByRole('button',{name:'Download',exact:true}).waitFor();
+    await image.getByRole('button',{name:'Download',exact:true}).click();
+    const [download]=await Promise.all([image.waitForEvent('download'),image.getByRole('menuitem',{name:/Picture \(PNG\)/}).click()]);
+    if(!download.suggestedFilename().endsWith('.png'))throw Error('Image export missing');
+    const downloaded=await download.path();
+    await s.p.goto(`${BASE}/archive`);
+    await s.p.locator('input[type="file"][multiple]:not([accept])').setInputFiles({name:'Designer upload.png',mimeType:'image/png',buffer:readFileSync(downloaded)});
+    const uploaded=s.p.getByRole('button',{name:/Designer upload/}).first();await uploaded.waitFor();
+    const [opened]=await Promise.all([s.ctx.waitForEvent('page'),uploaded.dblclick()]);
+    await opened.getByRole('button',{name:'Download',exact:true}).waitFor();await opened.getByRole('img',{name:'Page 1',exact:true}).waitFor();await opened.close();
+    await s.p.goto(`${BASE}/design`);
+    const [story]=await Promise.all([s.ctx.waitForEvent('page'),s.p.getByRole('button',{name:'Create storyboard'}).click()]);
+    await story.locator('.sbf-li').first().click();
+    await story.locator('.sb-item').first().waitFor();
+    if(await story.getByLabel('Caption',{exact:true}).inputValue())throw Error('Optional caption should be blank');
+    const storyId=new URL(story.url()).pathname.split('/').pop();
+    await story.waitForFunction(id=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).some(k=>k.startsWith('sharedDocs/'+id+'/sbitems/')),storyId);
+    await story.reload();await story.locator('.sb-item').first().waitFor();
+    const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type};},storyId);
+    if(saved.kind!=='design'||saved.type!=='storyboard')throw Error('Storyboard did not save as a Designer file');
+    await image.close();await story.close();return s;
+  },
+
+
   'Classroom memories are opt-in and selected before generation': async (b) => {
     const s=await session(b);
     await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};localStorage.setItem('mockfs',JSON.stringify(fs));});
@@ -1510,7 +1560,7 @@ const J = {
     await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click({timeout:15000}).catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+await s.p.locator('body').innerText());});
     await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
     await see(s.p,'.ai-usage-row','per-feature allowances');
-    if(await s.p.locator('.ai-usage-row').count()!==18)throw Error('Missing AI features');
+    if(await s.p.locator('.ai-usage-row').count()!==19)throw Error('Missing AI features');
     await s.p.getByRole('button',{name:'Songs allowance',exact:true}).click();
     await s.p.getByRole('option',{name:'Custom daily limit',exact:true}).click();
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('0');

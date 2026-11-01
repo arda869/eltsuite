@@ -1,3 +1,4 @@
+import { isImageFile } from '../design/files';
 import { FileBin } from './FileBin';
 import { createPortal } from 'react-dom';
 import { useAccount, useSpaceLimit, noteSpace, useMyOrg, useDrive, useAppOn, type DriveFolder } from '../lib/admin';
@@ -447,7 +448,24 @@ export function MediaArchive() {
   };
   // Editors open full screen in their own tab: Task editor, Sound editor.
   const openHand = (h: HandIn) => void import('../lib/uploads').then(({ fileUrl }) => fileUrl(h.classId, h).then((u) => window.open(u, '_blank')));
-  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch(() => void tell('We couldn’t download the file just now. Check your connection and try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'video' && en.item.home && !en.item.link ? openVideoStudio(en.item.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openDesignerImage = async (item: ArchiveItem) => {
+    if(!uid)return;
+    const w=window.open('about:blank','_blank');
+    try {
+      if(item.designerId){if(w)w.location.href='/doc/'+item.designerId;return;}
+      const [{audioUrl},{storePicture,pagesCol,elsCol,saveMeta},{doc,writeBatch},{db}]=await Promise.all([import('../lib/media'),import('../design/model'),import('firebase/firestore'),import('../lib/firebase')]);
+      const source=item.home?await audioUrl(item.home.classId,item.home.mediaId):item.link;
+      if(!source)throw Error('No image');
+      const response=await fetch(source);if(!response.ok)throw Error('Image unavailable');
+      const id=await newSharedDoc({uid,name:user?.displayName||'Teacher'},'design',item.name);
+      const picture=await storePicture(id,await response.blob()),b=writeBatch(db);
+      b.set(doc(pagesCol(id),'canvas'),{order:0,w:picture.w,h:picture.h,bg:'#ffffff'});
+      b.set(doc(elsCol(id),'original'),{page:'canvas',t:'image',z:0,x:0,y:0,w:picture.w,h:picture.h,iw:picture.w,ih:picture.h,img:picture.id,name:item.name});
+      await b.commit();await saveMeta(id,{type:'image'});await archiveUpdate(uid,item,{designerId:id});
+      if(w)w.location.href='/doc/'+id;
+    }catch{w?.close();void tell('We could not open this image in Designer. Your original is unchanged.');}
+  };
+  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' && !isImageFile(en.doc) ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch(() => void tell('We couldn’t download the file just now. Check your connection and try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'image' ? void openDesignerImage(en.item) : en.item?.kind === 'video' && en.item.home && !en.item.link ? openVideoStudio(en.item.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
