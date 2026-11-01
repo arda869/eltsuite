@@ -1,3 +1,4 @@
+import { mediaRequests, mediaInstructions } from './media-contract.js';
 import { collectMemories, selectedMemories } from './memories.js';
 import { contentReviewStandard } from './pedagogy.js';
 import { isGenerationAdmin, dailyAllowanceReached, dailyGlobalUsage } from './allowance.js';
@@ -46,30 +47,48 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     await cls.ref.update({level:d.level,learningProfile:profile});
     return { profileSaved:true };
   }
+  if (d.action === 'mediaStatus' || d.action === 'retryMedia' || d.action === 'resumeActivities') {
+    if(!id(d.sourceRequestId)) fail('Choose prepared activities.');
+    const job=db.doc(`aiPrivate/${uid}/jobs/${d.sourceRequestId}`),j=await job.get();
+    if(j.get('classId')!==d.classId||j.get('action')!=='activities'||j.get('status')!=='completed')fail('Prepare activities first.');
+    if(d.action==='retryMedia'){
+      if(!id(d.assetId))fail('Choose an asset.');
+      await db.runTransaction(async tx=>{const ref=job.collection('media').doc(d.assetId),asset=await tx.get(ref);
+        const stale=['running','queued'].includes(asset.get('status'))&&Date.now()-((asset.get('startedAt')??asset.get('createdAt'))?.toMillis()??Date.now())>600000;
+        if(asset.get('status')!=='failed'&&!stale)fail('This asset is already prepared or still running.');
+        tx.update(ref,{status:'queued',error:''});
+      });
+    }
+    const media=await job.collection('media').get();
+    return {...(d.action==='resumeActivities'?{activities:readGenerationResult(j.data()).activities,plan:j.get('sourcePlan'),brief:j.get('brief')??null,createdItemId:j.get('createdItemId')??''}:{}),media:media.docs.map(m=>({id:m.id,kind:m.get('kind'),title:m.get('title'),status:['running','queued'].includes(m.get('status'))&&Date.now()-((m.get('startedAt')??m.get('createdAt'))?.toMillis()??Date.now())>600000?'failed':m.get('status'),completedLines:m.get('completedLines')??0,totalLines:m.get('lines')?.length??0,error:m.get('error')||'Preparation was interrupted. Retry this asset.',mediaId:m.get('mediaId')??''}))};
+  }
   if (d.action === 'create') {
     if (!id(d.sourceRequestId)) fail('Prepare activities first.');
     const source=db.doc(`aiPrivate/${uid}/jobs/${d.sourceRequestId}`);
     const itemId='ai_'+createHash('sha256').update(uid+':'+d.sourceRequestId).digest('hex').slice(0,32);
     const item=cls.ref.collection('items').doc(itemId);
     await db.runTransaction(async tx => {
-      const [j,old,c,p,a,g,last]=await Promise.all([tx.get(source),tx.get(item),tx.get(cls.ref),tx.get(profile.ref),tx.get(account.ref),tx.get(pilot.ref),tx.get(cls.ref.collection('items').orderBy('order','desc').limit(1))]);
+      const [j,old,c,p,a,g,last,media]=await Promise.all([tx.get(source),tx.get(item),tx.get(cls.ref),tx.get(profile.ref),tx.get(account.ref),tx.get(pilot.ref),tx.get(cls.ref.collection('items').orderBy('order','desc').limit(1)),tx.get(source.collection('media'))]);
       if (!canPlan(uid,p.data(),a.data(),c.data()) || !isPilotTeacher(g.get('enabled'))) throw new HttpsError('permission-denied','Your teaching access changed.');
       if (old.exists) return;
       if (j.get('status') !== 'completed' || j.get('action') !== 'activities' || j.get('classId') !== d.classId) fail('Prepare activities again.');
       const activities=readGenerationResult(j.data())?.activities, plan=j.get('sourcePlan'), type=j.get('creationType') ?? 'lesson';
       checkActivities(activities,plan,c.get('kind')==='training');
+      const requests=mediaRequests(activities);
+      if(requests.some(r=>!media.docs.some(m=>m.id===r.id&&m.get('status')==='ready')))throw new HttpsError('failed-precondition','Finish preparing the lesson images and recordings before creating it.');
+      activities.tasks.forEach((t,i)=>{t.preparedMedia=media.docs.filter(m=>m.get('taskIndex')===i).map(m=>({kind:m.get('kind'),title:m.get('title'),alt:m.get('alt'),mediaId:m.get('mediaId')}));});
       tx.create(item,{type,speakingFocus:[plan.mainAim,plan.subsidiaryAims].filter(Boolean).join(' ').slice(0,1000),title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
         const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
         const versions=nativeVersions(task,i,d.createVariants===true,type);
         for (const {suffix,label,instructions,native:version} of versions) {
           const v=item.collection('tasks').doc('activity_'+i+'_'+suffix);
-          tx.create(v,{kind:'task',title:task.title,instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:label,order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
+          tx.create(v,{kind:'task',layout:task.layout==='columns'?'two':'single',title:task.title,instructions,content:null,restricted:true,allowed:[],family:ref.id,variant:label,order:i,hidden:false,locked:false,createdAt:Timestamp.now()});
           tx.create(v.collection('private').doc('body'),{content:version.content});
           tx.create(v.collection('private').doc('key'),version.key);
           tx.create(v.collection('private').doc('notes'),{text:version.notes,updatedAt:Timestamp.now()});
         }
-        tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(({suffix})=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',title:task.title,instructions:task.instructions,content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
+        tx.create(ref,{...(versions.length?{family:ref.id,variant:'Standard',variants:versions.map(({suffix})=>'activity_'+i+'_'+suffix),dist:{mode:'same',sameId:ref.id}}:{}),kind:'task',layout:task.layout==='columns'?'two':'single',title:task.title,instructions:task.instructions,content:native.content,order:i,hidden:false,locked:false,afterCheck:type==='exam'?'reveal':'retry',createdAt:Timestamp.now()});
         tx.create(ref.collection('private').doc('key'),native.key);
         tx.create(ref.collection('private').doc('notes'),{text:[i===0?Object.entries({'Main aim':plan.mainAim,'Language analysis':plan.languageAnalysis,Assessment:plan.assessment,Differentiation:activities.differentiation,Recycling:activities.recycling}).map(([label,text])=>label.toUpperCase()+'\n'+text).join('\n\n'):'',native.notes].filter(Boolean).join('\n\n'),updatedAt:Timestamp.now()});
       });
@@ -144,15 +163,16 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     tx.set(budget, { committedMicroUsd: reservation.balance, limitMicroUsd: 20_000_000, month }, { merge: true });
     tx.set(quota, { calls: (q.get('calls') ?? 0) + units });
     tx.set(globalQuota, dailyGlobalUsage(g.data(),units,generationAdmin), {merge:true});
-    tx.create(job, { status: 'running', fingerprint, classId:d.classId, action:d.action, creationType, duration:brief.duration, ...(d.action==='activities'?{sourcePlan:d.plan}:{}), budgetMonth: month, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 86400000) });
+    tx.create(job, { status: 'running', brief, fingerprint, classId:d.classId, action:d.action, creationType, duration:brief.duration, ...(d.action==='activities'?{sourcePlan:d.plan}:{}), budgetMonth: month, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now() + 86400000) });
     return null;
   });
   if (existing?.kind === 'completed') return existing.result;
   if (existing?.kind === 'abandoned') throw new HttpsError('failed-precondition', 'The previous request exceeded its execution window and has been released. Your brief and outline are unchanged. Start a new generation by clicking the generation button again. [request:interrupted]');
   let phase = d.action;
   try {
-    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : d.action === 'activities' ? (cls.get('kind')==='training'?trainingActivitySchema:activitySchema) : planSchema, name: d.action, input: payload, instructions: d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.' });
+    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : d.action === 'activities' ? (cls.get('kind')==='training'?trainingActivitySchema:activitySchema) : planSchema, name: d.action, input: payload, instructions: d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.' });
     try { if(d.action==='activities') checkActivities(first.value,d.plan,cls.get('kind')==='training'); else checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
+    if(d.action==='activities' && first.value.tasks.some(t=>t.format==='listening'&&!(t.mediaPlan??[]).some(m=>m.kind==='audio')))throw new GenerationError('sequence');
     if (d.action === 'plan' && JSON.stringify(first.value.stages.map(s => [s.id, s.minutes])) !== JSON.stringify(d.outline.stages.map(s => [s.id, s.minutes]))) throw new GenerationError('sequence');
     let result = { [d.action]: first.value, usage: [first.usage] };
     if (d.action === 'plan') {
@@ -167,6 +187,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), result.usage);
       tx.update(budget, { committedMicroUsd: settled.balance });
+      if(d.action==='activities')for(const asset of mediaRequests(first.value))tx.create(job.collection('media').doc(asset.id),{...asset,classId:d.classId,status:'queued',createdAt:Timestamp.now()});
       tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
     });
     return result;

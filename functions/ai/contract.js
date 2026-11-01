@@ -32,10 +32,13 @@ export function validate(schema, value, path = 'output') {
 }
 export function validateBrief(b, training = false) {
   if (!b || typeof b !== 'object') throw Error('Add a lesson brief.');
-  for (const key of ['topic', 'objectives', 'context']) if (typeof b[key] !== 'string' || b[key].length > 2000 || !b[key].trim()) throw Error(`Add ${key} (up to 2,000 characters).`);
+  for (const key of ['objectives', 'context']) if (typeof b[key] !== 'string' || b[key].length > 2000 || !b[key].trim()) throw Error(`Add ${key} (up to 2,000 characters).`);
   if (!(training ? ['Foundation','Developing','Experienced','Mixed experience'] : ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']).includes(b.level) || !(training?['Recommend','Experiential input','Exam preparation','Reflective practice','Workshop']:methods).includes(b.methodology)) throw Error('Choose a level and approach.');
   if (!Number.isInteger(b.duration) || b.duration < 15 || b.duration > 180) throw Error('Choose 15–180 minutes.');
-  return { topic: b.topic, objectives: b.objectives, context: b.context, level: b.level, methodology: b.methodology, duration: b.duration };
+  if (b.topic !== undefined && (typeof b.topic !== 'string' || b.topic.length > 2000)) throw Error('Shorten the optional topic.');
+  const additionalObjectives = b.additionalObjectives ?? [];
+  if (!Array.isArray(additionalObjectives) || additionalObjectives.some(x => typeof x !== 'string' || x.length > 2000) || additionalObjectives.join('').length > 12000) throw Error('Keep additional objectives within 12,000 characters.');
+  return { ...(additionalObjectives.length?{additionalObjectives: additionalObjectives.map(x=>x.trim()).filter(Boolean)}:{}), topic: b.topic || '', objectives: b.objectives, context: b.context, level: b.level, methodology: b.methodology, duration: b.duration };
 }
 export function checkSequence(value, duration) {
   if (value.stages.reduce((sum, s) => sum + s.minutes, 0) !== duration) throw Error('Stage timings must add up to the lesson duration.');

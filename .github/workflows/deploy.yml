@@ -97,7 +97,7 @@ jobs:
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
 
       - name: Check assistant rejects signed-out requests
