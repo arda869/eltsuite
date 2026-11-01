@@ -228,7 +228,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,
         review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,[d.action]:value},
-          instructions:`${teachingInstructions}\n${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
+          instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
         repair: async (value,review,remaining) => {
           const revised=await generate({apiKey:key.value(),model:model.value(),schema:contract.schema,name:d.action,timeoutMs:Math.min(180000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...contract.input,output:value,editorialReview:review},
