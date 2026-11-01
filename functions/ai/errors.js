@@ -15,6 +15,7 @@ const messages = {
   refusal: 'The AI service declined to generate this content. Revise the brief before trying again.',
   output_validation: 'The AI response did not pass the required content checks.',
   usage: 'The AI service returned unexpected usage information. Generation was stopped to protect the spending allowance.',
+  content: 'The activities need another content check. Your approved plan is saved; retry this step without starting a new plan.',
   sequence: 'The generated stages did not match the approved outline or lesson duration.',
   storage: 'The server could not finish saving the generation result.',
   unknown: 'The server could not complete this generation.',
@@ -24,7 +25,7 @@ export class GenerationError extends Error {
 }
 export function describeFailure(error, phase) {
   const reason = error instanceof GenerationError ? error.reason : 'unknown';
-  const step = ['outline', 'plan', 'review', 'storage'].includes(phase) ? phase : 'unknown';
+  const step = ['outline', 'plan', 'activities', 'review', 'storage'].includes(phase) ? phase : 'unknown';
   return { reason, phase: step, message: `${messages[reason]} Your current brief and outline have not been replaced. Start a new generation when ready. [${step}:${reason}]` };
 }
 export function httpFailure(status, code) {
