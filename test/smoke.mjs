@@ -1671,7 +1671,9 @@ const J = {
       fs['inviteCodes/SLOW-AB23'] = { uses: 0, maxUses: 1, usedBy: {}, by: 'teacher1', at: Date.now(), expires: 0 };
       localStorage.setItem('mockfs', JSON.stringify(fs));
       sessionStorage.removeItem('mockuid'); localStorage.removeItem('mockuid');
-      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'transaction', path: '', count: 1, delay: 18000 }]));
+      // The app times out after 15 seconds. Leave a clear observation window even
+      // when a busy browser renders the retry screen late, before the real load finishes.
+      sessionStorage.setItem('mockfs-faults', JSON.stringify([{ op: 'transaction', path: '', count: 1, delay: 25000 }]));
     });
     await s.p.goto(BASE + '/?code=SLOW-AB23');
     await see(s.p, 'h1:has-text("Make your teacher account")', 'the signup form').catch(async e => { throw Error(e.message + ' ' + (await s.p.locator('body').innerText()).slice(0, 1000)); });
@@ -1684,7 +1686,7 @@ const J = {
     await s.p.getByRole('button', { name: 'Retry account setup' }).click();
     await s.p.waitForURL('**/welcome');
     await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
-    await see(s.p, '.hm', 'slow setup completed');
+    await see(s.p, '.hm', 'slow setup completed',60000).catch(async e=>{throw Error(e.message+' · '+(await s.p.locator('body').innerText()).slice(0,1200)+' · '+s.errors.slice(0,3).join('; '));});
     const uses = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['inviteCodes/SLOW-AB23'].uses);
     if (uses !== 1) throw Error('Retry spent the invitation more than once');
     return s;

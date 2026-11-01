@@ -195,7 +195,7 @@ const DIRS: [number, number][] = [[0, 1], [1, 0], [1, 1], [-1, 1], [0, -1], [-1,
 export function layoutWordSearch(items: { word: string; clue: string }[], seed: string): { grid: string[]; size: number; placed: Placed[] } {
   const ws = items.map((x) => ({ word: cleanWord(x.word), clue: String(x.clue ?? '') })).filter((x) => x.word.length > 1).sort((a, b) => b.word.length - a.word.length);
   const longest = Math.max(0, ...ws.map((w) => w.word.length));
-  const size = Math.max(8, Math.min(16, longest, Math.ceil(Math.sqrt(ws.reduce((n, w) => n + w.word.length, 0) * 2.2))));
+  const size = Math.max(8, Math.min(16, Math.max(longest, Math.ceil(Math.sqrt(ws.reduce((n, w) => n + w.word.length, 0) * 2.2)))));
   let h = 2166136261;
   for (const ch of seed) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   const rand = () => {
@@ -228,6 +228,21 @@ export function layoutWordSearch(items: { word: string; clue: string }[], seed: 
       done = true;
     }
   }
+  // Dense lists must not silently lose source answers. Use a guaranteed seeded layout
+  // if random packing could not fit every word; each word gets its own shuffled row.
+  if (placed.length !== ws.length) {
+    const n = Math.max(8, longest, ws.length), grid = Array(n * n).fill(''), all: Placed[] = [];
+    const rows = shuffle(ws.map((_, i) => i), seed + '_fallback');
+    for (const [i, w] of ws.entries()) {
+      const reverse = rand() < .5, start = Math.floor(rand() * (n - w.word.length + 1));
+      const col = reverse ? start + w.word.length - 1 : start, dc = reverse ? -1 : 1;
+      for (let k = 0; k < w.word.length; k++) grid[rows[i] * n + col + dc * k] = w.word[k];
+      all.push({ word: w.word, clue: w.clue, row: rows[i], col, dir: '0,' + dc });
+    }
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (let i = 0; i < grid.length; i++) if (!grid[i]) grid[i] = alphabet[Math.floor(rand() * 26)];
+    return { grid, size: n, placed: all };
+  }
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   for (let i = 0; i < cells.length; i++) if (!cells[i]) cells[i] = letters[Math.floor(rand() * 26)];
   return { grid: cells, size, placed };
@@ -252,6 +267,12 @@ export function diffWords(expected: string, typed: string) {
   return { expected: words(expected).map((w, k) => ({ w, ok: okE.has(k) })), typed: words(typed).map((w, k) => ({ w, ok: okT.has(k) })), got: okE.size, max: e.length };
 }
 
+// Firestore cannot store an array directly inside another array. Read legacy groups
+// as well as the object-wrapped groups used by all new saves.
+export function highlightGroups(value: unknown): number[][] {
+  return Array.isArray(value) ? value.map(g => Array.isArray(g) ? g : Array.isArray(g?.tokens) ? g.tokens : []).filter(g => g.length) : [];
+}
+
 // Editor data -> public data + key.
 export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: Data | null } {
   switch (t) {
@@ -264,7 +285,7 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
       return { pub: { toks }, key: { range, fixes: clean(d.fixes) } };
     }
     case 'categorise': {
-      const cats: { name: string; items: string[] }[] = (d.cats ?? []).map((c: Data) => ({ name: String(c.name ?? ''), items: clean(c.items) }));
+      const cats: { name: string; items: string[] }[] = (d.cats ?? []).map((c: Data) => ({ name: String(c.name ?? ''), items: clean(c.items).sort() }));
       const all = cats.flatMap((c, ci) => c.items.map((w) => ({ w, ci })));
       const mixed = shuffle(all, id);
       return { pub: { cats: cats.map((c) => c.name), items: mixed.map((x) => x.w) }, key: { map: mixed.map((x) => x.ci) } };
@@ -273,7 +294,7 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
       return { pub: { first: d.first ?? '', keyWord: String(d.keyWord ?? '').toUpperCase(), before: d.before ?? '', after: d.after ?? '', min: d.min ?? null, max: d.max ?? null }, key: { answers: clean(d.answers) } };
     case 'highlight': {
       const { toks, groups } = tokenise(d.text ?? '');
-      return { pub: { instruction: d.instruction ?? '', toks, penalty: !!d.penalty }, key: { groups, penalty: !!d.penalty } };
+      return { pub: { instruction: d.instruction ?? '', toks, penalty: !!d.penalty }, key: { groups: groups.map(tokens => ({ tokens })), penalty: !!d.penalty } };
     }
     case 'sentences': {
       const items = clean(d.items);
@@ -282,7 +303,7 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
     }
     case 'label': {
       const pts: { x: number; y: number; label: string }[] = (d.points ?? []).filter((p: Data) => String(p.label ?? '').trim());
-      const labels = shuffle([...pts.map((p) => p.label.trim()), ...clean(d.extras)], id);
+      const labels = shuffle([...pts.map((p) => p.label.trim()), ...clean(d.extras).sort()], id);
       const used = new Set<number>();
       const map = pts.map((p) => {
         const i = labels.findIndex((l, k) => l === p.label.trim() && !used.has(k));
@@ -293,13 +314,13 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
     }
     case 'odd': {
       const ws: string[] = (d.words ?? []).map((w: string) => String(w ?? "").trim());
-      const keep = ws.map((w, i) => ({ w, i })).filter((x) => x.w);
+      const keep = ws.map((w, i) => ({ w, i })).filter((x) => x.w).sort((a,b) => a.w < b.w ? -1 : a.w > b.w ? 1 : a.i - b.i);
       const mixed = shuffle(keep, id);
       return { pub: { words: mixed.map((x) => x.w), reason: !!d.reason }, key: { odd: mixed.findIndex((x) => x.i === d.odd) } };
     }
     case 'gapped': {
       const removed = (d.removed ?? []).map((x: string) => String(x ?? '').trim());
-      const extras = clean(d.extras);
+      const extras = clean(d.extras).sort();
       const opts = shuffle([...removed.map((r: string, i: number) => ({ r, i })), ...extras.map((r) => ({ r, i: -1 }))].filter((x) => x.r), id);
       return { pub: { text: d.text ?? '', options: opts.map((x) => x.r), gaps: removed.length }, key: { map: removed.map((_: string, i: number) => opts.findIndex((x) => x.i === i)) } };
     }
@@ -313,7 +334,7 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
       // the sentence has to reach the learner's browser so it can be read aloud; it is hidden until they check
       return { pub: { say: d.sentence ?? '', replays: Number(d.replays) || 2, accent: d.accent ?? 'RP', count: words(d.sentence ?? '').length }, key: { sentence: d.sentence ?? '' } };
     case 'pairs': {
-      const items: { say: string; options: string[] }[] = (d.items ?? []).map((it: Data) => ({ say: String(it.say ?? '').trim(), options: clean(it.options) })).filter((it: Data) => it.say && it.options.length > 1);
+      const items: { say: string; options: string[] }[] = (d.items ?? []).map((it: Data) => ({ say: String(it.say ?? '').trim(), options: clean(it.options).sort() })).filter((it: Data) => it.say && it.options.length > 1);
       return { pub: { items: items.map((it, i) => ({ say: it.say, options: shuffle(it.options, id + i) })), accent: d.accent ?? 'RP' }, key: { map: items.map((it, i) => shuffle(it.options, id + i).findIndex((o) => norm(o) === norm(it.say))) } };
     }
     case 'crossword': {
@@ -339,7 +360,7 @@ export function mergePack(t: PackKind, p: Data, k: Data | undefined): Data {
       return { ...p, answers: k.answers ?? [] };
     case 'highlight': {
       const inG = new Map<number, number>();
-      (k.groups ?? []).forEach((g: number[], gi: number) => g.forEach((i) => inG.set(i, gi)));
+      highlightGroups(k.groups).forEach((g: number[], gi: number) => g.forEach((i) => inG.set(i, gi)));
       const out: string[] = [];
       (p.toks ?? []).forEach((w: string, i: number) => {
         const g = inG.get(i);
@@ -400,7 +421,7 @@ export function scorePack(e: PackKey, r: any): { got: number; max: number } {
     }
     case 'highlight': {
       const pick = new Set(arr(r));
-      const groups: number[][] = k.groups ?? [];
+      const groups = highlightGroups(k.groups);
       const found = groups.filter((g) => g.every((i) => pick.has(i))).length;
       const inAny = new Set(groups.flat());
       const wrong = [...pick].filter((i) => !inAny.has(i)).length;
@@ -497,7 +518,7 @@ export function answerFromKey(e: PackKey): unknown {
     case 'transform':
       return k.answers?.[0] ?? '';
     case 'highlight':
-      return (k.groups ?? []).flat();
+      return highlightGroups(k.groups).flat();
     case 'sentences':
       return k.order;
     case 'odd':
@@ -528,7 +549,7 @@ export function packAnswerText(e: PackKey, p: Data): string {
     case 'transform':
       return (k.answers ?? []).join(' / ');
     case 'highlight':
-      return (k.groups ?? []).map((g: number[]) => g.map((i) => p.toks?.[i]).join(' ')).join(', ');
+      return highlightGroups(k.groups).map((g: number[]) => g.map((i) => p.toks?.[i]).join(' ')).join(', ');
     case 'sentences':
       return (k.order ?? []).map((i: number) => String(p.items?.[i] ?? '').slice(0, 40)).join(' → ');
     case 'odd':

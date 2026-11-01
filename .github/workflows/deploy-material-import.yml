@@ -8,6 +8,9 @@ on:
       - 'src/materials/**'
       - 'functions/ai/materials.js'
       - 'functions/ai/material-contract.js'
+      - 'functions/ai/import-*.js'
+      - 'functions/ai/import-*.d.ts'
+      - 'test/ai/import-*.mjs'
       - 'test/material-import.mjs'
 concurrency:
   group: firebase-production
@@ -29,14 +32,14 @@ jobs:
       - name: AI regression checks
         run: node --test test/ai/*.test.mjs
       - name: Real callable and database import checks (model simulated)
-        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-material-import "node test/ai/materials-integration.mjs"
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.ai-usage.json --project demo-material-import "node test/ai/materials-integration.mjs && node test/ai/definitions-integration.mjs && node test/designer/integration.mjs"
       - name: Build
         env:
           VITE_ELT_AI_PILOT: 'true'
         run: npm run build
       - run: npx playwright install --with-deps chromium
       - name: Import journeys and accessibility (AI simulated)
-        run: node test/material-import.mjs
+        run: node test/material-import.mjs && node test/material-native-types.mjs
       - name: Existing teacher and learner journeys
         timeout-minutes: 20
         run: npm run a11y
@@ -46,7 +49,7 @@ jobs:
         run: |
           test -n "$SA" || { echo '::error::Missing deploy key'; exit 1; }
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-      - name: Deploy lesson assistant before the importing UI
+      - name: Deploy matching AI services before the tested UI
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
           ELT_AI_ENABLED: 'true'
@@ -58,8 +61,22 @@ jobs:
           fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_ENABLED=true\nELT_AI_MODEL=gpt-6.1-sol\n');
           JS
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/import-backend.log"
+          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant,functions:prepareLessonMedia,functions:teachingDefinition,functions:helpAssistant,functions:designerImage --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/import-backend.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/import-backend.log"
+      - name: Verify deployed assistant secret binding
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          cd functions
+          node --input-type=module - <<'JS'
+          import {applicationDefault} from 'firebase-admin/app';
+          const {access_token}=await applicationDefault().getAccessToken();
+          const response=await fetch('https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/lessonAssistant',{headers:{Authorization:'Bearer '+access_token}});
+          if(!response.ok)throw Error('Could not verify deployed assistant configuration: '+response.status);
+          const config=await response.json(),bindings=config.serviceConfig?.secretEnvironmentVariables??[];
+          if(!bindings.some(b=>b.key==='OPENAI_API_KEY'&&b.secret==='OPENAI_API_KEY'))throw Error('Deployed assistant is missing its OpenAI secret binding');
+          console.log('Deployed lessonAssistant has its OPENAI_API_KEY secret bound. No secret values were read or printed.');
+          JS
       - name: Deploy tested site
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json

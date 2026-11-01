@@ -45,7 +45,7 @@ test('highlighting keeps target groups private; timelines and diagrams become na
  const output=contract.decode(raw);checkActivities(output,plan);const native=nativeTask(output.tasks[0],0);
  assert.ok(native.content.content.some(n=>n.type==='timeline'));assert.ok(native.content.content.some(n=>n.type==='diagram'));
  const highlight=native.content.content.find(n=>n.type==='pq');assert.deepEqual(highlight.attrs.data.toks,['She','works','here','and','cooks','dinner','.']);
- assert.deepEqual(native.key[highlight.attrs.id].k.groups,[[1],[4,5]]);assert.ok(!JSON.stringify(native.content).includes('groups'));assert.ok(!JSON.stringify(native.content).includes('{{'));
+ assert.deepEqual(native.key[highlight.attrs.id].k.groups,[{tokens:[1]},{tokens:[4,5]}]);assert.ok(!JSON.stringify(native.content).includes('groups'));assert.ok(!JSON.stringify(native.content).includes('{{'));
 });
 test('research failure is explicit; sources contain actual fetched extracts and canonical links',async()=>{
  const fetchImpl=async url=>({ok:true,text:async()=>JSON.stringify(url.searchParams.has('list')?{query:{search:[{pageid:1}]}}:{query:{pages:[{title:'Expedition',fullurl:'https://en.wikipedia.org/wiki/Expedition',extract:'Documented evidence. '.repeat(15)}]}})});

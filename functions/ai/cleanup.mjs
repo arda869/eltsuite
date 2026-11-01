@@ -11,9 +11,7 @@ for (const owner of await db.collection('aiPrivate').listDocuments()) {
   for (let page = 0; page < 20; page++) {
     const snapshot = await owner.collection('jobs').where('expiresAt', '<=', cutoff).limit(400).get();
     if (snapshot.empty) break;
-    const batch = db.batch();
-    for (const job of snapshot.docs) batch.delete(job.ref);
-    await batch.commit();
+    for (const job of snapshot.docs) await db.recursiveDelete(job.ref);
     deleted += snapshot.size;
     if (snapshot.size < 400) break;
   }

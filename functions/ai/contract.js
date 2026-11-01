@@ -34,6 +34,12 @@ export function generationSchema(schema) {
 export const reviewSchema = object({ checks: list(object({ criterion: string, score: { type: 'integer', minimum: 1, maximum: 5 }, evidence: string }), 11, 11),
   criticalErrors: list(string, 0), suggestions: list(string, 0) });
 export function validate(schema, value, path = 'output', root = schema) {
+  if(schema.anyOf) {
+    const tagged=schema.anyOf.find(b=>b.properties?.kind?.enum?.includes(value?.kind));
+    if(tagged)return validate(tagged,value,path,root);
+    for(const branch of schema.anyOf){try{return validate(branch,value,path,root);}catch{}}
+    throw Error(`${path} must use a supported inline task type.`);
+  }
   if(schema.$ref) {
     const name=schema.$ref.startsWith('#/$defs/')?schema.$ref.slice(8):'';
     if(!name || !root.$defs?.[name]) throw Error('Unknown schema reference.');
@@ -50,7 +56,9 @@ export function validate(schema, value, path = 'output', root = schema) {
   } else if (schema.type === 'string') {
     if (typeof value !== 'string' || value.trim().length < schema.minLength || value.length > schema.maxLength) throw Error(`${path} needs text within the length limit.`);
   } else if (schema.type === 'boolean') {
-    if (typeof value !== 'boolean') throw Error(`${path} must be true or false.`);
+    if(typeof value!=='boolean')throw Error(`${path} must be true or false.`);
+  } else if (schema.type === 'number') {
+    if(typeof value!=='number'||!Number.isFinite(value)||value<schema.minimum||value>schema.maximum)throw Error(`${path} needs a number within the limit.`);
   } else if (!Number.isInteger(value) || value < schema.minimum || value > schema.maximum) throw Error(`${path} needs a whole number within the limit.`);
   return value;
 }

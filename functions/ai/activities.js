@@ -1,3 +1,5 @@
+import { splitKey, mergeKey } from './import-question-core.js';
+import { nativeImportedElements } from './import-elements.js';
 import { mediaSchema, mediaRequests, mediaInstructions } from './media-contract.js';
 import { materialsPrinciples, contentStandards } from './pedagogy.js';
 import { validate } from './contract.js';
@@ -88,8 +90,10 @@ function inputNodes(body, fallbackReading=false) {
   const paragraphs=body.input.split('\n').filter(Boolean).map(p);
   return fallbackReading&&paragraphs.length ? [{type:'textBox',attrs:{style:'paper',tone:'grey',label:'',meta:'',side:'left',symbol:'',numbering:'none',width:'full'},content:paragraphs}] : paragraphs;
 }
-export function nativeTask(t, index) {
+export function nativeTask(t, index, namespace = '') {
   const key = {};
+  const imported=[t,...(t.subTasks??[])].some(b=>b.inlineElements?.length);
+  let bankWritten=[t,...(t.subTasks??[])].some(b=>b.inlineElements?.some(e=>e.kind==='bank'));
   const notes = [`Stage ${t.stageId} · ${t.minutes} minutes`,t.teacherNotes,t.teacherOnlyInput,t.roles.length?'Assign the A/B role versions before teaching this information-gap task.':'',`Optional support: ${t.support||'None required.'}`,`Optional challenge: ${t.challenge||'None required.'}`];
   function bodyNodes(body,prefix,reading=false) {
     const content=inputNodes(body,reading);
@@ -132,7 +136,7 @@ export function nativeTask(t, index) {
         for(const match of q.answer.matchAll(/\{\{([^{}]+)\}\}/g)){toks.push(...words(q.answer.slice(end,match.index)));const group=words(match[1]).map(w=>{toks.push(w);return toks.length-1;});groups.push(group);end=match.index+match[0].length;}
         toks.push(...words(q.answer.slice(end)));
         content.push({type:'pq',attrs:{id,kind:'highlight',data:{instruction:q.prompt,toks,penalty:false}}});
-        key[id]={kind:'pack',t:'highlight',k:{groups,penalty:false},feedback:q.explanation};
+        key[id]={kind:'pack',t:'highlight',k:{groups:groups.map(tokens=>({tokens})),penalty:false},feedback:q.explanation};
       }else if(q.format==='sentences') {
         const order=q.options.map((_,i)=>i).reverse();
         content.push(p(q.prompt),{type:'pq',attrs:{id,kind:'sentences',data:{items:order.map(i=>q.options[i])}}});
@@ -173,6 +177,11 @@ export function nativeTask(t, index) {
       }
     });
     flush();
+    if(body.inlineElements?.length){
+      const inline=nativeImportedElements(body.inlineElements,(namespace?namespace+'_':'')+prefix,{addBank:!bankWritten});
+      if(body.inlineElements.some(e=>['drop','bank'].includes(e.kind)))bankWritten=true;
+      content.push(...inline.content);Object.assign(key,inline.key);notes.push(inline.notes,...inline.requirements);
+    }
     return content;
   }
   const content=bodyNodes(t,'q'+index,t.format==='reading');
@@ -181,7 +190,9 @@ export function nativeTask(t, index) {
     const children=bodyNodes(st,'q'+index+'_s'+j);
     content.push({type:'subTask',attrs:{id:'st'+index+'_'+j,instr:st.instructions},content:children.length?children:[p('')]});
   }
-  return {content:{type:'doc',content},key,notes:notes.join('\n\n')};
+  const doc={type:'doc',content};
+  const separated=imported?splitKey(mergeKey(doc,key)):{content:doc,key};
+  return {...separated,notes:notes.join('\n\n')};
 }
 
 // Each alternative owns its learner body AND key; no appended support paragraphs.
