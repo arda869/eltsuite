@@ -23,7 +23,10 @@ export function materialSource(d) {
   return {name:s.name.trim()||'Existing materials',text:s.text,images:s.images,extractionWarnings:warnings,scope:d.scope,creationType:d.creationType,instructions};
 }
 export function checkRebuild(value,scope) {
-  validate(rebuildSchema,value);
+  // Retain up to 20 reader notes alongside the model's 30 warnings on recovery/save.
+  const schema=structuredClone(rebuildSchema);
+  schema.properties.warnings.maxItems=50;
+  validate(schema,value);
   if(scope==='task'&&value.tasks.length!==1)throw Error('Rebuild one task at a time in the task importer.');
   if(value.tasks.some(t=>t.mediaPlan.length||t.versions.length||t.roles.length))throw Error('Imported media and role variants need a separate review.');
   if(value.tasks.some(t=>t.format==='listening'))throw Error('Missing recordings must be reported, not invented.');

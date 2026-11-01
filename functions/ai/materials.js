@@ -46,7 +46,8 @@ export async function rebuildMaterials(req,{db,uid,cls,apiKey,model}) {
   try{
     const r=await generate({apiKey,model,schema:rebuildSchema,name:'rebuild',input,sourceImages:images,instructions:activityInstructions+'\nREBUILDING OVERRIDE — the following source-preservation rules take precedence over general original-lesson/media-generation rules:\n'+rebuildInstructions});
     checkRebuild(r.value,source.scope);
-    r.value.warnings=[...new Set([...source.extractionWarnings,...r.value.warnings])].slice(0,30);
+    r.value.warnings=[...new Set([...source.extractionWarnings,...r.value.warnings])];
+    checkRebuild(r.value,source.scope);
     const result={rebuilt:r.value};
     await db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);if(j.get('status')!=='running')throw Error('Import was already settled.');const settled=settleBudget(b.get('committedMicroUsd'),j.get('reservedMicroUsd'),[r.usage]);tx.update(budget,{committedMicroUsd:settled.balance});tx.update(job,{status:'completed',...encodeGenerationResult(result),costMicroUsd:settled.cost});});return result;
   }catch(e){await job.update({status:'failed'});throw new HttpsError('unavailable','We couldn’t rebuild those materials. Your original and existing work are unchanged. Try fewer pages or clearer text.');}
