@@ -4,7 +4,8 @@ import { defineSecret, defineString } from 'firebase-functions/params';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { generate } from '../ai/provider.js';
 import { checkModel, reserveBudget, settleBudget } from '../ai/budget.js';
-import { canUseHelp, helpInstructions, library, questionInput, selectedArticles, selectionSchema } from './core.js';
+import { canUseHelp, helpInstructions, library, routingIndex, questionInput, selectedArticles, selectionSchema } from './core.js';
+import { exactArticles } from './search.js';
 const key = defineSecret('OPENAI_API_KEY');
 const model = defineString('ELT_AI_MODEL', { default: '' });
 
@@ -15,8 +16,12 @@ export const helpAssistant = onCall({ region: 'us-central1', secrets: [key], max
   const [p, a] = await Promise.all([db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get()]);
   if (!canUseHelp(p.data(), a.data(), req.auth)) throw new HttpsError('permission-denied', 'Help is available to active teacher accounts.');
   if (d.action !== undefined && d.action !== 'feedback') throw new HttpsError('invalid-argument', 'Choose a help action.');
-  if (d.action !== 'feedback') { try { checkModel(model.value()); } catch { throw new HttpsError('unavailable', 'AI help is unavailable. Browse the help topics or contact support.'); } }
   const input = d.action === 'feedback' ? null : (() => { try { return questionInput(d); } catch (e) { throw new HttpsError('invalid-argument', e.message); } })();
+  if(input) {
+    const exact=exactArticles(library.articles,input.question);
+    if(exact.length)return {articleIds:exact.map(a=>a.id),version:library.version};
+    try { checkModel(model.value()); } catch { throw new HttpsError('unavailable', 'AI help is unavailable. Browse the help topics or contact support.'); }
+  }
   if (d.action === 'feedback' && (!['yes', 'no', 'unresolved'].includes(d.rating) || !Array.isArray(d.articleIds) || d.articleIds.length > 2 || d.articleIds.some(id => !library.articles.some(a => a.id === id)))) throw new HttpsError('invalid-argument', 'Choose a feedback option.');
   const usagePolicy=await usageContext(db,req.auth);
   const day = new Date().toISOString().slice(0, 10);
@@ -41,7 +46,7 @@ export const helpAssistant = onCall({ region: 'us-central1', secrets: [key], max
   }
   try {
     checkModel(model.value());
-    const result = await generate({ apiKey: key.value(), model: model.value(), schema: selectionSchema, name: 'help_selection', input: { ...input, approvedArticles: library.articles }, instructions: helpInstructions });
+    const result = await generate({ apiKey: key.value(), model: model.value(), schema: selectionSchema, name: 'help_selection', input: { ...input, approvedArticles: routingIndex }, instructions: helpInstructions });
     const articles = selectedArticles(result.value.articleIds);
     await db.runTransaction(async tx => {
       const b = await tx.get(budget);

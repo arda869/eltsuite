@@ -376,3 +376,15 @@
 .fs-ce-field.small > span { min-width: 54px; }
 .fs-ce-more { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--hair-strong); }
 .fs-ce-acts { display: flex; align-items: center; gap: 6px; }
+
+.definition-ai { border:1px solid var(--hair); border-radius:10px; padding:12px; margin:8px 0; font:13px/1.5 var(--sans); }
+.definition-ai p { margin:7px 0; }
+.definition-ai > label, .definition-ai details label { display:grid; gap:5px; margin:8px 0; }
+.definition-ai select,.definition-ai textarea { width:100%; box-sizing:border-box; color:var(--ink); background:var(--paper); border:1px solid var(--hair); border-radius:7px; padding:7px; font:inherit; }
+.definition-ai summary { cursor:pointer; margin:8px 0; }
+.definition-ai-draft { margin-top:12px; border-top:1px solid var(--hair); padding-top:8px; }
+.definition-ai-draft dl { margin:8px 0; }
+.definition-ai-draft dt { font-weight:600; text-transform:capitalize; }
+.definition-ai-draft dd { margin:0 0 8px; }
+.definition-ai-replace { display:flex; align-items:flex-start; gap:7px; margin:10px 0; }
+.def-pop { width:min(380px,calc(100vw - 16px)); box-sizing:border-box; }

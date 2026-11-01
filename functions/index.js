@@ -12,6 +12,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
 export { helpAssistant } from './help/index.js';
+export { teachingDefinition } from './definitions/index.js';
 export { prepareLessonMedia } from './ai/media-worker.js';
 export { lessonAssistant } from './ai/assistant.js';
 export { recordingDialogue } from './speech/dialogue.js';

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { IpaField } from './Ipa';
 import { useEditorClass } from './context';
 import { translationsFor, useClassLangs, useMyLangs } from '../lib/langs';
+import { DefinitionAI } from './DefinitionAI';
 
 // An inline definition: a word or phrase in the text that learners tap or hover to see its meaning.
 // Fields follow the vocabulary entry in the brief (core first, the rest under "More details").
@@ -113,10 +114,12 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
   const [more, setMore] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [word, setWord] = useState('');
+  const [aiBusy,setAiBusy]=useState(false);
   const existing = editor.isActive('definition');
 
   useEffect(() => {
     if (!open) return;
+    setAiBusy(false);
     if (existing) editor.chain().extendMarkRange('definition').run();
     const d = (editor.getAttributes('definition').data ?? {}) as DefData;
     setData(d);
@@ -138,7 +141,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
   useEffect(() => {
     if (!open) return;
     const down = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) save();
+      if (!aiBusy && ref.current && !ref.current.contains(e.target as Node)) save();
     };
     // Escape, also from inside a field: close this panel only and go back to the text.
     const key = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), onClose(), editor.commands.focus());
@@ -172,6 +175,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
         <span className="pop-type">Definition</span>
         <strong className="def-pop-word">{word}</strong>
       </div>
+      <DefinitionAI word={word} context={editor.state.doc.textBetween(Math.max(0,editor.state.selection.from-1500),Math.min(editor.state.doc.content.size,editor.state.selection.to+1500),'\n')} onUse={fn=>{setData(fn);setMore(true);}} onBusyChange={setAiBusy}/>
       {CORE.map(field)}
       <TransFields data={data} setData={setData} />
       <button type="button" className="btn link small def-more" onClick={() => setMore((m) => !m)}>
@@ -190,7 +194,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
             Remove definition
           </button>
         )}
-        <button type="button" className="btn small-btn primary" style={{ marginLeft: 'auto' }} onClick={save}>
+        <button type="button" className="btn small-btn primary" disabled={aiBusy} style={{ marginLeft: 'auto' }} onClick={save}>
           Done
         </button>
       </div>
@@ -241,9 +245,9 @@ export function DefField({ f, data, setData, word }: { f: FieldDef; data: DefDat
           ))}
         </span>
       ) : f.long ? (
-        <textarea rows={2} value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
+        <textarea aria-label={f.label} rows={2} value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
       ) : (
-        <input value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
+        <input aria-label={f.label} value={data[f.k] ?? ''} placeholder={f.ph} onChange={(e) => setData((d) => ({ ...d, [f.k]: e.target.value }))} onKeyDown={(e) => e.stopPropagation()} />
       )}
     </label>
   );

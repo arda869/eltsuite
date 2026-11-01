@@ -32,6 +32,8 @@ export function validate(schema, value, path = 'output', root = schema) {
     value.forEach((v, i) => validate(schema.items, v, `${path}[${i}]`, root));
   } else if (schema.type === 'string') {
     if (typeof value !== 'string' || value.trim().length < schema.minLength || value.length > schema.maxLength) throw Error(`${path} needs text within the length limit.`);
+  } else if (schema.type === 'boolean') {
+    if (typeof value !== 'boolean') throw Error(`${path} must be true or false.`);
   } else if (!Number.isInteger(value) || value < schema.minimum || value > schema.maximum) throw Error(`${path} needs a whole number within the limit.`);
   return value;
 }

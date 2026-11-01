@@ -25,7 +25,7 @@ import { useToolGate } from '../lib/toolbarPrefs';
 const plainDoc = (text: string): JSONContent => ({ type: 'doc', content: [text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' }] });
 const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak|inlineMedia)"/) !== null;
 
-export function InstrEditor({ doc, text, classId: givenClass, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; classId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
+export function InstrEditor({ doc, text, classId: givenClass, lessonId: givenLesson, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; classId?:string; lessonId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
   const ctx=useEditorClass();
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
@@ -73,7 +73,7 @@ export function InstrEditor({ doc, text, classId: givenClass, onChange, placehol
     return a ?? 'RP';
   };
   return (
-    <EditorClassContext.Provider value={{...ctx,classId:givenClass || ctx.classId}}><div className="instr-wrap">
+    <EditorClassContext.Provider value={{...ctx,classId:givenClass || ctx.classId,lessonId:givenLesson || ctx.lessonId}}><div className="instr-wrap">
       <EditorContent editor={editor} className="task-instr input" />
       <div className="ne-bar instr-bar" role="toolbar" aria-label="Instruction formatting">
         {B('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}

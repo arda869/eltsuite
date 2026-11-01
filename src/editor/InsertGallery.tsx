@@ -84,7 +84,7 @@ const ABOUT: Record<string, string> = {
   'tt-reflection':'Investigate a focused classroom question, consider evidence and alternatives, and plan a measurable follow-up.',
   'tt-org': 'The forms your organisation made for its teacher training: observation, feedback, planning, with its own questions and ratings.',
   'tt-loop': 'After you model a technique, trainees open the box to see what you did and why, with questions to discuss.',
-  dictcut: 'A word’s dictionary entry, as if cut out of a printed dictionary page: meaning, examples, pronunciation, collocations, only the fields you fill in.',
+  dictcut: 'A standalone word or phrase with a teaching meaning, examples and useful language details. Draft with AI using the lesson context, then review and edit. Only filled fields are shown.',
   subst: 'The words that can go in one place of a sentence, stacked between two lines: I want to go to | Lisbon, Istanbul, Hong Kong | this summer.',
   image: 'Pictures from your computer, your resources library or a web address. Crop them, change the colour, or cover them for learners to reveal.',
   table: 'A table with a header row. Cells can be coloured and rows striped.',

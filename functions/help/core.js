@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 export const library = JSON.parse(readFileSync(new URL('./library.json', import.meta.url), 'utf8'));
+// Route against a compact index; the model never writes product instructions.
+export const routingIndex = library.articles.map(({id,title,questions,keywords})=>({id,title,questions,...(!questions?.length?{keywords}:{})}));
 export const selectionSchema = {
   type: 'object', additionalProperties: false, required: ['articleIds'],
   properties: { articleIds: { type: 'array', minItems: 0, maxItems: 2, items: { type: 'string', enum: library.articles.map(a => a.id) } } },

@@ -99,3 +99,5 @@
 @media print { .help-menu { display: none !important; } }
 
 body:has(.help-menu-pop) :is(.topbar, .dp-bar, .studio-bar, .sx-bar) { z-index: 190; }
+
+.help-search select { width:100%; min-height:40px; border:1px solid var(--hair); border-radius:9px; padding:8px 10px; background:var(--paper); color:var(--ink); font:inherit; }

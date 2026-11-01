@@ -830,7 +830,7 @@ export function LessonEditor() {
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
-                  <InstrEditor classId={classId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                  <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
                 <div className="frame-body">
                   <VoiceDiversityPrompt key={itemId} />

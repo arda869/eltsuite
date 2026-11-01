@@ -1,0 +1,93 @@
+name: Deploy teacher knowledge and contextual definitions
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['functions/help/**','functions/definitions/**','src/editor/DefinitionAI.tsx','.github/workflows/deploy-teaching-help.yml']
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  teaching:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci && npm --prefix functions ci --no-audit --no-fund
+      - name: AI contracts, access and knowledge coverage
+        run: node --test test/ai/*.test.mjs
+      - name: Real definition callable and database checks (model simulated)
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-teaching-help "node test/ai/definitions-integration.mjs"
+      - name: Build
+        env:
+          VITE_ELT_AI_PILOT: 'true'
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Definition save/reopen and knowledge journeys (AI simulated)
+        run: node test/teaching-knowledge.mjs
+      - name: Existing teacher and learner journeys and accessibility
+        run: npm run a11y
+      - name: Prepare existing deployment credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy help and definition services first
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n');
+          JS
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only functions:helpAssistant,functions:teachingDefinition --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/teaching-backend.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/teaching-backend.log"
+      - name: Verify deployed secret references without reading secret values
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          node --input-type=module - <<'JS'
+          import {createRequire} from 'node:module';
+          const require=createRequire(new URL('./functions/package.json',import.meta.url));
+          const {GoogleAuth}=require('google-auth-library');
+          const auth=new GoogleAuth({scopes:['https://www.googleapis.com/auth/cloud-platform']}),client=await auth.getClient();
+          for(const name of ['helpAssistant','teachingDefinition']){
+            const {data}=await client.request({url:`https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/${name}`});
+            if(!data.serviceConfig?.secretEnvironmentVariables?.some(s=>s.key==='OPENAI_API_KEY'&&s.secret==='OPENAI_API_KEY'&&s.version))throw Error(`${name}: deployed secret binding missing`);
+            console.log(name+': deployed secret reference verified; no secret values read');
+          }
+          JS
+      - name: Deploy tested site
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only hosting --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/teaching-site.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/teaching-site.log"
+      - name: Verify published build
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const expected=JSON.parse(fs.readFileSync('dist/version.json','utf8'));
+          let actual;
+          for(let i=0;i<12;i++){
+            actual=await fetch('https://eltsuite.com/version.json?verify='+Date.now(),{cache:'no-store'}).then(r=>r.json());
+            if(actual.build===expected.build)break;
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(actual.build!==expected.build)throw Error(`Published ${actual.build} differs from tested ${expected.build}`);
+          console.log('Published teaching knowledge build verified:',actual.build);
+          JS
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31.2",
+  "version": "2026-11-01.knowledge.1",
   "articles": [
     {
       "id": "navigation",
@@ -18,7 +18,14 @@
       "requiresPilot": false,
       "requiresAi": false,
       "related": [],
-      "benefit": ""
+      "benefit": "",
+      "category": "Getting started",
+      "questions": [
+        "Find your way around?",
+        "How do I find the apps?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "lessons",
@@ -39,7 +46,14 @@
       "related": [
         "ai-lessons"
       ],
-      "benefit": ""
+      "benefit": "",
+      "category": "Classes and lessons",
+      "questions": [
+        "Make a lesson?",
+        "How do I make a lesson?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "learners",
@@ -60,7 +74,14 @@
       "related": [
         "live"
       ],
-      "benefit": ""
+      "benefit": "",
+      "category": "Learners and teaching",
+      "questions": [
+        "Help learners join?",
+        "How do I help learners join?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "live",
@@ -81,7 +102,14 @@
       "related": [
         "calls"
       ],
-      "benefit": "Add a live lesson alongside your video call so learners can follow the tasks on their own screens."
+      "benefit": "Add a live lesson alongside your video call so learners can follow the tasks on their own screens.",
+      "category": "Learners and teaching",
+      "questions": [
+        "Teach a lesson live?",
+        "How do I teach live?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "calls",
@@ -102,7 +130,14 @@
       "related": [
         "live"
       ],
-      "benefit": "Teach face to face online using your class’s built-in video room."
+      "benefit": "Teach face to face online using your class’s built-in video room.",
+      "category": "Calls and timetable",
+      "questions": [
+        "Join a video class?",
+        "How do I join a video class?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "recordings",
@@ -123,7 +158,14 @@
       "related": [
         "ai-audio"
       ],
-      "benefit": ""
+      "benefit": "",
+      "category": "Audio and songs",
+      "questions": [
+        "Make a listening recording?",
+        "How do I record my voice?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "files",
@@ -144,7 +186,14 @@
       "related": [
         "collab"
       ],
-      "benefit": ""
+      "benefit": "",
+      "category": "Resources and sharing",
+      "questions": [
+        "Keep your resources together?",
+        "How do I find my files?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "collab",
@@ -165,7 +214,14 @@
       "related": [
         "reading"
       ],
-      "benefit": "Turn your resources into a document you can write and edit together with colleagues or learners."
+      "benefit": "Turn your resources into a document you can write and edit together with colleagues or learners.",
+      "category": "Documents and PDFs",
+      "questions": [
+        "Write together in Collab?",
+        "How do I write together?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "timetable",
@@ -184,7 +240,14 @@
       "requiresPilot": false,
       "requiresAi": false,
       "related": [],
-      "benefit": ""
+      "benefit": "",
+      "category": "Calls and timetable",
+      "questions": [
+        "Plan your week?",
+        "How do I plan my week?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "settings",
@@ -203,7 +266,14 @@
       "requiresPilot": false,
       "requiresAi": false,
       "related": [],
-      "benefit": ""
+      "benefit": "",
+      "category": "Account and access",
+      "questions": [
+        "Change your account settings?",
+        "How do I change my settings?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "limits",
@@ -222,7 +292,14 @@
       "requiresPilot": false,
       "requiresAi": false,
       "related": [],
-      "benefit": ""
+      "benefit": "",
+      "category": "Account and access",
+      "questions": [
+        "Understand plans and limits?",
+        "How do I check my limits?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "troubleshooting",
@@ -241,7 +318,14 @@
       "requiresPilot": false,
       "requiresAi": false,
       "related": [],
-      "benefit": ""
+      "benefit": "",
+      "category": "Troubleshooting",
+      "questions": [
+        "When something doesn’t work?",
+        "How do I get support?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "ai-audio",
@@ -262,7 +346,14 @@
       "related": [
         "recordings"
       ],
-      "benefit": "Need listening material without recording every voice yourself? Turn a script into AI speech, or draft a dialogue from a situation and learner level."
+      "benefit": "Need listening material without recording every voice yourself? Turn a script into AI speech, or draft a dialogue from a situation and learner level.",
+      "category": "Audio and songs",
+      "questions": [
+        "Turn a script into AI speech?",
+        "How do I create AI speech?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "ai-lessons",
@@ -281,7 +372,14 @@
       "requiresPilot": true,
       "requiresAi": true,
       "related": [],
-      "benefit": "Save time starting from a blank page: let AI draft an outline and editable activities for your teaching goals, then review and adapt them."
+      "benefit": "Save time starting from a blank page: let AI draft an outline and editable activities for your teaching goals, then review and adapt them.",
+      "category": "Classes and lessons",
+      "questions": [
+        "Get a head start with AI lesson planning?",
+        "How do I create a lesson with AI?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     },
     {
       "id": "reading",
@@ -302,7 +400,3306 @@
       "related": [
         "collab"
       ],
-      "benefit": "Writing from your professional reading? Keep the sources in Development Studio so you can add citations in Collab without retyping the reference."
+      "benefit": "Writing from your professional reading? Keep the sources in Development Studio so you can add citations in Collab without retyping the reference.",
+      "category": "Professional development",
+      "questions": [
+        "Keep sources beside your writing?",
+        "How do I add reading sources?"
+      ],
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "ai-images",
+      "category": "Images and Designer",
+      "title": "Generate an image with AI",
+      "questions": [
+        "How do I generate images?",
+        "How can I create a picture with AI?",
+        "Where is AI image generation?"
+      ],
+      "keywords": "generate an image with ai how do i generate images? how can i create a picture with ai? where is ai image generation?",
+      "summary": "Use Designer to create a picture from a description, review a preview and apply it to your canvas.",
+      "steps": [
+        "Open Designer from the apps menu. Choose Create image and a canvas, or open an existing design.",
+        "Open AI images, choose Create an image and describe the subject and setting. Choose a Visual style, optionally match a previous illustration, then choose Generate preview.",
+        "Wait for the preview, review it, then choose Apply to canvas. Download the image or save it as a picture in Resources to reuse it in lessons."
+      ],
+      "source": "src/design/AiImages.tsx; src/design/Start.tsx; src/pages/AppFiles.tsx; src/design/Download.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "image-styles"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "image-edit",
+      "category": "Images and Designer",
+      "title": "Change part of an image with AI",
+      "questions": [
+        "How do I edit a picture with AI?",
+        "Can I change the background of an image?",
+        "How do I alter an existing image?"
+      ],
+      "keywords": "change part of an image with ai how do i edit a picture with ai? can i change the background of an image? how do i alter an existing image?",
+      "summary": "Select one image on the Designer canvas before requesting an AI change.",
+      "steps": [
+        "Open your design and select exactly one picture on the canvas.",
+        "Open AI images and choose Change an image. Describe the change, such as a different background or clothing colour.",
+        "Choose Generate preview. Inspect the result before Apply to canvas; Discard preview leaves the canvas as it was."
+      ],
+      "source": "src/design/AiImages.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "image-erase"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "image-erase",
+      "category": "Images and Designer",
+      "title": "Remove an object from a picture",
+      "questions": [
+        "How do I use the magic eraser?",
+        "Can I remove an object from an image?",
+        "How do I erase an unwanted bag in a picture?"
+      ],
+      "keywords": "remove an object from a picture how do i use the magic eraser? can i remove an object from an image? how do i erase an unwanted bag in a picture?",
+      "summary": "Designer’s AI magic eraser removes an object described in words.",
+      "steps": [
+        "Select one image on your Designer canvas.",
+        "Open AI images, choose Magic eraser · remove an object, then describe what should be removed.",
+        "Generate a preview, check surrounding details, and apply it only when you are happy with the result."
+      ],
+      "source": "src/design/AiImages.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "image-edit"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "image-recovery",
+      "category": "Troubleshooting",
+      "title": "Recover an unfinished image preview",
+      "questions": [
+        "My image is still generating. What do I do?",
+        "How do I recover an AI image?",
+        "Why is Generate preview disabled?"
+      ],
+      "keywords": "recover an unfinished image preview my image is still generating. what do i do? how do i recover an ai image? why is generate preview disabled?",
+      "summary": "A saved preview request can be checked again without starting another image generation.",
+      "steps": [
+        "Read the message beside the action. Create, change and erase modes need a description; Restyle extra changes can stay blank. Editing needs one selected image and the image connection must be ready.",
+        "If a request is pending, choose Recover preview. A still-running message means wait and check again; it does not generate another image.",
+        "When the preview appears, apply or discard it. If the request failed, the panel explains that you can start a new preview. A connection error needs checking; repeatedly generating is not a credential fix."
+      ],
+      "source": "src/design/AiImages.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "ai-images"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "design-start",
+      "category": "Images and Designer",
+      "title": "Start a design or storyboard",
+      "questions": [
+        "How do I make a storyboard?",
+        "How do I start a new design?",
+        "Can I choose a canvas size?"
+      ],
+      "keywords": "start a design or storyboard how do i make a storyboard? how do i start a new design? can i choose a canvas size?",
+      "summary": "Designer supports image canvases and multi-page designs. Storyboard files use the same design tools.",
+      "steps": [
+        "Open Designer and use Create image or Create storyboard.",
+        "Choose an image canvas or a blank page size. Add pictures, text or teaching elements from the side tools.",
+        "Name your work and check its save status before leaving. Use Download for a picture or PDF."
+      ],
+      "source": "src/pages/AppFiles.tsx; src/design/Start.tsx; src/design/Editor.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "ai-images",
+        "design-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "design-pictures",
+      "category": "Images and Designer",
+      "title": "Add and arrange pictures in Designer",
+      "questions": [
+        "How do I upload a picture into Designer?",
+        "Can I add text over an image?",
+        "How do I move or resize an object?"
+      ],
+      "keywords": "add and arrange pictures in designer how do i upload a picture into designer? can i add text over an image? how do i move or resize an object?",
+      "summary": "Use the Pictures and Text tools to build editable artwork on the canvas.",
+      "steps": [
+        "Open your design and choose Pictures to add an image, or Text for a text element.",
+        "Select an element to use its editing controls. Drag it to reposition it and use its size controls or handles to resize it.",
+        "Use Layers when elements overlap. Download a preview to check that the result fits the intended lesson or screen."
+      ],
+      "source": "src/design/Editor.tsx; src/design/Drawers.tsx; src/design/Panels.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "design-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "design-export",
+      "category": "Images and Designer",
+      "title": "Download a design or reuse it in a lesson",
+      "questions": [
+        "How do I download an AI image?",
+        "How do I put my design in a lesson?",
+        "Can I export a design as PNG or PDF?"
+      ],
+      "keywords": "download a design or reuse it in a lesson how do i download an ai image? how do i put my design in a lesson? can i export a design as png or pdf?",
+      "summary": "Designer can export the current page as PNG or JPG, save it as a reusable picture, or export all pages as PDF.",
+      "steps": [
+        "Open Download in Designer.",
+        "Choose Picture (PNG) for a sharp image, Picture (JPG) for a smaller file, or PDF for all pages.",
+        "For lesson use, choose Save as a picture in Resources. Open your lesson’s picture/resource picker and select the saved picture. A saved picture is flattened; keep the original design for editing. You can also select a saved design directly from the lesson picture picker’s Designer tab."
+      ],
+      "source": "src/design/Download.tsx; src/editor/Picture.tsx",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "files"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "image-rights",
+      "category": "Images and Designer",
+      "title": "Check picture and source-material permissions",
+      "questions": [
+        "Can I upload copyrighted pictures?",
+        "Who owns materials I create?",
+        "Can I rebuild a textbook page?"
+      ],
+      "keywords": "check picture and source-material permissions can i upload copyrighted pictures? who owns materials i create? can i rebuild a textbook page?",
+      "summary": "Use materials you own or have permission to upload, adapt and use. Rebuilding does not transfer third-party rights.",
+      "steps": [
+        "Check the original material’s licence or obtain permission before uploading it. Remove personal or confidential information you should not share.",
+        "ELT Suite is a creation tool and does not claim ownership of your original materials or original contributions; you retain the rights you hold.",
+        "Third-party rights still apply. AI output may not be unique or protected everywhere. Check suitability and permissions before sharing or publishing it."
+      ],
+      "source": "src/materials/MaterialImport.tsx; src/pages/Legal.tsx",
+      "href": "/guide",
+      "action": "Open the guide",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "material-import"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-start",
+      "category": "Video creation and editing",
+      "title": "Upload and edit a video",
+      "questions": [
+        "How do I edit a video?",
+        "Where is the video editor?",
+        "Can I upload my own video?"
+      ],
+      "keywords": "upload and edit a video how do i edit a video? where is the video editor? can i upload my own video?",
+      "summary": "The video editor has video, audio and caption tracks. AI generation is optional.",
+      "steps": [
+        "Open Video editor from the apps menu on a supported computer. Choose Upload media and a video, audio or image file.",
+        "Add the required media to the timeline, select a clip and use its settings and timeline controls.",
+        "Save project to keep editable work. Export video downloads a finished file; Save finished video saves a rendered copy in your libraries."
+      ],
+      "source": "src/video/VideoEditor.tsx; src/video/library.ts; src/main.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "video-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "ai-video",
+      "category": "Video creation and editing",
+      "title": "Create a classroom video from a brief",
+      "questions": [
+        "How do I create a video with AI?",
+        "Can AI suggest scenes and a script?",
+        "Can I edit the video script before generating?"
+      ],
+      "keywords": "create a classroom video from a brief how do i create a video with ai? can ai suggest scenes and a script? can i edit the video script before generating?",
+      "summary": "Brief → video drafts scenes and a complete script for review before creating media.",
+      "steps": [
+        "Open Video editor, then Make with AI → Brief → video. Describe your video and choose learners, level, length and style. Saved character references are optional.",
+        "Choose Suggest scenes and script. Review every scene’s visual action and full spoken script. Edit the words, questions, suggested answers and scene order before generating.",
+        "Choose Generate video from this script. Completed scenes, narration and silent question cards are assembled on the timeline. Review playback and save your project. Narration does not guarantee matching mouth movements."
+      ],
+      "source": "src/video/VideoBrief.tsx; src/video/AIVideo.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "video-styles",
+        "video-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "animate-image",
+      "category": "Video creation and editing",
+      "title": "Turn a still image into a moving video",
+      "questions": [
+        "How do I animate an image?",
+        "Why does my video not move?",
+        "My video is just a still picture."
+      ],
+      "keywords": "turn a still image into a moving video how do i animate an image? why does my video not move? my video is just a still picture.",
+      "summary": "A picture added to the timeline stays still. Generate a moving video to animate it.",
+      "steps": [
+        "In the video Media library, pictures are labelled Still image · no motion. Choose Animate image on the picture you want to use.",
+        "Describe visible movement under What happens. For a collage or storyboard, choose Make still preview to create one full-frame scene first.",
+        "Choose Generate moving video, wait for completion, then Add scene to timeline. Play it, save the project and export a finished video when ready."
+      ],
+      "source": "src/video/AIVideo.tsx; src/video/VideoEditor.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "video-recovery"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-characters",
+      "category": "Video creation and editing",
+      "title": "Create and reuse video characters",
+      "questions": [
+        "How do I keep the same character across videos?",
+        "Can I upload a character reference?",
+        "How do I create a character?"
+      ],
+      "keywords": "create and reuse video characters how do i keep the same character across videos? can i upload a character reference? how do i create a character?",
+      "summary": "The Characters library holds reusable character references for AI video creation.",
+      "steps": [
+        "Open Characters in the video editor. Upload a reference or create an original character with AI using its appearance description and style.",
+        "Save the character, then select it in a scene’s Saved characters or a brief’s Reuse saved characters section.",
+        "For several character references, prepare a single scene image first, then animate it. References guide appearance but do not guarantee identical details in every generation."
+      ],
+      "source": "src/video/CharacterLibrary.tsx; src/video/AIVideo.tsx; src/video/VideoBrief.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "video-sharing"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-styles",
+      "category": "Video creation and editing",
+      "title": "Choose a visual style for an AI video",
+      "questions": [
+        "What visual styles can I choose?",
+        "Can I make a 3D cartoon video?",
+        "Can I make realistic classroom videos?"
+      ],
+      "keywords": "choose a visual style for an ai video what visual styles can i choose? can i make a 3d cartoon video? can i make realistic classroom videos?",
+      "summary": "Presets include 3D cartoon, 2D cartoon, illustrated storybook, clay animation, paper cut-out and realistic video.",
+      "steps": [
+        "Choose Visual style in the brief or scene controls.",
+        "Describe original characters, the setting and what visibly happens. Use a general visual description rather than relying on a named studio’s characters.",
+        "Review the scene image and video before teaching. Changing a scene’s settings requires a new generation to show those changes."
+      ],
+      "source": "src/video/AIVideo.tsx; src/video/VideoBrief.tsx; functions/video/styles.js",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "video-characters"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-cuts",
+      "category": "Video creation and editing",
+      "title": "Cut, trim and arrange video clips",
+      "questions": [
+        "How do I split a video clip?",
+        "Can I trim a clip or change its speed?",
+        "How do I remove a clip without leaving a gap?"
+      ],
+      "keywords": "cut, trim and arrange video clips how do i split a video clip? can i trim a clip or change its speed? how do i remove a clip without leaving a gap?",
+      "summary": "Select a timeline clip before using clip-specific tools.",
+      "steps": [
+        "Select the clip and position the playhead. Split at playhead divides it at that position; Undo reverses an edit.",
+        "Use Clip settings for its timeline start, duration, playback speed, volume and frame fit.",
+        "More tools includes additional editing actions such as Ripple delete, Duplicate and Detach audio. Check the timeline and play the join after editing."
+      ],
+      "source": "src/video/VideoEditor.tsx; src/video/operations.ts; src/video/VideoButton.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "video-shortcuts"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-captions",
+      "category": "Video creation and editing",
+      "title": "Add captions, narration and music to video",
+      "questions": [
+        "How do I add captions to a video?",
+        "Can I record a voice-over?",
+        "Can I use multiple audio tracks?"
+      ],
+      "keywords": "add captions, narration and music to video how do i add captions to a video? can i record a voice-over? can i use multiple audio tracks?",
+      "summary": "Captions and audio can be arranged on separate timeline tracks.",
+      "steps": [
+        "Use Add caption for a caption clip and edit its text, timing and appearance.",
+        "Use Record voice-over or Upload media for audio, then place it on an audio track. Add audio track when you need another layer.",
+        "Set volumes and clip timing, then play through the complete sequence. AI voice-over is separate from guaranteed lip sync."
+      ],
+      "source": "src/video/VideoEditor.tsx; src/video/VideoBrief.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "video-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-panels",
+      "category": "Video creation and editing",
+      "title": "Resize video editor panels",
+      "questions": [
+        "How do I make the video preview bigger?",
+        "Can I resize the timeline?",
+        "How do I resize the media panel?"
+      ],
+      "keywords": "resize video editor panels how do i make the video preview bigger? can i resize the timeline? how do i resize the media panel?",
+      "summary": "Drag the dividers between the library, preview, timeline and clip settings.",
+      "steps": [
+        "Drag the relevant panel divider to make the adjoining areas bigger or smaller.",
+        "Focus a divider and use arrow keys for keyboard resizing. Double-click the divider to reset its size.",
+        "The editor keeps minimum space for the preview; very large panel sizes are clamped to the available screen."
+      ],
+      "source": "src/video/StudioPanels.tsx; src/video/VideoEditor.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-shortcuts",
+      "category": "Video creation and editing",
+      "title": "Use video editor keyboard shortcuts",
+      "questions": [
+        "What are the video editing shortcuts?",
+        "How do I split a clip with the keyboard?",
+        "How do I undo a video edit?"
+      ],
+      "keywords": "use video editor keyboard shortcuts what are the video editing shortcuts? how do i split a clip with the keyboard? how do i undo a video edit?",
+      "summary": "Open Shortcuts or press ? to see the current shortcut list.",
+      "steps": [
+        "Use Space to play or pause, and Home to return to the start.",
+        "Use Cmd/Ctrl B to split at the playhead, C for a caption, Delete to remove a clip, and Cmd/Ctrl Z to undo.",
+        "Cmd/Ctrl S saves the project and Cmd/Ctrl E exports. Text fields keep their normal typing behaviour; select a clip for clip-specific actions."
+      ],
+      "source": "src/video/VideoButton.tsx; src/video/VideoEditor.tsx",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "video-cuts"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-export",
+      "category": "Video creation and editing",
+      "title": "Save an editable project and a finished video",
+      "questions": [
+        "What is the difference between Save and Export?",
+        "How do I download my finished video?",
+        "Where does Save finished video put it?"
+      ],
+      "keywords": "save an editable project and a finished video what is the difference between save and export? how do i download my finished video? where does save finished video put it?",
+      "summary": "A saved project keeps your timeline editable. A finished video is a rendered playback file.",
+      "steps": [
+        "Choose Save project and check for Saved. Reopen it using Open a saved project in Media.",
+        "Choose Export video to download the rendered file. Keep the tab visible during export.",
+        "Choose Save finished video to place a rendered copy in Resources and the video library. The filename extension depends on the browser’s supported video format; do not assume every export is MP4. Play the finished file before sharing."
+      ],
+      "source": "src/video/VideoEditor.tsx; src/video/engine.ts",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "files"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-recovery",
+      "category": "Troubleshooting",
+      "title": "Continue or troubleshoot AI video creation",
+      "questions": [
+        "Why is video generation unavailable?",
+        "How do I recover a generated scene?",
+        "Will continuing generate the same scenes again?"
+      ],
+      "keywords": "continue or troubleshoot ai video creation why is video generation unavailable? how do i recover a generated scene? will continuing generate the same scenes again?",
+      "summary": "Video generation needs the server connection and an available AI allowance. Completed media is kept for reuse.",
+      "steps": [
+        "Read the message beside generation. Add a visual action before generating; a brief must have an approved script. Several references may require a scene image first.",
+        "In Brief → video, Continue generation reuses saved scenes. A submitted scene can finish in the library even if you pause the editor.",
+        "If a scene fails, keep the error message and completed media. Contact support for connection failures; never post API keys or repeatedly replace credentials. Replay saved media without starting a new generation."
+      ],
+      "source": "src/video/AIVideo.tsx; src/video/VideoBrief.tsx; functions/video/index.js",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "animate-image"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-sharing",
+      "category": "Video creation and editing",
+      "title": "Share video assets and character references",
+      "questions": [
+        "Can colleagues reuse my characters?",
+        "How do I share an AI video with my organisation?",
+        "Can I keep my videos private?"
+      ],
+      "keywords": "share video assets and character references can colleagues reuse my characters? how do i share an ai video with my organisation? can i keep my videos private?",
+      "summary": "Video assets have sharing controls; a saved project and a shared asset are different things.",
+      "steps": [
+        "Find the asset in the video Media or Characters library and choose Share.",
+        "Choose the organisation or colleagues who should have access. Review the selection before saving sharing changes.",
+        "Only share material you have permission to use. Sharing a reference does not transfer ownership of another creator’s work."
+      ],
+      "source": "src/video/VideoEditor.tsx; src/video/CharacterLibrary.tsx; src/video/library.ts",
+      "href": "/studio/video",
+      "action": "Open Video editor",
+      "app": "video",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "image-rights"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "video-embed",
+      "category": "Classes and lessons",
+      "title": "Embed a video inside lesson content",
+      "questions": [
+        "How do I embed a video in a lesson?",
+        "Can videos go inside tables and text boxes?",
+        "How do I insert an inline video?"
+      ],
+      "keywords": "embed a video inside lesson content how do i embed a video in a lesson? can videos go inside tables and text boxes? how do i insert an inline video?",
+      "summary": "The lesson editor supports inline video elements as well as standalone media.",
+      "steps": [
+        "Open a lesson task and place the cursor where the video belongs.",
+        "Use Embed a video or the inline-video item in the element picker. Select a saved video or use the available media options.",
+        "Preview the lesson as a learner and check playback and access. Inline video elements can also live within supported rich content such as table cells and text boxes."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/mediaSchema.ts; src/editor/MediaNode.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "video-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "class-create",
+      "category": "Classes and lessons",
+      "title": "Create and configure a class",
+      "questions": [
+        "How do I create a class?",
+        "Can I change a class name or level?",
+        "Where are class settings?"
+      ],
+      "keywords": "create and configure a class how do i create a class? can i change a class name or level? where are class settings?",
+      "summary": "Classes groups your learners, lessons, work and reports.",
+      "steps": [
+        "Open Classes and create a class. Choose the class kind, name and the available level or course settings.",
+        "Open the class’s Class actions → Class settings to update its details, learning profile, theme colour or lesson style.",
+        "Check the class code and add learners in the Learners tab. Review audience and level before using AI creation."
+      ],
+      "source": "src/pages/TeacherHome.tsx; src/pages/ClassPage.tsx; src/components/ClassSettingsDialog.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "learners"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "class-archive",
+      "category": "Classes and lessons",
+      "title": "Archive or delete a class",
+      "questions": [
+        "How do I archive a finished class?",
+        "Can I restore an archived class?",
+        "What happens if I delete a class?"
+      ],
+      "keywords": "archive or delete a class how do i archive a finished class? can i restore an archived class? what happens if i delete a class?",
+      "summary": "Archiving and deleting are different actions. Read the confirmation before deleting.",
+      "steps": [
+        "Open the class and its Class actions menu.",
+        "Choose the archive action for a finished class. An archived class has a control to make it active again.",
+        "Use Delete only when you intend the removal described in the confirmation. Do not treat deletion as an alternative to archiving or assume it is reversible."
+      ],
+      "source": "src/pages/ClassPage.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "class-create"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "class-training",
+      "category": "Classes and lessons",
+      "title": "Use teacher-training class tools",
+      "questions": [
+        "How do I create a teacher training class?",
+        "Where are observation forms and loop input?",
+        "Why can I not see training tools?"
+      ],
+      "keywords": "use teacher-training class tools how do i create a teacher training class? where are observation forms and loop input? why can i not see training tools?",
+      "summary": "Teacher-training classes expose specialised planning, analysis, observation and reflection tools.",
+      "steps": [
+        "Choose the training class kind when creating the class, or in Class settings. Set the course and training profile.",
+        "Use the task element picker’s Teacher training section for analysis, planning, observation, rehearsal, exam preparation, reflection or loop-input tools.",
+        "Changing the class to a language class hides the training tools; changing back brings them back. Organisation forms are managed separately by the organisation."
+      ],
+      "source": "src/components/ClassSettingsDialog.tsx; src/editor/InsertGallery.tsx; src/editor/TaskEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "training-forms"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "young-style",
+      "category": "Classes and lessons",
+      "title": "Set young-learner styling and reading size",
+      "questions": [
+        "How do I enable young learner style?",
+        "Can teachers change the accent colour?",
+        "How do I make lesson text bigger?"
+      ],
+      "keywords": "set young-learner styling and reading size how do i enable young learner style? can teachers change the accent colour? how do i make lesson text bigger?",
+      "summary": "Class settings control lesson style and theme. Reading controls let viewers adjust text presentation.",
+      "steps": [
+        "Open Class settings and choose the lesson style and Theme colour appropriate to the class.",
+        "In the lesson, open Text size and reading for viewing adjustments. Larger text is a choice rather than a requirement for every learner.",
+        "For print, choose Print or PDF and set worksheet text size separately. Digital viewing choices and printed page settings serve different purposes."
+      ],
+      "source": "src/components/ClassSettingsDialog.tsx; src/pages/LessonEditor.tsx; src/components/WorksheetDialog.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "worksheet"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "topics",
+      "category": "Classes and lessons",
+      "title": "Organise topics and lesson order",
+      "questions": [
+        "How do I put lessons into units?",
+        "Can I reorder lessons?",
+        "How do I move an item to another topic?"
+      ],
+      "keywords": "organise topics and lesson order how do i put lessons into units? can i reorder lessons? how do i move an item to another topic?",
+      "summary": "Topics group lessons, homework, exams and practice inside a class.",
+      "steps": [
+        "Choose New topic and give it a name, then add your class work.",
+        "Use Move to topic on an item to move it, and Move up or Move down to change item order.",
+        "Topic controls can collapse, hide or lock the whole topic. Check these settings when an item appears missing to learners."
+      ],
+      "source": "src/components/LessonsTab.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "visibility"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "work-types",
+      "category": "Classes and lessons",
+      "title": "Create homework, exams and practice",
+      "questions": [
+        "How do I create homework?",
+        "Can I create an exam?",
+        "What is the difference between lesson and practice?"
+      ],
+      "keywords": "create homework, exams and practice how do i create homework? can i create an exam? what is the difference between lesson and practice?",
+      "summary": "The same class can hold lesson, homework, exam and practice items. Each contains editable tasks.",
+      "steps": [
+        "Choose Add lesson, homework, exam or practice and select the type you want.",
+        "Enter the title and set a due date or lesson time when appropriate. You can change the Type control on an existing item.",
+        "Add tasks, check the access settings, then preview the item before sharing. A due date and a visibility/lock control are separate settings."
+      ],
+      "source": "src/components/LessonsTab.tsx; src/pages/LessonEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "material-import",
+        "visibility"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "visibility",
+      "category": "Learners and teaching",
+      "title": "Understand hidden and locked work",
+      "questions": [
+        "Why can my learners not see a lesson?",
+        "What is the difference between hide and lock?",
+        "How do I release a task?"
+      ],
+      "keywords": "understand hidden and locked work why can my learners not see a lesson? what is the difference between hide and lock? how do i release a task?",
+      "summary": "Hidden work is kept out of learners’ view. Locked work cannot be opened until unlocked. Topic settings also affect its items.",
+      "steps": [
+        "In the class list, check the topic and item controls for Hide from learners and Lock.",
+        "Inside the lesson, check task visibility and locking too. Unlock or show only the content you intend to release.",
+        "Use Learner view to check the presentation, and check the actual learner’s class access if the problem continues. Newly imported AI materials start hidden for review."
+      ],
+      "source": "src/components/LessonsTab.tsx; src/pages/LessonEditor.tsx; src/materials/MaterialImport.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "learner-preview"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "task-add",
+      "category": "Classes and lessons",
+      "title": "Add, import and reuse a task",
+      "questions": [
+        "How do I add a task?",
+        "Can I copy a task from another lesson?",
+        "Can I upload one task?"
+      ],
+      "keywords": "add, import and reuse a task how do i add a task? can i copy a task from another lesson? can i upload one task?",
+      "summary": "A lesson contains a sequence of tasks. You can start blank, import existing material or reuse saved work.",
+      "steps": [
+        "Open a lesson and choose New task. If Import existing materials is available, choose it to rebuild a source task; otherwise start blank.",
+        "Use From another lesson or From the resources library to reuse existing material.",
+        "Set the task title, instruction and content, then check the saved result. Importing one task adds it without replacing the existing tasks."
+      ],
+      "source": "src/pages/LessonEditor.tsx; src/materials/MaterialImport.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "material-import",
+        "question-bank"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "material-import",
+      "category": "Classes and lessons",
+      "title": "Rebuild existing teaching materials",
+      "questions": [
+        "How do I import existing materials?",
+        "Can I turn a worksheet into an interactive lesson?",
+        "Can I rebuild homework from a PDF?"
+      ],
+      "keywords": "rebuild existing teaching materials how do i import existing materials? can i turn a worksheet into an interactive lesson? can i rebuild homework from a pdf?",
+      "summary": "Import existing materials rebuilds a source into editable native activities for review.",
+      "steps": [
+        "In your class, choose Import existing materials beside Create with AI and choose Lesson, Homework, Exam or Practice. In an open lesson, use the import option when adding a task.",
+        "Upload a supported file or paste the source. Page range and Changes or focus are optional for a source within the limits. Confirm that you have permission to upload and adapt it.",
+        "Choose Rebuild materials, check and edit every task and answer key, then confirm review and Add reviewed material. New whole items are saved hidden so you can check them before release."
+      ],
+      "source": "src/materials/MaterialImport.tsx; src/materials/readSource.ts; src/components/LessonsTab.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": true,
+      "requiresAi": true,
+      "related": [
+        "material-formats",
+        "image-rights"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "material-formats",
+      "category": "Classes and lessons",
+      "title": "Choose import formats and page ranges",
+      "questions": [
+        "What file types can I rebuild?",
+        "Can I import a scanned PDF or Word document?",
+        "What are the material import limits?"
+      ],
+      "keywords": "choose import formats and page ranges what file types can i rebuild? can i import a scanned pdf or word document? what are the material import limits?",
+      "summary": "Supported sources include PDF/scans, DOCX, PPTX, XLSX, text, Markdown, CSV, HTML and JPG/PNG/WebP. Limits are 20 MB, six selected pages/images and 30,000 extracted characters.",
+      "steps": [
+        "Set a PDF page or PowerPoint slide range before choosing a file when you only need part of it. Larger documents need a range within the import limit.",
+        "Convert older Office formats to a supported format or PDF. For audio or video, paste a transcript rather than uploading it to the material rebuilder.",
+        "Review extraction notes. Exact layouts, recordings and source pictures are not automatically copied into the rebuilt lesson; attach required media separately. Check tables and scanned text carefully."
+      ],
+      "source": "src/materials/readSource.ts; src/materials/MaterialImport.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "material-import"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "material-review",
+      "category": "Troubleshooting",
+      "title": "Review and recover a material import",
+      "questions": [
+        "Why is Rebuild materials disabled?",
+        "Why is Add reviewed lesson disabled?",
+        "Where are my imported pictures?"
+      ],
+      "keywords": "review and recover a material import why is rebuild materials disabled? why is add reviewed lesson disabled? where are my imported pictures?",
+      "summary": "Permissions and teacher review are required. Optional fields are not a reason to block a normal source-only import.",
+      "steps": [
+        "Provide a supported source or pasted text and confirm your upload/adaptation permission. Read any extraction or limit message beside the action.",
+        "After rebuilding, check all content, answer keys and import notes, then select the review checkbox to enable adding it.",
+        "If interrupted, use Check saved import before starting over. Source pictures and recordings need attaching separately. Missing source keys may have AI-suggested answers and need teacher checking."
+      ],
+      "source": "src/materials/MaterialImport.tsx; functions/ai/materials.js",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "material-formats"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "ai-review",
+      "category": "Classes and lessons",
+      "title": "Review AI plans and generated materials",
+      "questions": [
+        "Can I edit an AI lesson before using it?",
+        "Does AI save directly to my class?",
+        "Should I check AI answer keys?"
+      ],
+      "keywords": "review ai plans and generated materials can i edit an ai lesson before using it? does ai save directly to my class? should i check ai answer keys?",
+      "summary": "AI planning has review stages. Generated drafts need teacher judgement before teaching.",
+      "steps": [
+        "Describe your teaching goals and review the proposed outline. Approve or edit it before expanding the plan.",
+        "Review complete activity content, teacher notes, questions and keys. Check the source material and suitability for the class.",
+        "Add the reviewed work to Classes, reopen the saved item and preview it before release. Do not assume requested media is finished until the actual file is available and playable."
+      ],
+      "source": "src/ai/LessonAssistant.tsx; functions/ai/assistant.js",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": true,
+      "requiresAi": true,
+      "related": [
+        "ai-lessons"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "elements",
+      "category": "Questions and activities",
+      "title": "Find every lesson element",
+      "questions": [
+        "What kinds of activities can I add?",
+        "Where is the insert menu?",
+        "How do I use slash commands?"
+      ],
+      "keywords": "find every lesson element what kinds of activities can i add? where is the insert menu? how do i use slash commands?",
+      "summary": "The element gallery groups questions, media, puzzles, speaking, collaboration, diagrams and layout tools.",
+      "steps": [
+        "Place the cursor in task content and use the element picker or type / to search available elements.",
+        "Open Everything you can add, with pictures for a grouped gallery with explanations and learner-facing examples.",
+        "Choose the element and replace its starter text with your own. Preview it as a learner to check how answers or interactions work."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/InsertGallery.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "learner-preview"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "gaps",
+      "category": "Questions and activities",
+      "title": "Create gap fills and word formation",
+      "questions": [
+        "How do I make a gap fill?",
+        "Can I create one-letter answer boxes?",
+        "How do I create word formation questions?"
+      ],
+      "keywords": "create gap fills and word formation how do i make a gap fill? can i create one-letter answer boxes? how do i create word formation questions?",
+      "summary": "Gap fill, Letter gaps and Word formation are available as separate question elements.",
+      "steps": [
+        "Place the cursor where the blank should go and choose Gap fill, Letter gaps or Word formation from the element picker.",
+        "Set the correct answer and the available question options. For word formation, supply the stem word too.",
+        "Try the question in Learner view and Check answers. Include legitimate alternative answers using the question’s supported controls."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/nodes.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "question-feedback"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "choices",
+      "category": "Questions and activities",
+      "title": "Make multiple-choice and true/false questions",
+      "questions": [
+        "How do I make multiple choice questions?",
+        "Can I put choices inside a sentence?",
+        "How do I add true false not given?"
+      ],
+      "keywords": "make multiple-choice and true/false questions how do i make multiple choice questions? can i put choices inside a sentence? how do i add true false not given?",
+      "summary": "Choices can appear as a list or inline. True/false and not-given variants are included.",
+      "steps": [
+        "Choose Multiple choice, as a list or Multiple choice in line from the task element picker.",
+        "Edit the options and correct answer. For reading, use True or false or True, false or not given when appropriate.",
+        "Preview the question and check a correct and an incorrect answer before assigning it."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/nodes.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "question-feedback"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "matching",
+      "category": "Questions and activities",
+      "title": "Build matching and word-bank activities",
+      "questions": [
+        "How do I create a matching activity?",
+        "Can learners drag words into gaps?",
+        "How do I create a word bank?"
+      ],
+      "keywords": "build matching and word-bank activities how do i create a matching activity? can learners drag words into gaps? how do i create a word bank?",
+      "summary": "Matching connects pairs; a Word bank supplies words for Drag-and-drop gaps.",
+      "steps": [
+        "Choose Matching and enter the pairs you want learners to connect.",
+        "For drag-and-drop gap practice, add a Word bank and the corresponding Drag-and-drop gaps.",
+        "Preview the complete activity, including distractors and correct pairs, before learners start. Multiple matching is a separate element for statements linked to texts A, B, C and D."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/blocks.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "question-feedback"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "ordering",
+      "category": "Questions and activities",
+      "title": "Build ordering and categorising tasks",
+      "questions": [
+        "How do I make a word order activity?",
+        "Can learners put sentences in order?",
+        "How do I make categorisation questions?"
+      ],
+      "keywords": "build ordering and categorising tasks how do i make a word order activity? can learners put sentences in order? how do i make categorisation questions?",
+      "summary": "Word order, Order sentences and Categorise support different kinds of sorting.",
+      "steps": [
+        "Choose Word order for one scrambled sentence, Order sentences for a sequence, or Categorise for labelled columns.",
+        "Enter the correct original sequence or correct category placements using the element’s editing controls.",
+        "Preview the learner task and check that the intended answers work. A scrambled display is not the same as the saved answer order."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/blocks.tsx; src/editor/PackNode.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "elements"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "reading-questions",
+      "category": "Questions and activities",
+      "title": "Create richer reading and exam tasks",
+      "questions": [
+        "Can I make key word transformations?",
+        "How do I add gapped text?",
+        "Can learners find and fix mistakes?"
+      ],
+      "keywords": "create richer reading and exam tasks can i make key word transformations? how do i add gapped text? can learners find and fix mistakes?",
+      "summary": "The task picker includes transformation, gapped text, multiple matching, highlight and correction activities.",
+      "steps": [
+        "Choose the relevant element: Key word transformation, Gapped text, Multiple matching, Highlight in text or Find and fix the mistake.",
+        "Replace the sample content with your passage, prompts, options and answer key. Check the language demands and distractors.",
+        "Use Learner view and check the answers. Open-response tasks may still need teacher marking rather than automatic grading."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/PackNode.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "question-feedback"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "games",
+      "category": "Questions and activities",
+      "title": "Add puzzles and classroom games",
+      "questions": [
+        "Can I make a crossword or word search?",
+        "How do I add an odd one out game?",
+        "Can I use a random picker?"
+      ],
+      "keywords": "add puzzles and classroom games can i make a crossword or word search? how do i add an odd one out game? can i use a random picker?",
+      "summary": "The gallery includes puzzles and random-picking tools for revision and warmers.",
+      "steps": [
+        "Open the element gallery’s Puzzles and games group. Choose a crossword, word search or available random-picking tool.",
+        "Enter your own words, clues or choices. Use Odd one out for a question where one option does not belong.",
+        "Preview the task and explain how learners should respond. Games and manually chosen prompts do not all produce automatically marked scores."
+      ],
+      "source": "src/editor/InsertGallery.tsx; src/editor/TaskEditor.tsx; src/editor/RandomPick.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "quiz"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "writing",
+      "category": "Questions and activities",
+      "title": "Set and mark extended writing",
+      "questions": [
+        "How do I create a writing task?",
+        "Can I set a word count?",
+        "Can I use my own marking criteria?"
+      ],
+      "keywords": "set and mark extended writing how do i create a writing task? can i set a word count? can i use my own marking criteria?",
+      "summary": "Long answer supports extended writing and a word count; the teacher marks it.",
+      "steps": [
+        "Insert Long answer and write the writing prompt.",
+        "Set the available word-count and marking/rubric controls. Choose the supported criteria option or enter custom criteria and maximum marks.",
+        "Review learner submissions in the class’s results/reporting controls and apply teacher judgement. Do not expect an open writing answer to be marked like a one-word gap."
+      ],
+      "source": "src/editor/blocks.tsx; src/editor/TaskEditor.tsx; src/components/Reports.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "reports"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "learner-uploads",
+      "category": "Questions and activities",
+      "title": "Collect files from learners",
+      "questions": [
+        "Can learners upload photos of their work?",
+        "How do learners submit recordings or videos?",
+        "How do I add a file upload task?"
+      ],
+      "keywords": "collect files from learners can learners upload photos of their work? how do learners submit recordings or videos? how do i add a file upload task?",
+      "summary": "A File upload element lets learners hand in supported files as part of a task.",
+      "steps": [
+        "Insert File upload in the lesson task and write clear submission instructions.",
+        "Check the element’s file controls and any visible limits. Ask learners to submit only the material needed for the activity.",
+        "Open their responses using the class’s results controls. File submission and automatic answer checking are different workflows."
+      ],
+      "source": "src/editor/UploadNode.tsx; src/editor/TaskEditor.tsx; src/components/Reports.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "reports"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "speaking-ai",
+      "category": "Questions and activities",
+      "title": "Set up an AI speaking partner",
+      "questions": [
+        "How do I create an AI speaking task?",
+        "Can every learner practise speaking at once?",
+        "Can learners choose their speaking feedback focus?"
+      ],
+      "keywords": "set up an ai speaking partner how do i create an ai speaking task? can every learner practise speaking at once? can learners choose their speaking feedback focus?",
+      "summary": "An AI speaking activity uses a situation, learner role, partner role, level, speaking time and feedback focus.",
+      "steps": [
+        "Add the AI speaking activity and write the situation, learner role and AI partner role.",
+        "Choose whether feedback uses the lesson focus, this activity’s focus, or a choice offered to learners. Set level and speaking time.",
+        "Review the setup before learners begin. Learners need microphone permission and an available AI allowance; monitor the activity with the teacher controls."
+      ],
+      "source": "src/editor/SpeakingEditor.tsx; src/editor/SpeakingNode.tsx; src/speaking/SpeakingActivity.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "speaking-trouble"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "speaking-trouble",
+      "category": "Troubleshooting",
+      "title": "Troubleshoot speaking and microphone access",
+      "questions": [
+        "Why can my learner not start speaking practice?",
+        "Why is my microphone not working?",
+        "Can speaking practice continue after its deadline?"
+      ],
+      "keywords": "troubleshoot speaking and microphone access why can my learner not start speaking practice? why is my microphone not working? can speaking practice continue after its deadline?",
+      "summary": "Speaking practice depends on the activity setup, browser microphone access, connection and account allowance.",
+      "steps": [
+        "Check the activity’s roles, feedback focus and speaking time, then read the message next to the learner’s start action.",
+        "Allow microphone access for the site and check the device’s input. Use a supported, updated browser with an active connection.",
+        "A timed or closed activity may need teacher attention. Keep any error text and contact support without sending learner recordings or account secrets unnecessarily."
+      ],
+      "source": "src/editor/SpeakingNode.tsx; src/speaking/SpeakingActivity.tsx; functions/speaking/index.js",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "speaking-ai"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "diagrams",
+      "category": "Questions and activities",
+      "title": "Use interactive diagrams and grammar timelines",
+      "questions": [
+        "Can I make a mind map or Venn diagram?",
+        "Can diagram boxes contain questions?",
+        "How do I show a tense timeline?"
+      ],
+      "keywords": "use interactive diagrams and grammar timelines can i make a mind map or venn diagram? can diagram boxes contain questions? how do i show a tense timeline?",
+      "summary": "The gallery has diagrams, a tense Timeline and language-layout tools.",
+      "steps": [
+        "Choose a diagram such as mind map, Venn, flow chart, cline, cycle or tree, or choose Timeline.",
+        "Edit its labels and structure. Supported diagram boxes can hold rich text and questions.",
+        "Preview the complete element. Use the substitution-table and language tools when they fit the teaching purpose better than a diagram."
+      ],
+      "source": "src/editor/Diagram.tsx; src/editor/Timeline.tsx; src/editor/InsertGallery.tsx; src/editor/Subst.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "tables"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "tables",
+      "category": "Questions and activities",
+      "title": "Add and format tables",
+      "questions": [
+        "How do I create a table?",
+        "Can I colour table headers?",
+        "Can a table cell contain an activity?"
+      ],
+      "keywords": "add and format tables how do i create a table? can i colour table headers? can a table cell contain an activity?",
+      "summary": "Tables support header styling and rich content within their cells.",
+      "steps": [
+        "In task content, use Insert a table and choose the initial size.",
+        "Use the table controls for rows, columns, headers and styling. Add text or supported lesson elements inside cells.",
+        "Check both the learner screen and worksheet layout; wide tables may need fewer columns or a different page layout."
+      ],
+      "source": "src/editor/TableInsert.tsx; src/editor/TableHandles.tsx; src/editor/tableStyle.ts; src/editor/TaskEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "worksheet"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "text-frames",
+      "category": "Questions and activities",
+      "title": "Style text boxes, dialogues and hints",
+      "questions": [
+        "How do I create an email frame?",
+        "Can I put a reading text in a box?",
+        "How do I hide a hint behind a reveal button?"
+      ],
+      "keywords": "style text boxes, dialogues and hints how do i create an email frame? can i put a reading text in a box? how do i hide a hint behind a reveal button?",
+      "summary": "Text boxes, Dialogue, information boxes and Reveal serve different presentation purposes.",
+      "steps": [
+        "Use Text box for a styled reading text, email or note; use Dialogue for speaker turns.",
+        "Use an information/lesson box for rules or useful language, and Reveal for content the learner opens when needed.",
+        "Edit the frame’s content and available style controls, then check learner view and print. Putting an answer behind Reveal intentionally makes it available to learners who open it."
+      ],
+      "source": "src/editor/TextBox.tsx; src/editor/Dialogue.tsx; src/editor/Reveal.tsx; src/editor/InsertGallery.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "young-style"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "pronunciation",
+      "category": "Questions and activities",
+      "title": "Add pronunciation and language notation",
+      "questions": [
+        "How do I add IPA symbols?",
+        "Can I show word stress?",
+        "How do I mark intonation or add a definition?"
+      ],
+      "keywords": "add pronunciation and language notation how do i add ipa symbols? can i show word stress? how do i mark intonation or add a definition?",
+      "summary": "The language tools support IPA, word stress, pronunciation markings and definitions.",
+      "steps": [
+        "Select the relevant word or text and open the pronunciation or symbol tools on the task toolbar.",
+        "Use IPA, Word stress, phonemic symbols, definitions or the available prosody controls as appropriate.",
+        "Check the displayed marks and any audio examples. A visual pronunciation mark is not a guarantee that generated speech will pronounce every word as intended."
+      ],
+      "source": "src/editor/Ipa.tsx; src/editor/Stress.tsx; src/editor/Prosody.tsx; src/editor/Definition.tsx; src/editor/TaskEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "dictation"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "dictation",
+      "category": "Questions and activities",
+      "title": "Create listening dictation and sound practice",
+      "questions": [
+        "How do I create a dictation activity?",
+        "Can learners practise minimal pairs?",
+        "Can words light up while audio plays?"
+      ],
+      "keywords": "create listening dictation and sound practice how do i create a dictation activity? can learners practise minimal pairs? can words light up while audio plays?",
+      "summary": "Dictation and pronunciation activities are separate from a recording’s karaoke script.",
+      "steps": [
+        "Use the gallery’s Listening and pronunciation group to insert Dictation, minimal-pair practice or a recording.",
+        "Enter or attach the required content and check its answer settings. Add a script to a recording when you want playback-linked text.",
+        "Test playback and checking in learner view. Browser-read speech and uploaded recordings can sound different, so listen before teaching."
+      ],
+      "source": "src/editor/TaskEditor.tsx; src/editor/InsertGallery.tsx; src/editor/MediaNode.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "recording-transcript"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "shared-activities",
+      "category": "Questions and activities",
+      "title": "Let learners work together on a task",
+      "questions": [
+        "Can learners write in the same document?",
+        "How do I add a shared drawing board?",
+        "Can groups have separate collaboration spaces?"
+      ],
+      "keywords": "let learners work together on a task can learners write in the same document? how do i add a shared drawing board? can groups have separate collaboration spaces?",
+      "summary": "Shared document and drawing-board elements support live work within lessons.",
+      "steps": [
+        "Insert Shared document or Board from the task gallery.",
+        "Choose the available class, group or individual scope and write clear task instructions.",
+        "Preview and check who can access each space. Class-shared documents, message boards and post-it walls make contributions visible to others in that shared space."
+      ],
+      "source": "src/editor/CollabNode.tsx; src/editor/DrawBoard.tsx; src/editor/InsertGallery.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "groups"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "surveys",
+      "category": "Questions and activities",
+      "title": "Add surveys, reflection and peer feedback",
+      "questions": [
+        "Can I make a survey?",
+        "How do learners reflect on their work?",
+        "Can learners give peer feedback?"
+      ],
+      "keywords": "add surveys, reflection and peer feedback can i make a survey? how do learners reflect on their work? can learners give peer feedback?",
+      "summary": "Survey, Self-reflection and Peer feedback provide different ways to collect learner responses.",
+      "steps": [
+        "Choose the relevant element and edit its questions or criteria.",
+        "For surveys, check the question types and any anonymity setting. For peer feedback, learners choose the classmate to rate.",
+        "Explain who will see responses and check the activity in learner view. Anonymity settings should be checked in the actual element, not assumed for every response type."
+      ],
+      "source": "src/editor/SurveyNode.tsx; src/editor/Reflect.tsx; src/editor/TaskEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "reports"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "question-feedback",
+      "category": "Questions and activities",
+      "title": "Control answer checking and retries",
+      "questions": [
+        "Can learners try wrong answers again?",
+        "How do I stop learners seeing correct answers?",
+        "Why was an answer marked wrong?"
+      ],
+      "keywords": "control answer checking and retries can learners try wrong answers again? how do i stop learners seeing correct answers? why was an answer marked wrong?",
+      "summary": "Task settings include After checking and score options. Correct answers depend on the saved question key.",
+      "steps": [
+        "Open task settings and find After checking.",
+        "Choose the reveal behaviour to show correct answers after checking, or retry behaviour to show right/wrong feedback and let learners try wrong ones again.",
+        "Check the saved key and any accepted alternatives when a valid response is rejected. Preview correct and incorrect examples before teaching."
+      ],
+      "source": "src/pages/LessonEditor.tsx; src/editor/nodes.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "learner-preview"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "question-bank",
+      "category": "Questions and activities",
+      "title": "Save and reuse a question or task",
+      "questions": [
+        "How do I save a task to my question bank?",
+        "Can I reuse questions in another lesson?",
+        "How do I find saved questions by level?"
+      ],
+      "keywords": "save and reuse a question or task how do i save a task to my question bank? can i reuse questions in another lesson? how do i find saved questions by level?",
+      "summary": "The question bank stores reusable questions and tasks with searchable details.",
+      "steps": [
+        "Use the relevant Save to the library or question-bank control on the task/question.",
+        "Give it a useful name and add the available tags, level or skill details.",
+        "Open My question bank or the resources task picker when building another lesson, filter the saved material and insert a copy. Check its answers and context in the new lesson."
+      ],
+      "source": "src/components/QuestionBank.tsx; src/pages/ArchiveLibrary.tsx; src/pages/LessonEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "task-add"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "worksheet",
+      "category": "Classes and lessons",
+      "title": "Print or export a worksheet",
+      "questions": [
+        "How do I print a lesson?",
+        "Can I download a worksheet as PDF or Word?",
+        "Can I include an answer key?"
+      ],
+      "keywords": "print or export a worksheet how do i print a lesson? can i download a worksheet as pdf or word? can i include an answer key?",
+      "summary": "Worksheet settings control selected tasks, paper and text size, keys, notes and media QR codes.",
+      "steps": [
+        "Open Print or PDF in the lesson. Select the tasks you want and choose A4, US Letter or A5 and an appropriate text size.",
+        "Choose whether to include a name box, a separate answer key, teacher notes and, when available, media QR codes or exam mark boxes.",
+        "Use the available print/PDF or Word export action and inspect the file. Keep the teacher key and notes out of the learner copy unless you intend to share them."
+      ],
+      "source": "src/components/WorksheetDialog.tsx; src/pages/LessonEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "worksheet-layout"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "worksheet-layout",
+      "category": "Troubleshooting",
+      "title": "Fix print layout and screen-only content",
+      "questions": [
+        "Why does my worksheet look different on paper?",
+        "Can I hide an element from printing?",
+        "Why is a table cut off in the PDF?"
+      ],
+      "keywords": "fix print layout and screen-only content why does my worksheet look different on paper? can i hide an element from printing? why is a table cut off in the pdf?",
+      "summary": "Digital lessons and printed pages have different layout needs. Task print settings can include content on paper, on screen or both.",
+      "steps": [
+        "Check the task’s Show it/print setting and any separate instruction for paper.",
+        "In Worksheet, choose a suitable paper size and text size. Simplify very wide tables or long unbroken content.",
+        "Preview the exported document before distributing it. Interactive controls become printable representations; audio and video need their optional QR codes for playback."
+      ],
+      "source": "src/pages/LessonEditor.tsx; src/components/WorksheetDialog.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "worksheet"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "learner-preview",
+      "category": "Learners and teaching",
+      "title": "Preview a lesson without saving learner answers",
+      "questions": [
+        "How do I see what a learner sees?",
+        "Does learner preview save answers?",
+        "Can I test my answer keys?"
+      ],
+      "keywords": "preview a lesson without saving learner answers how do i see what a learner sees? does learner preview save answers? can i test my answer keys?",
+      "summary": "Learner view is a teacher preview; answers entered there are not saved as learner work.",
+      "steps": [
+        "Open the lesson’s Editing mode menu and choose Learner view.",
+        "Try the activities and Check answers, including at least one correct and one wrong response.",
+        "Return to Editing to fix content or settings. Use an actual learner session when checking learner-specific permissions or saved submission behaviour."
+      ],
+      "source": "src/pages/LessonEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "visibility"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "learner-pins",
+      "category": "Learners and teaching",
+      "title": "Add learners and reset a PIN",
+      "questions": [
+        "How do I add learners?",
+        "How do I reset a student PIN?",
+        "Can I print sign-in cards?"
+      ],
+      "keywords": "add learners and reset a pin how do i add learners? how do i reset a student pin? can i print sign-in cards?",
+      "summary": "Learners use their class code, name and PIN. PIN details should be shared privately.",
+      "steps": [
+        "Open the class’s Learners tab and choose Add learners. Enter names using the available controls.",
+        "Use Show for a learner’s PIN or Print PIN cards when needed. Give each learner only their own details.",
+        "For a forgotten class-managed PIN, use More → Reset PIN; the old PIN stops working. A learner who set up their own sign-in may have different controls."
+      ],
+      "source": "src/components/LearnersTab.tsx; src/pages/LearnerJoin.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "learners"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "learner-access",
+      "category": "Troubleshooting",
+      "title": "Help a learner who cannot sign in",
+      "questions": [
+        "Why can my student not log in?",
+        "The class code or PIN is not working.",
+        "Why can a learner not open their homework?"
+      ],
+      "keywords": "help a learner who cannot sign in why can my student not log in? the class code or pin is not working. why can a learner not open their homework?",
+      "summary": "Check sign-in details and work access separately. Hidden or locked work can be unavailable even after a successful sign-in.",
+      "steps": [
+        "Check the learner site, current class code, exact learner name and current PIN privately.",
+        "Confirm the learner is still in the class. Reset a class-managed PIN if needed; an old reset PIN no longer works.",
+        "If sign-in succeeds but work is missing, check topic, item and task visibility and locks. Do not send learner PINs to support in a public screenshot."
+      ],
+      "source": "src/components/LearnersTab.tsx; src/pages/LearnerJoin.tsx; src/components/LessonsTab.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "visibility"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "groups",
+      "category": "Learners and teaching",
+      "title": "Use groups and differentiated task versions",
+      "questions": [
+        "How do I put learners into groups?",
+        "Can different learners get different tasks?",
+        "How do I create a task version?"
+      ],
+      "keywords": "use groups and differentiated task versions how do i put learners into groups? can different learners get different tasks? how do i create a task version?",
+      "summary": "Lesson controls include group management and task versions for differentiated work.",
+      "steps": [
+        "Open the lesson’s More controls to find groups and the task settings for versions.",
+        "Prepare and review each task version before assigning it to the intended group or learners using the available assignment controls.",
+        "Use learner preview and the teacher’s group view to check content. Group assignment in a lesson and membership of a video breakout room are separate controls."
+      ],
+      "source": "src/pages/LessonEditor.tsx; src/components/GroupsDialog.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "shared-activities"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "teacher-notes",
+      "category": "Learners and teaching",
+      "title": "Keep teacher notes separate from learner content",
+      "questions": [
+        "Where do I put teacher-only notes?",
+        "Can students see my answer key?",
+        "How do I add support and challenge notes?"
+      ],
+      "keywords": "keep teacher notes separate from learner content where do i put teacher-only notes? can students see my answer key? how do i add support and challenge notes?",
+      "summary": "Use the lesson’s teacher Notes and dedicated answer-key controls for private teaching information.",
+      "steps": [
+        "Open Notes for the task and add teaching guidance, support or challenge notes in the available fields.",
+        "Put accepted answers in question keys. Do not type a private answer key into the learner-facing task body or a Reveal box.",
+        "Check learner view and worksheet export settings. Choosing teacher notes or an answer key in an export intentionally puts those details in that file."
+      ],
+      "source": "src/pages/LessonEditor.tsx; src/editor/NotesEditor.tsx; src/components/WorksheetDialog.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "worksheet"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "quiz",
+      "category": "Learners and teaching",
+      "title": "Run a team quiz",
+      "questions": [
+        "Can I run a team quiz?",
+        "How do I use a lesson as a quiz?",
+        "Where do quiz scores appear?"
+      ],
+      "keywords": "run a team quiz can i run a team quiz? how do i use a lesson as a quiz? where do quiz scores appear?",
+      "summary": "The teacher quiz controls run a live quiz using lesson questions and team participation.",
+      "steps": [
+        "Prepare and preview the lesson’s questions and answer keys first.",
+        "Open the lesson’s quiz controls, choose the available team and participation settings and start the quiz.",
+        "Use its live controls to move through questions and review the displayed scores. Keep quiz results distinct from manually marked writing and broader class reports."
+      ],
+      "source": "src/components/TeamQuiz.tsx; src/pages/LessonEditor.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "reports"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "reports",
+      "category": "Learners and teaching",
+      "title": "Read learner results and progress",
+      "questions": [
+        "Where can I see learner answers?",
+        "How do I view class reports?",
+        "Can I download a progress report?"
+      ],
+      "keywords": "read learner results and progress where can i see learner answers? how do i view class reports? can i download a progress report?",
+      "summary": "The class Reports tab offers views of work, learners and items. Some responses need teacher review.",
+      "steps": [
+        "Open your class and choose Reports.",
+        "Use the available type, learner and item filters to find the work you need. Open the result details and review any unmarked writing or submissions.",
+        "Use the report download controls when you need an exported summary. Check missing, incomplete and unmarked work before interpreting a score as attainment."
+      ],
+      "source": "src/components/Reports.tsx; src/components/ReportDownload.tsx; src/pages/ClassPage.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "writing"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "notebooks",
+      "category": "Learners and teaching",
+      "title": "Use learner notebooks and portfolios",
+      "questions": [
+        "Where are learner notes?",
+        "How do I open the notebook?",
+        "What is the class portfolio?"
+      ],
+      "keywords": "use learner notebooks and portfolios where are learner notes? how do i open the notebook? what is the class portfolio?",
+      "summary": "Notebook tools and the class Portfolio tab help keep learning notes and evidence alongside class work.",
+      "steps": [
+        "Open the notebook controls in the lesson or the class Portfolio tab, depending on what you want to review.",
+        "Use the available learner and item controls to find the relevant entries.",
+        "Check each entry’s sharing context before adding sensitive information. A learner notebook, teacher Notes and a class-shared document are different spaces."
+      ],
+      "source": "src/components/Notebook.tsx; src/components/NotebookDrawer.tsx; src/pages/ClassPage.tsx; src/pages/LearnerNotebook.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "teacher-notes"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "audio-edit",
+      "category": "Audio and songs",
+      "title": "Edit a recording on the timeline",
+      "questions": [
+        "How do I cut an audio recording?",
+        "Can I change volume or add sound effects?",
+        "How do I edit multiple speakers?"
+      ],
+      "keywords": "edit a recording on the timeline how do i cut an audio recording? can i change volume or add sound effects? how do i edit multiple speakers?",
+      "summary": "The sound editor arranges clips on tracks with timing, volume and effects controls.",
+      "steps": [
+        "Open a recording in its editor and select a clip on the timeline.",
+        "Use the editing tools and clip settings to split, trim, move or adjust the clip. Keep speaker tracks separate when that helps editing.",
+        "Play the full result, save your recording and use its download or lesson insertion controls. Check joins and overall volume before teaching."
+      ],
+      "source": "src/media/SoundEditor.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "recordings"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "audio-mic",
+      "category": "Audio and songs",
+      "title": "Record your own voice",
+      "questions": [
+        "How do I record my voice?",
+        "Can I choose my microphone?",
+        "Can a script be generated after recording?"
+      ],
+      "keywords": "record your own voice how do i record my voice? can i choose my microphone? can a script be generated after recording?",
+      "summary": "You can record from your microphone and optionally generate a script afterwards.",
+      "steps": [
+        "Open the recording editor and choose the recording controls. Select the microphone and allow browser permission.",
+        "Record a short test and check its playback level before recording the complete take.",
+        "Enable Generate script after recording when you want automatic transcription, then review the generated words and timings. Recording audio is not the same as recording the whole video lesson."
+      ],
+      "source": "src/media/SoundEditor.tsx; src/pages/StudioSession.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "recording-transcript"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "audio-dialogue",
+      "category": "Audio and songs",
+      "title": "Draft and voice a dialogue with AI",
+      "questions": [
+        "Can AI write a listening dialogue?",
+        "Can I choose different voices or accents?",
+        "Can I regenerate one spoken line?"
+      ],
+      "keywords": "draft and voice a dialogue with ai can ai write a listening dialogue? can i choose different voices or accents? can i regenerate one spoken line?",
+      "summary": "Create speech separates script drafting, speaker choices and individual audio takes.",
+      "steps": [
+        "Open Create speech in the sound editor, add speakers and choose voices and the available accent/direction settings.",
+        "Use Draft with AI to describe the situation and language focus, or enter your own script. Review every line before creating takes.",
+        "Choose Create missing takes, listen to individual lines and regenerate only those that need changes. Add the approved result to the timeline."
+      ],
+      "source": "src/media/SpeechComposer.tsx; src/media/SoundEditor.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "ai-audio"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "recording-transcript",
+      "category": "Audio and songs",
+      "title": "Create and edit a recording transcript",
+      "questions": [
+        "How do I transcribe a recording?",
+        "Can I correct the audio script?",
+        "How do I make karaoke text follow the recording?"
+      ],
+      "keywords": "create and edit a recording transcript how do i transcribe a recording? can i correct the audio script? how do i make karaoke text follow the recording?",
+      "summary": "Transcripts need reviewing, and playback-linked script timing is separate from the words themselves.",
+      "steps": [
+        "Open the recording’s script/transcript controls and use the available transcription action for the selected recording.",
+        "Review and correct the text. Use the script editing and timing controls when you want words or lines to follow playback.",
+        "Play the audio against the script before sharing. Editing transcript text does not change the spoken words already recorded."
+      ],
+      "source": "src/media/RecordingTranscript.tsx; src/media/ScriptEditor.tsx; src/media/SoundEditor.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "audio-edit"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "songs",
+      "category": "Audio and songs",
+      "title": "Create a classroom song",
+      "questions": [
+        "How do I create a song?",
+        "Can AI make music for young learners?",
+        "Can I make a song without linking a lesson?"
+      ],
+      "keywords": "create a classroom song how do i create a song? can ai make music for young learners? can i make a song without linking a lesson?",
+      "summary": "The song creator supports audience, level, music style, length, reviewed lyrics and a playable preview. A lesson link and title are optional.",
+      "steps": [
+        "In the recording editor, open the classroom-song creator. Choose learners and level; optionally link a class lesson or add a teaching focus.",
+        "Choose music and singing style and length. Write lyrics or open Help me write the lyrics, enter a topic and choose Draft lyrics.",
+        "Choose Use these lyrics if you want the draft, edit the Lyrics field and confirm you have reviewed the exact words. Create the song, listen to the preview, then choose Add song to timeline and save."
+      ],
+      "source": "src/media/SongComposer.tsx; src/media/SoundEditor.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "song-lyrics",
+        "song-recovery"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "song-lyrics",
+      "category": "Audio and songs",
+      "title": "Review lyrics before making music",
+      "questions": [
+        "Why are my drafted lyrics not used?",
+        "Do I have to accept the proposed lyrics?",
+        "Can I edit the exact words of a song?"
+      ],
+      "keywords": "review lyrics before making music why are my drafted lyrics not used? do i have to accept the proposed lyrics? can i edit the exact words of a song?",
+      "summary": "Proposed lyrics are a draft until you choose Use these lyrics. Music generation uses the reviewed Lyrics field.",
+      "steps": [
+        "After Draft lyrics, read the proposed words and choose Use these lyrics to put them into the Lyrics field, or keep your current lyrics.",
+        "Edit the actual Lyrics field, including repeated lines exactly as you want them sung.",
+        "Select I’ve reviewed the lyrics. Use these exact words. Changing the brief or lyrics clears approval and may require a new generated version. Listen for pronunciation and suitability before adding it."
+      ],
+      "source": "src/media/SongComposer.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "songs"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "song-recovery",
+      "category": "Troubleshooting",
+      "title": "Recover or troubleshoot a song creation",
+      "questions": [
+        "My song is taking a long time. What do I do?",
+        "Why is song creation disabled?",
+        "Can I recover a song without paying again?"
+      ],
+      "keywords": "recover or troubleshoot a song creation my song is taking a long time. what do i do? why is song creation disabled? can i recover a song without paying again?",
+      "summary": "Lyrics, settings and a pending creation can be kept while the song is prepared. Recovery checks the saved request.",
+      "steps": [
+        "Check required audience/style, a topic or focus for lyric drafting, the actual Lyrics field and the review checkbox for music creation. A title and lesson link can stay blank.",
+        "Keep the window open while AI works. If an interrupted request is pending, use Recover creation rather than starting a duplicate.",
+        "When the preview appears, listen before Add to timeline. If you changed the brief, use the preview’s settings or create a new version intentionally; an old preview does not include new edits."
+      ],
+      "source": "src/media/SongComposer.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "songs"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "audio-reuse",
+      "category": "Audio and songs",
+      "title": "Save and reuse listening audio in lessons",
+      "questions": [
+        "How do I put a recording into a lesson?",
+        "Can I download audio as MP3?",
+        "Can I reuse one recording in several tasks?"
+      ],
+      "keywords": "save and reuse listening audio in lessons how do i put a recording into a lesson? can i download audio as mp3? can i reuse one recording in several tasks?",
+      "summary": "Saved recordings can be selected from your resources and inserted into lesson media elements.",
+      "steps": [
+        "Finish editing and save the recording. Use its download controls when you need a local audio file.",
+        "Open your lesson task and insert a recording/media element, then choose the saved resource.",
+        "Check playback and the script in learner view. Reusing saved media does not create a new AI take, but generating or regenerating speech does."
+      ],
+      "source": "src/media/SoundEditor.tsx; src/editor/MediaNode.tsx; src/pages/MediaArchive.tsx",
+      "href": "/recordings",
+      "action": "Open Recordings",
+      "app": "recordings",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "video-embed"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "resource-upload",
+      "category": "Resources and sharing",
+      "title": "Upload, name and organise resources",
+      "questions": [
+        "How do I upload files?",
+        "Can I organise resources into folders?",
+        "How do I rename a file?"
+      ],
+      "keywords": "upload, name and organise resources how do i upload files? can i organise resources into folders? how do i rename a file?",
+      "summary": "Resources stores personal files and accessible organisation libraries. File types open in their relevant apps.",
+      "steps": [
+        "Open Resources and use New and the available upload/create options.",
+        "Choose or create a folder. Select a file to inspect its details, edit its name or tags, or move it to another folder.",
+        "Open the file to use its app. Check file-size and storage messages if an upload cannot complete."
+      ],
+      "source": "src/pages/MediaArchive.tsx; src/pages/ArchiveLibrary.tsx",
+      "href": "/archive",
+      "action": "Open Resources",
+      "app": "files",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "files",
+        "recycle-bin"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "resource-sharing",
+      "category": "Resources and sharing",
+      "title": "Share files and folders with colleagues",
+      "questions": [
+        "How do I share a folder?",
+        "Can I share a lesson with a colleague?",
+        "Can I stop sharing a file?"
+      ],
+      "keywords": "share files and folders with colleagues how do i share a folder? can i share a lesson with a colleague? can i stop sharing a file?",
+      "summary": "Sharing depends on the resource type and your ownership or permissions.",
+      "steps": [
+        "Open the file or folder’s sharing controls and select the intended colleagues or supported link-sharing option.",
+        "Check the permissions before confirming. Collab documents can have editing roles; sharing a lesson or media asset can use a different control.",
+        "Return to the sharing controls to change or remove access where you have permission. Do not assume a private file becomes available merely because its URL was copied."
+      ],
+      "source": "src/pages/ArchiveLibrary.tsx; src/components/ShareDialog.tsx; src/pages/DocPage.tsx",
+      "href": "/archive",
+      "action": "Open Resources",
+      "app": "files",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "colleagues"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "resource-copy",
+      "category": "Resources and sharing",
+      "title": "Copy a saved lesson or task into a class",
+      "questions": [
+        "How do I use a lesson from the organisation library?",
+        "Can I copy a resource into my class?",
+        "Will changing my copy alter the original?"
+      ],
+      "keywords": "copy a saved lesson or task into a class how do i use a lesson from the organisation library? can i copy a resource into my class? will changing my copy alter the original?",
+      "summary": "Library controls can create a class copy of saved teaching material.",
+      "steps": [
+        "Open Resources, the appropriate organisation library or task collection, and find the material.",
+        "Use its copy/add-to-class control and select a class you can teach.",
+        "Open the resulting class item and review its content, answers and media access before teaching. Keep shared live documents distinct from copied lesson material."
+      ],
+      "source": "src/pages/ArchiveLibrary.tsx; src/components/CopyDialog.tsx; src/pages/LibraryPage.tsx",
+      "href": "/archive",
+      "action": "Open Resources",
+      "app": "files",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "visibility"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "recycle-bin",
+      "category": "Resources and sharing",
+      "title": "Restore a deleted file or delete it permanently",
+      "questions": [
+        "How do I restore a deleted file?",
+        "How long is a file kept in the recycle bin?",
+        "Can I permanently delete a file?"
+      ],
+      "keywords": "restore a deleted file or delete it permanently how do i restore a deleted file? how long is a file kept in the recycle bin? can i permanently delete a file?",
+      "summary": "The Resources recycle bin shows deleted files and their remaining retention time, up to 30 days.",
+      "steps": [
+        "Open Resources → Recycle bin and find the file.",
+        "Choose Restore to return a recoverable item. Check the displayed days left; expired or permanently deleted files may no longer be recoverable.",
+        "Delete permanently requires confirmation and cannot be undone. A deleted class is not necessarily covered by the file recycle-bin workflow."
+      ],
+      "source": "src/pages/FileBin.tsx",
+      "href": "/archive",
+      "action": "Open Resources",
+      "app": "files",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "resource-upload"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "storage",
+      "category": "Resources and sharing",
+      "title": "Understand storage and upload limits",
+      "questions": [
+        "Why can I not upload more files?",
+        "How much storage have I used?",
+        "Do deleted files still use space?"
+      ],
+      "keywords": "understand storage and upload limits why can i not upload more files? how much storage have i used? do deleted files still use space?",
+      "summary": "Storage controls show usage, while upload controls can also impose per-file limits.",
+      "steps": [
+        "Check Storage in Settings or the usage card in Resources.",
+        "Read the specific upload error: a per-file limit, incomplete upload, network problem and account storage limit need different fixes.",
+        "Files in the recycle bin still count towards storage for up to 30 days. Permanent deletion is processed by scheduled cleanup, usually within 15 minutes; storage is freed when cleanup completes. Keep permitted backups before deleting."
+      ],
+      "source": "src/components/StorageCard.tsx; src/pages/SettingsPage.tsx; src/pages/MediaArchive.tsx; src/pages/FileBin.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "recycle-bin"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "colleagues",
+      "category": "Resources and sharing",
+      "title": "Connect with colleagues",
+      "questions": [
+        "How do I add a colleague?",
+        "Can I share with teachers outside my school?",
+        "Where are my colleague profiles?"
+      ],
+      "keywords": "connect with colleagues how do i add a colleague? can i share with teachers outside my school? where are my colleague profiles?",
+      "summary": "Colleagues keeps your teacher connections and shared work together.",
+      "steps": [
+        "Open Colleagues and use the available connection or invitation controls.",
+        "Confirm the intended person before sharing private teaching resources.",
+        "Use Messages or the relevant file-sharing controls to work together. A colleague connection does not automatically give access to all your classes and files."
+      ],
+      "source": "src/pages/ColleaguesPage.tsx; src/pages/colleagues/Colleagues.tsx; src/pages/colleagues/Person.tsx",
+      "href": "/colleagues",
+      "action": "Open Colleagues",
+      "app": "colleagues",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "resource-sharing"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "messages",
+      "category": "Resources and sharing",
+      "title": "Send messages and share a resource in chat",
+      "questions": [
+        "How do I message a learner?",
+        "Can I send a resource to a colleague?",
+        "How do I start a group chat?"
+      ],
+      "keywords": "send messages and share a resource in chat how do i message a learner? can i send a resource to a colleague? how do i start a group chat?",
+      "summary": "Messages supports conversations with your available learners and colleagues and sharing controls within chat.",
+      "steps": [
+        "Open Messages and choose an existing conversation or the new-conversation controls.",
+        "Select the intended recipients, write your message and use the available attachment/resource controls when needed.",
+        "Check whether recipients also have access to the shared resource. Adjust Enter to send, message sounds and unread summaries in Settings."
+      ],
+      "source": "src/pages/MessagesPage.tsx; src/pages/SettingsPage.tsx; src/pages/DocPage.tsx",
+      "href": "/messages",
+      "action": "Open Messages",
+      "app": "messages",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "notifications"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "notifications",
+      "category": "Account and access",
+      "title": "Set notifications and message summaries",
+      "questions": [
+        "How do I enable notifications?",
+        "Why am I not getting notifications on my phone?",
+        "Can I stop unread-message emails?"
+      ],
+      "keywords": "set notifications and message summaries how do i enable notifications? why am i not getting notifications on my phone? can i stop unread-message emails?",
+      "summary": "Notification settings are per device; message-summary email settings are separate.",
+      "steps": [
+        "Open Settings → This device → App and notifications and follow the device setup instructions.",
+        "Allow browser notifications. On supported iPhone/iPad setups, use the installed home-screen app; device/browser permissions can still block notifications.",
+        "In Settings → Messages, adjust sounds, Enter to send and unread-message email summaries. Verify your email settings separately from push notifications."
+      ],
+      "source": "src/pages/SettingsPage.tsx; src/lib/push.ts",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "install-app"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "install-app",
+      "category": "Account and access",
+      "title": "Install ELT Suite on a device",
+      "questions": [
+        "Can I install ELT Suite as an app?",
+        "How do I add it to my iPhone home screen?",
+        "Do I need to install software?"
+      ],
+      "keywords": "install elt suite on a device can i install elt suite as an app? how do i add it to my iphone home screen? do i need to install software?",
+      "summary": "ELT Suite runs in the browser; supported browsers also offer installation or Add to Home Screen.",
+      "steps": [
+        "Open ELT Suite in your regular supported browser and sign in.",
+        "Use the install/home-screen instructions in Settings → App and notifications. The exact browser action varies by device.",
+        "Open the installed icon for device-specific features such as supported mobile notifications. Some editors are intended for a computer even when other parts work on a phone."
+      ],
+      "source": "src/lib/push.ts; src/pages/SettingsPage.tsx; src/components/ComputerOnly.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "device-support"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "device-support",
+      "category": "Account and access",
+      "title": "Know which tools need a computer",
+      "questions": [
+        "Can I edit video on my phone?",
+        "Why does an app ask me to use a computer?",
+        "Can I use ELT Suite on a tablet?"
+      ],
+      "keywords": "know which tools need a computer can i edit video on my phone? why does an app ask me to use a computer? can i use elt suite on a tablet?",
+      "summary": "Some routes are wrapped in a computer-only layout, including video, sound, task studio and admin tools. Other areas have mobile layouts.",
+      "steps": [
+        "Read any device-size notice before opening a complex editor.",
+        "Use a computer or a suitable tablet for tools labelled as needing a bigger screen. Open it anyway is available for a quick look, but does not prove every editing workflow works well on a phone.",
+        "For mobile work, use the areas available on your device and check actual playback before sharing a result. Report device, browser and exact error if a supported flow fails."
+      ],
+      "source": "src/main.tsx; src/components/ComputerOnly.tsx",
+      "href": "/guide",
+      "action": "Open the guide",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "install-app"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "signin",
+      "category": "Account and access",
+      "title": "Sign in and recover account access",
+      "questions": [
+        "How do I sign in as a teacher?",
+        "Can I sign in with Google?",
+        "What if I cannot access my account?"
+      ],
+      "keywords": "sign in and recover account access how do i sign in as a teacher? can i sign in with google? what if i cannot access my account?",
+      "summary": "Use the teacher sign-in flow for your own account. Learner code/PIN sign-in is a separate flow.",
+      "steps": [
+        "Open ELT Suite’s sign-in screen and use the account method you set up, such as Google or the available email sign-in option.",
+        "Complete any email-link flow in the intended account/browser and check that you are signing into the correct account.",
+        "If access still fails, contact support with the visible error and sign-in method. Never send passwords, authentication links or secret keys."
+      ],
+      "source": "src/pages/SignIn.tsx; src/pages/EmailLinkFinish.tsx; src/pages/LearnerJoin.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "learner-access"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "account-delete",
+      "category": "Account and access",
+      "title": "Sign out or delete your account",
+      "questions": [
+        "How do I sign out?",
+        "How do I delete my account?",
+        "Does signing out delete my classes?"
+      ],
+      "keywords": "sign out or delete your account how do i sign out? how do i delete my account? does signing out delete my classes?",
+      "summary": "Signing out affects the current device. Account deletion is a separate destructive action.",
+      "steps": [
+        "Open Settings → Account and use Sign out to end your session on this device.",
+        "If you intend account deletion, read Delete my account and its confirmation carefully, including the classes, lessons and learner work it removes.",
+        "Keep any necessary permitted exports before deletion. Do not use account deletion to fix an ordinary loading or sign-in problem."
+      ],
+      "source": "src/pages/SettingsPage.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "signin"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "ai-allowance",
+      "category": "Account and access",
+      "title": "Understand AI access and allowances",
+      "questions": [
+        "Why is AI disabled for my account?",
+        "How do I check my AI allowance?",
+        "Does replaying audio use another AI generation?"
+      ],
+      "keywords": "understand ai access and allowances why is ai disabled for my account? how do i check my ai allowance? does replaying audio use another ai generation?",
+      "summary": "AI access and usage allowances can be controlled per user and feature by the authorised admin. Saved content and new generation are different operations.",
+      "steps": [
+        "Read the feature’s visible allowance or access message. A missing setup, account restriction, daily limit and connection problem are not the same thing.",
+        "Ask your authorised admin to review your AI access and allowance when the message indicates a limit or restriction. Do not assume upgrading or replacing a key is the fix.",
+        "Replay or reuse saved media where possible. Starting a new image, music, speech or video generation can consume its respective allowance."
+      ],
+      "source": "src/pages/admin/AiUsage.tsx; functions/ai/feature-usage.js; src/video/AIVideo.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "limits"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "help-privacy",
+      "category": "Account and access",
+      "title": "Understand help-assistant privacy and feedback",
+      "questions": [
+        "Can the help assistant read my learners work?",
+        "Does the assistant save my chat?",
+        "What does Not yet feedback share?"
+      ],
+      "keywords": "understand help-assistant privacy and feedback can the help assistant read my learners work? does the assistant save my chat? what does not yet feedback share?",
+      "summary": "Help routes questions to this guide; it does not perform edits or read your class work.",
+      "steps": [
+        "Ask product-use questions without learner details, PINs, private documents or credentials. Exact documented questions can be answered from the local guide; other questions may be sent to the AI provider.",
+        "The help chat is kept in the current window. Feedback normally records article references and a rating; including your question is an explicit option.",
+        "Use Clear chat to clear the window. The assistant can explain actions but cannot perform them or grant access to restricted apps."
+      ],
+      "source": "src/help/HelpAssistant.tsx; functions/help/index.js; functions/help/core.js",
+      "href": "/guide",
+      "action": "Open the guide",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "troubleshooting"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "doc-new",
+      "category": "Documents and PDFs",
+      "title": "Create a Collab document or slides",
+      "questions": [
+        "How do I create a collaborative document?",
+        "Can I make slides in Collab?",
+        "How do I open an existing document?"
+      ],
+      "keywords": "create a collab document or slides how do i create a collaborative document? can i make slides in collab? how do i open an existing document?",
+      "summary": "Collab holds documents and slides that can be shared with explicit roles.",
+      "steps": [
+        "Open Collab and use its new-file control to choose the supported document or slides option.",
+        "Name the file and use the editor to add content.",
+        "Check the save state and use Share to choose who can access it. A private document stays private unless you share it or use it in a shared context."
+      ],
+      "source": "src/pages/AppFiles.tsx; src/pages/DocPage.tsx",
+      "href": "/collab",
+      "action": "Open Collab",
+      "app": "collab",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "doc-sharing"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "doc-sharing",
+      "category": "Documents and PDFs",
+      "title": "Set document editing, commenting and viewing roles",
+      "questions": [
+        "Can colleagues edit my document?",
+        "Can learners comment without editing?",
+        "How do I remove document access?"
+      ],
+      "keywords": "set document editing, commenting and viewing roles can colleagues edit my document? can learners comment without editing? how do i remove document access?",
+      "summary": "Document sharing has roles; only users with appropriate permission can change sharing.",
+      "steps": [
+        "Open the document and choose Share, then select the intended people and supported role.",
+        "Choose the available viewing, commenting, suggesting or editing permission appropriate to the work.",
+        "Review the shared-people list and change or remove access when needed. The document’s access controls, not a copied URL alone, determine who can open it."
+      ],
+      "source": "src/pages/DocPage.tsx; src/lib/sharedDocs.ts",
+      "href": "/collab",
+      "action": "Open Collab",
+      "app": "collab",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "collab"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "doc-export",
+      "category": "Documents and PDFs",
+      "title": "Download and print documents or slides",
+      "questions": [
+        "How do I export a Collab document?",
+        "Can I download a Word document?",
+        "Can I print slides?"
+      ],
+      "keywords": "download and print documents or slides how do i export a collab document? can i download a word document? can i print slides?",
+      "summary": "The document editor has download/print controls; available formats depend on the file type.",
+      "steps": [
+        "Open the document or slides and use the editor’s File/download or print controls.",
+        "Choose the format offered for that file, and review page setup and layout before exporting.",
+        "Open the downloaded file to check fonts, tables, page breaks and citations. Keep the editable original if you want to continue collaborative editing."
+      ],
+      "source": "src/pages/DocPage.tsx; src/collab/CollabDoc.tsx",
+      "href": "/collab",
+      "action": "Open Collab",
+      "app": "collab",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "doc-layout"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "doc-layout",
+      "category": "Documents and PDFs",
+      "title": "Change document formatting and page layout",
+      "questions": [
+        "How do I change document font or page size?",
+        "Can I find and replace text?",
+        "Can I add headers and page breaks?"
+      ],
+      "keywords": "change document formatting and page layout how do i change document font or page size? can i find and replace text? can i add headers and page breaks?",
+      "summary": "The document editor includes formatting, search, page-layout and section tools.",
+      "steps": [
+        "Open the appropriate formatting or page-layout menu to change font, size, margins, orientation or page settings.",
+        "Use find/replace for repeated text changes and review each change when wording matters.",
+        "Preview or export after changing sections, headers, page breaks or tables. Check the final file rather than assuming on-screen pagination exactly matches every export."
+      ],
+      "source": "src/collab/CollabDoc.tsx; src/pages/DocPage.tsx",
+      "href": "/collab",
+      "action": "Open Collab",
+      "app": "collab",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "doc-export"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "pdf-work",
+      "category": "Documents and PDFs",
+      "title": "Upload and annotate a PDF",
+      "questions": [
+        "How do I write on a PDF?",
+        "Can learners work on a PDF together?",
+        "How do I open a PDF worksheet?"
+      ],
+      "keywords": "upload and annotate a pdf how do i write on a pdf? can learners work on a pdf together? how do i open a pdf worksheet?",
+      "summary": "The PDF app supports PDF files with its own annotation and sharing context. Rebuilding it into native lesson tasks is a different workflow.",
+      "steps": [
+        "Open PDF and use its upload/new-file control to add your document.",
+        "Open the PDF and use the available annotation tools. Check the sharing context before inviting others to work on it.",
+        "Use the offered download controls to keep a copy of the annotated work. Choose Import existing materials in Classes when you want editable native tasks instead of a PDF page."
+      ],
+      "source": "src/pages/AppFiles.tsx; src/pdf/PdfFile.tsx; src/pdf/PdfStack.tsx",
+      "href": "/pdf",
+      "action": "Open PDF",
+      "app": "pdf",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "material-import"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "development",
+      "category": "Professional development",
+      "title": "Use Development Studio",
+      "questions": [
+        "What can I do in Development Studio?",
+        "Where are reflections and classroom research?",
+        "Where is the teaching coach?"
+      ],
+      "keywords": "use development studio what can i do in development studio? where are reflections and classroom research? where is the teaching coach?",
+      "summary": "Development Studio brings together professional reading, reflections, research and coaching.",
+      "steps": [
+        "Open Development Studio and choose Reading, Reflections, Research or Coach depending on your goal.",
+        "Use Profile/settings to keep the professional context you want the coach to use up to date.",
+        "Keep personal notes and learner-identifying evidence separate. Check sharing controls before publishing or sharing a reflection or reading journal."
+      ],
+      "source": "src/coach/DevelopmentStudio.tsx; src/coach/CoachPreferences.tsx",
+      "href": "/development",
+      "action": "Open Development Studio",
+      "app": "development",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "reading",
+        "coach"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "coach",
+      "category": "Professional development",
+      "title": "Ask the teaching coach and control its context",
+      "questions": [
+        "Can AI help me reflect on my teaching?",
+        "What information does the coach read?",
+        "Can I turn off coach memory sources?"
+      ],
+      "keywords": "ask the teaching coach and control its context can ai help me reflect on my teaching? what information does the coach read? can i turn off coach memory sources?",
+      "summary": "The teaching coach uses selectable professional-context sources. It does not automatically read Reading Journal text, lesson plans or learner records.",
+      "steps": [
+        "Open Development Studio → Coach and ask a focused professional question.",
+        "Open coach settings to choose sources such as your professional profile, teaching beliefs, reflections and research inquiries, and choose a coaching style.",
+        "Changing the source settings clears the current chat so earlier context is not retained there. Chats stay in the current window unless you save them to Reflections."
+      ],
+      "source": "src/coach/CoachChat.tsx; src/coach/CoachPreferences.tsx",
+      "href": "/development?section=coach",
+      "action": "Open Development Studio",
+      "app": "development",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [
+        "reflections"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "reflections",
+      "category": "Professional development",
+      "title": "Keep reflections and research inquiries",
+      "questions": [
+        "How do I save a teaching reflection?",
+        "Can I plan classroom research?",
+        "How do I save a coach conversation?"
+      ],
+      "keywords": "keep reflections and research inquiries how do i save a teaching reflection? can i plan classroom research? how do i save a coach conversation?",
+      "summary": "Reflections and Research help record professional questions, evidence and next steps.",
+      "steps": [
+        "Open Development Studio → Reflections to create or revisit an entry. Use the coach’s save-to-reflection option when offered for a conversation.",
+        "Use Research to frame an inquiry and record the evidence and actions in its available fields.",
+        "Avoid unnecessary learner-identifying information. Choose a concrete next step and revisit the entry after trying it."
+      ],
+      "source": "src/coach/DevelopmentStudio.tsx; src/coach/CoachChat.tsx",
+      "href": "/development",
+      "action": "Open Development Studio",
+      "app": "development",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "coach"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "reading-citations",
+      "category": "Professional development",
+      "title": "Add reading sources and cite them in writing",
+      "questions": [
+        "Can I keep a reading journal?",
+        "How do I insert a citation?",
+        "Can I reuse references in a Collab document?"
+      ],
+      "keywords": "add reading sources and cite them in writing can i keep a reading journal? how do i insert a citation? can i reuse references in a collab document?",
+      "summary": "Reading sources can support professional notes and citations in Collab.",
+      "steps": [
+        "Open Development Studio → Reading and add a journal/source using the available controls.",
+        "Record bibliographic details carefully and keep your notes attached to the relevant source.",
+        "Open a Collab document and use its citation controls to select a source. Check the reference details and required citation style before distributing the document."
+      ],
+      "source": "src/coach/DevelopmentStudio.tsx; src/editor/Cite.tsx; src/pages/GuidePage.tsx",
+      "href": "/development?section=reading",
+      "action": "Open Development Studio",
+      "app": "development",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "collab"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "calendar-repeat",
+      "category": "Calls and timetable",
+      "title": "Create recurring timetable sessions",
+      "questions": [
+        "How do I repeat a weekly class?",
+        "Can I set an end date for recurring sessions?",
+        "How do I schedule an online lesson?"
+      ],
+      "keywords": "create recurring timetable sessions how do i repeat a weekly class? can i set an end date for recurring sessions? how do i schedule an online lesson?",
+      "summary": "Timetable sessions can include recurrence, location and online-room details.",
+      "steps": [
+        "Open Timetable and add a class session or meeting. Choose its date, time and available class/guest settings.",
+        "Choose the location or video link. For repeating work, set how often, the relevant weekdays and when the series ends.",
+        "Save and check the resulting sessions in the calendar. Read the scope offered when changing a repeated event so you edit the intended occurrence or series."
+      ],
+      "source": "src/pages/timetable/SessionDialog.tsx; src/pages/TimetablePage.tsx",
+      "href": "/timetable",
+      "action": "Open Timetable",
+      "app": "timetable",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "calendar-connect"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "calendar-connect",
+      "category": "Calls and timetable",
+      "title": "Connect an external calendar",
+      "questions": [
+        "Can I connect Google Calendar?",
+        "How do I connect Microsoft Outlook calendar?",
+        "Where are calendar settings?"
+      ],
+      "keywords": "connect an external calendar can i connect google calendar? how do i connect microsoft outlook calendar? where are calendar settings?",
+      "summary": "Calendar connections and visibility are managed through the calendar/settings controls.",
+      "steps": [
+        "Open Settings → Calendar or the calendar settings offered from Timetable.",
+        "Choose an available provider and follow its account-authorisation flow. Check the account and calendars selected.",
+        "Review the resulting timetable before relying on it. If synchronisation fails, keep the specific error and check the connection; do not share provider access tokens."
+      ],
+      "source": "src/pages/timetable/CalendarSettings.tsx; src/pages/SettingsPage.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "timetable"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "call-permissions",
+      "category": "Troubleshooting",
+      "title": "Fix camera, microphone and room problems",
+      "questions": [
+        "Why is my camera not working?",
+        "Why can I not join a video room?",
+        "What if the class room is unavailable?"
+      ],
+      "keywords": "fix camera, microphone and room problems why is my camera not working? why can i not join a video room? what if the class room is unavailable?",
+      "summary": "Room access depends on class permissions, device permissions, connection and service/organisation limits.",
+      "steps": [
+        "Open the correct class room and allow camera/microphone access in the browser. Check the selected input/output devices.",
+        "Check that your browser or operating system has not blocked the device or reserved it for another app.",
+        "If room access is limited or unavailable, read the message and ask the organisation admin or support to check it. Timetable links to external Zoom/Teams/Meet rooms are separate from ELT Suite’s built-in rooms."
+      ],
+      "source": "src/pages/RoomsPage.tsx; src/components/LiveVideo.tsx; src/components/VideoCall.tsx",
+      "href": "/rooms",
+      "action": "Open Rooms",
+      "app": "rooms",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "calls"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "org-teachers",
+      "category": "Organisation administration",
+      "title": "Invite teachers to an organisation",
+      "questions": [
+        "How do I invite teachers to my school?",
+        "Can I add a teacher who already has an account?",
+        "How do I see pending invitations?"
+      ],
+      "keywords": "invite teachers to an organisation how do i invite teachers to my school? can i add a teacher who already has an account? how do i see pending invitations?",
+      "summary": "Organisation admins manage teachers and invitations; ordinary teacher accounts do not gain admin access from help instructions.",
+      "steps": [
+        "If you are an authorised organisation admin, open Organisation admin → Teachers or Invitations.",
+        "Use Invite teachers for new invitations or the option to add an existing account when appropriate. Check names and email addresses before sending.",
+        "Review pending or answered invitations and the teacher list. The actual app asks for confirmation or supplies controls for changes you are authorised to make."
+      ],
+      "source": "src/pages/admin/OrgPeople.tsx; src/pages/AdminPage.tsx",
+      "href": "/org-admin",
+      "action": "Open Organisation admin",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "org-library"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "org-library",
+      "category": "Organisation administration",
+      "title": "Manage an organisation resource library",
+      "questions": [
+        "How do I manage a school library?",
+        "Can only some teachers see a library section?",
+        "How do I create organisation library folders?"
+      ],
+      "keywords": "manage an organisation resource library how do i manage a school library? can only some teachers see a library section? how do i create organisation library folders?",
+      "summary": "Organisation admins can manage library sections, folders and access settings.",
+      "steps": [
+        "Open Organisation admin → Library with your authorised admin account.",
+        "Create or rename sections/folders and set who can see each section using the available person/group/tag controls.",
+        "Check access with the intended teaching role. Organisation membership does not mean every restricted section is visible to everyone."
+      ],
+      "source": "src/pages/admin/OrgLibrary.tsx; src/pages/ArchiveLibrary.tsx",
+      "href": "/org-admin",
+      "action": "Open Organisation admin",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "resource-sharing"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "training-forms",
+      "category": "Organisation administration",
+      "title": "Create reusable organisation training forms",
+      "questions": [
+        "Can our school create an observation form?",
+        "How do I edit organisation training forms?",
+        "Do form changes update old lessons?"
+      ],
+      "keywords": "create reusable organisation training forms can our school create an observation form? how do i edit organisation training forms? do form changes update old lessons?",
+      "summary": "Admins can maintain training forms; copied lesson forms keep their existing version.",
+      "steps": [
+        "Open the organisation’s Training forms section and start from an observation form, feedback form or blank form.",
+        "Edit the name, description and questions, then save the form.",
+        "Trainers add it from Your organisation’s forms in the lesson Insert list. Later changes apply to new copies; existing lessons keep the form already inserted."
+      ],
+      "source": "src/pages/admin/OrgLibrary.tsx; src/editor/TaskEditor.tsx",
+      "href": "/org-admin",
+      "action": "Open Organisation admin",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "class-training"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "org-ai",
+      "category": "Organisation administration",
+      "title": "Manage AI access as an authorised admin",
+      "questions": [
+        "How does an admin change AI limits?",
+        "Can AI access be controlled per teacher?",
+        "Where are AI usage settings?"
+      ],
+      "keywords": "manage ai access as an authorised admin how does an admin change ai limits? can ai access be controlled per teacher? where are ai usage settings?",
+      "summary": "The authorised admin AI-usage screen configures per-user feature access and allowances.",
+      "steps": [
+        "Open the admin AI-usage controls available to your role and select the intended user.",
+        "Review feature access and allowance fields, make the intended changes and save. Read validation or recovery messages rather than assuming an unsaved edit applied.",
+        "Teachers who lack the required admin role should ask their admin or support. A saved access setting alone is not a test that an external provider connection works."
+      ],
+      "source": "src/pages/admin/AiUsage.tsx; src/pages/admin/SuperAi.tsx; functions/ai/feature-usage.js",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "ai-allowance"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "offline-saving",
+      "category": "Troubleshooting",
+      "title": "Handle connection and saving problems",
+      "questions": [
+        "Why are my changes not saved?",
+        "Can I work offline?",
+        "Should I refresh when the app is stuck?"
+      ],
+      "keywords": "handle connection and saving problems why are my changes not saved? can i work offline? should i refresh when the app is stuck?",
+      "summary": "Save behaviour varies by app. A build, a submitted request or a local edit is not proof that your work is stored.",
+      "steps": [
+        "Check the connection banner and the app’s saving/error message. Preserve a copy of important unsaved text before refreshing.",
+        "Use the app’s explicit Save control when required, or wait for its Saved indicator. Reopen the item to check that important changes persisted.",
+        "For pending AI media, use its recovery controls before starting over. Do not assume full offline editing or automatic background completion for every feature."
+      ],
+      "source": "src/components/ConnectionBanner.tsx; src/video/VideoEditor.tsx; src/materials/MaterialImport.tsx; src/design/AiImages.tsx",
+      "href": "/guide",
+      "action": "Open the guide",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "troubleshooting"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "app-update",
+      "category": "Troubleshooting",
+      "title": "Load the latest published version",
+      "questions": [
+        "Why do I see an old button or missing feature?",
+        "What does a new version is ready mean?",
+        "How do I refresh ELT Suite safely?"
+      ],
+      "keywords": "load the latest published version why do i see an old button or missing feature? what does a new version is ready mean? how do i refresh elt suite safely?",
+      "summary": "An already-open tab can keep the previous app version until refreshed.",
+      "steps": [
+        "Save your work and wait for pending edits or exports to finish.",
+        "If ELT Suite shows A new version is ready, use Refresh. Reopen the relevant page and check for the expected controls.",
+        "If the difference continues, tell support the page, device, browser and visible version/error information. Do not clear saved work or replace credentials as a first guess."
+      ],
+      "source": "src/components/UpdateBanner.tsx; src/main.tsx",
+      "href": "/guide",
+      "action": "Open the guide",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "offline-saving"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "support-report",
+      "category": "Troubleshooting",
+      "title": "Send a useful support report",
+      "questions": [
+        "What should I send to support?",
+        "How do I report a bug safely?",
+        "Can I ask the assistant to fix my account?"
+      ],
+      "keywords": "send a useful support report what should i send to support? how do i report a bug safely? can i ask the assistant to fix my account?",
+      "summary": "Help can explain documented steps. Account changes and unverified failures need support or an authorised admin.",
+      "steps": [
+        "Describe the app/page, what you tried, the expected result and what actually happened.",
+        "Include the visible error, device/browser and whether the problem survives saving and reopening. A redacted screenshot can help.",
+        "Do not include learner PINs, passwords, API keys or private student work. Use the help panel’s Email support link; the assistant does not make changes on your behalf."
+      ],
+      "source": "src/help/HelpAssistant.tsx; functions/help/core.js",
+      "href": "/guide",
+      "action": "Open the guide",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [
+        "troubleshooting"
+      ],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "teaching-definition",
+      "title": "Draft a contextual teaching definition with AI",
+      "questions": [
+        "How do I add a definition with AI?",
+        "Can I add a definition on its own?",
+        "Can AI explain a word at my learners level?"
+      ],
+      "summary": "AI definitions use the selected word or phrase, surrounding task text, the lesson and the class level to draft a teaching explanation.",
+      "steps": [
+        "Select a word or phrase and choose the Definition tool. For a standalone entry, insert Definition card from the task element picker and enter its Headword.",
+        "Choose Suggest definition with AI. In a class, its level is used automatically; outside a class, choose the displayed Learner level. Extra context is optional when the intended sense is already clear.",
+        "Review the suggested meaning, example and other useful fields. Choose Use suggested definition, edit anything needed, and save with Done. Existing filled fields are preserved unless Replace fields I’ve already filled is selected."
+      ],
+      "source": "src/editor/Definition.tsx; src/editor/DefinitionAI.tsx; src/editor/DictCut.tsx; functions/definitions/index.js",
+      "category": "Questions and activities",
+      "href": "/classes",
+      "action": "Open Classes",
+      "keywords": "draft a contextual teaching definition with ai how do i add a definition with ai?~can i add a definition on its own?~can ai explain a word at my learners level?",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "definition-context",
+      "title": "Choose the right meaning for a word or phrase",
+      "questions": [
+        "Why did AI choose the wrong meaning?",
+        "How do I define a phrasal verb in context?",
+        "Why is AI asking for more context?"
+      ],
+      "summary": "A teaching definition should explain the sense used in the lesson, not list every possible dictionary meaning.",
+      "steps": [
+        "Select the whole phrase for an idiom or phrasal verb. Keep its surrounding sentence in the task so the intended meaning is visible.",
+        "If the meaning is ambiguous, open Context or sense to clarify and add a short sentence or explanation. Suggest again after changing the word, context or intended meaning.",
+        "Check the actual meaning and example before applying. For example, bank beside a river should mean the land at the side, rather than a financial institution. AI may ask for context rather than guessing."
+      ],
+      "source": "src/editor/DefinitionAI.tsx; functions/definitions/contract.js",
+      "category": "Questions and activities",
+      "href": "/classes",
+      "action": "Open Classes",
+      "keywords": "choose the right meaning for a word or phrase why did ai choose the wrong meaning?~how do i define a phrasal verb in context?~why is ai asking for more context?",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "definition-fields",
+      "title": "Edit useful vocabulary details and translations",
+      "questions": [
+        "Can AI fill pronunciation and collocations?",
+        "Why are some definition fields blank?",
+        "Can definitions have translations for my class?"
+      ],
+      "summary": "Definitions offer meaning, example, form, pronunciation, usage and learner help. AI fills useful reliable fields and leaves irrelevant or uncertain details blank.",
+      "steps": [
+        "Use More details in the definition editor for word family, forms, patterns, IPA/stress, register, collocations, common mistakes and other fields.",
+        "Review the draft’s All suggested fields before applying. AI does not invent an image address or an unsupported word-level CEFR rating; the displayed draft level describes the explanation’s audience.",
+        "Set learner languages on the class Learners page to make class translation fields available. Check translations against the intended sense. Learners see translations for their own configured languages."
+      ],
+      "source": "src/editor/Definition.tsx; src/editor/DefinitionAI.tsx; src/lib/langs.ts",
+      "category": "Questions and activities",
+      "href": "/classes",
+      "action": "Open Classes",
+      "keywords": "edit useful vocabulary details and translations can ai fill pronunciation and collocations?~why are some definition fields blank?~can definitions have translations for my class?",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "task-history",
+      "title": "Restore an earlier version of a task",
+      "questions": [
+        "Can I restore a previous task version?",
+        "How do I recover an earlier lesson edit?",
+        "Does undo work after reopening?"
+      ],
+      "summary": "Task Version history stores snapshots while you edit; it is separate from immediate Undo and differentiated task versions.",
+      "steps": [
+        "Open the task’s settings/history controls and choose Version history.",
+        "Select an available earlier snapshot and inspect its preview. Versions are kept periodically, so a snapshot may not exist for every keystroke.",
+        "Choose Restore this version only after checking it. Reopen the task and verify the restored content and answer key."
+      ],
+      "source": "src/components/VersionsDialog.tsx; src/pages/LessonEditor.tsx",
+      "category": "Classes and lessons",
+      "href": "/classes",
+      "action": "Open Classes",
+      "keywords": "restore an earlier version of a task can i restore a previous task version?~how do i recover an earlier lesson edit?~does undo work after reopening?",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "document-history",
+      "title": "Review and restore document version history",
+      "questions": [
+        "Can I restore a Collab document?",
+        "Where is document version history?",
+        "Can I see previous document versions?"
+      ],
+      "summary": "Collab documents have a Version history tool separate from a lesson task’s history.",
+      "steps": [
+        "Open the document and choose File → Version history.",
+        "Inspect the available versions using the history controls.",
+        "Restore only the intended version, then check the document and its save state before continuing shared work."
+      ],
+      "source": "src/collab/DocumentHistory.tsx; src/collab/CollabDoc.tsx",
+      "category": "Documents and PDFs",
+      "href": "/collab",
+      "action": "Open Collab",
+      "keywords": "review and restore document version history can i restore a collab document?~where is document version history?~can i see previous document versions?",
+      "app": "collab",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "flashcards",
+      "title": "Create and study flashcards",
+      "questions": [
+        "How do I make flashcards?",
+        "Can I put pictures or audio on flashcards?",
+        "How do learners turn over a card?"
+      ],
+      "summary": "Flashcard sets are a resource type with editable fields and front/back presentation.",
+      "steps": [
+        "Open Resources → New → Flashcards and create a set.",
+        "Edit the card fields and available layout, image and audio options. Add and review your cards.",
+        "Try the study view and turn the cards over before sharing the set through its access controls."
+      ],
+      "source": "src/pages/MediaArchive.tsx; src/flash/FlashSet.tsx",
+      "category": "Resources and sharing",
+      "href": "/archive",
+      "action": "Open Resources",
+      "keywords": "create and study flashcards how do i make flashcards?~can i put pictures or audio on flashcards?~how do learners turn over a card?",
+      "app": "files",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "class-memories",
+      "title": "Choose whether AI planning uses classroom memories",
+      "questions": [
+        "Does lesson AI read my learners writing?",
+        "How do I turn off classroom memories?",
+        "Can I choose examples from previous responses?"
+      ],
+      "summary": "Classroom memories in lesson planning are opt-in and selected before generation. They are distinct from the teaching coach’s context settings.",
+      "steps": [
+        "Open the lesson assistant’s Classroom memories section and decide whether to enable it.",
+        "If enabled, use Read recent responses, review the available text and select only the permitted examples useful for your plan. The interface limits how many can be selected.",
+        "Review privacy and relevance before generating. Leave the option off when no learner response context is needed."
+      ],
+      "source": "src/ai/LessonAssistant.tsx; functions/ai/memories.js",
+      "category": "Classes and lessons",
+      "href": "/classes",
+      "action": "Open Classes",
+      "keywords": "choose whether ai planning uses classroom memories does lesson ai read my learners writing?~how do i turn off classroom memories?~can i choose examples from previous responses?",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "image-styles",
+      "category": "Images and Designer",
+      "title": "Keep illustration styles consistent and restyle images",
+      "questions": [
+        "Can I keep the same image style?",
+        "Can I make black and white worksheet pictures?",
+        "How do I restyle an existing image?"
+      ],
+      "keywords": "keep illustration styles consistent and restyle images can i keep the same image style?~can i make black and white worksheet pictures?~how do i restyle an existing image?",
+      "summary": "Designer offers Photo, Bright & bold, Soft storybook, Editorial and Black & white styles, with an optional existing illustration as a reference.",
+      "steps": [
+        "In AI images, choose Create an image or select an image and choose Restyle an image.",
+        "Choose Visual style. For a matching set, choose an existing illustration under Match an existing illustration; upload a previous illustration first if needed.",
+        "Generate and review a preview before applying it. Extra changes are optional for restyling. Black & white requests monochrome outlines; AI consistency still needs visual checking."
+      ],
+      "source": "src/design/AiImages.tsx; functions/designer/styles.js",
+      "href": "/design",
+      "action": "Open Designer",
+      "app": "design",
+      "requiresPilot": false,
+      "requiresAi": true,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "lesson-pictures",
+      "category": "Images and Designer",
+      "title": "Insert a Designer picture or search Commons in a lesson",
+      "questions": [
+        "How do I insert my Designer image directly?",
+        "Can I search Wikimedia Commons for pictures?",
+        "Where are my saved designs in the picture picker?"
+      ],
+      "keywords": "insert a designer picture or search commons in a lesson how do i insert my designer image directly?~can i search wikimedia commons for pictures?~where are my saved designs in the picture picker?",
+      "summary": "The lesson picture picker can use uploads, Resources, Designer files and Wikimedia Commons results.",
+      "steps": [
+        "Insert a picture element in the task and choose the source tab you want.",
+        "In Designer, select a saved design and its page, or insert a storyboard with its storyboard control. For Wikimedia Commons, enter a subject and choose a result.",
+        "Check the picture, its attribution and licence before sharing. A picture inserted from a design is a prepared image; keep the editable Designer original for further editing."
+      ],
+      "source": "src/editor/Picture.tsx; src/design/InlineImages.tsx",
+      "href": "/classes",
+      "action": "Open Classes",
+      "app": "classes",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "id": "teacher-invitation",
+      "category": "Account and access",
+      "title": "Join ELT Suite as a teacher",
+      "questions": [
+        "How do I create a teacher account?",
+        "Do teachers need an invitation?",
+        "Why does sign up ask for an invitation code?"
+      ],
+      "keywords": "join elt suite as a teacher how do i create a teacher account?~do teachers need an invitation?~why does sign up ask for an invitation code?",
+      "summary": "Teacher signup currently uses an invitation. Teacher and learner sign-in flows are different.",
+      "steps": [
+        "Open your teacher invitation and use its code or link.",
+        "Create the account using the intended Google account or the offered email/password flow. If an email is specified, use that invited email.",
+        "If the invitation is invalid or no longer available, ask the inviter or support to check it. Do not try a learner PIN as a teacher invitation code."
+      ],
+      "source": "src/pages/SignIn.tsx; src/pages/InvitePage.tsx",
+      "href": "/settings",
+      "action": "Open Settings",
+      "app": "",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "",
+      "reviewedAt": "2026-11-01",
+      "verification": "Source reviewed; availability depends on account and device."
     }
   ]
 }

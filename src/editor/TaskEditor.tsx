@@ -209,7 +209,7 @@ export const COMMANDS: Cmd[] = [
       e.chain().focus().insertContent(newIpa(last ?? 'RP')).run();
     },
   },
-  { key: 'dictcut', label: 'Dictionary cutout', hint: 'A word’s entry, as if cut out of a dictionary page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'dictCut', attrs: { word: '', data: {} } }, { type: 'paragraph' }]).run() },
+  { key: 'dictcut', label: 'Definition card', hint: 'A standalone word or phrase with a learner-level meaning and examples', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'dictCut', attrs: { word: '', data: {} } }, { type: 'paragraph' }]).run() },
   { key: 'tt-analysis', label: 'Language analysis', hint: 'Meaning, form, pronunciation, concept questions, problems and solutions', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('analysis'), { type: 'paragraph' }]).run() },
   { key:'tt-rehearsal',label:'Microteaching rehearsal',hint:'Rehearse, observe, give feedback and try again',group:'Text',run:e=>e.chain().focus().insertContent([newTT('rehearsal'),{type:'paragraph'}]).run() },
   { key:'tt-exam',label:'Exam practice debrief',hint:'Task demands, pacing, evidence and next practice',group:'Text',run:e=>e.chain().focus().insertContent([newTT('exam'),{type:'paragraph'}]).run() },

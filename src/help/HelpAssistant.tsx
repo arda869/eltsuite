@@ -10,6 +10,7 @@ import { isProxyTab } from '../lib/proxy';
 import { useMedia } from '../lib/useMedia';
 import { UiIcon } from '../components/UiIcon';
 import data from '../../functions/help/library.json';
+import {exactArticles, searchArticles} from '../../functions/help/search.js';
 import './help.css';
 
 type Article = typeof data.articles[number];
@@ -36,6 +37,7 @@ function HelpChat() {
   const [busy, setBusy] = useState(false);
   const [browse, setBrowse] = useState(false);
   const [search, setSearch] = useState('');
+  const [category,setCategory]=useState('All topics');
   const [feedbackNote, setFeedbackNote] = useState('');
   const [shareQuestion, setShareQuestion] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -86,7 +88,8 @@ function HelpChat() {
     setTurns(old => [...old.slice(-19), { id, question: text.trim(), articleIds: [] }]);
     setQuestion(''); setBrowse(false); setBusy(true); setFeedbackNote('');
     try {
-      const res = (await call({ question: text.trim(), previousArticleIds })).data;
+      const exact=exactArticles(topics,text);
+      const res = exact.length ? {articleIds:exact.map(a=>a.id),version:data.version} : (await call({ question: text.trim(), previousArticleIds })).data;
       if (generation.current !== ticket) return;
       // Ignore references from a different catalogue rather than displaying stale instructions.
       if (res.version !== data.version || !Array.isArray(res.articleIds) || res.articleIds.some(id => !topics.some(a => a.id === id))) throw Error('Help catalogue changed.');
@@ -106,8 +109,8 @@ function HelpChat() {
       setFeedbackNote('Thank you. Your feedback helps us improve the guide.');
     } catch { setFeedbackNote('We couldn’t save feedback. Try again, or email support.'); }
   }
-  const available = topics.filter(a => allowed(a));
-  const matches = available.filter(a => `${a.title} ${a.keywords} ${a.summary}`.toLowerCase().includes(search.toLowerCase()));
+  const categories=[...new Set(topics.map(a=>a.category))];
+  const matches = searchArticles(topics.filter(a=>category==='All topics'||a.category===category),search);
   function allowed(a: Article) {
     return (!a.app || appOn(a.app)) && (!a.requiresPilot || aiPilot) && (!a.requiresAi || (account !== null && account.over !== true));
   }
@@ -118,7 +121,7 @@ function HelpChat() {
     return related.map(a => <aside className="help-suggestion" key={a.id} aria-label="A useful alternative"><span className="help-eyebrow">You could also try</span><h4>{a.title}</h4><p>{a.benefit || a.summary}</p><details><summary>Show me how</summary><ol>{a.steps.map(step => <li key={step}>{step}</li>)}</ol><Link className="help-feature" to={a.href} onClick={close}>{a.action} →</Link></details></aside>);
   }
   function article(a: Article) {
-    return <article className="help-article" key={a.id}><span className="help-eyebrow">From the ELT Suite guide</span><h3>{a.title}</h3><p>{a.summary}</p><ol>{a.steps.map(step => <li key={step}>{step}</li>)}</ol>{allowed(a) ? <Link className="help-feature" to={a.href} onClick={close}>{a.action}<span aria-hidden="true"> →</span></Link> : <p className="help-privacy">This feature isn’t available to your account just now. Ask your admin or contact support.</p>}</article>;
+    return <article className="help-article" key={a.id}><span className="help-eyebrow">{a.category} · ELT Suite guide</span><h3>{a.title}</h3><p>{a.summary}</p><ol>{a.steps.map(step => <li key={step}>{step}</li>)}</ol><p className="help-privacy">Guide updated · {a.reviewedAt}</p>{allowed(a) ? <Link className="help-feature" to={a.href} onClick={close}>{a.action}<span aria-hidden="true"> →</span></Link> : <p className="help-privacy">This feature isn’t available to your account just now. Ask your admin or contact support.</p>}</article>;
   }
   return <>
 
@@ -126,12 +129,12 @@ function HelpChat() {
       <header className="help-header"><span className="help-mark"><UiIcon name="help" size={23} /></span><div><span className="help-eyebrow">A little help, right here</span><h2 id="elt-help-title">ELT Suite assistant</h2></div><button className="help-icon" onClick={close} aria-label="Close help"><span aria-hidden="true">×</span></button></header>
       <nav className="help-nav" aria-label="Help views"><button aria-pressed={!browse} onClick={() => setBrowse(false)}>Ask a question</button><button aria-pressed={browse} onClick={() => setBrowse(true)}>Browse topics</button><button className="help-reset" onClick={clear} disabled={!turns.length}>Clear chat</button></nav>
       <div className="help-scroll" ref={scroll}>
-        {browse ? <><label className="help-search">Find a help topic<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Try lessons, calls or files" /></label><div className="help-topics">{matches.map(a => <details key={a.id}><summary>{a.title}<span aria-hidden="true">+</span></summary>{article(a)}</details>)}</div>{!matches.length && <p>No matching topics. Try another word, or <a href={support}>contact support</a>.</p>}</> : <>
-          {!turns.length && <div className="help-welcome"><h3>How can I help?</h3><p>Find your next step in ELT Suite.</p><div className="help-starters">{['How do I make a lesson?', 'How do learners join?', 'How do I record a lesson?'].map(q => <button key={q} onClick={() => void ask(q)}>{q}<span aria-hidden="true">↗</span></button>)}</div></div>}
+        {browse ? <><label className="help-search">Find a help topic<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Try images, songs, answer keys or sharing" /></label><label className="help-search">Category<select value={category} onChange={e=>setCategory(e.target.value)}><option>All topics</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label><p className="help-privacy" role="status">{matches.length} of {topics.length} topics · Search questions, instructions and troubleshooting.</p><div className="help-topics">{matches.map(a => <details key={a.id}><summary>{a.title}<span aria-hidden="true">+</span></summary>{article(a)}</details>)}</div>{!matches.length && <p>No matching topics. Try another word, or <a href={support}>contact support</a>.</p>}</> : <>
+          {!turns.length && <div className="help-welcome"><h3>How can I help?</h3><p>Find your next step in ELT Suite.</p><div className="help-starters">{['How do I generate images?', 'How do I make a lesson?', 'Why does my video not move?', 'How do I create a song?', 'How do I record a lesson?'].map(q => <button key={q} onClick={() => void ask(q)}>{q}<span aria-hidden="true">↗</span></button>)}</div></div>}
           <div className="help-transcript" role="log" aria-label="Help conversation" aria-live="polite" aria-relevant="additions text">{turns.map((t, i) => <div className="help-turn" key={t.id}><p className="help-question"><span className="help-sr">You asked: </span>{t.question}</p>{busy && i === turns.length - 1 ? <div className="help-thinking" role="status" aria-label="ELT Suite is preparing a reply"><span className="help-typing-dots" aria-hidden="true"><i /><i /><i /></span><span>Finding the right guidance…</span></div> : <><div className="help-answer">{t.articleIds.length ? t.articleIds.map(id => article(topics.find(a => a.id === id)!)) : <div className="help-unknown"><h3>{t.unavailable ? 'Let’s find another way' : 'I don’t have verified steps for that yet'}</h3><p>{t.unavailable ? 'AI help isn’t available just now. The help library is still here.' : 'Try a more specific question, browse the guide or ask support. I can explain features, but I can’t change your work.'}</p><button className="help-feature" onClick={() => setBrowse(true)}>Browse help topics →</button><a href={support}>Email support →</a></div>}</div>{t.articleIds.length > 0 && suggestions(t.articleIds)}<div className="help-rating">{t.rating ? <span>Feedback saved</span> : <><span>Did this help?</span><button onClick={() => void rate(t, 'yes')} aria-label="Yes, this helped">Yes</button><button onClick={() => void rate(t, t.articleIds.length ? 'no' : 'unresolved')} aria-label="No, I still need help">Not yet</button></>}</div></>}</div>)}</div>
         </>}
       </div>
-      <footer className="help-footer">{!browse && <form onSubmit={e => { e.preventDefault(); void ask(question); }}><label className="help-sr" htmlFor="help-question">Ask how to use ELT Suite</label><input ref={input} id="help-question" value={question} onChange={e => setQuestion(e.target.value)} maxLength={1000} placeholder="Ask how to use ELT Suite…" disabled={busy} autoComplete="off" /><button type="submit" disabled={busy || !question.trim()} aria-label="Send help question"><span aria-hidden="true">↑</span></button></form>}<p className="help-privacy">AI finds guidance from our reviewed help library.<br />Help is separate from your lesson AI allowance.</p><details className="help-data"><summary>Privacy and feedback</summary><p>Questions are sent to our AI provider to find relevant help. We don’t save your chat. Don’t include learner details or private material. Feedback stores the topic and rating for review; clearing the chat removes it from this window.</p><label><input type="checkbox" checked={shareQuestion} onChange={e => setShareQuestion(e.target.checked)} /> Include my question when I send feedback</label><a href={support}>Contact support</a></details><p className="help-feedback-note" role="status">{feedbackNote}</p></footer>
+      <footer className="help-footer">{!browse && <form onSubmit={e => { e.preventDefault(); void ask(question); }}><label className="help-sr" htmlFor="help-question">Ask how to use ELT Suite</label><input ref={input} id="help-question" value={question} onChange={e => setQuestion(e.target.value)} maxLength={1000} placeholder="Ask how to use ELT Suite…" disabled={busy} autoComplete="off" /><button type="submit" disabled={busy || !question.trim()} aria-label="Send help question"><span aria-hidden="true">↑</span></button></form>}<p className="help-privacy">Answers come from our help knowledge base. AI finds relevant topics when needed.<br />Help is separate from your lesson AI allowance.</p><details className="help-data"><summary>Privacy and feedback</summary><p>Exact documented questions are answered from the guide. Other questions are sent to our AI provider to find relevant help. We don’t save your chat. Don’t include learner details or private material. Feedback stores the topic and rating for review; clearing the chat removes it from this window.</p><label><input type="checkbox" checked={shareQuestion} onChange={e => setShareQuestion(e.target.checked)} /> Include my question when I send feedback</label><a href={support}>Contact support</a></details><p className="help-feedback-note" role="status">{feedbackNote}</p></footer>
     </aside>}
   </>;
 }

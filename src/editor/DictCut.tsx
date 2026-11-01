@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Grip } from './nodes';
 import { CORE, DefField, GROUPS, TransFields, type DefData } from './Definition';
 import { translationsFor, useMyLangs } from '../lib/langs';
+import { DefinitionAI } from './DefinitionAI';
 import '../lib/extras.css';
 
 // A dictionary entry that looks cut out of a printed dictionary page and stuck into the task.
@@ -91,7 +92,7 @@ function EditView({ node, updateAttributes, deleteNode, editor, getPos, selected
     <NodeViewWrapper className={'block-node dcut-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">
         <Grip editor={editor} getPos={getPos} />
-        <span className="block-label">Dictionary cutout</span>
+        <span className="block-label">Definition card</span>
         <button type="button" className="btn link small" style={{ marginLeft: 'auto' }} onClick={() => setOpen((o) => !o)}>
           {open ? 'Done' : 'Edit'}
         </button>
@@ -105,6 +106,7 @@ function EditView({ node, updateAttributes, deleteNode, editor, getPos, selected
             <span>Headword</span>
             <input value={word} placeholder="reluctant" onChange={(e) => updateAttributes({ word: e.target.value })} onKeyDown={(e) => e.stopPropagation()} autoFocus={!word} />
           </label>
+          <DefinitionAI word={word} context={editor.state.doc.textBetween(Math.max(0,(typeof getPos()==='number'?getPos()!:0)-1500),Math.min(editor.state.doc.content.size,(typeof getPos()==='number'?getPos()!:0)+1500),'\n')} onUse={fn=>{setData(fn);setMore(true);}}/>
           {CORE.map(field)}
           <span className="hint">For more than one meaning, put each meaning and its example on a new line.</span>
           <TransFields data={data} setData={setData} />
