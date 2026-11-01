@@ -314,7 +314,9 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
         </span>
       </div>
       {canEdit && <SlashMenu editor={editor} slash={slash} groups={DOC_GROUPS} />}
-      <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+      <EditorClassContext.Provider value={{ classId: 'doc:' + d.id, classmates: [] }}>
+        <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+      </EditorClassContext.Provider>
     </div>
   );
 }

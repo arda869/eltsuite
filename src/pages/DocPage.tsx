@@ -103,7 +103,7 @@ export function DocPage() {
   const canRename = !lesson && role === 'edit' && (teacher || !!d?.folder);
   const others = d ? Object.keys(d.members ?? {}).length : 0;
   const inDesigner = kind === 'design' || kind === 'storyboard' || !!(d && isImageFile(d));
-  const props = { docKey, title, modes, teacher, me: { uid, name }, classId, display: 'inline' as const, canDownload: true };
+  const props = { docKey, title, modes, teacher, me: { uid, name }, classId, mediaSpace: lesson ? classId : 'doc:' + d!.id, display: 'inline' as const, canDownload: true };
   // The page title, large at the top of the canvas, as in Loop.
   const heading = canRename ? (
     <textarea className="dp-h1" rows={1} value={title} placeholder="Untitled" onChange={(e) => setTitle(e.target.value.replace(/\n/g, ''))} onBlur={() => title.trim() !== d!.title && void renameDoc(d!.id, title).catch((e) => { setTitle(d!.title); void tell(e.message); })} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), (e.target as HTMLTextAreaElement).blur())} aria-label="Title" ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} />

@@ -57,6 +57,16 @@ try {
  await help.getByRole('button',{name:'Browse topics',exact:true}).click();await help.getByRole('combobox',{name:'Category',exact:true}).selectOption('Images and Designer');await help.getByRole('searchbox').fill('magic eraser');await help.locator('summary').filter({hasText:'Remove an object from a picture'}).click();await help.getByRole('link',{name:'Open Designer',exact:true}).waitFor();
  await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
  const violations=await p.evaluate(async()=>{const r=await axe.run(document,{runOnly:['wcag2a','wcag2aa']});return r.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id);});assert.deepEqual(violations,[]);assert.deepEqual(crashes,[]);
+ // Outside-course definitions must save pictures with the document, not the teacher's private media.
+ await p.evaluate(async()=>{const {doc,setDoc}=await import('/test/mock/firestore.ts');await setDoc(doc({},'sharedDocs','definition-doc'),{owner:'teacher1',ownerName:'Arda',title:'Editorial definitions',kind:'doc',docKey:'definition-doc-session',members:{},memberIds:[]});});
+ await p.goto(base+'/doc/definition-doc');
+ const docEditor=p.getByRole('textbox',{name:'Document text',exact:true});await docEditor.fill('Aviation includes flying aircraft.');
+ await docEditor.evaluate(el=>{const text=el.querySelector('p').firstChild;const range=document.createRange();range.setStart(text,0);range.setEnd(text,8);const sel=getSelection();sel.removeAllRanges();sel.addRange(range);});
+ await p.getByRole('button',{name:'Definition: select a word, then add its meaning',exact:true}).click();
+ const dp=p.getByRole('dialog',{name:'Definition',exact:true});await dp.getByRole('button',{name:'Suggest definition with AI',exact:true}).click();await dp.getByText('Designer style: Editorial',{exact:true}).waitFor();await dp.getByRole('button',{name:'Use suggested definition',exact:true}).click();await dp.getByRole('button',{name:'Done',exact:true}).click();
+ await p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).some(k=>k.startsWith('sharedDocs/definition-doc/media/definition_')));
+ await p.waitForTimeout(1200);await p.reload();await p.getByRole('button',{name:'Document mode',exact:true}).click();await p.getByRole('option',{name:'Viewing',exact:true}).click();await p.getByRole('button',{name:'Aviation',exact:true}).click();await p.locator('.dc-img').waitFor();assert(await p.locator('.dc-img').evaluate(im=>im.complete&&im.naturalWidth>0),'Reopened Collab reader must resolve its own saved image');
+ console.log('PASS: outside-course Editorial definition saved to document media and reopened in reader with a loaded image. Model/Firebase simulated.');
  console.log('PASS: standalone + inline AI definition review/edit/save/reopen; preserve filled fields; class A1 with extra context blank; image FAQ and categorised full-text help search; accessibility. Model/Firebase simulated.');
 } catch(e){console.log((await p?.locator('body').innerText())?.slice(-5000));throw e;}
 finally{await browser?.close();try{process.kill(-server.pid,'SIGTERM');}catch{}}

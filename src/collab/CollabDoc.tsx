@@ -99,6 +99,7 @@ export type CollabProps = {
   teacher?: boolean;
   me: { uid: string; name: string };
   classId: string;
+  mediaSpace?: string;
   display?: 'inline' | 'expand' | 'full';
   canDownload?: boolean;
   head?: ReactNode; // shown above the document (who it belongs to, a picker)
@@ -127,13 +128,13 @@ function contributions(doc: Y.Doc, pud: Y.PermanentUserData): Map<string, number
   return out;
 }
 
-export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, toolSlot }: CollabProps) {
+export function CollabDoc({ docKey, title, template, modes, teacher, me, classId, mediaSpace, display = 'inline', canDownload, head, page, heading, toolSlot }: CollabProps) {
   const session = useCollabSession(docKey, me.uid);
   if (!session) return <div className="cd cd-wait" />;
-  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, display, canDownload, head, page, heading, toolSlot }} session={session} />;
+  return <CollabInner {...{ docKey, title, template, modes, teacher, me, classId, mediaSpace, display, canDownload, head, page, heading, toolSlot }} session={session} />;
 }
 
-function CollabInner({ docKey, title, template, modes, teacher, me, classId, display = 'inline', canDownload, head, page, heading, toolSlot, session }: CollabProps & { session: CollabSession }) {
+function CollabInner({ docKey, title, template, modes, teacher, me, classId, mediaSpace, display = 'inline', canDownload, head, page, heading, toolSlot, session }: CollabProps & { session: CollabSession }) {
   const author: Author = { by: me.uid, name: me.name || 'Someone', color: colorOf(me.uid) };
   const allowed = modeChoices(modes, teacher);
   const [mode, setMode] = useState<CollabMode>(allowed[0] ?? 'view');
@@ -707,7 +708,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           )}
           {!synced && <span className="cd-sync">Opening the document…</span>}
           <OlderCopyBanner editor={editor} aw={session.provider.awareness} />
-          <EditorClassContext.Provider value={{ classId, classmates: [] }}>
+          <EditorClassContext.Provider value={{ classId: mediaSpace || classId, classmates: [] }}>
             {(() => {
               const hostEl = (
                 <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing}>
@@ -834,7 +835,9 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, dis
           )}
         </aside>}
       </div>
-      <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+      <EditorClassContext.Provider value={{ classId: mediaSpace || classId, classmates: [] }}>
+        <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
+      </EditorClassContext.Provider>
       <LinkPop editor={editor} open={linkOpen} onClose={() => setLinkOpen(false)} places={[]} />
       {page && writing && (
         <EditorContextMenu
