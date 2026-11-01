@@ -436,7 +436,8 @@ const J = {
     await see(s.p,'.speak-setup','the speaking task editor');
     if(!(await s.p.getByLabel('The situation',{exact:true}).inputValue()).includes('damaged suitcase')) throw Error('AI conversation lost its activity context');
     await s.p.locator('.save-state.saved').waitFor({state:'visible'});
-    await s.p.getByLabel('Feedback focus source',{exact:true}).click();await s.p.getByRole('option',{name:'Let the learner choose',exact:true}).click();
+    // Exercise keyboard opening; pointer opening is checked separately during UI review.
+    await s.p.getByLabel('Feedback focus source',{exact:true}).press('ArrowDown');await s.p.getByRole('option',{name:'Let the learner choose',exact:true}).click();
     await s.p.getByRole('button',{name:'+ Feedback option',exact:true}).click();
     await s.p.getByLabel('Feedback option 3',{exact:true}).fill('Giving reasons');
     await s.p.getByRole('button',{name:'Save AI conversation',exact:true}).click();

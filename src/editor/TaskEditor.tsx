@@ -255,7 +255,7 @@ setPdfQuestions(PDF_Q_KEYS.map((k) => COMMANDS.find((c) => c.key === k)).filter(
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
 // The order of the groups in every / menu (lessons show Questions, Text, Blocks; documents Basic to Training).
 const GROUP_RANK: Cmd['group'][] = ['Basic', 'Media', 'Writing', 'Language', 'Questions', 'Text', 'Blocks', 'Training', 'More'];
-const TEXT_ONLY = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
+const TEXT_ONLY = ['inline-video', 'stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
 export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false, only?: (c: Cmd) => boolean) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
