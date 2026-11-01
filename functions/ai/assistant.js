@@ -164,7 +164,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       }
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This request is still running. Retry shortly with the same request.' : 'This request did not finish. Start a new generation.');
     }
-    // Reserve both passes before calling the provider; failed calls still consume allowance.
+    // Reserve the first pass; research, editorial checks and repairs reserve before each call.
     await chargeFeature(tx,db,usagePolicy,{outline:'lessonOutline',plan:'lessonPlan',activities:'lessonActivities'}[d.action]);
     let reservation;
     try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, units, usagePolicy.isAdmin); }
@@ -243,6 +243,11 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
         }
       });
       result={...result,[d.action]:checked.value,review:checked.review,editorialRepairs:checked.repairs,usage:[...result.usage,...checked.usage]};
+    }
+    if(d.action==='plan' && cls.get('kind')==='training') {
+      phase='review';await reserveExtra();
+      const review=await generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.max(1000,Math.min(120000,generationDeadline-Date.now())),input:{brief,trainingProfile:payload.trainingProfile,plan:result.plan},instructions:trainingInstructions+'\nReview the training plan against these 11 criteria: '+criteria+'. Cite evidence, flag critical errors and provide actionable suggestions. '+contentReviewStandard});
+      result={...result,review:review.value,usage:[...result.usage,review.usage]};
     }
     if(d.action!=='activities' && sources.length) result[d.action].sourceEvidence=sources;
     phase = 'storage';
