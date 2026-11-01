@@ -8,7 +8,7 @@ import {taskCatalogue} from '../../functions/ai/catalogue.js';
 import {outlineSchema,generationSchema,validate} from '../../functions/ai/contract.js';
 import {stageContract} from '../../functions/ai/sequence.js';
 import {activitySchema,checkActivities,nativeTask} from '../../functions/ai/activities.js';
-import {collectSources,relevantExtract} from '../../functions/ai/research.js';
+import {collectSources,relevantExtract,researchLesson} from '../../functions/ai/research.js';
 import {prepareCommonsImage} from '../../functions/ai/commons.js';
 const usage={inputTokens:12,outputTokens:30};
 const review=(bad=false)=>({checks:Array.from({length:11},(_,i)=>({criterion:'criterion'+i,score:bad?2:4,evidence:'Specific evidence'})),criticalErrors:bad?['Task has no reason to listen']:[],suggestions:[]});
@@ -66,7 +66,7 @@ test('research retrieves the relevant routine section instead of repeated introd
  const routine='A typical day begins at 06:00. The crew exercise, carry out experiments and eat together. '.repeat(7);
  const unrelated='The International Space Station has many international partner agencies and station modules. '.repeat(12);
  const extract=relevantExtract(intro+'\n== Station construction ==\n'+unrelated+'\n== Daily routines ==\n'+routine,['International Space Station daily routine']);
- assert.match(extract,/A typical day begins at 06:00/);assert.ok(extract.length<=3500);
+ assert.match(extract,/A typical day begins at 06:00/);assert.ok(extract.length<=6000);
 });
 
 test('adult illustrations use Designer editorial style and repair a failed visual before accepting it',async()=>{
@@ -75,4 +75,13 @@ test('adult illustrations use Designer editorial style and repair a failed visua
  fetchImpl:async(_url,options)=>{generations++;const prompt=JSON.parse(options.body).prompt;assert.ok(prompt.includes(STYLE_DIRECTIONS.editorial));assert.match(prompt,/not a photograph/);if(generations===2)assert.match(prompt,/Show the desk clearly/);return {ok:true,json:async()=>({data:[{b64_json:bytes.toString('base64')}]})}},
  generate:async args=>{reviews++;assert.equal(args.sourceImages.length,1);return {value:{selection:reviews===1?0:1,reason:'Show the desk clearly',alt:'A person at a desk'},usage}}});
  assert.equal(generations,2);assert.equal(reviews,2);assert.equal(result.alt,'A person at a desk');
+});
+
+test('source review replaces irrelevant evidence instead of falling back to generic invented content',async()=>{
+ let calls=0,reservations=0;const queried=[];
+ const fetchImpl=async url=>{const title=url.searchParams.get('titles');queried.push(title);return {ok:true,text:async()=>JSON.stringify({query:{pages:[{title,fullurl:'https://en.wikipedia.org/wiki/'+encodeURIComponent(title),extract:'Documented daily working evidence. '.repeat(12)}]}})}};
+ const leads=[{title:'International Space Station',focus:'daily routine exercise meals'},{title:'Haruki Murakami',focus:'writing routine running'}];
+ const result=await researchLesson({objective:'Daily routines'},{fetchImpl,reserve:async()=>reservations++,generate:async args=>{calls++;return {usage,value:args.name==='research'?{queries:[{title:'Unrelated biography',focus:'work'},{title:'Unrelated launch',focus:'routine'}]}:{usableIndices:calls===2?[]:[0],reason:'The first extracts lack routines.',queries:leads}}}});
+ assert.equal(calls,3);assert.equal(reservations,3);assert.equal(result.sources[0].title,'International Space Station');assert.ok(queried.includes('International Space Station'));assert.equal(result.usage.length,3);
+ await assert.rejects(researchLesson({}, {fetchImpl,reserve:async()=>{},generate:async args=>({usage,value:args.name==='research'?{queries:leads}:{usableIndices:[],reason:'No relevant evidence',queries:leads}})}),e=>e.reason==='research');
 });

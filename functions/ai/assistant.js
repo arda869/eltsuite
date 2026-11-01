@@ -1,4 +1,4 @@
-import { researchSchema, collectSources } from './research.js';
+import { researchLesson } from './research.js';
 import { editUntilReady, editorialStandard } from './editorial.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { stageContract, allocateMinutes } from './sequence.js';
@@ -195,10 +195,8 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     let sources=(d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
     const researchUsage=[];
     if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
-      await reserveExtra();
-      const research=await generate({apiKey:key.value(),model:model.value(),schema:researchSchema,name:'research',timeoutMs:60000,
-        input:{brief},instructions:'Choose 2–3 concise Wikipedia search queries to find genuinely interesting real-world source material for this adult English lesson. Prioritise a surprising real person, invention, place, discovery or documented dilemma that serves the objectives. For routines consider distinctive working lives, expeditions or creative habits rather than generic profiles. Queries are research leads, not verified facts. Do not put private learner or teacher details into queries. Return queries only.'});
-      researchUsage.push(research.usage);sources=await collectSources(research.value.queries);
+      const research=await researchLesson(brief,{reserve:reserveExtra,generate:args=>generate({apiKey:key.value(),model:model.value(),...args})});
+      researchUsage.push(...research.usage);sources=research.sources;
     }
     payload.sourceEvidence=sources;
     if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
