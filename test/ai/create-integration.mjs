@@ -80,6 +80,7 @@ globalThis.fetch=async(url,options)=>{
  if(providerCalls===1)return {ok:false,status:503,json:async()=>({})};
  const review={checks:Array.from({length:11},(_,i)=>({criterion:'Criterion '+i,score:4,evidence:'Checked fixture'})),criticalErrors:[],suggestions:[]};
  return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(review)}]}],usage:{input_tokens:100,output_tokens:100}})};
+};
 try {
  const request={action:'plan',brief:resumeBrief,outline:savedOutline,approved:true,requestId:resumeId};
  await assert.rejects(call(request),e=>e.details?.resumable===true);
