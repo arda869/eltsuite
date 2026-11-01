@@ -188,7 +188,7 @@ export function LearnerLesson() {
       attemptsRef.current = d?.attempts ?? 0;
       setMarks(d?.marks ?? {});
       setCorrections(d?.corrections ?? {});
-      if (dirty.current) return;
+      if (dirty.current || s.metadata.hasPendingWrites) return;
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
       if (d?.checked) setKey(await loadKey(classId, itemId, current).catch(() => null));
@@ -304,6 +304,9 @@ export function LearnerLesson() {
   async function check() {
     if (!base || busy) return;
     setBusy(true);setCheckError('');
+    // Do not read the protected key from the optimistic checked snapshot.
+    // check() owns feedback until the submission write is acknowledged.
+    dirty.current = true;
     window.clearTimeout(timer.current);
     let submitted=false;
     try {
