@@ -440,6 +440,23 @@ const J = {
     return s;
   },
 
+  'Songs: separate tracks preview, mute, save and reopen': async (b) => {
+    const s=await session(b);s.p.setDefaultTimeout(60000);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
+    await s.p.evaluate(()=>sessionStorage.setItem('mockStemDelayMs','1800'));
+    await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
+    await d.getByLabel('Lyrics',{exact:true}).fill('Hello, hello, sing with me.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();
+    await d.getByText(/Preparing sing-along tracks/).waitFor();if(await d.getByRole('button',{name:'Add song to timeline'}).isEnabled())throw Error('Add should explain why tracks are not ready');
+    await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).click();const audio=d.locator('audio');
+    await audio.evaluate(el=>el.play());await s.p.waitForFunction(()=>document.querySelector('dialog audio')?.currentTime>.1);await audio.evaluate(el=>el.pause());
+    await axe(s.p,'Song stems preview',A11Y_FOUND);if(process.env.SONG_STEMS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_STEMS_SCREENSHOT});
+    await d.getByRole('button',{name:'Vocals only',exact:true}).click();await d.getByRole('button',{name:'Full song',exact:true}).click();await d.getByRole('button',{name:'Add song to timeline'}).click();await d.waitFor({state:'hidden'});
+    await s.p.getByRole('button',{name:'Mute Classroom song · Vocals',exact:true}).click();if(await s.p.getByRole('button',{name:'Mute Classroom song · Vocals'}).getAttribute('aria-pressed')!=='true')throw Error('Vocal mute failed');await s.p.getByRole('button',{name:'Mute Classroom song · Vocals',exact:true}).click();
+    await s.p.getByRole('button',{name:'Save',exact:true}).click();await s.p.getByRole('dialog',{name:'Save the recording'}).getByRole('button',{name:'Save',exact:true}).click();
+    await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor();
+    const saved=await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.entries(fs).filter(([k,v])=>k.includes('/media/')&&v.stems).map(([k,v])=>({key:k,stems:v.stems}));});if(saved.length!==1)throw Error('Separate tracks were not persisted');
+    await s.p.reload();await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor();await axe(s.p,'Saved separate song tracks reopened',A11Y_FOUND);return s;
+  },
   'Songs: topic-only lyric drafting needs no title or lesson': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();
@@ -490,7 +507,7 @@ const J = {
     if(songRequest.name!=='recordingSong'||songRequest.approved!==true||!songRequest.brief.lyrics.trim())throw Error('Reviewed AI lyrics did not reach song creation');
     const playable=await d.locator('audio').evaluate(el=>new Promise((resolve,reject)=>{const check=()=>el.readyState>=1&&el.duration>0?resolve(true):false;if(check())return;el.addEventListener('loadedmetadata',()=>resolve(el.duration>0),{once:true});el.addEventListener('error',()=>reject(Error('Song audio failed to load')),{once:true});}));
     if(!playable)throw Error('Created song must have playable audio');
-    if(await d.getByRole('progressbar').count())throw Error('Progress remained after music creation finished');
+    if(await d.locator('.song-work').count())throw Error('Music generation progress remained after music creation finished');
     await axe(s.p,'Topic-only lyric drafting',A11Y_FOUND);return s;
   },
   'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {
@@ -564,9 +581,11 @@ const J = {
     await s.p.getByLabel('Dialogue line 1',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 1',{exact:true}).press('Enter');
     await s.p.getByLabel('Dialogue line 2',{exact:true}).fill('(laughs) Second take.');
     await s.p.getByRole('button',{name:'Move line 2. Use Arrow Up or Arrow Down to reorder.',exact:true}).press('ArrowUp');
-    if(await s.p.getByLabel('Dialogue line 1',{exact:true}).inputValue()!=='(laughs) Second take.')throw Error('Keyboard reorder lost text');
+    await s.p.waitForFunction(()=>document.querySelector('[aria-label="Dialogue line 1"]')?.value==='(laughs) Second take.',{},{timeout:5000});
+    if(await s.p.getByLabel('Dialogue line 2',{exact:true}).inputValue()!=='First take.')throw Error('Keyboard reorder lost the other line');
     await s.p.locator('.speech-drag').first().dragTo(s.p.locator('.speech-script-row').nth(1));
-    if(await s.p.getByLabel('Dialogue line 1',{exact:true}).inputValue()!=='First take.')throw Error('Drag reorder failed');
+    await s.p.waitForFunction(()=>document.querySelector('[aria-label="Dialogue line 1"]')?.value==='First take.',{},{timeout:5000});
+    if(await s.p.getByLabel('Dialogue line 2',{exact:true}).inputValue()!=='(laughs) Second take.')throw Error('Drag reorder lost the other line');
     await s.p.getByRole('button',{name:'Regenerate line 1',exact:true}).click();
     await s.p.getByRole('button',{name:'Listen to line 1',exact:true}).click();
     await axe(s.p,'Dialogue take table',A11Y_FOUND);
@@ -838,8 +857,32 @@ const J = {
     await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('Plan a trip together');
     if(await s.p.getByLabel('Stage 1: Title',{exact:true}).inputValue()!=='Plan a trip together') throw Error('Stage table edit was lost');
     if (await s.p.getByRole('button', { name: 'Save private draft' }).count()) throw Error('Plan created before approval');
+    const revision=s.p.getByRole('region',{name:'Ask AI to make changes',exact:true});
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await s.p.getByRole('alert').getByText('Describe what you would like AI to change in the box.').waitFor();
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Change the title only. Keep my stage title.');
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
+    if(await s.p.getByRole('textbox',{name:'Title',exact:true}).inputValue()!=='Choose a trip')throw Error('Proposal silently replaced current outline');
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('I like that title. Keep it and refine the wording.');
+    await revision.getByRole('button',{name:'Refine proposal',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
+    const refinement=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
+    if(refinement.revision.current.title!=='Revised travel choice')throw Error('Reply ignored the previous proposal');
+    await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('My newer manual edit');
+    if(await revision.getByRole('button',{name:'Apply changes',exact:true}).isEnabled())throw Error('Stale proposal can overwrite newer manual edits');
+    await revision.getByRole('button',{name:'Keep current version',exact:true}).click();
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).click();
+    if(await s.p.getByLabel('Stage 1: Title',{exact:true}).inputValue()!=='My newer manual edit')throw Error('Applying revision lost a manual edit');
+
     await s.p.getByRole('button', { name: 'Approve outline and make the plan' }).click();
     await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).fill('Explain a choice with two reasons');
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Suggest a different title; keep my main aim.');
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Keep current version',exact:true}).click();
+    if(await s.p.getByRole('textbox',{name:'Main aim',exact:true}).inputValue()!=='Explain a choice with two reasons')throw Error('Rejecting plan revision lost manual edits');
+
     await s.p.getByRole('button', { name: 'Learner materials', exact: true }).click();
     await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
     await s.p.getByRole('button', { name: 'Save private draft' }).click();
@@ -881,6 +924,12 @@ const J = {
     await s.p.getByRole('textbox',{name:'Main aim',exact:true}).fill('Choose and justify a trip with clear reasons');
     await s.p.getByRole('button',{name:'Prepare class activities'}).click();
     await see(s.p,'text=04 · CLASS ACTIVITIES','rebuilt activity review');
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Change only the lesson title; keep all activity content.');
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).click();
+    await s.p.getByRole('heading',{name:'Revised travel choice',exact:true}).waitFor();
+    await s.p.getByRole('table',{name:'Travel options'}).waitFor();
+
     await s.p.getByRole('button',{name:'Create lesson in Classes'}).click();
     await see(s.p,'text=Created in Classes, hidden','hidden creation');
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);

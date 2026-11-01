@@ -72,6 +72,13 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if(!c||!l)throw Error('This lesson is no longer available.');
     return {data:{reference:d.lesson,title:l.title,className:c.name,level:c.level,audience:c.learningProfile?.ageGroup||'',focus:l.speakingFocus||'Practise the language from this lesson.',tasks:[{title:'Lesson vocabulary',instructions:'Use target words.',text:'Morning routines and daily activities.'}]}};
   }
+  if(name==='recordingSongStems'){
+    const key='mockSongs',jobs=JSON.parse(sessionStorage.getItem(key)||'{}'),job=jobs[d.id];if(!job)throw Error('Song not found.');
+    job.stems={status:'working',progress:.25};sessionStorage.setItem(key,JSON.stringify(jobs));
+    const delay=Number(sessionStorage.getItem('mockStemDelayMs')||0);if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+    if(sessionStorage.getItem('mockStemFail')){sessionStorage.removeItem('mockStemFail');job.stems={status:'failed',error:'Track preparation failed. Your original song is kept.',progress:0};}else job.stems={status:'complete',progress:1};
+    sessionStorage.setItem(key,JSON.stringify(jobs));return {data:{status:job.stems.status}};
+  }
   if (['recordingLyrics','recordingSong','recordingSongResult'].includes(name)) {
     const key='mockSongs', jobs=JSON.parse(sessionStorage.getItem(key)||'{}');
     if(name!=='recordingSongResult'){
@@ -82,11 +89,12 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     }
     const job=jobs[d.id];if(!job)throw Object.assign(Error('Creation not found. Your lyrics are kept.'),{code:'functions/not-found'});
     if(job.kind==='lyrics')return {data:{status:'complete',lyrics:'Every morning, here we go!\nTime to learn and time to grow!'}};
+    if(d.metaOnly)return {data:{status:'complete',stems:job.stems||null}};
     const bytes=new Uint8Array(44+48000),view=new DataView(bytes.buffer),write=(at:number,s:string)=>{for(let i=0;i<s.length;i++)bytes[at+i]=s.charCodeAt(i);};
     write(0,'RIFF');view.setUint32(4,bytes.length-8,true);write(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);write(36,'data');view.setUint32(40,48000,true);
-    for(let i=0;i<24000;i++)view.setInt16(44+i*2,Math.sin(i*.1)*3000,true);
+    for(let i=0;i<24000;i++)view.setInt16(44+i*2,Math.sin(i*(d.stem==='instrumental'?.05:.1))*(d.stem?1500:3000),true);
     let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
-    return {data:{status:'complete',audio:btoa(binary),mime:'audio/wav',providerLyrics:job.lyrics}};
+    return {data:{status:'complete',audio:btoa(binary),mime:'audio/wav',providerLyrics:job.lyrics,stems:job.stems||null}};
   }
   if (name === 'recordingTranscript') return {data:{segments:[{speaker:'A',text:'Could you explain that?',start:0,end:.4},{speaker:'B',text:'Of course.',start:.5,end:1}]}};
   if (name === 'speakingTask') {
@@ -134,6 +142,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if(d.action==='mediaStatus') return {data:{media:[]}};
   if (d.action === 'context') {const c=(await getDoc(doc(db,'classes',d.classId))).data()||{};return {data:{classContext:{name:c.name||'Demo class',level:c.level||'B1',kind:c.kind||'language',profile:c.learningProfile||null,trainingProfile:c.trainingProfile||null},evidence:{recent:[],skillLevels:{},counts:{items:0,submittedTasks:0,portfolioRecords:0},limitations:'No recorded evidence yet.'}}};}
   if (d.action === 'profile') {const c=(await getDoc(doc(db,'classes',d.classId))).data();await setDoc(doc(db,'classes',d.classId),c?.kind==='training'?{trainingProfile:d.trainingProfile,level:d.trainingProfile.programme}:{learningProfile:d.profile,level:d.level},{merge:true});return {data:{profileSaved:true}};}
+  if(d.revision){const current=structuredClone(d.revision.current);current.title='Revised travel choice';if(d.action==='activities')localStorage.setItem('mockAiActivities',JSON.stringify({activities:current,type:d.creationType}));return {data:{[d.action]:current,revisionSummary:'Changed the title; kept all other content.'}};}
   const stage = { id: 's1', title: 'Compare options', aim: 'Agree on a choice using reasons', minutes: d.brief.duration, interaction: 'Pairs', activityType:'Speaking · decision', learnerAction:'Compare the two routes and agree on one.', material:'Two travel option cards', outcome:'A shared choice with two reasons' };
   if (d.action === 'outline') return { data: { outline: { title: 'Choose a trip', outcomes: ['Give reasons for a choice'], methodology: 'Task-based', rationale: 'Learners use English to reach a shared decision.', stages: [stage] } } };
   if (d.action === 'plan') return { data: { plan: { title: 'Choose a trip', mainAim: 'Agree on a trip and explain why', subsidiaryAims: 'Ask for a reason', assumedKnowledge: 'Basic comparatives', materials: 'Option cards', methodology: 'Task-based', rationale: 'A decision gives the task a purpose', assessment: 'Partners explain their decision', adaptations: 'Offer sentence starters', languageAnalysis: 'We could go by train. Modal could + base verb; weak form of could.', stages: [{ ...stage, procedures: 'Compare the two options. Agree on one. Report reasons.', instructions: 'Choose one trip together. Give two reasons.', instructionChecks: 'Do you choose one or both?', monitoring: 'Listen for reasons and shared decisions', feedback: 'Compare choices, then discuss useful language', transition: 'Share the decision', anticipatedProblems: 'One partner dominates', solutions: 'Assign each partner one option to explain', materialIds: ['m1'] }], learnerMaterials: [{ id: 'm1', title: 'Trip options', instructions: 'Compare these trips. Choose one and give reasons.', task: 'Train: £20, 40 minutes. Bus: £10, 70 minutes.', answerKey: 'Either option is acceptable with justified reasons.', script: 'Not applicable — speaking task', attribution: 'Original task', accessibleAlternative: 'Read the options aloud.' }] }, review: { checks: [{ criterion: 'Timing', score: 3, evidence: 'Test fixture only, not a model evaluation.' }], criticalErrors: [], suggestions: ['Check timing with the class.'] } } };

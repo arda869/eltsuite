@@ -1,0 +1,91 @@
+name: Deploy verified song sing-along tracks
+on:
+  workflow_dispatch:
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci && ONNXRUNTIME_NODE_INSTALL_CUDA=skip npm --prefix functions ci --no-audit --no-fund
+      - name: AI regression checks
+        run: node --test test/ai/*.test.mjs test/speech/*.test.mjs
+      - name: Song permissions, recovery and database checks (separation simulated)
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.ai-usage.json --project demo-song-stems "node test/speech/song-jobs.mjs && node test/speech/song-stems-jobs.mjs"
+      - name: Build
+        env:
+          VITE_ELT_AI_PILOT: 'true'
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Existing teacher and learner journeys
+        timeout-minutes: 20
+        run: npm run a11y
+      - name: Prepare existing deployment credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA" || { echo '::error::Missing deploy key'; exit 1; }
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy song services before the tested UI
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          ELT_AI_ENABLED: 'true'
+          ELT_AI_MODEL: gpt-6.1-sol
+        run: |
+          node functions/ai/preflight.mjs
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_ENABLED=true\nELT_AI_MODEL=gpt-6.1-sol\n');
+          JS
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:recordingSongStems --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/import-backend.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/import-backend.log"
+      - name: Verify deployed music binding and separator capacity
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          cd functions
+          node --input-type=module - <<'JS'
+          import {applicationDefault} from 'firebase-admin/app';
+          const {access_token}=await applicationDefault().getAccessToken();
+          const get=async(name)=>{const r=await fetch('https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/'+name,{headers:{Authorization:'Bearer '+access_token}});if(!r.ok)throw Error('Could not verify deployed service '+name+': '+r.status);return r.json();};
+          const song=await get('recordingSong'),worker=await get('recordingSongStems');
+          if(!song.serviceConfig?.secretEnvironmentVariables?.some(x=>x.key==='GEMINI_API_KEY'&&x.secret==='GEMINI_API_KEY'))throw Error('Deployed music secret is not bound');
+          if(!['8Gi','8G','8192M','8192Mi'].includes(worker.serviceConfig.availableMemory))throw Error('Separator memory configuration is too small: '+worker.serviceConfig.availableMemory);
+          console.log('Music secret binding and separator memory verified. No secret values were read or printed.');
+          JS
+      - name: Deploy tested site
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only hosting --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/import-hosting.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/import-hosting.log"
+      - name: Verify published build
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const expected=JSON.parse(fs.readFileSync('dist/version.json','utf8'));
+          const index=fs.readFileSync('dist/index.html','utf8'),entry=index.match(/src="(\/assets\/[^" ]+\.js)"/)?.[1];
+          let verified=false;
+          for(let attempt=0;attempt<30;attempt++){
+            const stamp='?verify='+Date.now(),actual=await fetch('https://eltsuite.com/version.json'+stamp,{cache:'no-store'}).then(r=>r.json());
+            const html=await fetch('https://eltsuite.com/'+stamp,{cache:'no-store'}).then(r=>r.text());
+            if(actual.build===expected.build&&entry&&html.includes(entry)&&(await fetch('https://eltsuite.com'+entry)).ok){console.log('Published sing-along build:',actual.build,entry);verified=true;break;}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(!verified)throw Error('Published build or entry did not match the tested release');
+          JS
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
