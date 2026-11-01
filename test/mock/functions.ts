@@ -20,11 +20,16 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     return {data:{pcm:btoa(binary),rate:24000,transcript:d.text}};
   }
   if (name === 'recordingDialogue') return {data:{lines:Array.from({length:d.turns},(_,i)=>({speaker:d.speakers[i%d.speakers.length].id,text:i%2?'Of course. I meant this Friday, not Thursday.':'Sorry, could you clarify which day you mean?',direction:'Natural conversational English'}))}};
+  if(name==='recordingSongLesson'){
+    const data=JSON.parse(localStorage.getItem('mockfs')||'{}'),c=data['classes/'+d.lesson.classId],l=data['classes/'+d.lesson.classId+'/items/'+d.lesson.itemId];
+    if(!c||!l)throw Error('This lesson is no longer available.');
+    return {data:{reference:d.lesson,title:l.title,className:c.name,level:c.level,audience:c.learningProfile?.ageGroup||'',focus:l.speakingFocus||'Practise the language from this lesson.',tasks:[{title:'Lesson vocabulary',instructions:'Use target words.',text:'Morning routines and daily activities.'}]}};
+  }
   if (['recordingLyrics','recordingSong','recordingSongResult'].includes(name)) {
     const key='mockSongs', jobs=JSON.parse(sessionStorage.getItem(key)||'{}');
     if(name!=='recordingSongResult'){
       localStorage.setItem('mockSongLastRequest',JSON.stringify({name,...d}));
-      if(d.brief.style==='FAIL_TEST')throw Error('Test music service unavailable.');
+      if(d.brief.style.includes('FAIL_TEST'))throw Error('Test music service unavailable.');
       jobs[d.id]={kind:name==='recordingLyrics'?'lyrics':'song',lyrics:d.brief.lyrics};sessionStorage.setItem(key,JSON.stringify(jobs));return {data:{status:'complete'}};
     }
     const job=jobs[d.id];if(!job)throw Object.assign(Error('Creation not found. Your lyrics are kept.'),{code:'functions/not-found'});

@@ -1,6 +1,10 @@
 # Classroom song creation
 
-Recording Studio → Create song asks for audience (young learners / teenagers / adults), CEFR level, musical style, approximate duration, singing style, language, teaching focus and a title. Teachers write/paste exact lyrics or request a separate ChatGPT draft. A draft never silently replaces their existing words: they explicitly choose “Use these lyrics”, can edit them, and must approve the final words before music generation.
+Recording Studio → Create song follows three steps: Learners & lesson, Music & mood, then Lyrics & preview. Teachers choose young learners, teenagers or adults and a CEFR level. English is automatic. Music styles offer Pop, Acoustic, Chant, Rap, Folk and Dance, plus a custom description; duration and singing style remain teacher choices. The interface does not name the underlying providers.
+
+Teachers can optionally choose a classroom and lesson. The picker explains that the lesson’s aims, vocabulary and level help the AI write more relevant wording. A server callable checks that the signed-in teacher owns the classroom or is a co-teacher (viewers are excluded), then returns a bounded sample of lesson teaching content. No learner answers, private notes or answer keys are read. Selecting a lesson does not start an AI request. The lyric draft receives the lesson context, while music creation preserves the explicitly approved lyrics. Teachers may still add a focus or work without a linked lesson.
+
+Teachers write/paste exact lyrics or review a separate AI draft. A draft never silently replaces their existing words: they choose “Use these lyrics”, can edit them, and approve the final words before music generation. Completed previews can be recovered after refresh without replacing a newer working brief. Restoring an older preview’s settings is a separate explicit choice.
 
 ## Private setup
 

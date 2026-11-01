@@ -5,8 +5,13 @@ import { authorizeTeacher } from '../speech/access.js';
 import { generate } from '../ai/provider.js';
 import { validateBrief, lyricSchema, lyricInstructions } from './contract.js';
 import { generateSong, SongCreationError } from './provider.js';
+import { songLessonContext } from './lesson.js';
 const openai = defineSecret('OPENAI_API_KEY'), gemini = defineSecret('GEMINI_API_KEY');
 const options = {region:'us-central1',maxInstances:2,concurrency:2,memory:'512MiB'};
+export const recordingSongLesson=onCall({...options,timeoutSeconds:30},async req=>{
+  const uid=await authorizeTeacher(req);
+  try{return await songLessonContext(getFirestore(),uid,req.data?.lesson);}catch(e){if(e instanceof HttpsError)throw e;throw new HttpsError('invalid-argument','Choose a lesson from Classroom.');}
+});
 async function reserve(uid, kind, jobId, brief) {
   const db=getFirestore(),day=new Date().toISOString().slice(0,10),ref=db.doc(`songPrivate/${uid}/jobs/${jobId}`);
   return db.runTransaction(async tx=>{
@@ -32,10 +37,11 @@ export const recordingLyrics=onCall({...options,secrets:[openai],timeoutSeconds:
   try{brief=validateBrief(req.data?.brief);}catch(e){throw new HttpsError('invalid-argument',e.message);}
   const id=req.data?.id;
   if(typeof id!=='string'||!/^lyrics-[\w-]{8,100}$/.test(id))throw new HttpsError('invalid-argument','Start a new lyric draft.');
+  const linkedLesson=await songLessonContext(getFirestore(),uid,brief.lesson);
   const job=await reserve(uid,'lyrics',id,brief);
   if(!job.created)return {id,status:(await job.ref.get()).get('status')};
   try{
-    const {value}=await generate({apiKey:openai.value(),model:'gpt-6.1-sol',schema:lyricSchema,name:'song_lyrics',input:brief,instructions:lyricInstructions});
+    const {value}=await generate({apiKey:openai.value(),model:'gpt-6.1-sol',schema:lyricSchema,name:'song_lyrics',input:{...brief,linkedLesson},instructions:lyricInstructions});
     await finish(uid,job.ref,{status:'complete',lyrics:value.lyrics});return {id,status:'complete',lyrics:value.lyrics};
   }catch{await finish(uid,job.ref,{status:'failed',error:'The lyrics could not be drafted. Your existing words are kept.'});throw new HttpsError('unavailable','The lyrics could not be drafted. Your existing words are kept.');}
 });
@@ -45,10 +51,11 @@ export const recordingSong=onCall({...options,secrets:[gemini],timeoutSeconds:54
   if(req.data?.approved!==true)throw new HttpsError('failed-precondition','Review and approve the lyrics before creating a song.');
   const id=req.data?.id;
   if(typeof id!=='string'||!/^song-[\w-]{8,100}$/.test(id))throw new HttpsError('invalid-argument','Start a new song.');
+  const linkedLesson=await songLessonContext(getFirestore(),uid,brief.lesson);
   const job=await reserve(uid,'song',id,brief);
   if(!job.created)return {id,status:(await job.ref.get()).get('status')};
   try{
-    const result=await generateSong(gemini.value(),brief),partSize=450*1024,parts=Math.ceil(result.bytes.length/partSize);
+    const result=await generateSong(gemini.value(),{...brief,focus:[linkedLesson?.title,linkedLesson?.focus,brief.focus].filter(Boolean).join('\n')}),partSize=450*1024,parts=Math.ceil(result.bytes.length/partSize);
     // Match the app's existing audio storage architecture, under server-only job paths.
     await Promise.all(Array.from({length:parts},(_,i)=>job.ref.collection('parts').doc(String(i)).set({bytes:result.bytes.subarray(i*partSize,(i+1)*partSize)})));
     await finish(uid,job.ref,{status:'complete',parts,mime:result.mime,providerLyrics:result.providerLyrics});

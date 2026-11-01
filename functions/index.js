@@ -15,7 +15,7 @@ export { helpAssistant } from './help/index.js';
 export { prepareLessonMedia } from './ai/media-worker.js';
 export { lessonAssistant } from './ai/assistant.js';
 export { recordingDialogue } from './speech/dialogue.js';
-export { recordingLyrics, recordingSong, recordingSongResult } from './songs/index.js';
+export { recordingLyrics, recordingSong, recordingSongResult, recordingSongLesson } from './songs/index.js';
 export { recordingSpeech, recordingTranscript } from './speech/index.js';
 export { speakingTask, closeSpeakingAtDeadline } from './speaking/index.js';
 const OWNER = 'ardanurioglu@gmail.com';
