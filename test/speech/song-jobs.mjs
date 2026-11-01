@@ -10,10 +10,10 @@ const {initializeApp}=deps('firebase-admin/app'),{getFirestore}=deps('firebase-a
 initializeApp({projectId:process.env.SONG_TEST_PROJECT||'demo-ai-access'});const db=getFirestore();
 process.env.OPENAI_API_KEY='test-openai';process.env.GEMINI_API_KEY='test-gemini';
 const output=new URL('../../functions/songs/.jobs-test.mjs',import.meta.url);
-await build({entryPoints:[new URL('../../functions/songs/index.js',import.meta.url).pathname],outfile:output.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});const originalFetch=globalThis.fetch;let musicCalls=0,lyricCalls=0,lastLyricInput;
+await build({entryPoints:[new URL('../../functions/songs/index.js',import.meta.url).pathname],outfile:output.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});const originalFetch=globalThis.fetch;let musicCalls=0,lyricCalls=0,lastLyricInput,lyricRejectCode='';
 globalThis.fetch=async(url,opts)=>{
  if(String(url).includes('generativelanguage.googleapis.com')){musicCalls++;return {ok:true,json:async()=>({steps:[{type:'model_output',content:[{type:'audio',data:Buffer.alloc(1000,1).toString('base64'),mime_type:'audio/mpeg'}]}]})};}
- if(String(url).includes('api.openai.com')){lyricCalls++;lastLyricInput=JSON.parse(JSON.parse(opts.body).input);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({lyrics:'A fresh draft.\nSing along.'})}]}],usage:{input_tokens:100,output_tokens:30}})};}
+ if(String(url).includes('api.openai.com')){lyricCalls++;if(lyricRejectCode)return {ok:false,status:429,json:async()=>({error:{code:lyricRejectCode,message:'PRIVATE_PROVIDER_DETAIL'}})};lastLyricInput=JSON.parse(JSON.parse(opts.body).input);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({lyrics:'A fresh draft.\nSing along.'})}]}],usage:{input_tokens:100,output_tokens:30}})};}
  return originalFetch(url,opts);
 };
 try{
@@ -47,6 +47,10 @@ try{
  await assert.rejects(recordingSongLesson.run(request(other,{lesson})),e=>e.code==='permission-denied');
  await db.doc('classes/'+classId).update({coTeachers:{[other]:{role:'co'}}});assert.equal((await recordingSongLesson.run(request(other,{lesson}))).title,'Morning routines');
  await recordingLyrics.run(request(uid,{id:'lyrics-linked-12345678',brief:{...brief,prompt:'',lesson}}));assert.equal(lastLyricInput.linkedLesson.title,'Morning routines');assert.match(lastLyricInput.linkedLesson.tasks[0].text,/wake up/);assert.equal(lastLyricInput.language,'English');
+ lyricRejectCode='credit_balance_exhausted';const creditId='lyrics-credit-12345678';
+ await assert.rejects(recordingLyrics.run(request(uid,{id:creditId,brief})),e=>e.code==='failed-precondition'&&e.message.includes('credit')&&!e.message.includes('PRIVATE_PROVIDER_DETAIL')&&!/OpenAI|ChatGPT/.test(e.message));
+ const rejected=(await db.doc(`songPrivate/${uid}/jobs/${creditId}`).get()).data();assert.equal(rejected.failureReason,'billing');assert.equal(rejected.brief.lyrics,brief.lyrics);
+ const callsBeforeRecovery=lyricCalls;const failedDraft=await recordingSongResult.run(request(uid,{id:creditId}));assert.equal(failedDraft.status,'failed');assert.match(failedDraft.error,/own lyrics/);assert.equal(lyricCalls,callsBeforeRecovery);lyricRejectCode='';
  await db.doc(`songPrivate/${uid}`).set({jobId:'another',busyUntil:Date.now()+60000});
  await assert.rejects(recordingSong.run(request(uid,{id:'song-locked-12345678',brief,approved:true})),e=>e.code==='resource-exhausted');
  await db.doc(`songPrivate/${uid}`).set({busyUntil:0});

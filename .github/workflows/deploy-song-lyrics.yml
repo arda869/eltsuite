@@ -1,0 +1,46 @@
+name: Verify and deploy lyric failure recovery
+on:
+  push:
+    branches: [codex/song-lyrics-billing]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'firebase-production' || format('lyric-check-{0}', github.ref) }}
+  cancel-in-progress: false
+jobs:
+  lyrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci && ONNXRUNTIME_NODE_INSTALL=skip npm --prefix functions ci --no-audit --no-fund
+      - run: node --test test/speech/songs.test.mjs
+      - run: npx --yes firebase-tools@14 emulators:exec --only firestore --config firebase.ai-usage.json --project demo-song-lyrics "node test/speech/song-jobs.mjs"
+      - name: Prepare existing deployment credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Inspect deployed lyric secret binding and authenticate without generation
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node functions/songs/check-connection.mjs
+      - name: Deploy tested lyric recovery
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@14 deploy --only functions:recordingLyrics --project lesson-lit --non-interactive
+      - name: Recheck the deployed binding
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node functions/songs/check-connection.mjs
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
