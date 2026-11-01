@@ -1,3 +1,5 @@
+import { DesignerImages, CommonsImages } from '../design/InlineImages';
+import { readStoryboard } from '../storyboard/StoryboardNode';
 import { zoomOf } from '../lib/zoom';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
@@ -143,7 +145,7 @@ function EditTag({ t, edit }: { t: PicTag; edit: TagEdit }) {
 
 function PictureView({ node, updateAttributes, deleteNode, selected, editor, getPos }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const a = node.attrs as { w: number; src: string; alt: string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
+  const a = node.attrs as { w: number; src: string; alt: string; credit?:string; size: PicSize; mark: PicMark; crop: string; ar: number; filter: string; cover: CoverMode; grid: number; coverBy: string; pid: string; tags: PicTag[] };
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -258,6 +260,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
           {editor.isEditable && (['nw', 'ne', 'sw', 'se'] as const).map((c) => <i key={c} className={'pic-corner c-' + c} onPointerDown={(e) => resize(e, c)} onClick={(e) => e.stopPropagation()} aria-hidden="true" />)}
         </PicFrame>
       </span>
+      {a.credit&&<small className="pic-credit">{a.credit}</small>}
       {editing && (
         <PictureEditor
           classId={classId}
@@ -358,6 +361,7 @@ export const Picture = Node.create({
   addAttributes: () => ({
     src: { default: '' },
     alt: { default: '' },
+    credit: { default: '' },
     size: { default: 'm' },
     mark: { default: '' },
     crop: { default: '' }, // "x y w h" fractions
@@ -377,7 +381,7 @@ export const Picture = Node.create({
 });
 
 // Insert pictures at the cursor. Labels follow the picture before it in the task, if it has one.
-export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string } = {}) {
+export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; credit?: string } = {}) {
   let mark: PicMark = opts.mark ?? '';
   if (opts.mark === undefined)
     editor.state.doc.descendants((n) => {
@@ -386,7 +390,7 @@ export function insertPictures(editor: Editor, srcs: string[], opts: { size?: Pi
   editor
     .chain()
     .focus()
-    .insertContent(srcs.map((src) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', size: opts.size ?? 'm', mark } })))
+    .insertContent(srcs.map((src) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', size: opts.size ?? 'm', mark } })))
     .run();
 }
 
@@ -411,7 +415,7 @@ const savedQuality = (): PicQuality => {
 
 export function PictureDialog({ editor, classId, onClose }: { editor: Editor; classId: string; onClose: () => void }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'new' | 'archive'>('new');
+  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons'>('new');
   const [url, setUrl] = useState('');
   const [alt, setAlt] = useState('');
   const [size, setSize] = useState<PicSize>('m');
@@ -471,6 +475,10 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
       setBusy('We couldn’t add that picture.');
     }
   };
+  const fromDesign = async (blob:Blob,title:string,credit='') => {
+    const src=classId?await uploadPicture(classId,blob,quality,title):await imageToData(blob,1100);
+    insertPictures(editor,[src],{size,mark,alt:alt||title,credit});onClose();
+  };
   // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.
   const uploadRef = useRef(upload);
   uploadRef.current = upload;
@@ -514,6 +522,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
             <button type="button" role="tab" aria-selected={tab === 'archive'} className={tab === 'archive' ? 'on' : ''} onClick={() => setTab('archive')}>
               My files
             </button>
+            {(['designer','commons'] as const).map(k=><button type="button" role="tab" key={k} aria-selected={tab===k} className={tab===k?'on':''} onClick={()=>setTab(k)}>{k==='designer'?'Designer':'Wikimedia Commons'}</button>)}
           </span>
         </div>
         {tab === 'new' ? (
@@ -565,7 +574,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               <input aria-label="What the picture shows, for learners who use a screen reader" value={alt} placeholder="What the picture shows, for learners who use a screen reader" onChange={(e) => setAlt(e.target.value)} />
             </label>
           </>
-        ) : (
+        ) : tab==='designer' ? <><DesignerImages uid={user?.uid} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
           <>
             <ArchivePicker uid={user?.uid} kind="image" multiple onPick={fromArchive} busy={!!busy} />
             {look}

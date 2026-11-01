@@ -106,6 +106,16 @@ const J = {
     await image.getByRole('button',{name:'Generate preview'}).click();
     await image.getByRole('button',{name:'Apply to canvas'}).click();
     await image.getByAltText('Generated preview').waitFor({state:'detached'});
+    await image.getByLabel('What would you like to do?').selectOption('restyle');
+    await image.getByRole('button',{name:/Black & white/}).click();
+    await image.getByLabel('Extra changes (optional)').fill('');
+    const ref=await image.getByLabel('Match an existing illustration').locator('option').nth(1).getAttribute('value');
+    await image.getByLabel('Match an existing illustration').selectOption(ref);
+    await image.getByRole('button',{name:'Generate preview'}).click();
+    await image.getByRole('button',{name:'Apply to canvas'}).click();
+    await image.getByAltText('Generated preview').waitFor({state:'detached'});
+    const req=await image.evaluate(()=>JSON.parse(localStorage.getItem('lastDesignerRequest')));
+    if(req.action!=='restyle'||req.style!=='ink'||req.prompt!==''||req.referenceId!==ref)throw Error('Restyling did not send the style, reference and blank optional prompt');
     await image.getByRole('button',{name:'Black and white',exact:true}).click();
     await image.getByRole('button',{name:'Crop',exact:true}).click();
     const handle=await image.locator('.dz-ch').first().boundingBox();
@@ -134,6 +144,26 @@ const J = {
     await story.reload();await story.locator('.sb-item').first().waitFor();
     const saved=await story.evaluate(id=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {kind:fs['sharedDocs/'+id].kind,type:fs['sharedDocs/'+id+'/dmeta/main'].type};},storyId);
     if(saved.kind!=='design'||saved.type!=='storyboard')throw Error('Storyboard did not save as a Designer file');
+    const d=await newFile(s,'Collab document');
+    await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
+    await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
+    await d.getByRole('tab',{name:'Designer',exact:true}).click();
+    await d.getByLabel('Search Designer').waitFor();
+    await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
+    const pageButton=d.getByRole('button',{name:/Insert page|Insert image|Insert storyboard/}).first();
+    await pageButton.click();
+    await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
+    if(!await d.locator('.pic-node,.sbn').count())throw Error('Designer content was not inserted');
+    await d.route('https://commons.wikimedia.org/w/api.php**',route=>route.fulfill({json:{query:{pages:{1:{pageid:1,title:'File:Market.png',imageinfo:[{url:'https://upload.wikimedia.org/test-market.png',thumburl:'https://upload.wikimedia.org/test-market.png',width:160,height:120,mime:'image/png',extmetadata:{Artist:{value:'Test artist'},LicenseShortName:{value:'CC BY 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by/4.0/'}}}]}}}}}));
+    await d.route('https://upload.wikimedia.org/test-market.png',route=>route.fulfill({body:readFileSync(downloaded),contentType:'image/png'}));
+    await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
+    await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
+    await d.getByRole('tab',{name:'Wikimedia Commons',exact:true}).click();
+    await d.getByLabel('Search Wikimedia Commons').fill('market');
+    await d.getByRole('button',{name:'Search',exact:true}).click();
+    await d.locator('.inline-image-list button').filter({hasText:'Market'}).click();
+    await d.locator('.pic-credit').filter({hasText:'Test artist'}).waitFor();
+    await d.reload();await d.locator('.pic-credit').filter({hasText:'CC BY 4.0'}).waitFor();
     await image.close();await story.close();return s;
   },
 

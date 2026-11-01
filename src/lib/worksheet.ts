@@ -200,6 +200,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
             const mk = String(a.mark ?? '');
             if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
             if (a.src) out.push({ pic: { src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
+            if(a.credit)out.push({t:' '+String(a.credit)+' '});
           } else if (node.type === 'sym') out.push({ sym: { text: String(a.text ?? ''), shape: String(a.shape ?? 'box'), tone: String(a.tone ?? 'ink') } });
       }
     }
