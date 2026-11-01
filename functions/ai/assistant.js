@@ -205,7 +205,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     const approved=d.action==='outline'?revision?.current:d.action==='plan'?d.outline:d.action==='activities'?d.plan:null;
     if(approved){const {sourceEvidence:unused,...content}=approved;const text=JSON.stringify(content);const cited=sources.filter(s=>text.includes(s.url));if(cited.length)sources=cited;}
     const researchUsage=[];
-    if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&(revision||!sources.length)))) {
+    if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
       const research=await researchLesson({...brief,...(revision?{requestedChanges:revision.instructions,currentTitle:revision.current.title}:{})},{reserve:reserveExtra,generate:args=>generate({apiKey:key.value(),model:model.value(),...args})});
       researchUsage.push(...research.usage);sources=revision?[...new Map([...sources,...research.sources].map(s=>[s.url,s])).values()].slice(0,3):research.sources;
     }
