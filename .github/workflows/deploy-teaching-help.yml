@@ -41,7 +41,7 @@ jobs:
         run: |
           test -n "$SA"
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
-      - name: Deploy help and definition services first
+      - name: Deploy AI consumers before exposing the new allowance
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
@@ -49,9 +49,25 @@ jobs:
           import fs from 'node:fs';
           fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n');
           JS
+          node functions/video/preflight.mjs
+          set -a
+          . functions/.env.lesson-lit
+          set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:helpAssistant,functions:teachingDefinition --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/teaching-backend.log"
+          npx --yes firebase-tools@14 deploy --only functions:designerImage,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/teaching-backend.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/teaching-backend.log"
+      # Older consumers reject unknown allowance IDs. Update them all before the
+      # admin endpoint can save the new definitions allowance.
+      - name: Expose definition allowance after all consumers are updated
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -a
+          . functions/.env.lesson-lit
+          set +a
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only functions:adminAiUsage --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/teaching-admin.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/teaching-admin.log"
       - name: Verify deployed secret references without reading secret values
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
