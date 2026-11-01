@@ -109,6 +109,8 @@ const J = {
     await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
     await dialog.getByRole('button',{name:'Create next activity'}).click();
     await dialog.getByRole('button',{name:'Add activity to lesson'}).click();
+    await dialog.waitFor({state:'hidden'});
+    await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan'&&v.order===1),s.demo);
     await s.p.reload();await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).waitFor();
     const added=await s.p.evaluate(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan').map(([,v])=>v),s.demo);
     if(added.length!==1||added[0].order!==1)throw Error('Next activity was not appended exactly once');
