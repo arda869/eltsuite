@@ -220,7 +220,9 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       marks = m0;
       const made = cur.splice(cl).filter((b) => b.kind !== 'lines');
       made.forEach((b) => {
-        if (b.kind === 'p') b.runs = b.runs.map((r) => (r.num !== undefined ? { ...r, num: 0 } : r));
+        if (b.kind === 'dict' && b.d.image) out.set(b.d.image,{key:b.d.image,src:b.d.image});
+      if (b.kind === 'glossary') b.items.forEach(({d})=>{if(d.image)out.set(d.image,{key:d.image,src:d.image});});
+      if (b.kind === 'p') b.runs = b.runs.map((r) => (r.num !== undefined ? { ...r, num: 0 } : r));
         if (b.kind === 'match') b.n = 0;
       });
       cur.push(...made);
@@ -661,6 +663,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
         out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, borders: { top: dash, bottom: dash, left: dash, right: dash, insideHorizontal: dash, insideVertical: dash }, rows: [new TableRow({ cantSplit: true, height: { value: 2600, rule: 'exact' as never }, children: [new TableCell({ children: [new Paragraph({ text: '' })] })] })] }), new Paragraph({ keepNext: kn, keepLines: true, text: '' }));
       } else if (b.kind === 'dict') {
         const d = b.d;
+        if(d.image)out.push(new Paragraph({keepNext:true,children:runsToDocx([{pic:{src:d.image,size:'s',label:'',alt:d.imageAlt||b.word}}])}));
         out.push(
           new Paragraph({
             keepNext: kn,

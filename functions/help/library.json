@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-01.knowledge.1",
+  "version": "2026-11-01.knowledge.2",
   "articles": [
     {
       "id": "navigation",
@@ -3443,7 +3443,8 @@
       "steps": [
         "Select a word or phrase and choose the Definition tool. For a standalone entry, insert Definition card from the task element picker and enter its Headword.",
         "Choose Suggest definition with AI. In a class, its level is used automatically; outside a class, choose the displayed Learner level. Extra context is optional when the intended sense is already clear.",
-        "Review the suggested meaning, example and other useful fields. Choose Use suggested definition, edit anything needed, and save with Done. Existing filled fields are preserved unless Replace fields I’ve already filled is selected."
+        "Review the meaning, example, useful fields and any automatically generated picture. Helpful pictures use Bright & bold for young-learner courses and Editorial for adults, teacher training and work outside a course. Untick Use this picture if you do not want it.",
+        "Choose Use suggested definition, edit anything needed, and save with Done. Existing filled fields and pictures are preserved by default. If picture generation fails, retry just the picture or use the definition text."
       ],
       "source": "src/editor/Definition.tsx; src/editor/DefinitionAI.tsx; src/editor/DictCut.tsx; functions/definitions/index.js",
       "category": "Questions and activities",
@@ -3496,10 +3497,10 @@
       "summary": "Definitions offer meaning, example, form, pronunciation, usage and learner help. AI fills useful reliable fields and leaves irrelevant or uncertain details blank.",
       "steps": [
         "Use More details in the definition editor for word family, forms, patterns, IPA/stress, register, collocations, common mistakes and other fields.",
-        "Review the draft’s All suggested fields before applying. AI does not invent an image address or an unsupported word-level CEFR rating; the displayed draft level describes the explanation’s audience.",
+        "Review All suggested fields and the picture preview before applying. AI decides whether a picture helps explain the contextual meaning; abstract or unclear meanings may need text only. Original pictures use the Designer image allowance. AI never invents image URLs or unsupported word-level CEFR ratings.",
         "Set learner languages on the class Learners page to make class translation fields available. Check translations against the intended sense. Learners see translations for their own configured languages."
       ],
-      "source": "src/editor/Definition.tsx; src/editor/DefinitionAI.tsx; src/lib/langs.ts",
+      "source": "src/editor/Definition.tsx; src/editor/DefinitionAI.tsx; src/lib/langs.ts; functions/definitions/pictures.js; src/editor/DefinitionImage.tsx",
       "category": "Questions and activities",
       "href": "/classes",
       "action": "Open Classes",

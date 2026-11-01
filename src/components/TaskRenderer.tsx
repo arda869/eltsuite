@@ -97,7 +97,7 @@ const TICK = (
   </svg>
 );
 
-function DefWord({ word, data, children }: { word: string; data: DefData; children: ReactNode }) {
+function DefWord({ word, data, children, space }: { word: string; data: DefData; children: ReactNode; space?:string }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
@@ -145,7 +145,7 @@ function DefWord({ word, data, children }: { word: string; data: DefData; childr
       {open &&
         createPortal(
           <span ref={cardRef} className={'def-card' + (at.below ? ' below' : ' above')} style={{ top: at.top, left: at.left, ...(at.vars as object) }} role="tooltip" onMouseEnter={enter} onMouseLeave={leave}>
-            <DefCard word={word} d={data} />
+            <DefCard word={word} d={data} space={space}/>
           </span>,
           document.body,
         )}
@@ -153,7 +153,7 @@ function DefWord({ word, data, children }: { word: string; data: DefData; childr
   );
 }
 
-function marks(text: ReactNode, m: JSONContent['marks']) {
+function marks(text: ReactNode, m: JSONContent['marks'], space?:string) {
   let out = text;
   const def = m?.find((x) => x.type === 'definition');
   for (const mark of m ?? []) {
@@ -171,7 +171,7 @@ function marks(text: ReactNode, m: JSONContent['marks']) {
       if (p) out = <span {...p}>{out}</span>;
     }
   }
-  if (def) out = <DefWord word={String(text)} data={(def.attrs?.data ?? {}) as DefData}>{out}</DefWord>;
+  if (def) out = <DefWord space={space} word={String(text)} data={(def.attrs?.data ?? {}) as DefData}>{out}</DefWord>;
   return out;
 }
 
@@ -996,7 +996,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'text':
       {
         const link = node.marks?.find((m) => m.type === 'lessonLink');
-        const inner = marks(node.text ?? '', node.marks);
+        const inner = marks(node.text ?? '', node.marks,classId);
         if (!link) return <span key={key}>{inner}</span>;
         if (link.attrs?.kind === 'notebook')
           return (
@@ -1249,7 +1249,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       case 'dictCut':
         return node.attrs?.word || Object.keys(node.attrs?.data ?? {}).length ? (
           <div key={key} className="dcut-wrap">
-            <DictCutout word={String(node.attrs?.word ?? '')} d={(node.attrs?.data ?? {}) as DefData} />
+            <DictCutout space={classId} word={String(node.attrs?.word ?? '')} d={(node.attrs?.data ?? {}) as DefData} />
           </div>
         ) : null;
       case 'columnBreak':

@@ -38,6 +38,7 @@ const harness = (): Plugin => ({
   },
 });
 export default defineConfig({
+  cacheDir: process.env.ELT_TEST_CACHE_DIR || undefined,
   root,
   plugins: [react(), harness()],
   define: { __BUILD__: '"dev"', 'import.meta.env.VITE_ELT_AI_PILOT': '"true"' },

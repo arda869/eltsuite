@@ -9,7 +9,8 @@ let browser,p;
 try {
  for(let i=0;i<100;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1300,height:900}});
- const crashes=[];p.on('pageerror',e=>crashes.push(e.message));
+ p.setDefaultTimeout(60000);
+ const crashes=[];p.on('pageerror',e=>{crashes.push(e.message);console.log('Page error:',e.message);});p.on('console',m=>{if(m.type()==='error')console.log('Browser error:',m.text().slice(0,1000));});
  await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.evaluate(()=>window.__mockReady);
  const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  await p.evaluate(async({classId,itemId})=>{
@@ -29,6 +30,7 @@ try {
  await ai.getByText('A1',{exact:true}).waitFor();
  await card.getByLabel('Meaning',{exact:true}).fill('My own explanation.');
  await ai.getByRole('button',{name:'Suggest definition with AI',exact:true}).click();
+ await ai.locator('img').waitFor();assert(await ai.locator('img').evaluate(im=>im.complete&&im.naturalWidth>0));
  await ai.getByRole('button',{name:'Use suggested definition',exact:true}).click();
  assert.equal(await card.getByLabel('Meaning',{exact:true}).inputValue(),'My own explanation.');
  assert.equal(await card.getByLabel('Example sentence',{exact:true}).inputValue(),'We sat on the river bank.');
@@ -37,6 +39,8 @@ try {
  await p.waitForTimeout(1200);
  await p.reload();await p.getByRole('button',{name:/1 A walk by the river/}).click();
  await p.locator('.dcut').filter({hasText:'The land beside a river.'}).waitFor();
+ await p.locator('.dcut-img').waitFor();assert(await p.locator('.dcut-img').evaluate(im=>im.complete&&im.naturalWidth>0),'Saved media image must load after reopen');
+ assert((await p.locator('.dcut-img').getAttribute('alt')).includes('bank'));
  // Inline definition path, including teacher review before the mark is applied.
  const editor=p.getByRole('textbox',{name:'Task',exact:true});await editor.locator('p').filter({hasText:'We sat on the bank of the river.'}).last().click({clickCount:3});await p.keyboard.press('ArrowLeft');for(let i=0;i<14;i++)await p.keyboard.press('ArrowRight');
  for(let i=0;i<4;i++)await p.keyboard.press('Shift+ArrowRight');assert.equal(await p.evaluate(()=>getSelection().toString()),'bank');await p.waitForTimeout(150);

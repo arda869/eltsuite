@@ -81,7 +81,7 @@
 .dcut-n { font-weight: 700; }
 .dcut-ex { display: block; font-style: italic; color: #3a362f; margin-top: 2px; }
 .dcut-ex::before { content: '▸ '; font-style: normal; color: var(--accent); font-size: 0.8em; }
-.dcut-img { float: right; width: 92px; height: 92px; object-fit: cover; margin: 2px 0 6px 14px; filter: grayscale(1) contrast(1.05); mix-blend-mode: multiply; border: 1px solid rgba(35, 33, 29, 0.25); }
+.dcut-img { float: right; width: 140px; height: 140px; object-fit: contain; margin: 2px 0 6px 14px;  border: 1px solid rgba(35, 33, 29, 0.25); }
 .dcut-line { display: block; margin-top: 5px; }
 .dcut-k { font-variant: small-caps; font-weight: 700; letter-spacing: 0.06em; font-size: 0.9em; margin-right: 6px; color: var(--accent-text, #23211d); }
 .dcut-note { display: block; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(35, 33, 29, 0.18); font-size: 0.93em; }
@@ -388,3 +388,6 @@
 .definition-ai-draft dd { margin:0 0 8px; }
 .definition-ai-replace { display:flex; align-items:flex-start; gap:7px; margin:10px 0; }
 .def-pop { width:min(380px,calc(100vw - 16px)); box-sizing:border-box; }
+
+.definition-ai-picture img { display:block; max-width:100%; width:240px; height:auto; border-radius:8px; margin:8px 0; }
+.definition-ai-picture label { display:flex; gap:7px; align-items:center; }

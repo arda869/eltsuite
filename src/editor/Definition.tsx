@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { IpaField } from './Ipa';
 import { useEditorClass } from './context';
 import { translationsFor, useClassLangs, useMyLangs } from '../lib/langs';
+import { DefinitionImage } from './DefinitionImage';
 import { DefinitionAI } from './DefinitionAI';
 
 // An inline definition: a word or phrase in the text that learners tap or hover to see its meaning.
@@ -26,6 +27,7 @@ export type DefData = {
   antonyms?: string;
   mistakes?: string;
   image?: string;
+  imageAlt?: string;
   cefr?: string;
   tags?: string;
   translation?: string;
@@ -101,6 +103,7 @@ export const GROUPS: { title: string; fields: FieldDef[] }[] = [
     fields: [
       { k: 'mistakes', label: 'Common mistakes', ph: 'Not “reluctant for doing”', long: true },
       { k: 'image', label: 'Image address', ph: 'https://…' },
+      { k: 'imageAlt', label: 'Picture description', ph: 'What does the picture show?' },
       { k: 'cefr', label: 'CEFR level', options: CEFR },
       { k: 'tags', label: 'Topic tags', ph: 'feelings, work' },
     ],
@@ -175,7 +178,7 @@ export function DefinitionPop({ editor, open, onClose }: { editor: Editor; open:
         <span className="pop-type">Definition</span>
         <strong className="def-pop-word">{word}</strong>
       </div>
-      <DefinitionAI word={word} context={editor.state.doc.textBetween(Math.max(0,editor.state.selection.from-1500),Math.min(editor.state.doc.content.size,editor.state.selection.to+1500),'\n')} onUse={fn=>{setData(fn);setMore(true);}} onBusyChange={setAiBusy}/>
+      <DefinitionAI existingImage={data.image} word={word} context={editor.state.doc.textBetween(Math.max(0,editor.state.selection.from-1500),Math.min(editor.state.doc.content.size,editor.state.selection.to+1500),'\n')} onUse={fn=>{setData(fn);setMore(true);}} onBusyChange={setAiBusy}/>
       {CORE.map(field)}
       <TransFields data={data} setData={setData} />
       <button type="button" className="btn link small def-more" onClick={() => setMore((m) => !m)}>
@@ -226,6 +229,7 @@ export function TransFields({ data, setData }: { data: DefData; setData: (fn: (d
 
 // One vocabulary field: chips, a long text or a short text. Shared with the notebook.
 export function DefField({ f, data, setData, word }: { f: FieldDef; data: DefData; setData: (fn: (d: DefData) => DefData) => void; word?: string }) {
+  if(f.k==='image'&&data.image?.startsWith('media:'))return <span className="def-field"><span>Picture</span><span>Saved AI picture</span><button type="button" className="btn small-btn" onClick={()=>setData(d=>({...d,image:'',imageAlt:''}))}>Remove picture</button></span>;
   if (f.k === 'ipa')
     return (
       <span className="def-field">
@@ -254,7 +258,7 @@ export function DefField({ f, data, setData, word }: { f: FieldDef; data: DefDat
 }
 
 // What learners see when they hover or tap a defined word.
-export function DefCard({ word, d }: { word: string; d: DefData }) {
+export function DefCard({ word, d, space }: { word: string; d: DefData; space?:string }) {
   const mine = useMyLangs();
   const speak = () => {
     try {
@@ -297,7 +301,7 @@ export function DefCard({ word, d }: { word: string; d: DefData }) {
           {d.stress && <span className="dc-stress">{d.stress}</span>}
         </span>
       )}
-      {d.image && <img className="dc-img" src={d.image} alt="" />}
+      <DefinitionImage className="dc-img" src={d.image} alt={d.imageAlt||word} space={space}/>
       {d.meaning && <span className="dc-meaning">{d.meaning}</span>}
       {d.example && <span className="dc-example">{d.example}</span>}
       {translationsFor(d, mine).map(([l, v]) => (

@@ -155,10 +155,10 @@ function block(b: Block): string {
       return `<p class="qr-plain"><span class="qr-kind">${no || (b.video ? 'Video' : 'Listening')}</span> <strong>${esc(b.title)}</strong></p>`;
     }
     case 'dict':
-      return `<div class="dcut-wrap">${renderToStaticMarkup(createElement(DictCutout, { word: b.word, d: b.d }))}</div>`;
+      return `<div class="dcut-wrap">${renderToStaticMarkup(createElement(DictCutout, { word: b.word, d: {...b.d,image:b.d.image?MEDIA[b.d.image]?.data??(b.d.image.startsWith('media:')?'':b.d.image):''} }))}</div>`;
     case 'glossary':
       return `<div class="gloss"><span class="gloss-h">Glossary</span>${b.items
-        .map(({ word, d }) => `<p><b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${translationsFor(d, null).map(([l, v]) => ` <span class="gloss-tr">${esc(l)}: ${esc(v)}</span>`).join('')}</p>`)
+        .map(({ word, d }) => `<p>${d.image&&(MEDIA[d.image]?.data||!d.image.startsWith('media:'))?`<img style="width:90px;height:90px;object-fit:contain;float:right" src="${esc(MEDIA[d.image]?.data||d.image)}" alt="${esc(d.imageAlt||word)}">`:''}<b>${esc(word)}</b>${d.pos ? ` <i>(${esc(d.pos)})</i>` : ''}${d.ipa ? ` <span class="ipa">${esc(d.ipa)}</span>` : ''}${d.meaning ? ` ${esc(d.meaning)}` : ''}${translationsFor(d, null).map(([l, v]) => ` <span class="gloss-tr">${esc(l)}: ${esc(v)}</span>`).join('')}</p>`)
         .join('')}</div>`;
     case 'p':
       if (b.heading) return `<p class="sub">${runs(b.runs)}</p>`;

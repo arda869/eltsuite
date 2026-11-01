@@ -19,8 +19,10 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     return {data:{status:'completed',resultId:d.requestId}};
   }
   if(name==='teachingDefinition') {
+    const canvas=document.createElement('canvas');canvas.width=100;canvas.height=100;canvas.getContext('2d')!.fillRect(0,0,100,100);
+    const picture={status:'ready',style:d.classId?'bright':'editorial',data:canvas.toDataURL('image/jpeg')};
     const {fields}=await import('../../functions/definitions/contract.js');
-    return {data:{data:{...Object.fromEntries(fields.map(k=>[k,''])),pos:'noun',meaning:'The land at the side of a river.',example:'We sat on the river bank.',ipa:'/bæŋk/',collocations:'river bank',mistakes:'Here, bank is land beside water, not a place for money.'},translations:[],needsContext:false,note:'The river context selects the land meaning; wording is kept simple for A1.',level:'A1',ageGroup:'Young learners'}};
+    return {data:{requestId:d.requestId,picture,illustration:{useful:true,prompt:'A grassy bank beside a river.',alt:'A grassy bank beside a river.',reason:'A picture makes this meaning clear.'},data:{...Object.fromEntries(fields.map(k=>[k,''])),pos:'noun',meaning:'The land at the side of a river.',example:'We sat on the river bank.',ipa:'/bæŋk/',collocations:'river bank',mistakes:'Here, bank is land beside water, not a place for money.'},translations:[],needsContext:false,note:'The river context selects the land meaning; wording is kept simple for A1.',level:'A1',ageGroup:'Young learners'}};
   }
   if (name === 'adminAiUsage') {
     const ref=doc(db,'aiAllowances',d.uid),old=(await getDoc(ref)).data()??{};

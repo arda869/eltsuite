@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Grip } from './nodes';
 import { CORE, DefField, GROUPS, TransFields, type DefData } from './Definition';
 import { translationsFor, useMyLangs } from '../lib/langs';
+import { DefinitionImage } from './DefinitionImage';
 import { DefinitionAI } from './DefinitionAI';
 import '../lib/extras.css';
 
@@ -13,7 +14,7 @@ import '../lib/extras.css';
 const TILTS = [-0.9, 0.6, -0.4, 0.8, -0.6];
 export const tiltOf = (word: string) => TILTS[Array.from(word).reduce((s, c) => s + c.charCodeAt(0), 0) % TILTS.length];
 
-export function DictCutout({ word, d, tilt = true }: { word: string; d: DefData; tilt?: boolean }) {
+export function DictCutout({ word, d, tilt = true, space }: { word: string; d: DefData; tilt?: boolean; space?:string }) {
   const mine = useMyLangs();
   const has = (v?: string) => !!v && v.trim().length > 0;
   const gram = [d.countable === 'countable' ? '[C]' : d.countable === 'uncountable' ? '[U]' : d.countable === 'both' ? '[C, U]' : '', d.register ? d.register : ''].filter(Boolean).join('  ');
@@ -30,7 +31,7 @@ export function DictCutout({ word, d, tilt = true }: { word: string; d: DefData;
     <span className="dcut" style={{ ['--tilt' as string]: tilt ? `${tiltOf(word)}deg` : '0deg' }} role="figure" aria-label={`Dictionary entry: ${word}`}>
       <span className="dcut-paper" style={{ display: 'block' }}>
         <span className="dcut-cut" aria-hidden="true" />
-        {has(d.image) && /^https:\/\//.test(d.image!) && <img className="dcut-img" src={d.image} alt="" />}
+        <DefinitionImage className="dcut-img" src={d.image} alt={d.imageAlt||word} space={space}/>
         <span className="dcut-head">
           <span className="dcut-word">{word || <span className="dcut-empty">headword</span>}</span>
           {has(d.stress) && <span className="dcut-gram">{d.stress}</span>}
@@ -106,7 +107,7 @@ function EditView({ node, updateAttributes, deleteNode, editor, getPos, selected
             <span>Headword</span>
             <input value={word} placeholder="reluctant" onChange={(e) => updateAttributes({ word: e.target.value })} onKeyDown={(e) => e.stopPropagation()} autoFocus={!word} />
           </label>
-          <DefinitionAI word={word} context={editor.state.doc.textBetween(Math.max(0,(typeof getPos()==='number'?getPos()!:0)-1500),Math.min(editor.state.doc.content.size,(typeof getPos()==='number'?getPos()!:0)+1500),'\n')} onUse={fn=>{setData(fn);setMore(true);}}/>
+          <DefinitionAI existingImage={data.image} word={word} context={editor.state.doc.textBetween(Math.max(0,(typeof getPos()==='number'?getPos()!:0)-1500),Math.min(editor.state.doc.content.size,(typeof getPos()==='number'?getPos()!:0)+1500),'\n')} onUse={fn=>{setData(fn);setMore(true);}}/>
           {CORE.map(field)}
           <span className="hint">For more than one meaning, put each meaning and its example on a new line.</span>
           <TransFields data={data} setData={setData} />

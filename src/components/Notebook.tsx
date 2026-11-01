@@ -38,6 +38,7 @@ import { TaskRenderer } from './TaskRenderer';
 import { Practise } from './Practise';
 import { createVocabQuiz } from '../lib/vocabquiz';
 import { NoteEditor } from './NoteEditor';
+import { DefinitionImage } from '../editor/DefinitionImage';
 import { EditorClassContext } from '../editor/context';
 import { TaskEditor } from '../editor/TaskEditor';
 import { mergeKey, questionIds, scoreTask, splitKey, type AnswerKey, type Responses } from '../lib/questions';
@@ -137,7 +138,7 @@ function EntryForm({ type, initial, onSave, onCancel, withTranslation, saveLabel
 
 // ---------------------------------------------------------------- cards
 
-export function VocabBody({ data, translation }: { data: EntryData; translation?: ReactNode }) {
+export function VocabBody({ data, translation, space }: { data: EntryData; translation?: ReactNode;space?:string }) {
   const d = data.def ?? {};
   const [more, setMore] = useState(false);
   const row = (label: string, v?: string) =>
@@ -182,7 +183,7 @@ export function VocabBody({ data, translation }: { data: EntryData; translation?
           {row('Antonyms', d.antonyms)}
           {row('Common mistakes', d.mistakes)}
           {row('Topics', d.tags)}
-          {d.image && <img className="dc-img" src={d.image} alt="" />}
+          <DefinitionImage className="dc-img" src={d.image} alt={d.imageAlt||data.word} space={space}/>
         </span>
       )}
     </div>
@@ -250,7 +251,7 @@ function EntryCard({ classId, c, me, e, items, myTranslation, saved, onSaveToMin
       ) : (
         <>
           {e.type === 'vocab' ? (
-            <VocabBody
+            <VocabBody space={classId}
               data={e.data}
               translation={
                 !me.teacher && me.learnerId ? (
@@ -320,7 +321,7 @@ function EntryCard({ classId, c, me, e, items, myTranslation, saved, onSaveToMin
           {me.teacher && (e.status === 'pending' || pendingEdit) && (
             <div className="nb-review">
               <span className="eyebrow accent">{e.status === 'pending' ? `${e.addedByName.split(' ')[0]} added this` : `${e.pending!.byName.split(' ')[0]} wants to change this`}</span>
-              {pendingEdit && e.status !== 'pending' && (e.type === 'vocab' ? <VocabBody data={e.pending!.data} /> : <NoteBody data={e.pending!.data} />)}
+              {pendingEdit && e.status !== 'pending' && (e.type === 'vocab' ? <VocabBody space={classId} data={e.pending!.data} /> : <NoteBody data={e.pending!.data} />)}
               <span className="nb-acts">
                 <button type="button" className="btn small-btn primary" onClick={() => approve(classId, e)}>
                   Approve
@@ -348,7 +349,7 @@ function MyNoteCard({ classId, n }: { classId: string; n: MyNote }) {
         <EntryForm type={n.type} initial={n.data} withTranslation onCancel={() => setEditing(false)} onSave={async (d) => (await saveMyNote(classId, n.id, d), setEditing(false))} />
       ) : (
         <>
-          {n.type === 'vocab' ? <VocabBody data={n.data} /> : <NoteBody data={n.data} />}
+          {n.type === 'vocab' ? <VocabBody space={classId} data={n.data} /> : <NoteBody data={n.data} />}
           <footer className="nb-meta">
             <span className="hint">
               {n.from ? 'Saved from the class notebook' : 'Mine'}
