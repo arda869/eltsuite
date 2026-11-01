@@ -24,6 +24,8 @@ try {
  assert.deepEqual((await source.collection('private').doc('key').get()).get('kept.answers'),['already correct']);assert.deepEqual((await source.collection('private').doc('key').get()).get('missing.answers'),['went']);assert.deepEqual((await source.get()).get('content'),content);assert.equal(calls,1);
  const ideas=await call({action:'taskTools',mode:'differentiate',step:'ideas',requestId:'ideas'});assert.equal(ideas.result.ideas.length,2);
  await call({action:'taskTools',mode:'differentiate',requestId:'variant',variantLabel:'Supported',direction:'Add choices.'});
+ await db.doc('aiPrivate/'+uid+'/jobs/variant/media/image-proof').set({kind:'image',title:'Reference image',alt:'A park',credit:'Original photographer · CC BY 4.0',mediaId:'stored-test',status:'ready'});
+ const preview=await call({action:'taskToolsStatus',requestId:'variant'});assert.ok(JSON.stringify(preview.result.native.content).includes('Original photographer · CC BY 4.0'));
  const applied=await call({action:'taskToolsApply',requestId:'variant'});assert.equal(applied.taskId,'tool_variant');
  const variant=await item.collection('tasks').doc(applied.taskId).get();assert.equal(variant.get('family'),'first');assert.equal(variant.get('restricted'),true);assert.equal(variant.get('content'),null);assert.equal((await variant.ref.collection('private').doc('key').get()).get('q0_0.correct'),0);
  await call({action:'taskToolsApply',requestId:'variant'});assert.equal((await item.collection('tasks').get()).size,2);

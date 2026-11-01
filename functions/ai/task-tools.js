@@ -42,14 +42,14 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   if(d.action==='taskToolsRetryMedia') {
    if(!id(d.assetId))fail('Choose a media asset.');
    const ref=job.collection('media').doc(d.assetId);const a=await ref.get();
-   if(!a.exists||!['failed'].includes(a.get('status')))fail('This asset is already prepared or still running.');
-   await ref.update({status:'queued',error:''});return {status:'completed'};
+   if(!a.exists||!(a.get('status')==='failed'||['queued','running'].includes(a.get('status'))&&Date.now()-((a.get('startedAt')??a.get('createdAt'))?.toMillis?.()??Date.now())>600000))fail('This asset is already prepared or still running.');
+   await ref.update({status:'queued',error:'',retriedAt:Timestamp.now()});return {status:'completed'};
   }
   if(old.status!=='completed')return {status:old.status,error:old.error??''};
   const result=readGenerationResult(old),media=await job.collection('media').get();
   const assets=media.docs.map(s=>({id:s.id,...s.data()}));
-  if(result.activity){result.activity.preparedMedia=assets.filter(a=>a.status==='ready').map(a=>({kind:a.kind,title:a.title,alt:a.alt??'',mediaId:a.mediaId}));result.native=previewNative(result);}
-  if(d.action==='taskToolsStatus')return {status:'completed',result,media:assets.map(a=>({id:a.id,title:a.title,status:a.status,error:a.error??''}))};
+  if(result.activity){result.activity.preparedMedia=assets.filter(a=>a.status==='ready').map(a=>({kind:a.kind,title:a.title,alt:a.alt??'',credit:a.credit??'',mediaId:a.mediaId}));result.native=previewNative(result);}
+  if(d.action==='taskToolsStatus')return {status:'completed',result,media:assets.map(a=>({id:a.id,title:a.title,status:['queued','running'].includes(a.status)&&Date.now()-((a.startedAt??a.createdAt)?.toMillis?.()??Date.now())>600000?'failed':a.status,error:a.error||'Preparation was interrupted. Retry this asset.'}))};
   if(result.ideas)fail('Choose an idea and generate the activity before applying it.');
   if(old.appliedTaskId)return {applied:true,taskId:old.appliedTaskId};
   if(assets.some(a=>a.status!=='ready'))fail('Wait for the activity images and recordings to finish before adding it.');
