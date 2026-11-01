@@ -374,8 +374,8 @@ try {
         );
       },
     );
-    await ok("daily allowance prevents more billed requests", async () => {
-      process.env.VIDEO_DAILY_SECONDS = "5";
+    await ok("per-user daily allowance prevents more billed requests", async () => {
+      await adb.doc("aiAllowances/owner").set({limits:{videoScene:1}});
       await assert.rejects(
         call("owner", {
           action: "generate",
