@@ -1769,6 +1769,28 @@ const J = {
     await see(s.p, 'text=only for the super admins', 'the closed Super Admin');
     return s;
   },
+  'Learner submission records attempts before feedback and preserves retry history': async b => {
+    const s=await session(b,{as:'Mia'});
+    await s.p.evaluate(({classId,itemId})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      const root='classes/'+classId+'/items/'+itemId+'/tasks/';
+      for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];
+      fs[root+'submit-check']={kind:'task',title:'Yesterday',instructions:'Complete with the past form of go.',order:0,hidden:false,locked:false,afterCheck:'retry',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'submit-gap',answers:[]}},{type:'text',text:' home.'}]}]}};
+      fs[root+'submit-check/private/key']={'submit-gap':{kind:'gap',answers:['went']}};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+    },s.demo);
+    await s.p.goto(BASE+'/learn/'+s.demo.itemId);
+    await s.p.getByRole('textbox',{name:'Question 1',exact:true}).fill('go');
+    await s.p.getByRole('button',{name:'Check answers',exact:true}).click();
+    await s.p.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(d=>d.taskId==='submit-check'&&d.checked&&d.attempts===1&&d.submittedAt));
+    await s.p.getByRole('button',{name:'Try the wrong ones again',exact:true}).click();
+    await s.p.getByRole('textbox',{name:'Question 1',exact:true}).fill('went');
+    await s.p.getByRole('button',{name:'Check answers',exact:true}).click();
+    await s.p.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(d=>d.taskId==='submit-check'&&d.checked&&d.attempts===2&&d.score===1));
+    await s.p.reload();
+    await see(s.p,'text=1 of 1 correct','saved second attempt score');
+    return s;
+  },
   'Learner signs in and opens the lesson': async (b) => {
     const s = await session(b, { as: 'Mia' });
     await s.p.goto(BASE + '/');
