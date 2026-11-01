@@ -1,3 +1,4 @@
+import { countWithinBudget } from './token-count.js';
 import { compactSchema } from './compact-schema.js';
 import { catalogueInstructions, catalogueReviewInstructions } from './catalogue.js';
 import { editorialStandard } from './editorial.js';
@@ -18,16 +19,23 @@ export async function generate({ apiKey, model, schema, name, input, sourceImage
   if (name === 'plan') instructions += '\nUse approvedOutline as the authoritative sequence. Preserve every stage ID, order and minute value exactly. Do not add, remove or merge stages. Expand each stage with concise, complete teaching procedures and materials.';
   const requestBody = { model, reasoning: { effort: ['review','editorial_repair','lesson_revision','research_review','importSenseCheck','importPictureCheck'].includes(name)?'medium':'low' }, store: false, service_tier: 'default', instructions, input: JSON.stringify(input), max_output_tokens: MAX_OUTPUT_TOKENS,
     text: { format: { type: 'json_schema', name, strict: true, schema: compactSchema(generationSchema(schema)) } } };
-  try { checkRequestSize(requestBody); } catch { throw new GenerationError('input_limit'); }
+  let needsTokenCount=false;
+  try { checkRequestSize(requestBody); } catch {
+    if(Buffer.byteLength(JSON.stringify(requestBody),'utf8')>400000)throw new GenerationError('input_limit');
+    needsTokenCount=true;
+  }
   // Rebuild inputs have already passed bounded JPEG byte/dimension validation.
   // Keep the text/schema budget check separate from base64 transport size.
   if (sourceImages.length) {
     if(!['rebuild','image_review','importSenseCheck','importRepair','importPictureCheck'].includes(name)||sourceImages.length>6||sourceImages.some(s=>typeof s!=='string'||!s.startsWith('data:image/jpeg;base64,'))||sourceImages.join('').length>2_700_000)throw Error('Invalid source page previews.');
     requestBody.input=[{role:'user',content:[{type:'input_text',text:JSON.stringify(input)},...sourceImages.map(image_url=>({type:'input_image',image_url,detail:'high'}))]}];
   }
+  const countStarted=Date.now();
+  if(needsTokenCount)await countWithinBudget(requestBody,{apiKey,fetchImpl,timeoutMs:Math.min(20000,timeoutMs)});
+  const generationTimeout=Math.max(1,timeoutMs-(Date.now()-countStarted));
   let response;
   try { response = await fetchImpl('https://api.openai.com/v1/responses', {
-    method: 'POST', signal: AbortSignal.timeout(timeoutMs),
+    method: 'POST', signal: AbortSignal.timeout(generationTimeout),
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   });

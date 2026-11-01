@@ -32,7 +32,7 @@ test('public diagnostics use only fixed messages and identify the failing pass',
 });
 test('oversized editorial input is diagnosed before any paid request and does not expose its content',async()=>{
  let called=false;
- await assert.rejects(generate({...args,input:{text:secretText.repeat(5000)},fetchImpl:async()=>{called=true;}}),e=>e.reason==='input_limit'&&!e.message.includes(secretText));
+ await assert.rejects(generate({...args,input:{text:secretText.repeat(20000)},fetchImpl:async()=>{called=true;}}),e=>e.reason==='input_limit'&&!e.message.includes(secretText));
  assert.equal(called,false);
 });
 test('long editorial drafts fit review and targeted repair without dropping learner content',async()=>{
