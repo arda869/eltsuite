@@ -32,5 +32,11 @@ try {
  await call({action:'taskTools',mode:'next',requestId:'next',direction:'Another practice activity.'});await call({action:'taskToolsApply',requestId:'next'});assert.equal((await item.collection('tasks').doc('tool_next').get()).get('order'),1);
  await call({action:'taskTools',mode:'differentiate',requestId:'stale',direction:'Add choices.'});await source.update({instructions:'New teacher instruction'});await assert.rejects(call({action:'taskToolsApply',requestId:'stale'}),/changed/);
  await db.doc('classes/other-tools-class').set({teacherId:'other'});await assert.rejects(call({action:'taskTools',requestId:'denied',classId:'other-tools-class'}));
+ const budgetBefore=(await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd');
+ globalThis.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code:'credit_balance_exhausted',message:'PRIVATE PROVIDER DATA'}})});
+ const unavailable=await call({action:'taskTools',mode:'next',step:'ideas',requestId:'no-credit'});
+ assert.equal(unavailable.status,'failed');assert.match(unavailable.error,/no credit/);assert.equal(unavailable.error.includes('PRIVATE'),false);
+ assert.equal((await db.doc('aiPrivate/'+uid+'/jobs/no-credit').get()).get('reason'),'billing');
+ assert.equal((await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd'),budgetBefore);
  console.log('Lesson tools: private missing keys, preserved existing keys/content, linked variants, append ordering, idempotency, stale-edit protection and class access passed (mock provider).');
 } finally {globalThis.fetch=fetchOriginal;}
