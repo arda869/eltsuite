@@ -1,3 +1,4 @@
+import { sourceSchema } from './research.js';
 // Shared, dependency-free validation for the pilot. Never trust model or browser output.
 export const methods = ['Recommend', 'PPP', 'TTT', 'Task-based', 'Guided discovery', 'Text-based', 'Skills'];
 const string = { type: 'string', minLength: 1, maxLength: 6000 };
@@ -14,6 +15,22 @@ export const planSchema = object({ title: string, mainAim: string, subsidiaryAim
     anticipatedProblems: string, solutions: string, materialIds: list(string, 0) }), 1, 12),
   learnerMaterials: list(object({ id: string, title: string, instructions: string, task: string, answerKey: string,
     script: string, attribution: string, accessibleAlternative: string }), 0, 20) });
+// Older saved plans remain readable; newly generated stages must explain the activity.
+const activityDetails = {
+  activityType: {type:'string',minLength:1,maxLength:160},
+  learnerAction: {type:'string',minLength:1,maxLength:800},
+  material: {type:'string',minLength:1,maxLength:500},
+  outcome: {type:'string',minLength:1,maxLength:500},
+};
+for (const schema of [outlineSchema,planSchema]) Object.assign(schema.properties.stages.items.properties,activityDetails);
+for(const schema of [outlineSchema,planSchema]) schema.properties.sourceEvidence=sourceSchema;
+export function generationSchema(schema) {
+  const copy=structuredClone(schema);
+  delete copy.properties.sourceEvidence;
+  const strict=node=>{if(node && typeof node==='object'){if(node.type==='object')node.required=Object.keys(node.properties);for(const value of Object.values(node))if(value&&typeof value==='object')strict(value);}};
+  strict(copy);
+  return copy;
+}
 export const reviewSchema = object({ checks: list(object({ criterion: string, score: { type: 'integer', minimum: 1, maximum: 5 }, evidence: string }), 11, 11),
   criticalErrors: list(string, 0), suggestions: list(string, 0) });
 export function validate(schema, value, path = 'output', root = schema) {
@@ -26,7 +43,7 @@ export function validate(schema, value, path = 'output', root = schema) {
   if (schema.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error(`${path} must be an object.`);
     if (Object.keys(value).some(k => !Object.hasOwn(schema.properties, k))) throw Error(`${path} has unknown fields.`);
-    for (const key of schema.required) validate(schema.properties[key], value[key], `${path}.${key}`, root);
+    for (const key of Object.keys(schema.properties)) if(schema.required.includes(key) || Object.hasOwn(value,key)) validate(schema.properties[key], value[key], `${path}.${key}`, root);
   } else if (schema.type === 'array') {
     if (!Array.isArray(value) || value.length < schema.minItems || value.length > schema.maxItems) throw Error(`${path} has an invalid number of entries.`);
     value.forEach((v, i) => validate(schema.items, v, `${path}[${i}]`, root));

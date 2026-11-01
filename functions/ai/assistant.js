@@ -1,3 +1,5 @@
+import { researchSchema, collectSources } from './research.js';
+import { editUntilReady, editorialStandard } from './editorial.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { stageContract, allocateMinutes } from './sequence.js';
 import { rebuildMaterials } from './materials.js';
@@ -18,7 +20,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
-import { canPlan, validateBrief, validate, checkSequence, outlineSchema, planSchema, reviewSchema } from './contract.js';
+import { canPlan, validateBrief, validate, checkSequence, outlineSchema, planSchema, reviewSchema, generationSchema } from './contract.js';
 import { generate, teachingInstructions } from './provider.js';
 import { checkModel, isPilotTeacher, reserveBudget, settleBudget } from './budget.js';
 
@@ -29,7 +31,7 @@ const id = v => typeof v === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(v);
 const fail = message => { throw new HttpsError('invalid-argument', message); };
 const criteria = 'objectives and evidence; coherence; level and context; linguistic accuracy; meaningful communication; scaffolding and differentiation; timing and feasibility; instructions and interaction; assessment and feedback; accessibility and inclusion; teacher notes and keys';
 
-export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], maxInstances: 2, concurrency: 4, timeoutSeconds: 420 }, async req => {
+export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], maxInstances: 2, concurrency: 4, timeoutSeconds: 540 }, async req => {
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
   if (req.data?.action === 'coach') return teachingCoach(req, { apiKey: key.value(), model: model.value(), enabled: enabled.value() });
   const db = getFirestore(), uid = req.auth.uid, d = req.data ?? {};
@@ -65,7 +67,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       });
     }
     const media=await job.collection('media').get();
-    return {...(d.action==='resumeActivities'?{activities:readGenerationResult(j.data()).activities,plan:j.get('sourcePlan'),brief:j.get('brief')??null,createdItemId:j.get('createdItemId')??''}:{}),media:media.docs.map(m=>({id:m.id,kind:m.get('kind'),title:m.get('title'),status:['running','queued'].includes(m.get('status'))&&Date.now()-((m.get('startedAt')??m.get('createdAt'))?.toMillis()??Date.now())>600000?'failed':m.get('status'),completedLines:m.get('completedLines')??0,totalLines:m.get('lines')?.length??0,error:m.get('error')||'Preparation was interrupted. Retry this asset.',mediaId:m.get('mediaId')??''}))};
+    return {...(d.action==='resumeActivities'?{activities:readGenerationResult(j.data()).activities,plan:j.get('sourcePlan'),brief:j.get('brief')??null,createdItemId:j.get('createdItemId')??''}:{}),media:media.docs.map(m=>({id:m.id,kind:m.get('kind'),title:m.get('title'),status:['running','queued'].includes(m.get('status'))&&Date.now()-((m.get('startedAt')??m.get('createdAt'))?.toMillis()??Date.now())>600000?'failed':m.get('status'),completedLines:m.get('completedLines')??0,totalLines:m.get('lines')?.length??0,error:m.get('error')||'Preparation was interrupted. Retry this asset.',mediaId:m.get('mediaId')??'',alt:m.get('alt')??'',credit:m.get('credit')??''}))};
   }
   if (d.action === 'create') {
     if (!id(d.sourceRequestId)) fail('Prepare activities first.');
@@ -81,10 +83,11 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       checkActivities(activities,plan,c.get('kind')==='training');
       const requests=mediaRequests(activities);
       if(requests.some(r=>!media.docs.some(m=>m.id===r.id&&m.get('status')==='ready')))throw new HttpsError('failed-precondition','Finish preparing the lesson images and recordings before creating it.');
-      activities.tasks.forEach((t,i)=>{t.preparedMedia=media.docs.filter(m=>m.get('taskIndex')===i).map(m=>({kind:m.get('kind'),title:m.get('title'),alt:m.get('alt'),mediaId:m.get('mediaId')}));});
+      activities.tasks.forEach((t,i)=>{t.preparedMedia=media.docs.filter(m=>m.get('taskIndex')===i).map(m=>({kind:m.get('kind'),title:m.get('title'),alt:m.get('alt'),credit:m.get('credit')??'',mediaId:m.get('mediaId')}));});
       tx.create(item,{type,speakingFocus:[plan.mainAim,plan.subsidiaryAims].filter(Boolean).join(' ').slice(0,1000),title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
         const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
+        if(i===activities.tasks.length-1) for(const source of plan.sourceEvidence??[]) if(JSON.stringify(activities).includes(source.url)) native.content.content.push({type:'paragraph',content:[{type:'text',text:'Source: '+source.title+' — '+source.url+'. Wikipedia contributors, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Adapted text.'}]});
         const versions=nativeVersions(task,i,d.createVariants===true,type);
         for (const {suffix,label,instructions,native:version} of versions) {
           const v=item.collection('tasks').doc('activity_'+i+'_'+suffix);
@@ -146,7 +149,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const day = new Date().toISOString().slice(0, 10), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), globalQuota = db.doc(`aiUsage/${day}`);
   const usagePolicy = await usageContext(db, req.auth);
   const month = day.slice(0, 7), budget = db.doc(`${usagePolicy.isAdmin ? 'aiAdminBudgets' : 'aiBudgets'}/${month}`);
-  const units = d.action === 'plan' ? 2 : 1;
+  const units = 1;
   const generationAdmin = usagePolicy.isAdmin;
   const existing = await db.runTransaction(async tx => {
     const [j, q, g, b] = await Promise.all([tx.get(job), tx.get(quota), tx.get(globalQuota), tx.get(budget)]);
@@ -161,7 +164,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       }
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This request is still running. Retry shortly with the same request.' : 'This request did not finish. Start a new generation.');
     }
-    // Reserve both passes before calling the provider; failed calls still consume allowance.
+    // Reserve the first pass; research, editorial checks and repairs reserve before each call.
     await chargeFeature(tx,db,usagePolicy,{outline:'lessonOutline',plan:'lessonPlan',activities:'lessonActivities'}[d.action]);
     let reservation;
     try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, units, usagePolicy.isAdmin); }
@@ -174,11 +177,32 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   });
   if (existing?.kind === 'completed') return existing.result;
   if (existing?.kind === 'abandoned') throw new HttpsError('failed-precondition', 'The previous request exceeded its execution window and has been released. Your brief and outline are unchanged. Start a new generation by clicking the generation button again. [request:interrupted]');
-  const generationDeadline=Date.now()+390000;
+  const adultEditorial=cls.get('kind')!=='training'&&(!cls.get('learningProfile')?.ageGroup||cls.get('learningProfile')?.ageGroup==='Adults');
+  const generationDeadline=Date.now()+510000;
   let phase = d.action;
   try {
-    const schema=d.action==='outline'?outlineSchema:d.action==='activities'?(cls.get('kind')==='training'?trainingActivitySchema:activitySchema):planSchema;
+    const schema=generationSchema(d.action==='outline'?outlineSchema:d.action==='activities'?(cls.get('kind')==='training'?trainingActivitySchema:activitySchema):planSchema);
     const contract=stageContract(d.action,schema,d.action==='plan'?d.outline:d.plan);
+    const reserveExtra = () => db.runTransaction(async tx => {
+      const [b,j,q,g]=await Promise.all([tx.get(budget),tx.get(job),tx.get(quota),tx.get(globalQuota)]);
+      if(j.get('status')!=='running') throw new GenerationError('content');
+      const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,usagePolicy.isAdmin);
+      tx.update(budget,{committedMicroUsd:reservation.balance});
+      tx.set(quota,{calls:(q.get('calls')??0)+1});
+      tx.set(globalQuota,dailyGlobalUsage(g.data(),1,generationAdmin),{merge:true});
+      tx.update(job,{reservedMicroUsd:j.get('reservedMicroUsd')+reservation.reserved,repairing:true});
+    });
+    let sources=(d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
+    const researchUsage=[];
+    if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
+      await reserveExtra();
+      const research=await generate({apiKey:key.value(),model:model.value(),schema:researchSchema,name:'research',timeoutMs:60000,
+        input:{brief},instructions:'Choose 2–3 concise Wikipedia search queries to find genuinely interesting real-world source material for this adult English lesson. Prioritise a surprising real person, invention, place, discovery or documented dilemma that serves the objectives. For routines consider distinctive working lives, expeditions or creative habits rather than generic profiles. Queries are research leads, not verified facts. Do not put private learner or teacher details into queries. Return queries only.'});
+      researchUsage.push(research.usage);sources=await collectSources(research.value.queries);
+    }
+    payload.sourceEvidence=sources;
+    if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
+    if(payload.approvedPlan){payload.approvedPlan={...payload.approvedPlan};delete payload.approvedPlan.sourceEvidence;}
     const first = await generateChecked({generate, args: { apiKey: key.value(), model: model.value(), schema: contract.schema, name: d.action, input: {...payload,...contract.input}, instructions: (d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + contract.instructions },
       decode: value => {
         const decoded=contract.decode(value);
@@ -194,28 +218,45 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
           if(value.tasks.some(t=>t.format==='listening'&&!(t.mediaPlan??[]).some(m=>m.kind==='audio'))) throw Error('Every listening activity needs an audio mediaPlan matching its private script.');
         } else checkSequence(value,brief.duration);
       },
-      reserveRepair: () => db.runTransaction(async tx => {
-        const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);
-        if(j.get('status')!=='running') throw new GenerationError('content');
-        const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,usagePolicy.isAdmin);
-        tx.update(budget,{committedMicroUsd:reservation.balance});
-        tx.update(job,{reservedMicroUsd:j.get('reservedMicroUsd')+reservation.reserved,repairing:true});
-      })
+      reserveRepair: reserveExtra
     });
-    let result = { [d.action]: first.value, usage: first.usage };
-    if (d.action === 'plan') {
-      phase = 'review';
-      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, timeoutMs: Math.max(1000,Math.min(180000,generationDeadline-Date.now())), name: 'review', input: { brief, creationType, learnerMemories: payload.learnerMemories, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
-        instructions: `${cls.get('kind')==='training'?trainingInstructions:teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. This is a pre-media planning review: the application generates and saves specified images and recordings in the next activity stage, and blocks lesson creation until those assets are ready. A complete image specification or exact recording script is a planned dependency, not a missing-media critical error merely because its file has not been generated yet. Flag missing specifications, mismatched scripts, impossible visual requirements and references with no planned asset. Do not replace planned recordings with teacher-read input just because media preparation is pending. Never certify media quality without inspecting the finished asset. Mark incorrect language, unsolvable tasks, wrong keys, missing referenced media, premature answer disclosure and inaccessible instructions as critical errors. Scrutinise learner-facing wording, receptive-skills sequencing, discovery before explanation, purposeful visual support, and whether differentiation changes the task rather than adding more work. ${contentReviewStandard} This is advisory AI review, not human approval.` });
-      result = { ...result, review: review.value, usage: [...result.usage, review.usage] };
+    let result = { [d.action]: first.value, usage: [...researchUsage,...first.usage] };
+    if ((d.action === 'plan' || d.action === 'activities') && cls.get('kind')!=='training') {
+      phase='review';
+      const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,
+        review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
+          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,[d.action]:value},
+          instructions:`${teachingInstructions}\n${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
+        repair: (value,review,remaining) => generate({apiKey:key.value(),model:model.value(),schema,name:d.action,timeoutMs:Math.min(180000,remaining),
+          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,approvedStages:(d.action==='plan'?d.outline:d.plan).stages,output:value,editorialReview:review},
+          instructions:(d.action==='activities'?activityInstructions:teachingInstructions)+'\n'+editorialStandard+'\nRepair all reported defects and criteria below 4. Return the complete revised output. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Do not merely claim a fix in notes.'}),
+        check: value => {
+          validate(schema,value);
+          if(d.action==='activities') {
+            checkActivities(value,d.plan,cls.get('kind')==='training');
+            if(value.tasks.some(t=>t.format==='listening'&&!t.mediaPlan.some(m=>m.kind==='audio'))) throw new GenerationError('editorial');
+          } else {
+            checkSequence(value,brief.duration);
+            const metadata=v=>v.stages.map(s=>[s.id,s.title,s.aim,s.minutes,s.interaction]);
+            if(JSON.stringify(metadata(value))!==JSON.stringify(metadata(d.outline))) throw new GenerationError('editorial');
+          }
+        }
+      });
+      result={...result,[d.action]:checked.value,review:checked.review,editorialRepairs:checked.repairs,usage:[...result.usage,...checked.usage]};
     }
+    if(d.action==='plan' && cls.get('kind')==='training') {
+      phase='review';await reserveExtra();
+      const review=await generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.max(1000,Math.min(120000,generationDeadline-Date.now())),input:{brief,trainingProfile:payload.trainingProfile,plan:result.plan},instructions:trainingInstructions+'\nReview the training plan against these 11 criteria: '+criteria+'. Cite evidence, flag critical errors and provide actionable suggestions. '+contentReviewStandard});
+      result={...result,review:review.value,usage:[...result.usage,review.usage]};
+    }
+    if(d.action!=='activities' && sources.length) result[d.action].sourceEvidence=sources;
     phase = 'storage';
     await db.runTransaction(async tx => {
       const [b, j] = await Promise.all([tx.get(budget), tx.get(job)]);
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), result.usage);
       tx.update(budget, { committedMicroUsd: settled.balance });
-      if(d.action==='activities')for(const asset of mediaRequests(first.value))tx.create(job.collection('media').doc(asset.id),{...asset,classId:d.classId,status:'queued',createdAt:Timestamp.now()});
+      if(d.action==='activities')for(const asset of mediaRequests(result.activities))tx.create(job.collection('media').doc(asset.id),{...asset,...(adultEditorial&&asset.kind==='image'?{source:asset.style==='editorial'?'editorial':'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});
       tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
     });
     return result;

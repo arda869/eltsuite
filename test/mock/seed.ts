@@ -14,6 +14,7 @@ const p = new URLSearchParams(location.search);
     if(p.has('aiUsage')) {await setDoc(doc({},'superAdmins','teacher@example.com'),{name:'Preview admin'});await setDoc(doc({},'users','allowance-user'),{role:'learner',displayName:'Allowance learner',email:'allowance@example.test'});}
     const { createDemoClass } = await import('/src/lib/demo.ts');
     const r = await createDemoClass('teacher1');
+    if(p.has('editorial')) await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});
     localStorage.setItem('mockdemo', JSON.stringify(r));
     const { updateDoc } = await import('./firestore');
     await updateDoc(doc({}, 'classes', r.classId, 'items', r.itemId), { hidden: false });
