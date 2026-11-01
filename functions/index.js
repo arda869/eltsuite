@@ -1,3 +1,5 @@
+export { observeLearnerResponses } from './learning/observations.js';
+export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
 // The one piece of ELT Suite that runs on a server: a super admin signs in as a teacher or a
 // learner, to see ELT Suite exactly as they do. Only super admins (the owner, or someone in
 // superAdmins/{email} with a verified email, as in firestore.rules) can ask; every use is written

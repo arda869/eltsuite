@@ -31,7 +31,7 @@ export type LiveState = {
 export const liveRef = (classId: string) => doc(db, 'classes', classId, 'live', 'state');
 
 export async function setLive(classId: string, patch: Partial<LiveState>) {
-  await setDoc(liveRef(classId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(liveRef(classId), { ...patch, ...(patch.teaching === true && patch.itemId ? { startedAt: serverTimestamp() } : {}), updatedAt: serverTimestamp() }, { merge: true });
   if (patch.teaching === true && patch.itemId) noteFeature('live', classId + ':' + patch.itemId);
 }
 

@@ -27,6 +27,8 @@ import { canPlan, validateBrief, validate, checkSequence, outlineSchema, planSch
 import { generate, teachingInstructions } from './provider.js';
 import { checkModel, isPilotTeacher, reserveBudget, settleBudget } from './budget.js';
 
+import { requestReadiness } from '../learning/reports.js';
+import { taskTools } from './task-tools.js';
 const key = defineSecret('OPENAI_API_KEY');
 const model = defineString('ELT_AI_MODEL', { default: '' });
 const enabled = defineString('ELT_AI_ENABLED', { default: 'false' });
@@ -45,6 +47,8 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
   if (['rebuildPicture','rebuildPictureStatus'].includes(d.action)) return rebuildPicture(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
+  if (d.action === 'readiness') return requestReadiness(req,{db,uid,cls});
+  if (['taskTools','taskToolsStatus','taskToolsApply','taskToolsRetryMedia'].includes(d.action)) return taskTools(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (['rebuild','rebuildStatus','importCreate'].includes(d.action)) return rebuildMaterials(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'memories') return {memories: await collectMemories(db,d.classId)};
   if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', trainingProfile:cls.get('trainingProfile') ?? null, profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };
@@ -211,7 +215,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
     if(payload.approvedPlan){payload.approvedPlan={...payload.approvedPlan};delete payload.approvedPlan.sourceEvidence;}
     let revisionSummary='';
-    const first = await generateChecked({generate, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, name: d.action, input: {...(d.action==='activities'?conversionInput(payload,contract.input.approvedStageSlots):payload),...contract.input}, instructions: (d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions)+(d.action==='activities'?'\nConvert the approved material faithfully. Do not add new factual claims or replace supplied texts. sourceAttributions are references for the already reviewed material; the full evidence is checked in the subsequent editorial pass.':'') },
+    const first = await generateChecked({generate, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, name: revision?'lesson_revision':d.action, input: revision?{brief,creationType,currentDraft:payload.currentDraft,requestedChanges:revision.instructions,classProfile:payload.classProfile,trainingProfile:payload.trainingProfile,sourceEvidence:sources}:{...(d.action==='activities'?conversionInput(payload,contract.input.approvedStageSlots):payload),...contract.input}, instructions: revision?editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions:(d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions)+(d.action==='activities'?'\nConvert the approved material faithfully. Do not add new factual claims or replace supplied texts. sourceAttributions are references for the already reviewed material; the full evidence is checked in the subsequent editorial pass.':'') },
       decode: value => {
         const revised=revision?applyRevision(revision.current,value,revision.schema):null;
         if(revision)revisionSummary=value.summary;

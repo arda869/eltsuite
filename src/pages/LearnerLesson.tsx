@@ -1,3 +1,4 @@
+import { useLearningTime } from '../lib/learningTime';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
 import { LearnerLiveVideo } from '../components/LiveVideo';
@@ -193,6 +194,7 @@ export function LearnerLesson() {
   }, [classId, itemId, current, user]);
 
   const task = item?.locked ? undefined : tasks.find((t) => t.id === current);
+  useLearningTime(classId,itemId,current,user?.uid??'',learnerId,!!task&&!task.locked&&!checked);
   const index = tasks.findIndex((t) => t.id === current);
   const shared = useSharedPicks(classId, current);
   const classmates = useClassmates(c?.classCode);

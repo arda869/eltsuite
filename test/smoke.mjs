@@ -89,6 +89,57 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    let dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();
+    await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
+    await dialog.getByText('Not enough recorded history for a useful estimate.',{exact:true}).waitFor();
+    await dialog.getByText('View evidence (1 activities)',{exact:true}).click();
+    await dialog.getByText(/Timing not recorded/).waitFor();
+    await dialog.getByRole('button',{name:'Check this lesson',exact:true}).click();
+    await s.p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.includes('/learningReports/')).length===2);
+    await dialog.getByRole('button',{name:'Close',exact:true}).click();
+    await s.p.reload();
+    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
+    await axe(s.p,'Learner readiness',A11Y_FOUND);return s;
+  },
+  'Lesson tools: keys, differentiated versions and next activities': async(b)=>{
+    const s=await session(b,{owner:true});
+    await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'tool-source']={kind:'task',title:'Yesterday',instructions:'Complete the sentence.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]}]},order:0,hidden:false,locked:false};fs[root+'tool-source/private/key']={missing:{kind:'gap',answers:[]}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
+    let dialog=s.p.getByRole('dialog',{name:'Generate answer key'});
+    await dialog.getByRole('button',{name:'Generate missing answers'}).click();
+    await dialog.getByRole('button',{name:'Apply answer key'}).waitFor();
+    await axe(s.p,'Answer key review',A11Y_FOUND);
+    await dialog.getByRole('button',{name:'Apply answer key'}).click();
+    await s.p.waitForFunction(({classId,itemId})=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+classId+'/items/'+itemId+'/tasks/tool-source/private/key'].missing.answers[0]==='went',s.demo);
+    await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();
+    dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
+    await dialog.getByRole('button',{name:/More support Add choices/}).click();
+    await dialog.getByRole('button',{name:'Create differentiated version'}).click();
+    await dialog.getByRole('button',{name:'Add differentiated version'}).waitFor();
+    await axe(s.p,'Differentiated preview',A11Y_FOUND);
+    await dialog.getByRole('button',{name:'Add differentiated version'}).click();
+    await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.family==='tool-source'&&v.variant==='Supported'),s.demo);
+    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();
+    dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
+    await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
+    await dialog.getByRole('button',{name:'Create next activity'}).click();
+    await dialog.getByRole('button',{name:'Add activity to lesson'}).click();
+    await dialog.waitFor({state:'hidden'});
+    await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan'&&v.order===1),s.demo);
+    await s.p.reload();await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).waitFor();
+    const added=await s.p.evaluate(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan').map(([,v])=>v),s.demo);
+    if(added.length!==1||added[0].order!==1)throw Error('Next activity was not appended exactly once');
+    await axe(s.p,'Lesson tools',A11Y_FOUND);return s;
+  },
+
   'Designer: create, edit and reopen images and storyboards with optional fields blank': async (b) => {
     const s=await session(b,{owner:true});await s.p.goto(`${BASE}/design`);
     await s.p.getByRole('heading',{name:'Designer',exact:true}).waitFor();
@@ -1366,6 +1417,8 @@ const J = {
   },
   'Lesson: diagram with a gap stays': async (b) => {
     const s = await session(b);
+    // Isolate diagram editing from the demo's nested card editors.
+    await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const path of Object.keys(fs))if(path.startsWith(root))delete fs[path];fs[root+'diagram-fixture']={kind:'task',title:'Diagram practice',instructions:'Complete the diagram.',content:{type:'doc',content:[{type:'paragraph'}]},order:0,hidden:false,locked:false};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     const editor = s.p.locator('.task-editor .ProseMirror').first();
     await see(s.p, '.task-editor .ProseMirror', 'the lesson editor');

@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {observedRevision,summariseEvidence} from '../../functions/learning/evidence.js';
+test('saved revisions exclude initial responses and duplicate writes',()=>{assert.deepEqual(observedRevision({}, {responses:{q:'a'}}).revisionIds,[]);assert.deepEqual(observedRevision({responses:{q:'a'}},{responses:{q:'a'}}).changedIds,[]);assert.deepEqual(observedRevision({responses:{q:'a'}},{responses:{q:'b'}}).revisionIds,['q']);});
+test('submissions and correction resubmissions are distinct observations',()=>{const b={attempts:1,corrections:{q:{status:'open'}}};const a={attempts:2,corrections:{q:{status:'resubmitted',at:5}}};assert.equal(observedRevision(b,a).submitted,true);assert.deepEqual(observedRevision(b,a).resubmitted,['q']);assert.deepEqual(observedRevision(a,a).resubmitted,[]);});
+test('missing work is never counted as wrong and one lesson is insufficient',()=>{const s=summariseEvidence([{itemId:'one',checked:true,score:2,total:3},{itemId:'one',checked:false}]);assert.equal(s.possible,3);assert.equal(s.correct,2);assert.equal(s.sufficientHistory,false);assert.equal(s.checkedTasks,1);});
