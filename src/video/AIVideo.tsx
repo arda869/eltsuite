@@ -41,6 +41,8 @@ export function AIVideo({
   onError,
   enabled,
   plannerEnabled,
+  startingImage,
+  onStartingImageUsed,
   onAssemble,
 }: {
   uid: string;
@@ -50,6 +52,8 @@ export function AIVideo({
   onError: (s: string) => void;
   enabled: boolean;
   plannerEnabled:boolean;
+  startingImage?: VideoAsset | null;
+  onStartingImageUsed?: () => void;
   onAssemble:(scenes:ReadyScene[],title:string)=>void;
 }) {
   const storageKey = `ll.videoScenes.${uid}`;
@@ -66,8 +70,17 @@ export function AIVideo({
     }),
     [busy, setBusy] = useState("");
   const timer = useRef(0);
+  const startingUsed = useRef<VideoAsset | null>(null);
+  useEffect(() => {
+    if (!startingImage) {startingUsed.current=null;return;}
+    if (startingUsed.current === startingImage) return;
+    startingUsed.current = startingImage;
+    setScenes(all => [{...scene(), background:startingImage.id, visualStyle:startingImage.visualStyle || "3d-cartoon"}, ...all]);
+    setMode("prompt");
+    onStartingImageUsed?.();
+  }, [startingImage]); // eslint-disable-line react-hooks/exhaustive-deps
   const patch = (id: string, p: Partial<Scene>) =>
-    setScenes((all) => all.map((s) => (s.id === id ? { ...s, ...p } : s)));
+    setScenes((all) => all.map((s) => (s.id === id ? { ...s, ...(['prompt','visualStyle','background','references','duration'].some(k=>k in p)?{asset:'',job:'',status:''}:{}), ...p } : s)));
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(scenes));
   }, [storageKey, scenes]);
@@ -104,7 +117,7 @@ export function AIVideo({
           action,
           requestId: crypto.randomUUID(),
           name: `Scene reference`,
-          prompt: s.prompt,
+          prompt: `Create exactly one full-frame camera view, not a storyboard, collage, comic strip, split screen or sequence of panels. ${s.prompt}`,
           visualStyle: s.visualStyle,
           references: [
             ...s.references,
@@ -259,6 +272,7 @@ export function AIVideo({
               <label>
                 What happens
                 <textarea
+                  aria-label="What happens"
                   value={s.prompt}
                   rows={3}
                   maxLength={2800}
@@ -342,7 +356,7 @@ export function AIVideo({
                 }
                 onClick={() => void perform(s, "scene")}
               >
-                {image ? "Remake scene image" : "Make scene image"}
+                {image ? "Remake still preview" : "Make still preview"}
               </VideoButton>
               <VideoButton
                 disabled={
@@ -354,7 +368,7 @@ export function AIVideo({
                 }
                 onClick={() => void perform(s, "generate")}
               >
-                Generate scene · ~US${(s.duration * 0.12).toFixed(2)}
+                Generate moving video · ~US${(s.duration * 0.12).toFixed(2)}
               </VideoButton>
               {s.status === "working" && (
                 <VideoButton
@@ -374,6 +388,8 @@ export function AIVideo({
                 </VideoButton>
               )}
             </div>
+            <p className="vx-help">A still preview is a picture, not a video. Describe visible movement, then choose Generate moving video. For a storyboard or collage, make a single-frame still preview first so the whole grid is not animated.</p>
+            {!s.prompt.trim() && <p className="vx-help">Describe what should move in “What happens” to generate a video.</p>}
             {s.references.length > 1 && !image && (
               <p className="vx-help">
                 Make a scene image to place your characters together, then
@@ -391,7 +407,7 @@ export function AIVideo({
                       : s.status}
               </p>
             )}
-            {video && (
+            {video?.kind === "video" && (
               <VideoButton onClick={() => onAdd(video)}>
                 Add scene to timeline
               </VideoButton>

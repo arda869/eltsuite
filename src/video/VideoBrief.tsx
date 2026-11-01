@@ -60,7 +60,7 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
         if(!s.image) {
           setBusy(`Scene ${i+1}: preparing the scene image…`);
           const id=s.imageJob||crypto.randomUUID();changeScene(i,{imageJob:id});
-          const r=await videoCall<{assetId?:string}>({action:'scene',requestId:id,name:s.title,prompt:s.prompt,visualStyle:current.current.style,references:current.current.references});
+          const r=await videoCall<{assetId?:string}>({action:'scene',requestId:id,name:s.title,prompt:`Create exactly one full-frame camera view, not a storyboard, collage, comic strip, split screen or sequence of panels. ${s.prompt}`,visualStyle:current.current.style,references:current.current.references});
           changeScene(i,{image:r.assetId||await wait(id)});
         }
         if(stop.current)break;

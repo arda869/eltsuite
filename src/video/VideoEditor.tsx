@@ -91,6 +91,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
     kind: VideoTrack["kind"];
   } | null>(null);
   const [simulated, setSimulated] = useState(false);
+  const [animateImage, setAnimateImage] = useState<VideoAsset | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [projectId] = useState(() =>
@@ -1014,14 +1015,15 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                         <AssetPreview asset={a} />
                         <b>{a.name}</b>
                         <small>
-                          {a.kind} · {time(a.duration)}
+                          {a.kind === "image" ? "Still image · no motion" : `${a.kind} · ${time(a.duration)}`}
                         </small>
                         <VideoButton
                           disabled={locked}
                           onClick={() => addAsset(a)}
                         >
-                          Add to timeline
+                          {a.kind === "image" ? "Add still image" : "Add to timeline"}
                         </VideoButton>
+                        {a.kind === "image" && <VideoButton icon="videoSparkles" disabled={locked} onClick={() => {setAnimateImage(a);setTab("ai");}}>Animate image</VideoButton>}
                         {a.owner === uid && (
                           <VideoButton
                             onClick={() => {
@@ -1056,6 +1058,8 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 ownerName={ownerName}
                 assets={assets}
                 onAdd={addAsset}
+                startingImage={animateImage}
+                onStartingImageUsed={() => setAnimateImage(null)}
                 plannerEnabled={plannerEnabled}
                 onAssemble={(scenes,title) => {
                   const next=assembleScenes(projectRef.current,scenes,title);

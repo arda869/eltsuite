@@ -29,6 +29,8 @@ jobs:
         run: npx --yes firebase-tools@14 emulators:exec --only hosting --project demo-hosting-cache "node test/hosting-cache.mjs"
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
+      - name: Still-image to moving-video journey (AI simulated)
+        run: node test/video-motion.mjs
       - name: Smoke and accessibility tests
         timeout-minutes: 20
         run: npm run a11y
@@ -50,8 +52,13 @@ jobs:
           node --input-type=module - <<'JS'
           import fs from 'node:fs';
           const expected=JSON.parse(fs.readFileSync('dist/version.json','utf8'));
-          const actual=await fetch('https://eltsuite.com/version.json?verify='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Live version unavailable');return r.json();});
-          if(actual.build!==expected.build)throw Error('Live site does not match the tested frontend build');
+          let actual;
+          for(let i=0;i<12;i++){
+            actual=await fetch('https://eltsuite.com/version.json?verify='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Live version unavailable');return r.json();});
+            if(actual.build===expected.build)break;
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(actual.build!==expected.build)throw Error(`Live build ${actual.build} does not match tested build ${expected.build}`);
           console.log('Confirmed tested frontend is live:',actual.build);
           JS
       - name: Remove key
