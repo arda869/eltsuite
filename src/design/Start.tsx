@@ -23,9 +23,9 @@ export function StartScreen({ onPick }: { onPick: (t: Tpl) => void }) {
   return (
     <div className="dz-start">
       <div className="dz-start-in">
-        <p className="dz-kicker">Design</p>
-        <h1>What are you making?</h1>
-        <p className="dz-start-sub">Start from a template made for teaching, or a blank page. You can add more pages of any kind later.</p>
+        <p className="dz-kicker">Designer</p>
+        <h1>Choose your image canvas</h1>
+        <p className="dz-start-sub">Upload a picture or create one with AI after choosing a canvas.</p>
         <div className="dz-start-grid">
           {TEMPLATES.map((t) => (
             <button key={t.k} type="button" className="dz-start-card" onClick={() => onPick(t)}>
@@ -39,7 +39,7 @@ export function StartScreen({ onPick }: { onPick: (t: Tpl) => void }) {
         </div>
         <h2>Or a blank page</h2>
         <div className="dz-start-sizes">
-          {SIZES.map((s) => (
+          {SIZES.filter(s=>['square','slide','story','banner'].includes(s.k)).map((s) => (
             <button key={s.k} type="button" onClick={() => onPick({ k: s.k, name: s.name, about: '', pages: [{ p: { w: s.w, h: s.h, bg: '#ffffff' }, els: [] }] })}>
               <span className="dz-size-sh" style={{ aspectRatio: `${s.w} / ${s.h}` }} />
               <strong>{s.name}</strong>

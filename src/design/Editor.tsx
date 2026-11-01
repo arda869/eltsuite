@@ -40,7 +40,7 @@ export type Ctx = {
   setTool: (t: Tool) => void;
   pen: { color: string; size: number };
   setPen: (p: { color: string; size: number }) => void;
-  addPicture: (f: Blob, o?: { into?: string; credit?: string; name?: string }) => Promise<void>;
+  addPicture: (f: Blob, o?: { into?: string; credit?: string; name?: string; throwOnError?: boolean }) => Promise<void>;
   imgs: Map<string, CanvasImageSource>;
   setPage: (p: Partial<DPage>) => void;
   addPages: (tpl: Tpl, replace?: boolean) => Promise<void>;
@@ -163,7 +163,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   // A picture added: stored in the file, and put in the frame chosen, the frame selected, or the middle.
   const addPicture = useCallback(
-    async (f: Blob, o: { into?: string; credit?: string; name?: string } = {}) => {
+    async (f: Blob, o: { into?: string; credit?: string; name?: string; throwOnError?: boolean } = {}) => {
       if (!page) return;
       try {
         const { id, w, h } = await storePicture(d.id, f);
@@ -173,17 +173,20 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           const fr = frame.w / frame.h;
           const ir = w / h;
           const crop = ir > fr ? { x: (1 - fr / ir) / 2, y: 0, w: fr / ir, h: 1 } : { x: 0, y: (1 - ir / fr) / 2, w: 1, h: ir / fr };
-          patch({ [frame.id]: { img: id, iw: w, ih: h, crop, credit: o.credit, name: o.name ?? frame.name } });
+          await commit({ [frame.id]: clean({...frame, img: id, iw: w, ih: h, crop, credit: o.credit, name: o.name ?? frame.name }) });
           setSelIds([frame.id]);
           return;
         }
         const s = Math.min(1, (page.w * 0.7) / w, (page.h * 0.6) / h);
-        add([{ t: 'image', img: id, iw: w, ih: h, w: Math.round(w * s), h: Math.round(h * s), x: Math.round((page.w - w * s) / 2), y: Math.round((page.h - h * s) / 2), credit: o.credit, name: o.name }]);
-      } catch {
+        const elementId=newId()+newId();
+        await commit({[elementId]:clean({id:elementId,page:page.id,z:Math.max(0,...here.map(e=>e.z))+1,t: 'image', img: id, iw: w, ih: h, w: Math.round(w * s), h: Math.round(h * s), x: Math.round((page.w - w * s) / 2), y: Math.round((page.h - h * s) / 2), credit: o.credit, name: o.name })});
+        setSelIds([elementId]);
+      } catch (error) {
+        if(o.throwOnError)throw error;
         void tell('We couldn’t add that picture. Try a smaller one, or a different kind of file.');
       }
     },
-    [page, here, sel, d.id, patch, add],
+    [page, here, sel, d.id, commit],
   );
 
   const setPageP = useCallback((p: Partial<DPage>) => page && void updateDoc(doc(pagesCol(d.id), page.id), clean(p)).catch(() => {}), [page, d.id]);
@@ -957,9 +960,9 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
               ['templates', 'Templates', <path key="t" d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z" />],
               ['elements', 'Elements', <path key="e" d="M7 3.5 11 10H3zM17 7a3.5 3.5 0 1 1 0 .01M4 14h7v7H4zM17 14l3.5 3.5L17 21l-3.5-3.5z" />],
               ['text', 'Text', <path key="x" d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6" />],
+              ['ai', 'AI images', <path key="ai" d="M4 5h16v14H4zM4 15l5-5 6 6M16 7v4M14 9h4" />],
               ['pictures', 'Pictures', <path key="p" d="M4 5.5h16v13H4zM4 16l5-5 4 4 2.5-2.5L20 17M15.5 9.5h.01" />],
               ['people', 'People', <path key="pp" d="M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 22v-6a6 6 0 0 1 12 0v6M9 22v-5M15 22v-5" />],
-              ['teach', 'Teaching', <path key="tc" d="M3 9l9-5 9 5-9 5zM7 11.2V16c0 1.5 2.5 3 5 3s5-1.5 5-3v-4.8M21 9v6" />],
               ['draw', 'Draw', <path key="d" d="M4 20l4-1L19 8a2.1 2.1 0 0 0-3-3L5 16zM14 7l3 3" />],
               ['layers', 'Layers', <path key="l" d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" />],
             ] as [DrawerKey, string, JSX.Element][]

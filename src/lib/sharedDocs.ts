@@ -1,7 +1,7 @@
 import { writeNamedFile } from './fileNames';
 import { noteFeature } from '../discovery/store';
 import { useEffect, useMemo, useState } from 'react';
-import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where, type Timestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import { get } from 'firebase/database';
 import { collabRef } from '../collab/provider';
@@ -33,6 +33,7 @@ export type SharedDoc = {
   ownerName: string;
   title: string;
   kind: DocKind;
+  designType?: 'image' | 'storyboard';
   docKey: string;
   members: Record<string, { role: DocRole; name: string; kind: 'teacher' | 'learner' }>;
   memberIds: string[];
@@ -52,7 +53,7 @@ const col = collection(db, 'sharedDocs');
 export const docLink = (id: string) => `${window.location.origin}/doc/${id}`;
 
 export type DocKind = 'doc' | 'slides' | 'flash' | 'pd' | 'lesson' | 'pdf' | 'storyboard' | 'file' | 'design';
-export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File', design: 'Design' };
+export const KIND_LABEL: Record<DocKind, string> = { doc: 'Collab document', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal', lesson: 'Lesson', pdf: 'PDF', storyboard: 'Storyboard', file: 'File', design: 'Designer file' };
 export async function newSharedDoc(owner: { uid: string; name: string }, kind: DocKind, title = '', path = '') {
   const r = doc(col);
   await writeNamedFile(r, { owner: owner.uid, path }, title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`), {
@@ -60,13 +61,15 @@ export async function newSharedDoc(owner: { uid: string; name: string }, kind: D
     owner: owner.uid,
     ownerName: owner.name,
     title: title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
-    kind,
+    kind:kind==='storyboard'?'design':kind,
+    ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     docKey: 'f' + newId() + newId(),
     members: {},
     memberIds: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, true, true);
+  if(kind==='storyboard')await setDoc(doc(db,'sharedDocs',r.id,'dmeta','main'),{type:'storyboard'});
   if (kind === 'doc') noteFeature('collab', r.id);
   if (kind === 'pd') noteFeature('reading', r.id);
   return r.id;
@@ -199,7 +202,8 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     createdBy: me.uid,
     folder: f.id,
     title: extra.title || (kind === 'pd' ? 'Reading Journal' : `Untitled ${KIND_LABEL[kind].toLowerCase()}`),
-    kind,
+    kind:kind==='storyboard'?'design':kind,
+    ...(kind==='storyboard'?{designType:'storyboard'}:{}),
     ...(extra.ltype ? { ltype: extra.ltype } : {}),
     docKey: 'f' + newId() + newId(),
     members,
@@ -207,6 +211,7 @@ export async function newDocInFolder(f: SharedFolder, me: { uid: string; name: s
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }, true, true);
+  if(kind==='storyboard')await setDoc(doc(db,'sharedDocs',r.id,'dmeta','main'),{type:'storyboard'});
   return r.id;
 }
 // Sharing a folder shares everything in it.

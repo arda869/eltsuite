@@ -1,3 +1,4 @@
+import { startDesigner, isImageFile } from '../design/DesignerFile';
 import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { TopBar } from '../components/TopBar';
@@ -27,7 +28,7 @@ const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty
   collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
   storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
-  design: { name: 'Design', kinds: ['design'], color: '#6d5bd0', empty: 'Posters, flashcards, labelled pictures and worksheets, made by you or with others.' },
+  design: { name: 'Designer', kinds: ['design', 'storyboard'], color: '#6d5bd0', empty: 'Storyboards and images. Create with AI, edit pictures and tell stories.' },
   pdf: { name: 'PDF', kinds: ['pdf'], color: '#a6463a', empty: 'PDFs to write on, on your own or with others.' },
   recordings: { name: 'Recordings', kinds: [], color: '#a8473a', empty: 'Recordings you make or upload, with scripts, to use in any lesson.' },
 };
@@ -59,7 +60,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     const ofDoc = (d: SharedDoc): Entry => ({ id: d.id, star: d.id, title: d.title, kind: d.kind as FileKind, who: d.owner === uid ? '' : d.ownerName, at: ms(d), open: () => openDoc(d.id), doc: d });
     const ofRec = (r: ArchiveItem): Entry => ({ id: 'a:' + r.id, star: 'a:' + r.id, title: r.name, kind: 'audio', who: '', at: r.updatedAt ?? r.createdAt, open: () => (r.home && !r.link ? window.open(`/studio/sound/${r.id}`, '_blank') : void window.open('/archive', '_self')) });
     const ofClass = (d: LibDoc): Entry => ({ id: 'k:' + d.key, star: 'k:' + d.key, title: d.title, kind: d.kind, who: '', where: d.className, at: d.updated, open: () => void window.open(`/doc/k/${encodeURIComponent(d.key)}?kind=${d.kind}&t=${encodeURIComponent(d.title)}&c=${encodeURIComponent(d.classId)}&m=edit,suggest,comment`, '_blank') });
-    const fit = (d: SharedDoc) => a.kinds.includes(d.kind);
+    const fit = (d: SharedDoc) => a.kinds.includes(d.kind) || (app==='design' && isImageFile(d));
     const own = app === 'recordings' ? (archive ?? []).filter((r) => r.kind === 'audio').map(ofRec) : [...(mine ?? []).filter((d) => fit(d) && !(d.folder && inLib.has(d.folder))).map(ofDoc), ...(app === 'collab' ? (lib?.docs ?? []).map(ofClass) : [])];
     const shared = (withMe ?? []).filter((d) => fit(d) && !(d.folder && inLib.has(d.folder))).map(ofDoc);
     const library = [...(mine ?? []), ...(withMe ?? [])].filter((d) => fit(d) && !!d.folder && inLib.has(d.folder)).map(ofDoc);
@@ -88,11 +89,14 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     starred: 'M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6-5-2.6-5 2.6.9-5.6-4-3.9 5.6-.8z',
   };
 
-  const make = async (k: DocKind) => {
+  const make = async (k: DocKind, designerType?:'image'|'storyboard') => {
     if (!uid) return;
     const w = window.open('about:blank', '_blank');
-    const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k);
-    if (w) w.location.href = `/doc/${id}`;
+    try {
+      const id = await newSharedDoc({ uid, name: user?.displayName || 'Teacher' }, k, designerType ? 'Untitled '+designerType : '');
+      if(designerType) await startDesigner(id,designerType);
+      if (w) w.location.href = `/doc/${id}`;
+    }catch{w?.close();void tell('Could not create the file. Please check your connection and try again.');}
   };
   const makePdf = async (f: File) => {
     if (!uid) return;
@@ -121,7 +125,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
       : app === 'reading'
         ? [{ label: 'New reading journal', run: () => void make('pd') }]
         : app === 'design'
-          ? [{ label: 'New design', run: () => void make('design') }]
+          ? [{ label: 'Create image', run: () => void make('design','image') }, { label: 'Create storyboard', run: () => void make('design','storyboard') }]
           : app === 'storyboard'
           ? [{ label: 'New storyboard', run: () => void make('storyboard') }]
           : app === 'pdf'

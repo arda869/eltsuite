@@ -1,3 +1,4 @@
+import { AiImages } from './AiImages';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
 import { useArchive } from '../lib/archive';
@@ -10,10 +11,10 @@ import { drawPage, shapePath, textHeight, isLine } from './render';
 import { TEMPLATES, type Tpl } from './templates';
 import { searchPictures, type WebPic } from './assets';
 
-export type DrawerKey = 'templates' | 'elements' | 'text' | 'pictures' | 'people' | 'teach' | 'draw' | 'layers';
+export type DrawerKey = 'ai' | 'templates' | 'elements' | 'text' | 'pictures' | 'people' | 'teach' | 'draw' | 'layers';
 
 export function Drawer({ k, cx, onClose }: { k: DrawerKey; cx: Ctx; onClose: () => void }) {
-  const title = { templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'People and things', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k];
+  const title = { ai:'AI images', templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'People and things', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k];
   return (
     <div className="dz-dr">
       <div className="dz-dr-head">
@@ -23,6 +24,7 @@ export function Drawer({ k, cx, onClose }: { k: DrawerKey; cx: Ctx; onClose: () 
         </button>
       </div>
       <div className="dz-dr-body">
+        {k === 'ai' && <AiImages cx={cx} />}
         {k === 'templates' && <Templates cx={cx} />}
         {k === 'elements' && <Elements cx={cx} />}
         {k === 'text' && <TextDrawer cx={cx} />}
@@ -71,7 +73,7 @@ function Templates({ cx }: { cx: Ctx }) {
       </div>
       <h3 className="dz-dr-h">Blank pages</h3>
       <div className="dz-sizes">
-        {SIZES.map((s) => (
+        {SIZES.filter(s=>['square','slide','story','banner'].includes(s.k)).map((s) => (
           <button key={s.k} type="button" onClick={() => void cx.addPages({ k: s.k, name: s.name, about: '', pages: [{ p: { w: s.w, h: s.h, bg: '#ffffff' }, els: [] }] })} disabled={!cx.canEdit}>
             <span className="dz-size-sh" style={{ aspectRatio: `${s.w} / ${s.h}` }} />
             <span>
@@ -188,21 +190,7 @@ function Elements({ cx }: { cx: Ctx }) {
           </button>
         ))}
       </div>
-      <h3 className="dz-dr-h">For worksheets</h3>
-      <div className="dz-list">
-        <button type="button" onClick={() => cx.add([{ t: 'lines', ...middle(cx, Math.min(654, cx.page.w - 140), 140), gap: 28 }])}>
-          <strong>Writing lines</strong>
-          <span>7.4 mm apart, as on printed worksheets</span>
-        </button>
-        <button type="button" onClick={() => cx.add([{ t: 'shape', shape: 'rect', ...middle(cx, 220, 44), fill: '#ffffff', stroke: '#d6d3cd', sw: 1.5, radius: 8, text: 'Name', font: 'Karla', size: 12, color: '#66615b' }])}>
-          <strong>A name box</strong>
-          <span>For learners to write their name</span>
-        </button>
-        <button type="button" onClick={() => cx.add([{ t: 'shape', shape: 'ellipse', ...middle(cx, 48, 48), fill: cx.accent, text: '1', font: 'Karla', size: 22, bold: true, color: '#ffffff', align: 'center', valign: 'middle' }])}>
-          <strong>A number</strong>
-          <span>For exercises and steps</span>
-        </button>
-      </div>
+
     </>
   );
 }
