@@ -1,3 +1,4 @@
+import './InlineImages.css';
 import { useState } from 'react';
 import { useMyDocs, type SharedDoc } from '../lib/sharedDocs';
 import { isImageFile } from './files';
