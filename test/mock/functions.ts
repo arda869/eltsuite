@@ -132,11 +132,12 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const { profileComplete, beliefsComplete, contextPermissions } = await import('../../functions/ai/coach-context.js');
     const current = (await import('firebase/auth')).getAuth().currentUser?.uid ?? 'teacher1';
     const p = (await getDoc(doc(db,'teachingCoach',current,'settings','profile'))).data();
-    if (!beliefsComplete(p)) throw Error('Add your teaching beliefs before starting a coaching conversation.');
-    if (!profileComplete(p)) throw Error('Complete your teaching profile before starting a coaching conversation.');
+    if (!d.lessonContext && !beliefsComplete(p)) throw Error('Add your teaching beliefs before starting a coaching conversation.');
+    if (!d.lessonContext && !profileComplete(p)) throw Error('Complete your teaching profile before starting a coaching conversation.');
+    localStorage.setItem('mockCoachLastRequest',JSON.stringify(d));
     const prefs = contextPermissions((await getDoc(doc(db,'teachingCoach',current,'settings','context'))).data());
     await new Promise(resolve=>setTimeout(resolve,350));
-    return {data:{journalDraft:/draft.*journal|yes.*journal/i.test(d.prompt)?'I noticed a change in participation. I want to consider other explanations before deciding what to try next.':'',reply:'What did you notice about learners’ responses? What other explanation might fit what happened?',basis:[prefs.profile?'Your professional profile':'',prefs.beliefs&&p?.beliefs?'Your teaching beliefs':''].filter(Boolean)}};
+    return {data:{sources:d.lessonContext?[{title:'Selected activity',url:`/class/${d.lessonContext.classId}/lesson/${d.lessonContext.itemId}`}]:[],journalDraft:/draft.*journal|yes.*journal/i.test(d.prompt)?'I noticed a change in participation. I want to consider other explanations before deciding what to try next.':'',reply:'What did you notice about learners’ responses? What other explanation might fit what happened?',basis:[prefs.profile?'Your professional profile':'',prefs.beliefs&&p?.beliefs?'Your teaching beliefs':''].filter(Boolean)}};
   }
   localStorage.setItem('mockAiLastRequest',JSON.stringify(d));
   if(d.action==='memories') return {data:{memories:[{id:'a:q',name:'Alex',text:'I visited Rome last year.',item:'Travel stories',task:'Your experience'}]}};
