@@ -101,6 +101,10 @@ jobs:
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           node functions/video/preflight.mjs
+          # Source discovery must see the same connection flag as the deployed runtime.
+          set -a
+          . functions/.env.lesson-lit
+          set +a
           set -o pipefail
           npx --yes firebase-tools@14 deploy --only functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
@@ -132,6 +136,9 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
           npm --prefix functions install --no-audit --no-fund
+          set -a
+          . functions/.env.lesson-lit
+          set +a
           set -o pipefail
           if ! npx --yes firebase-tools@14 deploy --only functions --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/fn.log"; then
             msg=$(grep -iE "error|denied|permission|billing|blaze|enable" "$RUNNER_TEMP/fn.log" | tail -6 | tr '\n' ' ')

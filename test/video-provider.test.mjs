@@ -94,3 +94,11 @@ test('planning returns a full reviewable script and interactions without generat
  const p=await planVideo('key',videoBrief({brief:'A fruit shop',audience:'Young learners',level:'A1',length:20}),'cartoon',[],async(url,opts)=>{calls++;assert.equal(url,'https://api.openai.com/v1/responses');const b=JSON.parse(opts.body);assert.equal(b.text.format.strict,true);assert.match(b.instructions,/BEFORE media creation/);return{ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}],usage:{input_tokens:100,output_tokens:200}})};});
  assert.equal(calls,1);assert.equal(p.scenes[0].script,value.scenes[0].script);assert.equal(p.scenes[0].answer,'An apple.');assert.throws(()=>validatePlan({...value,scenes:[{...value.scenes[0],script:'word '.repeat(40)}]},20));
 });
+
+
+import {execFileSync} from 'node:child_process';
+test('deployment requires a Runway secret only when video generation is connected',()=>{
+  const names=enabled=>JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',`await import('./video/index.js');const {declaredParams}=await import('firebase-functions/params');console.log(JSON.stringify(declaredParams.map(p=>p.name)));`],{cwd:new URL('../functions/',import.meta.url),env:{...process.env,VIDEO_AI_ENABLED:enabled},encoding:'utf8'}));
+  assert.deepEqual(names('false'),['OPENAI_API_KEY']);
+  assert(names('true').includes('RUNWAYML_API_SECRET'));
+});

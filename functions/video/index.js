@@ -6,7 +6,10 @@ import { defineSecret } from "firebase-functions/params";
 import { getFirestore } from "firebase-admin/firestore";
 import { authorizeTeacher } from "../speech/access.js";
 import { videoRequest, videoBody, runway, characterImage } from "./contract.js";
-const runwayKey = defineSecret("RUNWAYML_API_SECRET"),
+// Firebase resolves every declared secret, even when no endpoint binds it.
+const runwayKey = process.env.VIDEO_AI_ENABLED === "true"
+  ? defineSecret("RUNWAYML_API_SECRET")
+  : { value: () => process.env.RUNWAYML_API_SECRET || "" },
   imageKey = defineSecret("OPENAI_API_KEY");
 const DB = () => getFirestore();
 const enabled = () => process.env.VIDEO_AI_ENABLED === "true";
