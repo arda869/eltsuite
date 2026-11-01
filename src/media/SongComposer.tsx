@@ -89,7 +89,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
     finally{lock.current=false;setBusy('');}
   };
   const styleReady=!!brief.style.trim()&&brief.style.trim()!=='Custom:';
-  const learnersReady=!!brief.audience&&!lessonBusy&&(!brief.lesson||!!lessonInfo&&!lessonError);
+  const learnersReady=!!brief.audience&&!lessonBusy&&!lessonError&&(!brief.lesson||!!lessonInfo);
   const nextReady=step===0?learnersReady:styleReady;
   const move=(next:number)=>{setStep(next);dialog.current?.querySelector('.song-content')?.scrollTo({top:0});};
   const styleCustom=!!brief.style&&!musicStyles.some(s=>s.value===brief.style);
