@@ -1,0 +1,52 @@
+name: Publish tested invitation page
+on:
+  push:
+    branches: [release/invitation-page-132]
+    paths: [.github/workflows/publish-invitation-page.yml]
+permissions:
+  contents: read
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  hosting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: 7c71e27ae212241292193773e62497e8420bce82
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # This exact merged revision passed all 50 production journeys and security
+      # checks in run 41278729376. Only the unrelated scheduler publish failed.
+      - name: Build the tested release
+        env:
+          VITE_ELT_AI_PILOT: 'true'
+        run: npm run build
+      - name: Invitation email and landing checks
+        run: |
+          node test/invitation-emails.mjs
+          npx playwright install --with-deps chromium
+          npx vite --config test/vite.config.ts --port 5189 > /tmp/invitation-vite.log 2>&1 &
+          vite_pid=$!
+          trap 'kill "$vite_pid" || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://localhost:5189/ > /dev/null; then break; fi
+            sleep 1
+          done
+          node test/invitation-landing.mjs
+      - name: Publish hosting only
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/invitation-sa.json
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx --yes firebase-tools@14 deploy --only hosting --project lesson-lit --non-interactive
+      - name: Remove credentials
+        if: always()
+        run: rm -f "${{ runner.temp }}/invitation-sa.json"
