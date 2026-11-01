@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkModel, checkRequestSize, isPilotTeacher, reserveBudget, settleBudget, usageCost, RESERVATION_PER_CALL, MONTHLY_LIMIT_MICRO_USD, PRICE_REVIEW_AFTER } from '../../functions/ai/budget.js';
+import { checkModel, checkRequestSize, isPilotTeacher, reserveBudget, settleBudget, usageCost, RESERVATION_PER_CALL, MONTHLY_LIMIT_MICRO_USD, PRICE_REVIEW_AFTER, MAX_OUTPUT_TOKENS } from '../../functions/ai/budget.js';
 
 test('reserve both plan calls before work and stop at the monthly boundary', () => {
   const r = reserveBudget(MONTHLY_LIMIT_MICRO_USD - 2 * RESERVATION_PER_CALL, 2);
@@ -17,8 +17,8 @@ test('settlement refunds only known usage, preserving other in-flight reservatio
   assert.throws(() => settleBudget(settled.balance, b.reserved, [{ inputTokens: undefined, outputTokens: undefined }]));
 });
 test('invalid or unexpectedly high provider usage fails closed', () => {
-  for (const usage of [{}, { inputTokens: -1, outputTokens: 10 }, { inputTokens: 100001, outputTokens: 10 }, { inputTokens: 1, outputTokens: 12001 }, { inputTokens: 1.5, outputTokens: 10 }]) assert.throws(() => usageCost(usage));
-  assert.equal(usageCost({ inputTokens: 100000, outputTokens: 12000 }), RESERVATION_PER_CALL);
+  for (const usage of [{}, { inputTokens: -1, outputTokens: 10 }, { inputTokens: 100001, outputTokens: 10 }, { inputTokens: 1, outputTokens: MAX_OUTPUT_TOKENS+1 }, { inputTokens: 1.5, outputTokens: 10 }]) assert.throws(() => usageCost(usage));
+  assert.equal(usageCost({ inputTokens: 100000, outputTokens: MAX_OUTPUT_TOKENS }), RESERVATION_PER_CALL);
 });
 test('unknown models, stale prices and oversized UTF-8 requests cannot generate', () => {
   checkModel('gpt-6.1-sol', PRICE_REVIEW_AFTER - 1);
@@ -30,4 +30,10 @@ test('unknown models, stale prices and oversized UTF-8 requests cannot generate'
 test('access is off unless explicitly enabled by an administrator', () => {
   for (const value of [undefined, null, false, 'true', 1, {}]) assert.equal(isPilotTeacher(value), false);
   assert.equal(isPilotTeacher(true), true);
+});
+test('long activity output is fully reserved and unused allowance is returned',()=>{
+ const reserved=reserveBudget(0,1);
+ const used=usageCost({inputTokens:30000,outputTokens:18000});
+ assert.equal(used,240000);assert.ok(reserved.reserved>=used);
+ assert.equal(settleBudget(reserved.balance,reserved.reserved,[{inputTokens:30000,outputTokens:18000}]).balance,used);
 });

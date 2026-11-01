@@ -51,3 +51,11 @@ test('maximum-stage activity schema stays compact and validates referenced conte
  const raw=sample(c.schema);raw.tasks.stage_1[0].minutes='invalid';
  assert.throws(()=>c.decode(raw));
 });
+test('long conversion repair respects the remaining end-to-end deadline',async()=>{
+ let calls=0,repairTimeout;
+ const result=await generateChecked({args:{input:{},instructions:''},deadline:Date.now()+5000,repairTimeoutMs:300000,generate:async args=>{calls++;if(calls===2)repairTimeout=args.timeoutMs;return{value:calls,usage:{inputTokens:1,outputTokens:1}};},decode:v=>v,check:v=>{if(v===1)throw Error('Repair needed');},reserveRepair:async()=>{}});
+ assert.equal(result.value,2);assert.ok(repairTimeout>0&&repairTimeout<=5000);
+ let reserved=false;
+ await assert.rejects(generateChecked({args:{input:{},instructions:''},deadline:Date.now()-1,generate:async()=>({value:1,usage:{inputTokens:1,outputTokens:1}}),decode:v=>v,check:()=>{throw Error('Invalid');},reserveRepair:async()=>{reserved=true;}}),e=>e.reason==='timeout');
+ assert.equal(reserved,false);
+});
