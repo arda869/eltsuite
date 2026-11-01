@@ -48,8 +48,8 @@ export async function separateSong(bytes,onProgress){
   const dir=await mkdtemp(join(tmpdir(),'elt-song-stems-'));
   try{
     const {default:ffmpeg}=await import('ffmpeg-static'),input=join(dir,'song');await writeFile(input,bytes);
-    const {stdout}=await exec(ffmpeg,['-nostdin','-v','error','-i',input,'-t','190','-f','f32le','-ac','2','-ar',String(RATE),'pipe:1'],{encoding:'buffer',maxBuffer:RATE*190*8+1024,timeout:90000});
-    const length=stdout.length/8;if(!Number.isInteger(length)||length<RATE/2)throw Error('The song could not be decoded.');
+    const {stdout}=await exec(ffmpeg,['-nostdin','-v','error','-i',input,'-t','191','-f','f32le','-ac','2','-ar',String(RATE),'pipe:1'],{encoding:'buffer',maxBuffer:RATE*191*8+1024,timeout:90000});
+    const length=stdout.length/8;if(!Number.isInteger(length)||length<RATE/2||length>RATE*190)throw Error('The song could not be decoded.');
     const mix=[new Float32Array(length),new Float32Array(length)];for(let i=0;i<length;i++)for(let c=0;c<2;c++)mix[c][i]=stdout.readFloatLE((2*i+c)*4);
     const {session,Tensor}=await modelSession();
     const samples=await separateSamples(mix,async data=>{const r=await session.run({mix:new Tensor('float32',data,[1,2,N])});return r.stems.data;},onProgress);

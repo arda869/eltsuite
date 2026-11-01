@@ -155,6 +155,10 @@ const from = (key: string, group: Cmd['group'], over: Partial<Cmd> = {}): Cmd | 
 };
 const block = (e: Editor, n: object) => e.chain().focus().insertContent([n, { type: 'paragraph' }]).run();
 
+// TaskEditor also embeds documents. Read its commands after module initialization.
+let cachedCommands:Cmd[]|undefined;
+export function docCommands():Cmd[]{
+  if(cachedCommands)return cachedCommands;
 // The "/" menu in a document, in the order a writer reaches for things.
 const DOC_ALL: (Cmd | null)[] = [
   { key: 'h1', label: 'Heading 1', hint: 'A big section heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 1 }).run() },
@@ -205,7 +209,8 @@ const DOC_ALL: (Cmd | null)[] = [
   from('tt-loop', 'Training'),
   from('tt-org', 'Training'),
 ];
-export const DOC_CMDS: Cmd[] = DOC_ALL.filter((c): c is Cmd => !!c);
+return cachedCommands=DOC_ALL.filter((c): c is Cmd => !!c);
+}
 
 export const DOC_GROUPS: { k: Cmd['group']; label: string }[] = [
   { k: 'Basic', label: 'Basic' },
@@ -217,7 +222,9 @@ export const DOC_GROUPS: { k: Cmd['group']; label: string }[] = [
 ];
 export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow'];
 
-export const DOC_SECTIONS = [
+type DocSection={title:string;blurb:string;keys:string[]};
+let cachedSections:DocSection[]|undefined;
+export function docSections():DocSection[]{return cachedSections??=[
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
   { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'inline-video', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
@@ -225,4 +232,4 @@ export const DOC_SECTIONS = [
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },
   { title: 'Questions', blurb: 'Gaps, choices, matching, word order and every other question a lesson can hold.', keys: COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => c.key) },
   { title: 'Teacher training', blurb: 'Language analysis, lesson plans, observation forms and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org'] },
-];
+];}

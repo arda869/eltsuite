@@ -12,10 +12,13 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: |
           mkdir -p outputs
-          SONG_STEMS_SCREENSHOT=outputs/song-stems-preview.png node test/smoke.mjs "--only=Songs: separate" --a11y
+          for attempt in 1 2 3; do
+            SONG_STEMS_SCREENSHOT=outputs/song-stems-preview.png node test/smoke.mjs "--only=Songs: separate" --a11y
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
