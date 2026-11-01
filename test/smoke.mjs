@@ -492,7 +492,9 @@ const J = {
   },
 
   'Songs: separate tracks preview, mute, save and reopen': async (b) => {
-    const s=await session(b);s.p.setDefaultTimeout(60000);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
+    const s=await session(b);await s.ctx.tracing.start({screenshots:true,snapshots:true,sources:true});try{s.p.setDefaultTimeout(60000);
+    const pendingRequests=new Set();s.p.on('request',r=>pendingRequests.add(r.url()));s.p.on('requestfinished',r=>pendingRequests.delete(r.url()));s.p.on('requestfailed',r=>pendingRequests.delete(r.url()));
+    const reopened=async()=>{await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\nPending: '+[...pendingRequests].join(' ')+'\nDOM: '+(await s.p.locator('#root').innerHTML()).slice(0,1400));});};await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
     await s.p.evaluate(()=>sessionStorage.setItem('mockStemDelayMs','1800'));
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
     await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
@@ -505,9 +507,9 @@ const J = {
     await d.getByRole('button',{name:'Vocals only',exact:true}).click();await d.getByRole('button',{name:'Full song',exact:true}).click();await d.getByRole('button',{name:'Add song to timeline'}).click();await d.waitFor({state:'hidden'});
     await s.p.getByRole('button',{name:'Mute Classroom song · Vocals',exact:true}).click();if(await s.p.getByRole('button',{name:'Mute Classroom song · Vocals'}).getAttribute('aria-pressed')!=='true')throw Error('Vocal mute failed');
     await s.p.getByRole('button',{name:'Save',exact:true}).click();await s.p.getByRole('dialog',{name:'Save the recording'}).getByRole('button',{name:'Save',exact:true}).click();
-    await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\n'+(await s.p.locator('body').innerText()).slice(-2500));});
+    await reopened();
     const saved=await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.entries(fs).filter(([k,v])=>k.includes('/media/')&&v.stems).map(([k,v])=>({key:k,stems:v.stems}));});if(saved.length!==1)throw Error('Separate tracks were not persisted');
-    await s.p.reload();await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor();await axe(s.p,'Saved separate song tracks reopened',A11Y_FOUND);
+    await s.p.reload();await reopened();await axe(s.p,'Saved separate song tracks reopened',A11Y_FOUND);
     const copied=await s.p.evaluate(async({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs')),entry=Object.entries(fs).find(([k,v])=>k.startsWith('users/teacher1/archive/')&&v.name==='Classroom song');if(!entry)throw Error('Saved archive entry missing');const item={id:entry[0].split('/').at(-1),...entry[1]},api=await import('/src/lib/archive.ts');return api.mediaIn('teacher1',item,classId);},s.demo);
     await s.p.evaluate(async({classId,itemId,mediaId})=>{
       const full=await import('/src/lib/fullcopy.ts'),fire=await import('/test/mock/firestore.ts'),share=await import('/src/lib/sharing.ts');
@@ -520,7 +522,7 @@ const J = {
       const archive={id:'song-shared',kind:'audio',name:'Shared song',folder:'',tags:[],size:0,createdAt:Date.now(),home:{classId,mediaId}},spec={kind:'media',owner:'teacher1',ownerName:'Teacher',title:'Shared song',mode:'link',people:[],src:{},archive,notes:false};
       const sharedId=await share.createShare(spec);verify('share:'+sharedId,mediaId);const own=await share.copyMediaToArchive({...spec,id:sharedId},'teacher1');const resource=read()['users/teacher1/archive/'+own];verify(resource.home.classId,resource.home.mediaId);
     },{...s.demo,mediaId:copied});
-    await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&mode=player&class='+s.demo.classId+'&media='+copied);await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Play',exact:true}).click();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).click();await s.p.getByRole('button',{name:'Vocals on',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals on',exact:true}).click();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await axe(s.p,'Copied song vocals-off player',A11Y_FOUND);return s;
+    await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&mode=player&class='+s.demo.classId+'&media='+copied);await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Play',exact:true}).click();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).click();await s.p.getByRole('button',{name:'Vocals on',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals on',exact:true}).click();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await axe(s.p,'Copied song vocals-off player',A11Y_FOUND);return s;}finally{await s.ctx.tracing.stop({path:'outputs/song-stems-trace.zip'});}
   },
   'Songs: topic-only lyric drafting needs no title or lesson': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');

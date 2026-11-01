@@ -1,0 +1,23 @@
+name: Diagnose saved song reopening
+on:
+  push:
+    branches: [codex/song-stems]
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          mkdir -p outputs
+          SONG_STEMS_SCREENSHOT=outputs/song-stems-preview.png node test/smoke.mjs "--only=Songs: separate" --a11y
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: song-reopen-debug
+          path: outputs/song-stems-*
