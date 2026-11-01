@@ -1,3 +1,4 @@
+import { CharacterLibrary } from '../design/Characters';
 import { startDesigner, isImageFile } from '../design/DesignerFile';
 import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../lib/auth';
@@ -52,6 +53,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
   const [tab, setTab] = useState<Tab>('mine');
   const [q, setQ] = useState('');
   const [recording, setRecording] = useState(false);
+  const [characters, setCharacters] = useState(false);
   const [busy, setBusy] = useState('');
   const pdfIn = useRef<HTMLInputElement>(null);
   const inLib = useMemo(() => new Set((drives ?? []).map((f) => f.id)), [drives]);
@@ -172,6 +174,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </button>
           ))}
         </header>
+        {app === 'design' && <section className="dc-home"><div><h2>Characters</h2><p>Your recurring people, animals and mascots, ready for every design.</p></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
         <div className="af-bar">
           <span className="af-tabs" role="tablist" aria-label="Which files">
             {tabs.map(([k, label]) => (
@@ -230,6 +233,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
         )}
       </Content>
       <input ref={pdfIn} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => (e.target.files?.[0] && void makePdf(e.target.files[0]), (e.target.value = ''))} />
+      {characters && <CharacterLibrary onClose={() => setCharacters(false)} />}
       {recording && uid && <MediaDialog classId={'user:' + uid} tab="record" noArchive onClose={() => setRecording(false)} onPick={() => setRecording(false)} />}
     </div>
   );
