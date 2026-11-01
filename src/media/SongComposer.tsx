@@ -40,7 +40,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
     const request=++lessonRequest.current;setLessonInfo(null);setLessonError('');patch({lesson:null});
     if(!reference){setLessonBusy(false);return;}
     setLessonBusy(true);
-    try{const info=await loadSongLesson(reference);if(request!==lessonRequest.current)return;setLessonInfo(info);patch({lesson:reference,...(!brief.title.trim()?{title:info.title+' song'}:{}),...(['Young learners','Teenagers','Adults'].includes(info.audience)?{audience:info.audience}:{}),...(['Pre-A1','A1','A2','B1','B2','C1','C2'].includes(info.level)?{level:info.level}:{})});}
+    try{const info=await loadSongLesson(reference);if(request!==lessonRequest.current)return;setLessonInfo(info);patch({lesson:reference,...(!brief.title.trim()?{title:(info.title+' song').slice(0,100)}:{}),...(['Young learners','Teenagers','Adults'].includes(info.audience)?{audience:info.audience}:{}),...(['Pre-A1','A1','A2','B1','B2','C1','C2'].includes(info.level)?{level:info.level}:{})});}
     catch(e){if(request===lessonRequest.current)setLessonError((e as Error).message||'This lesson could not be linked.');}
     finally{if(request===lessonRequest.current)setLessonBusy(false);}
   };
