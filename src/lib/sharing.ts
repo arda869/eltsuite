@@ -5,7 +5,7 @@ import { db } from './firebase';
 import { keyRef, notesRef, tasksCol } from './tasks';
 import { mediaDoc } from './media';
 import { mediaIds, remap } from './fullcopy';
-import { archiveAdd, archiveGet, type ArchiveItem } from './archive';
+import { copySoundStems, archiveAdd, archiveGet, type ArchiveItem } from './archive';
 import { newId } from './tasks';
 
 // Colleagues and sharing. Teachers connect through an invitation link (never by searching
@@ -85,7 +85,8 @@ export async function removeColleague(me: string, other: string) {
 
 // Copies media docs (sounds with their parts) from one space to another, keeping their ids.
 async function copyMediaKeep(from: string, to: string, ids: Iterable<string>) {
-  for (const id of ids) {
+  const pending=new Set(ids);
+  for (const id of pending) {
     const m = await getDoc(mediaDoc(from, id)).catch(() => null);
     if (!m?.exists()) continue;
     const d = m.data();
@@ -93,6 +94,7 @@ async function copyMediaKeep(from: string, to: string, ids: Iterable<string>) {
       const p = await getDoc(mediaDoc(from, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(mediaDoc(to, `${id}_p${k}`), p.data());
     }
+    if(d.stems){pending.add(d.stems.vocals);pending.add(d.stems.instrumental);}
     await setDoc(mediaDoc(to, id), strip(d));
   }
 }
@@ -205,7 +207,8 @@ async function carry(space: string, toClass: string, values: unknown[]) {
       const p = await getDoc(mediaDoc(space, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(doc(db, 'classes', toClass, 'media', `${r.id}_p${k}`), p.data());
     }
-    await setDoc(r, { ...d, createdAt: serverTimestamp() });
+    const stems=d.stems?await copySoundStems({classId:space,stems:d.stems},toClass):undefined;
+    await setDoc(r, { ...d, ...(stems?{stems}:{}), createdAt: serverTimestamp() });
     map[id] = r.id;
   }
   return map;
@@ -262,7 +265,8 @@ export async function copyMediaToArchive(sh: Share, uid: string) {
     const p = await getDoc(mediaDoc('share:' + sh.id, `${a.home.mediaId}_p${k}`));
     if (p.exists()) await setDoc(mediaDoc(space, `${id}_p${k}`), p.data());
   }
-  await setDoc(mediaDoc(space, id), d);
+  const stems=d.stems?await copySoundStems({classId:'share:'+sh.id,stems:d.stems},space):undefined;
+  await setDoc(mediaDoc(space, id), {...d,...(stems?{stems}:{})});
   return archiveAdd(uid, { kind: a.kind ?? 'image', name: a.name ?? sh.title, folder: '', tags: a.tags ?? [], size: a.size ?? 0, thumb: a.thumb, script: a.script, duration: a.duration, home: { classId: space, mediaId: id }, copies: { [space]: id } } as Omit<ArchiveItem, 'id' | 'createdAt'>);
 }
 export { archiveGet };

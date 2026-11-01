@@ -74,7 +74,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
   const video = mediaIsVideo(m);
   const stored = m?.kind === 'audio';
   const [vocalsOn,setVocalsOn]=useState(true);const switchPosition=useRef<{time:number;playing:boolean}|null>(null);
-  const chooseVocals=(on:boolean)=>{if(el.current)switchPosition.current={time:el.current.currentTime,playing:!el.current.paused};setReady(false);setVocalsOn(on);};
+  const chooseVocals=(on:boolean)=>{setError('');if(el.current)switchPosition.current={time:el.current.currentTime,playing:!el.current.paused};setReady(false);setVocalsOn(on);};
   useEffect(()=>{setVocalsOn(!m?.stems?.vocalsOff);switchPosition.current=null;},[classId,mediaId,m?.stems?.vocalsOff]);
 
   // A sound or video element (stored sound, or a file on the web).
@@ -112,14 +112,14 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
       setTime(media.currentTime);
     };
     media.onended = () => setEnds((n) => n + 1);
-    media.onerror = () => setError(stored ? 'We couldn’t open this recording.' : 'We couldn’t play this file. Check the address.');
+    media.onerror = () => {setError(!vocalsOn?'The backing track is unavailable. The original song is kept.':stored?'We couldn’t open this recording.':'We couldn’t play this file. Check the address.');if(!vocalsOn)setVocalsOn(true);};
     (stored ? (!vocalsOn&&m.stems?loadManifest(classId,m.stems.instrumental).then(stem=>{if(!stem)throw Error('missing stem');return soundUrl(classId,m.stems!.instrumental,stem);}):soundUrl(classId, mediaId, m)) : Promise.resolve(url)).then(
       (src) => {
         if (cancelled) return;
         media.src = src;
         if (m.duration) setDuration(m.duration);
       },
-      () => setError('We couldn’t open this recording.'),
+      () => {setError(!vocalsOn?'The backing track is unavailable. The original song is kept.':'We couldn’t open this recording.');if(!vocalsOn)setVocalsOn(true);},
     );
     return () => {
       cancelled = true;

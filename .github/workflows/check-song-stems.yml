@@ -26,7 +26,13 @@ jobs:
           VITE_ELT_AI_PILOT: 'true'
       - run: npx playwright install --with-deps chromium
       - run: |
-          node test/smoke.mjs --only=Songs: --a11y
+          mkdir -p outputs
+          SONG_STEMS_SCREENSHOT=outputs/song-stems-preview.png node test/smoke.mjs --only=Songs: --a11y
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: song-interface-preview
+          path: outputs/song-stems-preview.png
       - run: npm run a11y
       - run: node --test test/speech/song-separation.test.mjs
       - name: Real model on the model publisher's public audio example

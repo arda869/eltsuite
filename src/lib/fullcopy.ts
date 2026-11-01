@@ -1,3 +1,4 @@
+import { copySoundStems } from './archive';
 import { addDoc, collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, writeBatch, type DocumentData } from 'firebase/firestore';
 import { get, ref, set } from 'firebase/database';
 import { db, rtdb } from './firebase';
@@ -57,7 +58,8 @@ export async function carryMedia(fromClass: string, toClass: string, values: unk
       const p = await getDoc(mediaDoc(fromClass, `${id}_p${k}`)).catch(() => null);
       if (p?.exists()) await setDoc(mediaDoc(toClass, `${r.id}_p${k}`), p.data());
     }
-    await setDoc(r, d);
+    const stems=d.stems?await copySoundStems({classId:fromClass,stems:d.stems},toClass):undefined;
+    await setDoc(r, {...d,...(stems?{stems}:{})});
     map[id] = r.id;
   }
   return map;
@@ -100,6 +102,7 @@ export async function lessonBundle(classId: string, itemId: string): Promise<Les
     const m = await getDoc(doc(db, 'classes', classId, 'media', id)).catch(() => null);
     if (!m?.exists()) continue;
     const d = m.data();
+    if(d.stems){ids.add(d.stems.vocals);ids.add(d.stems.instrumental);}
     if (d.kind === 'audio' || d.kind === 'link') {
       media[id] = strip(d);
       for (let k = 0; k < (d.parts ?? 0); k++) {
@@ -143,6 +146,11 @@ export async function importBundle(classId: string, b: LessonBundle, opts: { top
     }
     const r = await addDoc(collection(db, 'classes', classId, 'media'), { ...m, createdAt: serverTimestamp() });
     mediaMap[id] = r.id;
+  }
+  for(const [old,m] of Object.entries(all))if(m.stems&&mediaMap[old]){
+    const vocals=mediaMap[m.stems.vocals],instrumental=mediaMap[m.stems.instrumental];
+    if(!vocals||!instrumental)throw Error('The song’s separate tracks are missing from this lesson file.');
+    await setDoc(doc(db,'classes',classId,'media',mediaMap[old]),{stems:{...m.stems,vocals,instrumental}},{merge:true});
   }
   const itemRef = doc(collection(db, 'classes', classId, 'items'));
   const pages = (b.item.boardPages as { id: string; title?: string }[] | undefined) ?? [];
