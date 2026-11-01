@@ -1581,7 +1581,7 @@ const J = {
   },
   'Development Studio reading, private writing and classroom inquiry': async (b) => {
     const s = await session(b);
-    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; fs['sharedDocs/existing-reading'] = {owner:'teacher1',ownerName:'Arda',title:'Classroom interaction notes',kind:'pd',docKey:'reading-test',members:{colleague:{role:'edit',name:'Colleague',kind:'teacher'}},memberIds:['colleague']}; localStorage.setItem('mockfs', JSON.stringify(fs)); });
+    await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); delete fs['aiPilot/teacher1']; fs['sharedDocs/existing-reading'] = {owner:'teacher1',ownerName:'Arda',title:'Classroom interaction notes',kind:'pd',docKey:'reading-test',members:{colleague:{role:'edit',name:'Colleague',kind:'teacher'}},memberIds:['colleague']}; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(BASE + '/development');
     await see(s.p, 'h1:has-text("Development Studio")', 'development workspace');
     await s.p.getByRole('button', { name: 'Reading', exact: true }).click();

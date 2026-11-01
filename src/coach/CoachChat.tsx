@@ -5,7 +5,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { doc, runTransaction } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, db } from '../lib/firebase';
-import { useAiPilot } from '../ai/pilot';
 import { profileComplete, beliefsComplete } from '../../functions/ai/coach-context.js';
 import { type CoachProfile } from './model';
 import { Link } from 'react-router-dom';
@@ -20,7 +19,6 @@ const call = httpsCallable<Record<string, unknown>, { reply: string; basis: stri
 export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
   uid: string; profile: CoachProfile; initialPrompt: string; reflectionId: string;
 }) {
-  const pilot = useAiPilot();
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState(initialPrompt);
   const { value: preferences, ready: preferencesReady } = useCoachPreferences(uid);
@@ -51,7 +49,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
   }, [draft]);
 
   async function send() {
-    if (!draft.trim() || lock.current || !complete || !pilot || !preferencesReady) return;
+    if (!draft.trim() || lock.current || !complete || !preferencesReady) return;
     lock.current = true; setBusy(true); setError('');
     const turnGeneration = generation.current;
     const text = draft.trim(); setPendingText(text);
@@ -79,7 +77,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
     finally {setJournalSaving(false);}
   }
   function newChat() { setJournal(null); setJournalSaved(''); setMessages([]); setDraft(''); setError(''); request.current = null; }
-  const canSend = complete && pilot && preferencesReady && !busy && !!draft.trim();
+  const canSend = complete && preferencesReady && !busy && !!draft.trim();
   return <section className="coach-chat" aria-label="Teaching coach chat">
     <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teaching coach</h2></div><div className="coach-chat-tools"><button className="btn" disabled={busy || !messages.length} onClick={newChat}>New chat</button><Link className="btn" to="/settings#set-teaching-coach">Settings</Link></div></header>
     {error && <p className="coach-notice coach-error" role="alert">{error}</p>}
@@ -89,7 +87,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId }: {
         {messages.map((m,i) => <article key={i} className={`coach-message coach-chat-message coach-chat-message-${m.role}`}><strong>{m.role === 'teacher' ? 'You' : 'Teaching coach'}</strong><div>{m.text}</div>{m.journalDraft && <button className="btn" onClick={()=>{setJournal({id:crypto.randomUUID(),title:'A reflection from my coaching conversation',text:m.journalDraft!});setJournalSaved('');}}>Review journal draft</button>}{!!m.basis?.length && <details className="coach-chat-basis"><summary>Context used</summary><ul>{m.basis.map((basis,j) => <li key={j}>{basis}</li>)}</ul></details>}</article>)}
         {busy && <><article className="coach-chat-message coach-chat-message-teacher"><strong>You</strong><div>{pendingText}</div></article><div className="coach-chat-typing" role="status"><span className="coach-thinking-dots" aria-hidden="true"><i/><i/><i/></span><span>Your coach is thinking</span></div></>}
       </div>
-      <div className="coach-chat-bottom">{!pilot && <p className="hint">AI chat isn’t enabled for your account yet. Your reflections, reading and research are available.</p>}
+      <div className="coach-chat-bottom">
         <form className="coach-chat-composer" onSubmit={e => { e.preventDefault(); void send(); }}><label className="coach-chat-input-label"><span className="sr-only">Message your coach</span><textarea ref={composer} aria-label="Message your coach" rows={1} maxLength={6000} value={draft} disabled={busy} placeholder="Message your coach…" onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (canSend) void send(); } }} /></label><button className="btn primary" type="submit" disabled={!canSend}>{busy ? 'Sending…' : 'Send'}</button></form>
         <div className="coach-chat-footer"><small>Enter to send · Shift + Enter for a new line</small></div>
       </div>
