@@ -89,6 +89,26 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();
+    await dialog.getByRole('link',{name:'Discuss with coach',exact:true}).click();
+    await s.p.getByRole('complementary',{name:'Selected teaching context'}).waitFor();
+    if(await s.p.getByText('Let’s start with your teaching',{exact:true}).count())throw Error('Optional profile blocked selected-lesson discussion');
+    await s.p.getByLabel('Message your coach').fill('How could I support learners with this activity?');
+    await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await see(s.p,'.coach-message:has-text("What did you notice")','contextual coaching reply');
+    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(request.lessonContext.classId!==s.demo.classId||request.lessonContext.itemId!==s.demo.itemId||!request.lessonContext.reportId||!request.lessonContext.taskId)throw Error('Selected report and activity were not passed');
+    await s.p.getByRole('link',{name:'Selected activity',exact:true}).waitFor();
+    await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
+    await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
+    if(await s.p.locator('.coach-message').count())throw Error('Previous lesson conversation retained after context removal');
+    return s;
+  },
   'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -491,6 +511,39 @@ const J = {
     return s;
   },
 
+  'Songs: separate tracks preview, mute, save and reopen': async (b) => {
+    const s=await session(b);await s.ctx.tracing.start({screenshots:true,snapshots:true,sources:true});try{s.p.setDefaultTimeout(60000);
+    const pendingRequests=new Set();s.p.on('request',r=>pendingRequests.add(r.url()));s.p.on('requestfinished',r=>pendingRequests.delete(r.url()));s.p.on('requestfailed',r=>pendingRequests.delete(r.url()));
+    const reopened=async()=>{await s.p.getByLabel('Sing-along backing volume',{exact:true}).waitFor({timeout:20000}).catch(async()=>{await s.p.screenshot({path:'outputs/song-stems-reopen-failure.png'});throw Error('Reopen failed at '+s.p.url()+'\n'+s.errors.join('\n')+'\nPending: '+[...pendingRequests].join(' ')+'\nDOM: '+(await s.p.locator('#root').innerHTML()).slice(0,1400));});};await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&savedStudio');
+    await s.p.evaluate(()=>sessionStorage.setItem('mockStemDelayMs','1800'));
+    await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
+    await d.getByLabel('Lyrics',{exact:true}).fill('Hello, hello, sing with me.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();
+    await d.getByText(/Preparing sing-along tracks/).waitFor();if(await d.getByRole('button',{name:'Add song to timeline'}).isEnabled())throw Error('Add should explain why tracks are not ready');
+    await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).click();const audio=d.locator('audio');
+    await audio.evaluate(el=>el.play());await s.p.waitForFunction(()=>document.querySelector('dialog audio')?.currentTime>.1);await audio.evaluate(el=>el.pause());
+    await s.p.setViewportSize({width:390,height:844});if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Sing-along controls overflow on mobile');await axe(s.p,'Song stems phone preview',A11Y_FOUND);await s.p.setViewportSize({width:1300,height:900});
+    await axe(s.p,'Song stems preview',A11Y_FOUND);if(process.env.SONG_STEMS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_STEMS_SCREENSHOT});
+    await d.getByRole('button',{name:'Vocals only',exact:true}).click();await d.getByRole('button',{name:'Full song',exact:true}).click();await d.getByRole('button',{name:'Add song to timeline'}).click();await d.waitFor({state:'hidden'});
+    await s.p.getByRole('button',{name:'Mute Classroom song · Vocals',exact:true}).click();if(await s.p.getByRole('button',{name:'Mute Classroom song · Vocals'}).getAttribute('aria-pressed')!=='true')throw Error('Vocal mute failed');
+    await s.p.getByRole('button',{name:'Save',exact:true}).click();await s.p.getByRole('dialog',{name:'Save the recording'}).getByRole('button',{name:'Save',exact:true}).click();
+    await reopened();
+    const saved=await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.entries(fs).filter(([k,v])=>k.includes('/media/')&&v.stems).map(([k,v])=>({key:k,stems:v.stems}));});if(saved.length!==1)throw Error('Separate tracks were not persisted');
+    await s.p.reload();await reopened();await axe(s.p,'Saved separate song tracks reopened',A11Y_FOUND);
+    const copied=await s.p.evaluate(async({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs')),entry=Object.entries(fs).find(([k,v])=>k.startsWith('users/teacher1/archive/')&&v.name==='Classroom song');if(!entry)throw Error('Saved archive entry missing');const item={id:entry[0].split('/').at(-1),...entry[1]},api=await import('/src/lib/archive.ts');return api.mediaIn('teacher1',item,classId);},s.demo);
+    await s.p.evaluate(async({classId,itemId,mediaId})=>{
+      const full=await import('/src/lib/fullcopy.ts'),fire=await import('/test/mock/firestore.ts'),share=await import('/src/lib/sharing.ts');
+      const read=()=>JSON.parse(localStorage.getItem('mockfs'));
+      const verify=(space,id)=>{const prefix=space.startsWith('user:')?'users/'+space.slice(5):space.startsWith('share:')?'shares/'+space.slice(6):'classes/'+space;const data=read(),m=data[prefix+'/media/'+id];if(!m?.stems)throw Error('Song links missing after copy');for(const stem of ['vocals','instrumental']){const key=prefix+'/media/'+m.stems[stem];if(!data[key]||!data[key+'_p0']?.data)throw Error('Copied stem audio is missing');}};
+      const carried=await full.carryMedia(classId,'song-carry-target',[{audioId:mediaId}]);verify('song-carry-target',carried[mediaId]);
+      await fire.setDoc(fire.doc({},'classes',classId,'items',itemId,'tasks','song-bundle-test'),{kind:'task',order:90,title:'Song',audioId:mediaId});
+      const bundle=await full.lessonBundle(classId,itemId),stems=bundle.media[mediaId].stems;if(!bundle.media[stems.vocals]||!bundle.media[stems.instrumental])throw Error('Lesson export omitted stem audio');
+      const before=new Set(Object.keys(read()));await full.importBundle('song-bundle-target',bundle,{title:'Song bundle test'});const stored=read();const imported=Object.entries(stored).find(([k,v])=>!before.has(k)&&k.startsWith('classes/song-bundle-target/media/')&&v.stems);if(!imported)throw Error('Imported song manifest missing');verify('song-bundle-target',imported[0].split('/').at(-1));
+      const archive={id:'song-shared',kind:'audio',name:'Shared song',folder:'',tags:[],size:0,createdAt:Date.now(),home:{classId,mediaId}},spec={kind:'media',owner:'teacher1',ownerName:'Teacher',title:'Shared song',mode:'link',people:[],src:{},archive,notes:false};
+      const sharedId=await share.createShare(spec);verify('share:'+sharedId,mediaId);const own=await share.copyMediaToArchive({...spec,id:sharedId},'teacher1');const resource=read()['users/teacher1/archive/'+own];verify(resource.home.classId,resource.home.mediaId);
+    },{...s.demo,mediaId:copied});
+    await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&mode=player&class='+s.demo.classId+'&media='+copied);await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Play',exact:true}).click();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).click();await s.p.getByRole('button',{name:'Vocals on',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals on',exact:true}).click();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await axe(s.p,'Copied song vocals-off player',A11Y_FOUND);return s;}finally{await s.ctx.tracing.stop({path:'outputs/song-stems-trace.zip'});}
+  },
   'Songs: topic-only lyric drafting needs no title or lesson': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();
@@ -541,7 +594,7 @@ const J = {
     if(songRequest.name!=='recordingSong'||songRequest.approved!==true||!songRequest.brief.lyrics.trim())throw Error('Reviewed AI lyrics did not reach song creation');
     const playable=await d.locator('audio').evaluate(el=>new Promise((resolve,reject)=>{const check=()=>el.readyState>=1&&el.duration>0?resolve(true):false;if(check())return;el.addEventListener('loadedmetadata',()=>resolve(el.duration>0),{once:true});el.addEventListener('error',()=>reject(Error('Song audio failed to load')),{once:true});}));
     if(!playable)throw Error('Created song must have playable audio');
-    if(await d.getByRole('progressbar').count())throw Error('Progress remained after music creation finished');
+    if(await d.locator('.song-work').count())throw Error('Music generation progress remained after music creation finished');
     await axe(s.p,'Topic-only lyric drafting',A11Y_FOUND);return s;
   },
   'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {
@@ -1734,6 +1787,28 @@ const J = {
     const s = await session(b);
     await s.p.goto(`${BASE}/admin`);
     await see(s.p, 'text=only for the super admins', 'the closed Super Admin');
+    return s;
+  },
+  'Learner submission records attempts before feedback and preserves retry history': async b => {
+    const s=await session(b,{as:'Mia'});
+    await s.p.evaluate(({classId,itemId})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      const root='classes/'+classId+'/items/'+itemId+'/tasks/';
+      for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];
+      fs[root+'submit-check']={kind:'task',title:'Yesterday',instructions:'Complete with the past form of go.',order:0,hidden:false,locked:false,afterCheck:'retry',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'submit-gap',answers:[]}},{type:'text',text:' home.'}]}]}};
+      fs[root+'submit-check/private/key']={'submit-gap':{kind:'gap',answers:['went']}};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+    },s.demo);
+    await s.p.goto(BASE+'/learn/'+s.demo.itemId);
+    await s.p.getByRole('textbox',{name:'Question 1',exact:true}).fill('go');
+    await s.p.getByRole('button',{name:'Check answers',exact:true}).click();
+    await s.p.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(d=>d.taskId==='submit-check'&&d.checked&&d.attempts===1&&d.submittedAt));
+    await s.p.getByRole('button',{name:'Try the wrong ones again',exact:true}).click();
+    await s.p.getByRole('textbox',{name:'Question 1',exact:true}).fill('went');
+    await s.p.getByRole('button',{name:'Check answers',exact:true}).click();
+    await s.p.waitForFunction(()=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).some(d=>d.taskId==='submit-check'&&d.checked&&d.attempts===2&&d.score===1));
+    await s.p.reload();
+    await see(s.p,'text=1 of 1 correct','saved second attempt score');
     return s;
   },
   'Learner signs in and opens the lesson': async (b) => {

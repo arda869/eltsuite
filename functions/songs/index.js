@@ -1,3 +1,5 @@
+import { GenerationError } from '../ai/errors.js';
+import { readSongParts } from './stems.js';
 import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
@@ -44,7 +46,16 @@ export const recordingLyrics=onCall({...options,secrets:[openai],timeoutSeconds:
   try{
     const {value}=await generate({apiKey:openai.value(),model:'gpt-6.1-sol',schema:lyricSchema,name:'song_lyrics',input:{...brief,linkedLesson},instructions:lyricInstructions});
     await finish(uid,job.ref,{status:'complete',lyrics:value.lyrics});return {id,status:'complete',lyrics:value.lyrics};
-  }catch{await finish(uid,job.ref,{status:'failed',error:'The lyrics could not be drafted. Your existing words are kept.'});throw new HttpsError('unavailable','The lyrics could not be drafted. Your existing words are kept.');}
+  }catch(e){
+    const reason=e instanceof GenerationError?e.reason:'unknown';
+    const error=reason==='billing'?'AI lyric drafting is unavailable because the AI account needs more credit or has reached its spending limit. Your words are kept. You can use your own lyrics to create a song.'
+      :['credentials','model_access','access','request'].includes(reason)?'AI lyric drafting needs an administrator to check the service setup. Your words are kept. You can use your own lyrics to create a song.'
+      :reason==='rate_limit'?'AI lyric drafting is temporarily busy. Your words are kept. Wait before trying again, or use your own lyrics.'
+      :reason==='timeout'?'AI lyric drafting took too long. Your words are kept. Try again later, or use your own lyrics.'
+      :'The lyrics could not be drafted. Your existing words are kept.';
+    await finish(uid,job.ref,{status:'failed',error,failureReason:reason});
+    throw new HttpsError(reason==='billing'?'failed-precondition':'unavailable',error,{reason});
+  }
 });
 export const recordingSong=onCall({...options,secrets:[gemini],timeoutSeconds:540},async req=>{
   const uid=await authorizeTeacher(req);let brief;
@@ -72,9 +83,12 @@ export const recordingSongResult=onCall({...options,timeoutSeconds:60},async req
   if(d.status==='working'&&Date.now()-d.createdAt>540000)return {status:'failed',error:'This attempt did not finish. Your words are kept; you can start a new attempt.'};
   if(d.status!=='complete')return {status:d.status,error:d.error??''};
   if(d.kind==='lyrics')return {status:'complete',lyrics:d.lyrics};
-  if(!Number.isInteger(d.parts)||d.parts<1||d.parts>27)throw new HttpsError('unavailable','The stored song is incomplete. Your lyrics are kept.');
-  const chunks=await Promise.all(Array.from({length:d.parts},(_,i)=>ref.collection('parts').doc(String(i)).get()));
-  if(chunks.some(c=>!c.exists||!Buffer.isBuffer(c.get('bytes'))))throw new HttpsError('unavailable','The stored song is incomplete. Your lyrics are kept.');
-  const bytes=Buffer.concat(chunks.map(c=>c.get('bytes')));
-  return {status:'complete',audio:bytes.toString('base64'),mime:d.mime,providerLyrics:d.providerLyrics};
+  const stems=d.stems?.status==='working'&&d.stems.busyUntil<Date.now()?{status:'failed',error:'Track preparation took too long. Your original song is kept; retry preparing tracks.'}:d.stems;
+  const metadata=stems?{status:stems.status,progress:stems.progress??0,error:stems.error??''}:null;
+  if(req.data?.metaOnly===true)return {status:'complete',stems:metadata};
+  const stem=req.data?.stem;
+  if(stem!==undefined&&!['vocals','instrumental'].includes(stem))throw new HttpsError('invalid-argument','Choose vocals or instrumental.');
+  if(stem&&stems?.status!=='complete')throw new HttpsError('failed-precondition','The sing-along tracks are still being prepared.');
+  const bytes=await readSongParts(ref.collection(stem||'parts'),stem?stems.parts?.[stem]:d.parts);
+  return {status:'complete',audio:bytes.toString('base64'),mime:stem?stems.mime:d.mime,providerLyrics:d.providerLyrics,stems:metadata};
 });

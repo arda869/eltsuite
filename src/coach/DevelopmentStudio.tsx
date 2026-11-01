@@ -65,6 +65,7 @@ function Workspace({ uid }: { uid: string }) {
     setDirty(true); setParams({ section: 'reflections' }, { replace: true });
   }, [params, docs.mine, docs.withMe]);
 
+  const lessonContext=params.get('classId')&&params.get('itemId')?{classId:params.get('classId')!,itemId:params.get('itemId')!,taskId:params.get('taskId')??'',reportId:params.get('reportId')??''}:undefined;
   const [prompt, setPrompt] = useState('');
   const [entryId, setEntryId] = useState('');
   const lock = useRef(false);
@@ -118,7 +119,7 @@ function Workspace({ uid }: { uid: string }) {
     <header className="coach-hero"><div><span className="coach-kicker">Ideas into practice</span><h1>Development Studio</h1><p>Read, reflect and explore your teaching.<br />Bring your professional learning together.</p></div><div className="development-account"><span className="coach-private">Private reflections</span><button className="btn" disabled={busy} onClick={() => navigate('Profile & beliefs')}>Profile and beliefs</button></div></header>
     <nav className="coach-nav" aria-label="Development Studio">{tabs.map(t => <button key={t} aria-current={tab === t ? 'page' : undefined} disabled={busy} onClick={() => navigate(t)}>{t}</button>)}</nav>
     {error && <div role="alert" className="coach-notice coach-error">{error}</div>}{notice && <div role="status" className="coach-notice">{notice}</div>}
-    {ready && <div className="coach-chat-host" hidden={tab !== 'Coach'}><CoachChat uid={uid} profile={profile} initialPrompt={prompt} reflectionId={entryId} evidencePacketId={params.get('evidence')||''} /></div>}
+    {ready && <div className="coach-chat-host" hidden={tab !== 'Coach'}><CoachChat uid={uid} profile={profile} initialPrompt={prompt||(lessonContext?'Help me think through this activity and identify one useful improvement.':'')} reflectionId={entryId} evidencePacketId={params.get('evidence')||''} lessonContext={lessonContext} onClearLesson={()=>setParams({section:'coach'})} /></div>}
     <div className="studio-section-scroll" hidden={tab === 'Coach'} key={tab}>
     {tab === 'Coach' ? (!ready ? <p role="status">Opening your coach…</p> : null) : tab === 'Reading' ? <AppFiles app="reading" embedded /> : !ready ? <p role="status">Loading your private workspace…</p> : <div className={tab === 'Home' ? "development-home-layout" : "coach-layout"}><section className="coach-panel" aria-label={tab}><fieldset className="coach-content" disabled={busy}>
       {tab === 'Home' && <><div className="coach-row"><div><span className="coach-kicker">Make space for your practice</span><h2>Where would you like to start?</h2></div><button className="btn" onClick={() => navigate('Timeline')}>View my timeline</button></div><div className="development-paths">{[

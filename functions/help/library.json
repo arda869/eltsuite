@@ -3745,10 +3745,10 @@
       "category": "Professional development",
       "id": "linguistics-connections",
       "title": "Corpus connections and reviewed AI analysis",
-      "keywords": "corpus API unavailable licence license sketch engine AI analysis annotation coach evidence privacy",
-      "summary": "Manual evidence collections work without a corpus subscription. Licensed corpus search needs administrator setup. AI analysis is tentative and needs your review.",
+      "keywords": "corpus API unavailable licence license sketch engine AI analysis annotation coach evidence privacy Tatoeba example sentences attribution",
+      "summary": "Search Tatoeba example sentences without an API key, or use teacher-supplied evidence. Optional professional corpora need setup. AI analysis is tentative and needs your review.",
       "steps": [
-        "If corpus search says it is awaiting setup, use teacher-supplied evidence or ask the administrator to configure the provider and approved corpus licences. An API key alone does not grant reuse rights.",
+        "In Corpus Explorer, find example sentences using Tatoeba, select the examples and add them to your evidence. Their contributor, source link and licence credits are retained. Review suitability for your learners; Tatoeba is not a balanced corpus for frequency or register statistics.",
         "To request analysis, save your investigation, choose Select evidence for AI, review the exact preview and confirm. Raw learner records are excluded.",
         "Review the suggested spans, alternative explanations and limitations. Add suggestions as unconfirmed annotations, then confirm individual annotations before sharing.",
         "For Teaching Coach, select an existing inquiry and reviewed evidence, choose Review with Teaching Coach, and confirm the exact packet. Existing Coach context preferences still apply.",
@@ -3758,10 +3758,11 @@
       "questions": [
         "Why is corpus search unavailable?",
         "How do I ask AI to analyse selected evidence?",
-        "Can I discuss selected evidence with Teaching Coach?"
+        "Can I discuss selected evidence with Teaching Coach?",
+        "How do I find Tatoeba example sentences?"
       ],
       "reviewedAt": "2026-11-02",
-      "verification": "Source reviewed; manual workflow tested with Firebase simulated. Provider access depends on configuration and approved licences."
+      "verification": "Source reviewed; public Tatoeba API search and backend provenance tested. Published teacher journey awaits verification."
     }
   ]
 }
