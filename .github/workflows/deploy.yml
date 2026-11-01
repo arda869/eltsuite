@@ -43,7 +43,7 @@ jobs:
         run: node --test test/ai/help.test.mjs
 
       - name: Video editor and storyboard checks
-        run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
+        run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs test/video-secret-binding.test.mjs test/video-connection.test.mjs
       - name: Video access rules and service checks
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-video-editor "node test/video-access.mjs"
       - name: File retention regression checks
@@ -108,6 +108,11 @@ jobs:
           set -o pipefail
           npx --yes firebase-tools@14 deploy --only functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
+
+      - name: Verify deployed video secret binding and API authentication
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node functions/video/check-connection.mjs
 
       - name: Check assistant rejects signed-out requests
         run: |

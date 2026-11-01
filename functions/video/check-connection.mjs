@@ -29,7 +29,7 @@ async function main(){
   const version=metadata.name.split('/').at(-1);
   const fn=await google('https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/videoStudio');
   const bound=fn.serviceConfig?.secretEnvironmentVariables?.find(s=>s.key==='RUNWAYML_API_SECRET');
-  const report={secretVersion:version,enabled:metadata.state==='ENABLED',deployedVersion:bound?.version||null,versionMatches:bound?.version===version,videoEnabled:fn.serviceConfig?.environmentVariables?.VIDEO_AI_ENABLED==='true'};
+  const report={secretVersion:version,enabled:metadata.state==='ENABLED',deployedVersion:bound?.version||null,versionMatches:bound?.version==='latest'||bound?.version===version,videoEnabled:fn.serviceConfig?.environmentVariables?.VIDEO_AI_ENABLED==='true'};
   if(report.enabled){
     const payload=await google(secret+':access');
     const key=Buffer.from(payload.payload.data,'base64').toString('utf8');
@@ -37,6 +37,7 @@ async function main(){
   }
   console.log(JSON.stringify(report,null,2));
   console.log('Read-only connection check. No generation request was made. Secret values and account details were not printed.');
+  if(!report.enabled||!report.versionMatches||!report.videoEnabled||!report.accepted)process.exitCode=1;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   main().catch(()=>{console.error('The private connection check could not complete. No secret values were printed.');process.exitCode=1;});

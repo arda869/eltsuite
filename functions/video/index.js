@@ -6,10 +6,9 @@ import { defineSecret } from "firebase-functions/params";
 import { getFirestore } from "firebase-admin/firestore";
 import { authorizeTeacher } from "../speech/access.js";
 import { videoRequest, videoBody, runway, characterImage } from "./contract.js";
-// Firebase resolves every declared secret, even when no endpoint binds it.
-const runwayKey = process.env.VIDEO_AI_ENABLED === "true"
-  ? defineSecret("RUNWAYML_API_SECRET")
-  : { value: () => process.env.RUNWAYML_API_SECRET || "" },
+// Bind configured secrets independently of discovery-time feature flags.
+// A runtime flag can enable video after discovery, but cannot inject an omitted secret.
+const runwayKey = defineSecret("RUNWAYML_API_SECRET"),
   imageKey = defineSecret("OPENAI_API_KEY");
 const DB = () => getFirestore();
 const enabled = () => process.env.VIDEO_AI_ENABLED === "true";
@@ -140,7 +139,7 @@ async function reserve(uid, d) {
 export const videoStudio = onCall(
   {
     region: "us-central1",
-    secrets: [...(enabled() ? [runwayKey] : []), imageKey],
+    secrets: [runwayKey, imageKey],
     maxInstances: 3,
     concurrency: 1,
     timeoutSeconds: 300,
@@ -392,7 +391,7 @@ export const refreshVideoJobs = onSchedule(
   {
     schedule: "every 5 minutes",
     region: "us-central1",
-    secrets: enabled() ? [runwayKey] : [],
+    secrets: [runwayKey],
     maxInstances: 1,
     timeoutSeconds: 300,
     memory: "512MiB",
@@ -432,3 +431,4 @@ export const refreshVideoJobs = onSchedule(
         });
   },
 );
+
