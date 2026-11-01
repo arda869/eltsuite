@@ -1,3 +1,4 @@
+import { LearnerInsights } from '../ai/LearnerInsights';
 import { LessonTools } from '../ai/LessonTools';
 import { MaterialImport, ImportMaterialsButton, TaskStartChoice } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
@@ -1118,7 +1119,7 @@ export function LessonEditor() {
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
-          {mode === 'edit' && !preview && !boardView && <LessonTools classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/>}
+          {mode === 'edit' && !preview && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
