@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
+import { AI_FEATURES } from '../functions/ai/features.js';
 
 const require = createRequire(import.meta.url);
 const BASE = `http://localhost:${process.env.SMOKE_PORT || '5184'}`;
@@ -1590,7 +1591,8 @@ const J = {
     await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click({timeout:15000}).catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+await s.p.locator('body').innerText());});
     await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
     await see(s.p,'.ai-usage-row','per-feature allowances');
-    if(await s.p.locator('.ai-usage-row').count()!==19)throw Error('Missing AI features');
+    if(await s.p.locator('.ai-usage-row').count()!==AI_FEATURES.length)throw Error('Missing AI features');
+    await s.p.getByRole('button',{name:'Teaching definitions allowance',exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Songs allowance',exact:true}).click();
     await s.p.getByRole('option',{name:'Custom daily limit',exact:true}).click();
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('0');
