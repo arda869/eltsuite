@@ -449,6 +449,7 @@ const J = {
     await d.getByText(/Preparing sing-along tracks/).waitFor();if(await d.getByRole('button',{name:'Add song to timeline'}).isEnabled())throw Error('Add should explain why tracks are not ready');
     await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).click();const audio=d.locator('audio');
     await audio.evaluate(el=>el.play());await s.p.waitForFunction(()=>document.querySelector('dialog audio')?.currentTime>.1);await audio.evaluate(el=>el.pause());
+    await s.p.setViewportSize({width:390,height:844});if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Sing-along controls overflow on mobile');await axe(s.p,'Song stems phone preview',A11Y_FOUND);await s.p.setViewportSize({width:1300,height:900});
     await axe(s.p,'Song stems preview',A11Y_FOUND);if(process.env.SONG_STEMS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_STEMS_SCREENSHOT});
     await d.getByRole('button',{name:'Vocals only',exact:true}).click();await d.getByRole('button',{name:'Full song',exact:true}).click();await d.getByRole('button',{name:'Add song to timeline'}).click();await d.waitFor({state:'hidden'});
     await s.p.getByRole('button',{name:'Mute Classroom song · Vocals',exact:true}).click();if(await s.p.getByRole('button',{name:'Mute Classroom song · Vocals'}).getAttribute('aria-pressed')!=='true')throw Error('Vocal mute failed');

@@ -25,6 +25,7 @@ const P: Record<string, ReactNode> = {
   alignJustify: <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />,
   plus: <path d="M12 6v12M6 12h12" />,
   textSize: <><path d="M3.5 6.5h10M8.5 6.5V19" /><path d="M13.5 11.5h7M17 11.5V19" /></>,
+  download: <><path d="M12 4v11" /><path d="m7.5 10.5 4.5 4.5 4.5-4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
   export: <><path d="M12 4v11" /><path d="M7.5 8.5 12 4l4.5 4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
   classes: <><path d="M3.5 6c2.8-1.2 5.6-1.2 8.5.8 2.9-2 5.7-2 8.5-.8v12.5c-2.8-1.2-5.6-1.2-8.5.8-2.9-2-5.7-2-8.5-.8z" strokeLinejoin="round" /><path d="M12 6.8v12.5" /></>,
   home: <><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19z" strokeLinejoin="round" /></>,
