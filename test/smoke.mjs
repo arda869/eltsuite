@@ -336,59 +336,54 @@ const J = {
     return s;
   },
 
-  'Songs: brief, exact lyrics, ChatGPT review, preview and timeline': async (b) => {
+  'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();
-    const d=s.p.getByRole('dialog',{name:'Make a song for your learners'});
-    await d.getByLabel('Song title',{exact:true}).fill('Morning song');
-    await d.getByLabel('Learners',{exact:true}).click();await s.p.getByRole('option',{name:'Young learners',exact:true}).click();
-    await d.getByLabel('Musical style',{exact:true}).fill('Acoustic pop');
-    const words='  Wake up!\nWake up!\nLet’s go.  ';
-    await d.getByLabel('Lyrics',{exact:true}).fill(words);
+    const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    await d.getByRole('radio',{name:'Young learners',exact:true}).check();
+    if(await d.getByRole('textbox',{name:'Language',exact:true}).count())throw Error('Language should be fixed to English');
+    const names=await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return {className:fs['classes/'+classId].name,title:fs['classes/'+classId+'/items/'+itemId].title};},s.demo);
+    await d.getByLabel('Classroom',{exact:true}).click();await s.p.getByRole('option',{name:new RegExp(names.className)}).click();
+    await d.getByLabel('Classroom lesson',{exact:true}).click();await s.p.getByRole('option',{name:names.title,exact:true}).click();
+    await d.locator('.song-linked').waitFor();
+    if(process.env.SONG_LESSON_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_LESSON_SCREENSHOT});
+    await axe(s.p,'Song learners and linked lesson',A11Y_FOUND);
+    await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Acoustic',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();
+    if(process.env.SONG_MUSIC_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_MUSIC_SCREENSHOT});
+    await axe(s.p,'Song music style cards',A11Y_FOUND);
+    await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('Song title',{exact:true}).fill('Morning song');
+    const words='  Wake up!\nWake up!\nLet’s go.  ';await d.getByLabel('Lyrics',{exact:true}).fill(words);
     if(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Song started before lyric approval');
-    await d.getByText('Draft lyrics with ChatGPT',{exact:true}).first().click();
-    await d.getByLabel('What should the lyrics be about?').fill('A daily routines chorus.');
-    await d.getByRole('button',{name:'Draft lyrics with ChatGPT',exact:true}).click();
+    await d.getByText('Help me write the lyrics',{exact:true}).click();if(!await d.getByRole('button',{name:'Draft lyrics',exact:true}).isEnabled())throw Error('A linked lesson should be sufficient to draft lyrics');await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();
     await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
-    if(await d.getByLabel('Lyrics',{exact:true}).inputValue()!==words)throw Error('ChatGPT overwrote exact lyrics before review');
-    await d.getByRole('button',{name:'Keep my current lyrics',exact:true}).click();
-    await d.getByLabel('I have reviewed these lyrics').check();
-    await d.getByLabel('Musical style',{exact:true}).fill('Gentle acoustic pop');
-    if(await d.getByLabel('I have reviewed these lyrics').isChecked())throw Error('Approval did not reset');
-    await d.getByLabel('I have reviewed these lyrics').check();
-    if(process.env.SONG_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_SCREENSHOT});
-    await axe(s.p,'Song composer desktop',A11Y_FOUND);
-    await d.getByRole('button',{name:'Create song',exact:true}).click();
-    await d.locator('audio').waitFor();
-    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
-    if(request.name!=='recordingSong'||request.brief.lyrics!==words||request.approved!==true)throw Error('Approved lyrics were altered');
-    await d.getByRole('button',{name:'Add song to timeline',exact:true}).click();
-    await d.waitFor({state:'hidden'});
-    await s.p.getByRole('button',{name:'Script',exact:true}).click();
-    await see(s.p,'.recording-script-rows textarea','song script');
-    if(await s.p.locator('.recording-script-rows textarea').inputValue()!==words)throw Error('Timeline lost exact song lyrics');
-    return s;
+    const lyricRequest=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
+    if(lyricRequest.brief.lesson.classId!==s.demo.classId||lyricRequest.brief.lesson.itemId!==s.demo.itemId||lyricRequest.brief.language!=='English')throw Error('Lesson link did not reach lyric drafting');
+    if(await d.getByLabel('Lyrics',{exact:true}).inputValue()!==words)throw Error('AI replaced lyrics before teacher review');
+    await d.getByRole('button',{name:'Keep my current lyrics',exact:true}).click();await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();
+    await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
+    if(await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').isChecked())throw Error('Approval did not reset after a music change');
+    await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();
+    if(/ChatGPT|Google|Lyria|OpenAI/.test(await d.innerText()))throw Error('Provider names leaked into song creation');
+    if(process.env.SONG_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_SCREENSHOT});await axe(s.p,'Song lyric approval',A11Y_FOUND);
+    await d.getByRole('button',{name:'Create song',exact:true}).click();await d.locator('audio').waitFor();
+    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));if(request.name!=='recordingSong'||request.brief.lyrics!==words||request.approved!==true)throw Error('Approved lyrics changed');
+    await d.getByRole('button',{name:'Add song to timeline',exact:true}).click();await d.waitFor({state:'hidden'});await s.p.getByRole('button',{name:'Script',exact:true}).click();await see(s.p,'.recording-script-rows textarea','song script');
+    if(await s.p.locator('.recording-script-rows textarea').inputValue()!==words)throw Error('Timeline lost exact lyrics');return s;
   },
-  'Songs: failure keeps lyrics, refresh recovers, phone dark mode fits': async (b) => {
-    const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
-    await s.p.getByRole('button',{name:'Create song',exact:true}).click();
-    let d=s.p.getByRole('dialog',{name:'Make a song for your learners'});
-    await d.getByLabel('Song title',{exact:true}).fill('Travel song');await d.getByLabel('Learners',{exact:true}).click();await s.p.getByRole('option',{name:'Adults',exact:true}).click();
-    await d.getByLabel('Musical style',{exact:true}).fill('FAIL_TEST');await d.getByLabel('Lyrics',{exact:true}).fill('Where shall we go?\nTake a train.');await d.getByLabel('I have reviewed these lyrics').check();
-    await d.getByRole('button',{name:'Create song',exact:true}).click();await d.getByRole('alert').waitFor();
+  'Songs: failures preserve words, completed previews recover and phone layout fits': async (b) => {
+    const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');await s.p.getByRole('button',{name:'Create song',exact:true}).click();let d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Custom style',exact:true}).check();await d.getByLabel('Custom music style',{exact:true}).fill('FAIL_TEST');await d.getByRole('button',{name:'Next: lyrics'}).click();
+    await d.getByLabel('Song title',{exact:true}).fill('Travel song');await d.getByLabel('Lyrics',{exact:true}).fill('Where shall we go?\nTake a train.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await d.getByRole('alert').waitFor();
     if(await d.getByLabel('Lyrics',{exact:true}).inputValue()!=='Where shall we go?\nTake a train.')throw Error('Failure lost lyrics');
-    await d.getByLabel('Musical style',{exact:true}).fill('Jazz');await d.getByLabel('I have reviewed these lyrics').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await d.locator('audio').waitFor();
+    await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByLabel('Custom music style',{exact:true}).fill('Jazz');await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await d.locator('audio').waitFor();
     await s.p.waitForFunction(()=>Object.keys(sessionStorage).some(k=>k.startsWith('ll.songDraft:')&&JSON.parse(sessionStorage.getItem(k)).savedSong));
-    await d.getByLabel('Musical style',{exact:true}).fill('Folk');
-    await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Make a song for your learners'});await d.getByRole('button',{name:'Recover creation'}).click();await d.locator('audio').waitFor();
-    if(await d.getByLabel('Musical style',{exact:true}).inputValue()!=='Folk')throw Error('Recovery overwrote a newer brief');
-    await d.getByRole('button',{name:'Use this song’s settings'}).click();
-    if(await d.getByLabel('Musical style',{exact:true}).inputValue()!=='Jazz')throw Error('Preview settings were not restored');
+    await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByRole('radio',{name:'Folk',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
+    await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Create a classroom song'});await d.getByRole('button',{name:'Recover creation'}).click();await d.locator('audio').waitFor();
+    if(!await d.locator('.song-brief-strip').getByText('Folk',{exact:true}).count())throw Error('Recovery overwrote a newer brief');
+    await d.getByRole('button',{name:'Use this song’s settings'}).click();await d.getByRole('button',{name:'Back',exact:true}).click();if(await d.getByLabel('Custom music style',{exact:true}).inputValue()!=='Jazz')throw Error('Preview settings were not restored');
     await s.p.setViewportSize({width:390,height:844});await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
-    if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Song composer overflows on phone');
-    await axe(s.p,'Song composer phone dark',A11Y_FOUND);
-    if(process.env.SONG_MOBILE_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_MOBILE_SCREENSHOT});
-    return s;
+    if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Song creator overflows on phone');await axe(s.p,'Song music on phone in dark mode',A11Y_FOUND);
+    if(process.env.SONG_MOBILE_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_MOBILE_SCREENSHOT});return s;
   },
 
   'Speech: saved previews, line controls and reordering': async (b) => {

@@ -10,14 +10,14 @@ const {initializeApp}=deps('firebase-admin/app'),{getFirestore}=deps('firebase-a
 initializeApp({projectId:process.env.SONG_TEST_PROJECT||'demo-ai-access'});const db=getFirestore();
 process.env.OPENAI_API_KEY='test-openai';process.env.GEMINI_API_KEY='test-gemini';
 const output=new URL('../../functions/songs/.jobs-test.mjs',import.meta.url);
-await build({entryPoints:[new URL('../../functions/songs/index.js',import.meta.url).pathname],outfile:output.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});const originalFetch=globalThis.fetch;let musicCalls=0,lyricCalls=0;
+await build({entryPoints:[new URL('../../functions/songs/index.js',import.meta.url).pathname],outfile:output.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});const originalFetch=globalThis.fetch;let musicCalls=0,lyricCalls=0,lastLyricInput;
 globalThis.fetch=async(url,opts)=>{
  if(String(url).includes('generativelanguage.googleapis.com')){musicCalls++;return {ok:true,json:async()=>({steps:[{type:'model_output',content:[{type:'audio',data:Buffer.alloc(1000,1).toString('base64'),mime_type:'audio/mpeg'}]}]})};}
- if(String(url).includes('api.openai.com')){lyricCalls++;return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({lyrics:'A fresh draft.\nSing along.'})}]}],usage:{input_tokens:100,output_tokens:30}})};}
+ if(String(url).includes('api.openai.com')){lyricCalls++;lastLyricInput=JSON.parse(JSON.parse(opts.body).input);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({lyrics:'A fresh draft.\nSing along.'})}]}],usage:{input_tokens:100,output_tokens:30}})};}
  return originalFetch(url,opts);
 };
 try{
- const {recordingSong,recordingLyrics,recordingSongResult}=await import(pathToFileURL(output.pathname).href);
+ const {recordingSong,recordingLyrics,recordingSongResult,recordingSongLesson}=await import(pathToFileURL(output.pathname).href);
  const uid='song-teacher-'+Date.now(),other=uid+'-other';
  for(const id of [uid,other])await db.doc('users/'+id).set({role:'teacher'});
  const brief={title:'Morning song',audience:'Adults',level:'A1',style:'Jazz',language:'English',delivery:'Solo singer',duration:60,focus:'Daily routines',prompt:'Waking up',lyrics:'  Wake up.\nLet’s go.  '};
@@ -36,6 +36,17 @@ try{
  await recordingSong.run(request(uid,{id,brief:{...brief,lyrics:'Changed'},approved:true}));assert.equal(musicCalls,1,'completed ID cannot regenerate');
  await recordingLyrics.run(request(uid,{id:'lyrics-first-12345678',brief}));assert.equal(lyricCalls,1);
  assert.equal((await recordingSongResult.run(request(uid,{id:'lyrics-first-12345678'}))).lyrics,'A fresh draft.\nSing along.');
+ const classId='song-class-'+Date.now(),lesson={classId,itemId:'lesson-1'};
+ await db.doc('classes/'+classId).set({teacherId:uid,status:'active',name:'Classroom',level:'A2',learningProfile:{ageGroup:'Young learners'}});
+ await db.doc('classes/'+classId+'/items/lesson-1').set({type:'lesson',title:'Morning routines',speakingFocus:'Use the present simple for daily routines.'});
+ await db.doc('classes/'+classId+'/items/lesson-1/tasks/task-1').set({order:1,title:'Daily verbs',instructions:'Talk about your day.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'wake up, eat breakfast, go to school'}]}]}});
+ await db.doc('classes/'+classId+'/items/lesson-1/tasks/task-1/private/key').set({secret:'PRIVATE_ANSWER_KEY'});
+ const linked=await recordingSongLesson.run(request(uid,{lesson}));assert.equal(linked.level,'A2');assert.match(linked.tasks[0].text,/eat breakfast/);assert.ok(!JSON.stringify(linked).includes('PRIVATE_ANSWER_KEY'));
+ await assert.rejects(recordingSongLesson.run(request(other,{lesson})),e=>e.code==='permission-denied');
+ await db.doc('classes/'+classId).update({coTeachers:{[other]:{role:'viewer'}}});
+ await assert.rejects(recordingSongLesson.run(request(other,{lesson})),e=>e.code==='permission-denied');
+ await db.doc('classes/'+classId).update({coTeachers:{[other]:{role:'co'}}});assert.equal((await recordingSongLesson.run(request(other,{lesson}))).title,'Morning routines');
+ await recordingLyrics.run(request(uid,{id:'lyrics-linked-12345678',brief:{...brief,prompt:'',lesson}}));assert.equal(lastLyricInput.linkedLesson.title,'Morning routines');assert.match(lastLyricInput.linkedLesson.tasks[0].text,/wake up/);assert.equal(lastLyricInput.language,'English');
  await db.doc(`songPrivate/${uid}`).set({jobId:'another',busyUntil:Date.now()+60000});
  await assert.rejects(recordingSong.run(request(uid,{id:'song-locked-12345678',brief,approved:true})),e=>e.code==='resource-exhausted');
  await db.doc(`songPrivate/${uid}`).set({busyUntil:0});

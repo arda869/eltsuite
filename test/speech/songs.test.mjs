@@ -29,3 +29,10 @@ test('lyrics use OpenAI Responses with separate original and age-aware instructi
  const r=await generate({apiKey:'openai-test',model:'gpt-6.1-sol',name:'song_lyrics',schema:lyricSchema,input:brief,instructions:lyricInstructions,fetchImpl:async(url,o)=>{sent={url,...JSON.parse(o.body)};return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({lyrics:'Wake up!\nLet’s go.'})}]}],usage:{input_tokens:100,output_tokens:30}})};}});
  assert.equal(sent.url,'https://api.openai.com/v1/responses');assert.equal(sent.store,false);assert.equal(sent.text.format.name,'song_lyrics');assert.match(sent.instructions,/without infantilising/);assert.match(sent.instructions,/No imitation/);assert.equal(r.value.lyrics,'Wake up!\nLet’s go.');
 });
+test('songs stay in English and lesson references contain IDs only',()=>{
+ assert.throws(()=>validateBrief({...brief,language:'French'}),/English/);
+ assert.equal(validateBrief({...brief,language:undefined}).language,'English');
+ assert.deepEqual(validateBrief({...brief,lesson:{classId:'class-1',itemId:'lesson-1',text:'not trusted'}}).lesson,{classId:'class-1',itemId:'lesson-1'});
+ for(const lesson of [{classId:'../class',itemId:'ok'},{classId:'ok',itemId:''},'lesson'])assert.throws(()=>validateBrief({...brief,lesson}));
+ assert.match(lyricInstructions,/linkedLesson/);
+});
