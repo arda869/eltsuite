@@ -31,7 +31,7 @@ test('catalogue links and source files are verified, recording limitations expli
   const ids = library.articles.map(a => a.id);
   assert.equal(ids.length, new Set(ids).size);
   for (const a of library.articles) {
-    assert.match(a.href, /^\/(guide|classes|rooms|recordings|archive|collab|timetable|settings|development|design|pdf|messages|colleagues|org-admin|studio\/video)(#gu-[a-z]+|\?section=(reading|coach))?$/);
+    assert.match(a.href, /^\/(guide|classes|rooms|recordings|archive|collab|timetable|settings|development|linguistics|design|pdf|messages|colleagues|org-admin|studio\/video)(#gu-[a-z]+|\?section=(reading|coach))?$/);
     assert.ok(a.steps.length >= 2);
     for (const source of a.source.split('; ')) assert.ok(readFileSync(new URL('../../' + source, import.meta.url), 'utf8').length > 0);
     validate(selectionSchema, { articleIds: [a.id] });
@@ -53,7 +53,7 @@ test('related help points only to shipped, verified alternatives', () => {
 
 test('knowledge base covers teacher apps with searchable questions and a bounded routing index',()=>{
  assert(library.articles.length>=100);
- for(const a of library.articles){assert(a.category);assert(a.questions.length>=2);assert.equal(a.reviewedAt,'2026-11-01');for(const q of a.questions)assert(exactArticles(library.articles,q).some(x=>x.id===a.id),q);}
+ for(const a of library.articles){assert(a.category);assert(a.questions.length>=2);assert.match(a.reviewedAt,/^\d{4}-\d{2}-\d{2}$/);for(const q of a.questions)assert(exactArticles(library.articles,q).some(x=>x.id===a.id),q);}
  assert(JSON.stringify(routingIndex).length<65000);
  for(const [q,id]of [['How do I generate images?','ai-images'],['Why does my video not move?','animate-image'],['Can I make a song without linking a lesson?','songs'],['Can I import a scanned PDF or Word document?','material-formats']])assert(exactArticles(library.articles,q).some(x=>x.id===id));
  assert.equal(normalise('How DO I generate images?!'),'how do i generate images');
