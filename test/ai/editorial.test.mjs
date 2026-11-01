@@ -56,5 +56,5 @@ test('Commons image selection cannot substitute a caption for visual inspection 
  let sawImages=false;
  const generate=async args=>{sawImages=args.sourceImages[0].startsWith('data:image/jpeg;base64,');return {value:{selection:1,alt:'Astronaut exercising',reason:'The equipment and action are visible.'},usage}};
  const result=await prepareCommonsImage({prompt:'astronaut exercise'},{generate,apiKey:'test',model:'gpt-6.1-sol',fetchImpl});assert.ok(sawImages);assert.match(result.credit,/CC BY 4.0/);assert.match(result.credit,/curid=1/);
- await assert.rejects(prepareCommonsImage({prompt:'astronaut exercise'},{generate:async()=>({value:{selection:0}}),fetchImpl}),/No photograph passed/);
+ await assert.rejects(prepareCommonsImage({prompt:'astronaut exercise'},{generate:async args=>({value:args.name==='image_search'?{query:'astronaut exercising'}:{selection:0}}),fetchImpl}),/No photograph passed/);
 });
