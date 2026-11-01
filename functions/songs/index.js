@@ -1,3 +1,4 @@
+import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -12,16 +13,16 @@ export const recordingSongLesson=onCall({...options,timeoutSeconds:30},async req
   const uid=await authorizeTeacher(req);
   try{return await songLessonContext(getFirestore(),uid,req.data?.lesson);}catch(e){if(e instanceof HttpsError)throw e;throw new HttpsError('invalid-argument','Choose a lesson from Classroom.');}
 });
-async function reserve(uid, kind, jobId, brief) {
+async function reserve(uid, kind, jobId, brief, auth) {
   const db=getFirestore(),day=new Date().toISOString().slice(0,10),ref=db.doc(`songPrivate/${uid}/jobs/${jobId}`);
+  const context=await usageContext(db,auth);
   return db.runTransaction(async tx=>{
     const prior=await tx.get(ref);
     if(prior.exists) return {ref,created:false};
     const own=db.doc(`songUsage/${day}/teachers/${uid}`),all=db.doc(`songUsage/${day}`),lock=db.doc(`songPrivate/${uid}`);
     const [a,b,c]=await Promise.all([tx.get(own),tx.get(all),tx.get(lock)]);
     if(c.get('busyUntil')>Date.now())throw new HttpsError('resource-exhausted','A song or lyric draft is already being created. Recover it before starting another.');
-    const limit=kind==='song'?3:10,globalLimit=kind==='song'?50:300;
-    if((a.get(kind)??0)>=limit || (b.get(kind)??0)>=globalLimit)throw new HttpsError('resource-exhausted','Today’s song creation allowance has been used. Your recordings and lyrics are kept.');
+    await chargeFeature(tx,db,context,kind);
     tx.set(own,{[kind]:(a.get(kind)??0)+1},{merge:true});tx.set(all,{[kind]:(b.get(kind)??0)+1},{merge:true});
     tx.set(lock,{jobId,busyUntil:Date.now()+540000});
     tx.set(ref,{kind,brief,status:'working',createdAt:Date.now(),expiresAt:Date.now()+86400000});
@@ -38,7 +39,7 @@ export const recordingLyrics=onCall({...options,secrets:[openai],timeoutSeconds:
   const id=req.data?.id;
   if(typeof id!=='string'||!/^lyrics-[\w-]{8,100}$/.test(id))throw new HttpsError('invalid-argument','Start a new lyric draft.');
   const linkedLesson=await songLessonContext(getFirestore(),uid,brief.lesson);
-  const job=await reserve(uid,'lyrics',id,brief);
+  const job=await reserve(uid,'lyrics',id,brief,req.auth);
   if(!job.created)return {id,status:(await job.ref.get()).get('status')};
   try{
     const {value}=await generate({apiKey:openai.value(),model:'gpt-6.1-sol',schema:lyricSchema,name:'song_lyrics',input:{...brief,linkedLesson},instructions:lyricInstructions});
@@ -52,7 +53,7 @@ export const recordingSong=onCall({...options,secrets:[gemini],timeoutSeconds:54
   const id=req.data?.id;
   if(typeof id!=='string'||!/^song-[\w-]{8,100}$/.test(id))throw new HttpsError('invalid-argument','Start a new song.');
   const linkedLesson=await songLessonContext(getFirestore(),uid,brief.lesson);
-  const job=await reserve(uid,'song',id,brief);
+  const job=await reserve(uid,'song',id,brief,req.auth);
   if(!job.created)return {id,status:(await job.ref.get()).get('status')};
   try{
     const result=await generateSong(gemini.value(),{...brief,focus:[linkedLesson?.title,linkedLesson?.focus,brief.focus].filter(Boolean).join('\n')}),partSize=450*1024,parts=Math.ceil(result.bytes.length/partSize);

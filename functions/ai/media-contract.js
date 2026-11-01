@@ -13,10 +13,10 @@ export function mediaRequests(activities){
 }
 // Conservative reservations retained even on uncertain provider failures. No automatic paid retries.
 // Verified 1 Nov 2026: image output $30/M, text $5/M; realtime mini audio output $20/M.
-export function mediaReservation(asset,balance,now=Date.now()){
+export function mediaReservation(asset,balance,now=Date.now(),isAdmin=false){
  if(now>=PRICE_REVIEW_AFTER)throw Error('Media prices need review.');
  const amount=asset.kind==='image'?100000:asset.lines.length*60000;
- if(!Number.isSafeInteger(balance)||balance<0||balance+amount>MONTHLY_LIMIT_MICRO_USD)throw Error('The US$20 monthly AI allowance cannot cover this media.');
+ if(!Number.isSafeInteger(balance)||balance<0||(!isAdmin&&balance+amount>MONTHLY_LIMIT_MICRO_USD))throw Error('The US$20 monthly AI allowance cannot cover this media.');
  return {amount,balance:balance+amount};
 }
 export function wav(pcm){

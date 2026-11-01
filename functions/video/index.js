@@ -1,3 +1,4 @@
+import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { planVideo } from "./planner.js";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { styleOf } from "./styles.js";
@@ -82,12 +83,13 @@ async function store(uid, name, kind, bytes, type, duration, provenance) {
   await ref.update({ ready: true });
   return ref.id;
 }
-async function reserve(uid, d) {
+async function reserve(uid, d, auth) {
   const db = DB(),
     job = db.doc(`videoJobs/${uid}_${d.requestId}`),
     day = new Date().toISOString().slice(0, 10),
     usage = db.doc(`videoUsage/${day}/teachers/${uid}`),
     global = db.doc(`videoUsage/${day}`);
+  const context = await usageContext(db, auth);
   return db.runTransaction(async (tx) => {
     const [j, u, g] = await Promise.all([
       tx.get(job),
@@ -108,16 +110,7 @@ async function reserve(uid, d) {
         plans: (g.get("plans") || 0) + plans,
         images: (g.get("images") || 0) + images,
       };
-    if (
-      next.seconds > Number(process.env.VIDEO_DAILY_SECONDS || 120) ||
-      next.images > 10 || next.plans > 10 || all.plans > 100 ||
-      all.seconds > Number(process.env.VIDEO_GLOBAL_DAILY_SECONDS || 1200) ||
-      all.images > 100
-    )
-      throw error(
-        "resource-exhausted",
-        "Today’s video allowance has been used. Your saved media still works.",
-      );
+    await chargeFeature(tx, db, context, d.action === 'plan' ? 'videoPlan' : d.action === 'generate' ? 'videoScene' : 'videoImage');
     tx.set(usage, next);
     tx.set(global, all);
     tx.set(job, {
@@ -306,7 +299,7 @@ export const videoStudio = onCall(
         if (!a?.ready || a.kind !== "character" || !(await canRead(uid,a))) throw error("permission-denied","That character is not available to you.");
         characters.push({name:String(a.name||"").slice(0,100),appearance:String(a.description||"").slice(0,1500)});
       }
-      const reservation=await reserve(uid,d);
+      const reservation=await reserve(uid,d,req.auth);
       if(reservation.existing)return {jobId:d.requestId,status:reservation.existing.status,plan:reservation.existing.plan||null};
       try {
         const plan=await planVideo(imageKey.value(),d.brief,styleOf(d.visualStyle).prompt,characters);
@@ -332,7 +325,7 @@ export const videoStudio = onCall(
         "invalid-argument",
         "Make a scene image from your characters first, then animate that image.",
       );
-    const reservation = await reserve(uid, d);
+    const reservation = await reserve(uid, d, req.auth);
     if (reservation.existing)
       return {
         jobId: d.requestId,

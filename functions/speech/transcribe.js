@@ -16,7 +16,7 @@ export const recordingTranscript = onCall({ region: 'us-central1', secrets: [key
   const uid = await authorizeTeacher(req);
   let bytes;
   try { bytes = validateAudio(req.data); } catch (e) { throw new HttpsError('invalid-argument', e.message); }
-  await reserveSpeech(uid, Math.max(1, Math.ceil(req.data.duration / 60)));
+  await reserveSpeech(req.auth, 'transcription');
   const body = new FormData();
   body.set('file', new Blob([bytes], { type: 'audio/mpeg' }), 'recording.mp3');
   body.set('model', 'gpt-4o-transcribe-diarize');

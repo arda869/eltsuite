@@ -9,7 +9,7 @@ export const recordingSpeech = onCall({ region: 'us-central1', secrets: [key], m
   const uid = await authorizeTeacher(req);
   let request;
   try { request = validateSpeech(req.data); } catch (e) { throw new HttpsError('invalid-argument', e.message); }
-  await reserveSpeech(uid);
+  await reserveSpeech(req.auth, 'speech');
   try { return await generateSpeech(key.value(), request); }
   catch (e) { throw new HttpsError('unavailable', e.message); }
 });

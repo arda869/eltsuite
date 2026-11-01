@@ -1,0 +1,36 @@
+name: AI allowance verification account
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Temporary disabled test account
+        required: true
+        default: create
+        type: choice
+        options: [create, cleanup]
+concurrency:
+  group: ai-allowance-verification-fixture
+  cancel-in-progress: false
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm --prefix functions ci --no-audit --no-fund
+      - name: Configure credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Prepare or remove isolated verification identity
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FIXTURE_ACTION: ${{ inputs.action }}
+        run: node scripts/ai-usage-live-fixture.mjs "$FIXTURE_ACTION"
+      - name: Remove local credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

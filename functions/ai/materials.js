@@ -1,3 +1,4 @@
+import { usageContext, chargeFeature } from './feature-usage.js';
 import { createHash } from 'node:crypto';
 import { Timestamp } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
@@ -5,7 +6,7 @@ import { materialSource,checkRebuild,rebuildSchema,rebuildInstructions,RIGHTS_VE
 import { activityInstructions,nativeTask } from './activities.js';
 import { generate } from './provider.js';
 import { reserveBudget,settleBudget,checkModel } from './budget.js';
-import { dailyAllowanceReached,dailyGlobalUsage,isGenerationAdmin } from './allowance.js';
+import { dailyGlobalUsage } from './allowance.js';
 import { encodeGenerationResult,readGenerationResult } from './storage.js';
 import { canPlan } from './contract.js';
 const valid=v=>typeof v==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(v);
@@ -38,9 +39,10 @@ export async function rebuildMaterials(req,{db,uid,cls,apiKey,model}) {
   let source;try{source=materialSource(d);checkModel(model);}catch(e){bad(e.message);}
   const {images,...input}=source;
   const fingerprint=createHash('sha256').update(JSON.stringify({classId:d.classId,source})).digest('hex');
-  const day=new Date().toISOString().slice(0,10),month=day.slice(0,7),quota=db.doc(`aiPrivate/${uid}/usage/${day}`),global=db.doc(`aiUsage/${day}`),budget=db.doc(`aiBudgets/${month}`),admin=await isGenerationAdmin(db,req.auth);
+  const usagePolicy=await usageContext(db,req.auth);
+  const day=new Date().toISOString().slice(0,10),month=day.slice(0,7),quota=db.doc(`aiPrivate/${uid}/usage/${day}`),global=db.doc(`aiUsage/${day}`),budget=db.doc(`${usagePolicy.isAdmin ? 'aiAdminBudgets' : 'aiBudgets'}/${month}`),admin=usagePolicy.isAdmin;
   const existing=await db.runTransaction(async tx=>{const [j,q,g,b]=await Promise.all([tx.get(job),tx.get(quota),tx.get(global),tx.get(budget)]);if(j.exists){if(j.get('fingerprint')!==fingerprint)bad('Start a new import for changed materials.');if(j.get('status')==='completed')return readGenerationResult(j.data());throw new HttpsError('failed-precondition',j.get('status')==='running'?'This import is still running. Check its status shortly.':'The import did not finish. Start a new import.');}
-    if(dailyAllowanceReached(q.get('calls')??0,g.get('calls')??0,1,admin))throw new HttpsError('resource-exhausted','The daily AI allowance has been reached. Try again tomorrow.');let reservation;try{reservation=reserveBudget(b.get('committedMicroUsd')??0,1);}catch(e){throw new HttpsError('resource-exhausted',e.message);}
+    await chargeFeature(tx,db,usagePolicy,'materialImport');let reservation;try{reservation=reserveBudget(b.get('committedMicroUsd')??0,1,usagePolicy.isAdmin);}catch(e){throw new HttpsError('resource-exhausted',e.message);}
     tx.set(budget,{committedMicroUsd:reservation.balance,month},{merge:true});tx.set(quota,{calls:(q.get('calls')??0)+1});tx.set(global,dailyGlobalUsage(g.data(),1,admin),{merge:true});tx.create(job,{action:'rebuild',classId:d.classId,status:'running',fingerprint,scope:source.scope,creationType:source.creationType,sourceName:source.name,rightsVersion:RIGHTS_VERSION,rightsAcceptedAt:Timestamp.now(),reservedMicroUsd:reservation.reserved,createdAt:Timestamp.now(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});return null;});
   if(existing)return existing;
   try{

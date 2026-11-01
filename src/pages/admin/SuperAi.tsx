@@ -1,3 +1,4 @@
+import { AiUsage } from './AiUsage';
 import { useEffect, useState } from 'react';
 import { collection, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -28,9 +29,10 @@ export function SuperAi({ teachers, loading }: { teachers: Teacher[]; loading: b
   }
   const visible = teachers.filter(t => `${t.name} ${t.email}`.toLowerCase().includes(search.trim().toLowerCase()));
   return <div className="hq-page">
-    <PageHead title="AI lesson assistant" lede="Off for everyone by default. Turn access on only for the teachers you choose, and turn it off again at any time." />
-    <Panel title="Shared monthly allowance">
-      <p>All enabled teachers share the US$20 monthly API allowance. Generation stops when the remaining allowance cannot cover a request. Saved plans remain available.</p>
+    <PageHead title="AI usage and access" lede="Manage each user’s AI allowances and choose who can use the lesson assistant." />
+    <AiUsage />
+    <Panel title="Lesson assistant access and budget">
+      <p>Enabled teachers share the US$20 monthly API allowance. Super admins are exempt from application usage and monthly budget caps; their usage is accounted for separately. For ordinary users, generation stops when the shared budget cannot cover a request. Saved plans remain available.</p>
       <p className="hint">Turning access off blocks subsequent assistant requests. A generation already in progress may finish.</p>
     </Panel>
     <Panel title="Teacher access">

@@ -1,10 +1,10 @@
+import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
 import { validateActivity, selectFocus, roleplayInstructions, feedbackSchema, feedbackInstructions, validateTurns } from './contract.js';
-import { reserveSpeech } from '../speech/access.js';
 import { generate } from '../ai/provider.js';
 const key=defineSecret('OPENAI_API_KEY');
 const valid = x => typeof x === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(x);
@@ -50,10 +50,10 @@ export const speakingTask = onCall(options,async req=>{
     if(!teacher&&lesson&&(!lesson.exists||lesson.get('hidden')===true||lesson.get('locked')===true))throw new HttpsError('permission-denied','This lesson is not available for speaking practice.');
     const lessonFocus=lesson?.get('speakingFocus');
     try{config.focus=selectFocus(config,d.focusChoice,lessonFocus);}catch(e){throw new HttpsError('failed-precondition',e.message);}
+    const usagePolicy=await usageContext(db,req.auth);
     const limit=db.doc(`speakingAttempts/${day}/users/${uid}`);
     const session=activity.collection('sessions').doc();
-    await db.runTransaction(async tx=>{const a=await tx.get(limit);if((a.get('count')??0)>=10)throw new HttpsError('resource-exhausted','You have used today’s ten speaking attempts.');tx.set(limit,{count:(a.get('count')??0)+1});});
-    await reserveSpeech(c.owner,Math.ceil(config.seconds/60));
+    await db.runTransaction(async tx=>{const a=await tx.get(limit);await chargeFeature(tx,db,usagePolicy,'speakingPractice');tx.set(limit,{count:(a.get('count')??0)+1});});
     const form=new FormData();form.set('sdp',d.sdp);form.set('session',JSON.stringify({type:'realtime',model:'gpt-realtime-2.1-mini',instructions:roleplayInstructions(config),output_modalities:['audio'],max_output_tokens:250,audio:{input:{transcription:{model:'gpt-4o-mini-transcribe',language:'en'},turn_detection:{type:'semantic_vad',eagerness:'medium',create_response:true,interrupt_response:true}},output:{voice:'marin'}}}));
     const result=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',headers:{Authorization:`Bearer ${key.value()}`,'OpenAI-Safety-Identifier':createHash('sha256').update(uid).digest('hex')},body:form,signal:AbortSignal.timeout(30000)});
     if(!result.ok)throw new HttpsError('unavailable','The conversation could not connect. Please try again.');
@@ -83,10 +83,10 @@ export const speakingTask = onCall(options,async req=>{
     if(session.get('feedback'))return {feedback:session.get('feedback')};
     let turns=session.get('turns')??[];
     if(session.get('uid')===uid && d.turns)try{turns=validateTurns(d.turns);}catch(e){throw new HttpsError('invalid-argument',e.message);}
-    const reserved=await db.runTransaction(async tx=>{const s=await tx.get(ref);if((s.get('feedbackState')==='pending'&&Date.now()-(s.get('feedbackStartedAt')??0)<240000)||s.get('feedback'))return false;tx.update(ref,{status:'ended',endedAt:Date.now(),turns,feedbackState:'pending',feedbackStartedAt:Date.now(),updatedAt:Date.now()});return true;});
+    const usagePolicy=await usageContext(db,req.auth);
+    const reserved=await db.runTransaction(async tx=>{const s=await tx.get(ref);if((s.get('feedbackState')==='pending'&&Date.now()-(s.get('feedbackStartedAt')??0)<240000)||s.get('feedback'))return false;await chargeFeature(tx,db,usagePolicy,'speakingFeedback');tx.update(ref,{status:'ended',endedAt:Date.now(),turns,feedbackState:'pending',feedbackStartedAt:Date.now(),updatedAt:Date.now()});return true;});
     if(!reserved)return {pending:true};
     try {
-      await reserveSpeech(c.owner,1);
       const {value}=await generate({apiKey:key.value(),model:'gpt-6.1-sol',schema:feedbackSchema,name:'speaking_feedback',instructions:feedbackInstructions,input:{lesson:session.get('config'),turns}});
       await ref.update({feedback:value,feedbackState:'complete',status:'complete',updatedAt:Date.now()});return {feedback:value};
     } catch {await ref.update({feedbackState:'error'});throw new HttpsError('unavailable','Your conversation is saved. Feedback is temporarily unavailable; try again.');}

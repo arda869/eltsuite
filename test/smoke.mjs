@@ -1503,6 +1503,43 @@ const J = {
     await axe(s.p, 'Super Admin: invitation codes', A11Y_FOUND);
     return s;
   },
+  'AI usage: admin configures per-user allowances, saves and recovers errors': async (b) => {
+    const s = await session(b, { owner: true });
+    await s.p.evaluate(() => {const fs=JSON.parse(localStorage.getItem('mockfs')||'{}');fs['users/allowance-user']={role:'learner',displayName:'Allowance learner',email:'allowance@example.test'};localStorage.setItem('mockfs',JSON.stringify(fs));});
+    await s.p.goto(BASE+'/admin?tab=ai');
+    await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click({timeout:15000}).catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+await s.p.locator('body').innerText());});
+    await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
+    await see(s.p,'.ai-usage-row','per-feature allowances');
+    if(await s.p.locator('.ai-usage-row').count()!==18)throw Error('Missing AI features');
+    await s.p.getByRole('button',{name:'Songs allowance',exact:true}).click();
+    await s.p.getByRole('option',{name:'Custom daily limit',exact:true}).click();
+    await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('0');
+    await s.p.getByRole('button',{name:'Save AI allowances',exact:true}).click();
+    await see(s.p,'text=AI allowances saved.','saved confirmation');
+    await s.p.reload();
+    await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click();
+    await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
+    await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).waitFor();
+    if(await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).inputValue()!=='0')throw Error('Saved zero limit missing');
+    await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('999');
+    await s.p.getByRole('button',{name:'Save AI allowances',exact:true}).click();
+    await see(s.p,'[role=alert]:has-text("Test save unavailable")','visible save failure');
+    await s.p.getByRole('button',{name:'Songs allowance',exact:true}).click();await s.p.getByRole('option',{name:'Unlimited',exact:true}).click();
+    await s.p.getByRole('button',{name:'Save AI allowances',exact:true}).click();
+    await see(s.p,'text=AI allowances saved.','unlimited saved');
+    await s.p.setViewportSize({width:390,height:844});
+    await s.p.getByRole('button',{name:'Open it anyway',exact:true}).click();
+    await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click();
+    await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
+    await see(s.p,'.ai-usage-row','phone allowance controls');
+    if(await s.p.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth))throw Error('AI allowance page overflows phone');
+    await axe(s.p,'Super Admin: per-user AI allowances',A11Y_FOUND);
+    await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click();
+    await s.p.getByRole('option').filter({hasText:'teacher@example.com'}).click();
+    await see(s.p,'text=This user is a super admin.','unlimited super admin');
+    if(await s.p.locator('.ai-usage-number').count())throw Error('Super admin should not have editable caps');
+    return s;
+  },
   'Super Admin is the owner’s alone': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/admin`);

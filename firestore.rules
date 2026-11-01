@@ -1089,6 +1089,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(uid)).data.role == 'teacher';
     }
     match /aiBudgets/{month} { allow read: if isOwner(); }
+    // Only the verified-super-admin callable may change limits. No client can reset usage.
+    match /aiAllowances/{uid} { allow read: if aiAdmin(); }
+    match /aiFeatureUsage/{uid}/days/{day} { allow read: if aiAdmin(); }
+    match /aiAdminBudgets/{month} { allow read: if aiAdmin(); }
+    match /helpAdminBudgets/{month} { allow read: if aiAdmin(); }
 
     // Devices that get notifications: each person adds and removes their own.
     match /pushTokens/{t} {

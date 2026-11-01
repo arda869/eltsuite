@@ -1,9 +1,19 @@
+import { AI_FEATURES } from '../../functions/ai/features.js';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
   if (d.action === 'activities' && localStorage.getItem('mockAiPause')) await new Promise<void>(resolve => { const timer=setInterval(()=>{if(!localStorage.getItem('mockAiPause')) {clearInterval(timer);resolve();}},50); });
+  if (name === 'adminAiUsage') {
+    const ref=doc(db,'aiAllowances',d.uid),old=(await getDoc(ref)).data()??{};
+    if(d.action==='save'){
+      if(d.limits.song===999)throw Error('Test save unavailable. Your changes have not been saved.');
+      await setDoc(ref,{limits:d.limits,version:(old.version??0)+1});
+    }
+    const current=(await getDoc(ref)).data()??{};
+    return {data:{features:AI_FEATURES,limits:current.limits??{},version:current.version??0,counts:{song:2,lyrics:4},day:new Date().toISOString().slice(0,10),isAdmin:d.uid==='teacher1'}};
+  }
   if (name === 'helpAssistant') {
     if (d.action === 'feedback') return { data: { saved: true } };
     await new Promise(resolve => setTimeout(resolve, 350));

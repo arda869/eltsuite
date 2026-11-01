@@ -1,3 +1,5 @@
+import { getAuth } from 'firebase-admin/auth';
+import { usageContext, chargeFeature } from './feature-usage.js';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -22,12 +24,15 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
  const db=getFirestore(),ref=event.data.after.ref,{uid,jobId,assetId}=event.params;
  let asset;
  try{
+  const user=await getAuth().getUser(uid);
+  const usagePolicy=await usageContext(db,{uid,token:{email:user.email,email_verified:user.emailVerified}});
   asset=await db.runTransaction(async tx=>{
    const snapshot=await tx.get(ref);if(snapshot.get('status')!=='queued')return null;
-   const a=snapshot.data(),month=new Date().toISOString().slice(0,7),budget=db.doc(`aiBudgets/${month}`);
+   const a=snapshot.data(),month=new Date().toISOString().slice(0,7),budget=db.doc(`${usagePolicy.isAdmin ? 'aiAdminBudgets' : 'aiBudgets'}/${month}`);
    const [b,p,account,cls,pilot]=await Promise.all([tx.get(budget),tx.get(db.doc(`users/${uid}`)),tx.get(db.doc(`accounts/${uid}`)),tx.get(db.doc(`classes/${a.classId}`)),tx.get(db.doc(`aiPilot/${uid}`))]);
    if(!canPlan(uid,p.data(),account.data(),cls.data())||pilot.get('enabled')!==true)throw Error('Teaching access changed.');
-   const reservation=mediaReservation(a,b.get('committedMicroUsd')??0);
+   await chargeFeature(tx,db,usagePolicy,a.kind==='image'?'lessonImage':'lessonAudio');
+   const reservation=mediaReservation(a,b.get('committedMicroUsd')??0,Date.now(),usagePolicy.isAdmin);
    tx.set(budget,{committedMicroUsd:reservation.balance,limitMicroUsd:20000000,month},{merge:true});
    tx.update(ref,{status:'running',startedAt:Timestamp.now(),reservedMicroUsd:reservation.amount});return a;
   });
@@ -63,6 +68,6 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
   await savePrepared(db,asset.classId,mediaId,bytes,asset);
   await ref.update({status:'ready',mediaId,completedAt:Timestamp.now(),error:''});
  }catch(error){
-  await ref.update({status:'failed',error:String(error.message).includes('allowance')?'Monthly AI allowance reached.':String(error.message).includes('script')?'Audio did not match the script. Retry this recording.':'Media could not be prepared. Retry this asset.',failedAt:Timestamp.now()});
+  await ref.update({status:'failed',error:error instanceof Error && error.code==='resource-exhausted'?error.message:String(error.message).includes('allowance')?'Monthly AI allowance reached.':String(error.message).includes('script')?'Audio did not match the script. Retry this recording.':'Media could not be prepared. Retry this asset.',failedAt:Timestamp.now()});
  }
 });

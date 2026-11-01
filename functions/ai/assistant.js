@@ -1,10 +1,11 @@
+import { usageContext, chargeFeature } from './feature-usage.js';
 import { stageContract, allocateMinutes } from './sequence.js';
 import { rebuildMaterials } from './materials.js';
 import { generateChecked } from './recovery.js';
 import { mediaRequests, mediaInstructions } from './media-contract.js';
 import { collectMemories, selectedMemories } from './memories.js';
 import { contentReviewStandard } from './pedagogy.js';
-import { isGenerationAdmin, dailyAllowanceReached, dailyGlobalUsage } from './allowance.js';
+import { dailyGlobalUsage } from './allowance.js';
 import { encodeGenerationResult, readGenerationResult } from './storage.js';
 import { teachingCoach } from './coach.js';
 import { validateTrainingProfile, trainingActivitySchema, trainingInstructions, trainingActivityInstructions } from './training.js';
@@ -143,9 +144,10 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, useEvidence:d.useEvidence===true, useLearnerMemories:d.useLearnerMemories===true, memoryIds:d.useLearnerMemories===true?d.memoryIds:[], ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
   const job = db.doc(`aiPrivate/${uid}/jobs/${d.requestId}`);
   const day = new Date().toISOString().slice(0, 10), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), globalQuota = db.doc(`aiUsage/${day}`);
-  const month = day.slice(0, 7), budget = db.doc(`aiBudgets/${month}`);
+  const usagePolicy = await usageContext(db, req.auth);
+  const month = day.slice(0, 7), budget = db.doc(`${usagePolicy.isAdmin ? 'aiAdminBudgets' : 'aiBudgets'}/${month}`);
   const units = d.action === 'plan' ? 2 : 1;
-  const generationAdmin = await isGenerationAdmin(db,req.auth);
+  const generationAdmin = usagePolicy.isAdmin;
   const existing = await db.runTransaction(async tx => {
     const [j, q, g, b] = await Promise.all([tx.get(job), tx.get(quota), tx.get(globalQuota), tx.get(budget)]);
     if (j.exists) {
@@ -160,9 +162,9 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This request is still running. Retry shortly with the same request.' : 'This request did not finish. Start a new generation.');
     }
     // Reserve both passes before calling the provider; failed calls still consume allowance.
-    if (dailyAllowanceReached(q.get('calls') ?? 0,g.get('calls') ?? 0,units,generationAdmin)) throw new HttpsError('resource-exhausted', 'The daily pilot allowance has been reached. Try again tomorrow.');
+    await chargeFeature(tx,db,usagePolicy,{outline:'lessonOutline',plan:'lessonPlan',activities:'lessonActivities'}[d.action]);
     let reservation;
-    try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, units); }
+    try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, units, usagePolicy.isAdmin); }
     catch (e) { throw new HttpsError('resource-exhausted', e.message); }
     tx.set(budget, { committedMicroUsd: reservation.balance, limitMicroUsd: 20_000_000, month }, { merge: true });
     tx.set(quota, { calls: (q.get('calls') ?? 0) + units });
@@ -195,7 +197,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       reserveRepair: () => db.runTransaction(async tx => {
         const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);
         if(j.get('status')!=='running') throw new GenerationError('content');
-        const reservation=reserveBudget(b.get('committedMicroUsd')??0,1);
+        const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,usagePolicy.isAdmin);
         tx.update(budget,{committedMicroUsd:reservation.balance});
         tx.update(job,{reservedMicroUsd:j.get('reservedMicroUsd')+reservation.reserved,repairing:true});
       })

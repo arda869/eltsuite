@@ -11,10 +11,10 @@ export const PRICE_REVIEW_AFTER = Date.parse('2026-12-01T00:00:00Z');
 export function checkModel(model, now = Date.now()) {
   if (model !== PILOT_MODEL || now >= PRICE_REVIEW_AFTER) throw Error('The pilot model prices need review before generation can continue.');
 }
-export function reserveBudget(balance, calls) {
+export function reserveBudget(balance, calls, isAdmin = false) {
   if (!Number.isSafeInteger(balance) || balance < 0 || ![1, 2].includes(calls)) throw Error('Invalid budget record.');
   const reserved = calls * RESERVATION_PER_CALL;
-  if (balance + reserved > MONTHLY_LIMIT_MICRO_USD) throw Error('The US$20 monthly AI allowance has been reached. Saved plans remain available.');
+  if (!isAdmin && balance + reserved > MONTHLY_LIMIT_MICRO_USD) throw Error('The US$20 monthly AI allowance has been reached. Saved plans remain available.');
   return { balance: balance + reserved, reserved };
 }
 export function usageCost(usage) {

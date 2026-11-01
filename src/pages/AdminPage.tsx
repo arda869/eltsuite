@@ -152,7 +152,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'teachers', label: 'Teachers', icon: 'person', n: teachers?.length },
     { k: 'codes', label: 'Invitation codes', icon: 'plus', n: codes?.filter((c) => codeState(c) === 'open').length || undefined },
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
-    { k: 'ai', label: 'AI lesson assistant', icon: 'board' },
+    { k: 'ai', label: 'AI usage and access', icon: 'board' },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
     { k: 'activity', label: 'Activity', icon: 'timer' },

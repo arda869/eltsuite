@@ -1,3 +1,4 @@
+import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -7,7 +8,7 @@ import { canUseHelp, helpInstructions, library, questionInput, selectedArticles,
 const key = defineSecret('OPENAI_API_KEY');
 const model = defineString('ELT_AI_MODEL', { default: '' });
 
-// Help uses its own budget and counters. It never reads class data or teaching AI allowances.
+// Help uses the shared per-user policy, with separate service cost accounting. It never reads class data.
 export const helpAssistant = onCall({ region: 'us-central1', secrets: [key], maxInstances: 2, concurrency: 4, timeoutSeconds: 210 }, async req => {
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
   const db = getFirestore(), uid = req.auth.uid, d = req.data ?? {};
@@ -17,14 +18,16 @@ export const helpAssistant = onCall({ region: 'us-central1', secrets: [key], max
   if (d.action !== 'feedback') { try { checkModel(model.value()); } catch { throw new HttpsError('unavailable', 'AI help is unavailable. Browse the help topics or contact support.'); } }
   const input = d.action === 'feedback' ? null : (() => { try { return questionInput(d); } catch (e) { throw new HttpsError('invalid-argument', e.message); } })();
   if (d.action === 'feedback' && (!['yes', 'no', 'unresolved'].includes(d.rating) || !Array.isArray(d.articleIds) || d.articleIds.length > 2 || d.articleIds.some(id => !library.articles.some(a => a.id === id)))) throw new HttpsError('invalid-argument', 'Choose a feedback option.');
+  const usagePolicy=await usageContext(db,req.auth);
   const day = new Date().toISOString().slice(0, 10);
-  const usage = db.doc(`helpPrivate/${uid}/usage/${day}`), budget = db.doc(`helpBudgets/${day.slice(0, 7)}`);
+  const usage = db.doc(`helpPrivate/${uid}/usage/${day}`), budget = db.doc(`${usagePolicy.isAdmin ? 'helpAdminBudgets' : 'helpBudgets'}/${day.slice(0, 7)}`);
   const reservation = await db.runTransaction(async tx => {
     const [u, b] = await Promise.all([tx.get(usage), tx.get(budget)]);
-    // Pilot abuse protection, separate from paid teaching allowances. No raw question is logged.
+    // No raw question is logged. Feedback does not consume AI generation allowance.
     const field = d.action === 'feedback' ? 'feedback' : 'requests';
-    if ((u.get(field) ?? 0) >= 30) throw new HttpsError('resource-exhausted', 'Help has reached today’s fair-use limit. You can still browse help topics or contact support.');
-    const r = input ? reserveBudget(b.get('committedMicroUsd') ?? 0, 1) : null;
+    if(!input&&!usagePolicy.isAdmin&&(u.get(field)??0)>=30)throw new HttpsError('resource-exhausted','Today’s help feedback limit has been reached.');
+    if(input)await chargeFeature(tx,db,usagePolicy,'help');
+    const r = input ? reserveBudget(b.get('committedMicroUsd') ?? 0, 1, usagePolicy.isAdmin) : null;
     tx.set(usage, { [field]: (u.get(field) ?? 0) + 1, expiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000) }, { merge: true });
     if (r) tx.set(budget, { committedMicroUsd: r.balance }, { merge: true });
     return r;

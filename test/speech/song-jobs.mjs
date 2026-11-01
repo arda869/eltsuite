@@ -50,7 +50,7 @@ try{
  await db.doc(`songPrivate/${uid}`).set({jobId:'another',busyUntil:Date.now()+60000});
  await assert.rejects(recordingSong.run(request(uid,{id:'song-locked-12345678',brief,approved:true})),e=>e.code==='resource-exhausted');
  await db.doc(`songPrivate/${uid}`).set({busyUntil:0});
- const day=new Date().toISOString().slice(0,10);await db.doc(`songUsage/${day}/teachers/${uid}`).set({song:3});
+ const day=new Date().toISOString().slice(0,10);await db.doc(`aiFeatureUsage/${uid}/days/${day}`).set({counts:{song:3}});
  await assert.rejects(recordingSong.run(request(uid,{id:'song-budget-12345678',brief,approved:true})),e=>e.code==='resource-exhausted');assert.equal(musicCalls,1);
  await db.doc(`songPrivate/${uid}/jobs/${id}`).update({expiresAt:Date.now()-1});
  await assert.rejects(recordingSongResult.run(request(uid,{id})),e=>e.code==='not-found');
