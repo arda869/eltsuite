@@ -16,15 +16,20 @@ export const planSchema = object({ title: string, mainAim: string, subsidiaryAim
     script: string, attribution: string, accessibleAlternative: string }), 0, 20) });
 export const reviewSchema = object({ checks: list(object({ criterion: string, score: { type: 'integer', minimum: 1, maximum: 5 }, evidence: string }), 11, 11),
   criticalErrors: list(string, 0), suggestions: list(string, 0) });
-export function validate(schema, value, path = 'output') {
+export function validate(schema, value, path = 'output', root = schema) {
+  if(schema.$ref) {
+    const name=schema.$ref.startsWith('#/$defs/')?schema.$ref.slice(8):'';
+    if(!name || !root.$defs?.[name]) throw Error('Unknown schema reference.');
+    return validate(root.$defs[name],value,path,root);
+  }
   if (schema.enum && !schema.enum.includes(value)) throw Error(`${path} has an invalid choice.`);
   if (schema.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error(`${path} must be an object.`);
     if (Object.keys(value).some(k => !Object.hasOwn(schema.properties, k))) throw Error(`${path} has unknown fields.`);
-    for (const key of schema.required) validate(schema.properties[key], value[key], `${path}.${key}`);
+    for (const key of schema.required) validate(schema.properties[key], value[key], `${path}.${key}`, root);
   } else if (schema.type === 'array') {
     if (!Array.isArray(value) || value.length < schema.minItems || value.length > schema.maxItems) throw Error(`${path} has an invalid number of entries.`);
-    value.forEach((v, i) => validate(schema.items, v, `${path}[${i}]`));
+    value.forEach((v, i) => validate(schema.items, v, `${path}[${i}]`, root));
   } else if (schema.type === 'string') {
     if (typeof value !== 'string' || value.trim().length < schema.minLength || value.length > schema.maxLength) throw Error(`${path} needs text within the length limit.`);
   } else if (!Number.isInteger(value) || value < schema.minimum || value > schema.maximum) throw Error(`${path} needs a whole number within the limit.`);

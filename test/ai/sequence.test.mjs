@@ -7,7 +7,7 @@ import {activitySchema,checkActivities} from '../../functions/ai/activities.js';
 import {trainingActivitySchema} from '../../functions/ai/training.js';
 import {describeFailure,GenerationError} from '../../functions/ai/errors.js';
 const stages=[{id:'M7',title:'Discover',aim:'Notice language',minutes:7,interaction:'Pairs'},{id:'custom-id',title:'Use',aim:'Agree on a choice',minutes:13,interaction:'Pairs'}];
-const sample=s=>s.type==='object'?Object.fromEntries(Object.entries(s.properties).map(([k,v])=>[k,sample(v)])):s.type==='array'?Array.from({length:s.minItems},()=>sample(s.items)):s.enum?s.enum[0]:s.type==='integer'?s.minimum:'Text';
+const sample=(s,root=s)=>s.$ref?sample(root.$defs[s.$ref.slice(8)],root):s.type==='object'?Object.fromEntries(Object.entries(s.properties).map(([k,v])=>[k,sample(v,root)])):s.type==='array'?Array.from({length:s.minItems},()=>sample(s.items,root)):s.enum?s.enum[0]:s.type==='integer'?s.minimum:'Text';
 test('plan slots preserve approved IDs, order, metadata and timings regardless of key order',()=>{
  const c=stageContract('plan',planSchema,{stages}), raw=sample(c.schema);
  raw.stages={stage_2:raw.stages.stage_2,stage_1:raw.stages.stage_1}; raw.learnerMaterials=[];
@@ -43,4 +43,11 @@ test('repair is bounded; provider failures are not retried; activities errors ar
  await assert.rejects(generateChecked({...args,generate:async()=>{calls++;return {value:{},usage:{}}}}),e=>e.reason==='content');assert.equal(calls,2);
  calls=0;await assert.rejects(generateChecked({...args,generate:async()=>{calls++;throw new GenerationError('billing')}}));assert.equal(calls,1);
  assert.equal(describeFailure(new GenerationError('content'),'activities').phase,'activities');
+});
+
+test('maximum-stage activity schema stays compact and validates referenced content',()=>{
+ const c=stageContract('activities',activitySchema,{stages:Array.from({length:12},(_,i)=>({...stages[0],id:'s'+i}))});
+ assert.ok(JSON.stringify(c.schema).length<15000);
+ const raw=sample(c.schema);raw.tasks.stage_1[0].minutes='invalid';
+ assert.throws(()=>c.decode(raw));
 });

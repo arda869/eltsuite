@@ -19,8 +19,8 @@ export function stageContract(action, schema, approved) {
   const stages=approved.stages, slots=stages.map(({id,title,aim,minutes,interaction},i)=>({slot:`stage_${i+1}`,id,title,aim,minutes,interaction}));
   const field=action==='plan'?'stages':'tasks';
   const body=object(omit(schema.properties[field].items.properties, action==='plan'?['id','title','aim','minutes','interaction']:['stageId']));
-  const properties=Object.fromEntries(slots.map(s=>[s.slot,action==='plan'?body:{type:'array',items:body,minItems:1,maxItems:Math.min(s.minutes,6,Math.floor(20/stages.length))}]));
-  const boundSchema=object({...schema.properties,[field]:object(properties)});
+  const properties=Object.fromEntries(slots.map(s=>[s.slot,action==='plan'?{$ref:'#/$defs/stageContent'}:{type:'array',items:{$ref:'#/$defs/stageContent'},minItems:1,maxItems:Math.min(s.minutes,6,Math.floor(20/stages.length))}]));
+  const boundSchema={...object({...schema.properties,[field]:object(properties)}),$defs:{stageContent:body}};
   return {
     schema:boundSchema,
     input:{approvedStageSlots:slots},
