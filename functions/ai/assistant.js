@@ -1,3 +1,4 @@
+import {revisionInput,revisionSchema,revisionInstructions,applyRevision,outlineFromPlan} from './revision.js';
 import {rebuildPicture} from './import-picture-job.js';
 import { researchLesson } from './research.js';
 import { editUntilReady, editorialStandard } from './editorial.js';
@@ -136,6 +137,8 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (!['outline', 'plan', 'activities'].includes(d.action) || !id(d.requestId)) fail('Choose a generation action.');
   if (!model.value()) throw new HttpsError('failed-precondition', 'Choose a model on the server before enabling generation.');
   try { checkModel(model.value()); } catch (e) { throw new HttpsError('failed-precondition', e.message); }
+  let revision;try{revision=revisionInput(d,brief,cls.get('kind')==='training');}catch(e){fail(e.message);}
+  if(revision&&d.action==='plan'){d.outline=outlineFromPlan(revision.current);d.approved=true;}
   if (d.action === 'plan') {
     if (d.approved !== true) fail('Review and approve the outline first.');
     try { checkSequence(validate(outlineSchema, d.outline), brief.duration); } catch (e) { fail(e.message); }
@@ -145,8 +148,9 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const evidence=d.useEvidence===true?await collectEvidence(db,d.classId):null;
   let learnerMemories; try { learnerMemories=await selectedMemories(db,d.classId,d.useLearnerMemories,d.memoryIds); } catch(e) { fail(e.message); }
   const payload = { brief, creationType, learnerMemories, classProfile:cls.get('kind')==='training'?null:cls.get('learningProfile') ?? null, trainingProfile:cls.get('kind')==='training'?(cls.get('trainingProfile') ?? {programme:cls.get('level'),experience:'Unspecified',goals:brief.objectives}):null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
+  if(revision){const {sourceEvidence:unused,...currentDraft}=revision.current;Object.assign(payload,{currentDraft,requestedChanges:revision.instructions});if(d.action==='activities')payload.approvedPlan={title:d.plan.title,mainAim:d.plan.mainAim,stages:outlineFromPlan(d.plan).stages};}
   if (JSON.stringify(payload).length > 75000) fail('Shorten the brief or outline.');
-  const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, useEvidence:d.useEvidence===true, useLearnerMemories:d.useLearnerMemories===true, memoryIds:d.useLearnerMemories===true?d.memoryIds:[], ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
+  const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, ...(revision?{revision:{instructions:revision.instructions,current:revision.current}}:{}), useEvidence:d.useEvidence===true, useLearnerMemories:d.useLearnerMemories===true, memoryIds:d.useLearnerMemories===true?d.memoryIds:[], ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
   const job = db.doc(`aiPrivate/${uid}/jobs/${d.requestId}`);
   const day = new Date().toISOString().slice(0, 10), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), globalQuota = db.doc(`aiUsage/${day}`);
   const usagePolicy = await usageContext(db, req.auth);
@@ -194,20 +198,23 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       tx.set(globalQuota,dailyGlobalUsage(g.data(),1,generationAdmin),{merge:true});
       tx.update(job,{reservedMicroUsd:j.get('reservedMicroUsd')+reservation.reserved,repairing:true});
     });
-    let sources=(d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
-    const researchUsage=[];
-    if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
-      const research=await researchLesson(brief,{reserve:reserveExtra,generate:args=>generate({apiKey:key.value(),model:model.value(),...args})});
-      researchUsage.push(...research.usage);sources=research.sources;
-    }
-    const approved=d.action==='plan'?d.outline:d.action==='activities'?d.plan:null;
+    let sources=(d.action==='outline'?revision?.current?.sourceEvidence:d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
+    const approved=d.action==='outline'?revision?.current:d.action==='plan'?d.outline:d.action==='activities'?d.plan:null;
     if(approved){const {sourceEvidence:unused,...content}=approved;const text=JSON.stringify(content);const cited=sources.filter(s=>text.includes(s.url));if(cited.length)sources=cited;}
+    const researchUsage=[];
+    if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&(revision||!sources.length)))) {
+      const research=await researchLesson({...brief,...(revision?{requestedChanges:revision.instructions,currentTitle:revision.current.title}:{})},{reserve:reserveExtra,generate:args=>generate({apiKey:key.value(),model:model.value(),...args})});
+      researchUsage.push(...research.usage);sources=revision?[...new Map([...sources,...research.sources].map(s=>[s.url,s])).values()].slice(0,3):research.sources;
+    }
     payload.sourceEvidence=sources;
     if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
     if(payload.approvedPlan){payload.approvedPlan={...payload.approvedPlan};delete payload.approvedPlan.sourceEvidence;}
-    const first = await generateChecked({generate, args: { apiKey: key.value(), model: model.value(), schema: contract.schema, name: d.action, input: {...payload,...contract.input}, instructions: (d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + contract.instructions },
+    let revisionSummary='';
+    const first = await generateChecked({generate, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, name: d.action, input: {...payload,...contract.input}, instructions: (d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions) },
       decode: value => {
-        const decoded=contract.decode(value);
+        const revised=revision?applyRevision(revision.current,value,revision.schema):null;
+        if(revision)revisionSummary=value.summary;
+        const decoded=revision?Object.fromEntries(Object.entries(revised).filter(([k])=>k!=='sourceEvidence')):contract.decode(value);
         if(d.action==='outline' && decoded.stages.reduce((n,s)=>n+s.minutes,0)!==brief.duration) {
           const minutes=allocateMinutes(decoded.stages.map(s=>s.minutes),brief.duration);
           decoded.stages=decoded.stages.map((s,i)=>({...s,minutes:minutes[i]}));
@@ -215,6 +222,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
         return decoded;
       },
       check: value => {
+        if(revision){validate(revision.schema,value);if(d.action==='plan'&&JSON.stringify(value.stages.map(s=>[s.id,s.minutes]))!==JSON.stringify(revision.current.stages.map(s=>[s.id,s.minutes])))throw new GenerationError('sequence');}
         if(d.action==='activities') {
           checkActivities(value,d.plan,cls.get('kind')==='training');
           if(value.tasks.some(t=>t.format==='listening'&&!(t.mediaPlan??[]).some(m=>m.kind==='audio'))) throw Error('Every listening activity needs an audio mediaPlan matching its private script.');
@@ -222,18 +230,18 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       },
       reserveRepair: reserveExtra
     });
-    let result = { [d.action]: first.value, usage: [...researchUsage,...first.usage] };
+    let result = { [d.action]: first.value, ...(revision?{revisionSummary}:{}), usage: [...researchUsage,...first.usage] };
     if ((d.action === 'plan' || d.action === 'activities') && cls.get('kind')!=='training') {
       phase='review';
       const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,
         review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
-          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,[d.action]:value},
+          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...(revision?{requestedChanges:revision.instructions}:{}),[d.action]:value},
           instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
         repair: async (value,review,remaining) => {
-          const revised=await generate({apiKey:key.value(),model:model.value(),schema:contract.schema,name:d.action,timeoutMs:Math.min(180000,remaining),
-          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...contract.input,output:value,editorialReview:review},
-          instructions:(d.action==='activities'?activityInstructions:teachingInstructions)+'\n'+editorialStandard+'\nRepair all reported defects and criteria below 4. Return the complete revised output. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Do not merely claim a fix in notes.'+contract.instructions});
-          return {...revised,value:contract.decode(revised.value)};
+          const revised=await generate({apiKey:key.value(),model:model.value(),schema:revision?revisionSchema:contract.schema,name:d.action,timeoutMs:Math.min(180000,remaining),
+          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...contract.input,...(revision?{currentDraft:value,requestedChanges:revision.instructions}:{output:value}),editorialReview:review},
+          instructions:(d.action==='activities'?activityInstructions:teachingInstructions)+'\n'+editorialStandard+'\nRepair all reported defects and criteria below 4. Return the complete revised output. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Do not merely claim a fix in notes.'+(revision?'\n'+revisionInstructions:contract.instructions)});
+          return {...revised,value:revision?applyRevision(value,revised.value,schema):contract.decode(revised.value)};
         },
         check: value => {
           validate(schema,value);
@@ -242,7 +250,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
             if(value.tasks.some(t=>t.format==='listening'&&!t.mediaPlan.some(m=>m.kind==='audio'))) throw new GenerationError('editorial');
           } else {
             checkSequence(value,brief.duration);
-            const metadata=v=>v.stages.map(s=>[s.id,s.title,s.aim,s.minutes,s.interaction]);
+            const metadata=v=>v.stages.map(s=>revision?[s.id,s.minutes]:[s.id,s.title,s.aim,s.minutes,s.interaction]);
             if(JSON.stringify(metadata(value))!==JSON.stringify(metadata(d.outline))) throw new GenerationError('editorial');
           }
         }

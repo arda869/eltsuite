@@ -838,8 +838,27 @@ const J = {
     await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('Plan a trip together');
     if(await s.p.getByLabel('Stage 1: Title',{exact:true}).inputValue()!=='Plan a trip together') throw Error('Stage table edit was lost');
     if (await s.p.getByRole('button', { name: 'Save private draft' }).count()) throw Error('Plan created before approval');
+    const revision=s.p.getByRole('region',{name:'Ask AI to make changes',exact:true});
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await s.p.getByRole('alert').getByText('Describe what you would like AI to change in the box.').waitFor();
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Change the title only. Keep my stage title.');
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
+    if(await s.p.getByRole('textbox',{name:'Title',exact:true}).inputValue()!=='Choose a trip')throw Error('Proposal silently replaced current outline');
+    await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('My newer manual edit');
+    if(await revision.getByRole('button',{name:'Apply changes',exact:true}).isEnabled())throw Error('Stale proposal can overwrite newer manual edits');
+    await revision.getByRole('button',{name:'Keep current version',exact:true}).click();
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).click();
+    if(await s.p.getByLabel('Stage 1: Title',{exact:true}).inputValue()!=='My newer manual edit')throw Error('Applying revision lost a manual edit');
+
     await s.p.getByRole('button', { name: 'Approve outline and make the plan' }).click();
     await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).fill('Explain a choice with two reasons');
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Suggest a different title; keep my main aim.');
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Keep current version',exact:true}).click();
+    if(await s.p.getByRole('textbox',{name:'Main aim',exact:true}).inputValue()!=='Explain a choice with two reasons')throw Error('Rejecting plan revision lost manual edits');
+
     await s.p.getByRole('button', { name: 'Learner materials', exact: true }).click();
     await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
     await s.p.getByRole('button', { name: 'Save private draft' }).click();
@@ -881,6 +900,12 @@ const J = {
     await s.p.getByRole('textbox',{name:'Main aim',exact:true}).fill('Choose and justify a trip with clear reasons');
     await s.p.getByRole('button',{name:'Prepare class activities'}).click();
     await see(s.p,'text=04 · CLASS ACTIVITIES','rebuilt activity review');
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('Change only the lesson title; keep all activity content.');
+    await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).click();
+    await s.p.getByRole('heading',{name:'Revised travel choice',exact:true}).waitFor();
+    await s.p.getByRole('table',{name:'Travel options'}).waitFor();
+
     await s.p.getByRole('button',{name:'Create lesson in Classes'}).click();
     await see(s.p,'text=Created in Classes, hidden','hidden creation');
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);

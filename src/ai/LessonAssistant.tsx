@@ -35,7 +35,7 @@ function PreparedAsset({asset,classId}:{asset:MediaStatus;classId:string}) {
   if(asset.status!=='ready')return null;
   return asset.kind==='audio'?<MediaPlayer classId={classId} mediaId={asset.mediaId} title={asset.title} scriptMode="none" teacher/>:<figure>{url?<img src={url} alt={asset.alt||asset.title} style={{maxWidth:'100%',maxHeight:360,objectFit:'contain'}}/>:<p>Loading photograph…</p>}{asset.credit&&<figcaption>{asset.credit}</figcaption>}</figure>;
 }
-type Result = { brief?:Brief|null; media?:MediaStatus[]; memories?:Memory[]; activities?:Activities;createdItemId?:string;profileSaved?:boolean;classContext?:{name:string;level:string;kind:string;trainingProfile?:TrainingProfile|null;profile:LearningProfile|null};evidence?:Evidence; outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number }[]; draft?: { creationType?:string; brief: Brief; plan: RecordValue; version: number } };
+type Result = { revisionSummary?:string; brief?:Brief|null; media?:MediaStatus[]; memories?:Memory[]; activities?:Activities;createdItemId?:string;profileSaved?:boolean;classContext?:{name:string;level:string;kind:string;trainingProfile?:TrainingProfile|null;profile:LearningProfile|null};evidence?:Evidence; outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number }[]; draft?: { creationType?:string; brief: Brief; plan: RecordValue; version: number } };
 const call = httpsCallable<Record<string, unknown>, Result>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 600000 });
 const initial: Brief = { topic: '', objectives: '', context: '', level: 'B1', methodology: 'Recommend', duration: 60 };
 const labels: Record<string, string> = { activityType: 'Activity', learnerAction: 'What learners do', material: 'What they use', outcome: 'What they achieve', id: 'Reference', mainAim: 'Main aim', subsidiaryAims: 'Subsidiary aims', assumedKnowledge: 'Assumed knowledge', languageAnalysis: 'Meaning, form, pronunciation and appropriacy', instructionChecks: 'Instruction checks', anticipatedProblems: 'Anticipated problems', materialIds: 'Material references', learnerMaterials: 'Learner materials', answerKey: 'Answer key or response criteria', accessibleAlternative: 'Accessible alternative' };
@@ -96,6 +96,13 @@ function Fields({ value, onChange, name }: { value: Value; onChange: (v: Value) 
     : <Fields key={key} value={v} name={label(key)} onChange={next => onChange({ ...value, [key]: next })} />)}</fieldset>;
 }
 
+function RevisionPreview({value}:{value:Value}) {
+  if(value===null||value===undefined)return null;
+  if(typeof value!=='object')return <p className="ai-preserve">{String(value)}</p>;
+  if(Array.isArray(value))return <ol>{value.map((v,i)=><li key={i}>{typeof v==='object'&&!Array.isArray(v)?<details><summary>{String(v.title??v.label??`Item ${i+1}`)}</summary><RevisionPreview value={v}/></details>:<RevisionPreview value={v}/>}</li>)}</ol>;
+  return <dl>{Object.entries(value).filter(([key])=>!['id','stageId','sourceEvidence'].includes(key)).map(([key,v])=><div key={key}><dt><strong>{label(key)}</strong></dt><dd><RevisionPreview value={v}/></dd></div>)}</dl>;
+}
+
 export function LessonAssistant() {
   const { classId = '' } = useParams();
   const enabled = useAiPilot();
@@ -129,6 +136,8 @@ export function LessonAssistant() {
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [revisionText,setRevisionText]=useState('');
+  const [proposal,setProposal]=useState<{action:string;result:Result;base:string;requestId:string}|null>(null);
   const [tab, setTab] = useState('teacher');
   const [draftId, setDraftId] = useState<string>(() => crypto.randomUUID());
   const [version, setVersion] = useState(0);
@@ -171,10 +180,11 @@ export function LessonAssistant() {
       document.removeEventListener('click', click, true);
     };
   }, [dirty, locked]);
-  useEffect(()=>{setUseLearnerMemories(false);setMemoryIds([]);setMemories([]);if(enabled) void run('context');},[classId,enabled]);
+  useEffect(()=>{setProposal(null);setRevisionText('');setUseLearnerMemories(false);setMemoryIds([]);setMemories([]);if(enabled) void run('context');},[classId,enabled]);
   useEffect(()=>{if(!sourceRequestId||!preparingMedia)return;let cancelled=false;const timer=window.setInterval(()=>{void call({action:'mediaStatus',classId,sourceRequestId}).then(r=>{if(!cancelled)setMedia(r.data.media??[]);}).catch(()=>{if(!cancelled)setError('Could not refresh media status. Preparation continues on the server.');});},3000);return()=>{cancelled=true;window.clearInterval(timer);};},[sourceRequestId,preparingMedia,classId]);
   async function run(action: string, extra: Record<string, unknown> = {}) {
     setBusy(action); setError(''); setNotice('');
+    if(!extra.revision&&['outline','plan','activities','load'].includes(action))setProposal(null);
     try {
       const payload = { classId, brief, action, creationType, useEvidence, useLearnerMemories, memoryIds:useLearnerMemories?memoryIds:[], ...extra };
       if (action === 'outline' || action === 'plan' || action === 'activities') {
@@ -183,6 +193,10 @@ export function LessonAssistant() {
         Object.assign(payload, { requestId: pending.current.requestId });
       }
       const result = (await call(payload)).data;
+      if(extra.revision){
+        if(result.activities){const status=(await call({action:'mediaStatus',classId,sourceRequestId:pending.current?.requestId})).data;result.media=status.media??[];}
+        setProposal({action,result,base:JSON.stringify((extra.revision as {current:unknown}).current),requestId:pending.current?.requestId??''});pending.current=null;setNotice('Your proposed revision is ready. Your current draft has not changed.');return;
+      }
       if(result.activities) {setDirty(true);setStep(3);setActivities(result.activities);setActiveActivity(0);setMedia([]);setSourceRequestId(String(extra.sourceRequestId??pending.current?.requestId??''));try{localStorage.setItem('ai-media-job:'+classId,String(extra.sourceRequestId??pending.current?.requestId??''));}catch{}setCreatedItemId('');}
       if(result.media)setMedia(result.media);
       if(result.activities&&action!=='resumeActivities'){const status=(await call({action:'mediaStatus',classId,sourceRequestId:pending.current?.requestId})).data;setMedia(status.media??[]);}
@@ -211,6 +225,24 @@ export function LessonAssistant() {
   const discard = () => !dirty || window.confirm('Leave this unsaved draft? Save it first if you want to keep your edits.');
   const changeBrief=(next:Brief)=>{try{localStorage.removeItem('ai-media-job:'+classId);}catch{}setBrief(next);setOutline(null);setPlan(null);setActivities(null);setMedia([]);setCreatedItemId('');setReview(null);setDirty(true);};
   const changePlan = (next: RecordValue) => { setPlan(next); setActivities(null);setMedia([]);setCreatedItemId(''); setDirty(true); setReview(null); setNotice('Your edits need a fresh teacher review.'); };
+  const revisionAction=step===1?'outline':step===2?'plan':'activities';
+  const revisionCurrent=step===1?outline:step===2?plan:step===3?activities:null;
+  const proposalMatches=!!proposal&&proposal.action===revisionAction&&proposal.base===JSON.stringify(revisionCurrent);
+  const askForChanges=()=>{
+    if(!revisionText.trim()){setError('Describe what you would like AI to change in the box.');return;}
+    if(!revisionCurrent)return;
+    setProposal(null);
+    void run(revisionAction,{...(revisionAction==='activities'?{plan}:{}),revision:{instructions:revisionText,current:revisionCurrent}});
+  };
+  const applyProposal=()=>{
+    if(!proposal||!proposalMatches)return;
+    const result=proposal.result;
+    if(result.outline){setOutline(result.outline);setPlan(null);setActivities(null);setMedia([]);setReview(null);setSourceRequestId('');}
+    if(result.plan){setPlan(result.plan);setActivities(null);setMedia([]);setReview(result.review??null);setSourceRequestId('');}
+    if(result.activities){setActivities(result.activities);setActiveActivity(0);setMedia(result.media??[]);setSourceRequestId(proposal.requestId);try{localStorage.setItem('ai-media-job:'+classId,proposal.requestId);}catch{}}
+    if(!result.activities){try{localStorage.removeItem('ai-media-job:'+classId);}catch{}}
+    setCreatedItemId('');setDirty(true);setProposal(null);setRevisionText('');setNotice('AI changes applied. You can continue editing the draft.');
+  };
   if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
   return <MaterialNames.Provider value={Object.fromEntries((Array.isArray(plan?.learnerMaterials)?plan.learnerMaterials:[]).map(m=>[String((m as RecordValue).id),String((m as RecordValue).title)]))}><TopBar /><main className="ai-assistant">
     {materialImport&&<MaterialImport classId={classId} creationType={creationType} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);setDirty(false);navigate(`/class/${classId}/lesson/${id}`);}}/>}
@@ -219,8 +251,18 @@ export function LessonAssistant() {
     <ol className="ai-progress" aria-label="Creation progress" role="tablist">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li role="presentation" key={x} className={i===step?'current':''}><button type="button" role="tab" tabIndex={i===step?0:-1} onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=Array.from(e.currentTarget.closest('[role="tablist"]')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));const at=tabs.indexOf(e.currentTarget),next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(at+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next]?.focus();tabs[next]?.click();}} id={`creation-tab-${i}`} aria-controls={`creation-panel-${i}`} aria-selected={i===step} disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
     {error && <p role="alert" className="ai-error">{error}</p>}{notice && <p role="status">{notice}</p>}
     <div className="ai-actions"><button className="btn" disabled={locked} onClick={() => void run('list')}>Open saved plans</button>
-      <button className="btn" disabled={locked} onClick={() => { if (discard()) { try{localStorage.removeItem('ai-media-job:'+classId);}catch{}setStep(0);setBrief({...initial,level:brief.level,objectives:isTraining?trainingProfile.goals:profile.goals,context:isTraining?trainingProfile.context:profile.needs}); setActivities(null);setMedia([]);setCreatedItemId(''); setOutline(null); setPlan(null); setReview(null); setDraftId(crypto.randomUUID()); setVersion(0); setDirty(false); pending.current = null; } }}>Start a new plan</button></div>
+      <button className="btn" disabled={locked} onClick={() => { if (discard()) { setProposal(null);setRevisionText('');try{localStorage.removeItem('ai-media-job:'+classId);}catch{}setStep(0);setBrief({...initial,level:brief.level,objectives:isTraining?trainingProfile.goals:profile.goals,context:isTraining?trainingProfile.context:profile.needs}); setActivities(null);setMedia([]);setCreatedItemId(''); setOutline(null); setPlan(null); setReview(null); setDraftId(crypto.randomUUID()); setVersion(0); setDirty(false); pending.current = null; } }}>Start a new plan</button></div>
     {drafts.length > 0 && <ul>{drafts.map(d => <li key={d.id}><button className="btn" disabled={locked} onClick={() => { if (discard()) void run('load', { draftId: d.id }); }}>{d.title}</button> <button className="btn" disabled={locked || d.id === draftId} onClick={() => { if (window.confirm(`Delete “${d.title}”? You can’t undo this.`)) void run('delete', { draftId: d.id }); }}>Delete</button></li>)}</ul>}
+    {step>0&&revisionCurrent&&<section className="ai-revision" aria-label="Ask AI to make changes">
+      <h2>Ask AI to make changes</h2><p>Tell AI what to change and what to keep. You can still edit the draft yourself. Review the proposal before applying it.</p>
+      <label className="ai-field"><span>Your changes</span><AutoTextarea aria-label="Your changes" maxLength={2000} disabled={locked} value={revisionText} onChange={e=>setRevisionText(e.target.value)} placeholder="Keep the story and information gap. Make the listening more challenging and add a timeline."/></label>
+      <p className="hint">{revisionText.trim()?'Your current draft stays unchanged until you apply a proposal.':'Describe at least one change to request a revision.'}</p>
+      <button type="button" className="btn" disabled={locked} onClick={askForChanges}>Suggest changes</button>
+      {proposal&&proposal.action===revisionAction&&<div className="ai-revision-proposal"><h3>Proposed revision</h3><p>{proposal.result.revisionSummary||'Review the revised draft below.'}</p><details><summary>View proposed {revisionAction}</summary><RevisionPreview value={(proposal.result[revisionAction as 'outline'|'plan'|'activities'] as unknown) as Value}/></details>
+        {!proposalMatches&&<p role="status">You edited the draft after requesting this proposal. Request changes again to include those edits; this proposal cannot overwrite them.</p>}
+        <div className="ai-actions"><button type="button" className="btn primary" disabled={locked||!proposalMatches} onClick={applyProposal}>Apply changes</button><button type="button" className="btn" disabled={locked} onClick={()=>{setProposal(null);setNotice('Your current version is unchanged.');}}>Keep current version</button></div>
+      </div>}
+    </section>}
     {step===0 && <form role="tabpanel" id="creation-panel-0" aria-labelledby="creation-tab-0" onSubmit={e => { e.preventDefault(); if(profileDirty) {setError('Save the class profile changes before generating.');return;} void run('outline'); }}><fieldset disabled={locked}><legend>1. Your brief</legend>
       <div className="ai-type-grid" role="group" aria-label="What would you like to create?">{[['lesson',isTraining?'Training session':'Lesson',isTraining?'Experience, analyse and rehearse':'Explore, practise and communicate'],['exam',isTraining?'Practice exam':'Exam','Assess clearly and fairly'],['homework','Homework','Extend learning beyond class'],['practice','Practice','Retrieve, repeat and improve']].map(([id,title,desc])=><button type="button" key={id} aria-pressed={creationType===id} onClick={()=>{if(id!==creationType){setCreationType(id);changeBrief(brief);}}}><CreationIcon type={id}/><strong>{title}</strong><span>{desc}</span></button>)}</div>
       <details className="ai-context"><summary>{isTraining?`Training profile · ${trainingProfile.programme} · ${trainingProfile.experience}`:`Your class · ${brief.level} · ${profile.courseType} · ${profile.ageGroup}`}</summary><p>These shared details come from Class settings. Save changes here to update future briefs too.</p>{isTraining?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setProfileDirty(true);changeBrief({...brief,level:v.experience==='Mixed experience'?'Mixed experience':['Two to five years','Over five years'].includes(v.experience)?'Experienced':v.experience==='Under two years'?'Developing':'Foundation'});}}/>:<ClassProfileFields value={profile} onChange={v=>{setProfile(v);setProfileDirty(true);changeBrief({...brief,objectives:!brief.objectives || brief.objectives===profile.goals?v.goals:brief.objectives,context:!brief.context || brief.context===profile.needs?v.needs:brief.context});}}/>}<button type="button" className="btn ai-profile-save" disabled={!profileDirty} onClick={()=>void run('profile',{profile,trainingProfile,level:brief.level})}>Save to class settings</button></details>
