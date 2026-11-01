@@ -32,7 +32,7 @@ export function describeFailure(error, phase) {
   return { reason, phase: step, message: `${messages[reason]} Your current brief and outline have not been replaced. Start a new generation when ready. [${step}:${reason}]` };
 }
 export function httpFailure(status, code) {
-  const reason = code === 'insufficient_quota' ? 'billing'
+  const reason = ['insufficient_quota','credit_balance_exhausted'].includes(code) ? 'billing'
     : status === 401 ? 'credentials'
     : code === 'model_not_found' ? 'model_access'
     : status === 403 ? 'access'

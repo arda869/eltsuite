@@ -1,3 +1,4 @@
+import { GenerationError } from './errors.js';
 import { generateChecked } from './recovery.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
@@ -98,6 +99,7 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
  const context=await usageContext(db,req.auth);checkModel(model);
  const month=new Date().toISOString().slice(0,7),budget=db.doc(`${context.isAdmin?'aiAdminBudgets':'aiBudgets'}/${month}`);
  await db.runTransaction(async tx=>{const j=await tx.get(job);if(j.exists)fail('This request is already running.');const b=await tx.get(budget);const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,context.isAdmin);await chargeFeature(tx,db,context,'lessonActivities');tx.set(budget,{committedMicroUsd:reservation.balance,month},{merge:true});tx.create(job,{action:'taskTools',classId:d.classId,itemId:d.itemId,mode:d.mode,scope:d.scope??'activity',sourceIds:scope.map(t=>t.id),sourceHash:hash(scope),variantLabel:d.variantLabel==='Challenge'?'Challenge':'Supported',status:'running',createdAt:Timestamp.now(),reserved:reservation.reserved});});
+ let repairStarted=false;
  try {
   let schema,instructions,name,result;
   if(d.mode==='answers'){schema=keysSchema;instructions=keyInstructions;name='task_keys';}
@@ -108,7 +110,7 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
    else if(d.step==='ideas'){if(d.mode==='differentiate'&&(!value.ideas.some(i=>i.kind==='support')||!value.ideas.some(i=>i.kind==='challenge')))throw Error('Return one support and one challenge option.');}
    else checkActivities(value,{stages:[{id:'tool',minutes:input.minutes}]},cls.get('kind')==='training');
   };
-  const checked=await generateChecked({generate,args:{apiKey,model,schema,name,input,instructions},decode:v=>v,check:checkValue,reserveRepair:async()=>db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,context.isAdmin);tx.update(budget,{committedMicroUsd:reservation.balance});tx.update(job,{reserved:j.get('reserved')+reservation.reserved});})});
+  const checked=await generateChecked({generate,args:{apiKey,model,schema,name,input,instructions},decode:v=>v,check:checkValue,reserveRepair:async()=>{repairStarted=true;return db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,context.isAdmin);tx.update(budget,{committedMicroUsd:reservation.balance});tx.update(job,{reserved:j.get('reserved')+reservation.reserved});});}});
   const generated={value:checked.value};
   if(d.mode==='answers') {
    const seen=new Set();const entries=[];
@@ -119,5 +121,13 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   const assets=result.activity?mediaRequests({tasks:[result.activity]}):[];
   const j=await job.get();await db.runTransaction(async tx=>{const b=await tx.get(budget);const settled=settleBudget(b.get('committedMicroUsd')??0,j.get('reserved'),checked.usage);tx.update(budget,{committedMicroUsd:settled.balance});tx.update(job,{status:'completed',...encodeGenerationResult(result),completedAt:Timestamp.now()});for(const asset of assets)tx.create(job.collection('media').doc(asset.id),{...asset,...(cls.get('kind')!=='training'&&(!cls.get('learningProfile')?.ageGroup||cls.get('learningProfile')?.ageGroup==='Adults')&&asset.kind==='image'?{source:asset.style==='editorial'?'editorial':'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});});
   return {status:'completed',result,media:result.activity?mediaRequests({tasks:[result.activity]}).map(a=>({id:a.id,title:a.title,status:'queued'})):[]};
- }catch(e){if(process.env.FIRESTORE_EMULATOR_HOST)console.error('task-tools emulator failure',e);await job.update({status:'failed',error:'Could not complete this draft. Your lesson is unchanged.'});throw new HttpsError('unavailable','Could not complete this draft. Your lesson is unchanged. Please try again.');}
+ }catch(e){
+  const reason=e instanceof GenerationError?e.reason:'unknown';
+  const messages={billing:'AI generation is unavailable because the API account has no credit. Your administrator needs to restore API credit before you retry. Your lesson is saved and unchanged.',rate_limit:'The AI service is busy. Please wait a moment, then try again. Your lesson is saved and unchanged.',timeout:'The AI service took too long. Please try again. Your lesson is saved and unchanged.',connection:'The connection to the AI service was interrupted. Please try again. Your lesson is saved and unchanged.',output_limit:'This draft was too long to finish. Try one activity at a time. Your lesson is saved and unchanged.'};
+  const error=messages[reason]??'This draft could not finish. Please try again. Your lesson is saved and unchanged.';
+  console.warn('lesson-tool-failed',{mode:d.mode,step:d.step,reason});
+  if(['rate_limit','billing'].includes(reason)&&!repairStarted)await db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);const reserved=j.get('reserved')??0;if(!j.get('reservationReleased')&&b.get('committedMicroUsd')>=reserved){tx.update(budget,{committedMicroUsd:b.get('committedMicroUsd')-reserved});tx.update(job,{reservationReleased:true});}});
+  await job.update({status:'failed',error,reason});
+  return {status:'failed',error};
+ }
 }

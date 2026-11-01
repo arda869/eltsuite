@@ -6,7 +6,7 @@ import { outlineSchema } from '../../functions/ai/contract.js';
 const args = { apiKey: 'test-only', model: 'gpt-6.1-sol', schema: outlineSchema, name: 'plan', input: {} };
 const secretText = 'SECRET-KEY-and-private-learner-content';
 test('provider HTTP failures distinguish quota, key, access, rate and request errors without exposing response bodies', async () => {
-  for (const [status, code, expected] of [[429, 'insufficient_quota', 'billing'], [401, 'invalid_api_key', 'credentials'], [404, 'model_not_found', 'model_access'], [403, 'x', 'access'], [429, 'x', 'rate_limit'], [400, 'invalid_json_schema', 'request'], [503, 'x', 'provider']]) {
+  for (const [status, code, expected] of [[429, 'insufficient_quota', 'billing'], [429, 'credit_balance_exhausted', 'billing'], [401, 'invalid_api_key', 'credentials'], [404, 'model_not_found', 'model_access'], [403, 'x', 'access'], [429, 'x', 'rate_limit'], [400, 'invalid_json_schema', 'request'], [503, 'x', 'provider']]) {
     await assert.rejects(generate({ ...args, fetchImpl: async () => ({ ok: false, status, json: async () => ({ error: { code, message: secretText } }) }) }), e => e.reason === expected && !e.message.includes(secretText));
     assert.equal(httpFailure(status, code).reason, expected);
   }

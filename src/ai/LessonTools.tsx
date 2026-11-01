@@ -35,7 +35,7 @@ function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied}:{classI
   if(step==='generate'&&mode!=='answers'&&!selected&&!direction.trim()){setError('Choose an idea or describe the activity you want.');return;}
   setBusy(true);setError('');setResult(null);setMedia([]);
   const p:Pending={id:crypto.randomUUID(),mode,step,scope};remember(p);
-  try{accept((await call({action:'taskTools',classId,itemId,taskId:taskId??'',requestId:p.id,mode,step,scope,minutes,direction:[selected?.direction,direction].filter(Boolean).join('\n').slice(0,2500),variantLabel:selected?.kind==='challenge'?'Challenge':'Supported'})).data);}catch(e){setError((e instanceof Error?e.message:'Could not complete the request.')+' Your lesson is unchanged. You can recover the draft.');}finally{setBusy(false);}
+  try{accept((await call({action:'taskTools',classId,itemId,taskId:taskId??'',requestId:p.id,mode,step,scope,minutes,direction:[selected?.direction,direction].filter(Boolean).join('\n').slice(0,2500),variantLabel:selected?.kind==='challenge'?'Challenge':'Supported'})).data);}catch(e){try{const saved=(await call({action:'taskToolsStatus',classId,itemId,requestId:p.id})).data;accept(saved);if(saved.status==='running')setError('The request is still running. Use Recover draft to check again.');}catch{setError('We could not confirm whether the draft finished. Your lesson is unchanged. Use Recover draft to check before starting again.');}}finally{setBusy(false);}
  };
  const started=useRef(false);
  useEffect(()=>{if(!started.current){started.current=true;if(mode!=='answers'&&!pending)void start('ideas');}},[]); // eslint-disable-line react-hooks/exhaustive-deps
