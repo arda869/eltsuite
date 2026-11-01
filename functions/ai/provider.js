@@ -1,3 +1,4 @@
+import { compactSchema } from './compact-schema.js';
 import { catalogueInstructions, catalogueReviewInstructions } from './catalogue.js';
 import { editorialStandard } from './editorial.js';
 import { memoryInstructions } from './memories.js';
@@ -16,7 +17,7 @@ export async function generate({ apiKey, model, schema, name, input, sourceImage
   if (name === 'outline') instructions += '\n' + "OUTLINE ONLY: This response is a concise planning sketch, not the complete lesson. Outcomes must be observable learner actions, not context notes. Keep methodology and rationale brief. Each stage must include activityType (reading, listening, speaking, language discovery, vocabulary, pronunciation or writing plus the specific format), learnerAction (what learners actually do), material (the text, recording, pictures or role information), and outcome (what they decide, discover or produce). These concise fields must make the activity understandable before approval. Each stage title and aim is one short sentence; interaction is only the participation pattern, such as individual, pairs, groups or whole class. Do not put procedures, scripts, examples, questions, keys, role cards or teacher notes into interaction or other outline fields. The full-plan step will supply complete materials. This outline-specific scope takes precedence over requirements for complete materials in the general editorial standards.";
   if (name === 'plan') instructions += '\nUse approvedOutline as the authoritative sequence. Preserve every stage ID, order and minute value exactly. Do not add, remove or merge stages. Expand each stage with concise, complete teaching procedures and materials.';
   const requestBody = { model, reasoning: { effort: ['review','editorial_repair','research_review','importSenseCheck','importPictureCheck'].includes(name)?'medium':'low' }, store: false, service_tier: 'default', instructions, input: JSON.stringify(input), max_output_tokens: MAX_OUTPUT_TOKENS,
-    text: { format: { type: 'json_schema', name, strict: true, schema: generationSchema(schema) } } };
+    text: { format: { type: 'json_schema', name, strict: true, schema: compactSchema(generationSchema(schema)) } } };
   try { checkRequestSize(requestBody); } catch { throw new GenerationError('input_limit'); }
   // Rebuild inputs have already passed bounded JPEG byte/dimension validation.
   // Keep the text/schema budget check separate from base64 transport size.
