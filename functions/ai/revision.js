@@ -11,7 +11,7 @@ export function revisionInput(d,brief,training=false){
  const schema=d.action==='outline'?outlineSchema:d.action==='plan'?planSchema:training?trainingActivitySchema:activitySchema;
  validate(schema,r.current);
  if(d.action==='activities')checkActivities(r.current,d.plan,training);else checkSequence(r.current,brief.duration);
- if(JSON.stringify(r.current).length>75000)throw Error('This draft is too large for one revision.');
+ if(JSON.stringify(r.current).length>200000)throw Error('This draft is too large for one revision.');
  return {instructions:r.instructions.trim(),current:r.current,schema};
 }
 export function applyRevision(current,patch,schema){
