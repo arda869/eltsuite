@@ -59,7 +59,7 @@ export async function resolveEmbed(db,who,id){
  await checkCorpusEvidence(db,selectedPacket(source,e.selected,{sharing:true}).evidence,{sharing:true});
  if(e.mode==='snapshot')await checkCorpusEvidence(db,e.snapshot.evidence,{sharing:true});
  const data=e.mode==='snapshot'?e.snapshot:{...selectedPacket(source,e.selected,{sharing:true}),fields:e.includeAnalysis?source.fields:{}};
- return {id,...e,snapshot:undefined,data};
+ return {id,...e,title:data.title,snapshot:undefined,data};
 }
 export async function handleLinguistics(db,auth,input,provider={}){
  const who=await actor(db,auth),d=input||{},action=d.action;
@@ -96,6 +96,7 @@ export async function handleLinguistics(db,auth,input,provider={}){
   const source=await get(db,'linguisticsInvestigations/'+idOf(d.id));if(source?.owner!==who.uid)denied();
   await db.doc('linguisticsInvestigations/'+d.id).delete();
   for(const collectionName of ['linguisticsEmbeds','linguisticsCoachPackets']){const rows=await db.collection(collectionName).where('investigationId','==',d.id).get();for(const row of rows.docs)await db.recursiveDelete(row.ref);}
+  const jobs=await db.collection(`aiPrivate/${who.uid}/jobs`).where('investigationId','==',d.id).get();for(const job of jobs.docs)await db.recursiveDelete(job.ref);
   await audit(db,who,'delete',d.id);return {deleted:true};
  }
  if(action==='export'){
