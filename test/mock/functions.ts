@@ -20,6 +20,21 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     return {data:{pcm:btoa(binary),rate:24000,transcript:d.text}};
   }
   if (name === 'recordingDialogue') return {data:{lines:Array.from({length:d.turns},(_,i)=>({speaker:d.speakers[i%d.speakers.length].id,text:i%2?'Of course. I meant this Friday, not Thursday.':'Sorry, could you clarify which day you mean?',direction:'Natural conversational English'}))}};
+  if (['recordingLyrics','recordingSong','recordingSongResult'].includes(name)) {
+    const key='mockSongs', jobs=JSON.parse(sessionStorage.getItem(key)||'{}');
+    if(name!=='recordingSongResult'){
+      localStorage.setItem('mockSongLastRequest',JSON.stringify({name,...d}));
+      if(d.brief.style==='FAIL_TEST')throw Error('Test music service unavailable.');
+      jobs[d.id]={kind:name==='recordingLyrics'?'lyrics':'song',lyrics:d.brief.lyrics};sessionStorage.setItem(key,JSON.stringify(jobs));return {data:{status:'complete'}};
+    }
+    const job=jobs[d.id];if(!job)throw Object.assign(Error('Creation not found. Your lyrics are kept.'),{code:'functions/not-found'});
+    if(job.kind==='lyrics')return {data:{status:'complete',lyrics:'Every morning, here we go!\nTime to learn and time to grow!'}};
+    const bytes=new Uint8Array(44+48000),view=new DataView(bytes.buffer),write=(at:number,s:string)=>{for(let i=0;i<s.length;i++)bytes[at+i]=s.charCodeAt(i);};
+    write(0,'RIFF');view.setUint32(4,bytes.length-8,true);write(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);write(36,'data');view.setUint32(40,48000,true);
+    for(let i=0;i<24000;i++)view.setInt16(44+i*2,Math.sin(i*.1)*3000,true);
+    let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
+    return {data:{status:'complete',audio:btoa(binary),mime:'audio/wav',providerLyrics:job.lyrics}};
+  }
   if (name === 'recordingTranscript') return {data:{segments:[{speaker:'A',text:'Could you explain that?',start:0,end:.4},{speaker:'B',text:'Of course.',start:.5,end:1}]}};
   if (name === 'speakingTask') {
     const {setDoc,doc,getDoc}=await import('./firestore');
