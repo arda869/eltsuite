@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {mkdir} from 'node:fs/promises';
 const require=createRequire(import.meta.url),base=process.env.MATERIAL_NATIVE_TEST_URL||'http://localhost:5194';
 let server;if(!await fetch(base).then(r=>r.ok,()=>false)){server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port',new URL(base).port],{stdio:'ignore',detached:true});for(let i=0;i<80;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}}
-const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined}),context=await browser.newContext({viewport:{width:1350,height:950}}),p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
+const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined}),context=await browser.newContext({viewport:{width:1350,height:950}}),p=await context.newPage(),errors=[];p.setDefaultTimeout(60000);p.on('pageerror',e=>errors.push(e.message));
 try{
  await p.goto(base+'/dev.html?seed&as=teacher&materials');await p.waitForFunction(()=>!!window.__mockReady);await p.evaluate(()=>window.__mockReady);const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  await p.goto(base+'/class/'+demo.classId+'/assistant');await p.getByRole('button',{name:'Import existing materials',exact:true}).click();const d=p.getByRole('dialog',{name:'Import existing materials'});

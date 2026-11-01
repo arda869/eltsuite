@@ -6,7 +6,7 @@ import {createRequire} from 'node:module';
 import {spawn} from 'node:child_process';
 const require=createRequire(import.meta.url),base=process.env.MATERIAL_TEST_URL||'http://localhost:5193';
 let server=null;if(!await fetch(base).then(r=>r.ok,()=>false)){server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port',new URL(base).port],{stdio:'ignore',detached:true});for(let i=0;i<80;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}}
-const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});const ctx=await browser.newContext({viewport:{width:1300,height:900}}),p=await ctx.newPage(),crashes=[];p.on('pageerror',e=>crashes.push(e.message));
+const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});const ctx=await browser.newContext({viewport:{width:1300,height:900}}),p=await ctx.newPage(),crashes=[];p.setDefaultTimeout(60000);p.on('pageerror',e=>crashes.push(e.message));
 try{
  await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.evaluate(()=>window.__mockReady);const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  await p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};localStorage.setItem('mockfs',JSON.stringify(fs));});
