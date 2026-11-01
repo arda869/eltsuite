@@ -82,7 +82,7 @@ export function TaskWindow({ uid, task, onClose }: { uid: string; task: LibTask;
         <div className="lt-body">
           <div className="frame-head">
             <input className="task-title input" value={title} placeholder="Task title" aria-label="Task title" onChange={(e) => (setTitle(e.target.value), change({ title: e.target.value }))} />
-            <InstrEditor doc={instr.doc} text={instr.text} onChange={(d, t) => (setInstr({ doc: d, text: t }), change({ instrDoc: d, instructions: t }))} />
+            <InstrEditor classId={'user:' + uid} doc={instr.doc} text={instr.text} onChange={(d, t) => (setInstr({ doc: d, text: t }), change({ instrDoc: d, instructions: t }))} />
           </div>
           <div className="frame-body">
             <TaskEditor content={content} onChange={(c) => (setContent(c), change({ content: c }))} classId={'user:' + uid} />

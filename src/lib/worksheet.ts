@@ -182,6 +182,9 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           out.push({ num: n }, { blank: GAP[String(t.print?.gap)] ?? 14 });
           break;
         }
+        case 'inlineMedia':
+          if (a.media) out.push({t: `[${a.kind === 'video' ? 'Video' : 'Recording'}: ${a.title || 'Play'}]`});
+          break;
         case 'hardBreak':
           out.push({ t: '\n' });
           break;
@@ -491,6 +494,14 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   const paperInstr = t.print?.instr?.trim();
   const instrRuns = paperInstr ? undefined : t.instrDoc ? (t.instrDoc.content ?? []).flatMap((p, i) => [...(i ? [{ t: ' ' }] : []), ...runsOf(p.content)]) : undefined;
   (t.content.content ?? []).forEach((c) => walk(c));
+  const inlineRefs = (node: JSONContent) => {
+    if (node.type === 'inlineMedia' && node.attrs?.media && !mediaUsed.includes(String(node.attrs.media))) {
+      const a = node.attrs; mediaUsed.push(String(a.media));
+      blocks.push({kind:'media',id:String(a.media),title:String(a.title || 'Video'),video:a.kind === 'video',mode:String(a.scriptMode || 'none')});
+    }
+    node.content?.forEach(inlineRefs);
+  };
+  inlineRefs(t.content); if (t.instrDoc && !paperInstr) inlineRefs(t.instrDoc);
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
   return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }

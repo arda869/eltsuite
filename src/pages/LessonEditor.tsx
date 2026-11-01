@@ -821,7 +821,7 @@ export function LessonEditor() {
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
-                  <InstrEditor key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                  <InstrEditor classId={classId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
                 <div className="frame-body">
                   <VoiceDiversityPrompt key={itemId} />
@@ -1232,7 +1232,7 @@ export function LessonEditor() {
                   )}
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{draft.title}</h1>
-                  <InstrView doc={draft.instrDoc} text={draft.instructions} />
+                  <InstrView classId={classId} doc={draft.instrDoc} text={draft.instructions} />
                 </div>
                 {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}

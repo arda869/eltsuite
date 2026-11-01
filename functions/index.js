@@ -111,3 +111,5 @@ export const pushCallRing = onDocumentWritten({ document: 'callRings/{key}', reg
   if (!r?.at || before?.at === r.at || Date.now() - r.at < 0 || Date.now() - r.at > 60e3) return;
   await sendTo([event.params.key], { title: String(r.title || r.byName || 'Incoming call').slice(0, 80), body: callBody(r.kind, r.byName), link: '/', tag: 'ring-' + event.params.key, call: '1' }, 60);
 });
+
+export { videoStudio, refreshVideoJobs } from './video/index.js';

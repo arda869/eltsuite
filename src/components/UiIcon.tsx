@@ -3,6 +3,22 @@ import { Link } from 'react-router-dom';
 
 // Interface icons for the lesson toolbars: thin strokes, rounded ends, in the text colour.
 const P: Record<string, ReactNode> = {
+  videoPlay: <path d="M8 5l11 7-11 7z" strokeLinejoin="round" />,
+  videoPause: <><path d="M8 5v14M16 5v14" strokeWidth="3" /></>,
+  videoStop: <rect x="6" y="6" width="12" height="12" rx="1" />,
+  videoSave: <><path d="M5 4h12l3 3v13H4V4z" strokeLinejoin="round" /><path d="M8 4v6h8V4M8 20v-6h8v6" /></>,
+  videoSplit: <><path d="M12 3v18M4 8h5M4 16h5M15 8h5M15 16h5" /><path d="M7 6l2 2-2 2M17 14l-2 2 2 2" /></>,
+  videoUndo: <><path d="M8 6L4 10l4 4M4 10h10a6 6 0 0 1 6 6v2" /></>,
+  videoRedo: <><path d="M16 6l4 4-4 4M20 10H10a6 6 0 0 0-6 6v2" /></>,
+  videoCaptions: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M10 10a2.5 2.5 0 1 0 0 4M18 10a2.5 2.5 0 1 0 0 4" /></>,
+  videoRipple: <><path d="M3 6h5v12H3M21 6h-5v12h5M9 12h6M10 10l-2 2 2 2M14 10l2 2-2 2" /></>,
+  videoDetach: <><path d="M3 5h18v8H3zM3 17h7v4H3zM14 17h7v4h-7zM12 13v8" /></>,
+  videoSparkles: <><path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5zM20 3v4M18 5h4" strokeLinejoin="round" /></>,
+  videoClose: <path d="M6 6l12 12M18 6L6 18" />,
+  videoKeyboard: <><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M6 9h1M10 9h1M14 9h1M18 9h1M6 13h1M10 13h1M14 13h1M18 13h1M8 16h8" /></>,
+  videoEye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+  videoUp: <path d="M6 14l6-6 6 6" />,
+  videoAction: <><circle cx="12" cy="12" r="8" /><path d="M8 12h8M12 8v8" /></>,
   alignLeft: <path d="M4 6h16M4 10h10M4 14h16M4 18h10" />,
   alignCenter: <path d="M4 6h16M7 10h10M4 14h16M7 18h10" />,
   alignRight: <path d="M4 6h16M10 10h10M4 14h16M10 18h10" />,

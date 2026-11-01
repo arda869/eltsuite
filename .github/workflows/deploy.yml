@@ -42,6 +42,10 @@ jobs:
       - name: Help assistant checks
         run: node --test test/ai/help.test.mjs
 
+      - name: Video editor and storyboard checks
+        run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
+      - name: Video access rules and service checks
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-video-editor "node test/video-access.mjs"
       - name: File retention regression checks
         run: node --test test/file-bin-cleanup.mjs
       - name: Build
@@ -96,8 +100,9 @@ jobs:
           node functions/ai/preflight.mjs
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
+          node functions/video/preflight.mjs
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
 
       - name: Check assistant rejects signed-out requests

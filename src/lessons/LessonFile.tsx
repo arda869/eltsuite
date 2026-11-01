@@ -207,7 +207,7 @@ export function LessonFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             </div>
             {cur.kind === 'task' && (
               <>
-                {canEdit ? <InstrEditor doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <p className="task-instr">{cur.instructions}</p>}
+                {canEdit ? <InstrEditor classId={'user:' + d.owner} doc={cur.instrDoc ?? null} text={cur.instructions} onChange={(docJ, text) => patch(cur.id, { instrDoc: docJ, instructions: text })} /> : <p className="task-instr">{cur.instructions}</p>}
                 <div className="lf-body">
                   <TaskEditor content={cur.content ?? EMPTY} onChange={(c) => patch(cur.id, { content: c }, 900)} classId={'user:' + d.owner} />
                 </div>

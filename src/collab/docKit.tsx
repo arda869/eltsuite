@@ -24,6 +24,7 @@ import { IconNode } from '../editor/Icons';
 import { SymNode } from '../editor/Symbols';
 import { LANG_MARKS } from '../editor/langMarks';
 import { CiteNode, RefListNode } from '../editor/Cite';
+import { InlineMedia, MediaBlock } from '../editor/MediaNode';
 import { Picture } from '../editor/Picture';
 import { TextBox } from '../editor/TextBox';
 import { RevealBox } from '../editor/Reveal';
@@ -74,6 +75,8 @@ export const DOC_NODES = [
   TableCell.extend({ addAttributes() { return { ...this.parent?.(), ...cellAttrs }; } }),
   Image.configure({ inline: false, allowBase64: true }),
   Picture,
+  InlineMedia,
+  MediaBlock,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
   Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
   LessonLink,
@@ -169,6 +172,7 @@ const DOC_ALL: (Cmd | null)[] = [
   from('reveal', 'Basic', { label: 'Toggle', hint: 'Hidden until someone opens it' }),
   { key: 'image', label: 'Picture', hint: 'Upload, paste or choose from Personal files', group: 'Media', run: (e) => pickPictures(e) },
   from('storyboard', 'Media'),
+  from('inline-video', 'Media'),
   from('linkcard', 'Media', { label: 'Video or web page', hint: 'A YouTube video, a sound file or a web page' }),
   { key: 'cite', label: 'Citation', hint: 'Cite a source from your Reading Journal', group: 'Writing', run: () => void window.dispatchEvent(new CustomEvent('ll:cite')) },
   {
@@ -215,7 +219,7 @@ export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'ph
 
 export const DOC_SECTIONS = [
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
-  { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'linkcard'] },
+  { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'inline-video', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },

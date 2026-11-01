@@ -8319,3 +8319,24 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 /* Keep the full Development Studio name readable in the app launcher. */
 .app-tile b.app-name-wrap { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.2; text-wrap: balance; }
 @media (max-width: 360px) { .app-tile b.app-name-wrap { font-size: 10px; } }
+
+/* Inline video behaves like an inline picture in every rich-text container. */
+.inline-media { display:inline-block; vertical-align:middle; width:360px; max-width:100%; margin:6px 4px; text-indent:0; white-space:normal; line-height:1.4; font-size:14px; text-align:left; box-sizing:border-box; border-radius:8px; }
+.inline-media.im-s { width:240px; }
+.inline-media.im-l { width:560px; }
+.inline-media.im-full { width:100%; }
+.inline-media .mp-video, .inline-media .mp-host, .inline-media iframe { max-width:100%; }
+.inline-media .md-settings { display:none; }
+.inline-media.is-selected .md-settings, .inline-media:focus-within .md-settings { display:flex; }
+.inline-media.is-selected { outline:2px solid var(--accent); outline-offset:2px; }
+.inline-media .mcq-tools { flex-wrap:wrap; }
+@media print { .inline-media .mcq-tools, .inline-media .md-settings { display:none; } }
+.mp-inline, .mp-inline .mp-screen { display:block; }
+.mp-inline .mp-title { display:block; padding:6px 8px; }
+.im-transport { display:flex; align-items:center; gap:6px; padding:4px 6px; font:12px var(--sans); }
+.im-transport > input { flex:1; min-width:30px; width:50px; padding:0; }
+.im-transport > span { white-space:nowrap; }
+.im-transport label { display:inline-flex; align-items:center; gap:4px; flex:1; }
+.im-transport label input { min-width:30px; width:60px; padding:0; }
+.im-transport select { width:auto; height:28px; padding:2px 4px; }
+.im-script { display:block; padding:6px; }

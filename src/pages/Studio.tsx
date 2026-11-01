@@ -125,7 +125,7 @@ export function TaskStudio() {
         <div className="frame-inner studio-sheet">
           <div className="frame-head">
             <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
-            <InstrEditor doc={draft.instrDoc} text={draft.instructions} onChange={(d, t) => change({ instrDoc: d, instructions: t })} />
+            <InstrEditor classId={'user:' + uid} doc={draft.instrDoc} text={draft.instructions} onChange={(d, t) => change({ instrDoc: d, instructions: t })} />
           </div>
           <div className="frame-body">
             <TaskEditor content={draft.content} onChange={(c) => change({ content: c })} classId={'user:' + uid} />

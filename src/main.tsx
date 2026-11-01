@@ -42,6 +42,7 @@ const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ defaul
 const ColleaguesPage = lazy(() => import('./pages/ColleaguesPage').then((m) => ({ default: m.ColleaguesPage })));
 const MessagesPage = lazy(() => import('./pages/MessagesPage').then((m) => ({ default: m.MessagesPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const VideoEditor = lazy(() => import('./video/VideoEditor').then(m => ({ default: m.VideoEditor })));
 const SoundStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.SoundStudio })));
 const TaskStudio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.TaskStudio })));
 const StudioSession = lazy(() => import('./pages/StudioSession').then((m) => ({ default: m.StudioSession })));
@@ -226,6 +227,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/call/:code" element={<CallPage />} />
           <Route path="/studio/task/:id" element={<TeacherOnly><ComputerOnly what="The task editor"><TaskStudio /></ComputerOnly></TeacherOnly>} />
           <Route path="/studio/session/:id" element={<TeacherOnly><ComputerOnly what="The recording studio"><StudioSession /></ComputerOnly></TeacherOnly>} />
+          <Route path="/studio/video" element={<Navigate to="/studio/video/new" replace />} />
+          <Route path="/studio/video/:id" element={<TeacherOnly><ComputerOnly what="The video editor"><VideoEditor /></ComputerOnly></TeacherOnly>} />
           <Route path="/studio/sound/:id" element={<TeacherOnly><ComputerOnly what="The sound editor"><SoundStudio /></ComputerOnly></TeacherOnly>} />
           <Route path="/doc/:id" element={<SignedIn><DocPage /></SignedIn>} />
           <Route path="/doc/k/:key" element={<SignedIn><DocPage /></SignedIn>} />

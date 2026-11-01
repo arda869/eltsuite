@@ -1148,6 +1148,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       }
       case 'speakingPractice':
         return <SpeakingActivity key={key} config={node.attrs as SpeakingConfig} classId={classId ?? ''} teacher={!!teacher} classmates={classmates} disabled={locked} />;
+      case 'inlineMedia':
+        return node.attrs?.media ? <span key={key} className={'inline-media im-' + (node.attrs.size || 'm')}><MediaPlayer inline classId={classId || node.attrs.space || ''} mediaId={String(node.attrs.media)} title={node.attrs.title} scriptMode={node.attrs.scriptMode || 'none'} plays={Number(node.attrs.plays) || 0} teaching={teacher} mute={Array.isArray(node.attrs.mute) ? node.attrs.mute : []} /></span> : null;
       case 'media':
         return node.attrs?.media ? (
           <div key={key} data-bk={key} className="task-media">

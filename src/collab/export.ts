@@ -39,7 +39,8 @@ export function documentStats(json: JSONContent) {
     if (n.type === 'refList' || n.marks?.some((m) => m.type === 'suggestDel')) return '';
     if (n.type === 'text') return n.text ?? '';
     if (n.type === 'cite') return ' citation reference ';
-    if (n.type === 'hardBreak') return '\n';
+    if (n.type === 'inlineMedia' && n.attrs?.media) return `<span>[Video: ${esc(String(n.attrs.title || 'Play in ELT Suite'))}]</span>`;
+  if (n.type === 'hardBreak') return '\n';
     const text = (n.content ?? []).map(textOf).join('');
     if (n.type === 'paragraph' || n.type === 'heading') { if (text.trim()) paragraphs++; return text + '\n'; }
     return text;
@@ -84,6 +85,7 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
     }
     return out;
   }
+  if (n.type === 'inlineMedia' && n.attrs?.media) return `<span>[Video: ${esc(String(n.attrs.title || 'Play in ELT Suite'))}]</span>`;
   if (n.type === 'hardBreak') return '<br>';
   if (n.type === 'cite' && n.attrs?.src) return esc(inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative, numOf(n.attrs.src)));
   if (n.type === 'ipa') return `<span class="ipa">/${esc(String(n.attrs?.text ?? ''))}/</span>`;

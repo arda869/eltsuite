@@ -75,6 +75,14 @@ service cloud.firestore {
         && request.resource.data.get('classId', null) == resource.data.get('classId', null);
       allow delete: if signedIn() && resource.data.role == 'learner' && (teachesClass(resource.data.classId) || runsClass(resource.data.classId));
 
+      // Editable video projects are private. Shared outputs live in videoAssets.
+      match /videoProjects/{projectId} {
+        allow read, delete: if isSelf(uid) && isTeacher();
+        allow create, update: if isSelf(uid) && isTeacher() && (resource != null || hasRoom(uid))
+          && request.resource.data.keys().hasOnly(['project', 'updatedAt'])
+          && request.resource.data.project is map && request.resource.data.project.version == 1
+          && request.resource.data.project.tracks is list && request.resource.data.project.tracks.size() <= 30;
+      }
       // A teacher's personal question bank
       match /bank/{bankId} {
         allow read, write: if isSelf(uid) && !learnerAccount();
@@ -118,6 +126,48 @@ service cloud.firestore {
         allow create, update: if isSelf(uid) && !learnerAccount() && active() && (resource != null || hasRoom(uid))
           && (!('data' in request.resource.data) || request.resource.data.data.size() < 1000000)
           && request.resource.data.get('size', 0) < 700000;
+      }
+    }
+
+    // Video originals, references and generated media. No anonymous or learner access.
+    function videoReadable(a) {
+      return isTeacher() && (a.owner == request.auth.uid || request.auth.uid in a.readers
+        || (a.org != '' && exists(/databases/$(database)/documents/orgs/$(a.org))
+          && request.auth.uid in get(/databases/$(database)/documents/orgs/$(a.org)).data.get('teachers', {})));
+    }
+    match /videoAssets/{assetId} {
+      allow read: if videoReadable(resource.data);
+      allow create: if isTeacher() && hasRoom(request.auth.uid)
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.org == '' && request.resource.data.readers == []
+        && request.resource.data.kind in ['video', 'audio', 'image', 'character']
+        && request.resource.data.ready == false
+        && request.resource.data.parts is int && request.resource.data.parts > 0 && request.resource.data.parts <= 228
+        && request.resource.data.size is int && request.resource.data.size > 0 && request.resource.data.size <= 104857600
+        && (request.resource.data.parts - 1) * 460800 < request.resource.data.size
+        && request.resource.data.size <= request.resource.data.parts * 460800;
+      // Sharing is validated by the server against actual organisation/colleague membership.
+      allow update: if isTeacher() && resource.data.owner == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'voice', 'ready']);
+      allow delete: if isTeacher() && resource.data.owner == request.auth.uid;
+      match /parts/{partId} {
+        function validPart() {
+          let a = get(/databases/$(database)/documents/videoAssets/$(assetId)).data;
+          let d = request.resource.data;
+          return partId.matches('^(0|[1-9][0-9]{0,2})$') && int(partId) < a.parts
+            && d.keys().hasOnly(['data', 'size']) && d.size is int
+            && d.size == (int(partId) == a.parts - 1 ? a.size - int(partId) * 460800 : 460800)
+            && d.data is string && d.data.matches('^[A-Za-z0-9+/]+={0,2}$')
+            && d.data.size() % 4 == 0 && d.data.size() >= d.size * 4 / 3
+            && d.data.size() < d.size * 4 / 3 + 4
+            && (d.size % 3 == 0 ? d.data.matches('^[^=]+$') : d.size % 3 == 1 ? d.data.matches('^.*==$') : d.data.matches('^.*[^=]=$'));
+        }
+        allow read: if videoReadable(get(/databases/$(database)/documents/videoAssets/$(assetId)).data);
+        allow create: if isTeacher() && hasRoom(request.auth.uid)
+          && get(/databases/$(database)/documents/videoAssets/$(assetId)).data.owner == request.auth.uid
+          && get(/databases/$(database)/documents/videoAssets/$(assetId)).data.ready == false
+          && validPart();
+        allow delete: if isTeacher() && get(/databases/$(database)/documents/videoAssets/$(assetId)).data.owner == request.auth.uid;
       }
     }
 

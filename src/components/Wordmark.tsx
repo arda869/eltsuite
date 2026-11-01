@@ -1,3 +1,5 @@
+import { AppLogo } from './AppGrid';
+
 // ELT Suite: a rounded tile with an E drawn from lines (like the lines of a lesson),
 // then the name. The suite keeps the app's colours and type.
 export const MARK = (fill = '#d98f63') =>
@@ -27,10 +29,10 @@ export function Wordmark({ big = false }: { big?: boolean }) {
 }
 
 // The suite's mark with the app's name under "ELT Suite", for pages that open in their own tab.
-export function SuiteMark({ app, color = '#d98f63', dark = false }: { app: string; color?: string; dark?: boolean }) {
+export function SuiteMark({ app, color = '#d98f63', dark = false, iconKey }: { app: string; color?: string; dark?: boolean; iconKey?: string }) {
   return (
     <span className={'suite-mark' + (dark ? ' dark' : '')} style={{ ['--app' as string]: color }}>
-      <Mark size={28} />
+      {iconKey ? <AppLogo k={iconKey} size={28} /> : <Mark size={28} />}
       <span>
         <span className="suite-k">ELT Suite</span>
         <b>{app}</b>
