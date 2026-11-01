@@ -38,7 +38,7 @@ jobs:
         run: |
           # Match PR checks: respect the app lockfile and keep the Firebase CLI in npx's tool cache.
           npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
-          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs"
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs && SONG_TEST_PROJECT=demo-feature-discovery node test/speech/song-jobs.mjs"
       - name: Help assistant checks
         run: node --test test/ai/help.test.mjs
 
@@ -97,7 +97,7 @@ jobs:
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant,functions:helpAssistant,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
 
       - name: Check assistant rejects signed-out requests
