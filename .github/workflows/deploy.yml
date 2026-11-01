@@ -101,6 +101,7 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: |
+          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           npx --yes firebase-tools@14 deploy --only functions:designerImage --project lesson-lit --non-interactive
           node scripts/check-designer-binding.mjs
 

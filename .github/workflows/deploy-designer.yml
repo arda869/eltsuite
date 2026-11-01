@@ -1,0 +1,37 @@
+name: Deploy Designer image service
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/deploy-designer.yml']
+concurrency:
+  group: firebase-designer
+  cancel-in-progress: false
+jobs:
+  designer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install backend dependencies
+        run: npm --prefix functions ci --no-audit --no-fund
+      - name: Configure existing deployment parameters
+        run: node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
+      - name: Prepare deployment credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy the tested Designer service and verify its binding
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          npx --yes firebase-tools@14 deploy --only functions:designerImage --project lesson-lit --non-interactive
+          node scripts/check-designer-binding.mjs
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
