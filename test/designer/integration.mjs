@@ -37,7 +37,18 @@ try {
  await run('designer-editor',{action:'restyle',requestId:'restyled',prompt:'',style:'ink',imageId:'source',referenceId:'source'});
  assert.match(lastBody.prompt,/Pure black outlines/);assert.match(lastBody.prompt,/STYLE REFERENCE/);assert.equal(lastBody.images.length,2);
  assert.equal(generations,3);
+ await db.doc('videoAssets/pip').set({owner:'designer-owner',readers:[],org:'',kind:'character',name:'Pip',description:'Blue scarf',type:'image/png',ready:true,parts:1,size:5});
+ await db.doc('videoAssets/pip/parts/0').set({data:'aW1hZ2U=',size:5});
+ await assert.rejects(run('designer-editor',{action:'create',requestId:'private-character',prompt:'Pip runs',characters:['pip']}));
+ await assert.rejects(run('designer-owner',{action:'create',requestId:'invalid-character',prompt:'Pip runs',characters:['../pip']}));
+ assert.equal(generations,3);
+ await run('designer-owner',{action:'create',requestId:'character',prompt:'Pip runs',characters:['pip'],style:'bright',referenceId:'source'});
+ assert.equal(lastBody.images.length,2);assert.match(lastBody.prompt,/Image 1 depicts "Pip"/);assert.match(lastBody.prompt,/Blue scarf/);assert.match(lastBody.prompt,/LAST supplied image is a STYLE REFERENCE/);
+ assert.equal(generations,4);
+ await db.doc('sharedDocs/second-design').set({owner:'designer-owner',kind:'design'});
+ await run('designer-owner',{fileId:'second-design',action:'create',requestId:'character-second-design',prompt:'Pip reads',characters:['pip']});
+ assert.equal(generations,5);assert.match(lastBody.prompt,/Image 1 depicts "Pip"/);
  await db.doc('aiAllowances/designer-owner').set({limits:{designerImage:0}});
- await assert.rejects(run('designer-owner',{...data,requestId:'blocked'}));assert.equal(generations,3);
+ await assert.rejects(run('designer-owner',{...data,requestId:'blocked'}));assert.equal(generations,5);
  console.log('Designer: access isolation, non-billable connection probe, empty prompt, idempotency, recovery, source preservation and allowance checks passed (mock provider).');
 } finally {globalThis.fetch=fetchOriginal;}
