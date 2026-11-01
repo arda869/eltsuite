@@ -12,6 +12,7 @@ const messages = {
   provider: 'OpenAI could not complete the request because of a service error.',
   timeout: 'The AI request exceeded its 180-second time limit.',
   connection: 'The server lost its connection to the AI service.',
+  input_limit: 'The combined lesson and editorial request exceeded the safe input limit. No new model call was made.',
   output_limit: 'The AI response reached its output limit before completing.',
   incomplete: 'The AI service returned an incomplete response.',
   refusal: 'The AI service declined to generate this content. Revise the brief before trying again.',

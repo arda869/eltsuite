@@ -85,7 +85,7 @@ function StageTable({ stages, onChange }: { stages: RecordValue[]; onChange: (v:
 function Fields({ value, onChange, name }: { value: Value; onChange: (v: Value) => void; name: string }) {
   const materialNames=useContext(MaterialNames);
   if(name==='Reference')return null;
-  if(name==='Source evidence'&&Array.isArray(value))return <details><summary>Research sources · {value.length}</summary>{value.map((v,i)=>{const source=v as RecordValue;return <section key={i}><h4>{String(source.title)}</h4><p>{String(source.url)}</p><p className="ai-preserve">{String(source.extract)}</p></section>})}</details>;
+  if(name.toLowerCase()==='source evidence'&&Array.isArray(value))return <details><summary>Research sources · {value.length}</summary>{value.map((v,i)=>{const source=v as RecordValue;return <section key={i}><h4>{String(source.title)}</h4><p>{String(source.url)}</p><p className="ai-preserve">{String(source.extract)}</p></section>})}</details>;
   if(name==='Material references'&&Array.isArray(value))return <fieldset><legend>Materials used</legend>{value.map((id,i)=><label className="ai-field" key={i}>Material {i+1}<select value={String(id)} onChange={e=>onChange(value.map((old,j)=>i===j?e.target.value:old))}>{Object.entries(materialNames).map(([key,title])=><option key={key} value={key}>{title}</option>)}</select></label>)}</fieldset>;
   if (typeof value === 'string' || typeof value === 'number') return <label className="ai-field"><span>{name}</span>{typeof value === 'number'
     ? <input type="number" min={1} max={180} value={value} onChange={e => onChange(Number(e.target.value))} />

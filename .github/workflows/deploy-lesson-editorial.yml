@@ -1,4 +1,5 @@
 name: Deploy lesson editorial workflow
+# Includes live-test source relevance corrections.
 on:
   workflow_dispatch:
   push:

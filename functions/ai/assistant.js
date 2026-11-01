@@ -1,5 +1,5 @@
 import {rebuildPicture} from './import-picture-job.js';
-import { researchSchema, collectSources } from './research.js';
+import { researchLesson } from './research.js';
 import { editUntilReady, editorialStandard } from './editorial.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { stageContract, allocateMinutes } from './sequence.js';
@@ -197,11 +197,11 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     let sources=(d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
     const researchUsage=[];
     if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
-      await reserveExtra();
-      const research=await generate({apiKey:key.value(),model:model.value(),schema:researchSchema,name:'research',timeoutMs:60000,
-        input:{brief},instructions:'Choose 2–3 concise Wikipedia search queries to find genuinely interesting real-world source material for this adult English lesson. Prioritise a surprising real person, invention, place, discovery or documented dilemma that serves the objectives. For routines consider distinctive working lives, expeditions or creative habits rather than generic profiles. Queries are research leads, not verified facts. Do not put private learner or teacher details into queries. Return queries only.'});
-      researchUsage.push(research.usage);sources=await collectSources(research.value.queries);
+      const research=await researchLesson(brief,{reserve:reserveExtra,generate:args=>generate({apiKey:key.value(),model:model.value(),...args})});
+      researchUsage.push(...research.usage);sources=research.sources;
     }
+    const approved=d.action==='plan'?d.outline:d.action==='activities'?d.plan:null;
+    if(approved){const {sourceEvidence:unused,...content}=approved;const text=JSON.stringify(content);const cited=sources.filter(s=>text.includes(s.url));if(cited.length)sources=cited;}
     payload.sourceEvidence=sources;
     if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
     if(payload.approvedPlan){payload.approvedPlan={...payload.approvedPlan};delete payload.approvedPlan.sourceEvidence;}
@@ -228,10 +228,13 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,
         review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,[d.action]:value},
-          instructions:`${teachingInstructions}\n${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
-        repair: (value,review,remaining) => generate({apiKey:key.value(),model:model.value(),schema,name:d.action,timeoutMs:Math.min(180000,remaining),
-          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,approvedStages:(d.action==='plan'?d.outline:d.plan).stages,output:value,editorialReview:review},
-          instructions:(d.action==='activities'?activityInstructions:teachingInstructions)+'\n'+editorialStandard+'\nRepair all reported defects and criteria below 4. Return the complete revised output. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Do not merely claim a fix in notes.'}),
+          instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
+        repair: async (value,review,remaining) => {
+          const revised=await generate({apiKey:key.value(),model:model.value(),schema:contract.schema,name:d.action,timeoutMs:Math.min(180000,remaining),
+          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...contract.input,output:value,editorialReview:review},
+          instructions:(d.action==='activities'?activityInstructions:teachingInstructions)+'\n'+editorialStandard+'\nRepair all reported defects and criteria below 4. Return the complete revised output. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Do not merely claim a fix in notes.'+contract.instructions});
+          return {...revised,value:contract.decode(revised.value)};
+        },
         check: value => {
           validate(schema,value);
           if(d.action==='activities') {
