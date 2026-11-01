@@ -45,8 +45,9 @@ try {
  await p.locator('img.dcut-img:visible').waitFor();assert(await p.locator('img.dcut-img:visible').evaluate(im=>im.complete&&im.naturalWidth>0),'Worksheet must include the generated picture');
  await p.getByRole('radio',{name:'Digital: the lesson on screen',exact:true}).check();
  // Inline definition path, including teacher review before the mark is applied.
- const editor=p.getByRole('textbox',{name:'Task',exact:true});await editor.locator('p').filter({hasText:'We sat on the bank of the river.'}).last().click({clickCount:3});await p.keyboard.press('ArrowLeft');for(let i=0;i<14;i++)await p.keyboard.press('ArrowRight');
- for(let i=0;i<4;i++)await p.keyboard.press('Shift+ArrowRight');assert.equal(await p.evaluate(()=>getSelection().toString()),'bank');await p.waitForTimeout(150);
+ const editor=p.getByRole('textbox',{name:'Task',exact:true});const sentence=editor.locator('p').filter({hasText:'We sat on the bank of the river.'}).last();
+ await sentence.evaluate(el=>{const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let text;while((text=walker.nextNode())){const at=text.textContent.indexOf('bank');if(at>=0){const range=document.createRange();range.setStart(text,at);range.setEnd(text,at+4);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);break;}}});
+ assert.equal(await p.evaluate(()=>getSelection().toString()),'bank');await p.waitForTimeout(150);
  await p.getByRole('button',{name:'Add a definition to the selected word',exact:true}).click();
  const pop=p.getByRole('dialog',{name:'Definition',exact:true});await pop.getByRole('button',{name:'Suggest definition with AI',exact:true}).click();await pop.getByRole('button',{name:'Use suggested definition',exact:true}).click();await pop.getByRole('button',{name:'Done',exact:true}).click();
  await p.waitForTimeout(1200);await p.reload();
