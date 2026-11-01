@@ -564,9 +564,11 @@ const J = {
     await s.p.getByLabel('Dialogue line 1',{exact:true}).press('End');await s.p.getByLabel('Dialogue line 1',{exact:true}).press('Enter');
     await s.p.getByLabel('Dialogue line 2',{exact:true}).fill('(laughs) Second take.');
     await s.p.getByRole('button',{name:'Move line 2. Use Arrow Up or Arrow Down to reorder.',exact:true}).press('ArrowUp');
-    if(await s.p.getByLabel('Dialogue line 1',{exact:true}).inputValue()!=='(laughs) Second take.')throw Error('Keyboard reorder lost text');
+    await s.p.waitForFunction(()=>document.querySelector('[aria-label="Dialogue line 1"]')?.value==='(laughs) Second take.',{},{timeout:5000});
+    if(await s.p.getByLabel('Dialogue line 2',{exact:true}).inputValue()!=='First take.')throw Error('Keyboard reorder lost the other line');
     await s.p.locator('.speech-drag').first().dragTo(s.p.locator('.speech-script-row').nth(1));
-    if(await s.p.getByLabel('Dialogue line 1',{exact:true}).inputValue()!=='First take.')throw Error('Drag reorder failed');
+    await s.p.waitForFunction(()=>document.querySelector('[aria-label="Dialogue line 1"]')?.value==='First take.',{},{timeout:5000});
+    if(await s.p.getByLabel('Dialogue line 2',{exact:true}).inputValue()!=='(laughs) Second take.')throw Error('Drag reorder lost the other line');
     await s.p.getByRole('button',{name:'Regenerate line 1',exact:true}).click();
     await s.p.getByRole('button',{name:'Listen to line 1',exact:true}).click();
     await axe(s.p,'Dialogue take table',A11Y_FOUND);
