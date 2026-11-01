@@ -32,3 +32,15 @@ export async function readMaterial(file:File,pages=''):Promise<MaterialSource>{
  else throw Error('Use PDF, DOCX, PPTX, XLSX, TXT, Markdown, CSV, HTML, JPG, PNG or WebP. Save older Office files as PDF or a newer Office format. For audio or video, paste a transcript.');
  out.text=checkText(out.text);if(!out.text.trim()&&!out.images.length)throw Error('No readable material was found. Upload a PDF or a clear photograph.');if(out.images.reduce((n,x)=>n+x.length,0)>2666600)throw Error('The page previews are too large. Choose fewer pages.');return out;
 }
+
+// Local files on unavailable drives or denied folders must not lock the form.
+export function readMaterialSafely(file:File,pages:string,signal:AbortSignal,timeoutMs=60000):Promise<MaterialSource>{
+ return new Promise((resolve,reject)=>{
+  let done=false;let timer:ReturnType<typeof setTimeout>|undefined;
+  const finish=(error?:Error,value?:MaterialSource)=>{if(done)return;done=true;clearTimeout(timer);signal.removeEventListener('abort',cancel);if(error)reject(error);else resolve(value!);};
+  const cancel=()=>finish(new Error('Reading cancelled. Choose a downloaded local copy or another file.'));
+  signal.addEventListener('abort',cancel,{once:true});if(signal.aborted){cancel();return;}
+  timer=setTimeout(()=>finish(new Error('This file is taking too long to read. Download a local copy and choose it again, or paste the task text.')),timeoutMs);
+  void readMaterial(file,pages).then(value=>finish(undefined,value),error=>finish(error instanceof Error?error:new Error('This file could not be read. Choose a local copy.')));
+ });
+}

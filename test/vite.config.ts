@@ -38,7 +38,7 @@ const harness = (): Plugin => ({
   },
 });
 export default defineConfig({
-  cacheDir: process.env.ELT_TEST_CACHE_DIR || path.join(root, '.vite-test'),
+  cacheDir: process.env.ELT_TEST_CACHE_DIR || path.join(root, '.vite-test', String(process.pid)),
   root,
   plugins: [react(), harness()],
   define: { __BUILD__: '"dev"', 'import.meta.env.VITE_ELT_AI_PILOT': '"true"' },
