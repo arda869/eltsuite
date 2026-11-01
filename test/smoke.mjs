@@ -354,7 +354,7 @@ const J = {
     await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('Song title',{exact:true}).fill('Morning song');
     const words='  Wake up!\nWake up!\nLet’s go.  ';await d.getByLabel('Lyrics',{exact:true}).fill(words);
     if(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Song started before lyric approval');
-    await d.getByText('Help me write the lyrics',{exact:true}).click();await d.getByLabel('Lyric ideas',{exact:true}).fill('A daily routines chorus.');await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();
+    await d.getByText('Help me write the lyrics',{exact:true}).click();if(!await d.getByRole('button',{name:'Draft lyrics',exact:true}).isEnabled())throw Error('A linked lesson should be sufficient to draft lyrics');await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();
     await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
     const lyricRequest=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
     if(lyricRequest.brief.lesson.classId!==s.demo.classId||lyricRequest.brief.lesson.itemId!==s.demo.itemId||lyricRequest.brief.language!=='English')throw Error('Lesson link did not reach lyric drafting');

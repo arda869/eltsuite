@@ -46,7 +46,7 @@ try{
  await db.doc('classes/'+classId).update({coTeachers:{[other]:{role:'viewer'}}});
  await assert.rejects(recordingSongLesson.run(request(other,{lesson})),e=>e.code==='permission-denied');
  await db.doc('classes/'+classId).update({coTeachers:{[other]:{role:'co'}}});assert.equal((await recordingSongLesson.run(request(other,{lesson}))).title,'Morning routines');
- await recordingLyrics.run(request(uid,{id:'lyrics-linked-12345678',brief:{...brief,lesson}}));assert.equal(lastLyricInput.linkedLesson.title,'Morning routines');assert.match(lastLyricInput.linkedLesson.tasks[0].text,/wake up/);assert.equal(lastLyricInput.language,'English');
+ await recordingLyrics.run(request(uid,{id:'lyrics-linked-12345678',brief:{...brief,prompt:'',lesson}}));assert.equal(lastLyricInput.linkedLesson.title,'Morning routines');assert.match(lastLyricInput.linkedLesson.tasks[0].text,/wake up/);assert.equal(lastLyricInput.language,'English');
  await db.doc(`songPrivate/${uid}`).set({jobId:'another',busyUntil:Date.now()+60000});
  await assert.rejects(recordingSong.run(request(uid,{id:'song-locked-12345678',brief,approved:true})),e=>e.code==='resource-exhausted');
  await db.doc(`songPrivate/${uid}`).set({busyUntil:0});
