@@ -4,7 +4,8 @@ import { AI_FEATURES, effectiveLimit, validateLimits, usageContext } from '../..
 import { reserveBudget } from '../../functions/ai/budget.js';
 import { mediaReservation } from '../../functions/ai/media-contract.js';
 test('every AI feature has a default, zero blocks, custom and unlimited override defaults',()=>{
- assert.equal(new Set(AI_FEATURES.map(f=>f.id)).size,18);
+ assert.equal(new Set(AI_FEATURES.map(f=>f.id)).size,AI_FEATURES.length);
+ assert.ok(AI_FEATURES.some(f=>f.id==='designerImage'));
  for(const f of AI_FEATURES){
   assert.equal(effectiveLimit(f.id,{}),f.defaultLimit);
   assert.equal(effectiveLimit(f.id,{[f.id]:0}),0);
