@@ -41,6 +41,8 @@ jobs:
           node --input-type=module - <<'JS'
           import fs from 'node:fs';
           fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_ENABLED=true\nELT_AI_MODEL=gpt-6.1-sol\n');
+          // Restrict discovery to this service; unrelated optional integrations are not deployed.
+          fs.writeFileSync('functions/index.js',"import { initializeApp } from 'firebase-admin/app';\ninitializeApp();\nexport { recordingLyrics } from './songs/index.js';\n");
           JS
           npx --yes firebase-tools@14 deploy --only functions:recordingLyrics --project lesson-lit --non-interactive
       - name: Recheck the deployed binding
