@@ -11,9 +11,9 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
   let input; try { input = coachRequest(req.data); } catch (e) { throw new HttpsError('invalid-argument', e.message); }
   const db = getFirestore(), uid = req.auth.uid;
-  const [profile, account, pilot] = await Promise.all([db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get(), db.doc(`aiPilot/${uid}`).get()]);
+  const [profile, account] = await Promise.all([db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get()]);
   if (!canCoach(req.auth, profile.data(), account.data())) throw new HttpsError('permission-denied', 'Sign in with an active teacher account.');
-  if (enabled !== 'true' || pilot.get('enabled') !== true) throw new HttpsError('failed-precondition', 'AI conversations are not enabled for this account yet. You can still use your journal and inquiries.');
+  if (enabled !== 'true') throw new HttpsError('failed-precondition', 'AI conversations are temporarily unavailable. You can still use your journal and inquiries.');
   try { checkModel(model); } catch(e) { throw new HttpsError('failed-precondition', e.message); }
   const [professional, preferences] = await Promise.all([
     db.doc(`teachingCoach/${uid}/settings/profile`).get(), db.doc(`teachingCoach/${uid}/settings/context`).get(),
@@ -67,7 +67,7 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
       if (j.get('status') === 'completed') return j.get('result');
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This response is still running. Retry shortly. If it remains unavailable, clear the conversation and start again.' : 'This response could not finish. Clear the conversation and try again.');
     }
-    if (dailyAllowanceReached(q.get('calls') ?? 0,g.get('calls') ?? 0,1,generationAdmin)) throw new HttpsError('resource-exhausted', 'The daily AI pilot allowance has been reached. Your journal and inquiries are still available.');
+    if (dailyAllowanceReached(q.get('calls') ?? 0,g.get('calls') ?? 0,1,generationAdmin)) throw new HttpsError('resource-exhausted', 'The daily AI allowance has been reached. Your journal and inquiries are still available.');
     let reservation; try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, 1); } catch(e) { throw new HttpsError('resource-exhausted', e.message); }
     tx.set(budget, { committedMicroUsd: reservation.balance, month, limitMicroUsd: 20_000_000 }, { merge: true });
     tx.set(quota, { calls: (q.get('calls') ?? 0)+1 }); tx.set(global, dailyGlobalUsage(g.data(),1,generationAdmin), {merge:true});
