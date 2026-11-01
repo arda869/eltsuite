@@ -41,7 +41,7 @@ jobs:
           npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/onboarding-access.mjs && node test/ai/create-integration.mjs && node test/speech/firestore-access.mjs && node test/speech/song-jobs.mjs'
       - name: Per-user AI allowances and admin security
-        run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
       - name: Video editor and storyboard checks
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
       - name: Video access rules and service checks

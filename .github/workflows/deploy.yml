@@ -40,7 +40,7 @@ jobs:
           npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-feature-discovery "node test/discovery/access.mjs && ONBOARDING_TEST_PROJECT=demo-feature-discovery node test/onboarding-access.mjs && SONG_TEST_PROJECT=demo-feature-discovery node test/speech/song-jobs.mjs"
       - name: Per-user AI allowance transactions and security
-        run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
       - name: Help assistant checks
         run: node --test test/ai/help.test.mjs
 
