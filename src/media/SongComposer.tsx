@@ -45,7 +45,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
     finally{if(request===lessonRequest.current)setLessonBusy(false);}
   };
   useEffect(()=>{if(!open||!brief.lesson||(lessonInfo?.reference.classId===brief.lesson.classId&&lessonInfo?.reference.itemId===brief.lesson.itemId))return;let active=true;setLessonBusy(true);setLessonError('');loadSongLesson(brief.lesson).then(info=>{if(active)setLessonInfo(info);}).catch(()=>{if(active){setLessonInfo(null);setLessonError('The linked lesson is unavailable. Choose another lesson or unlink it.');}}).finally(()=>{if(active)setLessonBusy(false);});return()=>{active=false;};},[open,brief.lesson?.classId,brief.lesson?.itemId]);
-  const signature=JSON.stringify(brief),valid=!!brief.title.trim()&&!!brief.audience&&!!brief.style.trim()&&!!brief.language.trim();
+  const signature=JSON.stringify(brief),valid=!!brief.audience&&!!brief.style.trim()&&!!brief.language.trim();
   const current=!!take&&take.signature===signature;
   const recover=async(id:string,snapshot:SongBrief)=>{
     const deadline=Date.now()+550000;
@@ -64,7 +64,13 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   const run=async(kind:'lyrics'|'song'|'recover')=>{
     if(lock.current)return;lock.current=true;setError('');setBusy(kind);
     const id=kind==='recover'?(pending||savedSong?.id||''):kind+'-'+crypto.randomUUID(),snapshot=kind==='recover'&&!pending&&savedSong?{...savedSong.brief}:{...brief};
-    if(kind!=='recover')setPending(id);
+    if(kind!=='recover'){
+      if(!snapshot.title.trim()){
+        snapshot.title=(snapshot.prompt.trim()||snapshot.focus.trim()||lessonInfo?.title||'Classroom song').split(/\r?\n/)[0].slice(0,100);
+        setBrief(snapshot);
+      }
+      setPending(id);
+    }
     // Persist before starting the paid request so refresh/reconnection can recover it.
     if(kind!=='recover')try{sessionStorage.setItem(key,JSON.stringify({brief,pending:id,savedSong}));}catch{}
     try{
@@ -115,9 +121,9 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
       </fieldset>}
       {step===2&&<fieldset className="song-step-panel song-lyrics-panel" disabled={!!busy||!!pending}><legend>Make every word count</legend><p className="song-intro">Use your own words, or start with an AI draft. You choose the final lyrics.</p>
         <div className="song-brief-strip"><span><UiIcon name="groups" size={15}/>{brief.audience} · {brief.level}</span><span><UiIcon name="music" size={15}/>{musicStyles.find(s=>s.value===brief.style)?.name||'Custom style'}</span><span><UiIcon name="timer" size={15}/>{brief.duration<60?brief.duration+' sec':brief.duration/60+' min'}</span>{brief.lesson&&lessonInfo&&<span><UiIcon name="task" size={15}/>{lessonInfo.title}</span>}</div>
-        <label>Song title<input aria-label="Song title" value={brief.title} maxLength={100} onChange={e=>patch({title:e.target.value})} placeholder="Give your song a name"/></label>
+        <label>Song title <span className="song-optional">Optional</span><input aria-label="Song title" value={brief.title} maxLength={100} onChange={e=>patch({title:e.target.value})} placeholder="Leave blank to use your topic as the title"/></label>
         <label>Lyrics<textarea aria-label="Lyrics" rows={8} maxLength={6000} value={brief.lyrics} onChange={e=>patch({lyrics:e.target.value})} placeholder="Write exactly what you want sung. Include repeated lines as you want them to appear."/></label>
-        <details className="song-ai"><summary><UiIcon name="pen" size={18}/>Help me write the lyrics</summary><label>{lessonInfo||brief.focus.trim()?<>Extra ideas for the lyrics <span className="song-optional">Optional</span></>:<>What should the song be about?</>}<textarea aria-label="Lyric ideas" rows={3} maxLength={2000} value={brief.prompt} onChange={e=>patch({prompt:e.target.value})} placeholder="Describe a topic, a story or a few words you want to include."/></label>{lessonInfo&&<p>Your linked lesson will help guide the vocabulary and wording.</p>}<button type="button" className="btn" disabled={!valid||!styleReady||(!brief.prompt.trim()&&!lessonInfo&&!brief.focus.trim())||lessonBusy||!!lessonError} onClick={()=>void run('lyrics')}><UiIcon name="pen" size={16}/>Draft lyrics</button></details>
+        <details className="song-ai"><summary><UiIcon name="pen" size={18}/>Help me write the lyrics</summary><label>{lessonInfo||brief.focus.trim()?<>Extra ideas for the lyrics <span className="song-optional">Optional</span></>:<>What should the song be about?</>}<textarea aria-label="Lyric ideas" rows={3} maxLength={2000} value={brief.prompt} onChange={e=>patch({prompt:e.target.value})} placeholder="Describe a topic, a story or a few words you want to include."/></label>{lessonInfo&&<p>Your linked lesson will help guide the vocabulary and wording.</p>}{!brief.prompt.trim()&&!lessonInfo&&!brief.focus.trim()&&<p>Add a topic above, enter a teaching focus, or link a lesson to draft lyrics.</p>}<button type="button" className="btn" disabled={!learnersReady||!styleReady||(!brief.prompt.trim()&&!lessonInfo&&!brief.focus.trim())||lessonBusy||!!lessonError} onClick={()=>void run('lyrics')}><UiIcon name="pen" size={16}/>Draft lyrics</button></details>
         {draft&&<section className="song-draft" aria-label="Proposed lyrics"><h3>Try these words</h3><pre>{draft}</pre><div><button type="button" className="btn" onClick={()=>patch({lyrics:draft})}>Use these lyrics</button><button type="button" className="btn" onClick={()=>setDraft('')}>Keep my current lyrics</button></div></section>}
         <label className="song-check"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I’ve reviewed the lyrics. Use these exact words.</span></label>
       </fieldset>}

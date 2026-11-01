@@ -336,6 +336,31 @@ const J = {
     return s;
   },
 
+  'Songs: topic-only lyric drafting needs no title or lesson': async (b) => {
+    const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
+    await s.p.getByRole('button',{name:'Create song',exact:true}).click();
+    const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
+    await d.getByRole('radio',{name:'Young learners',exact:true}).check();
+    await d.getByRole('button',{name:'Next: music'}).click();
+    await d.getByRole('radio',{name:'Pop',exact:true}).check();
+    await d.getByRole('button',{name:'Next: lyrics'}).click();
+    await d.getByText('Help me write the lyrics',{exact:true}).click();
+    const draft=d.getByRole('button',{name:'Draft lyrics',exact:true});
+    if(await draft.isEnabled())throw Error('An empty brief should ask for a topic before drafting');
+    await d.getByText('Add a topic above, enter a teaching focus, or link a lesson to draft lyrics.',{exact:true}).waitFor();
+    await d.getByLabel('Lyric ideas',{exact:true}).fill('Parts of the body song');
+    if(await d.getByLabel('Song title',{exact:true}).inputValue())throw Error('Regression needs an empty title');
+    if(!await draft.isEnabled())throw Error('A topic must enable drafting without a title, focus or lesson');
+    await draft.click();await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
+    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
+    if(request.name!=='recordingLyrics'||request.brief.title!=='Parts of the body song'||request.brief.prompt!=='Parts of the body song'||request.brief.lesson||request.brief.focus)throw Error('Topic-only draft did not send a complete brief');
+    if(await d.getByLabel('Song title',{exact:true}).inputValue()!=='Parts of the body song')throw Error('Suggested title was not shown');
+    if(await d.getByLabel('Lyrics',{exact:true}).inputValue())throw Error('Draft must wait for teacher review');
+    await d.getByRole('button',{name:'Use these lyrics',exact:true}).click();
+    if(!await d.getByLabel('Lyrics',{exact:true}).inputValue())throw Error('Teacher could not use drafted lyrics');
+    if(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Drafting must not approve lyrics automatically');
+    await axe(s.p,'Topic-only lyric drafting',A11Y_FOUND);return s;
+  },
   'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();
