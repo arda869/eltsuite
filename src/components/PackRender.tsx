@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { diffWords, packAnswerText, scorePack, type PackKey, type PackKind, type Placed } from '../lib/pack';
+import { diffWords, highlightGroups, packAnswerText, scorePack, type PackKey, type PackKind, type Placed } from '../lib/pack';
 import { speak } from '../lib/media';
 import { useImageSrc } from '../editor/PackNode';
 
@@ -211,7 +211,7 @@ function Transform({ id, data, value, onChange, result, locked, num, hideAnswers
 function HighlightQ({ id, data, value, onChange, result, locked, num, hideAnswers }: Props) {
   const toks: string[] = data.toks ?? [];
   const pick: number[] = Array.isArray(value) ? value : [];
-  const groups: number[][] = result?.k.groups ?? [];
+  const groups = highlightGroups(result?.k.groups);
   const target = new Set(groups.flat());
   return (
     <div className="pq-hl-q">

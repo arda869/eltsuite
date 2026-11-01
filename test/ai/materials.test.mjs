@@ -11,7 +11,7 @@ test('source-only import accepts blank optional instructions but enforces consen
 });
 test('rebuilt output has valid native tasks and private keys; validates review edits',()=>{
  assert.equal(checkRebuild({...rebuilt,warnings:Array.from({length:50},(_,i)=>'Review note '+i)},'task').warnings.length,50);
- assert.equal(checkRebuild(rebuilt,'task'),rebuilt);const n=nativeTask(rebuilt.tasks[0],0);assert.equal(n.key.q0_0.answers[0],'Saturday');assert.ok(!JSON.stringify(n.content).includes('Teacher key'));assert.ok(n.content.content.some(x=>x.type==='table'));assert.equal(n.content.content[0].attrs.style,'email');
+ assert.deepEqual(checkRebuild(rebuilt,'task'),rebuilt);const legacy=structuredClone(rebuilt);delete legacy.tasks[0].inlineElements;assert.deepEqual(checkRebuild(legacy,'task').tasks[0].inlineElements,[]);const n=nativeTask(rebuilt.tasks[0],0);assert.equal(n.key.q0_0.answers[0],'Saturday');assert.ok(!JSON.stringify(n.content).includes('Teacher key'));assert.ok(n.content.content.some(x=>x.type==='table'));assert.equal(n.content.content[0].attrs.style,'email');
  const two={...rebuilt,tasks:[rebuilt.tasks[0],{...rebuilt.tasks[0],stageId:'source2'}]};checkRebuild(two,'item');assert.throws(()=>checkRebuild(two,'task'));
  for(const change of [{questions:[{...rebuilt.tasks[0].questions[0],format:'choice',options:['A','B'],answer:'C'}]},{visuals:[{title:'Bad table',headers:['A','B'],rows:[['Only one']]}]},{roles:[{label:'A',input:'Hidden'}]},{format:'listening'}])assert.throws(()=>checkRebuild({...rebuilt,tasks:[{...rebuilt.tasks[0],...change}]},'item'));
 });

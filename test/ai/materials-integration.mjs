@@ -1,3 +1,5 @@
+import {readFileSync} from 'node:fs';
+import {importLesson,importElements,asImportModel} from './import-types-fixture.mjs';
 // Real callable + Firestore emulator; model HTTP is stubbed and never billed.
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -9,7 +11,7 @@ initializeApp({projectId:'demo-material-import'});process.env.ELT_AI_ENABLED='tr
 const db=getFirestore(),uid='import-teacher',classId='import-class';
 await Promise.all([db.doc(`users/${uid}`).set({role:'teacher'}),db.doc(`accounts/${uid}`).set({}),db.doc(`classes/${classId}`).set({teacherId:uid}),db.doc(`aiPilot/${uid}`).set({enabled:true})]);
 const {lessonAssistant}=await import('../../functions/ai/assistant.js');
-let calls=0;const oldFetch=globalThis.fetch;globalThis.fetch=async(url,options)=>{if(String(url)!=='https://api.openai.com/v1/responses')return oldFetch(url,options);calls++;const body=JSON.parse(options.body);assert.equal(body.store,false);assert.ok(body.instructions.includes('Do not guess unreadable content'));return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:1000,output_tokens:1000},output:[{content:[{type:'output_text',text:JSON.stringify(rebuilt)}]}]})};};
+const jpeg='data:image/jpeg;base64,'+readFileSync('test/fixtures/import-shapes.jpg').toString('base64');let imageCalls=0,imageChecks=0;let calls=0,generations=0,modelOutput=rebuilt;const oldFetch=globalThis.fetch;globalThis.fetch=async(url,options)=>{if(String(url)==='https://api.openai.com/v1/images/edits'){imageCalls++;const b=JSON.parse(options.body);assert.equal(b.images[0].image_url,jpeg);assert.ok(b.prompt.includes('x=10%'));assert.equal(b.output_format,'jpeg');return {ok:true,json:async()=>({data:[{b64_json:jpeg.split(',')[1]}]})};}if(String(url)!=='https://api.openai.com/v1/responses')return oldFetch(url,options);calls++;const body=JSON.parse(options.body);assert.equal(body.store,false);if(body.text.format.name==='rebuild')assert.ok(body.instructions.includes('Do not guess unreadable content'));if(body.text.format.name==='rebuild')generations++;const input=typeof body.input==='string'?JSON.parse(body.input):JSON.parse(body.input[0].content[0].text);if(body.text.format.name==='importPictureCheck')imageChecks++;const value=body.text.format.name==='importPictureCheck'?{passed:imageChecks>1,summary:imageChecks>1?'Object counts and positions match.':'The blue square moved.',issues:imageChecks>1?[]:['Restore the blue square on the right.']}:body.text.format.name==='importSenseCheck'?{tasks:input.tasks.map(t=>({stageId:t.stageId,summary:'Instructions, interactions and keys compared against original.',issues:[]}))}:asImportModel(modelOutput);return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:1000,output_tokens:1000},output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}]})};};
 const call=d=>lessonAssistant.run({auth:{uid,token:{}},data:{classId,...d}});
 const source={name:'Original worksheet.txt',text:'Would you like to come on Saturday? Which day?',images:[],warnings:['No recording included.']};
 const base={action:'rebuild',requestId:'one',scope:'item',creationType:'lesson',rightsAccepted:true,rightsVersion:'materials-2026-11-01',source};
@@ -21,16 +23,47 @@ try{
   const requestId='mode_'+type,first=await call({...base,requestId,creationType:type}),again=await call({...base,requestId,creationType:type});assert.deepEqual(first,again);assert.ok(first.rebuilt.warnings.includes('No recording included.'));
   await assert.rejects(call({action:'importCreate',requestId,scope:'item',rebuilt:first.rebuilt,reviewed:false}));
   const reviewed=structuredClone(first.rebuilt);reviewed.title='Reviewed '+type;reviewed.tasks[0].instructions='Read the email carefully.';
+  const rechecked=await call({action:'importCreate',requestId,scope:'item',rebuilt:reviewed,reviewed:true});assert.equal(rechecked.needsReview,true,'edits trigger source check and return to preview before saving');assert.ok(rechecked.checks.every(c=>c.status==='passed'));
   const saved=await call({action:'importCreate',requestId,scope:'item',rebuilt:reviewed,reviewed:true}),retry=await call({action:'importCreate',requestId,scope:'item',rebuilt:reviewed,reviewed:true});assert.deepEqual(saved,retry);
   const item=db.doc(`classes/${classId}/items/${saved.createdItemId}`),snap=await item.get();assert.equal(snap.get('type'),type);assert.equal(snap.get('hidden'),true);assert.equal(snap.get('title'),'Reviewed '+type);if(type==='exam')assert.equal(snap.get('examReleased'),false);
-  const tasks=await item.collection('tasks').get();assert.equal(tasks.size,1);const t=tasks.docs[0];assert.equal(t.get('instructions'),'Read the email carefully.');assert.ok(t.get('content').content.some(n=>n.type==='table'));assert.ok(!JSON.stringify(t.get('content')).includes('Teacher key'));assert.deepEqual((await t.ref.collection('private').doc('key').get()).get('q0_0.answers'),['Saturday']);
+  const tasks=await item.collection('tasks').get();assert.equal(tasks.size,1);const t=tasks.docs[0];assert.equal(t.get('instructions'),'Read the email carefully.');assert.ok(t.get('content').content.some(n=>n.type==='table'));assert.ok(!JSON.stringify(t.get('content')).includes('Teacher key'));assert.ok(Object.values((await t.ref.collection('private').doc('key').get()).data()).some(k=>k.kind==='gap'&&k.answers.includes('Saturday')));
   const status=await call({action:'rebuildStatus',requestId});assert.equal(status.createdItemId,saved.createdItemId);
  }
- assert.equal(calls,4,'Retry must reuse generated results');
+ assert.equal(generations,4,'Retry must reuse generated results');assert.equal(calls,12,'Each original and edited task is reviewed once; retries do not rebill.');
  const target=db.doc(`classes/${classId}/items/existing`);await target.set({title:'Existing lesson',type:'homework',taskCount:1});await target.collection('tasks').doc('original').set({title:'Keep me',order:5,content:{type:'doc',content:[]}});
  const r=await call({...base,requestId:'task',scope:'task',creationType:'homework'});const saved=await call({action:'importCreate',requestId:'task',scope:'task',itemId:'existing',rebuilt:r.rebuilt,reviewed:true});await call({action:'importCreate',requestId:'task',scope:'task',itemId:'existing',rebuilt:r.rebuilt,reviewed:true});assert.equal((await target.collection('tasks').get()).size,2);assert.equal((await target.collection('tasks').doc('original').get()).get('title'),'Keep me');assert.equal((await target.collection('tasks').doc(saved.taskId).get()).get('order'),6);
  await assert.rejects(call({action:'importCreate',requestId:'task',scope:'item',rebuilt:r.rebuilt,reviewed:true}));
- const job=(await db.doc(`aiPrivate/${uid}/jobs/task`).get()).data();assert.equal(job.rightsVersion,base.rightsVersion);assert.ok(job.rightsAcceptedAt);assert.ok(!Object.hasOwn(job,'source'));
+ const job=(await db.doc(`aiPrivate/${uid}/jobs/task`).get()).data();assert.equal(job.rightsVersion,base.rightsVersion);assert.ok(job.rightsAcceptedAt);assert.ok(!Object.hasOwn(job,'source'));const retainedSource=await db.doc('aiPrivate/'+uid+'/jobs/task/source/original').get();assert.equal(JSON.parse(retainedSource.get('sourceJson')).instructions,'');
+ await db.doc('classes/'+classId).update({kind:'training'});
+ modelOutput=importLesson();
+ const advanced=await call({...base,requestId:'all_native_types'});
+ assert.equal(advanced.rebuilt.tasks[0].inlineElements.length,Object.keys(importElements).length);
+ const allSaved=await call({action:'importCreate',requestId:'all_native_types',scope:'item',rebuilt:advanced.rebuilt,reviewed:true});
+ const allTasks=await db.collection('classes/'+classId+'/items/'+allSaved.createdItemId+'/tasks').get(),allTask=allTasks.docs[0],nodes=[];
+ const walk=n=>{nodes.push(n);for(const child of n.content??[])walk(child);};walk(allTask.get('content'));
+ for(const type of ['gap','choice','match','dropgap','order','writing','reflect','upload','board','drawBoard','collab','pq','survey','randomPick','speakingPractice','tt'])assert.ok(nodes.some(n=>n.type===type),type+' saved as a real native node');
+ assert.equal(new Set(nodes.filter(n=>n.type==='pq').map(n=>n.attrs.kind)).size,14);
+ assert.ok(!JSON.stringify(allTask.get('content')).includes('successful'));
+ const allKeys=(await allTask.ref.collection('private').doc('key').get()).data();assert.ok(Object.keys(allKeys).length>=25);assert.ok(JSON.stringify(allKeys).includes('successful'));
+ assert.equal(allTask.get('hidden'),true,'required Classroom setup is never silently published');
+ const allRetry=await call({action:'importCreate',requestId:'all_native_types',scope:'item',rebuilt:advanced.rebuilt,reviewed:true});assert.deepEqual(allRetry,allSaved);
+ await db.doc('classes/'+classId).update({kind:'language'});
+ modelOutput=importLesson([{...importElements['pq-label'],data:{...importElements['pq-label'].data,image:''}}]);
+ const needsImage=await call({...base,requestId:'missing_picture',scope:'task'});
+ assert.match(needsImage.rebuilt.warnings.join(' '),/attach.*picture/);
+ const imageTask=await call({action:'importCreate',requestId:'missing_picture',scope:'task',itemId:'existing',rebuilt:needsImage.rebuilt,reviewed:true});
+ assert.equal((await target.collection('tasks').doc(imageTask.taskId).get()).get('hidden'),true);
+ assert.equal((await target.collection('tasks').doc('original').get()).get('title'),'Keep me');
+ modelOutput=importLesson([importElements.picture,importElements.gap]);
+ const pictureImport=await call({...base,requestId:'source_picture',source:{...source,images:[jpeg]}});assert.equal(pictureImport.checks[0].status,'needsReview');
+ const picture=await call({action:'rebuildPicture',requestId:'source_picture',picture:importElements.picture.data});assert.equal(picture.status,'ready');assert.equal(picture.qualityPassed,true);assert.equal(imageCalls,2,'one bounded correction after source comparison');assert.equal(imageChecks,2);
+ const pictureAgain=await call({action:'rebuildPicture',requestId:'source_picture',picture:importElements.picture.data});assert.deepEqual(pictureAgain,picture);assert.equal(imageCalls,2,'cached picture is not generated or billed again');
+ pictureImport.rebuilt.tasks[0].inlineElements[0].data.asset=picture.pictureId;
+ const pictureReview=await call({action:'importCreate',requestId:'source_picture',scope:'item',reviewed:true,rebuilt:pictureImport.rebuilt});assert.equal(pictureReview.needsReview,true);assert.equal(pictureReview.checks[0].status,'passed');
+ const pictureSaved=await call({action:'importCreate',requestId:'source_picture',scope:'item',reviewed:true,rebuilt:pictureReview.rebuilt});
+ const pictureTask=await db.doc('classes/'+classId+'/items/'+pictureSaved.createdItemId+'/tasks/'+pictureSaved.taskId).get();let mediaRef='';const findImage=n=>{if(n.type==='picture')mediaRef=n.attrs.src;for(const c of n.content??[])findImage(c);};findImage(pictureTask.get('content'));assert.match(mediaRef,/^media:import_/);assert.equal(pictureTask.get('hidden'),false);
+ const copiedMedia=await db.doc('classes/'+classId+'/media/'+mediaRef.slice(6)).get();assert.equal(copiedMedia.get('data'),jpeg);assert.equal(copiedMedia.get('public'),false);
+ await db.recursiveDelete(db.doc('aiPrivate/'+uid+'/jobs/source_picture'));assert.equal((await copiedMedia.ref.get()).exists,true,'saved class image survives temporary import cleanup');
  await db.doc(`aiPilot/${uid}`).update({enabled:false});await assert.rejects(call({action:'rebuildStatus',requestId:'task'}));
- console.log('PASS: all four modes, blank optional instructions, rights enforcement, access checks, reviewed native output, private keys, atomic/idempotent saves, append-only task import, recovery and revoked access. Model calls stubbed.');
+ console.log('PASS: all four modes, blank optional instructions, rights enforcement, access checks, reviewed native output, private keys, atomic/idempotent saves, append-only task import, recovery and revoked access. All native response types, private advanced keys, scoped shared-tool IDs and missing-picture/setup visibility verified. Source-image reference edits, bounded correction, cached recovery, comparison verdict, private class-media copy and survival after temporary-source cleanup verified. Model and image calls stubbed.');
 }finally{globalThis.fetch=oldFetch;await db.terminate();}

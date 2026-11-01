@@ -11,6 +11,7 @@ const p = new URLSearchParams(location.search);
     mockSignInTeacher();
     const { setDoc, doc } = await import('./firestore');
     await setDoc(doc({}, 'users', 'teacher1'), { role: 'teacher', displayName: 'Arda', email: 'teacher@example.com' });
+    if(p.has('materials'))await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});
     if(p.has('aiUsage')) {await setDoc(doc({},'superAdmins','teacher@example.com'),{name:'Preview admin'});await setDoc(doc({},'users','allowance-user'),{role:'learner',displayName:'Allowance learner',email:'allowance@example.test'});}
     const { createDemoClass } = await import('/src/lib/demo.ts');
     const r = await createDemoClass('teacher1');
