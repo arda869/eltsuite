@@ -78,7 +78,7 @@ Provider account balances and provider limits still apply.
 
 Pending or failed requests are not silently restarted with new charges. A lost connection
 before the provider task ID is saved may require manual review. No provider key or payment
-settings have been changed, and this feature has not been deployed.
+settings are changed by the editor. Publication is verified through the production deployment workflow.
 
 ## Verification
 
@@ -142,7 +142,9 @@ embeds and OpenAI planning still publish; the interface explains that Runway gen
 needs connecting. This does not create credentials or change billing. Plan drafting has
 separate limits of ten per teacher and one hundred across the platform per UTC day.
 
-Additional verification: 16 editing/provider/schema tests and 13 real-emulator access and
+Additional verification: 17 editing/provider/schema/deployment tests and 13 real-emulator access and
 service checks; browser verification of script editing before a single simulated
 brief-to-timeline generation, plus decoded/playable teacher and learner inline videos in
 text, a table, dialogue, an email frame and a reveal box. No paid generation was used.
+
+The publisher declares the Runway secret only when video generation is connected. A disconnected Runway account does not block editing or OpenAI script planning. Cloud Scheduler must be enabled in the Google Cloud project for the background video finaliser; the deployment account cannot enable that API itself.
