@@ -10,3 +10,19 @@ const collected=await collectLearningEvidence(db,cls.id,{itemId:'lesson'});asser
 const live={teaching:true,itemId:'lesson',startedAt:Timestamp.fromMillis(Date.now()-60000)};await queueProgress(db,cls.id,live,Date.now());await queueProgress(db,cls.id,live,Date.now());await reportEndedLesson.run({params:{classId:cls.id},data:{before:{data:()=>live},after:{data:()=>({teaching:false})}}});const jobs=await cls.collection('learningReports').get();assert.equal(jobs.size,1);await prepareLearningReport(db,jobs.docs[0].ref,{apiKey:'test-only',model:'gpt-6.1-sol'});const report=(await jobs.docs[0].ref.get()).data();assert.equal(report.status,'completed');assert.equal(report.aiStatus,'unavailable');assert.equal(JSON.parse(report.reportsJson)[0].summary.correct,1);
 await db.doc('users/evidence-teacher').set({role:'teacher'});await db.doc('accounts/evidence-teacher').set({});await db.doc('aiPilot/evidence-teacher').set({enabled:true});const ref=cls.collection('learningReports').doc('mock-ai');await ref.set({kind:'progress',itemId:'lesson',teacherUid:'evidence-teacher',sessionStart:Date.now()-60000,sessionEnd:Date.now(),status:'queued'});await prepareLearningReport(db,ref,{apiKey:'test-only',model:'gpt-6.1-sol',resolveUser:async()=>({uid:'evidence-teacher',email:'teacher@example.test',emailVerified:true}),generateImpl:async({input})=>({value:{learners:input.learners.map(l=>({code:l.code,observation:'The submitted gap was correct.',likelyExperience:'',evidenceIds:[l.records[0].id],suggestions:[{text:'Consider another short retrieval task.',evidenceIds:[l.records[0].id]}]}))},usage:{inputTokens:100,outputTokens:100}})});assert.equal((await ref.get()).get('aiStatus'),'ready');
 console.log('Learning evidence: deduplicated revisions, real scoring, missing timing, insufficient history, automatic report idempotency, persistent evidence and cited mock AI advice passed.');
+
+const {loadLessonSource}=await import('../../functions/ai/coach-lesson-context.js');
+await cls.collection('items').doc('lesson').set({title:'A lesson to discuss'});
+const coachSource={classId:cls.id,itemId:'lesson',taskId:'task',reportId:ref.id};
+const coachContext=await loadLessonSource(db,'evidence-teacher',coachSource);
+assert.equal(coachContext.context.tasks[0].title,'Yesterday');
+assert.equal(coachContext.context.report.learners[0].learner,'Learner 1');
+assert.ok(!JSON.stringify(coachContext).includes('Test learner'));
+assert.ok(!JSON.stringify(coachContext).includes('evidence-learner'));
+assert.equal(coachContext.sources.length,2);
+await assert.rejects(()=>loadLessonSource(db,'other-teacher',coachSource),e=>e.code==='permission-denied');
+await cls.collection('items').doc('other').set({title:'Other lesson'});
+await assert.rejects(()=>loadLessonSource(db,'evidence-teacher',{...coachSource,itemId:'other',taskId:''}),e=>e.code==='not-found');
+await task.update({restricted:true,content:null});await task.collection('private').doc('body').set({content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Private teaching material'}]}]}});
+assert.match((await loadLessonSource(db,'evidence-teacher',coachSource)).context.tasks[0].material,/Private teaching material/);
+console.log('Coach lesson context: teacher access, private task content, anonymous evidence and cross-lesson report rejection passed.');

@@ -89,6 +89,26 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();
+    await dialog.getByRole('link',{name:'Discuss with coach',exact:true}).click();
+    await s.p.getByRole('complementary',{name:'Selected teaching context'}).waitFor();
+    if(await s.p.getByText('Let’s start with your teaching',{exact:true}).count())throw Error('Optional profile blocked selected-lesson discussion');
+    await s.p.getByLabel('Message your coach').fill('How could I support learners with this activity?');
+    await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await see(s.p,'.coach-message:has-text("What did you notice")','contextual coaching reply');
+    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(request.lessonContext.classId!==s.demo.classId||request.lessonContext.itemId!==s.demo.itemId||!request.lessonContext.reportId||!request.lessonContext.taskId)throw Error('Selected report and activity were not passed');
+    await s.p.getByRole('link',{name:'Selected activity',exact:true}).waitFor();
+    await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
+    await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
+    if(await s.p.locator('.coach-message').count())throw Error('Previous lesson conversation retained after context removal');
+    return s;
+  },
   'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
