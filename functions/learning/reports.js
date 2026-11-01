@@ -35,7 +35,8 @@ export async function queueProgress(db,classId,live,endedAt) {
 }
 export async function prepareLearningReport(db,ref,{apiKey,model,resolveUser=uid=>getAuth().getUser(uid),generateImpl=generate}) {
  const snapshot=await ref.get(),job=snapshot.data();if(!job||job.status!=='queued')return;
- const acquired=await db.runTransaction(async tx=>{const s=await tx.get(ref);if(s.get('status')!=='queued')return false;tx.update(ref,{status:'running',startedAt:Timestamp.now()});return true;});if(!acquired)return;
+ const watch=db.collection('learningReportJobs').doc(createHash('sha256').update(ref.path).digest('hex'));
+ const acquired=await db.runTransaction(async tx=>{const s=await tx.get(ref);if(s.get('status')!=='queued')return false;tx.update(ref,{status:'running',startedAt:Timestamp.now()});tx.set(watch,{reportPath:ref.path,status:'running',startedAt:Timestamp.now()});return true;});if(!acquired)return;
  try {
   const classId=ref.parent.parent.id,cls=await ref.parent.parent.get();
   const data=await collectLearningEvidence(db,classId,{itemId:job.itemId,taskId:job.taskId,sessionStart:job.sessionStart,sessionEnd:job.sessionEnd});
@@ -58,9 +59,20 @@ export async function prepareLearningReport(db,ref,{apiKey,model,resolveUser=uid
     await db.runTransaction(async tx=>{const b=await tx.get(budget);tx.update(budget,{committedMicroUsd:settleBudget(b.get('committedMicroUsd'),reserved,[generated.usage]).balance});tx.update(ref,{reportsJson:JSON.stringify(reports)});});aiStatus=aiStatus==='partial'?'partial':'ready';
    }
   }
-  await ref.update({status:'completed',aiStatus,completedAt:Timestamp.now()});
- }catch(e){await ref.update({status:'completed',aiStatus:'unavailable',error:'AI advice could not be completed. Any recorded evidence below is still available.',completedAt:Timestamp.now()});}
+  await ref.update({status:'completed',aiStatus,completedAt:Timestamp.now()});await watch.delete();
+ }catch(e){await ref.update({status:'completed',aiStatus:'unavailable',error:'AI advice could not be completed. Any recorded evidence below is still available.',completedAt:Timestamp.now()});await watch.delete();}
 }
 export const buildLearningReport=onDocumentCreated({document:'classes/{classId}/learningReports/{reportId}',region:'us-central1',secrets:[apiKey],timeoutSeconds:540,maxInstances:2},event=>prepareLearningReport(getFirestore(),event.data.ref,{apiKey:apiKey.value(),model:model.value()}));
-export const reportEndedLesson=onDocumentWritten({document:'classes/{classId}/live/state',region:'us-central1',maxInstances:2,retry:true},event=>{const before=event.data?.before.data(),after=event.data?.after.data();if(before?.teaching&&(!after?.teaching||before.itemId!==after.itemId))return queueProgress(getFirestore(),event.params.classId,before,Date.now());});
-export const reportInactiveLessons=onSchedule({schedule:'every 15 minutes',region:'us-central1',maxInstances:1},async()=>{const db=getFirestore(),sessions=await db.collectionGroup('live').where('teaching','==',true).get();for(const s of sessions.docs){const last=s.get('updatedAt')?.toMillis?.();if(s.id==='state'&&last&&Date.now()-last>10*60000)await queueProgress(db,s.ref.parent.parent.id,s.data(),last+10*60000);}const stale=await db.collectionGroup('learningReports').where('status','==','running').get();for(const s of stale.docs)if(Date.now()-(s.get('startedAt')?.toMillis?.()??Date.now())>12*60000)await s.ref.update({status:'completed',aiStatus:'unavailable',error:'AI advice did not finish. Your recorded evidence is preserved; you can retry the advice.',completedAt:Timestamp.now()});});
+export const reportEndedLesson=onDocumentWritten({document:'classes/{classId}/live/state',region:'us-central1',maxInstances:2,retry:true},async event=>{
+ const db=getFirestore(),before=event.data?.before.data(),after=event.data?.after.data(),classId=event.params.classId;
+ const active=db.collection('learningLiveSessions').doc(classId);
+ if(after?.teaching&&after.startedAt)await active.set({teaching:true,classId,itemId:after.itemId,startedAt:after.startedAt,updatedAt:after.updatedAt??Timestamp.now()});else await active.delete();
+ const restarted=before?.startedAt?.toMillis?.()!==after?.startedAt?.toMillis?.();
+ if(before?.teaching&&(!after?.teaching||before.itemId!==after.itemId||restarted))await queueProgress(db,classId,before,Math.min(Date.now(),(before.updatedAt?.toMillis?.()??Date.now())+10*60000));
+});
+export const reportInactiveLessons=onSchedule({schedule:'every 15 minutes',region:'us-central1',maxInstances:1},async()=>{
+ const db=getFirestore(),sessions=await db.collection('learningLiveSessions').where('teaching','==',true).get();
+ for(const s of sessions.docs){const last=s.get('updatedAt')?.toMillis?.();if(last&&Date.now()-last>10*60000){await queueProgress(db,s.id,s.data(),last+10*60000);await s.ref.delete();}}
+ const stale=await db.collection('learningReportJobs').where('status','==','running').get();
+ for(const s of stale.docs)if(Date.now()-(s.get('startedAt')?.toMillis?.()??Date.now())>12*60000){const ref=db.doc(s.get('reportPath'));await db.runTransaction(async tx=>{const r=await tx.get(ref);if(r.exists&&r.get('status')==='running')tx.update(ref,{status:'completed',aiStatus:'unavailable',error:'AI advice did not finish. Your recorded evidence is preserved; you can retry the advice.',completedAt:Timestamp.now()});tx.delete(s.ref);});}
+});
