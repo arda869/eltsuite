@@ -75,6 +75,7 @@ export function LearnerLesson() {
   const [current, setCurrent] = useState('');
   const [responses, setResponses] = useState<Responses>({});
   const [checked, setChecked] = useState(false);
+  const [checkError,setCheckError] = useState('');
   const [key, setKey] = useState<AnswerKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [live, setLiveState] = useState<LiveState | null>(null);
@@ -176,6 +177,7 @@ export function LearnerLesson() {
     if (!classId || !current || !user) return;
     setKey(null);
     setChecked(false);
+    setCheckError('');
     setResponses({});
     setFlags([]);
     dirty.current = false;
@@ -284,23 +286,36 @@ export function LearnerLesson() {
     }, 900);
   }
 
-  async function check() {
+  async function finishCheck() {
     if (!base) return;
-    setBusy(true);
+    const k = await loadKey(classId, itemId, base.taskId);
+    const r = scoreTask(qs, k, responses);
+    await saveResponses(classId, base, responses, true, { score: r.score, total: r.total });
+    if (item?.type === 'practice' || item?.type === 'homework') recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, k, responses).catch(() => {});
+    setKey(k);
+    setChecked(true);
+  }
+  async function retryFeedback() {
+    setBusy(true);setCheckError('');
+    try { await finishCheck(); }
+    catch { setCheckError('Your answers are saved, but feedback could not load. Try loading feedback again.'); }
+    finally { setBusy(false); }
+  }
+  async function check() {
+    if (!base || busy) return;
+    setBusy(true);setCheckError('');
     window.clearTimeout(timer.current);
+    let submitted=false;
     try {
-      await saveResponses(classId, base, responses, true);
-      const k = await loadKey(classId, itemId, base.taskId);
-      const r = scoreTask(qs, k, responses);
-      const late = !!item?.due && Date.now() > item.due;
-      await saveResponses(classId, base, responses, true, { score: r.score, total: r.total }, { submittedAt: Date.now(), ...(late ? { late: true } : {}), attempts: (attemptsRef.current ?? 0) + 1 });
-      if (item?.type === 'practice' || item?.type === 'homework') recordMistakes(classId, { learnerUid: base.learnerUid, learnerId }, itemId, base.taskId, task?.content ?? null, qs, k, responses).catch(() => {});
-      setKey(k);
-      setChecked(true);
-    } catch (e) {
-      console.error(e);
+      const late=!!item?.due && Date.now()>item.due;
+      // Save the submission event before loading a key or calculating feedback.
+      await saveResponses(classId, base, responses, true, undefined, {submittedAt:Date.now(),...(late?{late:true}:{}),attempts:(attemptsRef.current??0)+1});
+      submitted=true;
+      await finishCheck();
+    } catch {
+      setCheckError(submitted?'Your answers are saved, but feedback could not load. Try loading feedback again.':'Your answers could not be submitted. Check your connection and try again.');
     } finally {
-      dirty.current = false;
+      dirty.current = !submitted;
       setBusy(false);
     }
   }
@@ -429,6 +444,7 @@ export function LearnerLesson() {
           </div>
         )}
         <main data-lesson-style={lessonStyleOf(c)} data-activity-number={tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1 || undefined} className="task-frame" style={{ ['--ts' as string]: TEXT_SCALE[profile?.textSize ?? 'M'] }}>
+          {checkError && <div role="alert"><p>{checkError}</p>{checked && <button className="btn" disabled={busy} onClick={()=>void retryFeedback()}>Load feedback again</button>}</div>}
           {task ? (
             <div className="frame-inner">
               <div className="frame-head">
