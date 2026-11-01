@@ -30,7 +30,7 @@ jobs:
       - name: Push registration and delivery regression checks
         run: node test/push-notifications.mjs
       - name: Lesson assistant contract and provider checks
-        run: node --test test/ai/*.test.mjs
+        run: node --test test/ai/*.test.mjs test/intelligence/*.test.mjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -39,7 +39,7 @@ jobs:
         run: |
           npm install --prefix functions --no-package-lock --no-audit --no-fund
           npm install --no-save --no-audit --no-fund @firebase/rules-unit-testing@4.0.1
-          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/onboarding-access.mjs && node test/ai/create-integration.mjs && node test/ai/task-tools-integration.mjs && node test/ai/learning-integration.mjs && node test/ai/learning-access.mjs && node test/designer/integration.mjs && node test/speech/firestore-access.mjs && node test/speech/song-jobs.mjs'
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/onboarding-access.mjs && node test/ai/create-integration.mjs && node test/ai/task-tools-integration.mjs && node test/intelligence/integration.mjs && node test/ai/learning-integration.mjs && node test/ai/learning-access.mjs && node test/designer/integration.mjs && node test/speech/firestore-access.mjs && node test/speech/song-jobs.mjs'
       - name: Per-user AI allowances and admin security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
       - name: Video editor and storyboard checks

@@ -89,6 +89,35 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Lesson Intelligence: contextual panel, evidence, reversible edits and generator handoff': async(b)=>{
+    const s=await session(b,{owner:true});
+    await s.p.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true,lessonIntelligence:true};localStorage.setItem('mockfs',JSON.stringify(fs));});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}`);
+    await s.p.getByRole('button',{name:'Lesson Intelligence',exact:true}).click().catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+(await s.p.locator('body').innerText()).slice(0,3000));});
+    const panel=s.p.getByRole('complementary',{name:'Lesson Intelligence'});
+    await panel.getByText('0 completed lessons recorded',{exact:true}).waitFor();
+    await panel.getByRole('button',{name:'What should I teach next?',exact:true}).click();
+    await panel.getByText('Choose a shared day out',{exact:true}).waitFor();
+    await panel.getByRole('button',{name:'Use this direction',exact:true}).first().click();
+    await s.p.getByLabel('Learning objective',{exact:true}).waitFor();
+    if(await s.p.getByLabel('Learning objective',{exact:true}).inputValue()!=='Ask about preferences and agree on a shared plan.')throw Error('Chosen objectives did not reach the protected generator brief');
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Lesson Intelligence',exact:true}).click();
+    await panel.getByText('Selected activity',{exact:true}).waitFor();
+    await panel.getByLabel('Ask about this activity',{exact:true}).fill('Make the instruction more purposeful.');
+    await panel.getByRole('button',{name:'Preview wording changes',exact:true}).click();
+    await panel.getByText('PROPOSED',{exact:true}).waitFor();
+    await panel.getByRole('button',{name:'Apply these changes',exact:true}).click();
+    await panel.getByText('Applied to this activity only.',{exact:true}).waitFor();
+    await panel.getByRole('button',{name:'Undo this edit',exact:true}).click();
+    await panel.getByLabel('Ask about this activity',{exact:true}).fill('FAIL_TEST');
+    await panel.getByRole('button',{name:'Ask Lesson Intelligence',exact:true}).click();
+    await panel.getByText('The AI service is busy. Your lesson is unchanged.',{exact:true}).waitFor();
+    await axe(s.p,'Lesson Intelligence desktop',A11Y_FOUND);
+    await s.p.setViewportSize({width:390,height:844});
+    await axe(s.p,'Lesson Intelligence mobile',A11Y_FOUND);
+    return s;
+  },
   'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);

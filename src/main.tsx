@@ -1,3 +1,4 @@
+import {LessonIntelligenceProvider} from './intelligence/LessonIntelligence';
 import { AppError, watchChunkErrors } from './components/AppError';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
@@ -187,6 +188,7 @@ createRoot(document.getElementById('root')!).render(
         <ConnectionBanner />
         <ProxyGate>
         <PausedGate>
+        <LessonIntelligenceProvider>
         <RouteErrorBoundary>
         <Suspense fallback={<Loader full label="" />}>
         <Routes>
@@ -242,6 +244,7 @@ createRoot(document.getElementById('root')!).render(
         </Routes>
         </Suspense>
         </RouteErrorBoundary>
+        </LessonIntelligenceProvider>
         </PausedGate>
         <Suspense fallback={null}>
           <HelpAssistant />

@@ -1100,8 +1100,9 @@ service cloud.firestore {
       allow get: if isSelf(uid) || isOwner();
       allow list: if isOwner();
       allow create, update: if aiAdmin()
-        && request.resource.data.keys().hasOnly(['enabled', 'updatedBy', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['enabled', 'lessonIntelligence', 'updatedBy', 'updatedAt'])
         && request.resource.data.enabled is bool
+        && request.resource.data.get('lessonIntelligence', false) is bool
         && request.resource.data.updatedBy == request.auth.uid
         && request.resource.data.updatedAt == request.time
         && get(/databases/$(database)/documents/users/$(uid)).data.role == 'teacher';

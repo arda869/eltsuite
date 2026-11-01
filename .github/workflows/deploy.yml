@@ -25,7 +25,7 @@ jobs:
       - name: Install backend test dependencies
         run: npm --prefix functions ci --no-audit --no-fund
       - name: Coaching and lesson AI checks
-        run: node --test test/ai/*.test.mjs test/coach/*.test.mjs
+        run: node --test test/ai/*.test.mjs test/intelligence/*.test.mjs test/coach/*.test.mjs
       - name: Recording and speaking checks
         run: node --test test/speech/*.test.mjs
       - name: Push registration and delivery regression checks

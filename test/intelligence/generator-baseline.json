@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "commit": "7c7fa8e",
+  "purpose": "Protected production generator configuration. Changes require explicit baseline review, not automatic regeneration.",
+  "files": {
+    "functions/ai/provider.js": "1af5979fc977b92762eaa5aec242f82ec5919d6b0d83c925e375bb7427f05dcd",
+    "functions/ai/pedagogy.js": "7b2e407589ea3d815ad2d0d09cc5fcdebc590d78e80159769d8123d5778eebfc",
+    "functions/ai/editorial.js": "97a45aa304cf3c42b514812729964e007bf1491621c26e58f3443123458ca58c",
+    "functions/ai/contract.js": "6b9854c3e4859eeac239576c538804ad106eae0637847dcb993382a55cb462ef",
+    "functions/ai/sequence.js": "706e81e19d9dd1be608a1706495c182c2a34cf3ee42909f9fc53b1674d5ac15c",
+    "functions/ai/activities.js": "4229d0dd82508b5cc4211f23e3b5ab1fa7302166083ea3e3f58cb1bc342f38fe",
+    "functions/ai/revision.js": "4a4895a0b1047292c7152beefc32ec4131b3f17c88104a516dbc51ff5d543874",
+    "functions/ai/training.js": "3b5e601742c1c6c887f1b3bc6d47568ac7244a336284003b3b06068eded11b32",
+    "functions/ai/media-contract.js": "f4c9bd978cadbd240b4a493ed1c91a026918f7bd386e98e4c07fd2aac9245e91",
+    "functions/ai/catalogue.js": "e0eaa4534bd40f7af378d5c3dcea5bfd43cd736dfa267820204c9ca1c8235d5e",
+    "functions/ai/budget.js": "6c8e0a8a296d8c39d23493c5b7c1b5deea793a6048b2df3343951df8117d05ba"
+  },
+  "qualityGate": {
+    "successfulRepresentativeOutputsReviewed": false,
+    "liveAcceptanceVerified": false,
+    "note": "Structural fixtures are not evidence of editorial quality. Pilot release requires genuine reviewed outputs and all acceptance journeys."
+  }
+}

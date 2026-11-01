@@ -1,3 +1,4 @@
+import {lessonIntelligence} from '../intelligence/service.js';
 import { conversionInput } from './conversion-input.js';
 import {revisionInput,revisionSchema,revisionInstructions,applyRevision,outlineFromPlan} from './revision.js';
 import {rebuildPicture} from './import-picture-job.js';
@@ -46,6 +47,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   ]);
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
+  if (typeof d.action==='string'&&d.action.startsWith('intelligence')) return lessonIntelligence(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (['rebuildPicture','rebuildPictureStatus'].includes(d.action)) return rebuildPicture(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'readiness') return requestReadiness(req,{db,uid,cls});
   if (['taskTools','taskToolsStatus','taskToolsApply','taskToolsRetryMedia'].includes(d.action)) return taskTools(req,{db,uid,cls,apiKey:key.value(),model:model.value()});

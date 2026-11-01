@@ -112,6 +112,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if(d.action==='finish'){const feedback={focusFeedback:'You gave a reason for your choice using because.',evidence:['I would choose the park because it is quieter.'],communication:'You kept the conversation moving.',nextStep:'Add a second reason to develop your answer.',retryPrompt:'Another reason is…'};await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions',d.sessionId),{feedback,status:'complete',feedbackState:'complete'},{merge:true});return {data:{feedback}};}
   }
   if (name !== 'lessonAssistant') throw Error('Unsupported test callable');
+  if(d.action?.startsWith('intelligence'))return (await import('./intelligence')).mockIntelligence(d);
   if(d.action==='readiness')return (await import('./learning')).mockReadiness(d);
   if(['taskTools','taskToolsStatus','taskToolsApply'].includes(d.action))return (await import('./lesson-tools')).mockLessonTools(d);
   if(['rebuild','rebuildStatus','importCreate','rebuildPicture','rebuildPictureStatus'].includes(d.action)) {

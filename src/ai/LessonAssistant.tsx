@@ -5,7 +5,7 @@ import { StudioMark } from "./StudioMark";
 import { AutoTextarea } from './AutoTextarea';
 import { ClassProfileFields, defaultProfile, type LearningProfile } from './ClassProfileFields';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '../lib/firebase';
@@ -130,6 +130,10 @@ export function LessonAssistant() {
   const [createVariants,setCreateVariants]=useState(true);
   const [createdItemId,setCreatedItemId]=useState('');
   const [brief, setBrief] = useState<Brief>(initial);
+  const intelligenceLocation=useLocation();
+  const intelligenceHandoff=intelligenceLocation.state?.intelligenceHandoff;
+  const handoffSeen=useRef('');
+
   const [outline, setOutline] = useState<RecordValue | null>(null);
   const [plan, setPlan] = useState<RecordValue | null>(null);
   const [review, setReview] = useState<Review | null>(null);
@@ -146,6 +150,15 @@ export function LessonAssistant() {
   const pending = useRef<{ fingerprint: string; requestId: string } | null>(null);
   const locked = !!busy || preparingMedia;
   const formFields=briefFields[creationType] ?? briefFields.lesson;
+  useEffect(()=>{
+    if(!intelligenceHandoff||intelligenceHandoff.version!==1||intelligenceHandoff.classId!==classId||handoffSeen.current===intelligenceHandoff.sourceVersion)return;
+    if(outline||plan||dirty)return;
+    const b=intelligenceHandoff.brief;
+    if(!b||typeof b.objectives!=='string'||typeof b.context!=='string'||!Number.isInteger(b.duration)||b.duration<15||b.duration>180)return;
+    setBrief(old=>({...old,objectives:b.objectives.slice(0,2000),context:b.context.slice(0,2000),topic:typeof b.topic==='string'?b.topic.slice(0,300):'',duration:b.duration,methodology:'Recommend'}));
+    handoffSeen.current=intelligenceHandoff.sourceVersion;setNotice('Your chosen direction is ready to review. Edit the brief before asking for an outline.');
+  },[intelligenceHandoff,classId,outline,plan,dirty]);
+
   useEffect(()=>{window.scrollTo({top:0});},[step]);
   useEffect(() => {
     if (!dirty && !locked) return;

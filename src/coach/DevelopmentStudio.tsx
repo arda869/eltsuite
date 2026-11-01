@@ -5,7 +5,7 @@ import { TaskEditor } from '../editor/TaskEditor';
 import { reflectionDoc, reflectionText } from './model';
 import { NSelect } from '../components/Select';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import { collection, doc, getDocs, onSnapshot, runTransaction, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
@@ -35,6 +35,8 @@ export function DevelopmentStudio() {
 }
 function Workspace({ uid }: { uid: string }) {
   const [params, setParams] = useSearchParams();
+  const handoffLocation=useLocation();
+  const usedIntelligenceHandoff=useRef(false);
   const [tab, setTab] = useState<Tab>(() => tabFor(params.get('section')));
   const docs = useMyDocs(uid);
   const readings = [...new Map([...(docs.mine ?? []), ...(docs.withMe ?? [])].map(d => [d.id,d])).values()].filter(d => d.kind === 'pd').sort((a,b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0));
@@ -53,6 +55,7 @@ function Workspace({ uid }: { uid: string }) {
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
   const [editing, setEditing] = useState<Reflection | null>(null);
+  useEffect(()=>{const d=handoffLocation.state?.lessonIntelligenceReflection;if(usedIntelligenceHandoff.current||!d||editing||dirty||typeof d.text!=='string'||typeof d.lesson!=='string')return;usedIntelligenceHandoff.current=true;setEditing({...newReflection(),title:'Reflecting on a lesson',text:d.text.slice(0,6000),content:reflectionDoc(d.text.slice(0,6000)),theme:'Lesson plan vs reality',lesson:d.lesson});setDirty(true);},[handoffLocation.state,editing,dirty]);
   const [researchStep, setResearchStep] = useState(0);
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
   const [search, setSearch] = useState('');

@@ -22,7 +22,7 @@ export function SuperAi({ teachers, loading }: { teachers: Teacher[]; loading: b
     const enabled = grants[teacher.uid] !== true;
     setBusy(teacher.uid); setError(''); setNote('');
     try {
-      await setDoc(doc(db, 'aiPilot', teacher.uid), { enabled, updatedBy: user.uid, updatedAt: serverTimestamp() });
+      await setDoc(doc(db, 'aiPilot', teacher.uid), { enabled, updatedBy: user.uid, updatedAt: serverTimestamp() }, {merge:true});
       setNote(`AI access turned ${enabled ? 'on' : 'off'} for ${teacher.name || teacher.email}.`);
     } catch { setError('The access change was not saved. Please try again.'); }
     finally { setBusy(null); }
