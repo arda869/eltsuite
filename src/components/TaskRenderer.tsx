@@ -1134,7 +1134,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         );
       }
       case 'investigation':
-        return node.attrs?.embedId ? <InlineInvestigation key={key} embedId={String(node.attrs.embedId)} compact={!classId} readOnly={!!teacher}/> : <p key={key}>No investigation selected.</p>;
+        return node.attrs?.embedId ? <InlineInvestigation key={key} embedId={String(node.attrs.embedId)} compact={!classId||classId.startsWith('chat:')} readOnly={!!teacher}/> : <p key={key}>No investigation selected.</p>;
       case 'collab':
         return node.attrs?.docKey ? (
           <div key={key} data-bk={key} className="task-collab">
