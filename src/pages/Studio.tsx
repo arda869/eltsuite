@@ -147,6 +147,7 @@ export function SoundStudio() {
   const mediaId = query.get('media') || archived?.home?.mediaId || '';
   const [source, setSource] = useState<SoundSource | null>(null);
   const [manifest, setManifest] = useState<Manifest | null>(null);
+  const [stemWarning,setStemWarning]=useState('');
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const opened = useRef('');
@@ -166,7 +167,12 @@ export function SoundStudio() {
         const response = await fetch(url);
         if (!response.ok) throw Error('unavailable');
         const buffer = await decodeSound(await response.blob());
-        if (active) setSource({ buffer, name: archived?.name || m.title || 'Recording', timedScript: m.script ?? archived?.script ?? [] });
+        let stems: {vocals:AudioBuffer;instrumental:AudioBuffer}|undefined;
+        if(m.stems){try{
+          const read=async(id:string)=>{const manifest=await loadManifest(classId,id);if(!manifest)throw Error('missing stem');const response=await fetch(await soundUrl(classId,id,manifest));if(!response.ok)throw Error('unavailable stem');return decodeSound(await response.blob());};
+          const [vocals,instrumental]=await Promise.all([read(m.stems.vocals),read(m.stems.instrumental)]);stems={vocals,instrumental};
+        }catch{if(active)setStemWarning('A separate song track is unavailable. The original recording is open and can still be used.');}} 
+        if (active) setSource({ buffer:stems?.vocals||buffer, name: archived?.name || m.title || 'Recording', timedScript: m.script ?? archived?.script ?? [],...(stems?{songStems:true,songVocalsMuted:!!m.stems?.vocalsOff,extra:[{name:'Sing-along backing',buffer:stems.instrumental,at:0}]}:{}) });
       } catch { if (active) setError('We couldn’t open this recording. Check that you have access to its lesson and try again.'); }
     })();
     return () => { active = false; opened.current = ''; };
@@ -180,7 +186,7 @@ export function SoundStudio() {
   if (error || missing) return <div className="studio"><StudioBar app="Recordings" where="Recording unavailable" /><p className="hint studio-missing">{error || 'This recording is no longer available.'}</p></div>;
   if (done) return <div className="studio"><StudioBar app="Recordings" where="Saved" /><div className="studio-done"><strong>Saved</strong><span className="hint">The linked lessons have the updated recording and script.</span><button type="button" className="btn primary" onClick={finish}>Done</button></div></div>;
   if (manifest && (manifest.kind === 'link' || manifest.video)) return <div className="studio"><StudioBar app="Recordings" where={archived?.name || manifest.title || 'Script and timing'} /><ScriptEditor embedded classId={classId} mediaId={mediaId} manifest={manifest} title={archived?.name || manifest.title} onSave={saveLines} onClose={finish} /></div>;
-  return <div className="studio studio-dark"><main className="studio-sound">{source && item && uid ? <SoundEditor
+  return <div className="studio studio-dark"><main className="studio-sound">{stemWarning&&<p className="hint" role="status">{stemWarning}</p>}{source && item && uid ? <SoundEditor
     source={source} classId={classId} folder={item.folder} backLabel="Close without saving" onBack={finish} onSaved={() => setDone(true)} onSaveScript={saveLines}
     replace={{ name: item.name, uses: () => findUses(item), run: (blob, meta, progress) => replaceSound(uid, item, blob, meta, progress) }}
   /> : <Loader label="Opening the recording" />}</main></div>;

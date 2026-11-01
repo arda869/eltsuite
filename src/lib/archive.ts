@@ -98,7 +98,10 @@ export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math
 // Sound files are stored in parts (a Firestore document holds up to 1 MB), with a manifest that
 // carries the script. Manifests and parts can be opened without signing in, through the QR code.
 const PART = 450 * 1024;
-export type Manifest = { kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
+export type SongStemIds = {vocals:string;instrumental:string;vocalsOff?:boolean};
+export type SongStemBlobs = {vocals:Blob;instrumental:Blob};
+export type StemSource = {classId:string;stems:SongStemIds};
+export type Manifest = { stems?:SongStemIds; kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
 
 const toBase64 = (bytes: Uint8Array) => {
   let s = '';
@@ -106,7 +109,7 @@ const toBase64 = (bytes: Uint8Array) => {
   return btoa(s);
 };
 
-export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number }, onProgress?: (p: number) => void) {
+export async function saveSound(classId: string, blob: Blob, meta: { title: string; script?: ScriptLine[]; duration?: number; stems?:SongStemIds }, onProgress?: (p: number) => void) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const ref = doc(mediaCol(classId));
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
@@ -119,7 +122,7 @@ export async function saveSound(classId: string, blob: Blob, meta: { title: stri
       return setDoc(mediaRef(classId, `${ref.id}_p${k}`), { part: k, data: toBase64(chunk), size: chunk.length, public: true }).then(() => onProgress?.(++done / (parts + 1)));
     }),
   );
-  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, script: meta.script ?? [], duration: meta.duration ?? 0, public: true };
+  const m: Manifest = { kind: 'audio', title: meta.title, type: blob.type || 'audio/mpeg', size: 0, parts, script: meta.script ?? [], duration: meta.duration ?? 0, public: true, ...(meta.stems?{stems:meta.stems}:{}) };
   await setDoc(ref, m);
   onProgress?.(1);
   return { mediaId: ref.id, bytes: bytes.length };
@@ -166,6 +169,29 @@ export function soundUrl(classId: string, id: string, m: Manifest) {
   return blobCache.get(k)!;
 }
 
+// Each stem is a normal reusable resource, and the full recording links to both.
+export async function saveStemResources(uid:string,classId:string,name:string,folder:string,blobs:SongStemBlobs,script:ScriptLine[],duration:number,vocalsOff=false):Promise<StemSource>{
+  const stems:SongStemIds={vocals:'',instrumental:'',...(vocalsOff?{vocalsOff:true}:{})};
+  for(const key of ['vocals','instrumental'] as const){
+    const title=name+(key==='vocals'?' · Vocals':' · Sing-along backing');
+    const saved=await saveSound(classId,blobs[key],{title,script,duration});
+    await archiveAdd(uid,{kind:'audio',name:title,folder,tags:[],size:Math.round(saved.bytes*4/3),home:{classId,mediaId:saved.mediaId},script,duration});
+    stems[key]=saved.mediaId;
+  }
+  return {classId,stems};
+}
+export async function copySoundStems(source:StemSource,classId:string):Promise<SongStemIds>{
+ if(source.classId===classId)return source.stems;
+ const result:SongStemIds={vocals:'',instrumental:'',...(source.stems.vocalsOff?{vocalsOff:true}:{})};
+ for(const key of ['vocals','instrumental'] as const){
+  const id=source.stems[key],m=await loadManifest(source.classId,id);if(!m||m.kind!=='audio')throw Error('A saved song track is missing.');
+  const r=doc(mediaCol(classId));
+  await Promise.all(Array.from({length:m.parts??1},async(_,i)=>{const part=await getDoc(mediaRef(source.classId,id+'_p'+i));if(!part.exists())throw Error('A saved song track is incomplete.');await setDoc(mediaRef(classId,r.id+'_p'+i),part.data());}));
+  const {stems:_nested,...plain}=m;await setDoc(r,plain);result[key]=r.id;
+ }
+ return result;
+}
+
 // The media for an archive item in a class: the one there already, or a copy made now.
 export async function mediaIn(uid: string, item: ArchiveItem, classId: string): Promise<string> {
   if (item.home?.classId === classId) return item.home.mediaId;
@@ -187,7 +213,8 @@ export async function mediaIn(uid: string, item: ArchiveItem, classId: string): 
         await setDoc(mediaRef(classId, `${ref.id}_p${k}`), p.data() ?? {});
       }),
     );
-    await setDoc(ref, { ...m, title: item.name, script: item.script ?? m.script ?? [] });
+    const stems=m.stems?await copySoundStems({classId:from.classId,stems:m.stems},classId):undefined;
+    await setDoc(ref, { ...m, ...(stems?{stems}:{}), title: item.name, script: item.script ?? m.script ?? [] });
     id = ref.id;
   }
   if (!id) throw new Error('missing');
@@ -288,7 +315,7 @@ export async function findUses(item: ArchiveItem): Promise<{ cls: string; lesson
 }
 
 // Put a new version of a sound in every place it is kept; the lessons that use it change too.
-export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, meta: { script: ScriptLine[]; duration: number }, onProgress?: (p: number) => void) {
+export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, meta: { script: ScriptLine[]; duration: number; stemSource?:StemSource }, onProgress?: (p: number) => void) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const parts = Math.max(1, Math.ceil(bytes.length / PART));
   const places = placesOf(item);
@@ -303,7 +330,8 @@ export async function replaceSound(uid: string, item: ArchiveItem, blob: Blob, m
       }),
     );
     for (let k = parts; k < (old?.parts ?? 0); k++) await deleteDoc(mediaRef(classId, `${mediaId}_p${k}`)).catch(() => {});
-    await setDoc(mediaRef(classId, mediaId), { ...(old ?? {}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, script: meta.script, public: true, v: Date.now() });
+    const {stems:_previous,...previous}=old??{};const stems=meta.stemSource?await copySoundStems(meta.stemSource,classId):undefined;
+    await setDoc(mediaRef(classId, mediaId), { ...previous, ...(stems?{stems}:{}), kind: 'audio', type: blob.type || 'audio/mpeg', size: 0, parts, duration: meta.duration, script: meta.script, public: true, v: Date.now() });
     onProgress?.(++done / total);
   }
   if (item.id) await updateDoc(doc(col(uid), item.id), { size: Math.round((bytes.length * 4) / 3), duration: meta.duration, script: meta.script, updatedAt: Date.now() });

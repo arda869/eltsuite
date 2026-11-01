@@ -1,3 +1,4 @@
+import { readSongParts } from './stems.js';
 import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
@@ -72,9 +73,12 @@ export const recordingSongResult=onCall({...options,timeoutSeconds:60},async req
   if(d.status==='working'&&Date.now()-d.createdAt>540000)return {status:'failed',error:'This attempt did not finish. Your words are kept; you can start a new attempt.'};
   if(d.status!=='complete')return {status:d.status,error:d.error??''};
   if(d.kind==='lyrics')return {status:'complete',lyrics:d.lyrics};
-  if(!Number.isInteger(d.parts)||d.parts<1||d.parts>27)throw new HttpsError('unavailable','The stored song is incomplete. Your lyrics are kept.');
-  const chunks=await Promise.all(Array.from({length:d.parts},(_,i)=>ref.collection('parts').doc(String(i)).get()));
-  if(chunks.some(c=>!c.exists||!Buffer.isBuffer(c.get('bytes'))))throw new HttpsError('unavailable','The stored song is incomplete. Your lyrics are kept.');
-  const bytes=Buffer.concat(chunks.map(c=>c.get('bytes')));
-  return {status:'complete',audio:bytes.toString('base64'),mime:d.mime,providerLyrics:d.providerLyrics};
+  const stems=d.stems?.status==='working'&&d.stems.busyUntil<Date.now()?{status:'failed',error:'Track preparation took too long. Your original song is kept; retry preparing tracks.'}:d.stems;
+  const metadata=stems?{status:stems.status,progress:stems.progress??0,error:stems.error??''}:null;
+  if(req.data?.metaOnly===true)return {status:'complete',stems:metadata};
+  const stem=req.data?.stem;
+  if(stem!==undefined&&!['vocals','instrumental'].includes(stem))throw new HttpsError('invalid-argument','Choose vocals or instrumental.');
+  if(stem&&stems?.status!=='complete')throw new HttpsError('failed-precondition','The sing-along tracks are still being prepared.');
+  const bytes=await readSongParts(ref.collection(stem||'parts'),stem?stems.parts?.[stem]:d.parts);
+  return {status:'complete',audio:bytes.toString('base64'),mime:stem?stems.mime:d.mime,providerLyrics:d.providerLyrics,stems:metadata};
 });

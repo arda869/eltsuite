@@ -1,6 +1,6 @@
 import { tr } from '../lib/terms';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
+import { loadManifest, soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
 import { UiIcon } from '../components/UiIcon';
 import { decodeSound, fmtTime, peaks as peaksOf, toMono } from '../lib/sound';
 import { broadcast, useLiveAudio } from '../lib/liveAudio';
@@ -36,7 +36,7 @@ function loadYouTube(): Promise<any> {
 export const isVideoUrl = (u = '') => !!youTubeId(u) || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(u);
 export const mediaIsVideo = (m?: Manifest | null) => !!m && (m.kind === 'link' ? !!m.video || isVideoUrl(m.url) : !!m.video);
 
-export type Engine = {
+export type Engine = { vocalsOn?:boolean;setVocalsOn?:(on:boolean)=>void;
   duck: (quiet: boolean) => void;
   volume: number;
   setVolume: (v: number) => void;
@@ -73,6 +73,9 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
   const ytId = youTubeId(url);
   const video = mediaIsVideo(m);
   const stored = m?.kind === 'audio';
+  const [vocalsOn,setVocalsOn]=useState(true);const switchPosition=useRef<{time:number;playing:boolean}|null>(null);
+  const chooseVocals=(on:boolean)=>{setError('');if(el.current)switchPosition.current={time:el.current.currentTime,playing:!el.current.paused};setReady(false);setVocalsOn(on);};
+  useEffect(()=>{setVocalsOn(!m?.stems?.vocalsOff);switchPosition.current=null;},[classId,mediaId,m?.stems?.vocalsOff]);
 
   // A sound or video element (stored sound, or a file on the web).
   useEffect(() => {
@@ -95,6 +98,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
     media.onloadedmetadata = () => {
       if (Number.isFinite(media.duration)) setDuration(media.duration);
       setReady(true);
+      const prior=switchPosition.current;if(prior){switchPosition.current=null;media.currentTime=Math.min(prior.time,media.duration||prior.time);if(prior.playing)void media.play().catch(()=>setError('Press play to resume the selected track.'));}
     };
     media.oncanplay = () => setReady(true);
     media.onplay = () => {
@@ -108,14 +112,14 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
       setTime(media.currentTime);
     };
     media.onended = () => setEnds((n) => n + 1);
-    media.onerror = () => setError(stored ? 'We couldn’t open this recording.' : 'We couldn’t play this file. Check the address.');
-    (stored ? soundUrl(classId, mediaId, m) : Promise.resolve(url)).then(
+    media.onerror = () => {setError(!vocalsOn?'The backing track is unavailable. The original song is kept.':stored?'We couldn’t open this recording.':'We couldn’t play this file. Check the address.');if(!vocalsOn)setVocalsOn(true);};
+    (stored ? (!vocalsOn&&m.stems?loadManifest(classId,m.stems.instrumental).then(stem=>{if(!stem)throw Error('missing stem');return soundUrl(classId,m.stems!.instrumental,stem);}):soundUrl(classId, mediaId, m)) : Promise.resolve(url)).then(
       (src) => {
         if (cancelled) return;
         media.src = src;
         if (m.duration) setDuration(m.duration);
       },
-      () => setError('We couldn’t open this recording.'),
+      () => {setError(!vocalsOn?'The backing track is unavailable. The original song is kept.':'We couldn’t open this recording.');if(!vocalsOn)setVocalsOn(true);},
     );
     return () => {
       cancelled = true;
@@ -129,7 +133,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
       setPlaying(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [m?.kind, m?.parts, m?.v, url, ytId, video, hostEl, classId, mediaId]);
+  }, [m?.kind, m?.parts, m?.v, m?.stems?.instrumental, vocalsOn, url, ytId, video, hostEl, classId, mediaId]);
 
   // YouTube.
   useEffect(() => {
@@ -226,7 +230,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
     else if (el.current && el.current.volume !== v) el.current.volume = v;
   }, []);
   const host = useCallback((h: HTMLElement | null) => setHostEl(h), []);
-  return { m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume, duck };
+  return { vocalsOn,setVocalsOn:chooseVocals,m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume, duck };
 }
 
 // ------------------------------------------------------------------ the sound wave
@@ -477,6 +481,7 @@ export function Transport({ e, locked, compact, children, tools }: { e: Engine; 
         {fmtTime(e.time)}
         <span> / {fmtTime(d)}</span>
       </span>
+      {e.m?.stems&&<button type="button" className="btn small-btn" aria-pressed={e.vocalsOn} disabled={!e.ready} onClick={()=>e.setVocalsOn?.(!e.vocalsOn)}>{e.vocalsOn?'Vocals on':'Vocals off · sing-along'}</button>}
       {tools}
       <VolumeMenu volume={e.volume} onVolume={e.setVolume} />
       <SpeedMenu rate={e.rate} onRate={e.setRate} />
@@ -666,6 +671,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
       <span>{fmtTime(e.time)} / {fmtTime(e.duration||e.m.duration||0)}</span>
     </span>
     <span className="im-transport"><label>Volume<input type="range" aria-label="Volume" min={0} max={1} step={0.05} value={e.volume} onChange={ev=>e.setVolume(Number(ev.target.value))}/></label><label>Speed<select aria-label="Playback speed" value={e.rate} onChange={ev=>e.setRate(Number(ev.target.value))}>{[.75,1,1.25,1.5].map(r=><option key={r} value={r}>{r}×</option>)}</select></label></span>
+    {e.m?.stems&&<button type="button" className="btn small-btn" aria-pressed={e.vocalsOn} disabled={!e.ready} onClick={()=>e.setVocalsOn?.(!e.vocalsOn)}>{e.vocalsOn?'Vocals on':'Vocals off · sing-along'}</button>}
     {plays>0&&<span className="mp-note">{used?'No plays left':teacher?`Learners can play ${plays} times`:`${plays-e.ends} plays left`}</span>}
     {e.error&&<span className="mp-error">{e.error}</span>}
     {showScript&&<span className="im-script">{lines.map((l,i)=><span key={i} className={l.t!==null&&e.time>=l.t?'said':''}>{l.text} </span>)}</span>}

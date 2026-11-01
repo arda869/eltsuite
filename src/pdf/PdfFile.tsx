@@ -11,7 +11,7 @@ import type { SharedDoc } from '../lib/sharedDocs';
 import { useCollabSession, type CollabSession } from '../collab/session';
 import { claimStart } from '../collab/provider';
 import { colorOf, PeopleHere } from '../collab/CollabDoc';
-import { DOC_CMDS, DOC_GROUPS, DOC_NODES } from '../collab/docKit';
+import { docCommands, DOC_GROUPS, DOC_NODES } from '../collab/docKit';
 import { SlashMenu, useSlash } from '../editor/TaskEditor';
 import { EditorClassContext } from '../editor/context';
 import { TextColorTool } from '../editor/TextColor';
@@ -162,7 +162,7 @@ function Inner({ d, canEdit, me, session }: { d: SharedDoc; canEdit: boolean; me
     return () => window.removeEventListener('keydown', key);
   }, [editor, canEdit]);
   const teacher = profile?.role === 'teacher';
-  const cmds = useMemo(() => DOC_CMDS.filter((c) => teacher || (!c.key.startsWith('tt-') && c.key !== 'cite')), [teacher]);
+  const cmds = useMemo(() => docCommands().filter((c) => teacher || (!c.key.startsWith('tt-') && c.key !== 'cite')), [teacher]);
   const slash = useSlash(editor, cmds, false, true, () => true);
   if (!editor) return <div className="dp-msg">Opening the PDF…</div>;
   const inBox = editor.isActive('pdfBox');

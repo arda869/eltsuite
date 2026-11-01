@@ -23,7 +23,7 @@ import CollaborationCursor from '@tiptap/extension-collaboration-cursor';
 import * as Y from 'yjs';
 import { onValue, push, set, update } from 'firebase/database';
 import { HighlightTool } from '../editor/Highlight';
-import { DOC_CMDS, DOC_GROUPS, DOC_SECTIONS, DOC_NODES, PRON_KEYS, PIC_EVENT, addPictures, pickPictures } from './docKit';
+import { docCommands, DOC_GROUPS, docSections, DOC_NODES, PRON_KEYS, PIC_EVENT, addPictures, pickPictures } from './docKit';
 import { PictureDialog } from '../editor/Picture';
 import { SlashMenu, useSlash } from '../editor/TaskEditor';
 import { InsertGallery } from '../editor/InsertGallery';
@@ -228,7 +228,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
   edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
   // The "/" menu: the lesson editor's elements, without learner tasks.
-  const docCmds = useMemo(() => DOC_CMDS.filter((c) => (profileTeacher || !c.key.startsWith('tt-')) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
+  const docCmds = useMemo(() => docCommands().filter((c) => (profileTeacher || !c.key.startsWith('tt-')) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
   const slash = useSlash(editor, docCmds, false, true, () => true);
   // ⌘K: a link on the selected words; Alt+↑/↓ moves a paragraph, as in lessons.
   useEditorKeys(editor, () => {
@@ -865,7 +865,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
       {gallery && (
         <InsertGallery
           commands={docCmds}
-          sections={DOC_SECTIONS}
+          sections={docSections()}
           title="Add to the document"
           onClose={() => setGallery(false)}
           onPick={(key) => {

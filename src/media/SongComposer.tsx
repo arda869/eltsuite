@@ -6,7 +6,7 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import type { Item } from '../lib/classes';
 import { useAuth } from '../lib/auth';
-import { songBlob, songResult, startLyrics, startSong, loadSongLesson, type SongLesson, type SongBrief } from '../lib/songs';
+import { songBlob, songResult, startLyrics, startSong, loadSongLesson, startSongStems, type SongStems, type SongLesson, type SongBrief } from '../lib/songs';
 import { decodeSound } from '../lib/sound';
 import './speech.css';
 import './songs.css';
@@ -31,13 +31,14 @@ function SongProgress({kind}:{kind:string}){
     <p className="song-work-note">{seconds>=60?'Still working. Keep this window open; your words and settings are kept.':'Keep this window open. Your words and settings are kept.'}</p>
   </section>;
 }
-export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>void;onInsert:(buffer:AudioBuffer,title:string,lyrics:string)=>void}){
+export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>void;onInsert:(buffer:AudioBuffer,title:string,lyrics:string,stems?:SongStems)=>void}){
   const {user}=useAuth(),key='ll.songDraft:'+user?.uid;
   const [step,setStep]=useState(0),[classPick,setClassPick]=useState(''),[lessons,setLessons]=useState<Item[]>([]),[lessonInfo,setLessonInfo]=useState<SongLesson|null>(null),[lessonBusy,setLessonBusy]=useState(false),[lessonError,setLessonError]=useState('');
   const classroom=useTeacherClasses(open?user?.uid:null);
   const lessonRequest=useRef(0);
   const taughtClasses=(classroom.classes||[]).filter(c=>c.status==='active'&&(c.teacherId===user?.uid||c.coTeachers?.[user?.uid||'']?.role==='co')).sort((a,b)=>a.name.localeCompare(b.name));
-  const [brief,setBrief]=useState<SongBrief>(initial),[approved,setApproved]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[pending,setPending]=useState(''),[draft,setDraft]=useState(''),[take,setTake]=useState<{blob:Blob;url:string;lyrics:string;title:string;signature:string;providerLyrics:string}|null>(null);
+  const [brief,setBrief]=useState<SongBrief>(initial),[approved,setApproved]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[pending,setPending]=useState(''),[draft,setDraft]=useState(''),[take,setTake]=useState<{id:string;blob:Blob;url:string;lyrics:string;title:string;signature:string;providerLyrics:string}|null>(null);
+  const [stemState,setStemState]=useState<{status:'working'|'complete'|'failed';progress:number;error?:string;vocals?:Blob;instrumental?:Blob;vocalUrl?:string;instrumentalUrl?:string}|null>(null),[skipStems,setSkipStems]=useState(false),[previewMode,setPreviewMode]=useState<'full'|'instrumental'|'vocals'>('full'),[stemAttempt,setStemAttempt]=useState(0);
   const [loadedKey,setLoadedKey]=useState('');
   const [savedSong,setSavedSong]=useState<{id:string;brief:SongBrief}|null>(null);
   const dialog=useRef<HTMLDialogElement>(null),lock=useRef(false),alive=useRef(true),audio=useRef<HTMLAudioElement>(null);
@@ -46,6 +47,31 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   useEffect(()=>{if(user?.uid&&loadedKey===key)try{sessionStorage.setItem(key,JSON.stringify({brief,pending,savedSong}));}catch{}},[brief,pending,savedSong,key,loadedKey,user?.uid]);
   useEffect(()=>{if(open)dialog.current?.showModal();else{dialog.current?.close();audio.current?.pause();}},[open]);
   useEffect(()=>()=>{if(take)URL.revokeObjectURL(take.url);},[take]);
+  useEffect(()=>()=>{if(stemState?.vocalUrl)URL.revokeObjectURL(stemState.vocalUrl);if(stemState?.instrumentalUrl)URL.revokeObjectURL(stemState.instrumentalUrl);},[stemState?.vocalUrl,stemState?.instrumentalUrl]);
+  useEffect(()=>{
+    if(!take)return;let active=true;setStemState({status:'working',progress:0});setSkipStems(false);setPreviewMode('full');
+    const id=take.id;
+    void (async()=>{
+      try{
+        const initial=await songResult(id,{metaOnly:true});
+        if(!active)return;let startError:Error|undefined;const started=Date.now();let observedWorking=false;if(initial.stems?.status!=='complete')void startSongStems(id).catch(e=>{startError=e;});
+        const deadline=Date.now()+1840000;
+        while(active){
+          const result=await songResult(id,{metaOnly:true});
+          if(result.stems?.status==='working')observedWorking=true;if(startError&&result.stems?.status!=='complete')throw startError;if(result.stems?.status==='failed'&&(observedWorking||Date.now()-started>10000))throw Error(result.stems.error||'Track preparation could not finish.');
+          if(result.stems?.status==='complete'){
+            const [v,b]=await Promise.all([songResult(id,{stem:'vocals'}),songResult(id,{stem:'instrumental'})]);
+            if(!active)return;const vocals=songBlob(v),instrumental=songBlob(b);
+            setStemState({status:'complete',progress:1,vocals,instrumental,vocalUrl:URL.createObjectURL(vocals),instrumentalUrl:URL.createObjectURL(instrumental)});return;
+          }
+          setStemState({status:'working',progress:result.stems?.progress||0});
+          if(Date.now()>deadline)throw Error('Track preparation took too long. Recover this song later, or use the original mix.');
+          await new Promise(resolve=>setTimeout(resolve,4000));
+        }
+      }catch(e){if(active)setStemState({status:'failed',progress:0,error:(e as Error).message||'Sing-along tracks could not be prepared. Your original song is kept.'});}
+    })();
+    return()=>{active=false;};
+  },[take?.id,stemAttempt]);
   const patch=(change:Partial<SongBrief>)=>{setBrief(b=>({...b,...change}));setApproved(false);setDraft('');setError('');};
   useEffect(()=>{setLessons([]);if(!open||!classPick)return;return onSnapshot(collection(db,'classes',classPick,'items'),s=>setLessons(s.docs.map(d=>({id:d.id,...d.data()} as Item)).filter(i=>i.type==='lesson').sort((a,b)=>a.order-b.order||a.title.localeCompare(b.title))),()=>setLessonError('We couldn’t load these lessons. Try another classroom.'));},[open,classPick]);
   const chooseLesson=async(reference:{classId:string;itemId:string}|null)=>{
@@ -68,7 +94,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
       if(result.status==='failed'){setPending('');throw Error(result.error||'This attempt did not finish. Your words are kept.');}
       if(result.status==='complete'){
         if(id.startsWith('lyrics-')){setDraft(result.lyrics||'');setStep(2);}
-        else {const blob=songBlob(result);setTake({blob,url:URL.createObjectURL(blob),lyrics:snapshot.lyrics,title:snapshot.title,signature:JSON.stringify(snapshot),providerLyrics:result.providerLyrics||''});setSavedSong({id,brief:snapshot});setStep(2);}
+        else {const blob=songBlob(result);setTake({id,blob,url:URL.createObjectURL(blob),lyrics:snapshot.lyrics,title:snapshot.title,signature:JSON.stringify(snapshot),providerLyrics:result.providerLyrics||''});setSavedSong({id,brief:snapshot});setStep(2);}
         setPending('');return;
       }
       if(Date.now()>deadline)throw Error('The song is still being prepared. Use Recover creation to check it without creating another.');
@@ -104,7 +130,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   };
   const insert=async()=>{
     if(!take||!current||lock.current)return;lock.current=true;setBusy('insert');setError('');
-    try{const buffer=await decodeSound(take.blob);onInsert(buffer,take.title,take.lyrics);setTake(null);setApproved(false);}
+    try{const buffer=await decodeSound(take.blob);const stems=!skipStems&&stemState?.vocals&&stemState.instrumental?{vocals:await decodeSound(stemState.vocals),instrumental:await decodeSound(stemState.instrumental)}:undefined;onInsert(buffer,take.title,take.lyrics,stems);setTake(null);setApproved(false);}
     catch{setError('The song could not be opened. Your preview is kept; try adding it again.');}
     finally{lock.current=false;setBusy('');}
   };
@@ -144,9 +170,9 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
         {draft&&<section className="song-draft" aria-label="Proposed lyrics"><h3>Try these words</h3><pre>{draft}</pre><div><button type="button" className="btn" onClick={()=>patch({lyrics:draft})}>Use these lyrics</button><button type="button" className="btn" onClick={()=>setDraft('')}>Keep my current lyrics</button></div></section>}
         <label className="song-check"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I’ve reviewed the lyrics. Use these exact words.</span></label>
       </fieldset>}
-      {take&&step===2&&<section className="song-preview" aria-label="Song preview"><div className="song-section-title"><UiIcon name="music" size={22}/><div><h3>{take.title}</h3><span>Your song is ready to preview</span></div></div><audio ref={audio} controls src={take.url} preload="metadata" aria-label="Listen to the generated song"/><p>Listen for the right words, clear pronunciation and a comfortable pace before adding your song.</p><div className="song-preview-actions"><a className="btn" href={take.url} download={take.title.replace(/[^\p{L}\p{N} ._-]/gu,'').slice(0,100)+(take.blob.type.includes('wav')?'.wav':'.mp3')}><UiIcon name="export" size={16}/>Download preview</a>{!current&&<button type="button" className="btn" disabled={!!busy} onClick={()=>{setBrief(JSON.parse(take.signature));setApproved(false);setDraft('');}}>Use this song’s settings</button>}</div>{!current&&<p>You’ve changed the brief. Create a new version to hear those changes, or restore this preview’s settings.</p>}<details><summary>Song lyrics</summary><pre>{take.lyrics}</pre></details></section>}
+      {take&&step===2&&<section className="song-preview" aria-label="Song preview"><div className="song-section-title"><UiIcon name="music" size={22}/><div><h3>{take.title}</h3><span>Your song is ready to preview</span></div></div><audio ref={audio} controls src={previewMode==='instrumental'?stemState?.instrumentalUrl:previewMode==='vocals'?stemState?.vocalUrl:take.url} preload="metadata" aria-label="Listen to the generated song"/>{stemState?.status==='complete'?<div className="song-stem-options"><div className="seg" role="group" aria-label="Song preview track">{(['full','instrumental','vocals'] as const).map(mode=><button key={mode} type="button" aria-pressed={previewMode===mode} className={previewMode===mode?'on':''} onClick={()=>setPreviewMode(mode)}>{mode==='full'?'Full song':mode==='instrumental'?'Sing-along · no vocals':'Vocals only'}</button>)}</div><p>Vocals and backing will be saved separately. Mute the Vocals track in the editor, or turn vocals off in the saved player.</p></div>:<div className="song-stem-status" aria-live="polite">{stemState?.status==='failed'?<p role="alert">{stemState.error}</p>:<><strong>Preparing sing-along tracks… {Math.round((stemState?.progress||0)*100)}%</strong><progress aria-label="Sing-along track preparation" max="1" value={stemState?.progress||0}/><p>You can listen to the original while vocals and backing are separated. This may take several minutes.</p></>}{!skipStems&&<button className="btn" type="button" onClick={()=>setSkipStems(true)}>Use original mix only</button>}{stemState?.status==='failed'&&<button className="btn" type="button" onClick={()=>setStemAttempt(n=>n+1)}>Retry sing-along tracks</button>}{skipStems&&<p>The original mix will be added without separate tracks.</p>}</div>}<p>Listen for the right words, clear pronunciation and a comfortable pace before adding your song.</p><p id="song-stem-guidance">{!skipStems&&stemState?.status!=='complete'?'Wait for the sing-along tracks, or choose “Use original mix only” to add the song now.':''}</p><div className="song-preview-actions"><a className="btn" href={previewMode==='instrumental'?stemState?.instrumentalUrl:previewMode==='vocals'?stemState?.vocalUrl:take.url} download={(take.title+(previewMode==='full'?'':previewMode==='vocals'?' · Vocals':' · Backing')).replace(/[^\p{L}\p{N} ._-]/gu,'').slice(0,100)+((previewMode==='full'?take.blob:previewMode==='vocals'?stemState?.vocals:stemState?.instrumental)?.type.includes('wav')?'.wav':'.mp3')}><UiIcon name="download" size={16}/>{previewMode==='full'?'Download full song':previewMode==='vocals'?'Download vocals':'Download backing'}</a>{!current&&<button type="button" className="btn" disabled={!!busy} onClick={()=>{setBrief(JSON.parse(take.signature));setApproved(false);setDraft('');}}>Use this song’s settings</button>}</div>{!current&&<p>You’ve changed the brief. Create a new version to hear those changes, or restore this preview’s settings.</p>}<details><summary>Song lyrics</summary><pre>{take.lyrics}</pre></details></section>}
       </div>
     </div>
-    <footer className="song-footer"><div id="song-create-guidance" className="song-feedback" aria-live="polite">{error?<p role="alert">{error}</p>:busy?<p>{busy==='insert'?'Adding your song…':'Your words and settings are kept while AI works.'}</p>:<p>{step===2?(songBlockReason||'Ready to create your song. Listen before adding it to the timeline.'):'Step '+(step+1)+' of 3'}</p>}</div><div className="song-footer-actions">{step>0&&<button type="button" className="btn" disabled={!!busy||!!pending} onClick={()=>move(step-1)}>Back</button>}{step<2?<button type="button" className="btn primary" disabled={!!busy||!!pending||!nextReady} onClick={()=>move(step+1)}>{step===0?'Next: music':'Next: lyrics'}<span aria-hidden="true"> →</span></button>:<><button type="button" aria-describedby="song-create-guidance" className={'btn'+(!current?' primary':'')} disabled={!!busy||!!pending||!valid||!styleReady||!brief.lyrics.trim()||!approved||current||lessonBusy||!!lessonError} onClick={()=>void run('song')}>{take?'Create a new version':'Create song'}</button>{take&&<button type="button" className="btn primary" disabled={!!busy||!current} onClick={()=>void insert()}>Add song to timeline</button>}</>}</div></footer>
+    <footer className="song-footer"><div id="song-create-guidance" className="song-feedback" aria-live="polite">{error?<p role="alert">{error}</p>:busy?<p>{busy==='insert'?'Adding your song…':'Your words and settings are kept while AI works.'}</p>:<p>{step===2?(songBlockReason||'Ready to create your song. Listen before adding it to the timeline.'):'Step '+(step+1)+' of 3'}</p>}</div><div className="song-footer-actions">{step>0&&<button type="button" className="btn" disabled={!!busy||!!pending} onClick={()=>move(step-1)}>Back</button>}{step<2?<button type="button" className="btn primary" disabled={!!busy||!!pending||!nextReady} onClick={()=>move(step+1)}>{step===0?'Next: music':'Next: lyrics'}<span aria-hidden="true"> →</span></button>:<><button type="button" aria-describedby="song-create-guidance" className={'btn'+(!current?' primary':'')} disabled={!!busy||!!pending||!valid||!styleReady||!brief.lyrics.trim()||!approved||current||lessonBusy||!!lessonError} onClick={()=>void run('song')}>{take?'Create a new version':'Create song'}</button>{take&&<button type="button" className="btn primary" aria-describedby="song-stem-guidance" disabled={!!busy||!current||(!skipStems&&stemState?.status!=='complete')} onClick={()=>void insert()}>Add song to timeline</button>}</>}</div></footer>
   </dialog>;
 }
