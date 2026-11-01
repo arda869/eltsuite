@@ -309,6 +309,10 @@ service cloud.firestore {
         }
       }
 
+      // Evidence and coaching reports are server-written and teacher-only.
+      match /learningEvidence/{id} { allow read: if teachesClass(classId); }
+      match /learningReports/{id} { allow read: if teachesClass(classId); }
+
       // Learner answers: one document per task per learner
       match /answers/{answerId} {
         allow read: if viewsClass(classId)

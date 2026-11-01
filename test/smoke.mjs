@@ -89,6 +89,25 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    let dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();
+    await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
+    await dialog.getByText('Not enough recorded history for a useful estimate.',{exact:true}).waitFor();
+    await dialog.getByText('View evidence (1 activities)',{exact:true}).click();
+    await dialog.getByText(/Timing not recorded/).waitFor();
+    await dialog.getByRole('button',{name:'Check this lesson',exact:true}).click();
+    await s.p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.includes('/learningReports/')).length===2);
+    await dialog.getByRole('button',{name:'Close',exact:true}).click();
+    await s.p.reload();
+    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
+    await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
+    await axe(s.p,'Learner readiness',A11Y_FOUND);return s;
+  },
   'Lesson tools: keys, differentiated versions and next activities': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'tool-source']={kind:'task',title:'Yesterday',instructions:'Complete the sentence.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]}]},order:0,hidden:false,locked:false};fs[root+'tool-source/private/key']={missing:{kind:'gap',answers:[]}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
