@@ -96,12 +96,16 @@ const J = {
     await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
     let dialog=s.p.getByRole('dialog',{name:'Generate answer key'});
     await dialog.getByRole('button',{name:'Generate missing answers'}).click();
+    await dialog.getByRole('button',{name:'Apply answer key'}).waitFor();
+    await axe(s.p,'Answer key review',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Apply answer key'}).click();
     await s.p.waitForFunction(({classId,itemId})=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+classId+'/items/'+itemId+'/tasks/tool-source/private/key'].missing.answers[0]==='went',s.demo);
     await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();
     dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
     await dialog.getByRole('button',{name:/More support Add choices/}).click();
     await dialog.getByRole('button',{name:'Create differentiated version'}).click();
+    await dialog.getByRole('button',{name:'Add differentiated version'}).waitFor();
+    await axe(s.p,'Differentiated preview',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Add differentiated version'}).click();
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.family==='tool-source'&&v.variant==='Supported'),s.demo);
     await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();
