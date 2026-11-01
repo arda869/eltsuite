@@ -1,3 +1,5 @@
+import {prepareEditorialIllustration} from '../../functions/ai/illustration.js';
+import {STYLE_DIRECTIONS} from '../../functions/designer/styles.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -65,4 +67,12 @@ test('research retrieves the relevant routine section instead of repeated introd
  const unrelated='The International Space Station has many international partner agencies and station modules. '.repeat(12);
  const extract=relevantExtract(intro+'\n== Station construction ==\n'+unrelated+'\n== Daily routines ==\n'+routine,['International Space Station daily routine']);
  assert.match(extract,/A typical day begins at 06:00/);assert.ok(extract.length<=3500);
+});
+
+test('adult illustrations use Designer editorial style and repair a failed visual before accepting it',async()=>{
+ let generations=0,reviews=0;const bytes=Buffer.alloc(120);bytes[0]=255;bytes[1]=216;
+ const result=await prepareEditorialIllustration({prompt:'A person working from home',learnerAction:'Identify the daily activity'},{apiKey:'test',model:'gpt-6.1-sol',
+ fetchImpl:async(_url,options)=>{generations++;const prompt=JSON.parse(options.body).prompt;assert.ok(prompt.includes(STYLE_DIRECTIONS.editorial));assert.match(prompt,/not a photograph/);if(generations===2)assert.match(prompt,/Show the desk clearly/);return {ok:true,json:async()=>({data:[{b64_json:bytes.toString('base64')}]})}},
+ generate:async args=>{reviews++;assert.equal(args.sourceImages.length,1);return {value:{selection:reviews===1?0:1,reason:'Show the desk clearly',alt:'A person at a desk'},usage}}});
+ assert.equal(generations,2);assert.equal(reviews,2);assert.equal(result.alt,'A person at a desk');
 });

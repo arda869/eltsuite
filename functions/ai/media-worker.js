@@ -1,3 +1,4 @@
+import { prepareEditorialIllustration } from './illustration.js';
 import { prepareCommonsImage } from './commons.js';
 import { generate } from './provider.js';
 import { PILOT_MODEL } from './budget.js';
@@ -47,6 +48,10 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
    const photo=await prepareCommonsImage(asset,{generate,apiKey:key.value(),model:PILOT_MODEL});
    bytes=photo.bytes;asset.credit=photo.credit;asset.alt=photo.alt;
    await ref.update({credit:photo.credit,alt:photo.alt,visualReview:photo.review});
+   } else if(asset.source==='editorial') {
+    const illustration=await prepareEditorialIllustration(asset,{generate,apiKey:key.value(),model:PILOT_MODEL});
+    bytes=illustration.bytes;asset.alt=illustration.alt;
+    await ref.update({alt:illustration.alt,visualReview:illustration.review,imageStyle:'editorial'});
    } else {
     const response=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',signal:AbortSignal.timeout(180000),headers:{Authorization:`Bearer ${key.value()}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2.5-flare',prompt:'Create one original classroom learning image. No text, labels, logos or watermarks. '+asset.prompt,n:1,size:'1024x1024',quality:'low',output_format:'jpeg',output_compression:65})});
     if(!response.ok)throw Error('Image generation failed.');

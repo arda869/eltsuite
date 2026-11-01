@@ -256,7 +256,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), result.usage);
       tx.update(budget, { committedMicroUsd: settled.balance });
-      if(d.action==='activities')for(const asset of mediaRequests(result.activities))tx.create(job.collection('media').doc(asset.id),{...asset,...(adultEditorial&&asset.kind==='image'?{source:'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});
+      if(d.action==='activities')for(const asset of mediaRequests(result.activities))tx.create(job.collection('media').doc(asset.id),{...asset,...(adultEditorial&&asset.kind==='image'?{source:asset.style==='editorial'?'editorial':'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});
       tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
     });
     return result;
