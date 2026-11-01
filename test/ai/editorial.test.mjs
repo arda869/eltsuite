@@ -6,7 +6,7 @@ import {taskCatalogue} from '../../functions/ai/catalogue.js';
 import {outlineSchema,generationSchema,validate} from '../../functions/ai/contract.js';
 import {stageContract} from '../../functions/ai/sequence.js';
 import {activitySchema,checkActivities,nativeTask} from '../../functions/ai/activities.js';
-import {collectSources} from '../../functions/ai/research.js';
+import {collectSources,relevantExtract} from '../../functions/ai/research.js';
 import {prepareCommonsImage} from '../../functions/ai/commons.js';
 const usage={inputTokens:12,outputTokens:30};
 const review=(bad=false)=>({checks:Array.from({length:11},(_,i)=>({criterion:'criterion'+i,score:bad?2:4,evidence:'Specific evidence'})),criticalErrors:bad?['Task has no reason to listen']:[],suggestions:[]});
@@ -57,4 +57,12 @@ test('Commons image selection cannot substitute a caption for visual inspection 
  const generate=async args=>{sawImages=args.sourceImages[0].startsWith('data:image/jpeg;base64,');return {value:{selection:1,alt:'Astronaut exercising',reason:'The equipment and action are visible.'},usage}};
  const result=await prepareCommonsImage({prompt:'astronaut exercise'},{generate,apiKey:'test',model:'gpt-6.1-sol',fetchImpl});assert.ok(sawImages);assert.match(result.credit,/CC BY 4.0/);assert.match(result.credit,/curid=1/);
  await assert.rejects(prepareCommonsImage({prompt:'astronaut exercise'},{generate:async args=>({value:args.name==='image_search'?{query:'astronaut exercising'}:{selection:0}}),fetchImpl}),/No photograph passed/);
+});
+
+test('research retrieves the relevant routine section instead of repeated introductory names',()=>{
+ const intro='The International Space Station is an international scientific station. '.repeat(8);
+ const routine='A typical day begins at 06:00. The crew exercise, carry out experiments and eat together. '.repeat(7);
+ const unrelated='The International Space Station has many international partner agencies and station modules. '.repeat(12);
+ const extract=relevantExtract(intro+'\n== Station construction ==\n'+unrelated+'\n== Daily routines ==\n'+routine,['International Space Station daily routine']);
+ assert.match(extract,/A typical day begins at 06:00/);assert.ok(extract.length<=3500);
 });
