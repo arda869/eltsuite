@@ -47,7 +47,7 @@ import { RevealBox, newReveal } from './Reveal';
 import { SubTask, newSubTask } from './SubTask';
 import { StoryboardNode, newStoryboard } from '../storyboard/StoryboardNode';
 import { LinkCard } from './LinkCard';
-import { MediaBlock, newMedia } from './MediaNode';
+import { MediaBlock, InlineMedia, newInlineMedia, newMedia } from './MediaNode';
 import { UploadBlock, newUpload } from './UploadNode';
 import { CollabBlock, newCollab } from './CollabNode';
 import { BLOCKS } from './coursebook';
@@ -176,6 +176,7 @@ export const COMMANDS: Cmd[] = [
   { key: 'storyboard', label: 'Storyboard', hint: 'Scenes with people and speech bubbles, from your files', group: 'Text', run: (e) => e.chain().focus().insertContent([newStoryboard(), { type: 'paragraph' }]).run() },
   { key: 'reveal', label: 'Reveal box', hint: 'Hidden until a learner opens it: hints, answers', group: 'Text', run: (e) => e.chain().focus().insertContent([newReveal(), { type: 'paragraph' }]).run() },
   { key: 'speaking', label: 'AI conversation', hint: 'A private AI conversation for each learner, with lesson-focused feedback', group: 'Text', run: (e) => e.chain().focus().insertContent([newSpeaking(e), { type: 'paragraph' }]).run() },
+  { key: 'inline-video', label: 'Video in line', hint: 'Embed a video within text, tables, dialogues or any rich element', group: 'Text', run: e => e.chain().focus().insertContent(newInlineMedia()).run() },
   { key: 'media', label: 'Sound or video', hint: 'Record, upload or link, with a karaoke script', group: 'Text', run: (e) => e.chain().focus().insertContent([newMedia(), { type: 'paragraph' }]).run() },
   { key: 'pdf', label: 'PDF', hint: 'Pages of a PDF with text boxes, gaps and highlights on them', group: 'Text', run: () => void window.dispatchEvent(new CustomEvent('ll:add-pdf')) },
   { key: 'linkcard', label: 'Link card', hint: 'A YouTube video, audio file or web page', group: 'Text', run: (e) => e.chain().focus().insertContent([{ type: 'linkCard', attrs: { url: '', title: '', note: '' } }, { type: 'paragraph' }]).run() },
@@ -254,7 +255,7 @@ setPdfQuestions(PDF_Q_KEYS.map((k) => COMMANDS.find((c) => c.key === k)).filter(
 const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can add', group: 'More', run: () => {} };
 // The order of the groups in every / menu (lessons show Questions, Text, Blocks; documents Basic to Training).
 const GROUP_RANK: Cmd['group'][] = ['Basic', 'Media', 'Writing', 'Language', 'Questions', 'Text', 'Blocks', 'Training', 'More'];
-const TEXT_ONLY = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
+const TEXT_ONLY = ['inline-video', 'stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
 export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false, only?: (c: Cmd) => boolean) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
@@ -576,6 +577,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       ...PDF_NODES,
       LinkCard,
       MediaBlock,
+      InlineMedia,
       SpeakingBlock,
       UploadBlock,
       CollabBlock,

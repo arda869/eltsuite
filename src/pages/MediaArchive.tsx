@@ -85,6 +85,7 @@ export const entryOfTask = (t: LibTask): Entry => ({ key: 't:' + t.id, kind: 'ta
 
 type Section = 'media' | 'folders' | 'docs' | 'shared' | 'colleagues' | 'bin' | 'library';
 
+const openVideoStudio = (archiveId: string) => window.open(`/studio/video/new?archive=${encodeURIComponent(archiveId)}`, '_blank');
 const openStudio = (kind: 'task' | 'sound', id: string) => window.open(`/studio/${kind}/${id}`, '_blank');
 const stored = <T,>(k: string, d: T): T => {
   try {
@@ -446,7 +447,7 @@ export function MediaArchive() {
   };
   // Editors open full screen in their own tab: Task editor, Sound editor.
   const openHand = (h: HandIn) => void import('../lib/uploads').then(({ fileUrl }) => fileUrl(h.classId, h).then((u) => window.open(u, '_blank')));
-  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch(() => void tell('We couldn’t download the file just now. Check your connection and try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
+  const openE = (en: Entry) => (en.hand ? openHand(en.hand) : en.cls ? void window.open(`/class/${en.cls.classId}/lesson/${en.cls.itemId}`, '_blank') : en.doc?.kind === 'file' ? void downloadAnyFile(en.doc.id, en.doc.file ? { ...en.doc.file, name: dlName(en.doc) } : undefined, en.doc.title).catch(() => void tell('We couldn’t download the file just now. Check your connection and try again.')) : en.doc ? void window.open(`/doc/${en.doc.id}`, '_blank') : en.task ? openStudio('task', en.task.id) : en.item?.kind === 'video' && en.item.home && !en.item.link ? openVideoStudio(en.item.id) : en.item?.kind === 'audio' && en.item.home && !en.item.link ? openStudio('sound', en.item.id) : setSel(new Set([en.key])));
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
@@ -595,6 +596,7 @@ export function MediaArchive() {
     { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
     { label: 'Upload a file…', icon: 'upload', hint: 'Word, Excel or any other kind', onClick: () => anyIn.current?.click() },
     'sep',
+    { label: 'Video editor', icon: 'video', hint: 'edit clips, make AI videos and reuse characters', onClick: () => void window.open('/studio/video/new', '_blank') },
     { label: 'Recording', icon: 'mic', onClick: () => setDialog({ tab: 'record' }) },
     { label: 'Recording, with colleagues', icon: 'person', onClick: () => setTogether(true) },
     { label: 'Pictures…', icon: 'picture', hint: 'or paste one here', onClick: () => picIn.current?.click() },
@@ -1476,6 +1478,7 @@ function Detail({ uid, item, folders, shared, onClose }: { uid: string; item: Ar
         >
           <UiIcon name={item.link ? 'link' : 'import'} size={14} /> {item.link ? 'Open the link' : 'Download'}
         </button>
+        {item.kind === 'video' && !item.link && item.home && !phone && (<button type="button" className="btn small-btn" onClick={() => openVideoStudio(item.id)}><UiIcon name="video" size={14} /> Video editor</button>)}
         {item.kind === 'audio' && !item.link && item.home && !phone && (
           <button type="button" className="btn small-btn" onClick={() => openStudio('sound', item.id)}>
             <UiIcon name="edit" size={14} /> Recording editor

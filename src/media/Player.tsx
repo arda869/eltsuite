@@ -48,7 +48,7 @@ export type Engine = {
   ends: number; // how many times it has been played to the end
   error: string;
   video: boolean;
-  host: (el: HTMLDivElement | null) => void; // where a video is shown
+  host: (el: HTMLElement | null) => void; // where a video is shown
   play: () => void;
   pause: () => void;
   seek: (t: number) => void;
@@ -66,7 +66,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
   const [ends, setEnds] = useState(0);
   const [error, setError] = useState('');
   const [rate, setRateState] = useState(1);
-  const [hostEl, setHostEl] = useState<HTMLDivElement | null>(null);
+  const [hostEl, setHostEl] = useState<HTMLElement | null>(null);
   const el = useRef<HTMLMediaElement | null>(null);
   const yt = useRef<any>(null);
   const url = m?.kind === 'link' ? m.url ?? '' : '';
@@ -225,7 +225,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
     if (yt.current) yt.current.setVolume?.(Math.round(v * 100));
     else if (el.current && el.current.volume !== v) el.current.volume = v;
   }, []);
-  const host = useCallback((h: HTMLDivElement | null) => setHostEl(h), []);
+  const host = useCallback((h: HTMLElement | null) => setHostEl(h), []);
   return { m, ready, playing, time, duration, ends, error, video, host, play, pause, seek, rate, setRate, volume, setVolume, duck };
 }
 
@@ -567,7 +567,7 @@ function PlayerWave({ e, classId, mediaId, lines, locked, range, onRange }: { e:
 
 // teacher: the lesson editor (everything shows). teaching: the teaching screen, which the class may
 // see, so the script follows the setting and the teacher opens it with a button.
-export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode }) {
+export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below, inline }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode; inline?:boolean }) {
   const teacher = editing || teaching;
   const e = useEngine(classId, mediaId, manifest);
   const [open, setOpen] = useState(false);
@@ -652,9 +652,26 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
     return () => window.removeEventListener('ll:live-play', h);
   }, [mediaId, teacher]);
   const showScript = lines.length > 0 && (editing || scriptMode === 'karaoke' || (teaching && open) || (scriptMode === 'after' && e.ends > 0) || (scriptMode === 'button' && open));
-  if (e.m === undefined) return <div className="mp mp-wait" />;
-  if (e.m === null) return <div className="mp mp-missing">This sound or video is no longer in this class.</div>;
+  if (e.m === undefined) return inline ? <span className="mp mp-wait" /> : <div className="mp mp-wait" />;
+  if (e.m === null) return inline ? <span className="mp mp-missing">This sound or video is no longer in this class.</span> : <div className="mp mp-missing">This sound or video is no longer in this class.</div>;
   const name = title || e.m.title || (e.video ? 'Video' : 'Listening');
+  // Only phrasing elements here, so a video remains valid inside a paragraph or dialogue line.
+  if (inline) return <span className={'mp mp-inline' + (e.video ? ' is-video' : '')}>
+    {e.video && <span className="mp-screen" ref={e.host} />}
+    <span className="mp-title">{name}</span>
+    {waiting && <span className="mp-note">Your teacher plays this for the class.</span>}
+    <span className="im-transport">
+      <button type="button" className="mp-play" disabled={!e.ready || used || waiting} onClick={()=>e.playing?e.pause():e.play()} aria-label={e.playing?'Pause':'Play'}><PlayIcon playing={e.playing}/></button>
+      <input type="range" aria-label="Position" min={0} max={e.duration||e.m.duration||0} step={0.05} value={e.time} disabled={used||waiting||!e.ready} onChange={ev=>e.seek(Number(ev.target.value))}/>
+      <span>{fmtTime(e.time)} / {fmtTime(e.duration||e.m.duration||0)}</span>
+    </span>
+    <span className="im-transport"><label>Volume<input type="range" aria-label="Volume" min={0} max={1} step={0.05} value={e.volume} onChange={ev=>e.setVolume(Number(ev.target.value))}/></label><label>Speed<select aria-label="Playback speed" value={e.rate} onChange={ev=>e.setRate(Number(ev.target.value))}>{[.75,1,1.25,1.5].map(r=><option key={r} value={r}>{r}×</option>)}</select></label></span>
+    {plays>0&&<span className="mp-note">{used?'No plays left':teacher?`Learners can play ${plays} times`:`${plays-e.ends} plays left`}</span>}
+    {e.error&&<span className="mp-error">{e.error}</span>}
+    {showScript&&<span className="im-script">{lines.map((l,i)=><span key={i} className={l.t!==null&&e.time>=l.t?'said':''}>{l.text} </span>)}</span>}
+    {scriptMode==='button'&&lines.length>0&&<button type="button" className="mp-script-btn" onClick={()=>setOpen(o=>!o)}>{open?'Hide the script':'Show the script'}</button>}
+  </span>;
+
   return (
     <div className={'mp' + (e.video ? ' is-video' : '')}>
       {e.video && <div className="mp-screen" ref={e.host} />}

@@ -46,7 +46,7 @@ export async function sheetSounds(classId: string, items: WsItem[], accentHex: s
       const url = `${learnOrigin()}/play/${classId}/${id}?c=${accent}${mode !== 'karaoke' ? `&s=${mode}` : ''}`;
       const look = { margin: 0, errorCorrectionLevel: 'M' as const, color: { dark: '#2b2a28', light: '#ffffff' } };
       const [svg, png] = await Promise.all([QR.toString(url, { ...look, type: 'svg' }), QR.toDataURL(url, { ...look, margin: 1, width: 320 })]);
-      out[id] = { url, svg, png, title: m.title || 'Listening', video: m.kind === 'link' ? !!m.video : false, script: (m.script ?? []).map((l) => l.text.trim()).filter(Boolean) };
+      out[id] = { url, svg, png, title: m.title || 'Listening', video: !!m.video, script: (m.script ?? []).map((l) => l.text.trim()).filter(Boolean) };
     }),
   );
   return out;

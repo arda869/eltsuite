@@ -1,3 +1,7 @@
+import { InlineMedia, newInlineMedia } from './MediaNode';
+import { EditorClassContext, useEditorClass } from './context';
+import { UiIcon } from '../components/UiIcon';
+import { useAuth } from '../lib/auth';
 import { tell } from '../lib/ask';
 import { useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
@@ -19,9 +23,10 @@ import { useToolGate } from '../lib/toolbarPrefs';
 // The task instruction as rich text: bold, colour, highlight, a definition on a word, IPA, word stress.
 // One line (Shift + Enter for a new line). The plain text is kept beside it for exports and search.
 const plainDoc = (text: string): JSONContent => ({ type: 'doc', content: [text ? { type: 'paragraph', content: [{ type: 'text', text }] } : { type: 'paragraph' }] });
-const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak)"/) !== null;
+const hasRich = (doc?: JSONContent | null) => !!doc && JSON.stringify(doc).match(/"(marks|ipa|stress|hardBreak|inlineMedia)"/) !== null;
 
-export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
+export function InstrEditor({ doc, text, classId: givenClass, onChange, placeholder = 'Instruction, for example: Complete the sentences.' }: { doc?: JSONContent | null; text: string; classId?:string; onChange: (doc: JSONContent | null, text: string) => void; placeholder?: string }) {
+  const ctx=useEditorClass();
   const changeRef = useRef(onChange);
   changeRef.current = onChange;
   const [defOpen, setDefOpen] = useState(false);
@@ -30,6 +35,7 @@ export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, f
     extensions: [
       StarterKit.configure({ heading: false, bulletList: false, orderedList: false, listItem: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false }),
       Underline,
+      InlineMedia,
       Highlight,
       TextColor,
       Definition,
@@ -67,13 +73,14 @@ export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, f
     return a ?? 'RP';
   };
   return (
-    <div className="instr-wrap">
+    <EditorClassContext.Provider value={{...ctx,classId:givenClass || ctx.classId}}><div className="instr-wrap">
       <EditorContent editor={editor} className="task-instr input" />
       <div className="ne-bar instr-bar" role="toolbar" aria-label="Instruction formatting">
         {B('B', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Bold')}
         {B('I', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Italic')}
         {B('U', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), 'Underline')}
         <TextColorTool editor={editor} />
+        {B(<UiIcon name="video" size={15} />, false, () => editor.chain().focus().insertContent(newInlineMedia()).run(), "Embed a video")}
         {B('▮', editor.isActive('highlight'), () => editor.chain().focus().toggleMark('highlight', { color: 'yellow' }).run(), 'Highlight')}
         <span className="ne-sep" aria-hidden="true" />
         {B(
@@ -91,16 +98,18 @@ export function InstrEditor({ doc, text, onChange, placeholder = 'Instruction, f
         {gate('pron') !== 'hide' && <ProsodyTool editor={editor} />}
       </div>
       <DefinitionPop editor={editor} open={defOpen} onClose={() => setDefOpen(false)} />
-    </div>
+    </div></EditorClassContext.Provider>
   );
 }
 
 // The instruction as learners (and the teaching screen) see it.
-export function InstrView({ doc, text }: { doc?: JSONContent | null; text: string }) {
+export function InstrView({ doc, text, classId: givenClass }: { doc?: JSONContent | null; text: string; classId?:string }) {
+  const { classId } = useEditorClass();
+  const teacher=useAuth().profile?.role === 'teacher';
   if (!doc) return text ? <p className="task-instr">{text}</p> : null;
   return (
     <div className="task-instr rich">
-      <TaskRenderer content={doc} responses={{}} disabled />
+      <TaskRenderer content={doc} responses={{}} classId={givenClass || classId} teacher={teacher} disabled />
     </div>
   );
 }

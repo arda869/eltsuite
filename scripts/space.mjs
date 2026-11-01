@@ -26,7 +26,7 @@ const usedBy = new Map(); // uid → bytes, for each organisation's total below
 for (const t of teachers.docs) {
   const uid = t.id;
   const a = acc.get(uid) ?? {};
-  const [items, docs] = await Promise.all([db.collection('users').doc(uid).collection('archive').select('size', 'copies', 'home', 'thumb').get(), db.collection('sharedDocs').where('owner', '==', uid).select('size').get()]);
+  const [items, docs, videoAssets, videoProjects] = await Promise.all([db.collection('users').doc(uid).collection('archive').select('size', 'copies', 'home', 'thumb').get(), db.collection('sharedDocs').where('owner', '==', uid).select('size').get(), db.collection('videoAssets').where('owner', '==', uid).select('size').get(), db.collection('users').doc(uid).collection('videoProjects').get()]);
   let used = 0;
   for (const i of items.docs) {
     const x = i.data();
@@ -34,6 +34,8 @@ for (const t of teachers.docs) {
     used += (Number(x.size) || 0) * (1 + copies) + (typeof x.thumb === 'string' ? x.thumb.length : 0);
   }
   for (const d of docs.docs) used += Number(d.data().size) || 0;
+  for (const a of videoAssets.docs) used += Number(a.get('size')) || 0;
+  for (const p of videoProjects.docs) used += JSON.stringify(p.data()).length;
   // Lessons take space too: every task in the teacher's classes, and lessons kept in Files.
   let lessons = 0;
   const classes = await db.collection('classes').where('teacherId', '==', uid).get();

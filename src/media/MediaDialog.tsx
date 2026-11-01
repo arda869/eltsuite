@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { archiveAdd, mediaIn, saveLink, youTubeId, type ArchiveItem, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
@@ -7,6 +7,8 @@ import { ArchivePicker } from '../editor/Picture';
 import { UiIcon } from '../components/UiIcon';
 import { SoundEditor, type SoundSource } from './SoundEditor';
 import { isVideoUrl } from './Player';
+
+const VideoEditor = lazy(() => import('../video/VideoEditor').then(m => ({ default: m.VideoEditor })));
 
 // Adding a sound or video: record it here, upload a sound file, use one from the resources library,
 // or link to YouTube or a file on the web.
@@ -18,6 +20,7 @@ const MAX_MIN = 20;
 export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, folder = '', noArchive, file: dropped, onPictures }: { classId: string; tab?: MediaTab; onPick: (p: Picked) => void; onClose: () => void; folder?: string; noArchive?: boolean; file?: File; onPictures?: (files: File[]) => void }) {
   const { user } = useAuth();
   const [tab, setTab] = useState<MediaTab>(start);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [source, setSource] = useState<SoundSource | null>(null);
   const [busy, setBusy] = useState('');
   const [url, setUrl] = useState('');
@@ -37,6 +40,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     if (snd) void open(snd);
   };
   const open = async (f: File) => {
+    if (f.type.startsWith('video/')) { setVideoFile(f); return; }
     setBusy('Opening the recording…');
     try {
       const buffer = await decodeSound(f);
@@ -92,7 +96,8 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     { k: 'archive', label: 'Resources library', icon: 'archive' },
     { k: 'link', label: 'YouTube or link', icon: 'link' },
   ];
-  const editing = !!source;
+  const editing = !!source || !!videoFile;
+  if (videoFile) return createPortal(<div className="sx-full" role="dialog" aria-label="Video editor"><Suspense fallback={<div role="status">Opening the video editor…</div>}><VideoEditor initialFile={videoFile} classId={classId} onBack={onClose} onSaved={s => onPick({ ...s, kind: 'video' })} /></Suspense></div>, document.body);
   if (source)
     return createPortal(
       <div className="sx-full" role="dialog" aria-label="Recording editor" onKeyDown={(e) => e.stopPropagation()}>
@@ -143,11 +148,11 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
               role="button"
               tabIndex={0}
             >
-              <strong>{onPictures ? 'Choose pictures or a recording' : 'Choose a recording or sound file'}</strong>
+              <strong>{onPictures ? 'Choose pictures, sound or video' : 'Choose a sound or video file'}</strong>
               <span className="hint">{onPictures ? `Pictures (JPG, PNG) go straight in. Sounds (MP3, M4A, WAV, up to ${MAX_MIN} minutes) open in the editor to trim and clean up. Or drop files here.` : `MP3, M4A, WAV or OGG, up to ${MAX_MIN} minutes. You can trim it, clean it up and make it smaller next.`}</span>
               <input ref={file} type="file" accept={onPictures ? 'image/*,audio/*,video/*' : 'audio/*,video/*'} multiple={!!onPictures} hidden onChange={(e) => (e.target.files && take2(e.target.files), (e.target.value = ''))} />
             </div>
-            <span className="hint">A video file works too: its sound is kept. To show the video itself, put it on YouTube and use a link. Uploading video files needs file storage, which comes with the paid plan.</span>
+            <span className="hint">Video files open in the Video editor with their pictures and sound. Save the finished video to embed it here. Videos can be up to 100 MB; use a link for larger files.</span>
           </>
         ) : tab === 'archive' ? (
           <ArchivePicker uid={user?.uid} kind="sound" onPick={fromArchive} busy={!!busy} />

@@ -437,7 +437,7 @@ export function LearnerLesson() {
                   </span>
                 )}
                 <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{task.title}</h1>
-                <InstrView doc={task.instrDoc} text={task.instructions} />
+                <InstrView classId={classId} doc={task.instrDoc} text={task.instructions} />
                 {discussions.filter((d) => d.link?.taskId === task.id || (!d.link?.taskId && d.link?.itemId === itemId)).map((d) => (
                   <Link key={d.id} className="disc-chip" to={`/discuss/${d.id}`}>
                     Discuss: {d.title} · {d.replyCount} {d.replyCount === 1 ? 'reply' : 'replies'} →

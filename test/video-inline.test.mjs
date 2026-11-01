@@ -1,0 +1,32 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {mkdtemp} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {Node,getSchema} from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+const require=createRequire(import.meta.url),{build}=createRequire(require.resolve('vite/package.json'))('esbuild');
+const out=await mkdtemp(join(tmpdir(),'inline-video-'));
+await build({entryPoints:['src/editor/mediaSchema.ts'],bundle:true,format:'esm',platform:'node',outfile:join(out,'schema.mjs')});
+const {InlineMediaSchema,MediaBlockSchema}=await import(pathToFileURL(join(out,'schema.mjs')));
+const containers=['textBox','reveal','subTask','diagramCell'].map(name=>Node.create({name,group:'block',content:'block+'}));
+const dialogue=Node.create({name:'dialogue',group:'block',content:'inline*'});
+const schema=getSchema([StarterKit,Table,TableRow,TableCell,TableHeader,...containers,dialogue,InlineMediaSchema,MediaBlockSchema]);
+const video={type:'inlineMedia',attrs:{media:'clip1',archiveId:'saved1',kind:'video',title:'Ask for fruit',scriptMode:'none'}};
+const p={type:'paragraph',content:[{type:'text',text:'Watch: '},video,{type:'text',text:' Then answer.'}]};
+test('inline videos survive JSON round-trip inside text, tables, dialogue and nested rich elements',()=>{
+ const json={type:'doc',content:[p,...containers.map(n=>({type:n.name,content:[p]})),{type:'dialogue',content:p.content},{type:'table',content:[{type:'tableRow',content:[{type:'tableCell',content:[p]}]}]}]};
+ const doc=schema.nodeFromJSON(json);doc.check();
+ let count=0;doc.descendants(n=>{if(n.type.name==='inlineMedia'){count++;assert.equal(n.attrs.media,'clip1');assert.equal(n.attrs.kind,'video');assert(n.isInline);}});assert.equal(count,7);
+ const copy=schema.nodeFromJSON(doc.toJSON());copy.check();assert.deepEqual(copy.toJSON(),doc.toJSON());
+});
+test('inline video is an atomic movable object and existing block media remains compatible',()=>{
+ const node=schema.nodeFromJSON(video);assert(node.isAtom);assert(node.type.spec.draggable);assert.equal(node.nodeSize,1);
+ const old=schema.nodeFromJSON({type:'doc',content:[{type:'media',attrs:{media:'old',kind:'audio'}}]});old.check();assert.equal(old.firstChild.attrs.media,'old');
+});
