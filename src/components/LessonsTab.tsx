@@ -3,7 +3,8 @@ import { useAiPilot } from '../ai/pilot';
 import { ask } from '../lib/ask';
 import { ShareDialog } from './ShareDialog';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
 import { CopyDialog } from './CopyDialog';
 import { RecapDialog } from './Recap';
 import { copyLesson } from '../lib/copy';
@@ -368,6 +369,8 @@ const toLocal = (ms: number) => { const d = new Date(ms - new Date().getTimezone
 
 export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topics: Topic[]; items: Item[]; onResults?: (item: Item) => void }) {
   const aiPilot = useAiPilot();
+  const [materialImport,setMaterialImport]=useState(false);
+  const navigate=useNavigate();
   const sortedTopics = [...topics].sort((a, b) => a.order - b.order);
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     try {
@@ -400,7 +403,8 @@ export function LessonsTab({ c, topics, items, onResults }: { c: ClassDoc; topic
 
   return (
     <div className="lessons">
-      {aiPilot && <section style={{padding:'24px',marginBottom:'24px',border:'1px solid var(--accent)',borderRadius:'18px',background:'color-mix(in srgb, var(--accent) 8%, transparent)'}} aria-label="AI creation studio"><h2 style={{marginTop:0}}>{c.kind==='training'?'Your next training session starts here':'Your next lesson starts here'}</h2><p>Turn an idea into editable activities, built around your class. Create a lesson, exam, homework or practice.</p><Link className="btn primary" to={`/class/${c.id}/assistant`}>{c.kind==='training'?'Create training with AI':'Create with AI'} →</Link></section>}
+      {aiPilot && <section style={{padding:'24px',marginBottom:'24px',border:'1px solid var(--accent)',borderRadius:'18px',background:'color-mix(in srgb, var(--accent) 8%, transparent)'}} aria-label="AI creation studio"><h2 style={{marginTop:0}}>{c.kind==='training'?'Your next training session starts here':'Your next lesson starts here'}</h2><p>Turn an idea into editable activities, built around your class. Create a lesson, exam, homework or practice.</p><Link className="btn primary" to={`/class/${c.id}/assistant`}>{c.kind==='training'?'Create training with AI':'Create with AI'} →</Link> <ImportMaterialsButton onClick={()=>setMaterialImport(true)}/></section>}
+      {materialImport&&<MaterialImport classId={c.id} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);navigate(`/class/${c.id}/lesson/${id}`);}}/>}
       {/* Lessons move between teachers by sharing in the app, so there is no text import or export. */}
       {sortedTopics.length === 0 && unsorted.length === 0 && (
         <div className="empty">
