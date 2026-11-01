@@ -75,6 +75,17 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if(d.action==='finish'){const feedback={focusFeedback:'You gave a reason for your choice using because.',evidence:['I would choose the park because it is quieter.'],communication:'You kept the conversation moving.',nextStep:'Add a second reason to develop your answer.',retryPrompt:'Another reason is…'};await setDoc(doc({},'classes',d.classId,'speakingActivities',d.activityId,'sessions',d.sessionId),{feedback,status:'complete',feedbackState:'complete'},{merge:true});return {data:{feedback}};}
   }
   if (name !== 'lessonAssistant') throw Error('Unsupported test callable');
+  if(['rebuild','rebuildStatus','importCreate'].includes(d.action)) {
+    const jobs=JSON.parse(localStorage.getItem('mockMaterialJobs')||'{}');
+    if(d.action==='rebuild') {const {rebuilt}=await import('../ai/material-fixture.mjs');jobs[d.requestId]={rebuilt,creationType:d.creationType,scope:d.scope};localStorage.setItem('mockMaterialJobs',JSON.stringify(jobs));localStorage.setItem('mockMaterialRequest',JSON.stringify(d));return {data:{rebuilt}};}
+    const job=jobs[d.requestId];if(!job)throw Error('Import not found');
+    if(d.action==='rebuildStatus')return {data:{...job,status:'completed'}};
+    const id=d.itemId||'import-'+d.requestId,taskId='import-task-'+d.requestId;
+    const {nativeTask}=await import('../../functions/ai/activities.js');
+    if(!d.itemId)await setDoc(doc(db,'classes',d.classId,'items',id),{type:job.creationType,title:d.rebuilt.title,topicId:null,order:20,hidden:true,locked:false,taskCount:d.rebuilt.tasks.length});
+    for(const [i,t]of d.rebuilt.tasks.entries()){const n=nativeTask(t,i);await setDoc(doc(db,'classes',d.classId,'items',id,'tasks',taskId),{kind:'task',title:t.title,instructions:t.instructions,content:n.content,order:20,hidden:false,locked:false});await setDoc(doc(db,'classes',d.classId,'items',id,'tasks',taskId,'private','key'),n.key);await setDoc(doc(db,'classes',d.classId,'items',id,'tasks',taskId,'private','notes'),{text:n.notes});}
+    jobs[d.requestId]={...job,createdItemId:id,taskId};localStorage.setItem('mockMaterialJobs',JSON.stringify(jobs));return {data:{createdItemId:id,taskId}};
+  }
   if (d.action === 'coach') {
     const { profileComplete, beliefsComplete, contextPermissions } = await import('../../functions/ai/coach-context.js');
     const current = (await import('firebase/auth')).getAuth().currentUser?.uid ?? 'teacher1';

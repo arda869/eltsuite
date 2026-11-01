@@ -1,0 +1,81 @@
+name: Deploy verified material importer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-material-import.yml'
+      - 'src/materials/**'
+      - 'functions/ai/materials.js'
+      - 'functions/ai/material-contract.js'
+      - 'test/material-import.mjs'
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci && npm --prefix functions ci --no-audit --no-fund
+      - name: AI regression checks
+        run: node --test test/ai/*.test.mjs
+      - name: Real callable and database import checks (model simulated)
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-material-import "node test/ai/materials-integration.mjs"
+      - name: Build
+        env:
+          VITE_ELT_AI_PILOT: 'true'
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Import journeys and accessibility (AI simulated)
+        run: node test/material-import.mjs
+      - name: Existing teacher and learner journeys
+        timeout-minutes: 20
+        run: npm run a11y
+      - name: Prepare existing deployment credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA" || { echo '::error::Missing deploy key'; exit 1; }
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy lesson assistant before the importing UI
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          ELT_AI_ENABLED: 'true'
+          ELT_AI_MODEL: gpt-6.1-sol
+        run: |
+          node functions/ai/preflight.mjs
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_ENABLED=true\nELT_AI_MODEL=gpt-6.1-sol\n');
+          JS
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only functions:lessonAssistant --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/import-backend.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/import-backend.log"
+      - name: Deploy tested site
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only hosting --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/import-hosting.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/import-hosting.log"
+      - name: Verify published build
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const expected=JSON.parse(fs.readFileSync('dist/version.json','utf8'));
+          const actual=await fetch('https://eltsuite.com/version.json?verify='+Date.now(),{cache:'no-store'}).then(r=>r.json());
+          if(actual.build!==expected.build)throw Error('Published build mismatch');
+          console.log('Published importer build:',actual.build);
+          JS
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"

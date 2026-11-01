@@ -1,3 +1,5 @@
+import { MaterialImport, ImportMaterialsButton, TaskStartChoice } from '../materials/MaterialImport';
+import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
 import { NSelect } from '../components/Select';
@@ -447,6 +449,9 @@ export function LessonEditor() {
   const [copyTask, setCopyTask] = useState<Task | null>(null);
   const [copyMsg, setCopyMsg] = useState('');
   const [importing, setImporting] = useState(false);
+  const aiPilot=useAiPilot();
+  const [materialImport,setMaterialImport]=useState(false);
+  const [taskStart,setTaskStart]=useState(false);
   const [fromLib, setFromLib] = useState(false);
   const panels = usePanels('ll.teacherPanels');
   const panes = usePaneWidths();
@@ -695,6 +700,10 @@ export function LessonEditor() {
   }
 
   async function newTask() {
+    if(aiPilot){await flush();setTaskStart(true);return;}
+    await newBlankTask();
+  }
+  async function newBlankTask() {
     await flush();
     const id = await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0);
     setSelected(id);
@@ -1085,6 +1094,7 @@ export function LessonEditor() {
                 <button type="button" className="btn dashed" onClick={newTask}>
                   + New task
                 </button>
+                {aiPilot&&<ImportMaterialsButton onClick={()=>void flush().then(()=>setMaterialImport(true))}/>}
                 <button type="button" className="btn dashed" onClick={newSection}>
                   + Section
                 </button>
@@ -1572,6 +1582,8 @@ export function LessonEditor() {
           }}
         />
       )}
+      {taskStart&&<TaskStartChoice onClose={()=>setTaskStart(false)} onBlank={()=>{setTaskStart(false);void newBlankTask();}} onImport={()=>{setTaskStart(false);setMaterialImport(true);}}/>}
+      {materialImport&&<MaterialImport classId={classId} itemId={itemId} creationType={item?.type||'lesson'} onClose={()=>setMaterialImport(false)} onDone={(_,id)=>{setMaterialImport(false);setSelected(id);setCopyMsg('Reviewed task added.');}}/>}
       {importing && <ImportTasksDialog classId={classId} itemId={itemId} onClose={() => setImporting(false)} onDone={(m, id) => (setCopyMsg(m), id && setSelected(id))} />}
       {copyMsg && (
         <div className="toasts">
