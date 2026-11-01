@@ -18,10 +18,10 @@ export function LessonTools({classId,itemId,taskId,beforeOpen,onApplied}:{classI
  const [open,setOpen]=useState<Mode|null>(null);
  return <><div className="lesson-tool-toolbar" aria-label="AI lesson tools">{(Object.keys(labels) as Mode[]).map(mode=><button key={mode} className="btn small" onClick={()=>void beforeOpen().then(()=>setOpen(mode)).catch(()=>{})}>{labels[mode]}</button>)}</div>{open&&<LessonToolDialog classId={classId} itemId={itemId} taskId={taskId} mode={open} onClose={()=>setOpen(null)} onApplied={onApplied}/>}</>;
 }
-function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied}:{classId:string;itemId:string;taskId?:string;mode:Mode;onClose:()=>void;onApplied:(id:string)=>void}) {
+export function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied,initialDirection='',initialMinutes=10}:{classId:string;itemId:string;taskId?:string;mode:Mode;onClose:()=>void;onApplied:(id:string)=>void;initialDirection?:string;initialMinutes?:number}) {
  const storageKey=`lesson-tool:${classId}:${itemId}:${mode}`;
  const [pending,setPending]=useState<Pending|null>(()=>{try{return JSON.parse(localStorage.getItem(storageKey)??'null');}catch{return null;}});
- const [direction,setDirection]=useState(''),[scope,setScope]=useState(mode==='answers'?'lesson':'activity'),[minutes,setMinutes]=useState(10);
+ const [direction,setDirection]=useState(initialDirection),[scope,setScope]=useState(mode==='answers'?'lesson':'activity'),[minutes,setMinutes]=useState(initialMinutes);
  const [result,setResult]=useState<Result|null>(null),[media,setMedia]=useState<Media[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [selected,setSelected]=useState<Idea|null>(null);
  const remember=(p:Pending|null)=>{setPending(p);if(p)localStorage.setItem(storageKey,JSON.stringify(p));else localStorage.removeItem(storageKey);};
@@ -38,7 +38,7 @@ function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied}:{classI
   try{accept((await call({action:'taskTools',classId,itemId,taskId:taskId??'',requestId:p.id,mode,step,scope,minutes,direction:[selected?.direction,direction].filter(Boolean).join('\n').slice(0,2500),variantLabel:selected?.kind==='challenge'?'Challenge':'Supported'})).data);}catch(e){try{const saved=(await call({action:'taskToolsStatus',classId,itemId,requestId:p.id})).data;accept(saved);if(saved.status==='running')setError('The request is still running. Use Recover draft to check again.');}catch{setError('We could not confirm whether the draft finished. Your lesson is unchanged. Use Recover draft to check before starting again.');}}finally{setBusy(false);}
  };
  const started=useRef(false);
- useEffect(()=>{if(!started.current){started.current=true;if(mode!=='answers'&&!pending)void start('ideas');}},[]); // eslint-disable-line react-hooks/exhaustive-deps
+ useEffect(()=>{if(!started.current){started.current=true;if(mode!=='answers'&&!pending&&!initialDirection)void start('ideas');}},[]); // eslint-disable-line react-hooks/exhaustive-deps
  const apply=async()=>{if(!pending)return;setBusy(true);setError('');try{const r=(await call({action:'taskToolsApply',classId,itemId,requestId:pending.id})).data;if(r.applied){remember(null);onApplied(r.taskId??taskId??'');onClose();}}catch(e){setError(e instanceof Error?e.message:'Could not apply the draft.');}finally{setBusy(false);}};
  const applyReady=!!pending&&!busy&&!media.some(a=>a.status!=='ready')&&!!(result?.native||result?.entries?.length);
  return <VideoDialog name={labels[mode]} onClose={()=>{if(!busy)onClose();}}><div className="lesson-tool-dialog"><header><div><small>TEACHER WORKSPACE</small><h2>{labels[mode]}</h2></div><button className="btn" disabled={busy} onClick={onClose}>Close</button></header>
