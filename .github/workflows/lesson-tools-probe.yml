@@ -1,0 +1,25 @@
+name: Lesson tool integration diagnosis
+on:
+  push:
+    branches: [codex/lesson-tools-live-diagnosis]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm --prefix functions ci --no-audit --no-fund
+      - name: Configure deployment identity
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Check deployed binding, authenticate, then generate one synthetic answer
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node scripts/probe-lesson-tools.mjs
+      - if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
