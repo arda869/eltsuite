@@ -1,0 +1,59 @@
+// Real Firestore emulator; no AI/provider calls and no production data.
+import assert from 'node:assert/strict';
+import {initializeApp} from 'firebase-admin/app';
+import {getFirestore} from 'firebase-admin/firestore';
+import {handleLinguistics,coachEvidence} from './service.js';
+if(!process.env.FIRESTORE_EMULATOR_HOST)throw Error('Firestore emulator required.');
+initializeApp({projectId:'demo-linguistics'});const db=getFirestore();
+const auth=uid=>({uid,token:{email:uid+'@example.com'}}),call=(uid,action,data={})=>handleLinguistics(db,auth(uid),{action,...data});
+for(const uid of ['teacher','other','colleague'])await db.doc('users/'+uid).set({role:'teacher'});
+await db.doc('users/learner').set({role:'learner',learnerId:'learner-key',classId:'class'});
+await db.doc('classes/class').set({teacherId:'teacher'});await db.doc('classes/class/members/learner').set({learnerId:'learner-key'});
+await db.doc('classes/foreign').set({teacherId:'other'});await db.doc('sharedDocs/doc').set({owner:'teacher',memberIds:['colleague'],members:{colleague:{role:'view'}}});await db.doc('chats/chat').set({members:['teacher','colleague']});
+const evidence={id:'sample',text:'Well, I see your point.',origin:'teacher',shareAllowed:true};const draft={type:'corpus',title:'Markers',fields:{},evidence:[evidence],annotations:[]};
+const saved=await call('teacher','save',{investigation:draft});assert.equal(saved.version,1);
+assert.equal((await call('teacher','load',{id:saved.id})).investigation.title,'Markers');
+await assert.rejects(call('other','load',{id:saved.id}));await assert.rejects(call('learner','save',{investigation:draft}));await assert.rejects(handleLinguistics(db,{...auth('teacher'),token:{proxyBy:'admin'}},{action:'list'}));
+await assert.rejects(call('teacher','share',{id:saved.id,target:{type:'class',id:'foreign'},selected:['sample']}));
+const target={type:'class',id:'class'};const snap=await call('teacher','share',{id:saved.id,target,selected:['sample'],mode:'snapshot',responses:true});const live=await call('teacher','share',{id:saved.id,target,selected:['sample'],mode:'reference'});
+assert.equal((await call('learner','openEmbed',{id:snap.id})).data.evidence[0].text,evidence.text);
+await assert.rejects(call('other','openEmbed',{id:snap.id}));await call('learner','respond',{id:snap.id,value:'Well introduces a considered response.'});assert.equal((await call('learner','myResponse',{id:snap.id})).response.value,'Well introduces a considered response.');await assert.rejects(call('learner','responses',{id:snap.id}));
+await call('teacher','save',{id:saved.id,version:1,investigation:{...draft,evidence:[{...evidence,text:'Well, perhaps.'}]}});
+assert.equal((await call('learner','openEmbed',{id:snap.id})).data.evidence[0].text,evidence.text);assert.equal((await call('learner','openEmbed',{id:live.id})).data.evidence[0].text,'Well, perhaps.');
+await db.doc('classes/class/members/learner').delete();await assert.rejects(call('learner','openEmbed',{id:snap.id}));
+const message=await call('teacher','share',{id:saved.id,target:{type:'message',id:'chat'},selected:['sample']});await call('colleague','openEmbed',{id:message.id});await assert.rejects(call('colleague','load',{id:saved.id}));await db.doc('chats/chat').update({members:['teacher']});await assert.rejects(call('colleague','openEmbed',{id:message.id}));
+const doc=await call('teacher','share',{id:saved.id,target:{type:'doc',id:'doc'},selected:['sample']});await call('colleague','openEmbed',{id:doc.id});await db.doc('sharedDocs/doc').update({deletedAt:Date.now()});await assert.rejects(call('colleague','openEmbed',{id:doc.id}));
+await db.doc('teachingCoach/teacher/inquiries/inquiry').set({title:'Noticing',version:1});await call('teacher','attachInquiry',{id:saved.id,version:2,selected:['sample'],inquiryId:'inquiry'});assert.equal((await db.doc('teachingCoach/teacher/inquiries/inquiry').get()).get('version'),2);
+const packet=await call('teacher','prepareCoach',{id:saved.id,version:2,selected:['sample'],inquiryId:'inquiry',confirmed:true});assert.equal((await coachEvidence(db,'teacher',packet.id)).packet.evidence.length,1);
+await db.doc('teachingCoach/teacher/settings/context').set({inquiries:false});await assert.rejects(call('teacher','prepareCoach',{id:saved.id,version:2,selected:['sample'],inquiryId:'inquiry',confirmed:true}));
+await call('teacher','revoke',{id:saved.id});await assert.rejects(call('teacher','openEmbed',{id:snap.id}));await assert.rejects(coachEvidence(db,'teacher',packet.id));
+await db.doc('classes/class/portfolio/piece').set({kind:'piece',note:'I went to the park.',title:'Writing',skill:'Writing',at:Date.now()});
+const portfolio=await call('teacher','importPortfolio',{classId:'class',selected:['piece'],confirmed:true});await call('teacher','load',{id:portfolio.id});await assert.rejects(call('teacher','share',{id:portfolio.id,target,selected:['piece']}));await db.doc('classes/class/portfolio/piece').delete();await assert.rejects(call('teacher','load',{id:portfolio.id}));
+
+// Provider permissions are checked again after saving; API access is not a reuse licence.
+await db.doc('admin/corpus').set({enabled:true,corpora:[{id:'example',licensed:true,attribution:'Publisher',licence:'Classroom terms',allowCache:true,allowExport:true,allowAI:false}]});
+const providerDraft={...draft,evidence:[{...evidence,origin:'source',source:'Publisher',licence:'Classroom terms',providerRef:{provider:'sketchengine',corpusId:'example',toknum:1}}]};
+const providerSource=await call('teacher','save',{investigation:providerDraft});
+assert.equal((await call('teacher','load',{id:providerSource.id})).investigation.evidence[0].providerRef.corpusId,'example');
+const providerEmbed=await call('teacher','share',{id:providerSource.id,target,selected:['sample']});
+await db.doc('teachingCoach/teacher/settings/context').set({inquiries:true});
+await assert.rejects(call('teacher','prepareCoach',{id:providerSource.id,version:1,selected:['sample'],inquiryId:'inquiry',confirmed:true}),/AI processing/);
+await db.doc('admin/corpus').set({enabled:true,corpora:[{id:'example',licensed:true,attribution:'Publisher',licence:'Private use only',allowCache:true,allowExport:false}]});
+await assert.rejects(call('teacher','openEmbed',{id:providerEmbed.id}),/sharing/);
+await db.doc('aiPrivate/teacher/jobs/linguistics-cleanup').set({investigationId:providerSource.id,result:{observations:'A saved suggestion'}});
+await call('teacher','delete',{id:providerSource.id});
+assert.equal((await db.doc('aiPrivate/teacher/jobs/linguistics-cleanup').get()).exists,false);
+assert.equal((await db.doc('linguisticsEmbeds/'+providerEmbed.id).get()).exists,false);
+await assert.rejects(call('teacher','load',{id:providerSource.id}));
+console.log('PASS: real emulator private save/reopen; cross-account denial; target-bound class/document/message shares; saved learner response; snapshot/live difference; membership/source revocation; existing inquiry link; reviewed coach packet; consented portfolio deletion.');
+
+// Public-provider provenance cannot be overwritten by editable client metadata.
+await db.doc('linguisticsSentenceSources/42').set({text:'Well, I see.',source:'Tatoeba contributor example',url:'https://tatoeba.org/en/sentences/show/42',licence:'CC BY 2.0 FR',location:'Sentence 42',context:'Community example.'});
+const publicDraft={...draft,evidence:[{...evidence,id:'tatoeba-42',text:'Well, we see.',providerRef:{provider:'tatoeba',sentenceId:42},source:'wrong credit',licence:'wrong licence'}]};
+const publicSaved=await call('teacher','save',{investigation:publicDraft});
+const publicLoaded=(await call('teacher','load',{id:publicSaved.id})).investigation;
+assert.equal(publicLoaded.evidence[0].source,'Tatoeba contributor example');
+assert.equal(publicLoaded.evidence[0].origin,'source');
+assert.match(publicLoaded.evidence[0].context,/Adapted by the teacher/);
+await assert.rejects(call('teacher','save',{investigation:{...publicDraft,evidence:[{...publicDraft.evidence[0],providerRef:{provider:'tatoeba',sentenceId:999}}]}}),/restore this sentence/);
+console.log('Tatoeba saved provenance and adaptation checks passed.');

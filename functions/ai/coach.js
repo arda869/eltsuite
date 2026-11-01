@@ -2,6 +2,7 @@ import { loadLessonSource } from './coach-lesson-context.js';
 import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { dailyGlobalUsage } from './allowance.js';
+import {coachEvidence} from '../linguistics/service.js';
 import { contextPermissions, profileComplete, beliefsComplete, relevantWriting, writingExcerpt } from './coach-context.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
@@ -27,6 +28,12 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   const permissions = contextPermissions(preferencesData);
   if (['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode'].includes(preferencesData?.mode)) input.mode = preferencesData.mode;
   const context = {}, basis = [], sources = [];
+  if(input.evidencePacketId){
+    if(!permissions.inquiries)throw new HttpsError('failed-precondition','Research inquiry context is disabled. Remove the evidence packet to continue without it.');
+    const selected=await coachEvidence(db,uid,input.evidencePacketId);
+    context.selectedEvidence=selected;input.researchId=selected.inquiryId;
+    basis.push('Teacher-confirmed selected evidence: '+selected.packet.title);
+  }
   if(input.lessonContext){const selected=await loadLessonSource(db,uid,input.lessonContext);context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
   if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));

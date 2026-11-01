@@ -1,3 +1,4 @@
+import {CoachEvidenceReview} from '../linguistics/CoachEvidenceReview';
 import { BeliefsForm } from './BeliefsForm';
 import { reflectionDoc } from './model';
 import { NSelect } from '../components/Select';
@@ -18,9 +19,10 @@ type Source={title:string;url:string};
 type Message = { sources?:Source[]; role: 'teacher' | 'coach'; text: string; basis?: string[]; journalDraft?: string | null };
 const call = httpsCallable<Record<string, unknown>, { reply: string; basis: string[]; journalDraft?: string | null; sources?:Source[] }>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 240000 });
 
-export function CoachChat({ uid, profile, initialPrompt, reflectionId, lessonContext, onClearLesson }: {
-  uid: string; profile: CoachProfile; initialPrompt: string; reflectionId: string; lessonContext?:LessonCoachContext; onClearLesson?:()=>void;
+export function CoachChat({ uid, profile, initialPrompt, reflectionId, evidencePacketId = '', lessonContext, onClearLesson }: {
+  uid: string; profile: CoachProfile; initialPrompt: string; reflectionId: string; evidencePacketId?:string; lessonContext?:LessonCoachContext; onClearLesson?:()=>void;
 }) {
+  const [approvedPacket,setApprovedPacket]=useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState(initialPrompt);
   const { value: preferences, ready: preferencesReady } = useCoachPreferences(uid);
@@ -39,7 +41,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId, lessonCon
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
   const complete = !!lessonContext || (profileComplete(profile) && beliefsComplete(profile));
 
-  useLayoutEffect(() => { generation.current++; setMessages([]); request.current = null; setJournal(null); }, [preferences.version,profile.version,JSON.stringify(lessonContext)]);
+  useLayoutEffect(() => { generation.current++; setMessages([]); request.current = null; setJournal(null); }, [preferences.version,profile.version,approvedPacket,JSON.stringify(lessonContext)]);
   useEffect(() => { setDraft(initialPrompt); }, [initialPrompt, reflectionId]);
   useEffect(()=>{if(journal && review.current && !review.current.open) review.current.showModal();},[journal]);
   useEffect(() => { if (thread.current) thread.current.scrollTop = thread.current.scrollHeight; }, [messages, busy, complete]);
@@ -51,12 +53,12 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId, lessonCon
   }, [draft]);
 
   async function send() {
-    if (!draft.trim() || lock.current || !complete || !preferencesReady) return;
+    if (!draft.trim() || lock.current || !complete || !preferencesReady || (evidencePacketId&&approvedPacket!==evidencePacketId)) return;
     lock.current = true; setBusy(true); setError('');
     const turnGeneration = generation.current;
     const text = draft.trim(); setPendingText(text);
     const history = messages.slice(-16).map(m => ({ role: m.role, text: (m.text+(m.journalDraft?'\nJournal draft:\n'+m.journalDraft:'')).slice(0,6000) }));
-    const payload = { action: 'coach', contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', ...(lessonContext?{lessonContext}:{}) };
+    const payload = { action: 'coach', contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', evidencePacketId:approvedPacket, ...(lessonContext?{lessonContext}:{}) };
     while (new TextEncoder().encode(JSON.stringify(payload)).length > 40000 && history.length) history.splice(0,2);
     const fingerprint = JSON.stringify(payload);
     if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, id: crypto.randomUUID() };
@@ -79,8 +81,10 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId, lessonCon
     finally {setJournalSaving(false);}
   }
   function newChat() { setJournal(null); setJournalSaved(''); setMessages([]); setDraft(''); setError(''); request.current = null; }
-  const canSend = complete && preferencesReady && !busy && !!draft.trim();
+  const evidenceReady=!evidencePacketId||approvedPacket===evidencePacketId;
+  const canSend = complete && preferencesReady && !busy && !!draft.trim() && evidenceReady;
   return <section className="coach-chat" aria-label="Teaching coach chat">
+    {evidencePacketId&&<CoachEvidenceReview id={evidencePacketId} onConfirm={()=>{setMessages([]);setApprovedPacket(evidencePacketId);}}/>}
     <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teaching coach</h2></div><div className="coach-chat-tools"><button className="btn" disabled={busy || !messages.length} onClick={newChat}>New chat</button><Link className="btn" to="/settings#set-teaching-coach">Settings</Link></div></header>
     {lessonContext&&<aside className="coach-notice" aria-label="Selected teaching context"><p>The selected lesson{lessonContext.reportId?' and saved learner report':''} will be included when you send. Only material you can access is used.</p><Link to={`/class/${lessonContext.classId}/lesson/${lessonContext.itemId}${lessonContext.taskId?'?task='+lessonContext.taskId:''}`}>Open selected lesson</Link> <button className="btn" disabled={busy} onClick={onClearLesson}>Remove lesson context</button></aside>}
     {error && <p className="coach-notice coach-error" role="alert">{error}</p>}

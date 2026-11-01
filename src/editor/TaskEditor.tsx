@@ -1,3 +1,5 @@
+import { InvestigationNode, newInvestigationBlock } from '../linguistics/InvestigationNode';
+import { FAMILIES } from '../linguistics/model';
 import { SpeakingBlock, newSpeaking } from './SpeakingNode';
 import { auth } from '../lib/firebase';
 import { imageToData } from '../lib/flash';
@@ -101,6 +103,7 @@ export type Cmd = { key: string; label: string; hint: string; group: 'Questions'
 const BLOCK_CMDS: Cmd[] = BLOCKS.map((b) => ({ key: 'b-' + b.key, label: b.label, hint: b.hint, group: 'Blocks', run: (e) => e.chain().focus().insertContent([...b.make(), { type: 'paragraph' }]).run() }));
 
 export const COMMANDS: Cmd[] = [
+  ...FAMILIES.map(f=>({key:f.id,label:f.name,hint:f.about,group:'Questions' as const,run:(e:Editor)=>{e.chain().focus().insertContent([newInvestigationBlock(f.id),{type:'paragraph'}]).run();}})),
   { key: 'gap', label: 'Gap fill', hint: 'A blank inside a sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent(newGap()).run() },
   { key: 'lettergap', label: 'Letter gaps', hint: 'One line per letter, for a word or a whole sentence', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, letters: true } }).run() },
   { key: 'wordform', label: 'Word formation', hint: 'A gap with the stem word in capitals beside it', group: 'Questions', run: (e) => e.chain().focus().insertContent({ ...newGap(), attrs: { ...newGap().attrs, stem: 'WORD' } }).run() },
@@ -581,6 +584,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       SpeakingBlock,
       UploadBlock,
       CollabBlock,
+      InvestigationNode,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
       ...LANG_MARKS,

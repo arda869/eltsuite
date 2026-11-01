@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-01.knowledge.3",
+  "version": "2026-11-02.linguistics.1",
   "articles": [
     {
       "id": "navigation",
@@ -3704,6 +3704,65 @@
       "benefit": "",
       "reviewedAt": "2026-11-01",
       "verification": "Source reviewed; availability depends on account and device."
+    },
+    {
+      "href": "/linguistics",
+      "action": "Open Applied Linguistics",
+      "app": "linguistics",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "Reuse reviewed evidence across your teaching and inquiry.",
+      "category": "Professional development",
+      "id": "linguistics-investigations",
+      "title": "Create and reuse a language investigation",
+      "keywords": "applied linguistics corpus discourse pragmatics research evidence collab concordance investigate",
+      "summary": "Applied Linguistics Studio saves private investigations. You choose the exact evidence to reuse in a lesson, Collab document or Messages card.",
+      "steps": [
+        "Open Apps and choose Applied Linguistics. Choose a tool, add a title and add evidence; extra analysis fields are optional.",
+        "Keep source attribution and reuse terms with sourced excerpts. Confirm reuse rights only for examples you may share, then save the investigation.",
+        "Choose activity and destination to create a native activity in an existing class lesson. Alternatively, use the insertion gallery or /corpus in Collab, Classes or Messages and select the saved investigation.",
+        "Review the selected evidence, choose a frozen snapshot or live reference, and confirm sharing. Recipients need access to that target; the private source is not shared.",
+        "Use Attach to Research Inquiry to link selected evidence to an existing inquiry. Raw learner samples are excluded from inquiry and Coach sharing."
+      ],
+      "source": "src/linguistics/AppliedLinguistics.tsx; src/linguistics/InlineInvestigation.tsx; src/linguistics/CreateActivity.tsx",
+      "questions": [
+        "How do I create a corpus investigation?",
+        "How do I reuse an investigation in Collab and a lesson?",
+        "How do I attach evidence to a research inquiry?"
+      ],
+      "reviewedAt": "2026-11-02",
+      "verification": "Source reviewed; manual workflow tested with Firebase simulated. Provider access depends on configuration and approved licences."
+    },
+    {
+      "href": "/linguistics",
+      "action": "Open Applied Linguistics",
+      "app": "linguistics",
+      "requiresPilot": false,
+      "requiresAi": false,
+      "related": [],
+      "benefit": "Reuse reviewed evidence across your teaching and inquiry.",
+      "category": "Professional development",
+      "id": "linguistics-connections",
+      "title": "Corpus connections and reviewed AI analysis",
+      "keywords": "corpus API unavailable licence license sketch engine AI analysis annotation coach evidence privacy Tatoeba example sentences attribution",
+      "summary": "Search Tatoeba example sentences without an API key, or use teacher-supplied evidence. Optional professional corpora need setup. AI analysis is tentative and needs your review.",
+      "steps": [
+        "In Corpus Explorer, find example sentences using Tatoeba, select the examples and add them to your evidence. Their contributor, source link and licence credits are retained. Review suitability for your learners; Tatoeba is not a balanced corpus for frequency or register statistics.",
+        "To request analysis, save your investigation, choose Select evidence for AI, review the exact preview and confirm. Raw learner records are excluded.",
+        "Review the suggested spans, alternative explanations and limitations. Add suggestions as unconfirmed annotations, then confirm individual annotations before sharing.",
+        "For Teaching Coach, select an existing inquiry and reviewed evidence, choose Review with Teaching Coach, and confirm the exact packet. Existing Coach context preferences still apply.",
+        "Revoke an investigation to stop future access through its shared cards. Previously downloaded exports cannot be recalled."
+      ],
+      "source": "src/linguistics/CorpusSearch.tsx; src/linguistics/AnalysisReview.tsx; src/linguistics/CoachEvidenceReview.tsx",
+      "questions": [
+        "Why is corpus search unavailable?",
+        "How do I ask AI to analyse selected evidence?",
+        "Can I discuss selected evidence with Teaching Coach?",
+        "How do I find Tatoeba example sentences?"
+      ],
+      "reviewedAt": "2026-11-02",
+      "verification": "Source reviewed; public Tatoeba API search and backend provenance tested. Published teacher journey awaits verification."
     }
   ]
 }

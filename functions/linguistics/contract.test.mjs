@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {investigationInput,selectedPacket,concordance} from './contract.js';
+const row={id:'one',text:'Well, well, that is interesting.',origin:'source',source:'Teacher licensed source',licence:'Permission recorded',shareAllowed:true};
+const make=()=>investigationInput({type:'corpus',title:'Discourse markers',fields:{},evidence:[row],annotations:[]});
+test('minimal save preserves source identity and reuse terms',()=>{const d=make();assert.equal(d.evidence[0].origin,'source');assert.equal(d.schemaVersion,1);assert.deepEqual(d.fields,{});});
+test('cannot relabel unsupported source as corpus evidence',()=>assert.throws(()=>investigationInput({type:'corpus',title:'Test',evidence:[{...row,licence:''}]}),/reuse terms/));
+test('sharing rejects unapproved, raw learner and removed evidence',()=>{assert.throws(()=>selectedPacket({...make(),evidence:[{...make().evidence[0],shareAllowed:false}]},['one'],{sharing:true}));assert.throws(()=>selectedPacket({...make(),evidence:[{...make().evidence[0],origin:'learner',consent:true}]},['one'],{sharing:true}));assert.throws(()=>selectedPacket(make(),['one','removed'],{sharing:true}));});
+test('concordance supports phrase and case distinctions without invented corpus totals',()=>{assert.equal(concordance(make().evidence,'well').length,2);assert.equal(concordance(make().evidence,'well',true).length,1);assert.equal(concordance(make().evidence,'that is')[0].match,'that is');});
+test('only reviewed exact-span annotations enter shared packet',()=>{const d=make();d.annotations=[{id:'a',evidenceId:'one',span:'Well',tag:'marker',status:'suggested'},{id:'b',evidenceId:'one',span:'Well',tag:'marker',status:'confirmed'}];assert.deepEqual(selectedPacket(d,['one'],{sharing:true}).annotations.map(a=>a.id),['b']);assert.throws(()=>investigationInput({...d,annotations:[{...d.annotations[0],span:'not present'}]}),/exact span/);});

@@ -14,6 +14,7 @@ const I = (d: string) => (
 // Home has its own colour, used by the top bar's mark on the home page too.
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
+  {k:'linguistics',group:'teach',name:'Applied Linguistics',about:'Language investigations and selected evidence for teaching',to:'/linguistics',teacher:true,color:'#497b75',d:'M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1',icon:I('M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1')},
   { k: 'development', group: 'teach', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3', icon: I('M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3') },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, d: 'M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z', icon: I('M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z') },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', d: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z', icon: I('M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z') },
@@ -56,7 +57,7 @@ const GROUPS: [App['group'], string][] = [
   ['make', 'Make'],
   ['share', 'Resources and people'],
 ];
-const ORDER = ['home', 'classes', 'development', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
+const ORDER = ['home', 'classes', 'development', 'linguistics', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // The app a page belongs to, for the tab's icon.

@@ -1,3 +1,4 @@
+import {PortfolioInvestigation} from '../linguistics/PortfolioInvestigation';
 import { useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, onSnapshot, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -118,6 +119,7 @@ function LearnerPortfolio({ c, l, items, answers, docs, files, me, avg }: { c: C
   };
   return (
     <section className="pf-main" aria-label={`${l.displayName}'s portfolio`}>
+      <PortfolioInvestigation key={l.id} classId={c.id} pieces={pieces}/>
       <header className="pf-head">
         <span className="pf-av big" aria-hidden="true">{l.displayName.trim().slice(0, 1).toUpperCase()}</span>
         <span className="pf-who">

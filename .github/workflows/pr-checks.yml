@@ -42,6 +42,10 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/onboarding-access.mjs && node test/ai/create-integration.mjs && node test/ai/task-tools-integration.mjs && node test/ai/learning-integration.mjs && node test/ai/learning-access.mjs && node test/designer/integration.mjs && node test/speech/firestore-access.mjs && node test/speech/song-jobs.mjs'
       - name: Per-user AI allowances and admin security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
+      - name: Applied Linguistics contracts and corpus adapter
+        run: node --test functions/linguistics/*.test.mjs
+      - name: Applied Linguistics privacy and reuse journeys
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-linguistics "node functions/linguistics/integration.mjs"
       - name: Video editor and storyboard checks
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
       - name: Video access rules and service checks
@@ -52,5 +56,9 @@ jobs:
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Applied Linguistics teacher journey (Firebase simulated)
+        timeout-minutes: 8
+        run: node test/linguistics-ui.mjs
+
       - name: Smoke and accessibility checks
         run: npm run a11y
