@@ -54,7 +54,12 @@ export function Select<T extends string>({ value, options: all, onChange, label,
   const pick = (v: T) => (onChange(v), setOpen(false), btn.current?.focus());
   // The highlighted choice stays in sight as the arrow keys move.
   useEffect(() => {
-    if (open) list.current?.querySelector('.sel-o.hi')?.scrollIntoView({ block: 'nearest' });
+    const menu = list.current, option = menu?.querySelector<HTMLElement>('.sel-o.hi');
+    if (!open || !menu || !option) return;
+    // Scroll only the options, not the surrounding lesson editor.
+    const row = option.getBoundingClientRect(), bounds = menu.getBoundingClientRect();
+    if (row.top < bounds.top) menu.scrollTop -= bounds.top - row.top;
+    else if (row.bottom > bounds.bottom) menu.scrollTop += row.bottom - bounds.bottom;
   }, [open, hi]);
   const mouse = useRef(false);
   const key = (e: React.KeyboardEvent) => {
