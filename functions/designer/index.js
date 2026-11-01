@@ -50,7 +50,7 @@ export const designerImage=onCall({region:'us-central1',secrets:[key],timeoutSec
   let prompt=d.action==='erase'?`Remove the object described below from the supplied image. Reconstruct the background naturally. Preserve all other content. Object: ${d.prompt}`:d.action==='edit'?`Edit the supplied image according to this request; preserve unrelated content: ${d.prompt}`:d.prompt;
   if(d.action==='restyle')prompt=`Restyle the FIRST supplied image. Preserve its subjects, poses, object counts and composition. Change only its visual treatment. Additional direction: ${d.prompt || 'None'}`;
   if(direction)prompt+=`\nVisual style: ${direction} Keep this art direction consistent across the series. Do not add text, labels, logos or borders unless explicitly requested.`;
-  if(d.referenceId)prompt+='\nThe LAST supplied image is a STYLE REFERENCE only: match its line weight, palette, shading, proportions and texture. Do not copy its scene, objects or text. The requested content takes priority.';
+  if(d.referenceId)prompt+='\nThe LAST supplied image is a STYLE REFERENCE only: match its line weight, palette, shading, proportions and texture. Do not copy its scene, objects or text. The requested content and chosen visual style take priority over the reference. Transfer only compatible traits: a black-and-white style must remain monochrome even if the reference is coloured.';
   const bytes=await characterImage(key.value(),prompt,references);
   const parts=Math.ceil(bytes.length/(450*1024)),resultId=d.requestId;
   for(let i=0;i<parts;i++)await file.ref.collection('designerResults').doc(`${resultId}_${i}`).set({data:bytes.subarray(i*450*1024,(i+1)*450*1024).toString('base64')});
