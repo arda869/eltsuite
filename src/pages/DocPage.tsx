@@ -102,6 +102,7 @@ export function DocPage() {
   const classId = lesson ? qs.get('c') ?? '' : '';
   const canRename = !lesson && role === 'edit' && (teacher || !!d?.folder);
   const others = d ? Object.keys(d.members ?? {}).length : 0;
+  const inDesigner = kind === 'design' || kind === 'storyboard' || !!(d && isImageFile(d));
   const props = { docKey, title, modes, teacher, me: { uid, name }, classId, display: 'inline' as const, canDownload: true };
   // The page title, large at the top of the canvas, as in Loop.
   const heading = canRename ? (
@@ -112,7 +113,7 @@ export function DocPage() {
   return (
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
-        <Link to={profile?.role === 'learner' ? '/' : kind === 'pd' ? '/development?section=reading' : '/archive?s=docs'} className="dp-home" aria-label={kind === 'pd' ? 'Back to Development Studio' : 'Back to ELT Suite'}>
+        <Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : kind === 'pd' ? '/development?section=reading' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : kind === 'pd' ? 'Back to Development Studio' : 'Back to ELT Suite'}>
           <Mark size={30} />
         </Link>
         <OrgLogo />

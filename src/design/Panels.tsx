@@ -178,10 +178,7 @@ export function Props({ cx }: { cx: Ctx }) {
           </div>
         )}
         <Slider label="See-through" value={Math.round((1 - (one?.opacity ?? 1)) * 100)} min={0} max={95} onChange={(v) => live({ opacity: 1 - v / 100 }, 'opacity')} fmt={(v) => v + '%'} />
-        <div className="dz-row">
-          <span className="dz-lbl">Who sees it</span>
-          <Seg label="Who sees it" value={(one?.ver ?? (sel.every((e) => e.ver === sel[0].ver) ? sel[0].ver : '') ?? '') as '' | 'A' | 'B'} options={[['', 'Both', 'Both learners'], ['A', 'A', 'Only learner A'], ['B', 'B', 'Only learner B']]} onChange={(v) => set({ ver: v || undefined })} />
-        </div>
+
       </Sec>
       {one?.t === 'image' && <PictureProps cx={cx} e={one} set={set} live={live} />}
       {textual && <TextProps cx={cx} e={one!} set={set} live={live} />}
@@ -418,12 +415,13 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
 
 function PageProps({ cx }: { cx: Ctx }) {
   const p = cx.page;
-  const size = SIZES.find((s) => s.w === p.w && s.h === p.h);
+  const imageSizes = SIZES.filter(s=>['square','slide','story','banner'].includes(s.k));
+  const size = imageSizes.find((s) => s.w === p.w && s.h === p.h);
   return (
     <div className="dz-props-in">
       <div className="dz-props-title">
         <strong>Page {cx.pages.indexOf(p) + 1}</strong>
-        <em>{size?.name ?? `${Math.round(p.w / MM)} × ${Math.round(p.h / MM)} mm`}</em>
+        <em>{size?.name ?? `${p.w} × ${p.h} px`}</em>
       </div>
       <Sec title="Page">
         <label className="dz-field">
@@ -434,17 +432,17 @@ function PageProps({ cx }: { cx: Ctx }) {
           <span>Size</span>
           <select value={size?.k ?? ''} onChange={(e) => { const s = SIZES.find((x) => x.k === e.target.value); if (s) cx.setPage({ w: s.w, h: s.h }); }} disabled={!cx.canEdit}>
             {!size && <option value="">Your own size</option>}
-            {SIZES.map((s) => <option key={s.k} value={s.k}>{s.name} · {s.about}</option>)}
+            {imageSizes.map((s) => <option key={s.k} value={s.k}>{s.name} · {s.about}</option>)}
           </select>
         </label>
         <div className="dz-nums">
-          <Num label="W" value={Math.round(p.w / MM)} unit="mm" min={20} max={1200} onChange={(v) => cx.setPage({ w: Math.round(v * MM) })} />
-          <Num label="H" value={Math.round(p.h / MM)} unit="mm" min={20} max={1200} onChange={(v) => cx.setPage({ h: Math.round(v * MM) })} />
+          <Num label="W" value={p.w} unit="px" min={64} max={8192} onChange={(v) => cx.setPage({ w: Math.round(v) })} />
+          <Num label="H" value={p.h} unit="px" min={64} max={8192} onChange={(v) => cx.setPage({ h: Math.round(v) })} />
         </div>
         <Colour label="Background" value={p.bg || '#ffffff'} onChange={(c) => cx.setPage({ bg: c })} accent={cx.accent} />
       </Sec>
       <Sec title="Accent colour">
-        <p className="hint">Labels, word banks, mystery cards and people use it. Change it and they all change.</p>
+        <p className="hint">The shared colour used by illustrations and labels.</p>
         <Colour label="Accent" value={cx.accent} onChange={cx.setAccent} accent={cx.accent} />
       </Sec>
       <Sec title="Shortcuts" open={false}>

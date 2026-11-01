@@ -83,8 +83,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const [hover, setHover] = useState('');
   const frameIn = useRef<HTMLInputElement>(null);
   const frameFor = useRef('');
-  const [view, setView] = useState<View>('all');
-  const [learner, setLearner] = useState(false);
+  const view: View = 'all';
+  const learner = false;
   const [editing, setEditing] = useState('');
   const [zoom, setZoom] = useState(0.6);
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] });
@@ -345,7 +345,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     const r = canvas.current!.getBoundingClientRect();
     return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
   };
-  const shown = useMemo(() => here.filter((e) => !e.hidden && !(view === 'A' && e.ver === 'B') && !(view === 'B' && e.ver === 'A')), [here, view]);
+  const shown = useMemo(() => here.filter((e) => !e.hidden), [here, view]);
   useEffect(() => setSelIds((ids) => ids.filter((id) => shown.some((e) => e.id === id))), [view]); // eslint-disable-line react-hooks/exhaustive-deps
   const topAt = (x: number, y: number) => [...shown].reverse().find((e) => hit(e, x, y, 3 / zoom));
 
@@ -939,16 +939,6 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           <button type="button" className="dz-zv" onClick={(e) => openMenu(e, [{ label: 'Fit the page', hint: 'Ctrl+0', onClick: fit }, ...[0.5, 1, 1.5, 2].map((v) => ({ label: `${v * 100}%`, onClick: () => setZoom(v) }))])} data-tip="Zoom" aria-label={`Zoom: ${Math.round(z * 100)}%`}>{Math.round(z * 100)}%</button>
           <button type="button" className="dz-ib" onClick={() => setZoom((v) => Math.min(5, v * 1.25))} aria-label="Zoom in">+</button>
         </div>
-        <div className="dz-seg" role="radiogroup" aria-label="Whose copy">
-          {(['all', 'A', 'B'] as View[]).map((v) => (
-            <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'on' : ''} onClick={() => setView(v)} data-tip={v === 'all' ? 'Everything' : `What learner ${v} sees`}>
-              {v === 'all' ? 'Everything' : `Learner ${v}`}
-            </button>
-          ))}
-        </div>
-        <label className="dz-check" data-tip="Label words become lines to write on">
-          <input type="checkbox" checked={learner} onChange={(e) => setLearner(e.target.checked)} /> Learners’ copy
-        </label>
         <span className="dz-grow" />
         {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? 'Not saved. Check your connection.' : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
         <DownloadMenu cx={cx} />

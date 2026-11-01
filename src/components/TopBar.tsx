@@ -150,7 +150,7 @@ function AppMark() {
     setAppFavicon(a ? { color: a.color, d: a.d } : null);
   }, [pathname]);
   // Every app shows its name under ELT Suite, in its own colour.
-  const own = pathname.startsWith('/development') || pathname.startsWith('/coach') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'storyboard', name: 'Storyboards', color: '#4f7a55' } : pathname.startsWith('/design') ? { k: 'design', name: 'Design', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
+  const own = pathname.startsWith('/development') || pathname.startsWith('/coach') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/design') ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
   const app = own ??
     (pathname.startsWith('/archive') || pathname.startsWith('/doc') || pathname.startsWith('/library')
       ? { name: 'Resources', color: '#3667a6' }

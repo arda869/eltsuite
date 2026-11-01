@@ -65,4 +65,4 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"
 
-# Designer frontend is verified separately from server function deployment.
+# Designer image controls and navigation are verified before publishing.
