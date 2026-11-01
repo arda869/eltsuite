@@ -97,8 +97,12 @@ test('planning returns a full reviewable script and interactions without generat
 
 
 import {execFileSync} from 'node:child_process';
-test('deployment requires a Runway secret only when video generation is connected',()=>{
+test('configured video deployment declares its secrets independently of runtime feature flags',()=>{
   const names=enabled=>JSON.parse(execFileSync(process.execPath,['--input-type=module','-e',`await import('./video/index.js');const {declaredParams}=await import('firebase-functions/params');console.log(JSON.stringify(declaredParams.map(p=>p.name)));`],{cwd:new URL('../functions/',import.meta.url),env:{...process.env,VIDEO_AI_ENABLED:enabled},encoding:'utf8'}));
-  assert.deepEqual(names('false'),['OPENAI_API_KEY']);
-  assert(names('true').includes('RUNWAYML_API_SECRET'));
+  // Runtime flags must not remove secrets needed after the function starts.
+  for(const flag of ['false','true']){
+    const declared=names(flag);
+    assert(declared.includes('RUNWAYML_API_SECRET'));
+    assert(declared.includes('OPENAI_API_KEY'));
+  }
 });
