@@ -16,7 +16,7 @@ export function allocateMinutes(weights, total) {
 // Keep the public/stored format unchanged for existing drafts and clients.
 export function stageContract(action, schema, approved) {
   if(action==='outline') return {schema,input:{},instructions:'',decode:value=>value};
-  const stages=approved.stages, slots=stages.map(({id,title,aim,minutes,interaction},i)=>({slot:`stage_${i+1}`,id,title,aim,minutes,interaction}));
+  const stages=approved.stages, slots=stages.map((stage,i)=>({slot:`stage_${i+1}`,...Object.fromEntries(['id','title','aim','minutes','interaction','activityType','learnerAction','material','outcome'].filter(k=>stage[k]!==undefined).map(k=>[k,stage[k]]))}));
   const field=action==='plan'?'stages':'tasks';
   const body=object(omit(schema.properties[field].items.properties, action==='plan'?['id','title','aim','minutes','interaction']:['stageId']));
   const properties=Object.fromEntries(slots.map(s=>[s.slot,action==='plan'?{$ref:'#/$defs/stageContent'}:{type:'array',items:{$ref:'#/$defs/stageContent'},minItems:1,maxItems:Math.min(s.minutes,6,Math.floor(20/stages.length))}]));
@@ -29,7 +29,7 @@ export function stageContract(action, schema, approved) {
       validate(boundSchema,value);
       return {...value,[field]:slots.flatMap(s=>{
         const content=value[field][s.slot];
-        if(action==='plan') return [{...content,id:s.id,title:s.title,aim:s.aim,minutes:s.minutes,interaction:s.interaction}];
+        if(action==='plan') return [{...content,...Object.fromEntries(Object.entries(s).filter(([k])=>k!=='slot'))}];
         const minutes=content.reduce((n,t)=>n+t.minutes,0)===s.minutes?content.map(t=>t.minutes):allocateMinutes(content.map(t=>t.minutes),s.minutes);
         return content.map((task,i)=>({...task,stageId:s.id,minutes:minutes[i]}));
       })};

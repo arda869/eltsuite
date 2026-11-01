@@ -1,3 +1,6 @@
+import { prepareCommonsImage } from './commons.js';
+import { generate } from './provider.js';
+import { PILOT_MODEL } from './budget.js';
 import { getAuth } from 'firebase-admin/auth';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
@@ -13,7 +16,7 @@ export async function savePrepared(db,classId,mediaId,bytes,meta){
  const col=db.collection(`classes/${classId}/media`);
  if(meta.kind==='image'){
   if(bytes.length>600*1024)throw Error('Image exceeds storage size.');
-  await col.doc(mediaId).set({data:'data:image/jpeg;base64,'+bytes.toString('base64'),type:'image/jpeg',size:bytes.length,public:false,aiGenerated:true});
+  await col.doc(mediaId).set({data:'data:image/jpeg;base64,'+bytes.toString('base64'),type:'image/jpeg',size:bytes.length,public:false,aiGenerated:!meta.credit,...(meta.credit?{credit:meta.credit}: {})});
  }else{
   for(let i=0;i<Math.ceil(bytes.length/PART);i++)await col.doc(`${mediaId}_p${i}`).set({part:i,data:bytes.subarray(i*PART,(i+1)*PART).toString('base64'),size:Math.min(PART,bytes.length-i*PART),public:false});
   await col.doc(mediaId).set({kind:'audio',type:'audio/wav',parts:Math.ceil(bytes.length/PART),size:0,title:meta.title+' · AI-generated audio',duration:(bytes.length-44)/48000,script:[],public:false,aiGenerated:true});
@@ -40,11 +43,17 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
   const mediaId='ai_media_'+createHash('sha256').update(uid+jobId+assetId).digest('hex').slice(0,32);
   let bytes;
   if(asset.kind==='image'){
-   const response=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',signal:AbortSignal.timeout(180000),headers:{Authorization:`Bearer ${key.value()}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2.5-flare',prompt:'Create one original classroom learning image. No text, labels, logos or watermarks. '+asset.prompt,n:1,size:'1024x1024',quality:'low',output_format:'jpeg',output_compression:65})});
-   if(!response.ok)throw Error('Image generation failed.');
-   const result=await response.json();if(!result.data?.[0]?.b64_json)throw Error('Missing image.');
-   bytes=Buffer.from(result.data[0].b64_json,'base64');
-   if(bytes.length<100||bytes[0]!==255||bytes[1]!==216)throw Error('Invalid image.');
+   if(asset.source==='commons') {
+   const photo=await prepareCommonsImage(asset,{generate,apiKey:key.value(),model:PILOT_MODEL});
+   bytes=photo.bytes;asset.credit=photo.credit;asset.alt=photo.alt;
+   await ref.update({credit:photo.credit,alt:photo.alt,visualReview:photo.review});
+   } else {
+    const response=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',signal:AbortSignal.timeout(180000),headers:{Authorization:`Bearer ${key.value()}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2.5-flare',prompt:'Create one original classroom learning image. No text, labels, logos or watermarks. '+asset.prompt,n:1,size:'1024x1024',quality:'low',output_format:'jpeg',output_compression:65})});
+    if(!response.ok)throw Error('Image generation failed.');
+    const result=await response.json();if(!result.data?.[0]?.b64_json)throw Error('Missing image.');
+    bytes=Buffer.from(result.data[0].b64_json,'base64');
+    if(bytes.length<100||bytes[0]!==255||bytes[1]!==216)throw Error('Invalid image.');
+   }
   }else{
    const speakers=[...new Set(asset.lines.map(x=>x.speaker))],voices=['marin','cedar','coral','ash'];
    const chunks=[];

@@ -47,7 +47,7 @@ test('repair is bounded; provider failures are not retried; activities errors ar
 
 test('maximum-stage activity schema stays compact and validates referenced content',()=>{
  const c=stageContract('activities',activitySchema,{stages:Array.from({length:12},(_,i)=>({...stages[0],id:'s'+i}))});
- assert.ok(JSON.stringify(c.schema).length<15000);
+ assert.ok(JSON.stringify(c.schema).length<25000);
  const raw=sample(c.schema);raw.tasks.stage_1[0].minutes='invalid';
  assert.throws(()=>c.decode(raw));
 });

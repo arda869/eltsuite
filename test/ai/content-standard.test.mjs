@@ -16,10 +16,10 @@ test('editorial standard reaches actual outline, plan and native-activity API re
   if(name==='outline') { assert.match(sent.instructions,/OUTLINE ONLY/); assert.match(sent.instructions,/interaction is only the participation pattern/); }
  }
 });
-test('the existing advisory review evaluates learner material without another paid review step',()=>{
+test('editorial review evaluates learner material through the repair gate',()=>{
  const source=readFileSync(new URL('../../functions/ai/assistant.js',import.meta.url),'utf8');
  assert.match(source,/\$\{contentReviewStandard\}/);
- assert.equal((source.match(/name: 'review'/g)||[]).length,1);
+ assert.match(source,/editUntilReady/); assert.equal((source.match(/name:'review'/g)||[]).length,1);
 });
 
 test('young-learner standards follow the class profile through generation and review, not an A1 label',async()=>{
