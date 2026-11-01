@@ -1367,6 +1367,8 @@ const J = {
   },
   'Lesson: diagram with a gap stays': async (b) => {
     const s = await session(b);
+    // Isolate diagram editing from the demo's nested card editors.
+    await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const path of Object.keys(fs))if(path.startsWith(root))delete fs[path];fs[root+'diagram-fixture']={kind:'task',title:'Diagram practice',instructions:'Complete the diagram.',content:{type:'doc',content:[{type:'paragraph'}]},order:0,hidden:false,locked:false};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     const editor = s.p.locator('.task-editor .ProseMirror').first();
     await see(s.p, '.task-editor .ProseMirror', 'the lesson editor');
