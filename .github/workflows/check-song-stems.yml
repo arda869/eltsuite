@@ -1,0 +1,27 @@
+name: Real song separation proof
+on:
+  push:
+    branches: [codex/song-stems]
+  workflow_dispatch:
+jobs:
+  separate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      ONNXRUNTIME_NODE_INSTALL_CUDA: skip
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm --prefix functions ci --no-audit --no-fund
+      - run: node --test test/speech/song-separation.test.mjs
+      - name: Real model on the model publisher's public audio example
+        run: |
+          curl -fL --retry 2 https://raw.githubusercontent.com/deezer/spleeter/master/audio_example.mp3 -o /tmp/example.mp3
+          functions/node_modules/ffmpeg-static/ffmpeg -nostdin -v error -i /tmp/example.mp3 -t 30 /tmp/proof.mp3
+          node test/speech/song-separation-real.mjs /tmp/proof.mp3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: separated-public-example
+          path: outputs/stems/
