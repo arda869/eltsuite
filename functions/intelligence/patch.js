@@ -14,6 +14,7 @@ const fail=m=>{throw new HttpsError('failed-precondition',m);};
 export async function intelligencePatch(req,{db,uid,cls,apiKey,model,generateImpl=generate}){
  const d=req.data;if(!/^[\w-]{1,100}$/.test(d.itemId??'')||!/^[\w-]{1,100}$/.test(d.taskId??'')||!/^[\w-]{1,100}$/.test(d.requestId??''))fail('Select an activity first.');
  const target=cls.ref.collection('items').doc(d.itemId).collection('tasks').doc(d.taskId),bodyRef=target.collection('private').doc('body'),keyRef=target.collection('private').doc('key'),notesRef=target.collection('private').doc('notes');
+ if(!(await cls.ref.collection('items').doc(d.itemId).get()).exists)fail('This lesson is no longer available.');
  const job=db.doc(`aiPrivate/${uid}/intelligence/${cls.id}/edits/${d.requestId}`);
  if(['intelligenceApplyEdit','intelligenceUndoEdit'].includes(d.action)){
   const undo=d.action==='intelligenceUndoEdit';

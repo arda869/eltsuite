@@ -37,3 +37,5 @@ test('shared evaluation guidance retains uncertainty, first-lesson age distincti
  for(const term of ['Missing work is unknown','never change their work','AGE','teacher-recorded coverage','no learner rankings'])assert.ok(intelligenceInstructions.includes(term),term);
  assert.notEqual(digest({lesson:'v1'}),digest({lesson:'v2'}));
 });
+
+test('source and edit versions are stable across Firestore object key ordering',()=>{assert.equal(digest({b:2,a:{y:1,x:3}}),digest({a:{x:3,y:1},b:2}));});
