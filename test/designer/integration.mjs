@@ -9,10 +9,10 @@ const {designerImage}=await import('../../functions/designer/index.js');
 const db=getFirestore(),fileId='designer-test';
 for(const uid of ['designer-owner','designer-editor','designer-viewer','designer-stranger']){await db.doc('users/'+uid).set({role:'teacher'});await db.doc('accounts/'+uid).set({});}
 await db.doc('sharedDocs/'+fileId).set({kind:'design',owner:'designer-owner',members:{'designer-editor':{role:'edit'},'designer-viewer':{role:'view'}},memberIds:['designer-editor','designer-viewer']});
-let generations=0,probes=0;const fetchOriginal=globalThis.fetch;
+let generations=0,probes=0,lastBody;const fetchOriginal=globalThis.fetch;
 globalThis.fetch=async(url,options)=>{
  if(String(url).includes('/models/')){probes++;return {ok:true};}
- generations++;const body=JSON.parse(options.body);assert.ok(body.prompt);
+ generations++;const body=JSON.parse(options.body);assert.ok(body.prompt);lastBody=body;
  if(String(url).endsWith('/edits'))assert.match(body.images[0].image_url,/^data:image\/png;base64,/);
  return {ok:true,json:async()=>({data:[{b64_json:'aW1hZ2U='}]})};
 };
@@ -31,7 +31,13 @@ try {
  await assert.rejects(run('designer-editor',{action:'edit',requestId:'foreign',prompt:'Change it',imageId:'not-in-this-file'}));assert.equal(generations,1);
  assert.equal((await run('designer-editor',{action:'erase',requestId:'erased',prompt:'The chair',imageId:'source'})).status,'completed');assert.equal(generations,2);
  const original=(await db.doc('sharedDocs/'+fileId+'/media/source').get()).get('data');assert.equal(original,'data:image/png;base64,aW1hZ2U=');
+ await assert.rejects(run('designer-editor',{action:'restyle',requestId:'bad-style',prompt:'',style:'unknown',imageId:'source'}));
+ await assert.rejects(run('designer-editor',{action:'create',requestId:'bad-ref',prompt:'A desk',style:'ink',referenceId:'foreign'}));
+ assert.equal(generations,2);
+ await run('designer-editor',{action:'restyle',requestId:'restyled',prompt:'',style:'ink',imageId:'source',referenceId:'source'});
+ assert.match(lastBody.prompt,/Pure black outlines/);assert.match(lastBody.prompt,/STYLE REFERENCE/);assert.equal(lastBody.images.length,2);
+ assert.equal(generations,3);
  await db.doc('aiAllowances/designer-owner').set({limits:{designerImage:0}});
- await assert.rejects(run('designer-owner',{...data,requestId:'blocked'}));assert.equal(generations,2);
+ await assert.rejects(run('designer-owner',{...data,requestId:'blocked'}));assert.equal(generations,3);
  console.log('Designer: access isolation, non-billable connection probe, empty prompt, idempotency, recovery, source preservation and allowance checks passed (mock provider).');
 } finally {globalThis.fetch=fetchOriginal;}

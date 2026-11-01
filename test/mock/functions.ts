@@ -8,7 +8,8 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if(name==='designerImage') {
     if(d.action==='connection')return {data:{ready:true}};
     if(d.action==='status')return {data:{status:'completed',resultId:d.requestId}};
-    if(!d.prompt?.trim())throw Error('Add a description.');
+    localStorage.setItem('lastDesignerRequest',JSON.stringify(d));
+    if(d.action!=='restyle'&&!d.prompt?.trim())throw Error('Add a description.');
     const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;
     const g=canvas.getContext('2d')!;g.fillStyle=d.action==='create'?'#5383aa':'#52966d';g.fillRect(0,0,160,120);
     const data=canvas.toDataURL('image/png').split(',')[1];

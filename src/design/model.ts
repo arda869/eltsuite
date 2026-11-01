@@ -88,7 +88,7 @@ export type El = {
 };
 
 export type DPage = { id: string; order: number; w: number; h: number; bg: string; name?: string };
-export type DMeta = { accent?: string; type?: 'image' | 'storyboard' };
+export type DMeta = { accent?: string; aiStyle?: string; aiReference?: string; type?: 'image' | 'storyboard' };
 
 export const pagesCol = (id: string) => collection(db, 'sharedDocs', id, 'dpages');
 export const elsCol = (id: string) => collection(db, 'sharedDocs', id, 'dels');
