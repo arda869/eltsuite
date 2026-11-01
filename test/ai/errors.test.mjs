@@ -30,3 +30,8 @@ test('public diagnostics use only fixed messages and identify the failing pass',
   assert.equal(unknown.reason, 'unknown'); assert.equal(unknown.phase, 'unknown');
   assert.equal(JSON.stringify(unknown).includes(secretText), false);
 });
+test('oversized editorial input is diagnosed before any paid request and does not expose its content',async()=>{
+ let called=false;
+ await assert.rejects(generate({...args,input:{text:secretText.repeat(5000)},fetchImpl:async()=>{called=true;}}),e=>e.reason==='input_limit'&&!e.message.includes(secretText));
+ assert.equal(called,false);
+});

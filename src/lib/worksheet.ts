@@ -220,8 +220,6 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       marks = m0;
       const made = cur.splice(cl).filter((b) => b.kind !== 'lines');
       made.forEach((b) => {
-        if (b.kind === 'dict' && b.d.image) out.set(b.d.image,{key:b.d.image,src:b.d.image});
-      if (b.kind === 'glossary') b.items.forEach(({d})=>{if(d.image)out.set(d.image,{key:d.image,src:d.image});});
       if (b.kind === 'p') b.runs = b.runs.map((r) => (r.num !== undefined ? { ...r, num: 0 } : r));
         if (b.kind === 'match') b.n = 0;
       });
