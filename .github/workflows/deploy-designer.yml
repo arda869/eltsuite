@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/deploy-designer.yml']
+    paths: ['.github/workflows/deploy-designer.yml', 'functions/designer/**', 'test/designer/**']
 concurrency:
   group: firebase-designer
   cancel-in-progress: false
@@ -18,6 +18,12 @@ jobs:
           cache: npm
       - name: Install backend dependencies
         run: npm --prefix functions ci --no-audit --no-fund
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify Designer reference access and generation contract
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/designer/integration.mjs'
       - name: Configure existing deployment parameters
         run: node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
       - name: Prepare deployment credentials
