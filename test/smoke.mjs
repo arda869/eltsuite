@@ -845,6 +845,11 @@ const J = {
     await revision.getByRole('button',{name:'Suggest changes',exact:true}).click();
     await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
     if(await s.p.getByRole('textbox',{name:'Title',exact:true}).inputValue()!=='Choose a trip')throw Error('Proposal silently replaced current outline');
+    await revision.getByRole('textbox',{name:'Your changes',exact:true}).fill('I like that title. Keep it and refine the wording.');
+    await revision.getByRole('button',{name:'Refine proposal',exact:true}).click();
+    await revision.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
+    const refinement=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
+    if(refinement.revision.current.title!=='Revised travel choice')throw Error('Reply ignored the previous proposal');
     await s.p.getByLabel('Stage 1: Title',{exact:true}).fill('My newer manual edit');
     if(await revision.getByRole('button',{name:'Apply changes',exact:true}).isEnabled())throw Error('Stale proposal can overwrite newer manual edits');
     await revision.getByRole('button',{name:'Keep current version',exact:true}).click();

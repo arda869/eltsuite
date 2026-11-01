@@ -186,7 +186,8 @@ export function LessonAssistant() {
     setBusy(action); setError(''); setNotice('');
     if(!extra.revision&&['outline','plan','activities','load'].includes(action))setProposal(null);
     try {
-      const payload = { classId, brief, action, creationType, useEvidence, useLearnerMemories, memoryIds:useLearnerMemories?memoryIds:[], ...extra };
+      const {previewBase,...apiExtra}=extra;
+      const payload = { classId, brief, action, creationType, useEvidence, useLearnerMemories, memoryIds:useLearnerMemories?memoryIds:[], ...apiExtra };
       if (action === 'outline' || action === 'plan' || action === 'activities') {
         const fingerprint = JSON.stringify(payload);
         if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, requestId: crypto.randomUUID() };
@@ -195,7 +196,7 @@ export function LessonAssistant() {
       const result = (await call(payload)).data;
       if(extra.revision){
         if(result.activities){const status=(await call({action:'mediaStatus',classId,sourceRequestId:pending.current?.requestId})).data;result.media=status.media??[];}
-        setProposal({action,result,base:JSON.stringify((extra.revision as {current:unknown}).current),requestId:pending.current?.requestId??''});pending.current=null;setNotice('Your proposed revision is ready. Your current draft has not changed.');return;
+        setProposal({action,result,base:String(previewBase??JSON.stringify((extra.revision as {current:unknown}).current)),requestId:pending.current?.requestId??''});pending.current=null;setNotice('Your proposed revision is ready. Your current draft has not changed.');return;
       }
       if(result.activities) {setDirty(true);setStep(3);setActivities(result.activities);setActiveActivity(0);setMedia([]);setSourceRequestId(String(extra.sourceRequestId??pending.current?.requestId??''));try{localStorage.setItem('ai-media-job:'+classId,String(extra.sourceRequestId??pending.current?.requestId??''));}catch{}setCreatedItemId('');}
       if(result.media)setMedia(result.media);
@@ -231,8 +232,9 @@ export function LessonAssistant() {
   const askForChanges=()=>{
     if(!revisionText.trim()){setError('Describe what you would like AI to change in the box.');return;}
     if(!revisionCurrent)return;
+    const current=proposalMatches?proposal!.result[revisionAction as 'outline'|'plan'|'activities']:revisionCurrent;
     setProposal(null);
-    void run(revisionAction,{...(revisionAction==='activities'?{plan}:{}),revision:{instructions:revisionText,current:revisionCurrent}});
+    void run(revisionAction,{...(revisionAction==='activities'?{plan}:{}),previewBase:JSON.stringify(revisionCurrent),revision:{instructions:revisionText,current}});
   };
   const applyProposal=()=>{
     if(!proposal||!proposalMatches)return;
@@ -257,8 +259,8 @@ export function LessonAssistant() {
       <h2>Ask AI to make changes</h2><p>Tell AI what to change and what to keep. You can still edit the draft yourself. Review the proposal before applying it.</p>
       <label className="ai-field"><span>Your changes</span><AutoTextarea aria-label="Your changes" maxLength={2000} disabled={locked} value={revisionText} onChange={e=>setRevisionText(e.target.value)} placeholder="Keep the story and information gap. Make the listening more challenging and add a timeline."/></label>
       <p className="hint">{revisionText.trim()?'Your current draft stays unchanged until you apply a proposal.':'Describe at least one change to request a revision.'}</p>
-      <button type="button" className="btn" disabled={locked} onClick={askForChanges}>Suggest changes</button>
-      {proposal&&proposal.action===revisionAction&&<div className="ai-revision-proposal"><h3>Proposed revision</h3><p>{proposal.result.revisionSummary||'Review the revised draft below.'}</p><details><summary>View proposed {revisionAction}</summary><RevisionPreview value={(proposal.result[revisionAction as 'outline'|'plan'|'activities'] as unknown) as Value}/></details>
+      <button type="button" className="btn" disabled={locked} onClick={askForChanges}>{proposalMatches?'Refine proposal':'Suggest changes'}</button>
+      {proposal&&proposal.action===revisionAction&&<div className="ai-revision-proposal"><h3>Proposed revision</h3><p>Reply in the box above to refine this proposal, or apply it when you are ready.</p><p>{proposal.result.revisionSummary||'Review the revised draft below.'}</p><details><summary>View proposed {revisionAction}</summary><RevisionPreview value={(proposal.result[revisionAction as 'outline'|'plan'|'activities'] as unknown) as Value}/></details>
         {!proposalMatches&&<p role="status">You edited the draft after requesting this proposal. Request changes again to include those edits; this proposal cannot overwrite them.</p>}
         <div className="ai-actions"><button type="button" className="btn primary" disabled={locked||!proposalMatches} onClick={applyProposal}>Apply changes</button><button type="button" className="btn" disabled={locked} onClick={()=>{setProposal(null);setNotice('Your current version is unchanged.');}}>Keep current version</button></div>
       </div>}
