@@ -15,6 +15,7 @@ export const PLANS: { k: Plan; label: string; gb: number; about: string }[] = [
   { k: 'school', label: 'School', gb: 50, about: '50 GB a teacher, through an organisation' },
 ];
 export type Account = {
+  teacherTrainer?: boolean; // Super Admin grant for independent teacher-training courses.
   over?: boolean; // over its space, as measured by scripts/space.mjs
   usedBytes?: number;
   lessonBytes?: number; // what the teacher's lessons take, as measured
@@ -279,7 +280,7 @@ export function useMyOrg() {
   const acc = useAccount(user?.uid);
   const [o, setO] = useState<Org | null>(null);
   useEffect(() => {
-    if (!acc?.org) return setO(null);
+    if (!acc?.org) { rememberOrg(null); setO(null); return; }
     return onSnapshot(
       doc(db, 'orgs', acc.org),
       (s) => {

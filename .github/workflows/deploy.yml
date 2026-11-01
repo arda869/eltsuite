@@ -48,6 +48,8 @@ jobs:
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs test/video-secret-binding.test.mjs test/video-connection.test.mjs
       - name: Video access rules and service checks
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-video-editor "node test/video-access.mjs"
+      - name: Independent teacher-trainer permission rules
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-trainer-access "node test/trainer-access.mjs"
       - name: File retention regression checks
         run: node --test test/file-bin-cleanup.mjs
       - name: Build
@@ -66,6 +68,9 @@ jobs:
 
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
+
+      - name: Trainer grant and course creation journey (Firebase simulated)
+        run: node test/admin-trainer-ui.mjs
 
       - name: Smoke and accessibility tests
         timeout-minutes: 20

@@ -1,0 +1,33 @@
+import {readFileSync} from 'node:fs';
+import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
+import {doc,setDoc,updateDoc,getDoc} from 'firebase/firestore';
+import assert from 'node:assert/strict';
+const env=await initializeTestEnvironment({projectId:'demo-trainer-access',firestore:{rules:readFileSync('firestore.rules','utf8')}});
+try {
+ await env.withSecurityRulesDisabled(async c=>{const db=c.firestore();for(const id of ['independent','orgteacher','other'])await setDoc(doc(db,'users',id),{role:'teacher'});await setDoc(doc(db,'accounts','orgteacher'),{org:'school'});await setDoc(doc(db,'orgs','school'),{name:'School',adminEmails:['admin@example.com'],teachers:{orgteacher:{trainer:true}},allow:{trainers:true}});});
+ const owner=env.authenticatedContext('owner',{email:'ardanurioglu@gmail.com',email_verified:true}).firestore();
+ const teacher=env.authenticatedContext('independent',{email:'teacher@example.com'}).firestore();
+ const orgTeacher=env.authenticatedContext('orgteacher',{email:'orgteacher@example.com'}).firestore();
+ const other=env.authenticatedContext('other',{email:'other@example.com'}).firestore();
+ const course=(teacherId,kind='training')=>({teacherId,kind,name:'Teaching skills',classCode:'TEST',lessonStyle:'adult',status:'active',learnerCount:0});
+ await assertFails(setDoc(doc(teacher,'classes','before'),course('independent')));
+ await assertSucceeds(setDoc(doc(teacher,'classes','language'),course('independent','language')));
+ await assertFails(updateDoc(doc(teacher,'classes','language'),{kind:'training'}));
+ await assertFails(setDoc(doc(teacher,'accounts','independent'),{teacherTrainer:true}));
+ await assertFails(setDoc(doc(other,'accounts','independent'),{teacherTrainer:true}));
+ await assertSucceeds(setDoc(doc(owner,'accounts','independent'),{teacherTrainer:true}));
+ assert.equal((await getDoc(doc(teacher,'accounts','independent'))).data().teacherTrainer,true);
+ await assertSucceeds(setDoc(doc(teacher,'classes','training'),course('independent')));
+ await assertSucceeds(setDoc(doc(teacher,'classes','training','items','lesson'),{title:'First trainer session',type:'lesson'}));
+ await assertSucceeds(updateDoc(doc(teacher,'classes','language'),{kind:'training'}));
+ await assertFails(setDoc(doc(teacher,'classes','foreign'),course('other')));
+ await assertSucceeds(updateDoc(doc(owner,'accounts','independent'),{teacherTrainer:false}));
+ await assertFails(setDoc(doc(teacher,'classes','after'),course('independent')));
+ await assertSucceeds(updateDoc(doc(teacher,'classes','training'),{name:'Existing course kept'}));
+ await assertSucceeds(setDoc(doc(orgTeacher,'classes','orgtraining'),{...course('orgteacher'),org:'school'}));
+ await assertSucceeds(updateDoc(doc(owner,'accounts','orgteacher'),{teacherTrainer:true}));
+ await assertFails(setDoc(doc(orgTeacher,'classes','bypass-org'),course('orgteacher')));
+ await env.withSecurityRulesDisabled(async c=>updateDoc(doc(c.firestore(),'orgs','school'),{'allow.trainers':false}));
+ await assertFails(setDoc(doc(orgTeacher,'classes','disabled-org'),{...course('orgteacher'),org:'school'}));
+ console.log('PASS: Super Admin grant → independent training course → usable lesson; self/foreign grants denied; revocation blocks new courses and preserves existing courses; organisation policy cannot be bypassed. Real Firestore emulator.');
+}finally{await env.cleanup();}

@@ -18,7 +18,7 @@ import type { Go, SuperData } from './types';
 // ------------------------------------------------------------------ every teacher
 export function SuperTeachers({ d, go, params }: { d: SuperData; go: Go; params: URLSearchParams }) {
   const { teachers, accounts, orgs, classes } = d;
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(params.get('q') || '');
   const [sort, setSort] = useState('new');
   const [sheet, setSheet] = useState<'' | 'plan' | 'org'>('');
   const [toast, say] = useNote();
@@ -35,6 +35,7 @@ export function SuperTeachers({ d, go, params }: { d: SuperData; go: Go; params:
   const FILTERS: Record<string, (t: Teacher) => boolean> = {
     all: () => true,
     alone: (t) => !accounts[t.uid]?.org,
+    trainers: (t) => !accounts[t.uid]?.org && !!accounts[t.uid]?.teacherTrainer,
     org: (t) => !!accounts[t.uid]?.org,
     noclass: (t) => !stats(t).classes,
     full: (t) => !!accounts[t.uid]?.over,
@@ -44,6 +45,7 @@ export function SuperTeachers({ d, go, params }: { d: SuperData; go: Go; params:
   const pills = [
     { v: 'all', label: 'Everyone' },
     { v: 'alone', label: 'On their own' },
+    { v: 'trainers', label: 'Independent trainers' },
     { v: 'org', label: 'In an organisation' },
     { v: 'noclass', label: 'Without a class' },
     { v: 'near', label: 'Nearly full' },
@@ -129,6 +131,7 @@ export function SuperTeachers({ d, go, params }: { d: SuperData; go: Go; params:
                         <Who name={t.name || 'No name'} sub={t.email} pic={t.avatar} />
                       </button>
                       <span className="hq-roles">
+                        {!a.org && a.teacherTrainer && <span className="hq-chip">Teacher trainer</span>}
                         {a.suspended && <span className="hq-chip">Paused</span>}
                         {a.over && <span className="hq-chip late">Full</span>}
                         {t.createdAt && daysSince(t.createdAt) < 7 && <span className="hq-chip">New</span>}
@@ -264,6 +267,12 @@ function SuperSwitch({ t }: { t: Teacher }) {
   );
 }
 
+function TrainerAccess({t,account,org,go}:{t:Teacher;account:import('../../lib/admin').Account;org:import('../../lib/admin').Org|null;go:Go}) {
+ const [busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState('');
+ async function change(){setBusy(true);setError('');setSaved('');try{await saveAccount(t,{teacherTrainer:!account.teacherTrainer});setSaved(account.teacherTrainer?'Teacher-trainer access removed. Existing courses are kept.':'Teacher-trainer access enabled. They can now create teacher-training courses.');}catch{setError('Could not save teacher-trainer access. Try again.');}finally{setBusy(false);}}
+ return <DrawerPart title="Teaching privileges">{account.org?<><p>Teacher-training access is managed by {org?.name||'their organisation'}.</p>{org&&<button type="button" className="btn small-btn" onClick={()=>go({org:org.id,tab:'teachers',t:t.uid})}>Open organisation permissions</button>}</>:<><p>Allow this independent teacher to create teacher-training courses. They keep their own account and plan.</p><p>Removing access stops new training courses; existing courses remain available.</p><button type="button" className={'btn small-btn'+(!account.teacherTrainer?' primary':'')} disabled={busy} onClick={()=>void change()}><UiIcon name="classes" size={16}/>{busy?'Saving…':account.teacherTrainer?'Remove teacher-trainer access':'Enable teacher-trainer access'}</button>{busy&&<p role="status">Saving this teacher’s access…</p>}{saved&&<p role="status">{saved}</p>}{error&&<p role="alert" className="error">{error}</p>}</>}</DrawerPart>;
+}
+
 function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go; onClose: () => void }) {
   const a = d.accounts[t.uid] ?? {};
   const org = d.orgs.find((o) => o.id === a.org) ?? null;
@@ -334,14 +343,15 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
           </>
         )}
       </DrawerPart>
-      <SuperSwitch t={t} />
+      <TrainerAccess key={t.uid} t={t} account={a} org={org} go={go} />
+      <details className="hq-sensitive"><summary>Super Admin permissions</summary><SuperSwitch t={t} /></details>
       <DrawerPart title="Space used">
         <div className="hq-dspace">
           <Meter used={used} of={of * GB} />
           <span>{a.usedBytes === undefined && t.usedBytes === undefined ? `Not measured yet, of ${fmtGb(of)}` : <><b>{fmtBytes(used)}</b> used of {fmtGb(of)}</>}</span>
         </div>
       </DrawerPart>
-      <DrawerPart title="Apps">
+      <details className="hq-sensitive"><summary>Apps available to this teacher</summary><DrawerPart title="Apps">
         <p className="hint">Their own switch comes before their organisation's and everyone's.</p>
         {APP_LIST.map((k) => {
           const on = a.features?.[k.k] ?? appDefault(k.k);
@@ -351,7 +361,7 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
             </Setting>
           );
         })}
-      </DrawerPart>
+      </DrawerPart></details>
       <DrawerPart title={mine.length ? `Classes (${mine.length})` : 'Classes'}>
         {mine.length ? (
           <ul className="hq-dlist">

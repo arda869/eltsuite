@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { UiIcon } from '../components/UiIcon';
 import { Avatar } from '../components/avatars';
 import { PLANS } from '../lib/admin';
 import { givenGb, limitGbOf, orgAttention, orgSetup, superAttention, usedOf, type Attention } from './admin/attention';
@@ -188,6 +189,7 @@ export function OrgOverview({ d, go }: { d: OrgData; go: Go }) {
 
 // ------------------------------------------------------------------ the whole of ELT Suite
 export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
+  const [findTeacher,setFindTeacher]=useState('');
   const { teachers, accounts, orgs, classes, invites } = d;
   const active = classes.filter((c) => c.status === 'active');
   const learners = active.reduce((n, c) => n + (c.learnerCount ?? 0), 0);
@@ -220,8 +222,19 @@ export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
   const orgName = (id?: string | null) => orgs.find((o) => o.id === id)?.name ?? '';
   return (
     <div className="hq-page">
-      <PageHead title="ELT Suite" lede={`${today()}.${d.loading ? '' : items.length ? ` ${plural(items.filter((i) => !i.low).length || items.length, 'thing')} worth a look.` : ' Nothing needs you today.'}`} />
+      <PageHead title="Your admin workspace" lede={`${today()}.${d.loading ? '' : items.length ? ` ${plural(items.filter((i) => !i.low).length || items.length, 'thing')} worth a look.` : ' Nothing needs you today.'}`} />
       {!d.loading && <Ledger items={items} go={go} calm="No account is full, every organisation has an admin and gives out only the space it has." />}
+      <section className="hq-start" aria-labelledby="hq-start-title">
+        <div className="hq-start-head"><div><h2 id="hq-start-title">What do you need to do?</h2><p>Start with a teacher, an organisation or a setting.</p></div><form className="hq-find" onSubmit={e=>{e.preventDefault();go({tab:'teachers',q:findTeacher.trim()});}}><label className="hq-sr" htmlFor="admin-find-teacher">Find a teacher by name or email</label><input id="admin-find-teacher" value={findTeacher} onChange={e=>setFindTeacher(e.target.value)} placeholder="Teacher’s name or email"/><button className="btn" type="submit"><UiIcon name="person" size={16}/>Find teacher</button></form></div>
+        <div className="hq-start-grid">{[
+          {title:'Manage a teacher',text:'Account, plan, apps and teaching privileges.',icon:'person',tab:'teachers'},
+          {title:'Invite teachers',text:'Create and manage invitation codes.',icon:'plus',tab:'codes'},
+          {title:'Teacher trainers',text:'Independent teachers with training-course access.',icon:'classes',tab:'teachers',f:'trainers'},
+          {title:'Manage an organisation',text:'People, classes, policies and shared resources.',icon:'groups',tab:'orgs'},
+          {title:'Review AI usage',text:'Allowances, access and usage in one place.',icon:'board',tab:'ai'},
+          {title:'Configure the product',text:'App availability and default experience.',icon:'settings',tab:'apps'},
+        ].map(x=><button type="button" key={x.title} className="hq-start-card" onClick={()=>go({tab:x.tab,f:x.f})}><UiIcon name={x.icon} size={20}/><span><b>{x.title}</b><span>{x.text}</span></span><span aria-hidden="true">→</span></button>)}</div>
+      </section>
       <Figures
         items={[
           { n: teachers.length, label: 'Teachers', sub: `${fresh} new this week`, go: () => go({ tab: 'teachers' }) },
@@ -232,7 +245,7 @@ export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
           { n: paused, label: 'Paused', sub: paused ? 'Accounts you paused' : 'No account paused', go: paused ? () => go({ tab: 'teachers', f: 'paused' }) : undefined },
         ]}
       />
-      <div className="hq-grid">
+      <details className="hq-insights"><summary>Usage and growth details</summary><div className="hq-grid">
         <Panel title="New teachers" action={<span className="hint">a bar a week</span>}>
           <Bars data={weeks} unit="teachers" />
         </Panel>
@@ -312,7 +325,7 @@ export function SuperOverview({ d, go }: { d: SuperData; go: Go }) {
             ))}
           </ul>
         </Panel>
-      </div>
+      </div></details>
     </div>
   );
 }

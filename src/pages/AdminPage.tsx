@@ -116,6 +116,7 @@ function Nav({ label, items, groups, tab, go, top }: { label: string; items?: Na
   return (
     <aside className="hq-side">
       {top}
+      <label className="hq-mobile-nav">Admin section<select aria-label="Admin section" value={tab} onChange={e=>go({tab:e.target.value})}>{items?.map(i=><option key={i.k} value={i.k}>{i.label}</option>)}{groups.map(([g,list])=>g?<optgroup key={g} label={g}>{list.map(i=><option key={i.k} value={i.k}>{i.label}</option>)}</optgroup>:list.map(i=><option key={i.k} value={i.k}>{i.label}</option>))}</select></label>
       <nav className="hq-nav" aria-label={label} ref={ref}>
         {items?.map(link)}
         {groups.map(([g, list]) => (
@@ -159,14 +160,16 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'supers', label: 'Super admins', icon: 'lock' },
     { k: 'brand', label: 'Brand kit', icon: 'picture' },
   ];
+  const groupKeys: [string,string[]][] = [['People and access',['teachers','orgs','codes','supers']],['Usage and limits',['ai','activity']],['Product and appearance',['apps','defaults','brand']]];
+  const groups: [string,NavItem[]][] = groupKeys.map(([label,keys])=>[label,keys.map(k=>items.find(i=>i.k===k)!)]);
   const known = items.some((i) => i.k === tab) ? tab : 'overview';
   return (
     <Frame>
       <div className="hq">
         <Nav
           label="Super Admin"
-          items={items}
-          groups={[]}
+          items={items.filter(i=>i.k==='overview')}
+          groups={groups}
           tab={known}
           go={go}
           top={
@@ -180,17 +183,8 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
                   <span>All of ELT Suite</span>
                 </span>
               </div>
-              {orgs.length > 0 && (
-                <div className="hq-side-orgs">
-                  <span className="hq-nav-h">Organisations</span>
-                  {orgs.map((o) => (
-                    <Link key={o.id} to={{ search: `?org=${o.id}` }} className="hq-nav-i" onClick={(e) => (e.preventDefault(), go({ org: o.id, tab: 'overview' }))}>
-                      <span className="hq-dot" style={{ background: o.brand?.color ?? '#5d6f80' }} />
-                      <span className="hq-nav-l">{o.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+              {orgs.length > 0 && <div className="hq-side-switch"><label className="hq-nav-h">Open an organisation</label><Select value="" options={[{v:'',label:'Choose organisation…'},...orgs.map(o=>({v:o.id,label:o.name}))]} onChange={v=>v&&go({org:v,tab:'overview'})} label="Open an organisation" search /></div>}
+
             </>
           }
         />

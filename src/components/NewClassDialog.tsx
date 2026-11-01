@@ -2,7 +2,7 @@ import { LessonStylePicker } from './LessonStylePicker';
 import { type LessonStyle } from '../lib/lessonStyle';
 import { TrainingProfileFields, profileFromClass, defaultTrainingProfile } from '../training/TrainingProfileFields';
 import { ClassProfileFields, defaultProfile } from '../ai/ClassProfileFields';
-import { classDefaults, currentOrg, isTrainerIn } from '../lib/admin';
+import { classDefaults, currentOrg, isTrainerIn, useAccount, type Account } from '../lib/admin';
 import { LimitError } from '../lib/limitError';
 import { LevelPicker } from './LevelPicker';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -10,6 +10,7 @@ import { createClass, TRAINING_ADDS, type ClassKind } from '../lib/classes';
 import { THEMES, type ThemeKey } from '../lib/themes';
 
 export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: string; onClose: () => void; onCreated: (id: string) => void }) {
+  const account = useAccount(teacherId);
   const [trainingProfile,setTrainingProfile]=useState(defaultTrainingProfile);
   const [learningProfile,setLearningProfile]=useState(defaultProfile);
   const [name, setName] = useState('');
@@ -34,6 +35,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (kind === 'training' && trainingBlock(teacherId, account)) { setError(trainingBlock(teacherId, account)); return; }
     setBusy(true);
     setError('');
     try {
@@ -92,6 +94,7 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
           </div>
           <span className="hint">Used across this class on your screens and your learners’ screens.</span>
         </div>
+        {!name.trim() && <p className="hint">Enter a class name to continue. Dates and additional profile details are optional.</p>}
         {error && <span className="error" role="alert">{error}</span>}
         <div className="row-between" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn" onClick={onClose} disabled={busy}>
@@ -106,10 +109,12 @@ export function NewClassDialog({ teacherId, onClose, onCreated }: { teacherId: s
   );
 }
 
-// Teacher training classes are for teacher trainers in an organisation that has them switched on.
-export function trainingBlock(uid?: string): string {
+// Independent trainers are granted access by Super Admin; organisations keep their own policy.
+export function trainingBlock(uid?: string, account?: Account | null): string {
   const org = currentOrg();
-  if (!org) return 'Teacher training classes are made in an organisation. Join an organisation that has teacher training to make one.';
+  if (!account) return 'Checking teacher-training access…';
+  if (!account.org) return account.teacherTrainer ? '' : 'Ask ELT Suite support to enable teacher-trainer access for your account. You do not need an organisation.';
+  if (!org || org.id !== account.org) return 'Loading your organisation’s teacher-training settings…';
   if (!org.allow?.trainers) return `${org.name} doesn’t have teacher training classes.`;
   if (!isTrainerIn(org, uid)) return `Ask an admin in ${org.name} to make you a teacher trainer.`;
   return '';
@@ -136,8 +141,9 @@ export function ClassDatesFields({ start, end, setStart, setEnd }: { start: stri
 }
 
 export function ClassKindPicker({ kind, onChange, uid }: { kind: ClassKind; onChange: (k: ClassKind) => void; uid?: string }) {
-  // A class that is already a training class can stay one.
-  const blocked = kind === 'training' ? '' : trainingBlock(uid);
+  const account = useAccount(uid);
+  // Existing courses remain usable if permission to create new ones is removed.
+  const blocked = kind === 'training' ? '' : trainingBlock(uid, account);
   return (
     <div className="field">
       <span>What kind of class</span>
@@ -148,7 +154,7 @@ export function ClassKindPicker({ kind, onChange, uid }: { kind: ClassKind; onCh
         </button>
         <button type="button" role="radio" aria-checked={kind === 'training'} aria-disabled={!!blocked || undefined} className={'ck-o' + (kind === 'training' ? ' on' : '') + (blocked ? ' blocked' : '')} onClick={() => !blocked && onChange('training')}>
           <b>
-            Teacher training {blocked && <span className="ck-lock">For organisations</span>}
+            Teacher training {blocked && <span className="ck-lock">Access needed</span>}
           </b>
           <span className="hint">{blocked || 'Everything in a language class, and tools for training teachers.'}</span>
         </button>

@@ -43,6 +43,18 @@ service cloud.firestore {
         && request.auth.token.get('email', '').lower() in get(/databases/$(database)/documents/orgs/$(orgId)).data.adminEmails
         && teacher in get(/databases/$(database)/documents/orgs/$(orgId)).data.teachers;
     }
+    // Creating a new training course (or converting a language class) requires a grant.
+    // Removing the grant does not strand existing courses or their participants.
+    function canStartTraining(c) {
+      let a = acct(c.teacherId);
+      let org = c.get('org', null);
+      return c.get('kind', 'language') != 'training'
+        || (org == null && a.get('org', null) == null && a.get('teacherTrainer', false) == true)
+        || (org is string && a.get('org', null) == org
+          && get(/databases/$(database)/documents/orgs/$(org)).data.get('allow', {}).get('trainers', false) == true
+          && (orgAdminFor(org, c.teacherId)
+            || get(/databases/$(database)/documents/orgs/$(org)).data.get('teachers', {}).get(c.teacherId, {}).get('trainer', false) == true));
+    }
     function memberOf(classId) {
       return signedIn() && exists(/databases/$(database)/documents/classes/$(classId)/members/$(request.auth.uid));
     }
@@ -216,6 +228,7 @@ service cloud.firestore {
         || request.auth.uid in resource.data.get('lessonEditorIds', [])
         || request.auth.token.get('email', '').lower() in resource.data.get('inviteEmails', []));
       allow create: if ((isTeacher() && request.resource.data.teacherId == request.auth.uid) || orgAdminFor(request.resource.data.get('org', null), request.resource.data.teacherId))
+        && canStartTraining(request.resource.data)
         && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young']
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
@@ -223,6 +236,7 @@ service cloud.firestore {
         // within the organisation's limit of classes, counted in the same write
         && countedIn(request.resource.data.get('org', null), 'classes');
       allow update: if signedIn()
+        && (resource.data.get('kind', 'language') == 'training' || canStartTraining(request.resource.data))
         && request.resource.data.get('lessonStyle', 'adult') in ['adult', 'young']
         && request.resource.data.teacherId == resource.data.teacherId
         && request.resource.data.classCode == resource.data.classCode

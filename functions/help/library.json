@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-01.knowledge.2",
+  "version": "2026-11-01.knowledge.3",
   "articles": [
     {
       "id": "navigation",
@@ -1083,16 +1083,19 @@
       "questions": [
         "How do I create a teacher training class?",
         "Where are observation forms and loop input?",
-        "Why can I not see training tools?"
+        "Why can I not see training tools?",
+        "Can an independent teacher create teacher-training courses without an organisation?"
       ],
-      "keywords": "use teacher-training class tools how do i create a teacher training class? where are observation forms and loop input? why can i not see training tools?",
+      "keywords": "use teacher-training class tools how do i create a teacher training class? where are observation forms and loop input? why can i not see training tools? independent teacher trainer access privilege super admin without organisation",
       "summary": "Teacher-training classes expose specialised planning, analysis, observation and reflection tools.",
       "steps": [
+        "Independent teachers can ask ELT Suite support for teacher-trainer access. A super admin opens People and access → Teachers, selects the teacher, and enables Teacher-trainer access under Teaching privileges. No organisation is needed. Organisation teachers use their organisation’s trainer permission.",
         "Choose the training class kind when creating the class, or in Class settings. Set the course and training profile.",
         "Use the task element picker’s Teacher training section for analysis, planning, observation, rehearsal, exam preparation, reflection or loop-input tools.",
-        "Changing the class to a language class hides the training tools; changing back brings them back. Organisation forms are managed separately by the organisation."
+        "Changing the class to a language class hides the training tools; changing back brings them back. Organisation forms are managed separately by the organisation.",
+        "Removing independent teacher-trainer access stops new training courses and conversions; existing training courses remain usable."
       ],
-      "source": "src/components/ClassSettingsDialog.tsx; src/editor/InsertGallery.tsx; src/editor/TaskEditor.tsx",
+      "source": "src/components/ClassSettingsDialog.tsx; src/editor/InsertGallery.tsx; src/editor/TaskEditor.tsx; src/pages/admin/Super.tsx; src/components/NewClassDialog.tsx; firestore.rules",
       "href": "/classes",
       "action": "Open Classes",
       "app": "classes",

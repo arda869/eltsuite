@@ -1,0 +1,36 @@
+name: Independent trainer verification account
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Isolated teacher for live grant and course verification
+        required: true
+        default: create
+        type: choice
+        options: [create, cleanup]
+concurrency:
+  group: trainer-verification-fixture
+  cancel-in-progress: false
+jobs:
+  fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm --prefix functions ci --no-audit --no-fund
+      - name: Configure credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Prepare or remove isolated verification teacher
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FIXTURE_ACTION: ${{ inputs.action }}
+        run: node scripts/trainer-live-fixture.mjs "$FIXTURE_ACTION"
+      - name: Remove local credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
