@@ -1,3 +1,4 @@
+import { GenerationError } from '../ai/errors.js';
 import { readSongParts } from './stems.js';
 import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
@@ -45,7 +46,16 @@ export const recordingLyrics=onCall({...options,secrets:[openai],timeoutSeconds:
   try{
     const {value}=await generate({apiKey:openai.value(),model:'gpt-6.1-sol',schema:lyricSchema,name:'song_lyrics',input:{...brief,linkedLesson},instructions:lyricInstructions});
     await finish(uid,job.ref,{status:'complete',lyrics:value.lyrics});return {id,status:'complete',lyrics:value.lyrics};
-  }catch{await finish(uid,job.ref,{status:'failed',error:'The lyrics could not be drafted. Your existing words are kept.'});throw new HttpsError('unavailable','The lyrics could not be drafted. Your existing words are kept.');}
+  }catch(e){
+    const reason=e instanceof GenerationError?e.reason:'unknown';
+    const error=reason==='billing'?'AI lyric drafting is unavailable because the AI account needs more credit or has reached its spending limit. Your words are kept. You can use your own lyrics to create a song.'
+      :['credentials','model_access','access','request'].includes(reason)?'AI lyric drafting needs an administrator to check the service setup. Your words are kept. You can use your own lyrics to create a song.'
+      :reason==='rate_limit'?'AI lyric drafting is temporarily busy. Your words are kept. Wait before trying again, or use your own lyrics.'
+      :reason==='timeout'?'AI lyric drafting took too long. Your words are kept. Try again later, or use your own lyrics.'
+      :'The lyrics could not be drafted. Your existing words are kept.';
+    await finish(uid,job.ref,{status:'failed',error,failureReason:reason});
+    throw new HttpsError(reason==='billing'?'failed-precondition':'unavailable',error,{reason});
+  }
 });
 export const recordingSong=onCall({...options,secrets:[gemini],timeoutSeconds:540},async req=>{
   const uid=await authorizeTeacher(req);let brief;
