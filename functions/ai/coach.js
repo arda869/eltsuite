@@ -1,3 +1,5 @@
+import { loadLessonSource } from './coach-lesson-context.js';
+import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { dailyGlobalUsage } from './allowance.js';
 import { contextPermissions, profileComplete, beliefsComplete, relevantWriting, writingExcerpt } from './coach-context.js';
@@ -19,17 +21,18 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   const [professional, preferences] = await Promise.all([
     db.doc(`teachingCoach/${uid}/settings/profile`).get(), db.doc(`teachingCoach/${uid}/settings/context`).get(),
   ]);
-  if (!profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
-  if (!beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
+  if (!input.lessonContext && !profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
+  if (!input.lessonContext && !beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
   const preferencesData = preferences.data();
   const permissions = contextPermissions(preferencesData);
   if (['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode'].includes(preferencesData?.mode)) input.mode = preferencesData.mode;
-  const context = {}, basis = [];
-  if (input.useProfile && permissions.profile) {
+  const context = {}, basis = [], sources = [];
+  if(input.lessonContext){const selected=await loadLessonSource(db,uid,input.lessonContext);context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
+  if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));
     basis.push('Your professional profile');
   }
-  if (input.useBeliefs && permissions.beliefs && professional.get('beliefs')) { context.beliefs = String(professional.get('beliefs')).slice(0,4000); basis.push('Your teaching beliefs'); }
+  if (input.useBeliefs && permissions.beliefs && beliefsComplete(professional.data())) { context.beliefs = String(professional.get('beliefs')).slice(0,4000); basis.push('Your teaching beliefs'); }
   for (const [field, kind] of [['entryId', 'reflections'], ['researchId', 'inquiries']]) {
     if (!permissions[kind]) continue;
     if (input.contextVersion === 2) {
@@ -78,8 +81,8 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   });
   if (existing) return existing;
   try {
-    const generated = await generate({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework });
-    const result = { reply: generated.value.reply, journalDraft: generated.value.journalDraft ?? null, basis };
+    const generated = await generate({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied activity, not to generate a lesson plan or assess the teacher. Give concrete, optional improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
+    const result = { reply: generated.value.reply, journalDraft: generated.value.journalDraft ?? null, basis, sources };
     await db.runTransaction(async tx => {
       const [b,j] = await Promise.all([tx.get(budget),tx.get(job)]);
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), [generated.usage]);
