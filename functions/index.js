@@ -13,6 +13,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 initializeApp();
+export { appliedLinguistics, appliedLinguisticsAnalysis } from './linguistics/index.js';
 export { helpAssistant } from './help/index.js';
 export { teachingDefinition } from './definitions/index.js';
 export { prepareLessonMedia } from './ai/media-worker.js';

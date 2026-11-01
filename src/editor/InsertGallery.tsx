@@ -8,6 +8,7 @@ export type GalleryCmd = { key: string; label: string; hint: string };
 export type Section = { title: string; blurb: string; keys: string[] };
 
 const SECTIONS: Section[] = [
+  {title:'Applied linguistics',blurb:'Selected evidence, language investigations and teacher-reviewed interpretations.',keys:['corpus','discourse','language-awareness','pragmatics','learner-development','research']},
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
   { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'inline-video', 'pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
   { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },

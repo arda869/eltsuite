@@ -1,3 +1,4 @@
+import {InlineInvestigation} from '../linguistics/InlineInvestigation';
 import { SpeakingActivity } from '../speaking/SpeakingActivity';
 import type { SpeakingConfig } from '../speaking/types';
 import { useCiteStyle } from '../lib/citeContext';
@@ -1132,6 +1133,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           </section>
         );
       }
+      case 'investigation':
+        return node.attrs?.embedId ? <InlineInvestigation key={key} embedId={String(node.attrs.embedId)} compact={!classId} readOnly={!!teacher}/> : <p key={key}>No investigation selected.</p>;
       case 'collab':
         return node.attrs?.docKey ? (
           <div key={key} data-bk={key} className="task-collab">

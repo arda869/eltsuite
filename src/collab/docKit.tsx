@@ -1,3 +1,4 @@
+import { InvestigationNode } from '../linguistics/InvestigationNode';
 import { auth } from '../lib/firebase';
 import { isLearnerEmail } from '../lib/learners';
 import { uploadPicture } from '../editor/PackNode';
@@ -49,6 +50,7 @@ import { imageToData } from '../lib/flash';
 // elements, without learner tasks (gaps, choices and the other questions). Every editor that
 // opens the same document uses this list, so the shared text always fits.
 export const DOC_NODES = [
+  InvestigationNode,
   StarterKit.configure({ history: false, heading: { levels: [1, 2, 3] }, codeBlock: false, orderedList: false, listItem: false }),
   ListItem.extend({ content: '(paragraph | dialogue) block*' }),
   OrderedList.extend({

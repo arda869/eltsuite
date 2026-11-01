@@ -44,6 +44,10 @@ jobs:
       - name: Help assistant checks
         run: node --test test/ai/help.test.mjs
 
+      - name: Applied Linguistics contracts and corpus adapter
+        run: node --test functions/linguistics/*.test.mjs
+      - name: Applied Linguistics privacy and reuse journeys
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-linguistics "node functions/linguistics/integration.mjs"
       - name: Video editor and storyboard checks
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs test/video-secret-binding.test.mjs test/video-connection.test.mjs
       - name: Video access rules and service checks
@@ -71,6 +75,10 @@ jobs:
 
       - name: Trainer grant and course creation journey (Firebase simulated)
         run: node test/admin-trainer-ui.mjs
+
+      - name: Applied Linguistics teacher journey (Firebase simulated)
+        timeout-minutes: 8
+        run: node test/linguistics-ui.mjs
 
       - name: Smoke and accessibility tests
         timeout-minutes: 20
@@ -119,12 +127,13 @@ jobs:
           node functions/ai/cleanup.mjs
           node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("functions/.env.lesson-lit", "ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n");'
           node functions/video/preflight.mjs
+          node functions/linguistics/preflight.mjs
           # Source discovery must see the same connection flag as the deployed runtime.
           set -a
           . functions/.env.lesson-lit
           set +a
           set -o pipefail
-          npx --yes firebase-tools@14 deploy --only functions:observeLearnerResponses,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
+          npx --yes firebase-tools@14 deploy --only functions:appliedLinguistics,functions:appliedLinguisticsAnalysis,functions:observeLearnerResponses,functions:buildLearningReport,functions:reportEndedLesson,functions:reportInactiveLessons,functions:designerImage,functions:adminAiUsage,functions:videoStudio,functions:refreshVideoJobs,functions:prepareLessonMedia,functions:lessonAssistant,functions:helpAssistant,functions:teachingDefinition,functions:recordingSpeech,functions:recordingTranscript,functions:recordingDialogue,functions:recordingLyrics,functions:recordingSong,functions:recordingSongResult,functions:recordingSongLesson,functions:speakingTask,functions:closeSpeakingAtDeadline --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/assistant-deploy.log"
           grep -q 'Deploy complete!' "$RUNNER_TEMP/assistant-deploy.log" || { echo '::error::Firebase did not confirm the assistant deployment completed.'; exit 1; }
           node scripts/check-learning-binding.mjs
 
@@ -132,6 +141,11 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
         run: node functions/video/check-connection.mjs
+
+      - name: Verify corpus connection or explicit unavailable state
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node functions/linguistics/check-connection.mjs
 
       - name: Check assistant rejects signed-out requests
         run: |
