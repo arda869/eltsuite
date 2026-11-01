@@ -25,6 +25,8 @@ jobs:
         env:
           VITE_ELT_AI_PILOT: 'true'
         run: npm run build
+      - name: Verify app route and asset cache headers
+        run: npx --yes firebase-tools@14 emulators:exec --only hosting --project demo-hosting-cache "node test/hosting-cache.mjs"
       - name: Install the test browser
         run: npx playwright install --with-deps chromium
       - name: Smoke and accessibility tests
