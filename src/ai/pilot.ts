@@ -13,3 +13,9 @@ export function useAiPilot() {
   }, [uid]);
   return import.meta.env.VITE_ELT_AI_PILOT === 'true' && !!uid && grant?.uid === uid && grant.enabled;
 }
+
+export function useLessonIntelligencePilot() {
+  const {user}=useAuth(); const [grant,setGrant]=useState<{uid:string;enabled:boolean}|null>(null);
+  useEffect(()=>{setGrant(null);if(!user?.uid||import.meta.env.VITE_ELT_AI_PILOT!=='true')return;return onSnapshot(doc(db,'aiPilot',user.uid),s=>setGrant({uid:user.uid,enabled:s.data()?.enabled===true&&s.data()?.lessonIntelligence===true}),()=>setGrant(null));},[user?.uid]);
+  return !!user?.uid&&grant?.uid===user.uid&&grant.enabled;
+}

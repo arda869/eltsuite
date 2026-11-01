@@ -31,6 +31,9 @@ try {
   await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), { ...grant('owner'), enabled: 'true' }));
   await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), grant('forged')));
   await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), { ...grant('owner'), arbitrary: true }));
+  await assertSucceeds(setDoc(doc(owner, 'aiPilot', 'teacher'), {...grant('owner'),lessonIntelligence:true}));
+  await assertFails(setDoc(doc(owner, 'aiPilot', 'teacher'), {...grant('owner'),lessonIntelligence:'true'}));
+  await assertFails(setDoc(doc(teacher, 'aiPilot', 'teacher'), {...grant('teacher'),lessonIntelligence:true}));
   await assertFails(deleteDoc(doc(teacher, 'aiPilot', 'teacher')));
   await assertSucceeds(getDoc(doc(owner, 'aiBudgets', '2026-10')));
   await assertFails(getDoc(doc(teacher, 'aiBudgets', '2026-10')));

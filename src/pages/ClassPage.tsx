@@ -1,3 +1,4 @@
+import {IntelligenceEntry} from '../intelligence/LessonIntelligence';
 import { learnOrigin } from '../lib/site';
 import { copyText } from '../lib/copyText';
 import { tr, useClassTerms } from '../lib/terms';
@@ -180,6 +181,7 @@ export function ClassPage() {
                     {linkCopied ? 'Copied' : 'Copy the link'}
                   </button>
                 </span>
+                <IntelligenceEntry classId={classId}/>
                 <VideoButton c={c} name={user?.displayName || 'Teacher'} teacher />
                 {c.meeting?.url && (
                   <a className="meet-link" href={c.meeting.url} target="_blank" rel="noopener noreferrer">

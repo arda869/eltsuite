@@ -1,3 +1,4 @@
+import {IntelligenceEntry,IntelligenceDraft} from '../intelligence/LessonIntelligence';
 import { MediaPlayer } from '../media/Player';
 import { audioUrl } from '../lib/media';
 import { TrainingProfileFields, profileFromClass, defaultTrainingProfile, type TrainingProfile } from '../training/TrainingProfileFields';
@@ -5,14 +6,14 @@ import { StudioMark } from "./StudioMark";
 import { AutoTextarea } from './AutoTextarea';
 import { ClassProfileFields, defaultProfile, type LearningProfile } from './ClassProfileFields';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from '../lib/firebase';
 import { TopBar } from '../components/TopBar';
 import './assistant.css';
 import { GenerationProgress } from './GenerationProgress';
-import { useAiPilot } from './pilot';
+import { useAiPilot, useLessonIntelligencePilot } from './pilot';
 
 type Value = string | number | Value[] | { [key: string]: Value };
 type RecordValue = { [key: string]: Value };
@@ -106,6 +107,7 @@ function RevisionPreview({value}:{value:Value}) {
 export function LessonAssistant() {
   const { classId = '' } = useParams();
   const enabled = useAiPilot();
+  const intelligencePilot=useLessonIntelligencePilot();
   const navigate=useNavigate();
   const [materialImport,setMaterialImport]=useState(false);
   const [classKind,setClassKind]=useState('language');
@@ -130,6 +132,10 @@ export function LessonAssistant() {
   const [createVariants,setCreateVariants]=useState(true);
   const [createdItemId,setCreatedItemId]=useState('');
   const [brief, setBrief] = useState<Brief>(initial);
+  const intelligenceLocation=useLocation();
+  const intelligenceHandoff=intelligenceLocation.state?.intelligenceHandoff;
+  const handoffSeen=useRef('');
+
   const [outline, setOutline] = useState<RecordValue | null>(null);
   const [plan, setPlan] = useState<RecordValue | null>(null);
   const [review, setReview] = useState<Review | null>(null);
@@ -146,6 +152,15 @@ export function LessonAssistant() {
   const pending = useRef<{ fingerprint: string; requestId: string } | null>(null);
   const locked = !!busy || preparingMedia;
   const formFields=briefFields[creationType] ?? briefFields.lesson;
+  useEffect(()=>{
+    if(!intelligenceHandoff||intelligenceHandoff.version!==1||intelligenceHandoff.classId!==classId||handoffSeen.current===intelligenceHandoff.sourceVersion)return;
+    if(outline||plan||dirty)return;
+    const b=intelligenceHandoff.brief;
+    if(!b||typeof b.objectives!=='string'||typeof b.context!=='string'||!Number.isInteger(b.duration)||b.duration<15||b.duration>180)return;
+    setBrief(old=>({...old,objectives:b.objectives.slice(0,2000),context:b.context.slice(0,2000),topic:typeof b.topic==='string'?b.topic.slice(0,300):'',duration:b.duration,methodology:'Recommend'}));
+    handoffSeen.current=intelligenceHandoff.sourceVersion;setNotice('Your chosen direction is ready to review. Edit the brief before asking for an outline.');
+  },[intelligenceHandoff,classId,outline,plan,dirty]);
+
   useEffect(()=>{window.scrollTo({top:0});},[step]);
   useEffect(() => {
     if (!dirty && !locked) return;
@@ -245,17 +260,7 @@ export function LessonAssistant() {
     if(!result.activities){try{localStorage.removeItem('ai-media-job:'+classId);}catch{}}
     setCreatedItemId('');setDirty(true);setProposal(null);setRevisionText('');setNotice('AI changes applied. You can continue editing the draft.');
   };
-  if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
-  return <MaterialNames.Provider value={Object.fromEntries((Array.isArray(plan?.learnerMaterials)?plan.learnerMaterials:[]).map(m=>[String((m as RecordValue).id),String((m as RecordValue).title)]))}><TopBar /><main className="ai-assistant">
-    {materialImport&&<MaterialImport classId={classId} creationType={creationType} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);setDirty(false);navigate(`/class/${classId}/lesson/${id}`);}}/>}
-    <Link to={`/class/${classId}`}>Back to class</Link>
-    <header className="ai-hero"><div><span className="ai-eyebrow">{isTraining?'TRAINER STUDIO':'CREATION STUDIO'} · {className}</span><h1>{isTraining?'Develop teachers.':'Great teaching.'}<br/><em>{isTraining?'Shape their practice.':'Your starting point.'}</em></h1><p>{isTraining?'Purposeful input, rehearsal and reflection, tailored to your trainees.':'Shape an idea into thoughtful, ready-to-teach activities.'}<br/>{isTraining?'Grounded in their course. Led by your judgement.':'Built around your class. Refined by you.'}</p></div><div className="ai-orbit" aria-hidden="true"><span>Discover</span><StudioMark/><div className="ai-orbit-labels"><span>Practise</span><span>Connect</span><span>Grow</span></div></div></header>
-    <ol className="ai-progress" aria-label="Creation progress" role="tablist">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li role="presentation" key={x} className={i===step?'current':''}><button type="button" role="tab" tabIndex={i===step?0:-1} onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=Array.from(e.currentTarget.closest('[role="tablist"]')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));const at=tabs.indexOf(e.currentTarget),next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(at+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next]?.focus();tabs[next]?.click();}} id={`creation-tab-${i}`} aria-controls={`creation-panel-${i}`} aria-selected={i===step} disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
-    {error && <p role="alert" className="ai-error">{error}</p>}{notice && <p role="status">{notice}</p>}
-    <div className="ai-actions"><button className="btn" disabled={locked} onClick={() => void run('list')}>Open saved plans</button>
-      <button className="btn" disabled={locked} onClick={() => { if (discard()) { setProposal(null);setRevisionText('');try{localStorage.removeItem('ai-media-job:'+classId);}catch{}setStep(0);setBrief({...initial,level:brief.level,objectives:isTraining?trainingProfile.goals:profile.goals,context:isTraining?trainingProfile.context:profile.needs}); setActivities(null);setMedia([]);setCreatedItemId(''); setOutline(null); setPlan(null); setReview(null); setDraftId(crypto.randomUUID()); setVersion(0); setDirty(false); pending.current = null; } }}>Start a new plan</button></div>
-    {drafts.length > 0 && <ul>{drafts.map(d => <li key={d.id}><button className="btn" disabled={locked} onClick={() => { if (discard()) void run('load', { draftId: d.id }); }}>{d.title}</button> <button className="btn" disabled={locked || d.id === draftId} onClick={() => { if (window.confirm(`Delete “${d.title}”? You can’t undo this.`)) void run('delete', { draftId: d.id }); }}>Delete</button></li>)}</ul>}
-    {step>0&&revisionCurrent&&<section className="ai-revision" aria-label="Ask AI to make changes">
+  const revisionControls=step>0&&revisionCurrent&&<section className="ai-revision" aria-label="Ask AI to make changes">
       <h2>Ask AI to make changes</h2><p>Tell AI what to change and what to keep. You can still edit the draft yourself. Review the proposal before applying it.</p>
       <label className="ai-field"><span>Your changes</span><AutoTextarea aria-label="Your changes" maxLength={2000} disabled={locked} value={revisionText} onChange={e=>setRevisionText(e.target.value)} placeholder="Keep the story and information gap. Make the listening more challenging and add a timeline."/></label>
       <p className="hint">{revisionText.trim()?'Your current draft stays unchanged until you apply a proposal.':'Describe at least one change to request a revision.'}</p>
@@ -264,7 +269,18 @@ export function LessonAssistant() {
         {!proposalMatches&&<p role="status">You edited the draft after requesting this proposal. Request changes again to include those edits; this proposal cannot overwrite them.</p>}
         <div className="ai-actions"><button type="button" className="btn primary" disabled={locked||!proposalMatches} onClick={applyProposal}>Apply changes</button><button type="button" className="btn" disabled={locked} onClick={()=>{setProposal(null);setNotice('Your current version is unchanged.');}}>Keep current version</button></div>
       </div>}
-    </section>}
+    </section>;
+  if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
+  return <MaterialNames.Provider value={Object.fromEntries((Array.isArray(plan?.learnerMaterials)?plan.learnerMaterials:[]).map(m=>[String((m as RecordValue).id),String((m as RecordValue).title)]))}><TopBar /><main className="ai-assistant">
+    {materialImport&&<MaterialImport classId={classId} creationType={creationType} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);setDirty(false);navigate(`/class/${classId}/lesson/${id}`);}}/>}
+    <Link to={`/class/${classId}`}>Back to class</Link>
+    <header className="ai-hero"><div><span className="ai-eyebrow">{isTraining?'TRAINER STUDIO':'CREATION STUDIO'} · {className}</span><h1>{isTraining?'Develop teachers.':'Great teaching.'}<br/><em>{isTraining?'Shape their practice.':'Your starting point.'}</em></h1><p>{isTraining?'Purposeful input, rehearsal and reflection, tailored to your trainees.':'Shape an idea into thoughtful, ready-to-teach activities.'}<br/>{isTraining?'Grounded in their course. Led by your judgement.':'Built around your class. Refined by you.'}</p></div><div className="ai-orbit" aria-hidden="true"><span>Discover</span><StudioMark/><div className="ai-orbit-labels"><span>Practise</span><span>Connect</span><span>Grow</span></div></div></header>
+    <ol className="ai-progress" aria-label="Creation progress" role="tablist">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li role="presentation" key={x} className={i===step?'current':''}><button type="button" role="tab" tabIndex={i===step?0:-1} onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=Array.from(e.currentTarget.closest('[role="tablist"]')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));const at=tabs.indexOf(e.currentTarget),next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(at+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next]?.focus();tabs[next]?.click();}} id={`creation-tab-${i}`} aria-controls={`creation-panel-${i}`} aria-selected={i===step} disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
+    {error && <p role="alert" className="ai-error">{error}</p>}{notice && <p role="status">{notice}</p>}
+    <div className="ai-actions">{intelligencePilot&&<IntelligenceEntry classId={classId} draft beforeCreate={async()=>{if(dirty||outline||plan)throw Error('Save your current draft and start a new plan before using another direction. Your current work has not changed.');}}/>}<button className="btn" disabled={locked} onClick={() => void run('list')}>Open saved plans</button>
+      <button className="btn" disabled={locked} onClick={() => { if (discard()) { setProposal(null);setRevisionText('');try{localStorage.removeItem('ai-media-job:'+classId);}catch{}setStep(0);setBrief({...initial,level:brief.level,objectives:isTraining?trainingProfile.goals:profile.goals,context:isTraining?trainingProfile.context:profile.needs}); setActivities(null);setMedia([]);setCreatedItemId(''); setOutline(null); setPlan(null); setReview(null); setDraftId(crypto.randomUUID()); setVersion(0); setDirty(false); pending.current = null; } }}>Start a new plan</button></div>
+    {drafts.length > 0 && <ul>{drafts.map(d => <li key={d.id}><button className="btn" disabled={locked} onClick={() => { if (discard()) void run('load', { draftId: d.id }); }}>{d.title}</button> <button className="btn" disabled={locked || d.id === draftId} onClick={() => { if (window.confirm(`Delete “${d.title}”? You can’t undo this.`)) void run('delete', { draftId: d.id }); }}>Delete</button></li>)}</ul>}
+    {intelligencePilot?<IntelligenceDraft classId={classId}>{error&&<p role="alert">{error}</p>}{busy&&<p role="status">Preparing your request… Your draft stays unchanged.</p>}{revisionControls||<p>Complete your brief to begin. Once an outline is ready, ask for changes here while editing it alongside this panel.</p>}</IntelligenceDraft>:revisionControls}
     {step===0 && <form role="tabpanel" id="creation-panel-0" aria-labelledby="creation-tab-0" onSubmit={e => { e.preventDefault(); if(profileDirty) {setError('Save the class profile changes before generating.');return;} void run('outline'); }}><fieldset disabled={locked}><legend>1. Your brief</legend>
       <div className="ai-type-grid" role="group" aria-label="What would you like to create?">{[['lesson',isTraining?'Training session':'Lesson',isTraining?'Experience, analyse and rehearse':'Explore, practise and communicate'],['exam',isTraining?'Practice exam':'Exam','Assess clearly and fairly'],['homework','Homework','Extend learning beyond class'],['practice','Practice','Retrieve, repeat and improve']].map(([id,title,desc])=><button type="button" key={id} aria-pressed={creationType===id} onClick={()=>{if(id!==creationType){setCreationType(id);changeBrief(brief);}}}><CreationIcon type={id}/><strong>{title}</strong><span>{desc}</span></button>)}</div>
       <details className="ai-context"><summary>{isTraining?`Training profile · ${trainingProfile.programme} · ${trainingProfile.experience}`:`Your class · ${brief.level} · ${profile.courseType} · ${profile.ageGroup}`}</summary><p>These shared details come from Class settings. Save changes here to update future briefs too.</p>{isTraining?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setProfileDirty(true);changeBrief({...brief,level:v.experience==='Mixed experience'?'Mixed experience':['Two to five years','Over five years'].includes(v.experience)?'Experienced':v.experience==='Under two years'?'Developing':'Foundation'});}}/>:<ClassProfileFields value={profile} onChange={v=>{setProfile(v);setProfileDirty(true);changeBrief({...brief,objectives:!brief.objectives || brief.objectives===profile.goals?v.goals:brief.objectives,context:!brief.context || brief.context===profile.needs?v.needs:brief.context});}}/>}<button type="button" className="btn ai-profile-save" disabled={!profileDirty} onClick={()=>void run('profile',{profile,trainingProfile,level:brief.level})}>Save to class settings</button></details>
