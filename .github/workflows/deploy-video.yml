@@ -1,0 +1,59 @@
+name: Deploy verified video services
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/deploy-video.yml']
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci && npm --prefix functions ci --no-audit --no-fund
+      - name: Video behavior, binding and diagnostic privacy checks
+        run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs test/video-secret-binding.test.mjs test/video-connection.test.mjs
+      - name: Prepare existing cloud credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA"
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy configured video services
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          fs.writeFileSync('functions/.env.lesson-lit','ELT_AI_MODEL=gpt-6.1-sol\nELT_AI_ENABLED=true\n');
+          JS
+          node functions/video/preflight.mjs
+          set -a
+          . functions/.env.lesson-lit
+          set +a
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only functions:videoStudio,functions:refreshVideoJobs --project lesson-lit --non-interactive --force 2>&1 | tee "$RUNNER_TEMP/video-deploy.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/video-deploy.log"
+      - name: Verify live binding and non-billable authentication
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: node functions/video/check-connection.mjs
+      - name: Verify the video endpoint rejects signed-out requests
+        run: |
+          node --input-type=module - <<'JS'
+          const r=await fetch('https://us-central1-lesson-lit.cloudfunctions.net/videoStudio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{action:'status'}})});
+          const b=await r.json();
+          if(r.status!==401||b.error?.status!=='UNAUTHENTICATED')throw Error('Video authentication guard check failed');
+          console.log('Video endpoint rejects signed-out requests; no generation started.');
+          JS
+      - name: Remove credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
