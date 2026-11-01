@@ -25,6 +25,7 @@ jobs:
         env:
           VITE_ELT_AI_PILOT: 'true'
       - run: npx playwright install --with-deps chromium
+      - run: node test/smoke.mjs --only=Songs: --a11y
       - run: npm run a11y
       - run: node --test test/speech/song-separation.test.mjs
       - name: Real model on the model publisher's public audio example

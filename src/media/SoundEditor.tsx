@@ -29,7 +29,7 @@ import { UiIcon } from '../components/UiIcon';
 // more files, or record a new track while the others play. Undo, and the usual shortcuts.
 
 // extra: more tracks to start with (a recording session: one per person), each at its own time.
-export type SoundSource = { songStems?:boolean; timedScript?: ScriptLine[]; blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
+export type SoundSource = { songStems?:boolean;songVocalsMuted?:boolean; timedScript?: ScriptLine[]; blank?: boolean; buffer: AudioBuffer; name: string; marks?: number[]; script?: string[]; roomDb?: number; recorded?: boolean; file?: File; extra?: { name: string; buffer: AudioBuffer; at: number }[]; at?: number };
 export type SavedSound = { mediaId: string; archiveId: string; title: string; script: ScriptLine[] };
 export type Use = { cls: string; lesson: string; task: string };
 export type ReplaceTarget = { name: string; uses: () => Promise<Use[]>; run: (blob: Blob, meta: { script: ScriptLine[]; duration: number; stemSource?:StemSource }, onProgress: (p: number) => void) => Promise<void> };
@@ -84,7 +84,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
 
   // ------------------------------------------------------------ the project, with undo
   const initial = useMemo<Project>(() => {
-    const voice:Track = { ...(source.songStems?{songRole:'vocals' as const}:{}), ...newTrack(source.extra || source.at !== undefined ? source.name : 'Speaker 1'), clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
+    const voice:Track = { ...(source.songStems?{songRole:'vocals' as const}:{}), ...newTrack(source.extra || source.at !== undefined ? source.name : 'Speaker 1'), mute:source.songVocalsMuted??false, clips: source.blank ? [] : [{ id: newId(), src: 'main', a: 0, b: length0, at: source.at ?? 0, gain: 1, fx: '' as VoiceFx, fadeIn: 0, fadeOut: 0 }], noise: (source.roomDb !== undefined && source.roomDb > -50 ? 1 : 0) as 0 | 1 };
     const marks = source.marks ?? [];
     const texts = source.script ?? [];
     let lines: Line[] = texts.map((text, i) => {
@@ -798,7 +798,11 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     // wait for any cleaning still going on
     for (let k = 0; k < 600 && cleanBusy; k++) await new Promise((r) => setTimeout(r, 100));
     setSaving({ stage: 'Putting it together', p: 0.05 });
-    const out = mixdown(heard.project, heard.sources, rate);
+    const hasStems=p.tracks.some(t=>t.songRole==='vocals'),solo=p.tracks.some(t=>t.solo);
+    const vocalsOff=hasStems&&!p.tracks.some(t=>t.songRole==='vocals'&&!t.mute&&(!solo||t.solo));
+    // Keep the full master; the saved player opens with the teacher's vocals setting.
+    const master=hasStems?{...heard.project,tracks:heard.project.tracks.map(t=>({...t,solo:false,...(t.songRole==='vocals'?{mute:false}:{})}))}:heard.project;
+    const out = mixdown(master, heard.sources, rate);
     setSaving({ stage: 'Making it smaller', p: 0.08 });
     const blob = await encodeMp3(out, rate, quality, (q) => setSaving({ stage: 'Making it smaller', p: 0.08 + q * 0.52 }));
     const sc = recordingScript(p);
@@ -809,15 +813,15 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       // Keep vocal audio even if the teacher muted its track for this saved mix.
       stems={vocals:await encodeMp3(mixdown(version(true),heard.sources,rate),rate,quality),instrumental:await encodeMp3(mixdown(version(false),heard.sources,rate),rate,quality)};
     }
-    return { blob, stems, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.6 };
+    return { blob, stems, vocalsOff, duration: +(out.length / rate).toFixed(2), sc, name: title.trim() || 'Recording', base: 0.6 };
   };
   const save = async () => {
     if (!user) return setError('Sign in again to save.');
     stop();
     setError('');
     try {
-      const { blob, stems, duration, sc, name, base } = await produce();
-      const stemSource=stems?await saveStemResources(user.uid,classId,name,folder,stems,sc,duration):undefined;
+      const { blob, stems, vocalsOff, duration, sc, name, base } = await produce();
+      const stemSource=stems?await saveStemResources(user.uid,classId,name,folder,stems,sc,duration,vocalsOff):undefined;
       setSaving({ stage: 'Uploading', p: base });
       const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration, ...(stemSource?{stems:stemSource.stems}:{}) }, (q) => setSaving({ stage: 'Uploading', p: base + q * (0.97 - base) }));
       setSaving({ stage: 'Adding it to your resources library', p: 0.98 });
@@ -840,8 +844,8 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     if (!replace) return;
     setAsking(null);
     try {
-      const { blob, stems, duration, sc, base } = await produce();
-      const stemSource=stems&&user?await saveStemResources(user.uid,classId,title.trim()||replace.name,folder,stems,sc,duration):undefined;
+      const { blob, stems, vocalsOff, duration, sc, base } = await produce();
+      const stemSource=stems&&user?await saveStemResources(user.uid,classId,title.trim()||replace.name,folder,stems,sc,duration,vocalsOff):undefined;
       setSaving({ stage: 'Replacing it everywhere', p: base });
       await replace.run(blob, { script: sc, duration, ...(stemSource?{stemSource}:{}) }, (q) => setSaving({ stage: 'Replacing it everywhere', p: base + q * (0.99 - base) }));
       setSaving({ stage: 'Saved', p: 1 });

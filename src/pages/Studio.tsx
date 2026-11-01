@@ -171,7 +171,7 @@ export function SoundStudio() {
           const read=async(id:string)=>{const manifest=await loadManifest(classId,id);if(!manifest)throw Error('missing stem');const response=await fetch(await soundUrl(classId,id,manifest));if(!response.ok)throw Error('unavailable stem');return decodeSound(await response.blob());};
           const [vocals,instrumental]=await Promise.all([read(m.stems.vocals),read(m.stems.instrumental)]);stems={vocals,instrumental};
         }
-        if (active) setSource({ buffer:stems?.vocals||buffer, name: (archived?.name || m.title || 'Recording')+(stems?' · Vocals':''), timedScript: m.script ?? archived?.script ?? [],...(stems?{songStems:true,extra:[{name:'Sing-along backing',buffer:stems.instrumental,at:0}]}:{}) });
+        if (active) setSource({ buffer:stems?.vocals||buffer, name: archived?.name || m.title || 'Recording', timedScript: m.script ?? archived?.script ?? [],...(stems?{songStems:true,songVocalsMuted:!!m.stems?.vocalsOff,extra:[{name:'Sing-along backing',buffer:stems.instrumental,at:0}]}:{}) });
       } catch { if (active) setError('We couldn’t open this recording. Check that you have access to its lesson and try again.'); }
     })();
     return () => { active = false; opened.current = ''; };

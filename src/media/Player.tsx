@@ -75,7 +75,7 @@ export function useEngine(classId: string, mediaId: string, given?: Manifest | n
   const stored = m?.kind === 'audio';
   const [vocalsOn,setVocalsOn]=useState(true);const switchPosition=useRef<{time:number;playing:boolean}|null>(null);
   const chooseVocals=(on:boolean)=>{if(el.current)switchPosition.current={time:el.current.currentTime,playing:!el.current.paused};setReady(false);setVocalsOn(on);};
-  useEffect(()=>{setVocalsOn(true);switchPosition.current=null;},[classId,mediaId]);
+  useEffect(()=>{setVocalsOn(!m?.stems?.vocalsOff);switchPosition.current=null;},[classId,mediaId,m?.stems?.vocalsOff]);
 
   // A sound or video element (stored sound, or a file on the web).
   useEffect(() => {
@@ -671,6 +671,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
       <span>{fmtTime(e.time)} / {fmtTime(e.duration||e.m.duration||0)}</span>
     </span>
     <span className="im-transport"><label>Volume<input type="range" aria-label="Volume" min={0} max={1} step={0.05} value={e.volume} onChange={ev=>e.setVolume(Number(ev.target.value))}/></label><label>Speed<select aria-label="Playback speed" value={e.rate} onChange={ev=>e.setRate(Number(ev.target.value))}>{[.75,1,1.25,1.5].map(r=><option key={r} value={r}>{r}×</option>)}</select></label></span>
+    {e.m?.stems&&<button type="button" className="btn small-btn" aria-pressed={e.vocalsOn} disabled={!e.ready} onClick={()=>e.setVocalsOn?.(!e.vocalsOn)}>{e.vocalsOn?'Vocals on':'Vocals off · sing-along'}</button>}
     {plays>0&&<span className="mp-note">{used?'No plays left':teacher?`Learners can play ${plays} times`:`${plays-e.ends} plays left`}</span>}
     {e.error&&<span className="mp-error">{e.error}</span>}
     {showScript&&<span className="im-script">{lines.map((l,i)=><span key={i} className={l.t!==null&&e.time>=l.t?'said':''}>{l.text} </span>)}</span>}

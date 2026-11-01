@@ -98,7 +98,7 @@ export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math
 // Sound files are stored in parts (a Firestore document holds up to 1 MB), with a manifest that
 // carries the script. Manifests and parts can be opened without signing in, through the QR code.
 const PART = 450 * 1024;
-export type SongStemIds = {vocals:string;instrumental:string};
+export type SongStemIds = {vocals:string;instrumental:string;vocalsOff?:boolean};
 export type SongStemBlobs = {vocals:Blob;instrumental:Blob};
 export type StemSource = {classId:string;stems:SongStemIds};
 export type Manifest = { stems?:SongStemIds; kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
@@ -170,8 +170,8 @@ export function soundUrl(classId: string, id: string, m: Manifest) {
 }
 
 // Each stem is a normal reusable resource, and the full recording links to both.
-export async function saveStemResources(uid:string,classId:string,name:string,folder:string,blobs:SongStemBlobs,script:ScriptLine[],duration:number):Promise<StemSource>{
-  const stems={} as SongStemIds;
+export async function saveStemResources(uid:string,classId:string,name:string,folder:string,blobs:SongStemBlobs,script:ScriptLine[],duration:number,vocalsOff=false):Promise<StemSource>{
+  const stems:SongStemIds={vocals:'',instrumental:'',...(vocalsOff?{vocalsOff:true}:{})};
   for(const key of ['vocals','instrumental'] as const){
     const title=name+(key==='vocals'?' · Vocals':' · Sing-along backing');
     const saved=await saveSound(classId,blobs[key],{title,script,duration});
@@ -182,7 +182,7 @@ export async function saveStemResources(uid:string,classId:string,name:string,fo
 }
 export async function copySoundStems(source:StemSource,classId:string):Promise<SongStemIds>{
  if(source.classId===classId)return source.stems;
- const result={} as SongStemIds;
+ const result:SongStemIds={vocals:'',instrumental:'',...(source.stems.vocalsOff?{vocalsOff:true}:{})};
  for(const key of ['vocals','instrumental'] as const){
   const id=source.stems[key],m=await loadManifest(source.classId,id);if(!m||m.kind!=='audio')throw Error('A saved song track is missing.');
   const r=doc(mediaCol(classId));
