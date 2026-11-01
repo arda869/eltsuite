@@ -154,8 +154,8 @@ const J = {
     await pageButton.click();
     await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
     if(!await d.locator('.pic-node,.sbn').count())throw Error('Designer content was not inserted');
-    await d.route('https://commons.wikimedia.org/w/api.php**',route=>route.fulfill({json:{query:{pages:{1:{pageid:1,title:'File:Market.png',imageinfo:[{url:'https://upload.wikimedia.org/test-market.png',thumburl:'https://upload.wikimedia.org/test-market.png',width:160,height:120,mime:'image/png',extmetadata:{Artist:{value:'Test artist'},LicenseShortName:{value:'CC BY 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by/4.0/'}}}]}}}}}));
-    await d.route('https://upload.wikimedia.org/test-market.png',route=>route.fulfill({body:readFileSync(downloaded),contentType:'image/png'}));
+    await d.route('https://commons.wikimedia.org/w/api.php**',route=>route.fulfill({json:{query:{pages:{1:{pageid:1,title:'File:Market.png',imageinfo:[{url:'https://upload.wikimedia.org/test/500px-test-market.png',thumburl:'https://upload.wikimedia.org/test/500px-test-market.png',width:4000,height:3000,mime:'image/png',extmetadata:{Artist:{value:'Test artist'},LicenseShortName:{value:'CC BY 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by/4.0/'}}}]}}}}}));
+    await d.route('https://upload.wikimedia.org/test/500px-test-market.png',route=>route.fulfill({body:readFileSync(downloaded),contentType:'image/png'}));
     await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
     await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
     await d.getByRole('tab',{name:'Wikimedia Commons',exact:true}).click();

@@ -58,7 +58,7 @@ const strip = (h = '') => h.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 export async function searchPictures(q: string, page = 1, kind: '' | 'illustration' | 'photograph' = ''): Promise<WebPic[]> {
   const u = new URL('https://commons.wikimedia.org/w/api.php');
   const filter = kind === 'illustration' ? ' filetype:drawing' : kind === 'photograph' ? ' filetype:bitmap' : '';
-  const p = { action: 'query', format: 'json', origin: '*', generator: 'search', gsrsearch: q + filter, gsrnamespace: '6', gsrlimit: '30', gsroffset: String((page - 1) * 30), prop: 'imageinfo', iiprop: 'url|size|extmetadata|mime', iiurlwidth: '360', iiextmetadatafilter: 'Artist|LicenseShortName|LicenseUrl|ObjectName' };
+  const p = { action: 'query', format: 'json', origin: '*', generator: 'search', gsrsearch: q + filter, gsrnamespace: '6', gsrlimit: '30', gsroffset: String((page - 1) * 30), prop: 'imageinfo', iiprop: 'url|size|extmetadata|mime', iiurlwidth: '1000', iiextmetadatafilter: 'Artist|LicenseShortName|LicenseUrl|ObjectName' };
   for (const [k, v] of Object.entries(p)) u.searchParams.set(k, v);
   const r = await fetch(u.toString());
   if (!r.ok) throw new Error('search');
@@ -71,7 +71,8 @@ export async function searchPictures(q: string, page = 1, kind: '' | 'illustrati
       const i = x.imageinfo![0];
       const m = i.extmetadata ?? {};
       const name = strip(m.ObjectName?.value) || x.title.replace(/^File:/, '').replace(/\.[a-z0-9]+$/i, '');
-      const big = i.mime === 'image/svg+xml' || i.width > 1800 ? i.thumburl!.replace(/\/\d+px-/, '/1800px-') : i.url;
+      // Use the exact rendition returned by Commons; arbitrary thumbnail widths can fail.
+      const big = i.thumburl!;
       const who = strip(m.Artist?.value);
       return { id: String(x.pageid), title: name, thumb: i.thumburl!, url: big, w: i.width, h: i.height, credit: `“${name}”${who ? ` by ${who}` : ''}, ${strip(m.LicenseShortName?.value) || 'see Wikimedia Commons'}, via Wikimedia Commons. Source: https://commons.wikimedia.org/?curid=${x.pageid}${m.LicenseUrl?.value ? '. Licence: '+strip(m.LicenseUrl.value) : ''}` };
     });
