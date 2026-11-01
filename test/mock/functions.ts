@@ -44,7 +44,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if (name === 'recordingSpeech') {
     if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');
     const bytes=new Uint8Array(48000), view=new DataView(bytes.buffer);
-    for(let i=0;i<120000;i++)view.setInt16(i*2,Math.sin(i/24000*Math.PI*440)*8000,true);
+    for(let i=0;i<24000;i++)view.setInt16(i*2,Math.sin(i/24000*Math.PI*440)*8000,true);
     let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
     return {data:{pcm:btoa(binary),rate:24000,transcript:d.text}};
   }
@@ -92,7 +92,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     if(d.metaOnly)return {data:{status:'complete',stems:job.stems||null}};
     const bytes=new Uint8Array(44+240000),view=new DataView(bytes.buffer),write=(at:number,s:string)=>{for(let i=0;i<s.length;i++)bytes[at+i]=s.charCodeAt(i);};
     write(0,'RIFF');view.setUint32(4,bytes.length-8,true);write(8,'WAVEfmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,24000,true);view.setUint32(28,48000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);write(36,'data');view.setUint32(40,240000,true);
-    for(let i=0;i<24000;i++)view.setInt16(44+i*2,Math.sin(i*(d.stem==='instrumental'?.05:.1))*(d.stem?1500:3000),true);
+    for(let i=0;i<120000;i++)view.setInt16(44+i*2,Math.sin(i*(d.stem==='instrumental'?.05:.1))*(d.stem?1500:3000),true);
     let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);
     return {data:{status:'complete',audio:btoa(binary),mime:'audio/wav',providerLyrics:job.lyrics,stems:job.stems||null}};
   }

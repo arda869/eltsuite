@@ -32,7 +32,7 @@ jobs:
         if: always()
         with:
           name: song-interface-preview
-          path: outputs/song-stems-preview.png
+          path: outputs/song-stems-*.png
       - run: npm run a11y
       - run: node --test test/speech/song-separation.test.mjs
       - name: Real model on the model publisher's public audio example
