@@ -51,9 +51,9 @@ test('objectives and context suffice without a topic; additional objectives are 
  assert.equal(output.topic,'');assert.deepEqual(output.additionalObjectives,['Ask for clarification.']);
  assert.throws(()=>validateBrief({...input,additionalObjectives:['x'.repeat(2001)]}));
 });
-test('native activity generation has room for complete long-form materials',async()=>{
+for (const name of ['activities','review','editorial_repair','lesson_revision']) test(`${name} has room for complete materials and editorial reasoning`,async()=>{
  let sent;
- await generate({...args,name:'activities',fetchImpl:async(_url,options)=>{
+ await generate({...args,name,fetchImpl:async(_url,options)=>{
   sent=JSON.parse(options.body);
   return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(outline)}]}],usage:{input_tokens:100,output_tokens:18000}})};
  }});
