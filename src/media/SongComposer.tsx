@@ -10,10 +10,11 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   const {user}=useAuth(),key='ll.songDraft:'+user?.uid;
   const [brief,setBrief]=useState<SongBrief>(initial),[approved,setApproved]=useState(false),[busy,setBusy]=useState(''),[error,setError]=useState(''),[pending,setPending]=useState(''),[draft,setDraft]=useState(''),[take,setTake]=useState<{blob:Blob;url:string;lyrics:string;title:string;signature:string;providerLyrics:string}|null>(null);
   const [loadedKey,setLoadedKey]=useState('');
+  const [savedSong,setSavedSong]=useState<{id:string;brief:SongBrief}|null>(null);
   const dialog=useRef<HTMLDialogElement>(null),lock=useRef(false),alive=useRef(true),audio=useRef<HTMLAudioElement>(null);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
-  useEffect(()=>{if(!user?.uid)return;let saved;try{saved=JSON.parse(sessionStorage.getItem(key)||'null');}catch{}setBrief({...initial,...saved?.brief});setPending(saved?.pending||'');setDraft('');setTake(null);setApproved(false);setLoadedKey(key);},[key,user?.uid]);
-  useEffect(()=>{if(user?.uid&&loadedKey===key)try{sessionStorage.setItem(key,JSON.stringify({brief,pending}));}catch{}},[brief,pending,key,loadedKey,user?.uid]);
+  useEffect(()=>{if(!user?.uid)return;let saved;try{saved=JSON.parse(sessionStorage.getItem(key)||'null');}catch{}setBrief({...initial,...saved?.brief});setPending(saved?.pending||'');setSavedSong(saved?.savedSong||null);setDraft('');setTake(null);setApproved(false);setLoadedKey(key);},[key,user?.uid]);
+  useEffect(()=>{if(user?.uid&&loadedKey===key)try{sessionStorage.setItem(key,JSON.stringify({brief,pending,savedSong}));}catch{}},[brief,pending,savedSong,key,loadedKey,user?.uid]);
   useEffect(()=>{if(open)dialog.current?.showModal();else{dialog.current?.close();audio.current?.pause();}},[open]);
   useEffect(()=>()=>{if(take)URL.revokeObjectURL(take.url);},[take]);
   const patch=(change:Partial<SongBrief>)=>{setBrief(b=>({...b,...change}));setApproved(false);setDraft('');setError('');};
@@ -26,7 +27,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
       if(result.status==='failed'){setPending('');throw Error(result.error||'This attempt did not finish. Your words are kept.');}
       if(result.status==='complete'){
         if(id.startsWith('lyrics-'))setDraft(result.lyrics||'');
-        else {const blob=songBlob(result);setTake({blob,url:URL.createObjectURL(blob),lyrics:snapshot.lyrics,title:snapshot.title,signature:JSON.stringify(snapshot),providerLyrics:result.providerLyrics||''});}
+        else {const blob=songBlob(result);setTake({blob,url:URL.createObjectURL(blob),lyrics:snapshot.lyrics,title:snapshot.title,signature:JSON.stringify(snapshot),providerLyrics:result.providerLyrics||''});setSavedSong({id,brief:snapshot});}
         setPending('');return;
       }
       if(Date.now()>deadline)throw Error('The song is still being prepared. Use Recover creation to check it without creating another.');
@@ -35,10 +36,10 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   };
   const run=async(kind:'lyrics'|'song'|'recover')=>{
     if(lock.current)return;lock.current=true;setError('');setBusy(kind);
-    const id=kind==='recover'?pending:kind+'-'+crypto.randomUUID(),snapshot={...brief};
-    setPending(id);
+    const id=kind==='recover'?(pending||savedSong?.id||''):kind+'-'+crypto.randomUUID(),snapshot=kind==='recover'&&!pending&&savedSong?{...savedSong.brief}:{...brief};
+    if(kind!=='recover')setPending(id);
     // Persist before starting the paid request so refresh/reconnection can recover it.
-    try{sessionStorage.setItem(key,JSON.stringify({brief:snapshot,pending:id}));}catch{}
+    if(kind!=='recover')try{sessionStorage.setItem(key,JSON.stringify({brief,pending:id,savedSong}));}catch{}
     try{
       if(kind!=='recover'){
         try{if(kind==='lyrics')await startLyrics(id,snapshot);else await startSong(id,snapshot);}
@@ -51,7 +52,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
         }
       }
       await recover(id,snapshot);
-    }catch(e){if(alive.current){if(String((e as {code?:string}).code||'').includes('not-found'))setPending('');setError((e as Error).message||'Creation could not finish. Your lyrics are kept.');}}
+    }catch(e){if(alive.current){if(String((e as {code?:string}).code||'').includes('not-found')){setPending('');setSavedSong(null);}setError((e as Error).message||'Creation could not finish. Your lyrics are kept.');}}
     finally{lock.current=false;if(alive.current)setBusy('');}
   };
   const insert=async()=>{
@@ -63,7 +64,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   return <dialog ref={dialog} className="speech-dialog song-dialog" aria-labelledby="song-title" onCancel={e=>{e.preventDefault();if(!busy)onClose();}} onKeyDown={e=>e.stopPropagation()}>
     <header className="speech-head"><div><span className="speech-eyebrow">RECORDING STUDIO</span><h2 id="song-title">Make a song for your learners</h2><p>Shape the brief. Choose the words. Listen before adding it.</p></div><button type="button" className="btn" disabled={!!busy} onClick={onClose}>Close</button></header>
     <div className="speech-body">
-      {pending&&!busy&&<div className="song-recovery"><p>A previous creation can be recovered without generating it again.</p><button type="button" className="btn" onClick={()=>void run('recover')}>Recover creation</button></div>}
+      {(pending||savedSong&&!take)&&!busy&&<div className="song-recovery"><p>Your previous creation can be recovered for 24 hours without generating it again.</p><button type="button" className="btn" onClick={()=>void run('recover')}>Recover creation</button></div>}
       <fieldset disabled={!!busy||!!pending} className="song-fields"><legend>1. Your song brief</legend>
         <label>Song title<input value={brief.title} maxLength={100} onChange={e=>patch({title:e.target.value})} placeholder="A song about daily routines"/></label>
         <label>Learners<NSelect aria-label="Learners" value={brief.audience} onChange={e=>patch({audience:e.target.value})}><option value="">Choose your learners</option>{['Young learners','Teenagers','Adults'].map(x=><option key={x}>{x}</option>)}</NSelect></label>
@@ -81,7 +82,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
         <label className="song-check"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/>I have reviewed these lyrics and want these exact words sung.</label>
       </fieldset>
       <p className="song-note">Your written lyrics stay unchanged. Listen for missed or extra words before using the song: AI vocals and longer-song durations can vary. Lyrics are added as one script block, without word-level timing.</p>
-      {take&&<section className="song-preview" aria-label="Song preview"><h3>{take.title}</h3><audio ref={audio} controls src={take.url} preload="metadata" aria-label="Listen to the generated song"/><a className="btn" href={take.url} download={take.title.replace(/[^\p{L}\p{N} ._-]/gu,'').slice(0,100)+(take.blob.type.includes('wav')?'.wav':'.mp3')}>Download preview ↓</a>{!current&&<p>The brief or lyrics have changed. Create a new song to use those changes.</p>}<details><summary>Words sent to the singer</summary><pre>{take.lyrics}</pre></details>{take.providerLyrics&&<details><summary>Music service’s returned lyrics and structure</summary><pre>{take.providerLyrics}</pre></details>}</section>}
+      {take&&<section className="song-preview" aria-label="Song preview"><h3>{take.title}</h3><audio ref={audio} controls src={take.url} preload="metadata" aria-label="Listen to the generated song"/><a className="btn" href={take.url} download={take.title.replace(/[^\p{L}\p{N} ._-]/gu,'').slice(0,100)+(take.blob.type.includes('wav')?'.wav':'.mp3')}>Download preview ↓</a>{!current&&<div><p>The brief or lyrics have changed. Create a new song to use those changes, or restore this preview’s settings.</p><button type="button" className="btn" disabled={!!busy} onClick={()=>{setBrief(JSON.parse(take.signature));setApproved(false);setDraft('');}}>Use this song’s settings</button></div>}<details><summary>Words sent to the singer</summary><pre>{take.lyrics}</pre></details>{take.providerLyrics&&<details><summary>Music service’s returned lyrics and structure</summary><pre>{take.providerLyrics}</pre></details>}</section>}
     </div>
     <footer className="speech-footer"><div className="speech-feedback"><span>Lyrics: ChatGPT · Music: Google Lyria · AI-generated audio</span>{error&&<p role="alert">{error}</p>}{busy&&<p role="status">{busy==='lyrics'?'Drafting your lyrics…':busy==='insert'?'Adding your song…':'Creating your song. This may take several minutes. Your words are kept.'}</p>}</div><div className="speech-actions"><button type="button" className="btn" disabled={!!busy||!!pending||!valid||!brief.lyrics.trim()||!approved||current} onClick={()=>void run('song')}>{take?'Create a new song':'Create song'}</button><button type="button" className="btn primary" disabled={!!busy||!current} onClick={()=>void insert()}>Add song to timeline</button></div></footer>
   </dialog>;

@@ -378,8 +378,12 @@ const J = {
     await d.getByRole('button',{name:'Create song',exact:true}).click();await d.getByRole('alert').waitFor();
     if(await d.getByLabel('Lyrics',{exact:true}).inputValue()!=='Where shall we go?\nTake a train.')throw Error('Failure lost lyrics');
     await d.getByLabel('Musical style',{exact:true}).fill('Jazz');await d.getByLabel('I have reviewed these lyrics').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await d.locator('audio').waitFor();
-    await s.p.evaluate(()=>{const key=Object.keys(sessionStorage).find(k=>k.startsWith('ll.songDraft:'));const value=JSON.parse(sessionStorage.getItem(key));value.pending=JSON.parse(localStorage.getItem('mockSongLastRequest')).id;sessionStorage.setItem(key,JSON.stringify(value));});
+    await s.p.waitForFunction(()=>Object.keys(sessionStorage).some(k=>k.startsWith('ll.songDraft:')&&JSON.parse(sessionStorage.getItem(k)).savedSong));
+    await d.getByLabel('Musical style',{exact:true}).fill('Folk');
     await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Make a song for your learners'});await d.getByRole('button',{name:'Recover creation'}).click();await d.locator('audio').waitFor();
+    if(await d.getByLabel('Musical style',{exact:true}).inputValue()!=='Folk')throw Error('Recovery overwrote a newer brief');
+    await d.getByRole('button',{name:'Use this song’s settings'}).click();
+    if(await d.getByLabel('Musical style',{exact:true}).inputValue()!=='Jazz')throw Error('Preview settings were not restored');
     await s.p.setViewportSize({width:390,height:844});await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
     if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Song composer overflows on phone');
     await axe(s.p,'Song composer phone dark',A11Y_FOUND);
