@@ -1,4 +1,4 @@
-// Real callable handlers + real Firestore transactions. Only external paid providers and Storage transport are substituted.
+// Real callable handlers + real Firestore transactions. Only external paid providers are substituted.
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {pathToFileURL} from 'node:url';
@@ -10,8 +10,7 @@ const {initializeApp}=deps('firebase-admin/app'),{getFirestore}=deps('firebase-a
 initializeApp({projectId:process.env.SONG_TEST_PROJECT||'demo-ai-access'});const db=getFirestore();
 process.env.OPENAI_API_KEY='test-openai';process.env.GEMINI_API_KEY='test-gemini';
 const output=new URL('../../functions/songs/.jobs-test.mjs',import.meta.url);
-await build({entryPoints:[new URL('../../functions/songs/index.js',import.meta.url).pathname],outfile:output.pathname,bundle:true,platform:'node',format:'esm',packages:'external',plugins:[{name:'private-storage-test',setup(b){b.onResolve({filter:/^firebase-admin\/storage$/},()=>({path:'storage',namespace:'fake'}));b.onLoad({filter:/.*/,namespace:'fake'},()=>({contents:`const objects=new Map();export const getStorage=()=>({bucket:()=>({file:path=>({save:async bytes=>objects.set(path,bytes),download:async()=>[objects.get(path)]})})});`,loader:'js'}));}}]});
-const originalFetch=globalThis.fetch;let musicCalls=0,lyricCalls=0;
+await build({entryPoints:[new URL('../../functions/songs/index.js',import.meta.url).pathname],outfile:output.pathname,bundle:true,platform:'node',format:'esm',packages:'external'});const originalFetch=globalThis.fetch;let musicCalls=0,lyricCalls=0;
 globalThis.fetch=async(url,opts)=>{
  if(String(url).includes('generativelanguage.googleapis.com')){musicCalls++;return {ok:true,json:async()=>({steps:[{type:'model_output',content:[{type:'audio',data:Buffer.alloc(1000,1).toString('base64'),mime_type:'audio/mpeg'}]}]})};}
  if(String(url).includes('api.openai.com')){lyricCalls++;return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify({lyrics:'A fresh draft.\nSing along.'})}]}],usage:{input_tokens:100,output_tokens:30}})};}

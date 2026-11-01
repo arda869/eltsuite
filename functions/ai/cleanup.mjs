@@ -1,7 +1,6 @@
 // Remove expired temporary AI jobs only. Private drafts and spending ledgers persist.
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
 initializeApp({ credential: applicationDefault(), projectId: 'lesson-lit' });
 const db = getFirestore();
 const cutoff = Timestamp.now();
@@ -21,15 +20,13 @@ for (const owner of await db.collection('aiPrivate').listDocuments()) {
 }
 console.log(`Removed ${deleted} expired temporary assistant jobs. Drafts and budgets were retained.`);
 
-// Song previews last 24 hours; saved Resources recordings use their own media objects.
+// Song previews last 24 hours; saved Resources recordings use their own media documents.
 for (const owner of await db.collection('songPrivate').listDocuments()) {
   for (let page = 0; page < 20; page++) {
     const snapshot = await owner.collection('jobs').where('expiresAt', '<=', Date.now()).limit(200).get();
     if (snapshot.empty) break;
     for (const job of snapshot.docs) {
-      const path = job.get('path');
-      if (path === `song-temporary/${owner.id}/${job.id}`) await getStorage().bucket().file(path).delete({ignoreNotFound:true});
-      await job.ref.delete();
+      await db.recursiveDelete(job.ref);
     }
     if (snapshot.size < 200) break;
   }

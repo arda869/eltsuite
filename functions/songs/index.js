@@ -1,7 +1,6 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
 import { getFirestore } from 'firebase-admin/firestore';
-import { getStorage } from 'firebase-admin/storage';
 import { authorizeTeacher } from '../speech/access.js';
 import { generate } from '../ai/provider.js';
 import { validateBrief, lyricSchema, lyricInstructions } from './contract.js';
@@ -49,9 +48,10 @@ export const recordingSong=onCall({...options,secrets:[gemini],timeoutSeconds:54
   const job=await reserve(uid,'song',id,brief);
   if(!job.created)return {id,status:(await job.ref.get()).get('status')};
   try{
-    const result=await generateSong(gemini.value(),brief),path=`song-temporary/${uid}/${id}`;
-    await getStorage().bucket().file(path).save(result.bytes,{resumable:false,metadata:{contentType:result.mime,cacheControl:'private, no-store'}});
-    await finish(uid,job.ref,{status:'complete',path,mime:result.mime,providerLyrics:result.providerLyrics});
+    const result=await generateSong(gemini.value(),brief),partSize=450*1024,parts=Math.ceil(result.bytes.length/partSize);
+    // Match the app's existing audio storage architecture, under server-only job paths.
+    await Promise.all(Array.from({length:parts},(_,i)=>job.ref.collection('parts').doc(String(i)).set({bytes:result.bytes.subarray(i*partSize,(i+1)*partSize)})));
+    await finish(uid,job.ref,{status:'complete',parts,mime:result.mime,providerLyrics:result.providerLyrics});
     return {id,status:'complete'};
   }catch(e){const error=e instanceof SongCreationError?e.message:['TimeoutError','AbortError'].includes(e.name)?'The music service took too long. Your lyrics are kept.':'The song could not be completed. Your lyrics are kept.';await finish(uid,job.ref,{status:'failed',error});throw new HttpsError('unavailable',error);}
 });
@@ -64,6 +64,9 @@ export const recordingSongResult=onCall({...options,timeoutSeconds:60},async req
   if(d.status==='working'&&Date.now()-d.createdAt>540000)return {status:'failed',error:'This attempt did not finish. Your words are kept; you can start a new attempt.'};
   if(d.status!=='complete')return {status:d.status,error:d.error??''};
   if(d.kind==='lyrics')return {status:'complete',lyrics:d.lyrics};
-  const [bytes]=await getStorage().bucket().file(d.path).download();
+  if(!Number.isInteger(d.parts)||d.parts<1||d.parts>27)throw new HttpsError('unavailable','The stored song is incomplete. Your lyrics are kept.');
+  const chunks=await Promise.all(Array.from({length:d.parts},(_,i)=>ref.collection('parts').doc(String(i)).get()));
+  if(chunks.some(c=>!c.exists||!Buffer.isBuffer(c.get('bytes'))))throw new HttpsError('unavailable','The stored song is incomplete. Your lyrics are kept.');
+  const bytes=Buffer.concat(chunks.map(c=>c.get('bytes')));
   return {status:'complete',audio:bytes.toString('base64'),mime:d.mime,providerLyrics:d.providerLyrics};
 });
