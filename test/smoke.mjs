@@ -436,7 +436,7 @@ const J = {
     await s.p.locator('.ProseMirror').nth(1).fill('At the airport, ask the airline representative to replace your damaged suitcase.');await s.p.keyboard.press('ControlOrMeta+End');await s.p.keyboard.press('Enter');await slash(s.p,'AI conversation');
     await see(s.p,'.speak-setup','the speaking task editor');
     if(!(await s.p.getByLabel('The situation',{exact:true}).inputValue()).includes('damaged suitcase')) throw Error('AI conversation lost its activity context');
-    await s.p.waitForTimeout(1000);
+    await s.p.locator('.save-state.saved').waitFor({state:'visible'});
     await s.p.getByLabel('Feedback focus source',{exact:true}).click();await s.p.getByRole('option',{name:'Let the learner choose',exact:true}).click();
     await s.p.getByRole('button',{name:'+ Feedback option',exact:true}).click();
     await s.p.getByLabel('Feedback option 3',{exact:true}).fill('Giving reasons');
