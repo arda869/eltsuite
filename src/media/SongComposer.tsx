@@ -19,6 +19,18 @@ const musicStyles=[
   {name:'Folk',hint:'A simple tune that tells a story',value:'Folk: a simple, singable melody and acoustic instruments'},
   {name:'Dance',hint:'An upbeat beat for movement',value:'Dance pop: upbeat rhythm, clear vocals and space for movement'},
 ];
+function SongProgress({kind}:{kind:string}){
+  const [seconds,setSeconds]=useState(0);
+  useEffect(()=>{const started=Date.now();setSeconds(0);const timer=window.setInterval(()=>setSeconds(Math.floor((Date.now()-started)/1000)),1000);return()=>window.clearInterval(timer);},[kind]);
+  const lyrics=kind==='lyrics',recovering=kind==='recover';
+  return <section className="song-work" aria-label="Creation progress">
+    <div className="song-work-icon" aria-hidden="true"><span/><UiIcon name={lyrics?'pen':'music'} size={30}/></div>
+    <div role="status" aria-live="polite" aria-atomic="true"><p className="song-work-eyebrow">AI IS WORKING</p><h3>{lyrics?'Writing your lyrics…':recovering?'Checking your last creation…':'Creating your song…'}</h3><p>{lyrics?'Shaping your topic into words that fit your learners and music style.':recovering?'Looking for the saved result. This won’t start a new creation.':'Turning your reviewed lyrics into music and vocals. This can take a few minutes.'}</p></div>
+    <div className="song-work-track" role="progressbar" aria-label={lyrics?'Lyric writing in progress':recovering?'Creation recovery in progress':'Song creation in progress'}><span/></div>
+    <p className="song-work-time" aria-hidden="true">Elapsed {Math.floor(seconds/60)}:{String(seconds%60).padStart(2,'0')}</p>
+    <p className="song-work-note">{seconds>=60?'Still working. Keep this window open; your words and settings are kept.':'Keep this window open. Your words and settings are kept.'}</p>
+  </section>;
+}
 export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>void;onInsert:(buffer:AudioBuffer,title:string,lyrics:string)=>void}){
   const {user}=useAuth(),key='ll.songDraft:'+user?.uid;
   const [step,setStep]=useState(0),[classPick,setClassPick]=useState(''),[lessons,setLessons]=useState<Item[]>([]),[lessonInfo,setLessonInfo]=useState<SongLesson|null>(null),[lessonBusy,setLessonBusy]=useState(false),[lessonError,setLessonError]=useState('');
@@ -45,6 +57,8 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
     finally{if(request===lessonRequest.current)setLessonBusy(false);}
   };
   useEffect(()=>{if(!open||!brief.lesson||(lessonInfo?.reference.classId===brief.lesson.classId&&lessonInfo?.reference.itemId===brief.lesson.itemId))return;let active=true;setLessonBusy(true);setLessonError('');loadSongLesson(brief.lesson).then(info=>{if(active)setLessonInfo(info);}).catch(()=>{if(active){setLessonInfo(null);setLessonError('The linked lesson is unavailable. Choose another lesson or unlink it.');}}).finally(()=>{if(active)setLessonBusy(false);});return()=>{active=false;};},[open,brief.lesson?.classId,brief.lesson?.itemId]);
+  const generating=!!busy&&busy!=='insert';
+  useEffect(()=>{if(generating)dialog.current?.querySelector('.song-content')?.scrollTo({top:0});},[generating]);
   const signature=JSON.stringify(brief),valid=!!brief.audience&&!!brief.style.trim()&&!!brief.language.trim();
   const current=!!take&&take.signature===signature;
   const recover=async(id:string,snapshot:SongBrief)=>{
@@ -96,6 +110,7 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
   };
   const styleReady=!!brief.style.trim()&&brief.style.trim()!=='Custom:';
   const learnersReady=!!brief.audience&&!lessonBusy&&!lessonError&&(!brief.lesson||!!lessonInfo);
+  const songBlockReason=lessonBusy?'Wait for the lesson to finish linking.':lessonError?'Go back to Learners & lesson to choose another lesson or continue without one.':!brief.audience?'Choose your learners in Learners & lesson.':!styleReady?'Choose a music style in Music & mood.':!brief.lyrics.trim()?(draft?'Click “Use these lyrics” to put the AI draft into your song.':'Write lyrics above, or draft them and click “Use these lyrics”.'):!approved?'Review the lyrics, then tick “I’ve reviewed the lyrics. Use these exact words.” to enable Create song.':'';
   const nextReady=step===0?learnersReady:styleReady;
   const move=(next:number)=>{setStep(next);dialog.current?.querySelector('.song-content')?.scrollTo({top:0});};
   const styleCustom=!!brief.style&&!musicStyles.some(s=>s.value===brief.style);
@@ -103,6 +118,8 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
     <header className="song-header"><div className="song-heading-icon"><UiIcon name="music" size={24}/></div><div><p className="song-eyebrow">RECORDING STUDIO</p><h2 id="song-title">Create a classroom song</h2><p>Make the music fit your learners and what you’re teaching.</p></div><button type="button" className="btn song-close" disabled={!!busy} onClick={onClose} aria-label="Close song creator"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
     <nav className="song-steps" aria-label="Song steps">{['Learners & lesson','Music & mood','Lyrics & preview'].map((label,i)=><button type="button" key={label} aria-current={step===i?'step':undefined} disabled={!!busy||!!pending||i===1&&!learnersReady||i===2&&(!learnersReady||!styleReady)} onClick={()=>move(i)}><span>{i+1}</span>{label}</button>)}</nav>
     <div className="song-content">
+      {generating&&<SongProgress kind={busy}/>}
+      <div hidden={generating} aria-busy={!!busy}>
       {(pending||savedSong&&!take)&&!busy&&<div className="song-recovery"><UiIcon name="music"/><div><strong>Your last creation is still available</strong><p>Recover it within 24 hours without creating it again.</p></div><button type="button" className="btn" onClick={()=>void run('recover')}>Recover creation</button></div>}
       {step===0&&<fieldset className="song-step-panel" disabled={!!busy||!!pending}><legend>Who is this song for?</legend><p className="song-intro">Choose your learners, then give the song a teaching purpose.</p>
         <div className="song-audiences" role="group" aria-label="Learners">{[{name:'Young learners',hint:'Simple, playful and easy to repeat'},{name:'Teenagers',hint:'Engaging, with age-respectful themes'},{name:'Adults',hint:'Relevant topics and natural language'}].map(a=><label key={a.name} className="song-choice"><input type="radio" name="song-audience" aria-label={a.name} checked={brief.audience===a.name} onChange={()=>patch({audience:a.name})}/><UiIcon name="groups" size={21}/><strong>{a.name}</strong><small>{a.hint}</small></label>)}</div>
@@ -128,7 +145,8 @@ export function SongComposer({open,onClose,onInsert}:{open:boolean;onClose:()=>v
         <label className="song-check"><input type="checkbox" checked={approved} onChange={e=>setApproved(e.target.checked)}/><span>I’ve reviewed the lyrics. Use these exact words.</span></label>
       </fieldset>}
       {take&&step===2&&<section className="song-preview" aria-label="Song preview"><div className="song-section-title"><UiIcon name="music" size={22}/><div><h3>{take.title}</h3><span>Your song is ready to preview</span></div></div><audio ref={audio} controls src={take.url} preload="metadata" aria-label="Listen to the generated song"/><p>Listen for the right words, clear pronunciation and a comfortable pace before adding your song.</p><div className="song-preview-actions"><a className="btn" href={take.url} download={take.title.replace(/[^\p{L}\p{N} ._-]/gu,'').slice(0,100)+(take.blob.type.includes('wav')?'.wav':'.mp3')}><UiIcon name="export" size={16}/>Download preview</a>{!current&&<button type="button" className="btn" disabled={!!busy} onClick={()=>{setBrief(JSON.parse(take.signature));setApproved(false);setDraft('');}}>Use this song’s settings</button>}</div>{!current&&<p>You’ve changed the brief. Create a new version to hear those changes, or restore this preview’s settings.</p>}<details><summary>Song lyrics</summary><pre>{take.lyrics}</pre></details></section>}
+      </div>
     </div>
-    <footer className="song-footer"><div className="song-feedback" aria-live="polite">{error?<p role="alert">{error}</p>:busy?<p role="status">{busy==='lyrics'?'Writing your lyrics…':busy==='insert'?'Adding your song…':'Creating your song. This may take a few minutes.'}</p>:<p>{step===2?'Review the words. Listen to the song. Add it when you’re happy.':'Step '+(step+1)+' of 3'}</p>}</div><div className="song-footer-actions">{step>0&&<button type="button" className="btn" disabled={!!busy||!!pending} onClick={()=>move(step-1)}>Back</button>}{step<2?<button type="button" className="btn primary" disabled={!!busy||!!pending||!nextReady} onClick={()=>move(step+1)}>{step===0?'Next: music':'Next: lyrics'}<span aria-hidden="true"> →</span></button>:<><button type="button" className={'btn'+(!current?' primary':'')} disabled={!!busy||!!pending||!valid||!styleReady||!brief.lyrics.trim()||!approved||current||lessonBusy||!!lessonError} onClick={()=>void run('song')}>{take?'Create a new version':'Create song'}</button>{take&&<button type="button" className="btn primary" disabled={!!busy||!current} onClick={()=>void insert()}>Add song to timeline</button>}</>}</div></footer>
+    <footer className="song-footer"><div id="song-create-guidance" className="song-feedback" aria-live="polite">{error?<p role="alert">{error}</p>:busy?<p>{busy==='insert'?'Adding your song…':'Your words and settings are kept while AI works.'}</p>:<p>{step===2?(songBlockReason||'Ready to create your song. Listen before adding it to the timeline.'):'Step '+(step+1)+' of 3'}</p>}</div><div className="song-footer-actions">{step>0&&<button type="button" className="btn" disabled={!!busy||!!pending} onClick={()=>move(step-1)}>Back</button>}{step<2?<button type="button" className="btn primary" disabled={!!busy||!!pending||!nextReady} onClick={()=>move(step+1)}>{step===0?'Next: music':'Next: lyrics'}<span aria-hidden="true"> →</span></button>:<><button type="button" aria-describedby="song-create-guidance" className={'btn'+(!current?' primary':'')} disabled={!!busy||!!pending||!valid||!styleReady||!brief.lyrics.trim()||!approved||current||lessonBusy||!!lessonError} onClick={()=>void run('song')}>{take?'Create a new version':'Create song'}</button>{take&&<button type="button" className="btn primary" disabled={!!busy||!current} onClick={()=>void insert()}>Add song to timeline</button>}</>}</div></footer>
   </dialog>;
 }

@@ -55,3 +55,5 @@ jobs:
       - name: Remove key
         if: always()
         run: rm -f "$RUNNER_TEMP/sa.json"
+
+# Frontend-only UX fixes retain build/browser checks without redeploying server functions.

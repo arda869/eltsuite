@@ -351,7 +351,19 @@ const J = {
     await d.getByLabel('Lyric ideas',{exact:true}).fill('Parts of the body song');
     if(await d.getByLabel('Song title',{exact:true}).inputValue())throw Error('Regression needs an empty title');
     if(!await draft.isEnabled())throw Error('A topic must enable drafting without a title, focus or lesson');
-    await draft.click();await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
+    await s.p.evaluate(()=>sessionStorage.setItem('mockSongDelayMs','3000'));
+    await draft.click();
+    await d.getByRole('heading',{name:'Writing your lyrics…',exact:true}).waitFor();
+    await d.getByRole('progressbar',{name:'Lyric writing in progress'}).waitFor();
+    if(await d.getByRole('button',{name:'Close song creator'}).isEnabled())throw Error('Creation should prevent accidental close or duplicate requests');
+    if(process.env.SONG_LYRICS_PROGRESS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_LYRICS_PROGRESS_SCREENSHOT});
+    await s.p.emulateMedia({reducedMotion:'reduce'});
+    if(await d.locator('.song-work-icon>span').evaluate(el=>getComputedStyle(el).animationName)!=='none')throw Error('Progress must respect reduced motion');
+    await s.p.emulateMedia({reducedMotion:'no-preference'});
+    await axe(s.p,'AI lyric creation progress',A11Y_FOUND);
+    await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
+    if(await d.getByRole('progressbar').count())throw Error('Progress remained after lyric drafting finished');
+    await d.getByText('Click “Use these lyrics” to put the AI draft into your song.',{exact:true}).waitFor();
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
     if(request.name!=='recordingLyrics'||request.brief.title!=='Parts of the body song'||request.brief.prompt!=='Parts of the body song'||request.brief.lesson||request.brief.focus)throw Error('Topic-only draft did not send a complete brief');
     if(await d.getByLabel('Song title',{exact:true}).inputValue()!=='Parts of the body song')throw Error('Suggested title was not shown');
@@ -359,6 +371,22 @@ const J = {
     await d.getByRole('button',{name:'Use these lyrics',exact:true}).click();
     if(!await d.getByLabel('Lyrics',{exact:true}).inputValue())throw Error('Teacher could not use drafted lyrics');
     if(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Drafting must not approve lyrics automatically');
+    await d.getByText('Review the lyrics, then tick “I’ve reviewed the lyrics. Use these exact words.” to enable Create song.',{exact:true}).waitFor();
+    await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();
+    if(!await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Reviewed AI lyrics must enable music creation');
+    await s.p.setViewportSize({width:390,height:844});await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
+    await d.getByRole('button',{name:'Create song',exact:true}).click();
+    await d.getByRole('heading',{name:'Creating your song…',exact:true}).waitFor();
+    await d.getByRole('progressbar',{name:'Song creation in progress'}).waitFor();
+    if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Song progress overflows on a phone');
+    if(process.env.SONG_MUSIC_PROGRESS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_MUSIC_PROGRESS_SCREENSHOT});
+    await axe(s.p,'AI music creation progress on phone',A11Y_FOUND);
+    await d.locator('audio').waitFor();
+    const songRequest=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
+    if(songRequest.name!=='recordingSong'||songRequest.approved!==true||!songRequest.brief.lyrics.trim())throw Error('Reviewed AI lyrics did not reach song creation');
+    const playable=await d.locator('audio').evaluate(el=>new Promise((resolve,reject)=>{const check=()=>el.readyState>=1&&el.duration>0?resolve(true):false;if(check())return;el.addEventListener('loadedmetadata',()=>resolve(el.duration>0),{once:true});el.addEventListener('error',()=>reject(Error('Song audio failed to load')),{once:true});}));
+    if(!playable)throw Error('Created song must have playable audio');
+    if(await d.getByRole('progressbar').count())throw Error('Progress remained after music creation finished');
     await axe(s.p,'Topic-only lyric drafting',A11Y_FOUND);return s;
   },
   'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {

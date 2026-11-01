@@ -47,6 +47,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const key='mockSongs', jobs=JSON.parse(sessionStorage.getItem(key)||'{}');
     if(name!=='recordingSongResult'){
       localStorage.setItem('mockSongLastRequest',JSON.stringify({name,...d}));
+      const delay=Number(sessionStorage.getItem('mockSongDelayMs')||0);if(delay>0)await new Promise(resolve=>setTimeout(resolve,Math.min(delay,5000)));
       if(d.brief.style.includes('FAIL_TEST'))throw Error('Test music service unavailable.');
       jobs[d.id]={kind:name==='recordingLyrics'?'lyrics':'song',lyrics:d.brief.lyrics};sessionStorage.setItem(key,JSON.stringify(jobs));return {data:{status:'complete'}};
     }
