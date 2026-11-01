@@ -298,7 +298,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
         const j=await tx.get(job);if(j.get('status')!=='running')return false;
         const canResume=phase==='review'&&!!j.get('checkpointJson');
         const retained=(j.get('retainedMicroUsd')??0)+(canResume?Math.max(0,j.get('reservedMicroUsd')-(j.get('checkpointReservedMicroUsd')??0)):0);
-        tx.update(job,{status:'failed',failure:{reason:failure.reason,phase:failure.phase},...(canResume?{retainedMicroUsd:retained}:{})});return canResume;
+        tx.update(job,{status:'failed',failure:{reason:failure.reason,phase:failure.phase},...(canResume?{retainedMicroUsd:retained,checkpointReservedMicroUsd:j.get('reservedMicroUsd')}:{})});return canResume;
       });
     } catch { warn('lessonAssistant failure status could not be saved'); }
     const message=resumable?'Your generated draft is saved. Its quality review could not finish. Retry this step to continue reviewing the saved draft; your approved work is unchanged. ['+failure.phase+':'+failure.reason+']':failure.message;

@@ -77,7 +77,7 @@ await resumeRef.set({status:'failed',failure:{phase:'review',reason:'provider'},
 const originalFetch=globalThis.fetch;let providerCalls=0;
 globalThis.fetch=async(url,options)=>{
  assert.equal(String(url),'https://api.openai.com/v1/responses');assert.equal(JSON.parse(options.body).text.format.name,'review');providerCalls++;
- if(providerCalls===1)return {ok:false,status:503,json:async()=>({})};
+ if(providerCalls<=2)return {ok:false,status:503,json:async()=>({})};
  const review={checks:Array.from({length:11},(_,i)=>({criterion:'Criterion '+i,score:4,evidence:'Checked fixture'})),criticalErrors:[],suggestions:[]};
  return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(review)}]}],usage:{input_tokens:100,output_tokens:100}})};
 };
@@ -85,9 +85,11 @@ try {
  const request={action:'plan',brief:resumeBrief,outline:savedOutline,approved:true,requestId:resumeId};
  await assert.rejects(call(request),e=>e.details?.resumable===true);
  const failed=await resumeRef.get();assert.equal(failed.get('status'),'failed');assert.equal(failed.get('retainedMicroUsd'),RESERVATION_PER_CALL);assert.ok(failed.get('checkpointJson'));
- const result=await call(request);assert.deepEqual(result.plan,savedPlan);assert.equal(providerCalls,2);
+ await assert.rejects(call(request),e=>e.details?.resumable===true);
+ assert.equal((await resumeRef.get()).get('retainedMicroUsd'),2*RESERVATION_PER_CALL);
+ const result=await call(request);assert.deepEqual(result.plan,savedPlan);assert.equal(providerCalls,3);
  const completed=await resumeRef.get();assert.equal(completed.get('status'),'completed');assert.equal(completed.get('checkpointJson'),undefined);
- assert.equal((await budgetRef.get()).get('committedMicroUsd'),RESERVATION_PER_CALL+2*usageCost(firstUsage));
+ assert.equal((await budgetRef.get()).get('committedMicroUsd'),2*RESERVATION_PER_CALL+2*usageCost(firstUsage));
  await assert.rejects(call({...request,brief:{...resumeBrief,context:'Changed context'}}));
 } finally {globalThis.fetch=originalFetch;}
 console.log('Saved review resumes without regenerating a plan, preserves unknown-usage reservations, cleans checkpoints and rejects changed briefs.');
