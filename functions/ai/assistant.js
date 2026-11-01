@@ -21,7 +21,7 @@ import { warn } from 'firebase-functions/logger';
 import { GenerationError, describeFailure } from './errors.js';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret, defineString } from 'firebase-functions/params';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
 import { canPlan, validateBrief, validate, checkSequence, outlineSchema, planSchema, reviewSchema, generationSchema } from './contract.js';
 import { generate, teachingInstructions } from './provider.js';
@@ -167,6 +167,11 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     if (j.exists) {
       if (j.get('fingerprint') !== fingerprint) fail('Use a new request for a changed brief.');
       if (j.get('status') === 'completed') return { kind: 'completed', result: readGenerationResult(j.data()) };
+      if(j.get('status')==='failed'&&j.get('failure')?.phase==='review'&&j.get('checkpointJson')&&j.get('budgetMonth')===month&&j.get('expiresAt')?.toMillis?.()>Date.now()) {
+        const checkpoint=JSON.parse(j.get('checkpointJson'));
+        tx.update(job,{status:'running',createdAt:Timestamp.now(),failure:FieldValue.delete()});
+        return {kind:'resume-review',checkpoint};
+      }
       if (isAbandonedJob(j.get('status'), j.get('createdAt')?.toMillis?.())) {
         // Return instead of throwing here so Firestore commits the status change.
         // Leave all money and daily reservations untouched: prior usage is unknown.
@@ -203,19 +208,20 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       tx.set(globalQuota,dailyGlobalUsage(g.data(),1,generationAdmin),{merge:true});
       tx.update(job,{reservedMicroUsd:j.get('reservedMicroUsd')+reservation.reserved,repairing:true});
     });
-    let sources=(d.action==='outline'?revision?.current?.sourceEvidence:d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
+    const resumed=existing?.kind==='resume-review'?existing.checkpoint:null;
+    let sources=resumed?.sourceEvidence??(d.action==='outline'?revision?.current?.sourceEvidence:d.action==='plan'?d.outline?.sourceEvidence:d.plan?.sourceEvidence)??[];
     const approved=d.action==='outline'?revision?.current:d.action==='plan'?d.outline:d.action==='activities'?d.plan:null;
     if(approved){const {sourceEvidence:unused,...content}=approved;const text=JSON.stringify(content);const cited=sources.filter(s=>text.includes(s.url));if(cited.length)sources=cited;}
     const researchUsage=[];
-    if(adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
+    if(!resumed && adultEditorial && (d.action==='outline'||(d.action==='plan'&&!sources.length))) {
       const research=await researchLesson({...brief,...(revision?{requestedChanges:revision.instructions,currentTitle:revision.current.title}:{})},{reserve:reserveExtra,generate:args=>generate({apiKey:key.value(),model:model.value(),...args})});
       researchUsage.push(...research.usage);sources=revision?[...new Map([...sources,...research.sources].map(s=>[s.url,s])).values()].slice(0,3):research.sources;
     }
     payload.sourceEvidence=sources;
     if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
     if(payload.approvedPlan){payload.approvedPlan={...payload.approvedPlan};delete payload.approvedPlan.sourceEvidence;}
-    let revisionSummary='';
-    const first = await generateChecked({generate,deadline:generationDeadline,repairTimeoutMs:d.action==='activities'?300000:90000, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, timeoutMs:Math.min(d.action==='activities'?300000:180000,generationDeadline-Date.now()), name: revision?'lesson_revision':d.action, input: revision?{brief,creationType,currentDraft:payload.currentDraft,requestedChanges:revision.instructions,classProfile:payload.classProfile,trainingProfile:payload.trainingProfile,sourceEvidence:sources}:{...(d.action==='activities'?conversionInput(payload,contract.input.approvedStageSlots):payload),...contract.input}, instructions: revision?editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions:(d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions)+(d.action==='activities'?'\nConvert the approved material faithfully. Do not add new factual claims or replace supplied texts. sourceAttributions are references for the already reviewed material; the full evidence is checked in the subsequent editorial pass.':'') },
+    let revisionSummary=resumed?.revisionSummary??'';
+    const first = resumed?{value:resumed[d.action],usage:resumed.usage??[]}:await generateChecked({generate,deadline:generationDeadline,repairTimeoutMs:d.action==='activities'?300000:90000, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, timeoutMs:Math.min(d.action==='activities'?300000:180000,generationDeadline-Date.now()), name: revision?'lesson_revision':d.action, input: revision?{brief,creationType,currentDraft:payload.currentDraft,requestedChanges:revision.instructions,classProfile:payload.classProfile,trainingProfile:payload.trainingProfile,sourceEvidence:sources}:{...(d.action==='activities'?conversionInput(payload,contract.input.approvedStageSlots):payload),...contract.input}, instructions: revision?editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions:(d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions)+(d.action==='activities'?'\nConvert the approved material faithfully. Do not add new factual claims or replace supplied texts. sourceAttributions are references for the already reviewed material; the full evidence is checked in the subsequent editorial pass.':'') },
       decode: value => {
         const revised=revision?applyRevision(revision.current,value,revision.schema):null;
         if(revision)revisionSummary=value.summary;
@@ -236,9 +242,14 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       reserveRepair: reserveExtra
     });
     let result = { [d.action]: first.value, ...(revision?{revisionSummary}:{}), usage: [...researchUsage,...first.usage] };
+    const saveReviewCheckpoint=async(value,reviewUsage=[])=>{
+      const checkpointJson=encodeGenerationResult({...result,[d.action]:value,usage:[...result.usage,...reviewUsage],sourceEvidence:sources}).resultJson;
+      await db.runTransaction(async tx=>{const j=await tx.get(job);if(j.get('status')!=='running')throw new GenerationError('storage');tx.update(job,{checkpointJson,checkpointReservedMicroUsd:j.get('reservedMicroUsd')});});
+    };
+    if(d.action==='plan'||d.action==='activities')await saveReviewCheckpoint(first.value);
     if ((d.action === 'plan' || d.action === 'activities') && cls.get('kind')!=='training') {
       phase='review';
-      const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,
+      const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,checkpoint:({value,usage})=>saveReviewCheckpoint(value,usage),
         review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...(revision?{requestedChanges:revision.instructions}:{}),[d.action]:value},
           instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
@@ -246,7 +257,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
           const revised=await generate({apiKey:key.value(),model:model.value(),schema:revisionSchema,name:'editorial_repair',timeoutMs:Math.min(180000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile:payload.classProfile,requestedChanges:revision?.instructions??'Repair every reported editorial defect while keeping all correct content.',currentDraft:value,editorialReview:review},
           instructions:editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions+'\nRepair all reported defects and criteria below 4. Use targeted replacements. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Fix dependent answer keys and scripts together. Do not merely claim a fix in notes.'});
-          return {...revised,value:applyRevision(value,revised.value,schema)};
+          try {return {...revised,value:applyRevision(value,revised.value,schema)};} catch {const error=new GenerationError('editorial_patch');error.usage=revised.usage;throw error;}
         },
         check: value => {
           validate(schema,value);
@@ -272,21 +283,25 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     await db.runTransaction(async tx => {
       const [b, j] = await Promise.all([tx.get(budget), tx.get(job)]);
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
-      const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), result.usage);
+      const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd')-(j.get('retainedMicroUsd')??0), result.usage);
       tx.update(budget, { committedMicroUsd: settled.balance });
       if(d.action==='activities')for(const asset of mediaRequests(result.activities))tx.create(job.collection('media').doc(asset.id),{...asset,...(adultEditorial&&asset.kind==='image'?{source:asset.style==='editorial'?'editorial':'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});
-      tx.update(job, { status: 'completed', model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
+      tx.update(job, { status: 'completed', checkpointJson:FieldValue.delete(),checkpointReservedMicroUsd:FieldValue.delete(),model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
     });
     return result;
   } catch (error) {
     const failure = describeFailure(phase === 'storage' ? new GenerationError('storage') : error, phase);
     warn('lessonAssistant generation failed', { reason: failure.reason, phase: failure.phase, ...(phase==='storage'?{storageCode:typeof error?.code==='number'||typeof error?.code==='string'?error.code:'unknown'}:{}) });
+    let resumable=false;
     try {
-      await db.runTransaction(async tx => {
-        const j = await tx.get(job);
-        if (j.get('status') === 'running') tx.update(job, { status: 'failed', failure: { reason: failure.reason, phase: failure.phase } });
+      resumable=await db.runTransaction(async tx => {
+        const j=await tx.get(job);if(j.get('status')!=='running')return false;
+        const canResume=phase==='review'&&!!j.get('checkpointJson');
+        const retained=(j.get('retainedMicroUsd')??0)+(canResume?Math.max(0,j.get('reservedMicroUsd')-(j.get('checkpointReservedMicroUsd')??0)):0);
+        tx.update(job,{status:'failed',failure:{reason:failure.reason,phase:failure.phase},...(canResume?{retainedMicroUsd:retained}:{})});return canResume;
       });
     } catch { warn('lessonAssistant failure status could not be saved'); }
-    throw new HttpsError('unavailable', failure.message, { reason: failure.reason, phase: failure.phase });
+    const message=resumable?'Your generated draft is saved. Its quality review could not finish. Retry this step to continue reviewing the saved draft; your approved work is unchanged. ['+failure.phase+':'+failure.reason+']':failure.message;
+    throw new HttpsError('unavailable',message,{reason:failure.reason,phase:failure.phase,resumable});
   }
 });

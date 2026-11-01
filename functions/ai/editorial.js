@@ -14,17 +14,28 @@ export function needsEditorialRepair(review) {
 
 // Each paid operation is reserved first. Do not expose failed drafts as completed
 // lessons or replace the caller's last accepted content when repair cannot pass.
-export async function editUntilReady({value,review,repair,check,reserve,deadline,maxRepairs=2,now=Date.now}) {
-  const usage=[];
-  for(let round=0;round<=maxRepairs;round++) {
-    if(deadline-now()<15000) throw new GenerationError('editorial');
-    await reserve('review');
-    const checked=await review(value,deadline-now()); usage.push(checked.usage);
-    if(!needsEditorialRepair(checked.value)) return {value,review:checked.value,usage,repairs:round};
-    if(round===maxRepairs || deadline-now()<30000) throw new GenerationError('editorial');
-    await reserve('repair');
-    const revised=await repair(value,checked.value,deadline-now());usage.push(revised.usage);
-    check(revised.value);value=revised.value;
+export async function editUntilReady({value,review,repair,check,reserve,deadline,maxRepairs=2,now=Date.now,checkpoint=async()=>{}}) {
+ const usage=[];let repairs=0;
+ while(true) {
+  if(deadline-now()<15000)throw new GenerationError('editorial');
+  await reserve('review');
+  const checked=await review(value,deadline-now());usage.push(checked.usage);
+  await checkpoint({value,usage:[...usage],repairs});
+  if(!needsEditorialRepair(checked.value))return {value,review:checked.value,usage,repairs};
+  let feedback=checked.value;
+  while(true) {
+   if(repairs>=maxRepairs||deadline-now()<30000)throw new GenerationError('editorial');
+   await reserve('repair');repairs++;
+   try {
+    const revised=await repair(value,feedback,deadline-now());usage.push(revised.usage);
+    try {check(revised.value);} catch {throw new GenerationError('editorial_patch');}
+    value=revised.value;await checkpoint({value,usage:[...usage],repairs});break;
+   } catch(error) {
+    if(!(error instanceof GenerationError)||error.reason!=='editorial_patch')throw error;
+    if(error.usage)usage.push(error.usage);
+    if(repairs>=maxRepairs)throw new GenerationError('editorial');
+    feedback={...checked.value,criticalErrors:[...checked.value.criticalErrors,'The previous proposed edit was not applicable. Start from the unchanged currentDraft. Use only existing JSON Pointer paths, valid JSON values and the required schema. Preserve approved stage metadata.']};
+   }
   }
-  throw new GenerationError('editorial');
+ }
 }
