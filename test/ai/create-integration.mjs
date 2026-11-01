@@ -44,3 +44,18 @@ const training=await call({action:'create',sourceRequestId:'create_training'});
 const trainingTask=await db.doc(`classes/${classId}/items/${training.createdItemId}/tasks/activity_0`).get();
 assert.ok(trainingTask.get('content').content.some(n=>n.type==='tt'&&n.attrs.kind==='exam'));
 console.log('Training creation uses native trainer forms.');
+
+await db.doc(`classes/${classId}`).update({kind:'language'});
+const mediaActivities={...activities,tasks:[{...activities.tasks[0],mediaPlan:[{kind:'image',title:'A station',prompt:'An original railway station',alt:'A railway station',lines:[]}],layout:'columns',imageLayout:'row'}]};
+const mediaJob=db.doc(`aiPrivate/${uid}/jobs/media_example`);
+await mediaJob.set({status:'completed',action:'activities',classId,creationType:'lesson',duration:15,sourcePlan:plan,...encodeGenerationResult({activities:mediaActivities})});
+await mediaJob.collection('media').doc('t0_m0').set({classId,taskIndex:0,index:0,kind:'image',title:'A station',alt:'A railway station',lines:[],status:'queued'});
+await assert.rejects(call({action:'create',sourceRequestId:'media_example'}));
+const status=await call({action:'mediaStatus',sourceRequestId:'media_example'});assert.equal(status.media[0].status,'queued');
+await assert.rejects(call({action:'retryMedia',sourceRequestId:'media_example',assetId:'t0_m0'}));
+await mediaJob.collection('media').doc('t0_m0').update({status:'ready',mediaId:'saved_image'});
+const withMedia=await call({action:'create',sourceRequestId:'media_example'});
+const created=await db.doc(`classes/${classId}/items/${withMedia.createdItemId}/tasks/activity_0`).get();
+assert.equal(created.get('layout'),'two');assert.match(JSON.stringify(created.get('content')),/media:saved_image/);
+await assert.rejects(call({action:'mediaStatus',classId:'studio-other',sourceRequestId:'media_example'}));
+console.log('Media completion gate, native attachment and class isolation passed.');

@@ -44,3 +44,10 @@ test('provider rejects refusal, truncation, wrong shape and HTTP errors', async 
   ]) await assert.rejects(generate({ ...args, fetchImpl: response(body) }));
   await assert.rejects(generate({ ...args, fetchImpl: async () => ({ ok: false }) }));
 });
+
+test('objectives and context suffice without a topic; additional objectives are preserved',()=>{
+ const {topic,...input}=brief;
+ const output=validateBrief({...input,additionalObjectives:['Ask for clarification.','']});
+ assert.equal(output.topic,'');assert.deepEqual(output.additionalObjectives,['Ask for clarification.']);
+ assert.throws(()=>validateBrief({...input,additionalObjectives:['x'.repeat(2001)]}));
+});

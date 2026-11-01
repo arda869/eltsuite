@@ -10,7 +10,7 @@ test('conversion validates stage timing, ordering, formats and usable keys',()=>
  assert.throws(()=>checkActivities({...value,tasks:[{...task,questions:[{...task.questions[0],format:'gap'}]}]},plan));
 });
 test('native activities separate correct answers from public nodes',()=>{
- const n=nativeTask(task,0);assert.equal(n.key.q0_0.correct,0);assert.equal(n.content.content[2].content[0].attrs.correct,-1);assert.ok(!JSON.stringify(n.content).includes('present continuous can describe'));
+ const n=nativeTask(task,0);assert.equal(n.key.q0_0.correct,0);assert.equal(n.content.content.flatMap(x=>x.content??[]).find(x=>x.type==='choice').attrs.correct,-1);assert.ok(!JSON.stringify(n.content).includes('present continuous can describe'));
  const gap=nativeTask({...task,format:'gap',questions:[{...task.questions[0],format:'gap',prompt:'I ___ tomorrow.',answer:'am flying'}]},1);assert.deepEqual(gap.key.q1_0.answers,['am flying']);assert.ok(!JSON.stringify(gap.content).includes('am flying'));
  const match=nativeTask({...task,format:'matching',questions:[{...task.questions[0],format:'matching',prompt:'a',answer:'A'},{...task.questions[0],format:'matching',prompt:'b',answer:'B'}]},2);assert.deepEqual(match.key.q2_match.map,[1,0]);
 });
@@ -64,4 +64,19 @@ test('structured lists and genre boxes use native nodes; role and support conten
  const supported=nativeVersions({...t,versions:[{label:'Supported',reason:'A frame.',instructions:'Choose.',input:'Different text',questions:task.questions,visuals:[]}]},0);
  assert.ok(!JSON.stringify(supported[0].native.content).includes('Shall we'));
  assert.throws(()=>checkActivities({...value,tasks:[{...t,blocks:[{kind:'numberedList',title:'',text:'Wrong container',items:[]}]}]},plan));
+});
+
+test('short options use inline choices and word responses never become essay fields',()=>{
+ const t={...task,questions:[{...task.questions[0],prompt:'You ___ book.',options:['must','should','can'],answer:'must'},{...task.questions[0],format:'shortAnswer',prompt:'Which day?',options:[],answer:'Monday'}]};
+ const n=nativeTask(t,0),json=JSON.stringify(n.content);
+ assert.match(json,/"display":"dropdown"/);assert.ok(!json.includes('"type":"writing"'));assert.equal(n.key.q0_1.kind,'gap');assert.ok(!json.includes('Monday'));
+ const long=nativeTask({...task,questions:[{...task.questions[0],options:['This is a long response with an explanation that needs its own line.','Another long response with enough information to warrant a separate line.'],answer:'This is a long response with an explanation that needs its own line.'}]},0);
+ assert.match(JSON.stringify(long.content),/"display":"radio"/);
+});
+test('sorting, definitions and media use native nodes with private answers',()=>{
+ const q={...task.questions[0],format:'categorise',prompt:'Item 1',options:['Necessary','A choice'],answer:'Necessary'};
+ const t={...task,input:'A pier by the river.',definitions:[{term:'pier',meaning:'A structure where boats stop.',example:''}],questions:[q],preparedMedia:[{kind:'image',mediaId:'img1',alt:'A harbour',title:'Harbour'},{kind:'audio',mediaId:'snd1',title:'A conversation'}],layout:'columns'};
+ const n=nativeTask(t,0),json=JSON.stringify(n.content);
+ for(const type of ['definition','picture','media','columnBreak','pq'])assert.ok(json.includes('"type":"'+type+'"'));
+ assert.equal(n.key.q0_categorise.k.map[0],0);assert.ok(!json.includes('"map"'));assert.match(json,/"scriptMode":"none"/);assert.match(json,/"src":"media:img1"/);
 });

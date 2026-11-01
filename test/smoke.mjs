@@ -101,8 +101,8 @@ const J = {
     await selection.waitFor();
     if(await selection.isChecked()) throw Error('Responses must not be preselected');
     await selection.check();
-    await s.p.getByLabel('Topic',{exact:true}).fill('Planning a trip');
-    await s.p.getByLabel('Objectives',{exact:true}).fill('Make and compare plans.');
+    await s.p.getByLabel('Learning objective',{exact:true}).fill('Planning a trip');
+    await s.p.getByLabel('Learning objective',{exact:true}).fill('Make and compare plans.');
     await s.p.getByLabel('Context',{exact:true}).fill('Adult learners working in pairs.');
     await s.p.getByRole('button',{name:'Suggest an outline'}).click();
     await see(s.p,'text=2. Review the outline','memory outline');
@@ -319,11 +319,11 @@ const J = {
     await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};fs['classes/'+classId].kind='training';fs['classes/'+classId].level='CELTA';fs['classes/'+classId].trainingProfile={programme:'CELTA',stage:'Pre-service',experience:'New to teaching',goals:'Prepare for teaching practice',context:'Teachers beginning their first course',focus:'Checking instructions',examDate:''};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
     await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).waitFor();
-    await s.p.getByLabel('Topic',{exact:true}).fill('Checking instructions');
+    await s.p.getByLabel('Learning objective',{exact:true}).fill('Checking instructions');
     await s.p.getByRole('button',{name:'Suggest an outline'}).click();
     await s.p.getByRole('button',{name:'Approve outline and make the plan'}).click();
     await s.p.getByRole('button',{name:'Prepare training activities'}).click();
-    await s.p.locator('.ai-task-cards>details>summary').first().click();
+
     await see(s.p,'text=Trainee completion form:','trainer form preview');
     await s.p.getByRole('button',{name:'Create session in Classes'}).click();
     await s.p.getByRole('link',{name:'Open in Classes'}).click();
@@ -331,7 +331,7 @@ const J = {
     await axe(s.p,'Trainer completion form',A11Y_FOUND);
     await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['classes/'+classId].kind='language';fs['classes/'+classId].level='B1';localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
-    await s.p.getByLabel('Topic',{exact:true}).waitFor();
+    await s.p.getByLabel('Learning objective',{exact:true}).waitFor();
     if(await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).count()) throw Error('Trainer studio leaked into a language class');
     return s;
   },
@@ -609,7 +609,7 @@ const J = {
     await toggle.click();
     await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Topic', { exact: true }).waitFor();
+    await s.p.getByLabel('Learning objective', { exact: true }).waitFor();
     await s.p.goto(BASE + '/admin?tab=ai');
     await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
     await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
@@ -648,14 +648,15 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    const topicBox=s.p.getByLabel('Topic',{exact:true});
+    const topicBox=s.p.getByLabel('Learning objective',{exact:true});
     await topicBox.waitFor({state:'visible'}).catch(async e=>{throw Error(e.message+' '+s.errors.join('; ')+' '+(await s.p.locator('body').innerText()).slice(0,600));});
+    await s.p.locator('.ai-context > summary').first().click();
     await s.p.getByLabel('Course type',{exact:true}).selectOption('Academic English');
     await s.p.getByLabel('Course goals',{exact:true}).fill('Compare academic arguments.');
-    if(await s.p.getByLabel('Objectives',{exact:true}).inputValue()!=='Compare academic arguments.') throw Error('Shared goals did not update the default brief');
-    await s.p.getByLabel('Objectives',{exact:true}).fill('Keep my lesson-specific objective.');
+    if(await s.p.getByLabel('Learning objective',{exact:true}).inputValue()!=='Compare academic arguments.') throw Error('Shared goals did not update the default brief');
+    await s.p.getByLabel('Learning objective',{exact:true}).fill('Keep my lesson-specific objective.');
     await s.p.getByLabel('Course goals',{exact:true}).fill('Evaluate evidence.');
-    if(await s.p.getByLabel('Objectives',{exact:true}).inputValue()!=='Keep my lesson-specific objective.') throw Error('Shared goals overwrote a customized brief');
+    if(await s.p.getByLabel('Learning objective',{exact:true}).inputValue()!=='Keep my lesson-specific objective.') throw Error('Shared goals overwrote a customized brief');
     await s.p.getByRole('button',{name:'Save to class settings'}).click();
     await see(s.p,'text=Class settings updated.','profile save');
     await s.p.getByRole('button',{name:'Exam Assess clearly and fairly'}).click();
@@ -671,7 +672,7 @@ const J = {
     if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)<=shortHeight) throw Error('Brief field did not expand');
     await topicBox.fill('Travel');
     if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)>shortHeight+2) throw Error('Brief field did not shrink');
-    await s.p.getByLabel('Objectives', { exact: true }).fill('Compare options and agree on a trip.');
+    await s.p.getByLabel('Learning objective', { exact: true }).fill('Compare options and agree on a trip.');
     await s.p.getByLabel('Context', { exact: true }).fill('Adult B1 class working in pairs.');
     await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
     await see(s.p, 'text=2. Review the outline', 'outline approval');
@@ -702,7 +703,7 @@ const J = {
       await actionPromise;
       if(!s.p.url().includes('/assistant')) throw Error('Dismissing leave warning lost the planner');
     };
-    await checkStay(()=>s.p.getByRole('link',{name:'Back to class',exact:true}).click());
+    await checkStay(()=>s.p.locator('.ai-generation').getByRole('link',{name:'Back to class',exact:true}).click());
     await checkStay(()=>s.p.goBack({timeout:1500}));
     const reloadDialog=s.p.waitForEvent('dialog');
     const reload=s.p.reload({timeout:3000}).catch(()=>{});
@@ -710,8 +711,8 @@ const J = {
     if(unload.type()!=='beforeunload') throw Error('Missing reload protection during saved-plan generation');
     await unload.dismiss();await reload;
     await s.p.evaluate(()=>localStorage.removeItem('mockAiPause'));
-    await see(s.p,'text=READY FOR YOUR REVIEW','activity review');
-    await s.p.locator('.ai-task-cards>details>summary').first().click();
+    await see(s.p,'text=04 · CLASS ACTIVITIES','activity review');
+
     await s.p.getByRole('table',{name:'Travel options'}).waitFor();
     await s.p.getByText('Supported · alternative task',{exact:true}).click();
     await s.p.getByText('Choose a trip. Complete the sentence.',{exact:true}).waitFor();
@@ -721,7 +722,7 @@ const J = {
     if(await s.p.locator('.ai-ready').count()) throw Error('Step 4 remains visible in step 3');
     await s.p.getByRole('textbox',{name:'Main aim',exact:true}).fill('Choose and justify a trip with clear reasons');
     await s.p.getByRole('button',{name:'Prepare class activities'}).click();
-    await see(s.p,'text=READY FOR YOUR REVIEW','rebuilt activity review');
+    await see(s.p,'text=04 · CLASS ACTIVITIES','rebuilt activity review');
     await s.p.getByRole('button',{name:'Create lesson in Classes'}).click();
     await see(s.p,'text=Created in Classes, hidden','hidden creation');
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);
@@ -922,7 +923,7 @@ const J = {
     await toggle.click();
     await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Topic', { exact: true }).waitFor();
+    await s.p.getByLabel('Learning objective', { exact: true }).waitFor();
     await s.p.goto(BASE + '/admin?tab=ai');
     await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
     await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');

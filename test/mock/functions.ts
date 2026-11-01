@@ -64,6 +64,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   localStorage.setItem('mockAiLastRequest',JSON.stringify(d));
   if(d.action==='memories') return {data:{memories:[{id:'a:q',name:'Alex',text:'I visited Rome last year.',item:'Travel stories',task:'Your experience'}]}};
   const store = JSON.parse(localStorage.getItem('mockAiDrafts') || '{}');
+  if(d.action==='mediaStatus') return {data:{media:[]}};
   if (d.action === 'context') {const c=(await getDoc(doc(db,'classes',d.classId))).data()||{};return {data:{classContext:{name:c.name||'Demo class',level:c.level||'B1',kind:c.kind||'language',profile:c.learningProfile||null,trainingProfile:c.trainingProfile||null},evidence:{recent:[],skillLevels:{},counts:{items:0,submittedTasks:0,portfolioRecords:0},limitations:'No recorded evidence yet.'}}};}
   if (d.action === 'profile') {const c=(await getDoc(doc(db,'classes',d.classId))).data();await setDoc(doc(db,'classes',d.classId),c?.kind==='training'?{trainingProfile:d.trainingProfile,level:d.trainingProfile.programme}:{learningProfile:d.profile,level:d.level},{merge:true});return {data:{profileSaved:true}};}
   const stage = { id: 's1', title: 'Compare options', aim: 'Agree on a choice using reasons', minutes: d.brief.duration, interaction: 'Pairs' };
