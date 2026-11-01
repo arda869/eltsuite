@@ -1,6 +1,7 @@
 import { InlineMedia, newInlineMedia } from './MediaNode';
 import { EditorClassContext, useEditorClass } from './context';
 import { UiIcon } from '../components/UiIcon';
+import { useAuth } from '../lib/auth';
 import { tell } from '../lib/ask';
 import { useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor, type JSONContent } from '@tiptap/react';
@@ -104,10 +105,11 @@ export function InstrEditor({ doc, text, classId: givenClass, onChange, placehol
 // The instruction as learners (and the teaching screen) see it.
 export function InstrView({ doc, text, classId: givenClass }: { doc?: JSONContent | null; text: string; classId?:string }) {
   const { classId } = useEditorClass();
+  const teacher=useAuth().profile?.role === 'teacher';
   if (!doc) return text ? <p className="task-instr">{text}</p> : null;
   return (
     <div className="task-instr rich">
-      <TaskRenderer content={doc} responses={{}} classId={givenClass || classId} disabled />
+      <TaskRenderer content={doc} responses={{}} classId={givenClass || classId} teacher={teacher} disabled />
     </div>
   );
 }

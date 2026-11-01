@@ -32,12 +32,14 @@ export async function saveScript(uid: string | undefined, classId: string, media
 
 function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selected }: NodeViewProps) {
   const { classId } = useEditorClass();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const a = node.attrs as MediaAttrs;
   const inline = node.type.name === 'inlineMedia';
   const space = classId || a.space || (user ? `user:${user.uid}` : '');
   const [dialog, setDialog] = useState<MediaTab | null>(null);
   const label = a.kind === 'video' ? 'Video' : 'Recording';
+  if (!editor.isEditable) return <NodeViewWrapper as={inline?'span':'div'} className={inline?'inline-media im-'+(a.size||'m'):'task-media'} contentEditable={false}><MediaPlayer inline={inline} classId={space} mediaId={a.media} title={a.title} scriptMode={a.scriptMode} plays={a.plays} teaching={profile?.role==='teacher'} mute={a.mute??[]}/></NodeViewWrapper>;
+
   return (
     <NodeViewWrapper as={inline ? 'span' : 'div'} className={(inline ? 'inline-media im-' + (a.size || 'm') : 'block-node') + ' md-node' + (selected ? ' is-selected' : '')} contentEditable={false}>
       <div className="mcq-tools">
