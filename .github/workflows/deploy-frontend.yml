@@ -1,0 +1,57 @@
+name: Deploy tested frontend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/deploy-frontend.yml']
+
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        env:
+          VITE_ELT_AI_PILOT: 'true'
+        run: npm run build
+      - name: Install the test browser
+        run: npx playwright install --with-deps chromium
+      - name: Smoke and accessibility tests
+        timeout-minutes: 20
+        run: npm run a11y
+      - name: Prepare hosting credentials
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$SA" || { echo "::error::Missing hosting deploy key"; exit 1; }
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+      - name: Deploy tested frontend
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: |
+          set -o pipefail
+          npx --yes firebase-tools@14 deploy --only hosting --project lesson-lit --non-interactive 2>&1 | tee "$RUNNER_TEMP/hosting.log"
+          grep -q 'Deploy complete!' "$RUNNER_TEMP/hosting.log"
+      - name: Verify published build
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';
+          const expected=JSON.parse(fs.readFileSync('dist/version.json','utf8'));
+          const actual=await fetch('https://eltsuite.com/version.json?verify='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('Live version unavailable');return r.json();});
+          if(actual.build!==expected.build)throw Error('Live site does not match the tested frontend build');
+          console.log('Confirmed tested frontend is live:',actual.build);
+          JS
+      - name: Remove key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
