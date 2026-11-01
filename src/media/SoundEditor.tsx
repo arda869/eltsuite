@@ -4,6 +4,7 @@ import { effectCaption, recordingScript } from '../lib/recordingScript';
 import { transcribeRecording } from '../lib/speech';
 import { transcriptTimeline } from '../lib/transcriptTimeline';
 import { SpeechComposer } from './SpeechComposer';
+import { SongComposer } from './SongComposer';
 import { speechTimeline, type SpeechInsertion } from '../lib/speechTimeline';
 import { NSelect } from '../components/Select';
 import { createPortal } from 'react-dom';
@@ -60,6 +61,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const { user } = useAuth();
   const rate = source.buffer.sampleRate;
   const [speechOpen, setSpeechOpen] = useState(false);
+  const [songOpen, setSongOpen] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(!!source.timedScript);
 
   // ------------------------------------------------------------ sources (the raw sounds)
@@ -713,7 +715,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
   const clipBoard = useRef<{ clip: Clip; kind: Track['kind'] } | null>(null);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (speechOpen) return;
+      if (speechOpen || songOpen) return;
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, select, [contenteditable=true]')) return;
       const mod = e.metaKey || e.ctrlKey;
@@ -1177,6 +1179,10 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
     <div className={'daw sx' + (silMode ? ' sil-mode' : '')}>
       {transcriptOpen && <RecordingTranscript project={p} onLine={(id, patch) => setLine(id, patch, 'script'+id)} onEffect={(track,id,patch) => setClip(track,id,patch,'caption'+id)} onSeek={t => { setHead(t); playFrom(t); }} onClose={() => setTranscriptOpen(false)} />}
       <SpeechComposer open={speechOpen} onInsert={insertSpeech} onClose={() => setSpeechOpen(false)} />
+      <SongComposer open={songOpen} onClose={() => setSongOpen(false)} onInsert={(buffer, title, lyrics) => {
+        insertSpeech([{speakerId:newId(),speaker:title,text:lyrics,gap:0,take:{samples:toMono(buffer),rate:buffer.sampleRate,transcript:lyrics}}]);
+        setSongOpen(false);
+      }} />
       <div className="sx-bar">
         <a href="/archive" className="sx-suite" aria-label="ELT Suite" onClick={(e) => e.preventDefault()}>
           <SuiteMark app="Recording editor" color="#e9a77d" dark />
@@ -1191,6 +1197,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSpeechOpen(true); }}>
             <UiIcon name="script" size={18} /><span>Create speech</span>
           </button>
+          <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSongOpen(true); }}><UiIcon name="music" size={18} /><span>Create song</span></button>
           <button type="button" className={'sx-act' + (keysOpen ? ' on' : '')} onClick={() => setKeysOpen((v) => !v)} aria-expanded={keysOpen}>
             <UiIcon name="help" size={18} />
             <span>Shortcuts</span>

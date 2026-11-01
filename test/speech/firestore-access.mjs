@@ -19,6 +19,10 @@ try{
   await assertSucceeds(getDocs(query(collection(as('learner'),'classes/speech/speakingActivities/task/sessions'),where('uid','==','learner'))));
   await assertFails(getDocs(collection(as('learner'),'classes/speech/speakingActivities/task/sessions')));
   for(const uid of ['teacher','learner']){
+    await assertFails(getDoc(doc(as(uid),'songPrivate/teacher/jobs/song-private')));
+    await assertFails(setDoc(doc(as(uid),'songPrivate/teacher/jobs/song-private'),{status:'complete'}));
+    await assertFails(getDoc(doc(as(uid),'songUsage/2026-11-01')));
+    await assertFails(setDoc(doc(as(uid),'songUsage/2026-11-01'),{song:0}));
     await assertFails(setDoc(doc(as(uid),path),{uid:'learner',feedback:{forged:true}}));
     await assertFails(setDoc(doc(as(uid),'classes/speech/speakingActivities/task'),{enabled:true}));
     await assertFails(getDoc(doc(as(uid),'speakingCalls/private')));

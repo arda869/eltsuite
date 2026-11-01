@@ -14,6 +14,7 @@ initializeApp();
 export { helpAssistant } from './help/index.js';
 export { lessonAssistant } from './ai/assistant.js';
 export { recordingDialogue } from './speech/dialogue.js';
+export { recordingLyrics, recordingSong, recordingSongResult } from './songs/index.js';
 export { recordingSpeech, recordingTranscript } from './speech/index.js';
 export { speakingTask, closeSpeakingAtDeadline } from './speaking/index.js';
 const OWNER = 'ardanurioglu@gmail.com';
