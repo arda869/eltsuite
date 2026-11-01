@@ -19,7 +19,7 @@ The supplied email is the target specification, not evidence of existing functio
 
 ## External dependency
 
-No corpus provider or commercial redistribution licence has been selected. Teacher-supplied attributed evidence can support the manual investigation journey. Licensed search, corpus-wide frequency, register comparison and collocation statistics must remain unavailable with an explanation until a valid provider adapter and licence are configured and tested.
+Tatoeba is selected for the example-sentence MVP under its per-sentence CC BY 2.0 FR / CC0 text licences. The public API has been checked with a real search; deployed end-to-end verification remains pending. No professional balanced corpus subscription has been selected. Teacher-supplied attributed evidence can support the manual investigation journey. Licensed search, corpus-wide frequency, register comparison and collocation statistics must remain unavailable with an explanation until a valid provider adapter and licence are configured and tested.
 
 ## Verification
 

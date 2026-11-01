@@ -1,7 +1,7 @@
 import {getFunctions,httpsCallable} from 'firebase/functions';
 import {app} from '../lib/firebase';
 export type Family='corpus'|'discourse'|'language-awareness'|'pragmatics'|'learner-development'|'research';
-export type Evidence={id:string;text:string;source:string;url:string;location:string;licence:string;origin:'source'|'teacher'|'ai'|'learner';shareAllowed:boolean;consent:boolean;date:string;context:string;sourceRef?:{classId:string;portfolioId:string};providerRef?:{provider:'sketchengine';corpusId:string;toknum:number}};
+export type Evidence={id:string;text:string;source:string;url:string;location:string;licence:string;origin:'source'|'teacher'|'ai'|'learner';shareAllowed:boolean;consent:boolean;date:string;context:string;sourceRef?:{classId:string;portfolioId:string};providerRef?:{provider:'sketchengine';corpusId:string;toknum:number}|{provider:'tatoeba';sentenceId:number}};
 export type AnalysisAnnotation={id:string;evidenceId:string;span:string;tag:string;note:string;rater:string;status:'suggested'|'confirmed';confidence?:'low'|'medium'|'high';origin:'teacher'|'ai'};
 export type Investigation={id?:string;schemaVersion:1;type:Family;title:string;fields:Record<string,string>;evidence:Evidence[];annotations:AnalysisAnnotation[];version:number};
 export type Packet=Pick<Investigation,'schemaVersion'|'type'|'title'|'evidence'|'annotations'>&{fields?:Record<string,string>};

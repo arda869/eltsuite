@@ -10,7 +10,7 @@ async function main(){
  const fn=await google('https://cloudfunctions.googleapis.com/v2/projects/lesson-lit/locations/us-central1/functions/appliedLinguistics');
  const connected=fn.serviceConfig?.environmentVariables?.ELT_CORPUS_CONNECTED==='true';
  const config=corpusConfiguration((await getFirestore().doc('admin/corpus').get()).data(),connected);
- if(!config.available){console.log('Corpus search is not configured. Manual tools only; no provider authentication was attempted.');return;}
+ if(!config.available){console.log('Optional Sketch Engine is not configured. Tatoeba sentence search needs no secret; verify its published search and save journey separately.');return;}
  const secret='https://secretmanager.googleapis.com/v1/projects/lesson-lit/secrets/SKETCH_ENGINE_API_KEY/versions/latest';
  const metadata=await google(secret),version=metadata.name.split('/').at(-1);
  const bound=fn.serviceConfig?.secretEnvironmentVariables?.find(s=>s.key==='SKETCH_ENGINE_API_KEY');

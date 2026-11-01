@@ -13,7 +13,10 @@ export function investigationInput(raw) {
   if(origin==='source'&&(!row.source||!row.licence))throw Error('Sourced examples need attribution and reuse terms.');
   if(origin==='learner'&&!row.consent)throw Error('Confirm consent before saving learner evidence.');
   if(e.sourceRef)row.sourceRef={classId:idOf(e.sourceRef.classId),portfolioId:idOf(e.sourceRef.portfolioId)};
-  if(e.providerRef){
+  if(e.providerRef?.provider==='tatoeba'){
+   if(!Number.isSafeInteger(e.providerRef.sentenceId)||e.providerRef.sentenceId<1)throw Error('Invalid sentence provenance.');
+   row.providerRef={provider:'tatoeba',sentenceId:e.providerRef.sentenceId};
+  }else if(e.providerRef){
    if(e.providerRef.provider!=='sketchengine'||! /^[\w/.-]{1,160}$/.test(e.providerRef.corpusId))throw Error('Invalid corpus provenance.');
    row.providerRef={provider:'sketchengine',corpusId:e.providerRef.corpusId,toknum:Number(e.providerRef.toknum)||0};
   }

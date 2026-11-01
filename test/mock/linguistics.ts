@@ -7,7 +7,8 @@ export async function linguistics(d:any){
  const uid=getAuth().currentUser?.uid||'teacher1',store=JSON.parse(localStorage.getItem('mocklinguistics')||'{"investigations":{},"embeds":{},"responses":{}}');
  const persist=()=>localStorage.setItem('mocklinguistics',JSON.stringify(store));const source=()=>store.investigations[d.id];let result:any;
  switch(d.action){
- case 'status':result={corpus:{available:false,corpora:[],reason:'Licensed corpus connection is awaiting setup.'}};break;
+ case 'status':result={corpus:{available:true,corpora:[{id:'tatoeba-eng',name:'Tatoeba · English example sentences',lemma:false}],reason:''}};break;
+ case 'corpusSearch':result={lines:[{id:'tatoeba-42',text:'Well, I see your point.',before:'',match:'Well',after:', I see your point.',origin:'source',source:'Tatoeba contributor example',url:'https://tatoeba.org/en/sentences/show/42',location:'Sentence 42',licence:'CC BY 2.0 FR',shareAllowed:true,consent:false,date:'',context:'Community example.',canSave:true,providerRef:{provider:'tatoeba',sentenceId:42}}],hasMore:false};break;
  case 'list':result={items:Object.values(store.investigations).filter((x:any)=>x.owner===uid&&!x.revoked)};break;
  case 'load':if(!source()||source().revoked)throw Error('Unavailable');result={investigation:source()};break;
  case 'save':{const id=d.id||crypto.randomUUID();store.investigations[id]={...investigationInput(d.investigation),id,owner:uid,version:(d.version||0)+1};result={id,version:(d.version||0)+1};break;}

@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { idOf, investigationInput, selectedPacket } from './contract.js';
 import {corpusConfiguration,searchCorpus} from './corpus.js';
+import {searchTatoeba,tatoebaCorpus} from './tatoeba.js';
 const denied=()=>{throw new HttpsError('permission-denied','This evidence is private, has been revoked, or is no longer shared with you.');};
 async function get(db,path){return (await db.doc(path).get()).data();}
 export async function actor(db,auth){
@@ -38,7 +39,15 @@ async function checkPortfolioEvidence(db,who,evidence){
 export async function checkCorpusEvidence(db,evidence,{sharing=false,ai=false}={}){
  const rows=evidence.filter(e=>e.providerRef);if(!rows.length)return;
  const config=corpusConfiguration(await get(db,'admin/corpus'),true);
- for(const e of rows){const corpus=config.corpora.find(c=>c.id===e.providerRef.corpusId);
+ for(const e of rows){
+  if(e.providerRef.provider==='tatoeba'){
+   const original=await get(db,'linguisticsSentenceSources/'+e.providerRef.sentenceId);
+   if(!original)throw new HttpsError('failed-precondition','Search Tatoeba again to restore this sentence’s source credits.');
+   e.source=original.source;e.url=original.url;e.licence=original.licence;e.location=original.location;e.origin='source';
+   e.context=original.context+(e.text!==original.text?' Adapted by the teacher from the linked original.':'');
+   continue;
+  }
+  const corpus=config.corpora.find(c=>c.id===e.providerRef.corpusId);
   if(!config.available||!corpus?.allowCache)throw new HttpsError('failed-precondition','The licence for selected corpus evidence no longer permits storing it. Remove that evidence or ask the administrator to review the licence.');
   if(sharing&&!corpus.allowExport)throw new HttpsError('failed-precondition','The corpus licence does not permit sharing these examples.');
   if(ai&&!corpus.allowAI)throw new HttpsError('failed-precondition','The corpus licence has not been approved for AI processing. Choose other evidence.');
@@ -71,10 +80,14 @@ export async function handleLinguistics(db,auth,input,provider={}){
  }
  if(action==='myResponse'){await resolveEmbed(db,who,d.id);return {response:await get(db,`linguisticsEmbeds/${idOf(d.id)}/responses/${who.uid}`)||null};}
  if(!who.teacher)denied();
- if(action==='status')return {corpus:corpusConfiguration(await get(db,'admin/corpus'),!!provider.apiKey)};
+ if(action==='status'){const licensed=corpusConfiguration(await get(db,'admin/corpus'),!!provider.apiKey);return {corpus:{...licensed,available:true,corpora:[tatoebaCorpus,...(licensed.available?licensed.corpora:[])]}};}
  if(action==='corpusSearch'){
-  const config=corpusConfiguration(await get(db,'admin/corpus'),!!provider.apiKey);if(!config.available)throw new HttpsError('failed-precondition',config.reason);
+  const config=corpusConfiguration(await get(db,'admin/corpus'),!!provider.apiKey);if(d.corpusId!=='tatoeba-eng'&&!config.available)throw new HttpsError('failed-precondition',config.reason);
   const ref=db.doc(`linguisticsUsage/${who.uid}/days/${new Date().toISOString().slice(0,10)}`);await db.runTransaction(async tx=>{const old=await tx.get(ref);if((old.get('queries')||0)>=40)throw new HttpsError('resource-exhausted','You have used today’s 40 corpus queries. Try again tomorrow.');tx.set(ref,{queries:(old.get('queries')||0)+1});});
+  if(d.corpusId==='tatoeba-eng'){
+   const result=await searchTatoeba({query:d.query,cursor:d.cursor,caseSensitive:d.caseSensitive===true});
+   const batch=db.batch();for(const row of result.lines)batch.set(db.doc('linguisticsSentenceSources/'+row.providerRef.sentenceId),{text:row.text,source:row.source,url:row.url,licence:row.licence,location:row.location,context:row.context});if(result.lines.length)await batch.commit();return result;
+  }
   return searchCorpus({config,apiKey:provider.apiKey,query:d.query,corpusId:d.corpusId,page:d.page,caseSensitive:d.caseSensitive===true,lemma:d.lemma===true});
  }
  if(action==='list'){const rows=await db.collection('linguisticsInvestigations').where('owner','==',who.uid).limit(100).get();return {items:rows.docs.filter(x=>!x.get('revoked')).map(x=>({id:x.id,title:x.get('title'),type:x.get('type'),updatedAt:x.get('updatedAt')})).sort((a,b)=>b.updatedAt-a.updatedAt)};}

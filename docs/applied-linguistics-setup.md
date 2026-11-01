@@ -2,9 +2,15 @@
 
 The manual investigation workflow does not require a corpus API key. AI interpretation uses the existing server-side OpenAI connection and allowance controls. It must not describe generated examples as corpus findings.
 
-## Optional corpus provider
+## Tatoeba sentence examples
 
-The initial adapter targets the [Sketch Engine API](https://www.sketchengine.eu/apidoc/), using its [current OpenAPI contract](https://www.sketchengine.eu/apidoc/openapi.yaml). The connection is disabled by default. An API subscription does not by itself establish permission to redistribute corpus extracts in ELT Suite.
+The default source is the public [Tatoeba v1 API](https://api.tatoeba.org/), with no API key required. Search is English-only, text-only and limited to 40 queries per teacher per day. Unapproved, orphaned and unknown-licence entries are excluded. Supported text licences are CC BY 2.0 FR and CC0 1.0. Each saved sentence retains its contributor, original link and licence URL. Server-held source receipts prevent client changes from removing attribution; changed wording is marked as adapted. Teachers must review suitability before classroom use.
+
+Tatoeba is a community example collection, not a representative spoken/written corpus. Its results cannot establish population frequencies or register distributions. No audio licence is implied by a text licence.
+
+## Optional professional corpus provider
+
+The optional adapter targets the [Sketch Engine API](https://www.sketchengine.eu/apidoc/), using its [current OpenAPI contract](https://www.sketchengine.eu/apidoc/openapi.yaml). The connection is disabled by default. An API subscription does not by itself establish permission to redistribute corpus extracts in ELT Suite.
 
 Before enabling it, confirm the corpus identifiers and the provider's terms for commercial use, storage, classroom sharing and AI processing. Store the API key in Google Secret Manager as `SKETCH_ENGINE_API_KEY`, never in client settings or a repository. Set the server-only Firestore document `admin/corpus`:
 

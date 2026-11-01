@@ -46,3 +46,14 @@ assert.equal((await db.doc('aiPrivate/teacher/jobs/linguistics-cleanup').get()).
 assert.equal((await db.doc('linguisticsEmbeds/'+providerEmbed.id).get()).exists,false);
 await assert.rejects(call('teacher','load',{id:providerSource.id}));
 console.log('PASS: real emulator private save/reopen; cross-account denial; target-bound class/document/message shares; saved learner response; snapshot/live difference; membership/source revocation; existing inquiry link; reviewed coach packet; consented portfolio deletion.');
+
+// Public-provider provenance cannot be overwritten by editable client metadata.
+await db.doc('linguisticsSentenceSources/42').set({text:'Well, I see.',source:'Tatoeba contributor example',url:'https://tatoeba.org/en/sentences/show/42',licence:'CC BY 2.0 FR',location:'Sentence 42',context:'Community example.'});
+const publicDraft={...draft,evidence:[{...evidence,id:'tatoeba-42',text:'Well, we see.',providerRef:{provider:'tatoeba',sentenceId:42},source:'wrong credit',licence:'wrong licence'}]};
+const publicSaved=await call('teacher','save',{investigation:publicDraft});
+const publicLoaded=(await call('teacher','load',{id:publicSaved.id})).investigation;
+assert.equal(publicLoaded.evidence[0].source,'Tatoeba contributor example');
+assert.equal(publicLoaded.evidence[0].origin,'source');
+assert.match(publicLoaded.evidence[0].context,/Adapted by the teacher/);
+await assert.rejects(call('teacher','save',{investigation:{...publicDraft,evidence:[{...publicDraft.evidence[0],providerRef:{provider:'tatoeba',sentenceId:999}}]}}),/restore this sentence/);
+console.log('Tatoeba saved provenance and adaptation checks passed.');
