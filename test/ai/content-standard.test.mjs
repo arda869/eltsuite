@@ -53,3 +53,19 @@ test('lesson standards do not change the separate teaching-coach instructions',a
  fetchImpl:async(_url,options)=>{sent=JSON.parse(options.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:'{"ok":"yes"}'}]}],usage:{input_tokens:10,output_tokens:10}})};}});
  assert.equal(sent.instructions.trim(),'Reflective coaching only.');
 });
+
+test('receptive and age guidance is scoped to language generation, including review',async()=>{
+ const {receptiveInputStandard,teenLearnerStandard,schoolAgeAssessmentStandard}=await import('../../functions/ai/pedagogy.js');
+ for(const ageGroup of ['Adults','Teenagers','Young learners']) for(const training of [false,true]) for(const name of ['outline','plan','activities','review','teaching_coach']) {
+  let sent;
+  await generate({apiKey:'test',model:'gpt-6.1-sol',name,schema,input:{classProfile:{ageGroup},trainingProfile:training?{programme:'CELTA'}:null},instructions:'Task-specific instructions',
+   fetchImpl:async(_url,options)=>{sent=JSON.parse(options.body);return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:'{"ok":"yes"}'}]}],usage:{input_tokens:10,output_tokens:10}})};}});
+  const language=!training && name!=='teaching_coach';
+  assert.equal(sent.instructions.includes(receptiveInputStandard),language,`${name}/${ageGroup}/${training}: receptive`);
+  assert.equal(sent.instructions.includes(teenLearnerStandard),language && ageGroup==='Teenagers');
+  assert.equal(sent.instructions.includes(schoolAgeAssessmentStandard),language && ageGroup!=='Adults');
+  assert.equal(sent.instructions.includes(youngLearnerStandards),language && ageGroup==='Young learners');
+  if(name==='outline') assert.ok(sent.instructions.indexOf('OUTLINE ONLY')>sent.instructions.indexOf(receptiveInputStandard));
+  if(name==='teaching_coach') assert.equal(sent.instructions,'Task-specific instructions');
+ }
+});

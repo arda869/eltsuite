@@ -33,3 +33,15 @@ Turning the switch off stops new retrieval; it does not redact previously genera
 
 ## Validation and limits
 Request-level tests verify that originality and the appropriate language/trainer guidance reach outline, plan, activity and review calls. Memory tests cover default-off no-read behaviour, bounded rich-text extraction, submitted-writing selection and server-side ID filtering. These are prompt and integration checks, not evidence that every generated lesson meets the standard. Teacher review remains necessary; no fine-tuning or guaranteed plagiarism detection is claimed.
+
+## Additional age and receptive-input analysis (1 November 2026)
+Representative analysis added:
+- Teen2Teen One teacher book: overview and methodology, PDF pages 4–7; grammar banks 1, 6 and 12; Unit 1 Test A/B and the corresponding answer-key section. These are teen references, not evidence that the same tasks suit pre-readers. The remaining supplied unit tests were not exhaustively reviewed.
+- Navigate A1 teacher guide: reading and listening methodology, pages 20–23; coursebook contents and selected opening audioscripts. No recordings were supplied or listened to.
+- Headway Elementary Culture and Literature companion teacher guide: opening procedure; Intermediate CLIL worksheets: selected explanatory reading and diagram sequence. Historical factual or safety advice is not adopted as current authority.
+
+The resulting original guidance strengthens genre/purpose, textual coherence, adult relevance at beginner level, natural spoken exchanges, processing load, transferable receptive micro-skills and evidence-supported questions. It distinguishes exposure from a model for production. CLIL and cultural tasks must supply essential background, avoid stereotypes and identify facts needing verification. No source passage, scenario or exercise is included in deployed prompts.
+
+Teen guidance adds age-respectful contexts, meaning and sound before recall, manageable rehearsal and optional personalisation. School-age assessment guidance checks taught constructs, unscored examples, marks, keys and genuinely comparable parallel forms. Existing pre-reader oral/pointing routes remain separate.
+
+These standards apply to language outline, plan, activities and advisory review. They do not enter teacher-training or Teaching Coach prompts. The outline-only instruction still takes precedence: full texts and scripts belong in later material stages. Request-level tests exercise each age group and scope; they verify delivery of instructions, not the pedagogical quality of model output. No model fine-tuning is performed.
