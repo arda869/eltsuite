@@ -39,7 +39,7 @@ test('long editorial drafts fit review and targeted repair without dropping lear
  const {revisionSchema}=await import('../../functions/ai/revision.js');
  const {editorialStandard}=await import('../../functions/ai/editorial.js');
  const material='Complete learner material. '.repeat(2000);
- for(const name of ['review','editorial_repair']) {
+ for(const name of ['review','editorial_repair','lesson_revision']) {
   let called=false;
   await assert.rejects(generate({...args,name,schema:revisionSchema,instructions:editorialStandard,input:{currentDraft:{material}},fetchImpl:async(_url,options)=>{
    called=true;const body=JSON.parse(options.body);
