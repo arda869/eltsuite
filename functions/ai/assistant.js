@@ -1,3 +1,5 @@
+import { stageContract, allocateMinutes } from './sequence.js';
+import { generateChecked } from './recovery.js';
 import { mediaRequests, mediaInstructions } from './media-contract.js';
 import { collectMemories, selectedMemories } from './memories.js';
 import { contentReviewStandard } from './pedagogy.js';
@@ -168,16 +170,38 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   });
   if (existing?.kind === 'completed') return existing.result;
   if (existing?.kind === 'abandoned') throw new HttpsError('failed-precondition', 'The previous request exceeded its execution window and has been released. Your brief and outline are unchanged. Start a new generation by clicking the generation button again. [request:interrupted]');
+  const generationDeadline=Date.now()+390000;
   let phase = d.action;
   try {
-    const first = await generate({ apiKey: key.value(), model: model.value(), schema: d.action === 'outline' ? outlineSchema : d.action === 'activities' ? (cls.get('kind')==='training'?trainingActivitySchema:activitySchema) : planSchema, name: d.action, input: payload, instructions: d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.' });
-    try { if(d.action==='activities') checkActivities(first.value,d.plan,cls.get('kind')==='training'); else checkSequence(first.value, brief.duration); } catch { throw new GenerationError('sequence'); }
-    if(d.action==='activities' && first.value.tasks.some(t=>t.format==='listening'&&!(t.mediaPlan??[]).some(m=>m.kind==='audio')))throw new GenerationError('sequence');
-    if (d.action === 'plan' && JSON.stringify(first.value.stages.map(s => [s.id, s.minutes])) !== JSON.stringify(d.outline.stages.map(s => [s.id, s.minutes]))) throw new GenerationError('sequence');
-    let result = { [d.action]: first.value, usage: [first.usage] };
+    const schema=d.action==='outline'?outlineSchema:d.action==='activities'?(cls.get('kind')==='training'?trainingActivitySchema:activitySchema):planSchema;
+    const contract=stageContract(d.action,schema,d.action==='plan'?d.outline:d.plan);
+    const first = await generateChecked({generate, args: { apiKey: key.value(), model: model.value(), schema: contract.schema, name: d.action, input: {...payload,...contract.input}, instructions: (d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + contract.instructions },
+      decode: value => {
+        const decoded=contract.decode(value);
+        if(d.action==='outline' && decoded.stages.reduce((n,s)=>n+s.minutes,0)!==brief.duration) {
+          const minutes=allocateMinutes(decoded.stages.map(s=>s.minutes),brief.duration);
+          decoded.stages=decoded.stages.map((s,i)=>({...s,minutes:minutes[i]}));
+        }
+        return decoded;
+      },
+      check: value => {
+        if(d.action==='activities') {
+          checkActivities(value,d.plan,cls.get('kind')==='training');
+          if(value.tasks.some(t=>t.format==='listening'&&!(t.mediaPlan??[]).some(m=>m.kind==='audio'))) throw Error('Every listening activity needs an audio mediaPlan matching its private script.');
+        } else checkSequence(value,brief.duration);
+      },
+      reserveRepair: () => db.runTransaction(async tx => {
+        const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);
+        if(j.get('status')!=='running') throw new GenerationError('content');
+        const reservation=reserveBudget(b.get('committedMicroUsd')??0,1);
+        tx.update(budget,{committedMicroUsd:reservation.balance});
+        tx.update(job,{reservedMicroUsd:j.get('reservedMicroUsd')+reservation.reserved,repairing:true});
+      })
+    });
+    let result = { [d.action]: first.value, usage: first.usage };
     if (d.action === 'plan') {
       phase = 'review';
-      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, name: 'review', input: { brief, creationType, learnerMemories: payload.learnerMemories, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
+      const review = await generate({ apiKey: key.value(), model: model.value(), schema: reviewSchema, timeoutMs: Math.max(1000,Math.min(180000,generationDeadline-Date.now())), name: 'review', input: { brief, creationType, learnerMemories: payload.learnerMemories, classProfile: payload.classProfile, trainingProfile: payload.trainingProfile, plan: first.value },
         instructions: `${cls.get('kind')==='training'?trainingInstructions:teachingInstructions}\nReview the supplied plan, with one scored check for each of these 11 criteria: ${criteria}. Cite specific evidence. This is a pre-media planning review: the application generates and saves specified images and recordings in the next activity stage, and blocks lesson creation until those assets are ready. A complete image specification or exact recording script is a planned dependency, not a missing-media critical error merely because its file has not been generated yet. Flag missing specifications, mismatched scripts, impossible visual requirements and references with no planned asset. Do not replace planned recordings with teacher-read input just because media preparation is pending. Never certify media quality without inspecting the finished asset. Mark incorrect language, unsolvable tasks, wrong keys, missing referenced media, premature answer disclosure and inaccessible instructions as critical errors. Scrutinise learner-facing wording, receptive-skills sequencing, discovery before explanation, purposeful visual support, and whether differentiation changes the task rather than adding more work. ${contentReviewStandard} This is advisory AI review, not human approval.` });
       result = { ...result, review: review.value, usage: [...result.usage, review.usage] };
     }
