@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { ADMIN_CAN, ADMIN_SEE, acceptInvite, useInvite, type OrgInvite } from '../lib/admin';
 import { AFTER_SIGN_IN } from './SharedPage';
 import { SignIn } from './SignIn';
+import { InvitationIntro } from '../components/InvitationIntro';
 import { Loader } from '../components/Loader';
 import { Wordmark } from '../components/Wordmark';
 import { isLearnerEmail } from '../lib/learners';
@@ -71,15 +72,9 @@ function What({ inv }: { inv: OrgInvite }) {
 // Beside the sign-in form, for a teacher who is not signed in yet.
 function About({ inv }: { inv: OrgInvite }) {
   return (
-    <div className="intro inv-intro" style={{ ['--org' as string]: inv.color || 'var(--accent)' }}>
-      {inv.logo ? <img className="inv-logo" src={inv.logo} alt="" /> : <Wordmark big />}
-      <h1>Your whole job in one account</h1>
-      <p>
-        {inv.byName || 'An admin'} {inv.existing ? `would like you to join ${inv.orgName}. Sign in as ${inv.email} to answer.` : `has made a place for you at ${inv.orgName}. Create your account with ${inv.email} to start.`}
-      </p>
-      <ul className="inv-benefits"><li>Plan in minutes, with questions that mark themselves.</li><li>Teach it live: every learner’s screen follows yours.</li><li>Print it beautifully, like a coursebook page.</li><li>See who needs help, at a glance.</li></ul>
+    <InvitationIntro invitation={inv} organisation>
       <details className="inv-details"><summary>What {inv.orgName} can see and set</summary><What inv={inv} /></details>
-    </div>
+    </InvitationIntro>
   );
 }
 

@@ -1,18 +1,15 @@
 // Invitation copy approved from the user's Drive document. Pure builders: no mail is sent here.
 import { frame, pad, h1, h2, p, small, button, list, rule, code as codeBlock, esc, SITE } from './email-layout.mjs';
-const intro = 'ELT Suite is made by English teachers, for English teachers. The board, the coursebook, the worksheets and your marking pen are all in one place, online:';
-const benefits = (full = true) => [
-  'Plan in minutes. Write a lesson like a document, with questions that mark themselves, sound and pronunciation inside.',
-  `Teach it live. Every learner’s screen follows yours, in class or online${full ? ', and you see their answers as they come in' : ''}.`,
-  'Print it beautifully. Any lesson becomes a worksheet that looks like a coursebook page.',
-  `See who needs help. Answers, marking and attendance in one place${full ? ', with a recap for learners afterwards' : ''}.`,
-];
+import { readFileSync } from 'node:fs';
+const copy = JSON.parse(readFileSync(new URL('./invitation-copy.json', import.meta.url), 'utf8'));
+const intro = copy.intro;
+const benefits = (full = true) => copy.benefits.map(s => full ? s : s.replace(', and you see their answers as they come in', '').replace(', with a recap for learners afterwards', ''));
 const greeting = (name) => name?.trim() ? `Hello ${name.trim().split(/\s+/)[0]},` : 'Hello,';
 const about = (org) => `Your lessons, files and messages stay yours. ${org}’s admins see your name, email, job title and your class lists, and they can choose some settings for you, such as which apps you have and how much space. The teachers at ${org} become your colleagues.`;
 const subject = (s) => String(s).replace(/[\r\n]+/g, ' ');
 export function organisationInvitation(d, id, existing) {
   const org = d.orgName || 'your organisation';
-  const title = existing ? `Join your colleagues at ${org}` : 'Your whole job in one account';
+  const title = existing ? `Join your colleagues at ${org}` : copy.title;
   const preview = existing ? 'Share lessons and folders with your colleagues there. Your own work stays yours.' : `Plan, teach live and follow every learner, in one place. ${(d.byName || 'An admin').split(' ')[0]} has set it up for you.`;
   const sentence = `${d.byName || 'An admin'} ${existing ? 'would like you to join' : 'has made you a place at'} ${org} in ELT Suite${d.admin ? ', as one of its admins' : ''}.`;
   const features = existing ? [
@@ -31,7 +28,7 @@ export function organisationInvitation(d, id, existing) {
   };
 }
 export function codeInvitation(d, code) {
-  const title = 'Your whole job in one account';
+  const title = copy.title;
   const by = d.byName || 'The ELT Suite team';
   const sentence = `${by} has invited you to ELT Suite${d.orgName ? ` at ${d.orgName}` : ''}.`;
   const expires = d.expires ? ` The code works until ${new Date(d.expires).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Hong_Kong' })}.` : '';

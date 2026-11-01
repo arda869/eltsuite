@@ -17,6 +17,7 @@ import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode }
 import { Wordmark } from '../components/Wordmark';
 import { SuiteOrbit, Tagline } from '../components/SuiteOrbit';
 import './welcome.css';
+import { InvitationIntro } from '../components/InvitationIntro';
 
 type Mode = 'signin' | 'create' | 'reset' | 'link' | 'code';
 
@@ -150,7 +151,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
   return (
     <div className="signin">
-      {intro ?? (
+      {intro ?? (linked || code ? <InvitationIntro invitation={code ?? undefined} /> : (
         <div className="intro">
           <Wordmark big />
           <span className="soon-badge">{linked || code ? "You’re invited" : "Made for English teachers"}</span>
@@ -164,7 +165,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
             Questions? Email <a href="mailto:arda@eltsuite.com">arda@eltsuite.com</a>
           </p>
         </div>
-      )}
+      ))}
 
       <form id="teacher-sign-in" className="card" onSubmit={submit}>
         <h1>{TITLES[mode]}</h1>
