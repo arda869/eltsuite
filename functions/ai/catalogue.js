@@ -370,3 +370,5 @@ export const taskCatalogue = [
   }
 ];
 export const catalogueInstructions = "AVAILABLE EDITOR CATALOGUE (consider every relevant tool; never maximise variety for its own sake):\n"+taskCatalogue.map(t=>t.key+": "+t.description).join("\n")+"\nGeneration must use only the structured schema adapters. Tools needing external files, live rooms, saved banks or teacher setup cannot be invented. Choose a supported equivalent when the resource is absent. Native timelines, diagrams, highlighting, sorting and sentence ordering are available. Explain choices through the concrete activity description, not a generic promise.";
+
+export const catalogueReviewInstructions='Review meaningful use of the available native tools, not a variety quota: '+taskCatalogue.map(t=>t.key).join(', ')+'. Only structured adapters and genuinely available media may be used. Check that the chosen format creates a useful learner action.';

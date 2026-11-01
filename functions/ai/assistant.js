@@ -238,10 +238,10 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
           input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...(revision?{requestedChanges:revision.instructions}:{}),[d.action]:value},
           instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
         repair: async (value,review,remaining) => {
-          const revised=await generate({apiKey:key.value(),model:model.value(),schema:revision?revisionSchema:contract.schema,name:d.action,timeoutMs:Math.min(180000,remaining),
-          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...contract.input,...(revision?{currentDraft:value,requestedChanges:revision.instructions}:{output:value}),editorialReview:review},
-          instructions:(d.action==='activities'?activityInstructions:teachingInstructions)+'\n'+editorialStandard+'\nRepair all reported defects and criteria below 4. Return the complete revised output. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Do not merely claim a fix in notes.'+(revision?'\n'+revisionInstructions:contract.instructions)});
-          return {...revised,value:revision?applyRevision(value,revised.value,schema):contract.decode(revised.value)};
+          const revised=await generate({apiKey:key.value(),model:model.value(),schema:revisionSchema,name:'editorial_repair',timeoutMs:Math.min(180000,remaining),
+          input:{brief,creationType,sourceEvidence:sources,classProfile:payload.classProfile,requestedChanges:revision?.instructions??'Repair every reported editorial defect while keeping all correct content.',currentDraft:value,editorialReview:review},
+          instructions:editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions+'\nRepair all reported defects and criteria below 4. Use targeted replacements. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Fix dependent answer keys and scripts together. Do not merely claim a fix in notes.'});
+          return {...revised,value:applyRevision(value,revised.value,schema)};
         },
         check: value => {
           validate(schema,value);
