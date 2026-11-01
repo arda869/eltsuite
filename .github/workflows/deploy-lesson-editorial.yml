@@ -1,5 +1,5 @@
 name: Deploy lesson editorial workflow
-# Includes live-test source relevance corrections.
+# Includes teacher-requested revisions and live-test source relevance corrections.
 on:
   workflow_dispatch:
   push:
