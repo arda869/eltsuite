@@ -1405,6 +1405,8 @@ const J = {
   'Document menus, page appearance and citations': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/dev.html?as=teacher&friday');
+    await s.p.evaluate(async () => { await window.__mockReady; });
+    await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the fixture session');
     const d = await newFile(s, 'Collab document');
     await see(d, '.pg-paper', 'pages by default');
@@ -1451,6 +1453,8 @@ const J = {
     await see(d, '.pg-paper[data-paper-theme="black"]', 'the saved page appearance');
     await see(d, '.cite:has-text("Thornbury, 2006, p. 24")', 'the saved citation');
     await s.p.goto(BASE + '/dev.html?as=teacher&friday-brand');
+    await s.p.evaluate(async () => { await window.__mockReady; });
+    await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the organisation-brand fixture');
     await d.reload();
     await d.waitForFunction(() => document.documentElement.dataset.orgBrand === 'true');
