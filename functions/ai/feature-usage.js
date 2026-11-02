@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { isGenerationAdmin } from './allowance.js';
 import { AI_FEATURES } from './features.js';
+import { checkFeatureRelease } from './feature-release.js';
 export { AI_FEATURES } from './features.js';
 const catalog=new Map(AI_FEATURES.map(f=>[f.id,f]));
 export function validateLimits(limits) {
@@ -22,7 +23,8 @@ export async function usageContext(db,auth) {
 // A rejected budget/job reservation rolls this count back with the same transaction.
 export async function chargeFeature(tx,db,context,feature) {
  const policy=db.doc('aiAllowances/'+context.uid),usage=db.doc('aiFeatureUsage/'+context.uid+'/days/'+context.day);
- const [p,u]=await Promise.all([tx.get(policy),tx.get(usage)]);
+ const [p,u,r]=await Promise.all([tx.get(policy),tx.get(usage),tx.get(db.doc('aiFeatureReleases/settings'))]);
+ checkFeatureRelease(feature,r.get('states')??{},p.get('testingAccess')??[],context.isAdmin);
  const limit=effectiveLimit(feature,p.get('limits')??{},context.isAdmin),used=u.get('counts.'+feature)??0;
  if(!Number.isSafeInteger(used)||used<0)throw new HttpsError('internal','AI usage could not be checked. Please contact support.');
  if(limit!==null&&used>=limit)throw new HttpsError('resource-exhausted',limit===0?catalog.get(feature).label+' are disabled for your account. Contact your administrator.':catalog.get(feature).label+': you have used your '+limit+' daily uses. Your work is kept. The allowance resets at 00:00 UTC; ask your administrator to change it.');

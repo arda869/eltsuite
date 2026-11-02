@@ -1,3 +1,4 @@
+import { InlineAiImage } from '../design/InlineAiImage';
 import { DesignerImages, CommonsImages } from '../design/InlineImages';
 import { readStoryboard } from '../storyboard/StoryboardNode';
 import { zoomOf } from '../lib/zoom';
@@ -415,7 +416,7 @@ const savedQuality = (): PicQuality => {
 
 export function PictureDialog({ editor, classId, onClose }: { editor: Editor; classId: string; onClose: () => void }) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons'>('new');
+  const [tab, setTab] = useState<'new' | 'archive' | 'designer' | 'commons' | 'ai'>('new');
   const [url, setUrl] = useState('');
   const [alt, setAlt] = useState('');
   const [size, setSize] = useState<PicSize>('m');
@@ -522,7 +523,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
             <button type="button" role="tab" aria-selected={tab === 'archive'} className={tab === 'archive' ? 'on' : ''} onClick={() => setTab('archive')}>
               My files
             </button>
-            {(['designer','commons'] as const).map(k=><button type="button" role="tab" key={k} aria-selected={tab===k} className={tab===k?'on':''} onClick={()=>setTab(k)}>{k==='designer'?'Designer':'Wikimedia Commons'}</button>)}
+            {(['ai','designer','commons'] as const).map(k=><button type="button" role="tab" key={k} aria-selected={tab===k} className={tab===k?'on':''} onClick={()=>setTab(k)}>{k==='ai'?'Create with AI':k==='designer'?'Designer':'Wikimedia Commons'}</button>)}
           </span>
         </div>
         {tab === 'new' ? (
@@ -574,7 +575,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
               <input aria-label="What the picture shows, for learners who use a screen reader" value={alt} placeholder="What the picture shows, for learners who use a screen reader" onChange={(e) => setAlt(e.target.value)} />
             </label>
           </>
-        ) : tab==='designer' ? <><DesignerImages uid={user?.uid} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
+        ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (
           <>
             <ArchivePicker uid={user?.uid} kind="image" multiple onPick={fromArchive} busy={!!busy} />
             {look}

@@ -55,6 +55,24 @@ await assert.rejects(reserveFeature(db,superUser,'song'),{code:'resource-exhaust
 await db.doc('speechUsage/'+day).set({count:999999});
 await reserveSpeech(owner,'speech');
 await assert.rejects(reserveSpeech(learner,'speech'),{code:'resource-exhausted'});
+// Global release states and feature-specific testing grants are server enforced.
+await assert.rejects(call(teacher,{action:'releaseSave',states:{definitions:'testing'},version:0}),{code:'permission-denied'});
+let releases=await call(owner,{action:'releaseGet'});
+await call(owner,{action:'releaseSave',states:{definitions:'testing'},version:releases.version});
+await assert.rejects(call(owner,{action:'releaseSave',states:{},version:releases.version}),{code:'aborted'});
+await assert.rejects(reserveFeature(db,teacher,'definitions'),{code:'permission-denied'});
+settings=await call(owner,{action:'get',uid:'teacher'});
+await call(owner,{action:'save',uid:'teacher',version:settings.version,limits:settings.limits,testingAccess:['definitions']});
+await reserveFeature(db,teacher,'definitions');
+settings=await call(owner,{action:'get',uid:'teacher'});
+await call(owner,{action:'save',uid:'teacher',version:settings.version,limits:settings.limits,testingAccess:[]});
+await assert.rejects(reserveFeature(db,teacher,'definitions'),{code:'permission-denied'});
+assert.equal((await db.doc(`aiFeatureUsage/teacher/days/${day}`).get()).get('counts.definitions'),1,'denials do not consume allowance');
+releases=await call(owner,{action:'releaseGet'});
+await call(owner,{action:'releaseSave',states:{definitions:'off'},version:releases.version});
+await reserveFeature(db,owner,'definitions');
+await assert.rejects(reserveFeature(db,teacher,'definitions'),{code:'permission-denied'});
+releases=await call(owner,{action:'releaseGet'});await call(owner,{action:'releaseSave',states:{},version:releases.version});
 let music=0,drafts=0,videos=0,researchCalls=0;const originalFetch=globalThis.fetch;
 globalThis.fetch=async(url,opts)=>{
  if(String(url).startsWith('https://en.wikipedia.org/w/api.php'))return {ok:true,text:async()=>JSON.stringify(new URL(url).searchParams.has('list')?{query:{search:[{pageid:1}]}}:{query:{pages:[{title:'Rail transport',fullurl:'https://en.wikipedia.org/wiki/Rail_transport',extract:'This is simulated source evidence for a transport lesson. '.repeat(5)}]}})};
@@ -115,6 +133,7 @@ try{
  for(const who of [owner,teacher,learner]){
   const c=env.authenticatedContext(who.uid,who.token).firestore();
   await rules.assertFails(client.setDoc(client.doc(c,'aiAllowances',who.uid),{limits:{song:null}}));
+  await rules.assertFails(client.setDoc(client.doc(c,'aiFeatureReleases','settings'),{states:{song:'live'}}));
   await rules.assertFails(client.setDoc(client.doc(c,'aiFeatureUsage',who.uid,'days',day),{counts:{song:0}}));
   if(who===owner)await rules.assertSucceeds(client.getDoc(client.doc(c,'aiAllowances','teacher')));
   else await rules.assertFails(client.getDoc(client.doc(c,'aiAllowances','teacher')));

@@ -27,13 +27,15 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     return {data:{requestId:d.requestId,picture,illustration:{useful:true,prompt:'A grassy bank beside a river.',alt:'A grassy bank beside a river.',reason:'A picture makes this meaning clear.'},data:{...Object.fromEntries(fields.map(k=>[k,''])),pos:'noun',meaning:'The land at the side of a river.',example:'We sat on the river bank.',ipa:'/bæŋk/',collocations:'river bank',mistakes:'Here, bank is land beside water, not a place for money.'},translations:[],needsContext:false,note:'The river context selects the land meaning; wording is kept simple for A1.',level:'A1',ageGroup:'Young learners'}};
   }
   if (name === 'adminAiUsage') {
+    if(d.action==='releaseGet'||d.action==='releaseSave'){const r=doc(db,'aiFeatureReleases','settings');const prev=(await getDoc(r)).data()??{};if(d.action==='releaseSave')await setDoc(r,{states:d.states,version:(prev.version??0)+1});const value=(await getDoc(r)).data()??{};return {data:{features:AI_FEATURES,states:value.states??{},version:value.version??0}};}
+
     const ref=doc(db,'aiAllowances',d.uid),old=(await getDoc(ref)).data()??{};
     if(d.action==='save'){
       if(d.limits.song===999)throw Error('Test save unavailable. Your changes have not been saved.');
-      await setDoc(ref,{limits:d.limits,version:(old.version??0)+1});
+      await setDoc(ref,{limits:d.limits,testingAccess:d.testingAccess??[],version:(old.version??0)+1});
     }
     const current=(await getDoc(ref)).data()??{};
-    return {data:{features:AI_FEATURES,limits:current.limits??{},version:current.version??0,counts:{song:2,lyrics:4},day:new Date().toISOString().slice(0,10),isAdmin:d.uid==='teacher1'}};
+    return {data:{features:AI_FEATURES,limits:current.limits??{},testingAccess:current.testingAccess??[],version:current.version??0,counts:{song:2,lyrics:4},day:new Date().toISOString().slice(0,10),isAdmin:d.uid==='teacher1'}};
   }
   if (name === 'helpAssistant') {
     if (d.action === 'feedback') return { data: { saved: true } };

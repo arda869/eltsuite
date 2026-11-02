@@ -5,7 +5,7 @@ import { useSuper, useAppOn, useOrgs } from '../lib/admin';
 
 // The apps in the suite, from the nine-dot button: one account, every app.
 
-type App = { k: string; d: string; name: string; short?: string; group: 'teach' | 'make' | 'share' | 'help' | 'run'; about: string; to?: string; soon?: boolean; teacher?: boolean; color: string; icon: JSX.Element };
+type App = { k: string; d: string; name: string; short?: string; group: 'teach' | 'make' | 'share' | 'develop' | 'help' | 'run'; about: string; to?: string; soon?: boolean; teacher?: boolean; color: string; icon: JSX.Element };
 const I = (d: string) => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={d} />
@@ -14,8 +14,8 @@ const I = (d: string) => (
 // Home has its own colour, used by the top bar's mark on the home page too.
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
-  {k:'linguistics',group:'teach',name:'Applied Linguistics',about:'Language investigations and selected evidence for teaching',to:'/linguistics',teacher:true,color:'#497b75',d:'M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1',icon:I('M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1')},
-  { k: 'development', group: 'teach', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3', icon: I('M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3') },
+  {k:'linguistics',group:'develop',name:'Applied Linguistics',about:'Language investigations and selected evidence for teaching',to:'/linguistics',teacher:true,color:'#497b75',d:'M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1',icon:I('M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1')},
+  { k: 'development', group: 'develop', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3', icon: I('M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3') },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, d: 'M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z', icon: I('M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z') },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', d: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z', icon: I('M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z') },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', d: 'M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z', icon: I('M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z') },
@@ -53,8 +53,9 @@ export function AppLogo({ k, size = 30 }: { k: string; size?: number }) {
 // Teaching first, then the apps you make things in, then files and people. Help and running ELT Suite
 // sit at the bottom, smaller.
 const GROUPS: [App['group'], string][] = [
-  ['teach', 'Teach'],
-  ['make', 'Make'],
+  ['teach', 'Teach and organise'],
+  ['make', 'Create materials'],
+  ['develop', 'Professional learning'],
   ['share', 'Resources and people'],
 ];
 const ORDER = ['home', 'classes', 'development', 'linguistics', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
@@ -79,6 +80,7 @@ export function setAppFavicon(a: { color: string; d: string } | null) {
 export function AppGrid() {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
   const ME = 'apps';
   // Only one menu at the top is open at a time: opening one closes the other.
@@ -104,16 +106,19 @@ export function AppGrid() {
   const owner = useSuper() === true;
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const show = (k: string) => (k === 'home' ? true : k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : on(k));
-  const apps = APPS.filter((a) => a.k !== 'reading' && (teacher || (!a.teacher && !a.soon)) && show(a.k));
+  const apps = APPS.filter((a) => a.k !== 'reading' && (teacher || (!a.teacher && !a.soon)) && show(a.k) && `${a.name} ${a.about}`.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="apps" ref={ref}>
-      <button type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} data-tip="Apps" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} data-tip="Apps" onClick={() => {setOpen((o) => !o);setSearch('');}}>
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
           {[3, 10, 17].flatMap((y) => [3, 10, 17].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.9" fill="currentColor" />))}
         </svg>
       </button>
       {open && (
-        <div className="apps-pop" role="menu" aria-label="Apps">
+        <div className="apps-pop" aria-label="Apps">
+          <label className="apps-search">Find an app<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search apps" /></label>
+          {!apps.length&&<p>No apps match your search.</p>}
+          <div role="menu" aria-label="Applications">
           {GROUPS.map(([g, label]) => {
             const list = apps.filter((a) => a.group === g && a.to).sort((x, y) => rank(x.k) - rank(y.k));
             if (!list.length) return null;
@@ -123,7 +128,7 @@ export function AppGrid() {
                 <span className="apps-h">{head}</span>
                 <div className="apps-row">
                   {list.map((a) => (
-                    <Link key={a.k} to={a.to!} role="menuitem" draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
+                    <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
                       <span className="app-ico">{a.icon}</span>
                       <b className={a.k === 'development' ? 'app-name-wrap' : undefined}>{a.short ?? a.name}</b>
                     </Link>
@@ -137,7 +142,7 @@ export function AppGrid() {
             return foot.length ? (
               <div className="apps-foot">
                 {foot.map((a) => (
-                  <Link key={a.k} to={a.to!} role="menuitem" draggable={false} onDragStart={(e) => e.preventDefault()} className="apps-chip" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
+                  <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="apps-chip" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
                     <span className="apps-chip-ic">{a.icon}</span>
                     {a.short ?? a.name}
                   </Link>
@@ -145,6 +150,7 @@ export function AppGrid() {
               </div>
             ) : null;
           })()}
+          </div>
         </div>
       )}
     </div>
