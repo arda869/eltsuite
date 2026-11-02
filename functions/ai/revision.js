@@ -27,3 +27,8 @@ export function applyRevision(current,patch,schema){
  validate(schema,result);return result;
 }
 export function outlineFromPlan(p){return {title:p.title,outcomes:[p.mainAim],methodology:p.methodology,rationale:p.rationale,stages:p.stages.map(s=>Object.fromEntries(['id','title','aim','minutes','interaction','activityType','learnerAction','material','outcome'].filter(k=>s[k]!==undefined).map(k=>[k,s[k]]))),...(p.sourceEvidence?{sourceEvidence:p.sourceEvidence}:{})};}
+
+export function preserveStageContract(value,approved,keys=['id','title','aim','minutes','interaction']){
+ if(!Array.isArray(value.stages)||value.stages.length!==approved.stages.length||value.stages.some((s,i)=>s.id!==approved.stages[i].id))throw Error('Keep every approved stage ID and its order. Do not add or remove stages.');
+ return {...value,stages:value.stages.map((stage,i)=>({...stage,...Object.fromEntries(keys.map(key=>[key,approved.stages[i][key]]))}))};
+}

@@ -28,13 +28,13 @@ export async function editUntilReady({value,review,repair,check,reserve,deadline
    await reserve('repair');repairs++;
    try {
     const revised=await repair(value,feedback,deadline-now());usage.push(revised.usage);
-    try {check(revised.value);} catch {throw new GenerationError('editorial_patch');}
+    try {check(revised.value);} catch(cause) {const error=new GenerationError('editorial_patch');error.detail=String(cause.message||'Invalid replacement').slice(0,500);throw error;}
     value=revised.value;await checkpoint({value,usage:[...usage],repairs});break;
    } catch(error) {
     if(!(error instanceof GenerationError)||error.reason!=='editorial_patch')throw error;
     if(error.usage)usage.push(error.usage);
     if(repairs>=maxRepairs)throw new GenerationError('editorial');
-    feedback={...checked.value,criticalErrors:[...checked.value.criticalErrors,'The previous proposed edit was not applicable. Start from the unchanged currentDraft. Use only existing JSON Pointer paths, valid JSON values and the required schema. Preserve approved stage metadata.']};
+    feedback={...checked.value,criticalErrors:[...checked.value.criticalErrors,'The previous proposed edit was not applicable. Start from the unchanged currentDraft. Use only existing JSON Pointer paths, valid JSON values and the required schema. Preserve approved stage metadata. Validation feedback: '+(error.detail||'The replacement did not match the required structure.')]};
    }
   }
  }
