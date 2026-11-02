@@ -1,3 +1,4 @@
+import {restorePreparedScript} from './prepared-script.js';
 import { conversionInput } from './conversion-input.js';
 import {revisionInput,revisionSchema,revisionInstructions,applyRevision,preserveStageContract,outlineFromPlan} from './revision.js';
 import {rebuildPicture} from './import-picture-job.js';
@@ -45,6 +46,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     db.doc(`users/${uid}`).get(), db.doc(`accounts/${uid}`).get(), db.doc(`classes/${d.classId}`).get(), db.doc(`aiPilot/${uid}`).get(),
   ]);
   if (!canPlan(uid, profile.data(), account.data(), cls.data())) throw new HttpsError('permission-denied', 'You need teaching access to this class.');
+  if (d.action === 'restoreAudioScript') return restorePreparedScript(db,uid,d.classId,d.mediaId);
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
   if (['rebuildPicture','rebuildPictureStatus'].includes(d.action)) return rebuildPicture(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'readiness') return requestReadiness(req,{db,uid,cls});
