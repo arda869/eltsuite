@@ -1,3 +1,4 @@
+import { withReviewRecovery } from './reviewRecovery';
 import { AiButton } from '../components/AiMark';
 import { MediaPlayer } from '../media/Player';
 import { audioUrl } from '../lib/media';
@@ -195,7 +196,8 @@ export function LessonAssistant() {
         if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, requestId: crypto.randomUUID() };
         Object.assign(payload, { requestId: pending.current.requestId });
       }
-      const result = (await call(payload)).data;
+      const result = (await withReviewRecovery(()=>call(payload),()=>setNotice('Your draft is saved. Continuing its quality review automatically; you do not need to start again.'))).data;
+      setNotice('');
       if(extra.revision){
         if(result.activities){const status=(await call({action:'mediaStatus',classId,sourceRequestId:pending.current?.requestId})).data;result.media=status.media??[];}
         setProposal({action,result,base:String(previewBase??JSON.stringify((extra.revision as {current:unknown}).current)),requestId:pending.current?.requestId??''});pending.current=null;setNotice('Your proposed revision is ready. Your current draft has not changed.');return;
