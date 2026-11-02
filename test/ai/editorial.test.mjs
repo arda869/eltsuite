@@ -85,3 +85,10 @@ test('source review replaces irrelevant evidence instead of falling back to gene
  assert.equal(calls,3);assert.equal(reservations,3);assert.equal(result.sources[0].title,'International Space Station');assert.ok(queried.includes('International Space Station'));assert.equal(result.usage.length,3);
  await assert.rejects(researchLesson({}, {fetchImpl,reserve:async()=>{},generate:async args=>({usage,value:args.name==='research'?{queries:leads}:{usableIndices:[],reason:'No relevant evidence',queries:leads}})}),e=>e.reason==='research');
 });
+
+test('saved editorial feedback resumes at repair without paying to repeat the same review',async()=>{
+ const events=[],checkpoints=[];
+ const result=await editUntilReady({value:{task:'old'},pendingReview:review(true),deadline:Date.now()+90000,reserve:async kind=>events.push(kind),checkpoint:async c=>checkpoints.push(c),
+ review:async value=>{assert.equal(value.task,'fixed');return {value:review(),usage};},repair:async(_value,feedback)=>{assert.deepEqual(feedback,review(true));return {value:{task:'fixed'},usage};},check:()=>{}});
+ assert.deepEqual(events,['repair','review']);assert.equal(result.value.task,'fixed');assert.equal(checkpoints[1].pendingReview,null);assert.equal(result.usage.length,2);
+});

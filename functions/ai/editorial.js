@@ -14,13 +14,14 @@ export function needsEditorialRepair(review) {
 
 // Each paid operation is reserved first. Do not expose failed drafts as completed
 // lessons or replace the caller's last accepted content when repair cannot pass.
-export async function editUntilReady({value,review,repair,check,reserve,deadline,maxRepairs=2,now=Date.now,checkpoint=async()=>{}}) {
+export async function editUntilReady({value,review,repair,check,reserve,deadline,maxRepairs=2,now=Date.now,checkpoint=async()=>{},pendingReview=null}) {
  const usage=[];let repairs=0;
  while(true) {
   if(deadline-now()<15000)throw new GenerationError('editorial');
-  await reserve('review');
-  const checked=await review(value,deadline-now());usage.push(checked.usage);
-  await checkpoint({value,usage:[...usage],repairs});
+  let checked;
+  if(pendingReview){checked={value:pendingReview};pendingReview=null;}
+  else {await reserve('review');checked=await review(value,deadline-now());usage.push(checked.usage);}
+  await checkpoint({value,usage:[...usage],repairs,pendingReview:checked.value});
   if(!needsEditorialRepair(checked.value))return {value,review:checked.value,usage,repairs};
   let feedback=checked.value;
   while(true) {
@@ -29,7 +30,7 @@ export async function editUntilReady({value,review,repair,check,reserve,deadline
    try {
     const revised=await repair(value,feedback,deadline-now());usage.push(revised.usage);
     try {check(revised.value);} catch(cause) {const error=new GenerationError('editorial_patch');error.detail=String(cause.message||'Invalid replacement').slice(0,500);throw error;}
-    value=revised.value;await checkpoint({value,usage:[...usage],repairs});break;
+    value=revised.value;await checkpoint({value,usage:[...usage],repairs,pendingReview:null});break;
    } catch(error) {
     if(!(error instanceof GenerationError)||error.reason!=='editorial_patch')throw error;
     if(error.usage)usage.push(error.usage);
