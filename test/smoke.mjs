@@ -482,7 +482,7 @@ const J = {
     await p.getByRole('button',{name:'Explore next-activity ideas'}).click();
     await p.getByRole('heading',{name:'Two possible next steps'}).waitFor();
     await p.getByRole('button',{name:'Carry the idea into shared planning'}).click();
-    await p.getByLabel('Planning note',{exact:true}).fill('');
+    await p.getByLabel('Planning note',{exact:true}).fill('').catch(async e=>{throw Error(e.message+'\n'+(await p.locator('body').innerText()).slice(0,4000)+'\n'+errors.join('; '));});
     await p.getByRole('button',{name:'Keep note in this demo'}).click();
     await p.getByRole('status').filter({hasText:'Nothing has been sent'}).waitFor();
     await p.reload();
