@@ -53,7 +53,7 @@ export async function handleObservation(db,auth,d={}){
   return {inquiryId:s.id,title:s.get('title'),evidence,limitation:'Differences in task, attendance, duration and observation methods may explain changes. This comparison does not establish cause and effect.'};
  }
  if(d.action==='export')return {...await packet(db,who,d.id,d.selected),exportedAt:Date.now()};
- if(d.action==='delete'){const {ref}=await owned(db,who,d.id);await ref.update({deleted:true,updatedAt:Date.now()});await db.recursiveDelete(ref);return {deleted:true};}
+ if(d.action==='delete'){const {ref}=await owned(db,who,d.id);await ref.update({deleted:true,updatedAt:Date.now()});await db.recursiveDelete(ref);const packets=await db.collection('observationCoachPackets').where('observationId','==',d.id).get();for(const p of packets.docs)await p.ref.delete();return {deleted:true};}
  throw new HttpsError('invalid-argument','Choose a supported observation action.');
 }
 

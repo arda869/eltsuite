@@ -2,6 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {Link,useSearchParams} from 'react-router-dom';
 import {getFunctions,httpsCallable} from 'firebase/functions';
 import {app} from '../lib/firebase';
+import {useAppOn} from '../lib/admin';
 import {TopBar} from '../components/TopBar';
 import {download} from '../coach/model';
 import './observation.css';
@@ -10,7 +11,8 @@ type Observation={id:string;title:string;focus:string;context:string;classId:str
 type Packet={observationId:string;title?:string;focus?:string;context?:string;notes?:Note[];unavailable?:boolean;purpose?:string};
 const call=httpsCallable<Record<string,unknown>,any>(getFunctions(app,'us-central1'),'classroomObservation');
 const time=(s:number)=>[Math.floor(s/60),s%60].map(n=>String(n).padStart(2,'0')).join(':');
-export function ObservationStudio(){
+export function ObservationStudio(){const on=useAppOn();return on('development')?<ObservationWorkspace/>:<><TopBar/><main className="observation-studio"><h1>Classroom Observation Studio</h1><p>Development Studio is not available for your account.</p></main></>;}
+function ObservationWorkspace(){
  const [params,setParams]=useSearchParams(),id=params.get('id')||'';
  const [items,setItems]=useState<Observation[]>([]),[current,setCurrent]=useState<Observation|null>(null),[notes,setNotes]=useState<Note[]>([]);
  const [title,setTitle]=useState(''),[focus,setFocus]=useState(''),[context,setContext]=useState(''),[creating,setCreating]=useState(false);
