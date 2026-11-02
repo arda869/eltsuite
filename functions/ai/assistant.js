@@ -301,7 +301,9 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
         tx.update(job,{status:'failed',failure:{reason:failure.reason,phase:failure.phase},...(canResume?{retainedMicroUsd:retained,checkpointReservedMicroUsd:j.get('reservedMicroUsd')}:{})});return canResume;
       });
     } catch { warn('lessonAssistant failure status could not be saved'); }
+    let review=null;
+    if(resumable)try{review=JSON.parse((await job.get()).get('checkpointJson')).pendingReview??null;}catch{}
     const message=resumable?'Your generated draft is saved. Its quality review could not finish. Retry this step to continue reviewing the saved draft; your approved work is unchanged. ['+failure.phase+':'+failure.reason+']':failure.message;
-    throw new HttpsError('unavailable',message,{reason:failure.reason,phase:failure.phase,resumable});
+    throw new HttpsError('unavailable',message,{reason:failure.reason,phase:failure.phase,resumable,review});
   }
 });

@@ -1,3 +1,5 @@
+import {warn} from 'firebase-functions/logger';
+import {GenerationError} from './errors.js';
 import {pictureRecipe} from './import-picture-job.js';
 import {importPicturePlans,resolveImportPictures,taskPictureIds} from './import-pictures.js';
 import {senseCheckImport,importTaskHash} from './import-review.js';
@@ -79,15 +81,19 @@ export async function rebuildMaterials(req,{db,uid,cls,apiKey,model}) {
     await chargeFeature(tx,db,usagePolicy,'materialImport');let reservation;try{reservation=reserveBudget(b.get('committedMicroUsd')??0,1,usagePolicy.isAdmin);}catch(e){throw new HttpsError('resource-exhausted',e.message);}
     tx.set(budget,{committedMicroUsd:reservation.balance,month},{merge:true});tx.set(quota,{calls:(q.get('calls')??0)+1});tx.set(global,dailyGlobalUsage(g.data(),1,admin),{merge:true});tx.create(job,{action:'rebuild',classId:d.classId,status:'running',fingerprint,scope:source.scope,creationType:source.creationType,sourceName:source.name,rightsVersion:RIGHTS_VERSION,rightsAcceptedAt:Timestamp.now(),reservedMicroUsd:reservation.reserved,createdAt:Timestamp.now(),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});tx.create(job.collection('source').doc('original'),{sourceJson:JSON.stringify({...source,images:[]})});images.forEach((jpeg,i)=>tx.create(job.collection('sourceImages').doc(String(i)),{jpeg}));return null;});
   if(existing)return existing;
+  let phase='generation';
   try{
     const r=await generate({apiKey,model,schema:importModelSchema(cls.get('kind')==='training'),name:'rebuild',input,sourceImages:images,instructions:nativeImportInstructions});
+    phase='structure';
     try{r.value=checkRebuild(fromImportModel(r.value),source.scope,{training:cls.get('kind')==='training'});}catch(validationError){
       const repaired=await meteredImportReview({db,budget,job,isAdmin:admin,apiKey,model})({name:'importRepair',schema:importModelSchema(cls.get('kind')==='training'),instructions:nativeImportInstructions+'\nRepair the structural task problem against the original. Keep all correct source questions and stage IDs. Do not invent missing evidence.',input:{...input,generated:r.value,validationIssue:validationError.message},sourceImages:images,timeoutMs:Math.min(70000,Math.max(1000,deadline-Date.now()-5000))});
       r.value=checkRebuild(fromImportModel(repaired.value),source.scope,{training:cls.get('kind')==='training'});
     }
     r.value.warnings=[...new Set([...source.extractionWarnings,...r.value.warnings])];
     r.value=checkRebuild(r.value,source.scope,{training:cls.get('kind')==='training'});
+    phase='source-review';
     const result=await senseCheckImport({rebuilt:r.value,source,training:cls.get('kind')==='training',deadline,run:meteredImportReview({db,budget,job,isAdmin:admin,apiKey,model})});
+    phase='storage';
     await db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);if(j.get('status')!=='running')throw Error('Import was already settled.');const settled=settleBudget(b.get('committedMicroUsd'),j.get('reservedMicroUsd'),[r.usage]);tx.update(budget,{committedMicroUsd:settled.balance});tx.update(job,{status:'completed',...encodeGenerationResult(result),costMicroUsd:settled.cost});});return result;
-  }catch(e){await job.update({status:'failed'});throw new HttpsError('unavailable','We couldn’t rebuild those materials. Your original and existing work are unchanged. Try fewer pages or clearer text.');}
+  }catch(e){const reason=e instanceof GenerationError?e.reason:phase==='storage'?'storage':'content';warn('Material import failed',{phase,reason});await job.update({status:'failed',failure:{phase,reason}});const detail=e instanceof GenerationError?e.message:'The rebuilt activity could not be saved in the required format.';throw new HttpsError('unavailable',detail+' Your original and existing work are unchanged. Check the saved import before trying again.',{phase,reason});}
 }
