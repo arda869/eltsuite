@@ -2,6 +2,7 @@ import {collection,doc,getDoc,getDocs,setDoc,updateDoc} from './firestore';
 import {db} from '../../src/lib/firebase';
 const jobs=()=>JSON.parse(localStorage.getItem('mockLessonToolJobs')||'{}');
 export async function mockLessonTools(d:any) {
+ if(d.action==='taskToolsIdeas')d={...d,mode:'next',step:'ideas',requestId:d.requestId||'prepared-ideas'};
  const all=jobs(),path=['classes',d.classId,'items',d.itemId,'tasks'];
  if(d.action==='taskToolsStatus')return {data:all[d.requestId]};
  if(d.action==='taskToolsApply') {
