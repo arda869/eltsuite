@@ -124,7 +124,7 @@ export function AppGrid() {
             if (!list.length) return null;
             const head = g === 'teach' && !teacher ? 'Learning' : label;
             return (
-              <section key={g} className="apps-g" aria-label={head}>
+              <section role="group" key={g} className="apps-g" aria-label={head}>
                 <span className="apps-h">{head}</span>
                 <div className="apps-row">
                   {list.map((a) => (
