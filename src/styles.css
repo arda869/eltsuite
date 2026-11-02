@@ -816,7 +816,7 @@ a.btn.primary { color: #ffffff; }
 
 /* Task list hover actions */
 .task-row { position: relative; }
-.row-actions { display: inline-flex; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); align-items: center; gap: 0; padding: 2px; border-radius: 7px; background: var(--paper); box-shadow: 0 0 0 2px var(--paper); opacity: 0; pointer-events: none; }
+.row-actions { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0; opacity: 0; pointer-events: none; }
 .task-row:hover .row-actions, .task-row:focus-within .row-actions { opacity: 1; pointer-events: auto; }
 .task-row:hover .state-mark, .task-row:hover .on-task { visibility: hidden; }
 .row-act { width: 24px; height: 24px; border: 0; background: transparent; border-radius: 6px; color: var(--soft); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
