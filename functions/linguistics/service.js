@@ -1,5 +1,5 @@
 import { HttpsError } from 'firebase-functions/v2/https';
-import { idOf, investigationInput, selectedPacket } from './contract.js';
+import { idOf, investigationInput, selectedPacket, reviewedFields } from './contract.js';
 import {corpusConfiguration,searchCorpus} from './corpus.js';
 import {searchTatoeba,tatoebaCorpus} from './tatoeba.js';
 const denied=()=>{throw new HttpsError('permission-denied','This evidence is private, has been revoked, or is no longer shared with you.');};
@@ -63,11 +63,12 @@ export async function coachEvidence(db,uid,id){
 }
 export async function resolveEmbed(db,who,id){
  const e=await get(db,'linguisticsEmbeds/'+idOf(id));if(!e||e.revoked||!await targetAccess(db,who,e.target))denied();
+ if(e.target.type==='class'&&(await get(db,'classes/'+e.target.id))?.kind!=='training')denied();
  const source=await get(db,'linguisticsInvestigations/'+e.investigationId);if(!source||source.revoked)denied();
  // Rights and withdrawn evidence take precedence even over an archival snapshot.
- await checkCorpusEvidence(db,selectedPacket(source,e.selected,{sharing:true}).evidence,{sharing:true});
+ await checkCorpusEvidence(db,selectedPacket(source,e.selected,{sharing:true,allowFields:e.includeAnalysis===true}).evidence,{sharing:true});
  if(e.mode==='snapshot')await checkCorpusEvidence(db,e.snapshot.evidence,{sharing:true});
- const data=e.mode==='snapshot'?e.snapshot:{...selectedPacket(source,e.selected,{sharing:true}),fields:e.includeAnalysis?source.fields:{}};
+ const data=e.mode==='snapshot'?{...e.snapshot,fields:reviewedFields(e.snapshot)}:{...selectedPacket(source,e.selected,{sharing:true,allowFields:e.includeAnalysis===true}),fields:e.includeAnalysis?reviewedFields(source):source.type==='corpus'?{query:source.fields.query||''}:{}};
  return {id,...e,title:data.title,snapshot:undefined,data};
 }
 export async function handleLinguistics(db,auth,input,provider={}){
@@ -114,11 +115,12 @@ export async function handleLinguistics(db,auth,input,provider={}){
  }
  if(action==='export'){
   const source=await owned(db,who,d.id);if(d.version!==source.version)throw new HttpsError('failed-precondition','The source changed. Review it before exporting.');
-  const packet=selectedPacket(source,d.selected,{sharing:true});await checkCorpusEvidence(db,packet.evidence,{sharing:true});await audit(db,who,'export',d.id);return {...packet,sourceId:d.id,sourceVersion:source.version,exportedAt:Date.now()};
+  const packet={...selectedPacket(source,d.selected,{sharing:true,allowFields:d.includeAnalysis===true}),fields:d.includeAnalysis===true?reviewedFields(source):{}};await checkCorpusEvidence(db,packet.evidence,{sharing:true});await audit(db,who,'export',d.id);return {...packet,sourceId:d.id,sourceVersion:source.version,exportedAt:Date.now()};
  }
  if(action==='share'){
   const source=await owned(db,who,d.id);if(d.version!==undefined&&d.version!==source.version)throw new HttpsError('failed-precondition','The source changed. Review the current version before sharing.');if(!await targetAccess(db,who,d.target,true))denied();
-  const packet={...selectedPacket(source,d.selected,{sharing:true}),fields:d.includeAnalysis===true?source.fields:{}},ref=db.collection('linguisticsEmbeds').doc();
+  if(d.target.type==='class'&&(await get(db,'classes/'+idOf(d.target.id)))?.kind!=='training')throw new HttpsError('permission-denied','Studio investigations can be inserted in teacher-training classes, Collab documents and Messages, not language lessons.');
+  const packet={...selectedPacket(source,d.selected,{sharing:true,allowFields:d.includeAnalysis===true}),fields:d.includeAnalysis===true?reviewedFields(source):source.type==='corpus'?{query:source.fields.query||''}:{}},ref=db.collection('linguisticsEmbeds').doc();
   await checkCorpusEvidence(db,packet.evidence,{sharing:true});
   const embed={schemaVersion:1,includeAnalysis:d.includeAnalysis===true,investigationId:d.id,owner:who.uid,target:{type:d.target.type,id:idOf(d.target.id)},selected:packet.evidence.map(e=>e.id),mode:d.mode==='reference'?'reference':'snapshot',title:source.title,prompt:String(d.prompt||'What do you notice? Support your interpretation with examples.').slice(0,2000),responses:d.responses===true,revoked:false,createdAt:Date.now(),...(d.mode==='reference'?{}:{snapshot:packet})};
   await ref.set(embed);await audit(db,who,'share:'+d.target.type,ref.id);return {id:ref.id};
