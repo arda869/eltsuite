@@ -59,5 +59,7 @@ export async function suiteCohesionAudit(s,base,out,axe) {
     result.push({route,viewportWidth:width,theme,...measurement,menus});
   }
   for(const width of [1440,390])for(const theme of ['light','dark']){const positions=result.filter(r=>r.viewportWidth===width&&r.theme===theme).map(r=>r.x);assert.ok(Math.max(...positions)-Math.min(...positions)<=1,'Shared header shifts horizontally between pages at '+width+' '+theme);}
-  await writeFile('outputs/cohesion/route-audit.json',JSON.stringify({providerAndFirebaseSimulated:true,checks:result},null,2));
+  await p.setViewportSize({width:1440,height:1000});await p.goto(base+'/classes');await p.locator('.suite-topbar').waitFor();const fitting=await p.locator('.suite-topbar').evaluate(el=>el.getBoundingClientRect().x);
+  await p.evaluate(()=>{const extra=document.createElement('div');extra.id='cohesion-long-page';extra.style.height='200vh';extra.setAttribute('aria-hidden','true');document.body.append(extra);});const overflowing=await p.locator('.suite-topbar').evaluate(el=>el.getBoundingClientRect().x);await p.evaluate(()=>document.getElementById('cohesion-long-page')?.remove());assert.ok(Math.abs(fitting-overflowing)<=1,'Content height changes must not move the shared header');
+  await writeFile('outputs/cohesion/route-audit.json',JSON.stringify({providerAndFirebaseSimulated:true,checks:result,scrollbarContentChange:{fitting,overflowing}},null,2));
 }

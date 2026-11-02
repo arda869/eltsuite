@@ -1,5 +1,7 @@
 /* Shared suite geometry and AI identity. Feature content retains its own purpose. */
 :root { --suite-width:1320px; --suite-gutter:clamp(16px,2.5vw,32px); --suite-header-height:64px; --suite-space:28px; --suite-radius:14px; scrollbar-gutter:stable; }
+/* Shared pages keep the same viewport width with classic window scrollbars. */
+:root:has(.suite-topbar) { overflow-y:scroll; }
 .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%)!important; white-space:nowrap!important; border:0!important; }
 .dz-drawer[hidden] { display:none!important; }
 .vx [hidden] { display:none!important; }
