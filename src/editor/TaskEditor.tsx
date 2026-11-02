@@ -1056,7 +1056,7 @@ export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Sl
 
   if (!slash.state) return null;
   return createPortal(
-          <div ref={slashRef} id="slash-list" className="slash slash-float" role="listbox" aria-label="Insert" onMouseMove={() => (mouse.current = true)} style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
+          <div ref={slashRef} id="slash-list" className="slash slash-float" role="listbox" aria-label="Insert" onMouseMove={() => (mouse.current = true)} style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: Math.max(8, window.innerHeight - slash.state.above + 6), left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: Math.max(8, Math.min(slash.state.top + 6, window.innerHeight - Math.min(380, window.innerHeight / 2) - 8)), left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
             {(slash.items.some((c) => c.key === '__more') ? (['Top', 'More'] as const) : (groups ? groups.map((x) => x.k) : (['Questions', 'Text', 'Blocks'] as const))).map((g) => {
               const list = g === 'Top' ? slash.items.filter((c) => c.key !== '__more') : slash.items.filter((c) => c.group === g);
               if (!list.length) return null;
