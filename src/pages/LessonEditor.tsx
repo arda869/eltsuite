@@ -1,6 +1,6 @@
 import { LearnerInsights } from '../ai/LearnerInsights';
-import { LessonTools } from '../ai/LessonTools';
-import { MaterialImport, ImportMaterialsButton, TaskStartChoice } from '../materials/MaterialImport';
+import { LessonTools, LessonToolDialog } from '../ai/LessonTools';
+import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
@@ -1119,7 +1119,7 @@ export function LessonEditor() {
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
-          {mode === 'edit' && !preview && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
+          {mode === 'edit' && !preview && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
           {!preview && <a className="btn small-btn" href={'/observations?classId='+classId+'&itemId='+itemId} target="_blank" rel="noreferrer">Observe this lesson</a>}
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
@@ -1589,7 +1589,7 @@ export function LessonEditor() {
           }}
         />
       )}
-      {taskStart&&<TaskStartChoice onClose={()=>setTaskStart(false)} onBlank={()=>{setTaskStart(false);void newBlankTask();}} onImport={()=>{setTaskStart(false);setMaterialImport(true);}}/>}
+      {taskStart&&<LessonToolDialog classId={classId} itemId={itemId} mode="next" onClose={()=>setTaskStart(false)} onApplied={id=>{setSelected(id);setTaskTry(n=>n+1);}} onBlank={()=>{setTaskStart(false);void newBlankTask();}} onImport={()=>{setTaskStart(false);setMaterialImport(true);}}/>}
       {materialImport&&<MaterialImport classId={classId} itemId={itemId} creationType={item?.type||'lesson'} onClose={()=>setMaterialImport(false)} onDone={(_,id)=>{setMaterialImport(false);setSelected(id);setCopyMsg('Reviewed task added.');}}/>}
       {importing && <ImportTasksDialog classId={classId} itemId={itemId} onClose={() => setImporting(false)} onDone={(m, id) => (setCopyMsg(m), id && setSelected(id))} />}
       {copyMsg && (
