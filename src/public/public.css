@@ -5,3 +5,5 @@
 @media(prefers-reduced-motion:reduce){.pub *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .pub-auth .divider{color:#60665a}
 .pub-lesson-body aside>p{color:#536048}.pub-lesson li button span{opacity:1;color:#45533c}
+/* The public editorial palette is independent of the signed-in workspace theme. */
+.pub{--soft:#626c5c;--faint:#67725f;--right:#3e683e;--wrong:#98483f;--accent-text:#895536;--surface:#eff1e7;--selected:#dce5cf;--track:#e3e8d9;--paper-soft:#fafbf5;--hair-strong:#aab79f}

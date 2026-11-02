@@ -476,6 +476,7 @@ const J = {
     await p.locator('.pub-tour-content input').fill('point');
     await p.getByRole('button',{name:'Check the phrase'}).click();
     await p.getByRole('status').filter({hasText:'That’s right'}).waitFor();
+    await axe(p,'Public native learner activity',A11Y_FOUND);
     await p.getByRole('button',{name:'Look at the sample evidence'}).click();
     await p.getByRole('button',{name:'View sample evaluation'}).click();
     await p.getByText('PREPARED EXAMPLE / NOT LIVE AI',{exact:true}).waitFor();
@@ -507,6 +508,10 @@ const J = {
     await p.getByRole('button',{name:'Menu'}).click();
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in'}).click();
     await p.getByLabel('Email',{exact:true}).waitFor();
+    await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
+    await p.reload();
+    await p.getByLabel('Email',{exact:true}).waitFor();
+    await axe(p,'Public page with dark device preference',A11Y_FOUND);
     if(requests.length)throw Error('Public demo called a production data or AI endpoint: '+requests.join(', '));
     if(errors.length)throw Error(errors.join('; '));return {ctx,errors};
   },
