@@ -38,6 +38,7 @@ export async function backgroundSongAudit(s,base,out,axe) {
   await d.getByRole('button',{name:'Create song',exact:true}).click();await d.waitFor({state:'hidden'});await dock.getByRole('button',{name:/Return to task/}).waitFor();
   assert.equal(await dock.evaluate(el=>el.getBoundingClientRect().right<=innerWidth),true);await axe(p,'Non-blocking music progress on phone',out);
   await reviewAi(p,'Classroom song');await d.locator('audio').waitFor();await d.locator('audio').evaluate(el=>el.play());await p.waitForFunction(()=>document.querySelector('dialog audio')?.currentTime>.1);await d.locator('audio').evaluate(el=>el.pause());
+  await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).waitFor();await d.getByRole('button',{name:'Continue working',exact:true}).click();await d.waitFor({state:'hidden'});await dock.getByText('Ready to review.',{exact:true}).waitFor();await reviewAi(p,'Classroom song');
   await d.getByRole('button',{name:'Add song to timeline'}).click();await p.getByRole('button',{name:/Mute .* · Vocals/}).waitFor();assert.equal(await p.getByLabel('Name',{exact:true}).inputValue(),'My ongoing edit','Reviewing an AI result must preserve edits made during generation');
   await p.setViewportSize({width:1300,height:900});await axe(p,'Background song returned to timeline',out);
 }

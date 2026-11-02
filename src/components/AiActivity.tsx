@@ -37,7 +37,7 @@ export function useAiActivity({ active, title, detail = '', error = '', progress
     window.addEventListener('beforeunload',warn);
     return () => window.removeEventListener('beforeunload',warn);
   },[active]);
-  return { minimised, minimise: () => { hiddenPanel.current=true; setMinimised(true); put({id,title,detail,active,error,progress,open:restore}); }, restore };
+  return { minimised, minimise: () => { hiddenPanel.current=true; setMinimised(true); put({id,title,detail:active?detail:error?'Open the result to retry. Your existing work is kept.':'Ready to review.',active,error,progress,open:restore}); }, restore };
 }
 
 export function AiActivityDock() {
