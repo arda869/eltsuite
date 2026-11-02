@@ -29,9 +29,18 @@ export function investigationInput(raw) {
  if(JSON.stringify(result).length>180000)throw Error('Split this investigation into smaller evidence collections.');
  return result;
 }
-export function selectedPacket(investigation, ids, {sharing=false}={}) {
+// Only explicitly reviewed teaching fields can leave the private notebook.
+export const teachingFields={
+ corpus:['query','compare','question','conclusions'],discourse:['question','scheme','alignment','interpretation'],
+ 'language-awareness':['target','context','meaning','form','pron','appropriacy','ccqs','problems'],
+ pragmatics:['scenario','roles','power','goal','medium','assumptions','alternatives','reasoning'],
+ 'learner-development':['question','comparability','strengths','patterns','targets','limitations'],
+ research:['question','context','methods','findings','limitations','transfer','hypothesis','plan']
+};
+export function reviewedFields(source){return Object.fromEntries((teachingFields[source.type]||[]).filter(k=>typeof source.fields?.[k]==='string'&&source.fields[k].trim()).map(k=>[k,source.fields[k]]));}
+export function selectedPacket(investigation, ids, {sharing=false,allowFields=false}={}) {
  const chosen=new Set(Array.isArray(ids)?ids:[]), evidence=investigation.evidence.filter(e=>chosen.has(e.id));
- if(!evidence.length)throw Error('Select at least one evidence item.');
+ if(!evidence.length&&!(allowFields&&Object.keys(reviewedFields(investigation)).length))throw Error('Select evidence or include reviewed analysis fields.');
  if(evidence.length!==chosen.size)throw Error('Selected evidence has been removed. Review the selection again.');
  if(sharing&&evidence.some(e=>!e.shareAllowed||e.origin==='learner'))throw Error('Only examples approved for reuse can be shared. Keep learner records private; create a reviewed anonymised summary separately.');
  return {schemaVersion:1,type:investigation.type,title:investigation.title,evidence,annotations:investigation.annotations.filter(a=>chosen.has(a.evidenceId)&&a.status==='confirmed')};

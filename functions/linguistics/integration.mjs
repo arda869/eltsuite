@@ -8,7 +8,7 @@ initializeApp({projectId:'demo-linguistics'});const db=getFirestore();
 const auth=uid=>({uid,token:{email:uid+'@example.com'}}),call=(uid,action,data={})=>handleLinguistics(db,auth(uid),{action,...data});
 for(const uid of ['teacher','other','colleague'])await db.doc('users/'+uid).set({role:'teacher'});
 await db.doc('users/learner').set({role:'learner',learnerId:'learner-key',classId:'class'});
-await db.doc('classes/class').set({teacherId:'teacher'});await db.doc('classes/class/members/learner').set({learnerId:'learner-key'});
+await db.doc('classes/class').set({teacherId:'teacher',kind:'training'});await db.doc('classes/class/members/learner').set({learnerId:'learner-key'});
 await db.doc('classes/foreign').set({teacherId:'other'});await db.doc('sharedDocs/doc').set({owner:'teacher',memberIds:['colleague'],members:{colleague:{role:'view'}}});await db.doc('chats/chat').set({members:['teacher','colleague']});
 const evidence={id:'sample',text:'Well, I see your point.',origin:'teacher',shareAllowed:true};const draft={type:'corpus',title:'Markers',fields:{},evidence:[evidence],annotations:[]};
 const saved=await call('teacher','save',{investigation:draft});assert.equal(saved.version,1);
@@ -57,3 +57,21 @@ assert.equal(publicLoaded.evidence[0].origin,'source');
 assert.match(publicLoaded.evidence[0].context,/Adapted by the teacher/);
 await assert.rejects(call('teacher','save',{investigation:{...publicDraft,evidence:[{...publicDraft.evidence[0],providerRef:{provider:'tatoeba',sentenceId:999}}]}}),/restore this sentence/);
 console.log('Tatoeba saved provenance and adaptation checks passed.');
+
+// Training-only destinations and field-only inline cards for every family.
+await db.doc('classes/language-only').set({teacherId:'teacher',kind:'language'});
+await db.doc('sharedDocs/fields-doc').set({owner:'teacher',memberIds:['colleague'],members:{colleague:{role:'view'}}});
+await db.doc('chats/fields-chat').set({members:['teacher','colleague']});
+for(const [type,key] of [['corpus','question'],['discourse','interpretation'],['language-awareness','meaning'],['pragmatics','scenario'],['learner-development','targets'],['research','plan']]){
+ const value={type,title:'Reviewed '+type,fields:{[key]:'Reviewed teaching content',privateNotes:'Never share this',introduction:'Private introduction'},evidence:[],annotations:[]};
+ const saved=await call('teacher','save',{investigation:value});
+ await assert.rejects(call('teacher','share',{id:saved.id,target:{type:'class',id:'language-only'},selected:[],includeAnalysis:true}),/teacher-training/);
+ await assert.rejects(call('teacher','share',{id:saved.id,target:{type:'doc',id:'fields-doc'},selected:[]}),/Select evidence/);
+ for(const target of [{type:'class',id:'class'},{type:'doc',id:'fields-doc'},{type:'message',id:'fields-chat'}]){
+  const shared=await call('teacher','share',{id:saved.id,version:1,target,selected:[],includeAnalysis:true});
+  const opened=await call(target.type==='class'?'teacher':'colleague','openEmbed',{id:shared.id});
+  assert.deepEqual(opened.data.fields,{[key]:'Reviewed teaching content'});assert.equal(opened.data.evidence.length,0);
+ }
+ const exported=await call('teacher','export',{id:saved.id,version:1,selected:[],includeAnalysis:true});assert.deepEqual(exported.fields,{[key]:'Reviewed teaching content'});
+}
+console.log('PASS: all six field-only cards, private-note exclusion, training-only class policy, Collab and Messages readback.');

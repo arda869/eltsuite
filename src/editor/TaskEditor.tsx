@@ -259,7 +259,7 @@ const MORE: Cmd = { key: '__more', label: 'Show all', hint: 'Everything you can 
 // The order of the groups in every / menu (lessons show Questions, Text, Blocks; documents Basic to Training).
 const GROUP_RANK: Cmd['group'][] = ['Basic', 'Media', 'Writing', 'Language', 'Questions', 'Text', 'Blocks', 'Training', 'More'];
 const TEXT_ONLY = ['inline-video', 'stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'heading', 'list', 'numbered', 'quote', 'table', 'textbox', 'info', 'dialogue'];
-export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false, only?: (c: Cmd) => boolean) {
+export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = false, training = false, only?: (c: Cmd) => boolean, investigations = training) {
   const [state, setState] = useState<{ query: string; from: number; to: number; top: number; left: number; above: number } | null>(null);
   const [index, setIndex] = useState(0);
   const [all, setAll] = useState(false);
@@ -303,7 +303,7 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
         if (n.type.name === 'columnBreak') hasColumns = true;
       });
       const nested = editor.state.selection.$from.depth > 1; // inside a list, table or box
-      const fit = (only ? extra.filter(only) : [...COMMANDS, ...extra]).filter((c) => training || !c.key.startsWith('tt-')).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
+      const fit = (only ? extra.filter(only) : [...COMMANDS, ...extra]).filter((c) => training || !c.key.startsWith('tt-')).filter(c=>investigations||!FAMILIES.some(f=>f.id===c.key)).filter((c) => !textOnly || TEXT_ONLY.includes(c.key)).filter((c) => !(c.key === 'column' && (hasColumns || nested)) && !(['drawcard', 'wheel', 'boxes', 'board', 'postits', 'reveal', 'linkcard', 'dictcut'].includes(c.key) && nested) && !(c.group === 'Blocks' && nested));
       const q = state.query.trim();
       // In the order the menu shows them (by group), so the arrow keys go down the list as seen.
       const shown = (l: Cmd[]) => l.map((c, i) => [c, i] as const).sort((a, b) => GROUP_RANK.indexOf(a[0].group) - GROUP_RANK.indexOf(b[0].group) || a[1] - b[1]).map(([c]) => c);
@@ -312,7 +312,7 @@ export function useSlash(editor: Editor | null, extra: Cmd[] = [], textOnly = fa
       if (!all && fit.length > 4) return [...topSlash(fit, 3), MORE];
       return shown(fit);
     },
-    [state, editor, extra, textOnly, all, training, only],
+    [state, editor, extra, textOnly, all, training, only, investigations],
   );
 
   const choose = (c: Cmd) => {
@@ -698,7 +698,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
     [onPickBank],
   );
   const training = useTrainingClass(classId);
-  const slash = useSlash(editor, bankCmds, textOnly, training);
+  const slash = useSlash(editor, bankCmds, textOnly, training, undefined, training || !!classId?.startsWith('chat:'));
   const toolPlace = useToolGate();
   // The extra tools are out by default; closing them is remembered on this device.
   const [moreOpen, setMoreOpenState] = useState(() => {
@@ -881,7 +881,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       {pdfOpen && editor && <PdfPick classId={classId} onClose={() => setPdfOpen(false)} onPick={(n) => (setPdfOpen(false), editor.chain().focus().insertContent([n, { type: 'paragraph' }]).run())} />}
       {gallery && (
         <InsertGallery
-          commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-'))}
+          commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key))}
           onClose={() => setGallery(false)}
           onPick={(key) => {
             setGallery(false);
@@ -1056,7 +1056,7 @@ export function SlashMenu({ editor, slash, groups }: { editor: Editor; slash: Sl
 
   if (!slash.state) return null;
   return createPortal(
-          <div ref={slashRef} id="slash-list" className="slash slash-float" role="listbox" aria-label="Insert" onMouseMove={() => (mouse.current = true)} style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: window.innerHeight - slash.state.above + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: slash.state.top + 6, left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
+          <div ref={slashRef} id="slash-list" className="slash slash-float" role="listbox" aria-label="Insert" onMouseMove={() => (mouse.current = true)} style={window.innerHeight - slash.state.top < 320 && slash.state.above > 320 ? { bottom: Math.max(8, window.innerHeight - slash.state.above + 6), left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) } : { top: Math.max(8, Math.min(slash.state.top + 6, window.innerHeight - Math.min(380, window.innerHeight / 2) - 8)), left: Math.max(8, Math.min(slash.state.left - 8, window.innerWidth - 298)) }}>
             {(slash.items.some((c) => c.key === '__more') ? (['Top', 'More'] as const) : (groups ? groups.map((x) => x.k) : (['Questions', 'Text', 'Blocks'] as const))).map((g) => {
               const list = g === 'Top' ? slash.items.filter((c) => c.key !== '__more') : slash.items.filter((c) => c.group === g);
               if (!list.length) return null;

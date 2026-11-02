@@ -1,5 +1,5 @@
 // UI persistence stand-in only. Permission decisions are tested against the real backend/emulator.
-import {investigationInput,selectedPacket} from '../../functions/linguistics/contract.js';
+import {investigationInput,selectedPacket,reviewedFields} from '../../functions/linguistics/contract.js';
 import {getAuth} from './auth';
 import {collection,getDocs,doc,getDoc,setDoc} from 'firebase/firestore';
 import {db} from '../../src/lib/firebase';
@@ -12,7 +12,7 @@ export async function linguistics(d:any){
  case 'list':result={items:Object.values(store.investigations).filter((x:any)=>x.owner===uid&&!x.revoked)};break;
  case 'load':if(!source()||source().revoked)throw Error('Unavailable');result={investigation:source()};break;
  case 'save':{const id=d.id||crypto.randomUUID();store.investigations[id]={...investigationInput(d.investigation),id,owner:uid,version:(d.version||0)+1};result={id,version:(d.version||0)+1};break;}
- case 'share':{const id=crypto.randomUUID(),p=selectedPacket(source(),d.selected,{sharing:true});store.embeds[id]={...d,id,investigationId:d.id,title:source().title,data:{...p,fields:d.includeAnalysis?source().fields:{}},mode:d.mode||'snapshot'};result={id};break;}
+ case 'share':{const id=crypto.randomUUID(),p=selectedPacket(source(),d.selected,{sharing:true,allowFields:d.includeAnalysis===true});store.embeds[id]={...d,id,investigationId:d.id,title:source().title,data:{...p,fields:d.includeAnalysis?reviewedFields(source()):source().type==='corpus'?{query:source().fields.query||''}:{}},mode:d.mode||'snapshot'};result={id};break;}
  case 'openEmbed':{const e=store.embeds[d.id];if(!e||store.investigations[e.investigationId]?.revoked)throw Error('Evidence revoked');result=e;break;}
  case 'respond':store.responses[d.id+uid]={value:d.value};result={saved:true};break;
  case 'myResponse':result={response:store.responses[d.id+uid]};break;

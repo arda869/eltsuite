@@ -1,10 +1,10 @@
+import {Concordance,concordanceRows} from './Concordance';
 import {useState} from 'react';
 import {TTBlock} from '../training/Training';
 import {FAMILIES,type Packet} from './model';
 export function EvidenceView({data,fields={}}:{data:Packet;fields?:Record<string,string>}){
  const [query,setQuery]=useState(fields.query||''),[compare,setCompare]=useState(fields.compare||''),[caseSensitive,setCase]=useState(false),[tag,setTag]=useState(''),[compareRaters,setCompareRaters]=useState(false);
- const rows=(q:string)=>data.evidence.flatMap(e=>{const i=(caseSensitive?e.text:e.text.toLowerCase()).indexOf(caseSensitive?q:q.toLowerCase());return q&&i>=0?[{e,i,q}]:[]});
- const table=(q:string)=><div className="ling-scroll"><table className="ling-result"><caption>Selected examples containing “{q}”</caption><thead><tr><th>Before</th><th>Match</th><th>After</th><th>Source</th></tr></thead><tbody>{rows(q).map(({e,i,q})=><tr key={e.id}><td>{e.text.slice(Math.max(0,i-90),i)}</td><td><mark>{e.text.slice(i,i+q.length)}</mark></td><td>{e.text.slice(i+q.length,i+q.length+90)}</td><td>{e.source||'Teacher-created example'}</td></tr>)}</tbody></table>{!rows(q).length&&<p>No matches in the selected examples.</p>}</div>;
+ const table=(q:string)=><><Concordance rows={concordanceRows(data.evidence,q,caseSensitive)} caption={'Selected examples containing “'+q+'”'}/>{!concordanceRows(data.evidence,q,caseSensitive).length&&<p>No matches in the selected examples.</p>}</>;
  return <>
  {data.type==='corpus'&&<><p className="ling-state">These are selected examples, not a balanced corpus. Counts describe this collection only.</p><div className="ling-fields"><label>Find a word or phrase<input value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Compare with<input value={compare} onChange={e=>setCompare(e.target.value)}/></label></div><label><input type="checkbox" checked={caseSensitive} onChange={e=>setCase(e.target.checked)}/> Case sensitive</label>{query&&table(query)}{compare&&table(compare)}</>}
  {data.type==='language-awareness'&&Object.keys(fields).length>0&&<TTBlock kind="analysis" title="Language awareness" mode="model" data={fields}/>}
