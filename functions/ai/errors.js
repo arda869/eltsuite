@@ -2,6 +2,7 @@
 // response bodies, keys, prompts, generated content, or arbitrary exception text.
 const messages = {
   research: 'The source search did not return usable evidence. No unsupported real-world story has been substituted. Please retry when the source service is available.',
+  editorial_patch: 'The proposed editorial edit did not match the draft structure.',
   editorial: 'Automatic editorial repair did not reach the required standard in this run. No unfinished lesson has been created. Your brief and approved plan are safe.',
   billing: 'OpenAI reports that the API account has no available quota. Check the billing balance and organisation associated with this API key.',
   credentials: 'OpenAI rejected the configured API key. The administrator needs to check the server secret.',

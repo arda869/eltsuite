@@ -135,6 +135,7 @@ export function LessonAssistant() {
   const [review, setReview] = useState<Review | null>(null);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [reviewRetry,setReviewRetry]=useState<{action:string;extra:Record<string,unknown>}|null>(null);
   const [notice, setNotice] = useState('');
   const [revisionText,setRevisionText]=useState('');
   const [proposal,setProposal]=useState<{action:string;result:Result;base:string;requestId:string}|null>(null);
@@ -183,7 +184,7 @@ export function LessonAssistant() {
   useEffect(()=>{setProposal(null);setRevisionText('');setUseLearnerMemories(false);setMemoryIds([]);setMemories([]);if(enabled) void run('context');},[classId,enabled]);
   useEffect(()=>{if(!sourceRequestId||!preparingMedia)return;let cancelled=false;const timer=window.setInterval(()=>{void call({action:'mediaStatus',classId,sourceRequestId}).then(r=>{if(!cancelled)setMedia(r.data.media??[]);}).catch(()=>{if(!cancelled)setError('Could not refresh media status. Preparation continues on the server.');});},3000);return()=>{cancelled=true;window.clearInterval(timer);};},[sourceRequestId,preparingMedia,classId]);
   async function run(action: string, extra: Record<string, unknown> = {}) {
-    setBusy(action); setError(''); setNotice('');
+    setBusy(action); setError(''); setNotice('');setReviewRetry(null);
     if(!extra.revision&&['outline','plan','activities','load'].includes(action))setProposal(null);
     try {
       const {previewBase,...apiExtra}=extra;
@@ -216,7 +217,8 @@ export function LessonAssistant() {
       if (result.draft) { setStep(2);setActivities(null);setMedia([]);setCreatedItemId(''); setCreationType(result.draft.creationType ?? 'lesson');setBrief(result.draft.brief); setPlan(result.draft.plan); setOutline(null); setReview(null); setVersion(result.draft.version); setDraftId(String(extra.draftId)); setDirty(false); }
       if (action === 'delete') { setDrafts(drafts.filter(d => d.id !== extra.draftId)); setNotice('Saved plan deleted.'); }
     } catch (e) {
-      const failure = e as { message?: string; code?: string };
+      const failure = e as { message?: string; code?: string; details?:{resumable?:boolean} };
+      if(failure.details?.resumable)setReviewRetry({action,extra});
       setError(failure.message || 'We couldn’t finish that. Your work is still here.');
       // A timeout can hide a completed request: keep its ID for a safe retry.
       if (!['functions/deadline-exceeded', 'functions/internal', 'functions/unavailable'].includes(failure.code ?? '') && !failure.message?.includes('still running')) pending.current = null;
@@ -251,7 +253,7 @@ export function LessonAssistant() {
     <Link to={`/class/${classId}`}>Back to class</Link>
     <header className="ai-hero"><div><span className="ai-eyebrow">{isTraining?'TRAINER STUDIO':'CREATION STUDIO'} · {className}</span><h1>{isTraining?'Develop teachers.':'Great teaching.'}<br/><em>{isTraining?'Shape their practice.':'Your starting point.'}</em></h1><p>{isTraining?'Purposeful input, rehearsal and reflection, tailored to your trainees.':'Shape an idea into thoughtful, ready-to-teach activities.'}<br/>{isTraining?'Grounded in their course. Led by your judgement.':'Built around your class. Refined by you.'}</p></div><div className="ai-orbit" aria-hidden="true"><span>Discover</span><StudioMark/><div className="ai-orbit-labels"><span>Practise</span><span>Connect</span><span>Grow</span></div></div></header>
     <ol className="ai-progress" aria-label="Creation progress" role="tablist">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li role="presentation" key={x} className={i===step?'current':''}><button type="button" role="tab" tabIndex={i===step?0:-1} onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=Array.from(e.currentTarget.closest('[role="tablist"]')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));const at=tabs.indexOf(e.currentTarget),next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(at+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next]?.focus();tabs[next]?.click();}} id={`creation-tab-${i}`} aria-controls={`creation-panel-${i}`} aria-selected={i===step} disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
-    {error && <p role="alert" className="ai-error">{error}</p>}{notice && <p role="status">{notice}</p>}
+    {error && <div role="alert" className="ai-error"><p>{error}</p>{reviewRetry&&<button className="btn" disabled={locked} onClick={()=>void run(reviewRetry.action,reviewRetry.extra)}>Retry saved draft review</button>}</div>}{notice && <p role="status">{notice}</p>}
     <div className="ai-actions"><button className="btn" disabled={locked} onClick={() => void run('list')}>Open saved plans</button>
       <button className="btn" disabled={locked} onClick={() => { if (discard()) { setProposal(null);setRevisionText('');try{localStorage.removeItem('ai-media-job:'+classId);}catch{}setStep(0);setBrief({...initial,level:brief.level,objectives:isTraining?trainingProfile.goals:profile.goals,context:isTraining?trainingProfile.context:profile.needs}); setActivities(null);setMedia([]);setCreatedItemId(''); setOutline(null); setPlan(null); setReview(null); setDraftId(crypto.randomUUID()); setVersion(0); setDirty(false); pending.current = null; } }}>Start a new plan</button></div>
     {drafts.length > 0 && <ul>{drafts.map(d => <li key={d.id}><button className="btn" disabled={locked} onClick={() => { if (discard()) void run('load', { draftId: d.id }); }}>{d.title}</button> <button className="btn" disabled={locked || d.id === draftId} onClick={() => { if (window.confirm(`Delete “${d.title}”? You can’t undo this.`)) void run('delete', { draftId: d.id }); }}>Delete</button></li>)}</ul>}

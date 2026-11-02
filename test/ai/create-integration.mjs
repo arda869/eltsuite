@@ -59,3 +59,37 @@ const created=await db.doc(`classes/${classId}/items/${withMedia.createdItemId}/
 assert.equal(created.get('layout'),'two');assert.match(JSON.stringify(created.get('content')),/media:saved_image/);
 await assert.rejects(call({action:'mediaStatus',classId:'studio-other',sourceRequestId:'media_example'}));
 console.log('Media completion gate, native attachment and class isolation passed.');
+
+const {createHash}=await import('node:crypto');
+const {Timestamp}=require('firebase-admin/firestore');
+const {validateBrief,planSchema}=await import('../../functions/ai/contract.js');
+const {RESERVATION_PER_CALL,usageCost}=await import('../../functions/ai/budget.js');
+process.env.ELT_AI_MODEL='gpt-6.1-sol';process.env.OPENAI_API_KEY='test-only';
+const sample=s=>s.type==='object'?Object.fromEntries(Object.entries(s.properties).filter(([k])=>s.required.includes(k)).map(([k,v])=>[k,sample(v)])):s.type==='array'?Array.from({length:s.minItems??0},()=>sample(s.items)):s.enum?s.enum[0]:s.type==='integer'?s.minimum:'Sample teaching content';
+const savedPlan=sample(planSchema);savedPlan.stages=savedPlan.stages.slice(0,1);savedPlan.stages[0].minutes=15;
+const savedOutline={title:savedPlan.title,outcomes:[savedPlan.mainAim],methodology:savedPlan.methodology,rationale:savedPlan.rationale,stages:savedPlan.stages.map(s=>Object.fromEntries(['id','title','aim','minutes','interaction'].map(k=>[k,s[k]])))};
+const resumeBrief=validateBrief({objectives:'Use past forms',context:'Adult learners',level:'A2',methodology:'Recommend',duration:15});
+const resumeId='review-resume',resumeRef=db.doc(`aiPrivate/${uid}/jobs/${resumeId}`),month=new Date().toISOString().slice(0,7),budgetRef=db.doc('aiBudgets/'+month);
+const fingerprint=createHash('sha256').update(JSON.stringify({classId,action:'plan',brief:resumeBrief,creationType:'lesson',useEvidence:false,useLearnerMemories:false,memoryIds:[],outline:savedOutline})).digest('hex');
+const firstUsage={inputTokens:100,outputTokens:100};
+await budgetRef.set({committedMicroUsd:RESERVATION_PER_CALL});
+await resumeRef.set({status:'failed',failure:{phase:'review',reason:'provider'},classId,action:'plan',budgetMonth:month,fingerprint,reservedMicroUsd:RESERVATION_PER_CALL,checkpointReservedMicroUsd:RESERVATION_PER_CALL,checkpointJson:JSON.stringify({plan:savedPlan,usage:[firstUsage],sourceEvidence:[]}),expiresAt:Timestamp.fromMillis(Date.now()+86400000)});
+const originalFetch=globalThis.fetch;let providerCalls=0;
+globalThis.fetch=async(url,options)=>{
+ assert.equal(String(url),'https://api.openai.com/v1/responses');assert.equal(JSON.parse(options.body).text.format.name,'review');providerCalls++;
+ if(providerCalls<=2)return {ok:false,status:503,json:async()=>({})};
+ const review={checks:Array.from({length:11},(_,i)=>({criterion:'Criterion '+i,score:4,evidence:'Checked fixture'})),criticalErrors:[],suggestions:[]};
+ return {ok:true,json:async()=>({status:'completed',output:[{content:[{type:'output_text',text:JSON.stringify(review)}]}],usage:{input_tokens:100,output_tokens:100}})};
+};
+try {
+ const request={action:'plan',brief:resumeBrief,outline:savedOutline,approved:true,requestId:resumeId};
+ await assert.rejects(call(request),e=>e.details?.resumable===true);
+ const failed=await resumeRef.get();assert.equal(failed.get('status'),'failed');assert.equal(failed.get('retainedMicroUsd'),RESERVATION_PER_CALL);assert.ok(failed.get('checkpointJson'));
+ await assert.rejects(call(request),e=>e.details?.resumable===true);
+ assert.equal((await resumeRef.get()).get('retainedMicroUsd'),2*RESERVATION_PER_CALL);
+ const result=await call(request);assert.deepEqual(result.plan,savedPlan);assert.equal(providerCalls,3);
+ const completed=await resumeRef.get();assert.equal(completed.get('status'),'completed');assert.equal(completed.get('checkpointJson'),undefined);
+ assert.equal((await budgetRef.get()).get('committedMicroUsd'),2*RESERVATION_PER_CALL+2*usageCost(firstUsage));
+ await assert.rejects(call({...request,brief:{...resumeBrief,context:'Changed context'}}));
+} finally {globalThis.fetch=originalFetch;}
+console.log('Saved review resumes without regenerating a plan, preserves unknown-usage reservations, cleans checkpoints and rejects changed briefs.');
