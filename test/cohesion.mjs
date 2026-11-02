@@ -56,7 +56,8 @@ export async function suiteCohesionAudit(s,base,out,axe) {
     await p.evaluate(()=>window.scrollTo(0,document.documentElement.scrollHeight));await p.evaluate(()=>window.scrollTo(0,0));
     const name=route.replaceAll(/[^a-z0-9]/gi,'_');if(width===1440||['/recordings','/development','/messages','/settings'].includes(route))await p.screenshot({path:`outputs/cohesion/${width}-${theme}-${name}.jpg`});
     if(width===1440&&theme==='light'&&['/classes','/archive','/development','/observations','/linguistics','/settings'].includes(route))await axe(p,'Suite audit '+route,out);
-    result.push({route,width,theme,...measurement,menus});
+    result.push({route,viewportWidth:width,theme,...measurement,menus});
   }
+  for(const width of [1440,390])for(const theme of ['light','dark']){const positions=result.filter(r=>r.viewportWidth===width&&r.theme===theme).map(r=>r.x);assert.ok(Math.max(...positions)-Math.min(...positions)<=1,'Shared header shifts horizontally between pages at '+width+' '+theme);}
   await writeFile('outputs/cohesion/route-audit.json',JSON.stringify({providerAndFirebaseSimulated:true,checks:result},null,2));
 }
