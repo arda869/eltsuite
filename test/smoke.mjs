@@ -10,9 +10,11 @@ import { chromium } from 'playwright';
 import { AI_FEATURES } from '../functions/ai/features.js';
 
 const require = createRequire(import.meta.url);
-const BASE = `http://localhost:${process.env.SMOKE_PORT || '5184'}`;
+const BASE = process.env.SMOKE_BASE_URL || `http://localhost:${process.env.SMOKE_PORT || '5184'}`;
+const LIVE_PUBLIC = BASE === 'https://eltsuite.com';
 const A11Y = process.argv.includes('--a11y');
 const ONLY = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
+if(process.env.SMOKE_BASE_URL && (!LIVE_PUBLIC || ONLY !== 'Public homepage')) throw Error('Live checks only support the isolated public homepage journey on eltsuite.com.');
 const OWNER = 'ardanurioglu@gmail.com';
 
 // ------------------------------------------------------------------ the app
@@ -475,6 +477,7 @@ const J = {
     await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
     if(await p.getByRole('link',{name:/Ask for an invitation|Request an invitation|Join ELT Suite|Buy now/}).count())throw Error('Unapproved public acquisition action');
     await axe(p,'Public homepage desktop',A11Y_FOUND);
+    if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
     await p.getByRole('link',{name:'Explore ELT Suite'}).first().click();
     await p.getByRole('button',{name:'Start Exploring'}).click();
     await p.getByText('Getting to know our class',{exact:true}).click();
@@ -2138,10 +2141,11 @@ const J = {
 };
 
 // ------------------------------------------------------------------ run
-const vite = process.env.SMOKE_EXTERNAL_SERVER ? null : await up();
+const vite = (LIVE_PUBLIC || process.env.SMOKE_EXTERNAL_SERVER) ? null : await up();
 const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
 // A first visit, so the server has prepared every page before the journeys start.
-{
+// Never seed users, mock records or authenticated flows against production.
+if(!LIVE_PUBLIC) {
   const c = await browser.newContext();
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
