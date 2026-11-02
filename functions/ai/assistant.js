@@ -1,5 +1,5 @@
 import { conversionInput } from './conversion-input.js';
-import {revisionInput,revisionSchema,revisionInstructions,applyRevision,outlineFromPlan} from './revision.js';
+import {revisionInput,revisionSchema,revisionInstructions,applyRevision,preserveStageContract,outlineFromPlan} from './revision.js';
 import {rebuildPicture} from './import-picture-job.js';
 import { researchLesson } from './research.js';
 import { editUntilReady, editorialStandard } from './editorial.js';
@@ -257,7 +257,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
           const revised=await generate({apiKey:key.value(),model:model.value(),schema:revisionSchema,name:'editorial_repair',timeoutMs:Math.min(180000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile:payload.classProfile,requestedChanges:revision?.instructions??'Repair every reported editorial defect while keeping all correct content.',currentDraft:value,editorialReview:review},
           instructions:editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions+'\nRepair all reported defects and criteria below 4. Use targeted replacements. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Fix dependent answer keys and scripts together. Do not merely claim a fix in notes.'});
-          try {return {...revised,value:applyRevision(value,revised.value,schema)};} catch {const error=new GenerationError('editorial_patch');error.usage=revised.usage;throw error;}
+          try {const patched=applyRevision(value,revised.value,schema);return {...revised,value:d.action==='plan'?preserveStageContract(patched,revision?revision.current:d.outline,revision?['id','minutes']:undefined):patched};} catch(cause) {const error=new GenerationError('editorial_patch');error.detail=String(cause.message||'Invalid replacement').slice(0,500);error.usage=revised.usage;throw error;}
         },
         check: value => {
           validate(schema,value);
