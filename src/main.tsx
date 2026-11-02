@@ -27,6 +27,10 @@ import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainO
 import './styles.css';
 import './friday-ui.css';
 
+const ExplorePage=lazy(()=>import('./public/ExplorePage').then(m=>({default:m.ExplorePage})));
+const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.PricingPage})));
+const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
+
 // Pages load when they are first opened, so the first screen comes up quickly.
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
@@ -66,7 +70,6 @@ const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ defaul
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
-const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 const ObservationStudio = lazy(() => import('./observations/ObservationStudio').then(m => ({default:m.ObservationStudio})));
@@ -200,7 +203,10 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
-          <Route path="/tour" element={<TourPage />} />
+          <Route path="/tour" element={<Navigate to="/explore" replace />} />
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
           <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />

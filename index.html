@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>ELT Suite</title>
-    <meta name="description" content="Everything an English teacher needs, in one place: plan the lesson, teach it live and follow every learner’s progress. Coming soon; teachers join by invitation." />
+    <meta name="description" content="Everything you need to teach. A community to grow with. Explore a connected space for English language teaching, collaboration and professional learning." />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
@@ -31,12 +31,12 @@
          phones, tablets and trackpads, no Ctrl/Cmd with the wheel or + and -. Drawing boards and
          other parts that zoom themselves still get these events; only the browser's zoom stops. */
       try {
-        var stop = function (e) { e.preventDefault(); };
+        var stop = function (e) { if (!document.querySelector('.pub')) e.preventDefault(); };
         document.addEventListener('gesturestart', stop, { passive: false });
         document.addEventListener('gesturechange', stop, { passive: false });
-        document.addEventListener('touchmove', function (e) { if ((e.scale !== undefined && e.scale !== 1) || e.touches.length > 1) e.preventDefault(); }, { passive: false });
-        document.addEventListener('wheel', function (e) { if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
-        document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].indexOf(e.key) >= 0) e.preventDefault(); });
+        document.addEventListener('touchmove', function (e) { if (document.querySelector('.pub')) return; if ((e.scale !== undefined && e.scale !== 1) || e.touches.length > 1) e.preventDefault(); }, { passive: false });
+        document.addEventListener('wheel', function (e) { if (document.querySelector('.pub')) return; if (e.ctrlKey || e.metaKey) e.preventDefault(); }, { passive: false });
+        document.addEventListener('keydown', function (e) { if (document.querySelector('.pub')) return; if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].indexOf(e.key) >= 0) e.preventDefault(); });
       } catch (e) {}
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

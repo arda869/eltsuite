@@ -16,7 +16,7 @@ const OWNER = 'ardanurioglu@gmail.com';
 
 // ------------------------------------------------------------------ the app
 async function up() {
-  const vite = spawn('npx', ['vite', '--config', 'test/vite.config.ts', '--port', new URL(BASE).port], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', new URL(BASE).port], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   vite.stdout.on('data', (d) => (log += d));
   vite.stderr.on('data', (d) => (log += d));
@@ -459,6 +459,57 @@ const J = {
     return s;
   },
 
+  'Public homepage: isolated tour, local edits, pricing and mobile navigation': async (b) => {
+    const ctx=await b.newContext({viewport:{width:1440,height:1000}}),p=await ctx.newPage(),errors=[];
+    p.on('pageerror',e=>errors.push(e.message));
+    const requests=[];p.on('request',r=>{if(/cloudfunctions.net|firestore.googleapis.com/.test(r.url()))requests.push(r.url());});
+    await p.goto(BASE+'/');
+    await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
+    if(await p.getByRole('link',{name:/Ask for an invitation|Request an invitation|Join ELT Suite|Buy now/}).count())throw Error('Unapproved public acquisition action');
+    await axe(p,'Public homepage desktop',A11Y_FOUND);
+    await p.getByRole('link',{name:'Explore ELT Suite'}).first().click();
+    await p.getByLabel('Lesson title',{exact:true}).fill('A space for our neighbourhood');
+    await p.getByRole('button',{name:'Try the learner activity'}).click();
+    await p.getByRole('button',{name:'Learner B',exact:true}).click();
+    await p.getByRole('heading',{name:'The practical view'}).waitFor();
+    if(await p.getByText('Many older neighbours want a quiet place to meet.',{exact:true}).count())throw Error('Both private role cards exposed at once');
+    await p.locator('.pub-tour-content input').fill('point');
+    await p.getByRole('button',{name:'Check the phrase'}).click();
+    await p.getByRole('status').filter({hasText:'That’s right'}).waitFor();
+    await p.getByRole('button',{name:'Look at the sample evidence'}).click();
+    await p.getByRole('button',{name:'View sample evaluation'}).click();
+    await p.getByText('PREPARED EXAMPLE / NOT LIVE AI',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Explore next-activity ideas'}).click();
+    await p.getByRole('heading',{name:'Two possible next steps'}).waitFor();
+    await p.getByRole('button',{name:'Carry the idea into shared planning'}).click();
+    await p.getByLabel('Planning note',{exact:true}).fill('');
+    await p.getByRole('button',{name:'Keep note in this demo'}).click();
+    await p.getByRole('status').filter({hasText:'Nothing has been sent'}).waitFor();
+    await p.reload();
+    if(await p.getByLabel('Planning note',{exact:true}).inputValue()!=='')throw Error('Blank optional note did not persist');
+    await p.getByRole('button',{name:'01 Plan',exact:false}).click();
+    if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='A space for our neighbourhood')throw Error('Demo title was lost');
+    await p.getByRole('button',{name:'Reset demo'}).click();
+    if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='A better place to come together')throw Error('Demo reset did not restore fixture');
+    await axe(p,'Public demo desktop',A11Y_FOUND);
+    await p.getByRole('link',{name:'Plans & pricing',exact:true}).click();
+    await p.getByRole('heading',{name:'Find the right space for your teaching.'}).waitFor();
+    await axe(p,'Proposed pricing',A11Y_FOUND);
+    await p.setViewportSize({width:390,height:844});
+    await p.getByRole('button',{name:'Menu'}).click();
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Explore',exact:true}).click();
+    await p.getByLabel('Lesson title',{exact:true}).waitFor();
+    await axe(p,'Public demo mobile',A11Y_FOUND);
+    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public demo overflows on mobile');
+    await p.getByRole('link',{name:'ELT Suite home',exact:true}).first().click();
+    await axe(p,'Public homepage mobile',A11Y_FOUND);
+    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public homepage overflows on mobile');
+    await p.getByRole('button',{name:'Menu'}).click();
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign in'}).click();
+    await p.getByLabel('Email',{exact:true}).waitFor();
+    if(requests.length)throw Error('Public demo called a production data or AI endpoint: '+requests.join(', '));
+    if(errors.length)throw Error(errors.join('; '));return {ctx,errors};
+  },
   'Authentication: signed-out teacher homepage': async (b) => {
     const ctx = await b.newContext();
     const p = await ctx.newPage();
@@ -466,7 +517,7 @@ const J = {
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(BASE + '/');
     await see(p, '#teacher-sign-in', 'teacher sign-in form');
-    await see(p, '.so-item button', 'suite illustration');
+    await see(p, '.pub-hero .pub-lesson', 'interactive sample lesson');
     await p.reload();
     await see(p, '#teacher-sign-in', 'teacher sign-in after reload');
     if (new URL(p.url()).pathname !== '/') throw Error('Teacher homepage redirected');
