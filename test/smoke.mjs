@@ -10,14 +10,16 @@ import { chromium } from 'playwright';
 import { AI_FEATURES } from '../functions/ai/features.js';
 
 const require = createRequire(import.meta.url);
-const BASE = `http://localhost:${process.env.SMOKE_PORT || '5184'}`;
+const BASE = process.env.SMOKE_BASE_URL || `http://localhost:${process.env.SMOKE_PORT || '5184'}`;
+const LIVE_PUBLIC = BASE === 'https://eltsuite.com';
 const A11Y = process.argv.includes('--a11y');
 const ONLY = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
+if(process.env.SMOKE_BASE_URL && (!LIVE_PUBLIC || ONLY !== 'Public homepage')) throw Error('Live checks only support the isolated public homepage journey on eltsuite.com.');
 const OWNER = 'ardanurioglu@gmail.com';
 
 // ------------------------------------------------------------------ the app
 async function up() {
-  const vite = spawn('npx', ['vite', '--config', 'test/vite.config.ts', '--port', new URL(BASE).port], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+  const vite = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--config', 'test/vite.config.ts', '--port', new URL(BASE).port], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
   let log = '';
   vite.stdout.on('data', (d) => (log += d));
   vite.stderr.on('data', (d) => (log += d));
@@ -467,17 +469,97 @@ const J = {
     return s;
   },
 
+  'Public homepage: isolated tour, local edits, pricing and mobile navigation': async (b) => {
+    const ctx=await b.newContext({viewport:{width:1440,height:1000}}),p=await ctx.newPage(),errors=[];
+    p.on('pageerror',e=>errors.push(e.message));
+    const requests=[];p.on('request',r=>{if(/cloudfunctions.net|firestore.googleapis.com/.test(r.url()))requests.push(r.url());});
+    await p.goto(BASE+'/');
+    await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
+    if(await p.getByRole('link',{name:/Ask for an invitation|Request an invitation|Join ELT Suite|Buy now/}).count())throw Error('Unapproved public acquisition action');
+    await axe(p,'Public homepage desktop',A11Y_FOUND);
+    if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
+    await p.getByRole('link',{name:'Explore ELT Suite'}).first().click();
+    await p.getByRole('button',{name:'Start Exploring'}).click();
+    await p.getByText('Getting to know our class',{exact:true}).click();
+    await p.getByText('Ask follow-up questions about interests.',{exact:true}).waitFor();
+    await p.getByRole('button',{name:/CURRENT LESSON/}).click();
+    await p.getByLabel('Lesson title',{exact:true}).fill('A space for our neighbourhood');
+    await p.getByRole('button',{name:'Learner B',exact:true}).click();
+    await p.getByRole('heading',{name:'The practical view'}).waitFor();
+    if(await p.getByText('Many older neighbours want a quiet place to meet.',{exact:true}).count())throw Error('Both private role cards exposed at once');
+    await p.locator('.pub-native input').fill('point');
+    await p.getByRole('button',{name:'Check the phrase'}).click();
+    await p.getByRole('status').filter({hasText:'That’s right'}).waitFor();
+    await axe(p,'Public native learner activity',A11Y_FOUND);
+    await p.getByRole('button',{name:'Continue: Lesson Intelligence'}).click();
+    await p.getByRole('button',{name:'Evaluate this Lesson'}).click();
+    await p.getByText('PREPARED DEMONSTRATION RESPONSE',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Show the reasoning'}).click();
+    await p.getByRole('button',{name:'See a suggested improvement'}).click();
+    await p.getByText('Before the discussion · 3 minutes:',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Continue: Learner work'}).click();
+    await p.getByLabel('View a sample submission').selectOption('6');
+    await p.getByText('Missing evidence, not evidence of low ability.',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Continue: What comes next'}).click();
+    await p.getByRole('button',{name:/Develop reasons and examples/}).click();
+    await p.getByText('EXAMPLE LESSON OUTLINE',{exact:true}).waitFor();
+    await p.getByRole('button',{name:'Continue: Collaboration'}).click();
+    await p.getByRole('textbox',{name:'Demo Collab document'}).fill('A shared teaching idea.');
+    await p.getByRole('button',{name:'Show a sample colleague suggestion'}).click();
+    await p.getByRole('button',{name:'Apply this suggestion'}).click();
+    await p.getByRole('textbox',{name:'Demo Collab document'}).filter({hasText:'Partner A prioritises'}).waitFor();
+    await p.getByLabel('Planning note',{exact:true}).fill('');
+    await p.getByRole('button',{name:'Keep note in this demo'}).click();
+    await p.getByRole('status').filter({hasText:'Nothing has been sent'}).waitFor();
+    await p.reload();
+    await p.getByLabel('Planning note',{exact:true}).waitFor();
+    if(await p.getByLabel('Planning note',{exact:true}).inputValue()!=='')throw Error('Blank optional note did not persist');
+    await axe(p,'Public collaboration',A11Y_FOUND);
+    await p.getByRole('navigation',{name:'Demo steps'}).getByRole('button',{name:/Plan & teach/}).click();
+    if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='A space for our neighbourhood')throw Error('Demo title was lost');
+    await p.getByRole('button',{name:'Reset demo'}).click();
+    if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='Expressing and Justifying Opinions')throw Error('Demo reset did not restore fixture');
+    await axe(p,'Public demo desktop',A11Y_FOUND);
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Plans & Pricing',exact:true}).click();
+    await p.getByRole('heading',{name:'Find the right space for your teaching.'}).waitFor();
+    await axe(p,'Proposed pricing',A11Y_FOUND);
+    for(const [path,heading] of [['/about','Created out of a love for English language teaching.'],['/contact','We’d like to hear from you.'],['/privacy','Privacy policy'],['/terms','Terms of use'],['/unknown-page','We couldn’t find that page.'],['/classes','This area is for ELT Suite members.']]){
+      await p.goto(BASE+path);await p.getByRole('heading',{name:heading,exact:true}).waitFor();await axe(p,'Public '+path,A11Y_FOUND);
+    }
+    await p.setViewportSize({width:390,height:844});
+    await p.getByRole('button',{name:'Menu +',exact:true}).click();
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Explore',exact:true}).click();
+    await p.getByRole('button',{name:'Start Exploring'}).click();
+    await axe(p,'Public demo mobile',A11Y_FOUND);
+    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public demo overflows on mobile');
+    await p.getByRole('link',{name:'ELT Suite home',exact:true}).first().click();
+    await axe(p,'Public homepage mobile',A11Y_FOUND);
+    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public homepage overflows on mobile');
+    await p.getByRole('button',{name:'Menu +',exact:true}).click();
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign In'}).click();
+    await p.getByLabel('Email',{exact:true}).waitFor();
+    await p.emulateMedia({colorScheme:'dark',reducedMotion:'reduce'});
+    await p.reload();
+    await p.getByLabel('Email',{exact:true}).waitFor();
+    await axe(p,'Public sign-in dark',A11Y_FOUND);
+    await p.goto(BASE+'/');await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
+    await axe(p,'Public homepage dark',A11Y_FOUND);
+    if(requests.length)throw Error('Public demo called a production data or AI endpoint: '+requests.join(', '));
+    if(errors.length)throw Error(errors.join('; '));return {ctx,errors};
+  },
   'Authentication: signed-out teacher homepage': async (b) => {
     const ctx = await b.newContext();
     const p = await ctx.newPage();
     const errors = [];
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(BASE + '/');
-    await see(p, '#teacher-sign-in', 'teacher sign-in form');
-    await see(p, '.so-item button', 'suite illustration');
+    await see(p, '.pub-hero', 'public homepage');
+    await see(p, '.pub-hero .pub-lesson', 'interactive sample lesson');
     await p.reload();
-    await see(p, '#teacher-sign-in', 'teacher sign-in after reload');
-    if (new URL(p.url()).pathname !== '/') throw Error('Teacher homepage redirected');
+    await see(p, '.pub-hero', 'public homepage after reload');
+    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign In'}).click();
+    await see(p, '#teacher-sign-in', 'separate sign-in page');
+    if (new URL(p.url()).pathname !== '/signin') throw Error('Sign-in route incorrect');
     if (await count(p, '.app-err')) throw Error('Sign-in rendered an error');
     await axe(p, 'Teacher sign-in', A11Y_FOUND);
     if (errors.length) throw Error(errors.join('; '));
@@ -488,10 +570,10 @@ const J = {
     await s.p.goto(BASE + '/classes');
     await s.p.getByRole('button', { name: 'Account', exact: true }).click();
     await s.p.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
-    await see(s.p, '#teacher-sign-in', 'teacher sign-in after logout');
+    await see(s.p, '.pub-hero', 'public homepage after logout');
     if (new URL(s.p.url()).pathname !== '/') throw Error('Logout did not return home');
     await s.p.reload();
-    await see(s.p, '#teacher-sign-in', 'logout persisted after reload');
+    await see(s.p, '.pub-hero', 'logout persisted after reload');
     if (await count(s.p, '.app-err')) throw Error('Logout rendered an error');
     if (s.errors.length) throw Error(s.errors.join('; '));
     return s;
@@ -1323,6 +1405,9 @@ const J = {
   'Document menus, page appearance and citations': async (b) => {
     const s = await session(b);
     await s.p.goto(BASE + '/dev.html?as=teacher&friday');
+    await s.p.waitForFunction(() => !!window.__mockReady);
+    await s.p.evaluate(async () => { await window.__mockReady; });
+    await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the fixture session');
     const d = await newFile(s, 'Collab document');
     await see(d, '.pg-paper', 'pages by default');
@@ -1369,6 +1454,9 @@ const J = {
     await see(d, '.pg-paper[data-paper-theme="black"]', 'the saved page appearance');
     await see(d, '.cite:has-text("Thornbury, 2006, p. 24")', 'the saved citation');
     await s.p.goto(BASE + '/dev.html?as=teacher&friday-brand');
+    await s.p.waitForFunction(() => !!window.__mockReady);
+    await s.p.evaluate(async () => { await window.__mockReady; });
+    await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the organisation-brand fixture');
     await d.reload();
     await d.waitForFunction(() => document.documentElement.dataset.orgBrand === 'true');
@@ -1858,8 +1946,8 @@ const J = {
       if (!fits) throw new Error('Goal dropdown overflows at ' + width);
       await picker.press('Escape');
       await s.p.goto(BASE + '/tour');
-      await see(s.p, '.tour-paths', 'responsive public tour');
-      const clipped = await s.p.locator('.gu-grid2 > *').evaluateAll(els => els.some(el => el.getBoundingClientRect().right > innerWidth + 1));
+      await see(s.p, '.pub-tour-shell', 'responsive public tour');
+      const clipped = await s.p.locator('.pub-tour-shell > *').evaluateAll(els => els.some(el => el.getBoundingClientRect().right > innerWidth + 1));
       if (clipped) throw new Error('Tour illustration clipped at ' + width);
     }
     await s.p.goto(BASE + '/welcome');
@@ -2059,10 +2147,11 @@ const J = {
 };
 
 // ------------------------------------------------------------------ run
-const vite = process.env.SMOKE_EXTERNAL_SERVER ? null : await up();
+const vite = (LIVE_PUBLIC || process.env.SMOKE_EXTERNAL_SERVER) ? null : await up();
 const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
 // A first visit, so the server has prepared every page before the journeys start.
-{
+// Never seed users, mock records or authenticated flows against production.
+if(!LIVE_PUBLIC) {
   const c = await browser.newContext();
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });

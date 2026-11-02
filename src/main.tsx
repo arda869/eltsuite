@@ -29,6 +29,13 @@ import './friday-ui.css';
 import './cohesion.css';
 import { AiActivityDock } from './components/AiActivity';
 
+const PublicHome=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicHome})));
+const PublicError=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicError})));
+const ContactPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.ContactPage})));
+const ExplorePage=lazy(()=>import('./public/ExplorePage').then(m=>({default:m.ExplorePage})));
+const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.PricingPage})));
+const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
+
 // Pages load when they are first opened, so the first screen comes up quickly.
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
@@ -68,7 +75,6 @@ const WelcomePage = lazy(() => import('./pages/WelcomePage').then(m => ({ defaul
 const GuidePage = lazy(() => import('./pages/GuidePage').then((m) => ({ default: m.GuidePage })));
 const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m.AppFiles })));
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
-const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
 const ObservationStudio = lazy(() => import('./observations/ObservationStudio').then(m => ({default:m.ObservationStudio})));
@@ -104,7 +110,7 @@ function Home() {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
   // learn.eltsuite.com: the learners' home page, to join a class.
-  if (!user) return onLearnSite() ? <LearnerJoin home /> : <SignIn />;
+  if (!user) return onLearnSite() ? <LearnerJoin home /> : new URLSearchParams(window.location.search).has('code') ? <SignIn /> : <PublicHome />;
   if (!onLearnSite() && isLearnerEmail(user.email) && live()) return <SignIn />;
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
@@ -154,16 +160,18 @@ function Join() {
   return user ? <Navigate to="/" replace /> : <LearnerJoin />;
 }
 
+function PublicSignIn(){const {user,ready}=useAuth();if(!ready)return <Boot/>;return user?<Navigate to="/" replace/>:<SignIn/>;}
+
 function TeacherOnly({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
-  return user && profile?.role === 'teacher' && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
+  return user && profile?.role === 'teacher' && !isLearnerEmail(user.email) ? children : <PublicError restricted />;
 }
 
 function SignedIn({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
   if (!ready || (user && !profile)) return <Boot />;
-  return user ? children : <Navigate to="/" replace />;
+  return user ? children : <PublicError restricted />;
 }
 
 function LearnerOnly({ children }: { children: JSX.Element }) {
@@ -203,7 +211,12 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
-          <Route path="/tour" element={<TourPage />} />
+          <Route path="/tour" element={<Navigate to="/explore" replace />} />
+          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/signin" element={<PublicSignIn />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
           <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
@@ -245,7 +258,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/colleague/:token" element={<ColleagueJoin />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<PublicError />} />
         </Routes>
         </Suspense>
         </RouteErrorBoundary>

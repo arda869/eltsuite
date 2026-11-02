@@ -1,16 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Wordmark } from '../components/Wordmark';
+import { PublicLayout } from '../public/PublicSite';
 
 // Placeholder privacy policy and terms, to be replaced with reviewed text before opening to other teachers.
 export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
   return (
-    <div className="shell narrow legal">
-      <header className="topbar">
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <Wordmark />
-        </Link>
-      </header>
-      <main style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <PublicLayout>
+      <main id="public-main" className="pub-section pub-legal" style={{ maxWidth: 680, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <span className="eyebrow">Draft · placeholder text</span>
         {kind === 'privacy' ? (
           <>
@@ -48,6 +43,6 @@ export function Legal({ kind }: { kind: 'privacy' | 'terms' }) {
           <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
         </p>
       </main>
-    </div>
+    </PublicLayout>
   );
 }

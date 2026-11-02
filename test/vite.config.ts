@@ -44,6 +44,6 @@ export default defineConfig({
   define: { __BUILD__: '"dev"', 'import.meta.env.VITE_ELT_AI_PILOT': '"true"' },
   resolve: { alias: { 'firebase/functions': m('functions.ts'), 'firebase/app': m('app.ts'), 'firebase/auth': m('auth.ts'), 'firebase/database': m('database.ts'), 'firebase/firestore': m('firestore.ts') } },
   // Every page's packages are found at the start, so the app never reloads itself in the middle of a test.
-  optimizeDeps: { entries: ['index.html', 'src/**/*.tsx'] },
+  optimizeDeps: { include: ['@azure/msal-browser'], entries: ['index.html', 'src/**/*.tsx'] },
   server: { port: 5184, strictPort: true, fs: { allow: [root] } },
 });

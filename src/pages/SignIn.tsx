@@ -14,8 +14,7 @@ import { auth, googleProvider } from '../lib/firebase';
 import { friendlyAuthError } from '../lib/authErrors';
 import { useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
-import { Wordmark } from '../components/Wordmark';
-import { SuiteOrbit, Tagline } from '../components/SuiteOrbit';
+import { PublicLayout } from '../public/PublicSite';
 import './welcome.css';
 import { InvitationIntro } from '../components/InvitationIntro';
 
@@ -104,6 +103,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
     e.preventDefault();
     const address = email.trim();
     if (mode === 'code') {
+      if(cleanCode(typed).length < 8) return setError('Enter the eight-character code from your invitation.');
       void openInvitation(typed);
     } else if (mode === 'signin') {
       run(async () => void (await signInWithEmailAndPassword(auth, address, password)));
@@ -149,24 +149,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
   const needsPassword = mode === 'signin' || mode === 'create';
 
-  return (
-    <div className="signin">
-      {intro ?? (linked || code ? <InvitationIntro invitation={code ?? undefined} /> : (
-        <div className="intro">
-          <Wordmark big />
-          <span className="soon-badge">{linked || code ? "You’re invited" : "Made for English teachers"}</span>
-          <a className="signin-jump" href="#teacher-sign-in">Already have an account? Sign in ↓</a>
-          <Tagline />
-          <SuiteOrbit />
-          <p className="signin-summary">More teaching. Less juggling. Prepare a lesson, make language clearer and keep your work together.</p>
-          <Link className="btn primary si-tour" to="/tour">Find what ELT Suite can do for you →</Link>
-          <p className="soon-note">We’re welcoming teachers by invitation while ELT Suite is in beta. <a href="mailto:arda@eltsuite.com?subject=ELT%20Suite%20invitation">Ask for an invitation</a>.</p>
-          <p className="si-ask">
-            Questions? Email <a href="mailto:arda@eltsuite.com">arda@eltsuite.com</a>
-          </p>
-        </div>
-      ))}
-
+  const form = (
       <form id="teacher-sign-in" className="card" onSubmit={submit}>
         <h1>{TITLES[mode]}</h1>
         {mode === 'signin' && <p className="hint">Your lessons, materials and next teaching day are waiting.</p>}
@@ -230,6 +213,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
             </span>
             <input
               type="password"
+              aria-label="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
@@ -244,7 +228,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         {error && <span className="error" role="alert">{error}</span>}
         {notice && <span className="notice" role="status">{notice}</span>}
 
-        <button type="submit" className="btn primary tall block" disabled={busy || (mode === 'code' ? cleanCode(typed).length < 8 : !email.trim() || (needsPassword && !password))}>
+        <button type="submit" className="btn primary tall block" disabled={busy}>
           {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
         </button>
 
@@ -285,6 +269,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           <Link to="/privacy">Privacy</Link> · <Link to="/terms">Terms</Link>
         </span>
       </form>
-    </div>
   );
+  if (!intro && !linked && !code && !start) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Back to Homepage</Link></div>{form}</main></PublicLayout>;
+  return <div className="signin">{intro ?? <InvitationIntro invitation={code ?? undefined}/>} {form}</div>;
 }
