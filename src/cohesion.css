@@ -2,6 +2,7 @@
 :root { --suite-width:1320px; --suite-gutter:clamp(16px,2.5vw,32px); --suite-header-height:64px; --suite-space:28px; --suite-radius:14px; }
 .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%)!important; white-space:nowrap!important; border:0!important; }
 .dz-drawer[hidden] { display:none!important; }
+.vx [hidden] { display:none!important; }
 :root .dp.k-doc .cd-top { top:var(--suite-header-height); }
 :root[data-standalone] .topbar.suite-topbar { top:env(safe-area-inset-top); }
 :is(.ai-assistant,.mi-dialog,.lesson-tool-dialog,.dz-ai,.ling-fields,.coach) select { min-height:36px; border:1px solid var(--hair-strong); border-radius:10px; color:var(--ink); background:var(--paper); padding:7px 12px; font:inherit; }
@@ -19,6 +20,8 @@
 :root .shell>main.af { padding:0 0 48px; }
 :root :is(main.ai-assistant,main.linguistics,main.observation-studio,.development-shell>main.coach) { box-sizing:border-box; width:100%; max-width:var(--suite-width); margin-inline:auto; padding:var(--suite-space) var(--suite-gutter) 64px; }
 :root .development-shell>.coach { box-sizing:border-box; width:100%; max-width:var(--suite-width); margin-inline:auto; padding:var(--suite-space) var(--suite-gutter) 64px; }
+:root .development-shell>.coach.coach-chat-page { padding-bottom:16px; }
+@media(max-height:600px) { :root .development-shell>.coach.coach-chat-page { padding-top:8px; padding-bottom:12px; } }
 :root :is(.ai-hero,.ling-hero,.coach-hero,.observation-hero) { padding-top:0; margin-top:0; padding-bottom:20px; }
 :root :is(.page-title,.hm h1,.af h1,.coach-hero h1,.ling-hero h1,.ai-hero h1,.observation-studio>header h1) { font:600 30px/1.2 var(--serif); letter-spacing:-.025em; }
 :root :is(.menu,.apps-pop,.sel-list,.ctx-menu) { border-radius:var(--suite-radius); box-shadow:0 12px 36px #0002; }

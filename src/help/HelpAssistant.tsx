@@ -42,7 +42,7 @@ function HelpChat() {
   const [category,setCategory]=useState('All topics');
   const [feedbackNote, setFeedbackNote] = useState('');
   const [shareQuestion, setShareQuestion] = useState(false);
-  useAiActivity({active:busy,title:'ELT Suite help',detail:'Finding the right guidance…',onOpen:()=>setOpen(true)});
+  useAiActivity({active:busy,title:'ELT Suite help',detail:'Finding the right guidance…',retainResult:!open,onOpen:()=>setOpen(true)});
   const input = useRef<HTMLInputElement>(null);
   const panel = useRef<HTMLElement>(null);
   const scroll = useRef<HTMLDivElement>(null);

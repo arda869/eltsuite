@@ -26,7 +26,7 @@ export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ct
         </button>
       </div>
       <div className="dz-dr-body">
-        {(seenAi||k==='ai')&&<div hidden={k!=='ai'}><AiImages cx={cx} onOpen={onAiOpen}/></div>}
+        {(seenAi||k==='ai')&&<div hidden={k!=='ai'}><AiImages cx={cx} visible={k==='ai'} onOpen={onAiOpen}/></div>}
         {k === 'templates' && <Templates cx={cx} />}
         {k === 'elements' && <Elements cx={cx} />}
         {k === 'text' && <TextDrawer cx={cx} />}

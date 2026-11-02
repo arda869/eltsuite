@@ -180,7 +180,12 @@ const J = {
     await image.getByRole('button',{name:'Generate preview'}).waitFor();
     await image.getByLabel('Describe your image').fill('Pip running in an original blue classroom scene');
     await image.getByText('Using references: Pip',{exact:true}).waitFor();
+    await image.evaluate(()=>localStorage.setItem('mockDesignerDelayMs','2000'));
     await image.getByRole('button',{name:'Generate preview'}).click();
+    await image.getByRole('button',{name:'Elements',exact:true}).click();
+    await reviewAi(image,'Designer image');
+    if(await image.getByLabel('Describe your image').inputValue()!=='Pip running in an original blue classroom scene')throw Error('Switching tools lost the image brief');
+    await image.evaluate(()=>localStorage.removeItem('mockDesignerDelayMs'));
     await image.getByAltText('Generated preview').waitFor();
     await image.getByRole('button',{name:'Apply to canvas'}).click();
     await image.getByAltText('Generated preview').waitFor({state:'detached'});
@@ -424,7 +429,7 @@ const J = {
     await openAssistant(s.p);
     const panel = s.p.getByRole('dialog', { name: 'ELT Suite assistant' });
     await panel.getByRole('button', { name: 'How do I record a lesson?', exact: true }).click();
-    await panel.locator('.help-typing-dots').waitFor();
+    await panel.locator('.help-thinking .ai-mark.is-working').waitFor();
     await panel.getByRole('heading', { name: 'Make a listening recording' }).waitFor();
     await panel.getByRole('heading', { name: 'Turn a script into AI speech' }).waitFor();
     await panel.locator('.help-suggestion summary').click();
@@ -941,7 +946,11 @@ const J = {
       await actionPromise;
       if(!s.p.url().includes('/assistant')) throw Error('Dismissing leave warning lost the planner');
     };
-    await checkStay(()=>s.p.locator('.ai-generation').getByRole('link',{name:'Back to class',exact:true}).click());
+    await s.p.locator('.ai-generation').getByRole('link',{name:'Back to class',exact:true}).click();
+    const aiTray=s.p.getByRole('region',{name:'AI activity',exact:true});
+    await aiTray.getByRole('link',{name:'Open in a new tab',exact:true}).waitFor();
+    if(!s.p.url().includes('/assistant'))throw Error('AI navigation tray lost the active plan');
+    await aiTray.getByRole('button',{name:'Keep working here',exact:true}).click();
     await checkStay(()=>s.p.goBack({timeout:1500}));
     const reloadDialog=s.p.waitForEvent('dialog');
     const reload=s.p.reload({timeout:3000}).catch(()=>{});

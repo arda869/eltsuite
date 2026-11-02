@@ -9,7 +9,7 @@ import { saveMeta, metaRef } from './model';
 import type { Ctx } from './Editor';
 const call=httpsCallable<Record<string,unknown>,{ready?:boolean;message?:string;status?:string;resultId?:string}>(getFunctions(undefined,'us-central1'),'designerImage',{timeout:300000});
 type Pending={id:string;target?:string};
-export function AiImages({cx,onOpen}:{cx:Ctx;onOpen?:()=>void}) {
+export function AiImages({cx,onOpen,visible=true}:{cx:Ctx;onOpen?:()=>void;visible?:boolean}) {
  const styles=[['photo','Photo','Natural photography · all ages'],['bright','Bright & bold','Colourful, clear shapes · young learners'],['storybook','Soft storybook','Warm, gentle illustrations · young learners'],['editorial','Editorial','Restrained colour · teens and adults'],['ink','Black & white','Clean outlines · print-friendly adults']];
  const [style,setStyle]=useState('photo'),[referenceId,setReferenceId]=useState('');
  useEffect(()=>{void getDoc(metaRef(cx.d.id)).then(s=>{const m=s.data();if(m?.aiStyle)setStyle(m.aiStyle);if(m?.aiReference)setReferenceId(m.aiReference);});},[cx.d.id]);
@@ -17,7 +17,7 @@ export function AiImages({cx,onOpen}:{cx:Ctx;onOpen?:()=>void}) {
  const {items:characters,error:characterError}=useCharacters();
  const [libraryOpen,setLibraryOpen]=useState(false),[picked,setPicked]=useState<string[]>([]);
  const [mode,setMode]=useState<'create'|'edit'|'erase'|'restyle'>('create'),[prompt,setPrompt]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[ready,setReady]=useState(false),[preview,setPreview]=useState('');
- useAiActivity({active:busy,title:'Designer image',detail:'Preparing your image preview…',error,onOpen});
+ useAiActivity({active:busy,title:'Designer image',detail:'Preparing your image preview…',error,retainResult:!visible,onOpen});
  const [pending,setPending]=useState<Pending|null>(()=>{try{return JSON.parse(localStorage.getItem(storageKey)??'null');}catch{return null;}});
  const mentioned=mentionedCharacters(prompt,characters);
  const selectedCharacters=characters.filter(a=>picked.includes(a.id)||mentioned.some(m=>m.id===a.id));

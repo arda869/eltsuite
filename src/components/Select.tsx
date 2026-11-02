@@ -60,7 +60,9 @@ export function Select<T extends string>({ value, options: all, onChange, label,
     const row = option.getBoundingClientRect(), bounds = menu.getBoundingClientRect();
     if (row.top < bounds.top) menu.scrollTop -= bounds.top - row.top;
     else if (row.bottom > bounds.bottom) menu.scrollTop += row.bottom - bounds.bottom;
-  }, [open, hi]);
+    // Keyboard focus follows the highlighted option; the trigger remains a button.
+    if(!typing&&!touch&&!mouse.current)option.focus({preventScroll:true});
+  }, [open, hi, typing, touch]);
   const mouse = useRef(false);
   const key = (e: React.KeyboardEvent) => {
     const n = options.length;
@@ -101,7 +103,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
   };
   return (
     <>
-      <button ref={btn} id={id} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? uid + '-list' : undefined} aria-activedescendant={open && !typing && options[hi] ? `${uid}-o${hi}` : undefined} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)} onKeyDown={key}>
+      <button ref={btn} id={id} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? uid + '-list' : undefined} aria-label={label} disabled={disabled} onClick={() => setOpen((o) => !o)} onKeyDown={key}>
         {cur?.icon && <UiIcon name={cur.icon} size={16} />}<span className={'sel-v' + (cur ? '' : ' empty')}>{cur?.label ?? placeholder}</span>
         <svg className="sel-chev" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -109,7 +111,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
       </button>
       {open &&
         createPortal(
-          <div ref={list} id={uid + '-list'} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-label={label} onMouseMove={() => (mouse.current = true)} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
+          <div ref={list} id={uid + '-list'} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-label={label} onKeyDown={e=>{if(!e.defaultPrevented)key(e);}} onMouseMove={() => (mouse.current = true)} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
             {typing && (
               <input className="sel-q" type="search" role="combobox" aria-expanded="true" aria-controls={uid + '-list'} aria-autocomplete="list" aria-activedescendant={options[hi] ? `${uid}-o${hi}` : undefined} autoFocus={!touch} autoComplete="off" enterKeyHint="done" value={q} placeholder="Type to find…" aria-label={`Find in ${label}`} onChange={(e) => (setQ(e.target.value), setHi(0))} onKeyDown={key} />
             )}

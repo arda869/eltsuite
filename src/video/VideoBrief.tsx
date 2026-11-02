@@ -17,17 +17,18 @@ type Plan = {title:string;learningAim:string;scenes:PlannedScene[]};
 type Draft = {brief:string;audience:string;level:string;length:number;style:string;references:string[];plan:Plan|null;job:string;assembled:boolean};
 const blank = ():Draft => ({brief:'',audience:'Young learners',level:'A1',length:30,style:'3d-cartoon',references:[],plan:null,job:'',assembled:false});
 const asset = async (id:string) => {const s=await getDoc(doc(db,'videoAssets',id));if(!s.exists()||!s.data().ready)throw Error('A scene is still being saved. Continue again shortly.');return {...s.data(),id:s.id} as VideoAsset;};
-export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,onAssemble}:{uid:string;ownerName:string;assets:VideoAsset[];enabled:boolean;plannerEnabled:boolean;onError:(s:string)=>void;onAssemble:(scenes:ReadyScene[],title:string)=>void}) {
+export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,onAssemble,visible=true,onOpen}:{uid:string;ownerName:string;assets:VideoAsset[];enabled:boolean;plannerEnabled:boolean;onError:(s:string)=>void;onAssemble:(scenes:ReadyScene[],title:string)=>void;visible?:boolean;onOpen?:()=>void}) {
   const key=`ll.videoBrief.${uid}`;
   const [draft,setDraft]=useState<Draft>(()=>{try{const d=JSON.parse(localStorage.getItem(key)||'null');return d&&typeof d.brief==='string'&&Array.isArray(d.references)&&(!d.plan||Array.isArray(d.plan.scenes))?{...blank(),...d}:blank();}catch{return blank();}});
   const current=useRef(draft),running=useRef(false),stop=useRef(false),alive=useRef(true);
   const [busy,setBusy]=useState(''), [editingBrief,setEditingBrief]=useState(false);
-  useAiActivity({active:!!busy,title:'Classroom video',detail:busy});
+  const [failure,setFailure]=useState('');
+  useAiActivity({active:!!busy,error:failure,title:'Classroom video',detail:busy,retainResult:!visible,onOpen});
   const commit=(patch:Partial<Draft>)=>{current.current={...current.current,...patch};localStorage.setItem(key,JSON.stringify(current.current));if(alive.current)setDraft(current.current);};
   const changeScene=(i:number,patch:Partial<PlannedScene>)=>{const p=current.current.plan!;commit({assembled:false,plan:{...p,scenes:p.scenes.map((s,n)=>n===i?{...s,...patch}:s)}});};
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;stop.current=true;};},[]);
   const plan = async (recover=false) => {
-    if(running.current)return;running.current=true;setBusy('Drafting scenes and the complete script…');
+    if(running.current)return;running.current=true;setFailure('');setBusy('Drafting scenes and the complete script…');
     const id=recover?current.current.job:crypto.randomUUID();commit({job:id});
     try {
       const d=current.current;
@@ -35,14 +36,14 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
       if(r.plan){commit({plan:r.plan,job:'',assembled:false});setEditingBrief(false);}
       else if(r.status==='failed'){commit({job:''});throw Error(r.message||'The script could not be drafted. Your current script is kept.');}
       else onError('Your script is still being drafted. Use Recover script to check again.');
-    }catch(e){onError((e as Error).message);}finally{running.current=false;if(alive.current)setBusy('');}
+    }catch(e){setFailure((e as Error).message);onError((e as Error).message);}finally{running.current=false;if(alive.current)setBusy('');}
   };
   const wait = async (id:string) => {
     while(!stop.current){const r=await videoCall<{status:string;assetId?:string;message?:string}>({action:'poll',jobId:id});if(r.assetId)return r.assetId;if(['failed','cancelled'].includes(r.status))throw Error(r.message||'A scene did not finish. Your completed media is kept.');await new Promise(r=>setTimeout(r,5000));}
     throw Error('Generation paused here. Submitted scenes continue in your library; Continue generation recovers them.');
   };
   const generate = async () => {
-    if(running.current||!current.current.plan)return;running.current=true;stop.current=false;setBusy('Preparing your approved script…');
+    if(running.current||!current.current.plan)return;running.current=true;stop.current=false;setFailure('');setBusy('Preparing your approved script…');
     try {
       const p=current.current.plan;
       if(p.scenes.some(s=>!s.prompt.trim()||s.script.trim().split(/\s+/).filter(Boolean).length>(s.duration===5?9:20)))throw Error('Keep narration to 9 words for 5 seconds or 20 words for 10 seconds. Edit the script before generating.');
@@ -82,7 +83,7 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
         const ready=await Promise.all(result.scenes.map(async s=>({video:await asset(s.video!),image:await asset(s.image!),audio:s.audio?await asset(s.audio):undefined,question:s.question})));
         onAssemble(ready,result.title);commit({assembled:true});
       }
-    } catch(e){onError((e as Error).message);}finally{running.current=false;if(alive.current)setBusy('');}
+    } catch(e){setFailure((e as Error).message);onError((e as Error).message);}finally{running.current=false;if(alive.current)setBusy('');}
   };
   const update=(p:Partial<Draft>)=>commit(p);
   const total=draft.plan?.scenes.reduce((n,s)=>n+s.duration,0)||0;

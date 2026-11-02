@@ -10,6 +10,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if(name==='designerImage') {
     if(d.action==='connection')return {data:{ready:true}};
     if(d.action==='status')return {data:{status:'completed',resultId:d.requestId}};
+    if(localStorage.getItem('mockDesignerDelayMs'))await new Promise(r=>setTimeout(r,Number(localStorage.getItem('mockDesignerDelayMs'))));
     localStorage.setItem('lastDesignerRequest',JSON.stringify(d));
     if(d.action!=='restyle'&&!d.prompt?.trim())throw Error('Add a description.');
     const canvas=document.createElement('canvas');canvas.width=160;canvas.height=120;
@@ -51,6 +52,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   }
   if (name === 'recordingDialogue') return {data:{lines:Array.from({length:d.turns},(_,i)=>({speaker:d.speakers[i%d.speakers.length].id,text:i%2?'Of course. I meant this Friday, not Thursday.':'Sorry, could you clarify which day you mean?',direction:'Natural conversational English'}))}};
   if (name === 'videoStudio') {
+    if(d.action==='generate'&&localStorage.getItem('mockVideoDelayMs'))await new Promise(r=>setTimeout(r,Number(localStorage.getItem('mockVideoDelayMs'))));
     const {getAuth}=await import('./auth'); const uid=getAuth().currentUser?.uid||'teacher1';
     if(d.action==='status') return {data:{enabled:true,plannerEnabled:true,simulated:true,model:'gen4.5',usdPerSecond:.12}};
     if(d.action==='plan') return {data:{status:'complete',plan:{title:'At the fruit shop',learningAim:'Ask politely for fruit using Can I have…?',scenes:[{title:'Meet the shopkeeper',prompt:'A friendly original fox and rabbit at a colourful fruit shop. The fox points at apples.',script:'Can I have an apple, please?',duration:5,question:'What does the fox want?',answer:'An apple.',teacherNotes:'Pause and let learners answer with a partner.'},{title:'Your turn',prompt:'The same fox smiles as the rabbit offers an apple at the fruit shop.',script:'Here you are. Thank you!',duration:5,question:'Ask for your favourite fruit.',answer:'Can I have a banana, please?',teacherNotes:'Pairs take turns being the customer and shopkeeper.'}]}}};

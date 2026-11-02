@@ -11,11 +11,12 @@ function remove(id: string) { if (!snapshot.some(a => a.id === id)) return; snap
 
 // The owning editor remains mounted when its panel is minimised. No second paid
 // request is made when returning to it. Work is deliberately scoped to this page.
-export function useAiActivity({ active, title, detail = '', error = '', progress, autoMinimise = false, enabled = true, onOpen }: {
-  active: boolean; title: string; detail?: string; error?: string; progress?: number; autoMinimise?: boolean; enabled?: boolean; onOpen?: () => void;
+export function useAiActivity({ active, title, detail = '', error = '', progress, autoMinimise = false, enabled = true, retainResult = false, onOpen }: {
+  active: boolean; title: string; detail?: string; error?: string; progress?: number; autoMinimise?: boolean; enabled?: boolean; retainResult?: boolean; onOpen?: () => void;
 }) {
   const id = useId(), wasActive = useRef(false), callback = useRef(onOpen);
   const [minimised,setMinimised] = useState(false);
+  const hiddenPanel=useRef(minimised);hiddenPanel.current=minimised;
   callback.current = onOpen;
   const restore = useCallback(() => { setMinimised(false); remove(id); callback.current?.(); },[id]);
   useEffect(() => {
@@ -24,10 +25,11 @@ export function useAiActivity({ active, title, detail = '', error = '', progress
       if (!wasActive.current && autoMinimise) setMinimised(true);
       put({id,title,detail,active:true,progress,open:restore});
     } else if (wasActive.current) {
-      put({id,title,detail:error?'Open the result to retry. Your existing work is kept.':'Ready to review.',active:false,error,open:restore});
+      if(hiddenPanel.current||retainResult)put({id,title,detail:error?'Open the result to retry. Your existing work is kept.':'Ready to review.',active:false,error,open:restore});
+      else remove(id);
     }
     wasActive.current=active;
-  },[active,title,detail,error,progress,enabled,autoMinimise,id,restore]);
+  },[active,title,detail,error,progress,enabled,autoMinimise,retainResult,id,restore]);
   useEffect(() => () => remove(id),[id]);
   useEffect(() => {
     if (!active) return;

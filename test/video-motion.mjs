@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {spawn} from 'node:child_process';
+import {reviewAi} from './cohesion.mjs';
 const base='http://localhost:5197';
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port','5197'],{stdio:'ignore',detached:true});
 let browser, p;
@@ -28,7 +29,11 @@ try {
   assert.equal(await scene.getByRole('button',{name:/Generate moving video/}).isDisabled(),true);
   await scene.getByText('Describe what should move',{exact:false}).waitFor();
   await scene.getByLabel('What happens',{exact:true}).fill('The fox waves and passes a pencil to a friend. One continuous shot.');
+  await p.evaluate(()=>localStorage.setItem('mockVideoDelayMs','2000'));
   await scene.getByRole('button',{name:/Generate moving video/}).click();
+  await p.getByRole('tab',{name:'Media',exact:true}).click();
+  await reviewAi(p,'Video scene');
+  await p.evaluate(()=>localStorage.removeItem('mockVideoDelayMs'));
   await scene.getByRole('button',{name:'Add scene to timeline',exact:true}).waitFor({timeout:20000});
   await scene.getByRole('button',{name:'Add scene to timeline',exact:true}).click();
   // A changed action must not offer an older generated result as its new video.
