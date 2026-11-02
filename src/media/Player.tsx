@@ -1,3 +1,5 @@
+import {getFunctions,httpsCallable} from 'firebase/functions';
+import {app} from '../lib/firebase';
 import { tr } from '../lib/terms';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { loadManifest, soundUrl, useManifest, youTubeId, type Manifest, type ScriptLine } from '../lib/archive';
@@ -575,8 +577,17 @@ function PlayerWave({ e, classId, mediaId, lines, locked, range, onRange }: { e:
 export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', plays = 0, teacher: editing, teaching, manifest, extra, bare, mute: preset, onMute, below, inline }: { classId: string; mediaId: string; title?: string; scriptMode?: ScriptMode; plays?: number; teacher?: boolean; teaching?: boolean; manifest?: Manifest | null; extra?: ReactNode; bare?: boolean; mute?: string[]; onMute?: (m: string[]) => void; below?: (e: Engine) => ReactNode; inline?:boolean }) {
   const teacher = editing || teaching;
   const e = useEngine(classId, mediaId, manifest);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean|null>(null);
+  const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
+  useEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
   const lines = (e.m?.script ?? []).filter((l) => l.text.trim());
+  useEffect(()=>{
+    let active=true;setScriptRecovery('');
+    if(!teacher||!e.m?.aiGenerated||lines.length||!(editing||scriptMode!=='none'||open))return;
+    setScriptRecovery('Restoring the saved script…');
+    void httpsCallable(getFunctions(app,'us-central1'),'lessonAssistant')({action:'restoreAudioScript',classId,mediaId}).then(()=>{if(active)setScriptRecovery('');}).catch(error=>{if(active)setScriptRecovery(error.message||'The saved script could not be restored. Try again or add it in Recordings.');});
+    return()=>{active=false;};
+  },[classId,mediaId,teacher,editing,scriptMode,e.m?.aiGenerated,lines.length,open,scriptRetry]);
   // Pause at the end of each line: for repeating after the speaker, or dictation.
   const [lineStop, setLineStop] = useState(false);
   const timed = lines.filter((l) => l.t !== null).map((l) => l.t as number).sort((a, b) => a - b);
@@ -656,7 +667,10 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
     window.addEventListener('ll:live-play', h);
     return () => window.removeEventListener('ll:live-play', h);
   }, [mediaId, teacher]);
-  const showScript = lines.length > 0 && (editing || scriptMode === 'karaoke' || (teaching && open) || (scriptMode === 'after' && e.ends > 0) || (scriptMode === 'button' && open));
+  const showScript = lines.length > 0 && (editing || ((teaching||scriptMode==='button'?open:null) ?? (scriptMode === 'karaoke' || (scriptMode === 'after' && e.ends > 0))));
+  const canToggleScript=!editing&&lines.length>0&&((teaching&&scriptMode!=='karaoke')||scriptMode==='button');
+  const scriptMissing=!lines.length&&(editing||scriptMode==='karaoke'||scriptMode==='button'||open||(scriptMode==='after'&&e.ends>0));
+  const scriptStatus=scriptMissing?<span className="mp-note" role="status">{scriptRecovery||(teacher?'No script is attached to this recording. Add or transcribe it in Recordings.':'No transcript has been added to this recording.')}{teacher&&scriptRecovery&&!scriptRecovery.startsWith('Restoring')&&<button type="button" className="btn small-btn" onClick={()=>setScriptRetry(n=>n+1)}>Retry script recovery</button>}</span>:null;
   if (e.m === undefined) return inline ? <span className="mp mp-wait" /> : <div className="mp mp-wait" />;
   if (e.m === null) return inline ? <span className="mp mp-missing">This sound or video is no longer in this class.</span> : <div className="mp mp-missing">This sound or video is no longer in this class.</div>;
   const name = title || e.m.title || (e.video ? 'Video' : 'Listening');
@@ -675,7 +689,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
     {plays>0&&<span className="mp-note">{used?'No plays left':teacher?`Learners can play ${plays} times`:`${plays-e.ends} plays left`}</span>}
     {e.error&&<span className="mp-error">{e.error}</span>}
     {showScript&&<span className="im-script">{lines.map((l,i)=><span key={i} className={l.t!==null&&e.time>=l.t?'said':''}>{l.text} </span>)}</span>}
-    {scriptMode==='button'&&lines.length>0&&<button type="button" className="mp-script-btn" onClick={()=>setOpen(o=>!o)}>{open?'Hide the script':'Show the script'}</button>}
+    {scriptStatus}{canToggleScript&&<button type="button" className="mp-script-btn" aria-expanded={!!showScript} onClick={()=>setOpen(!showScript)}>{showScript?'Hide the script':'Show the script'}</button>}
   </span>;
 
   return (
@@ -737,9 +751,10 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
           <Karaoke lines={lines} time={e.time} duration={e.duration || e.m.duration || 0} onSeek={(t) => (e.seek(t), !e.playing && !used && e.play())} />
         </>
       )}
-      {((!teacher && scriptMode === 'button') || (teaching && scriptMode !== 'karaoke')) && lines.length > 0 && (
-        <button type="button" className="mp-script-btn" onClick={() => setOpen((o) => !o)}>
-          {open ? 'Hide the script' : 'Show the script'}
+      {scriptStatus}
+      {canToggleScript && (
+        <button type="button" className="mp-script-btn" aria-expanded={!!showScript} onClick={() => setOpen(!showScript)}>
+          {showScript ? 'Hide the script' : 'Show the script'}
         </button>
       )}
       {!teacher && scriptMode === 'after' && lines.length > 0 && e.ends === 0 && <span className="mp-note">The script appears after you listen to the end.</span>}

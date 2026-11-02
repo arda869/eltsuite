@@ -80,6 +80,9 @@ jobs:
       - name: Trainer grant and course creation journey (Firebase simulated)
         run: node test/admin-trainer-ui.mjs
 
+      - name: Audio script visibility journey (Firebase simulated)
+        run: node test/audio-script-ui.mjs
+
       - name: Applied Linguistics teacher journey (Firebase simulated)
         timeout-minutes: 8
         run: node test/linguistics-ui.mjs
