@@ -1,3 +1,5 @@
+
+import { useAiActivity } from '../components/AiActivity';
 import { VideoBrief, type ReadyScene } from "./VideoBrief";
 import { VideoButton } from "./VideoButton";
 import { VIDEO_STYLES } from "../../functions/video/styles.js";
@@ -69,6 +71,7 @@ export function AIVideo({
       }
     }),
     [busy, setBusy] = useState("");
+  useAiActivity({active:!!busy||scenes.some(s=>s.status==='working'),title:'Video scene',detail:busy?'Preparing your scene…':'Creating video…'});
   const timer = useRef(0);
   const startingUsed = useRef<VideoAsset | null>(null);
   useEffect(() => {

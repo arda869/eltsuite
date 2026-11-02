@@ -1,3 +1,4 @@
+import {reviewAi,returnDuringAi,backgroundSongAudit,suiteCohesionAudit} from './cohesion.mjs';
 // Smoke tests: the journeys teachers and learners take most, run in a real browser against the
 // app with stand-ins for Firebase (test/vite.config.ts). Run with: npm run smoke
 // Each journey fails on a crash in the page, a missing screen, or something that does not stay.
@@ -89,12 +90,13 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
   'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
-    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
     await dialog.getByRole('link',{name:'Discuss with coach',exact:true}).click();
     await s.p.getByRole('complementary',{name:'Selected teaching context'}).waitFor();
     if(await s.p.getByText('Let’s start with your teaching',{exact:true}).count())throw Error('Optional profile blocked selected-lesson discussion');
@@ -114,12 +116,12 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     let dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
-    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();
+    await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
     await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
     await dialog.getByText('Not enough recorded history for a useful estimate.',{exact:true}).waitFor();
     await dialog.getByText('View evidence (1 activities)',{exact:true}).click();
     await dialog.getByText(/Timing not recorded/).waitFor();
-    await dialog.getByRole('button',{name:'Check this lesson',exact:true}).click();
+    await dialog.getByRole('button',{name:'Check this lesson',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
     await s.p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.includes('/learningReports/')).length===2);
     await dialog.getByRole('button',{name:'Close',exact:true}).click();
     await s.p.reload();
@@ -134,23 +136,23 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
     let dialog=s.p.getByRole('dialog',{name:'Generate answer key'});
-    await dialog.getByRole('button',{name:'Generate missing answers'}).click();
+    await dialog.getByRole('button',{name:'Generate missing answers'}).click();await reviewAi(s.p,'Generate answer key');
     await dialog.getByRole('button',{name:'Apply answer key'}).waitFor();
     await axe(s.p,'Answer key review',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Apply answer key'}).click();
     await s.p.waitForFunction(({classId,itemId})=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+classId+'/items/'+itemId+'/tasks/tool-source/private/key'].missing.answers[0]==='went',s.demo);
-    await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();
+    await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
     dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
     await dialog.getByRole('button',{name:/More support Add choices/}).click();
-    await dialog.getByRole('button',{name:'Create differentiated version'}).click();
+    await dialog.getByRole('button',{name:'Create differentiated version'}).click();await reviewAi(s.p,'Differentiate activity');
     await dialog.getByRole('button',{name:'Add differentiated version'}).waitFor();
     await axe(s.p,'Differentiated preview',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Add differentiated version'}).click();
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.family==='tool-source'&&v.variant==='Supported'),s.demo);
-    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();
+    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
     dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
     await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
-    await dialog.getByRole('button',{name:'Create next activity'}).click();
+    await dialog.getByRole('button',{name:'Create next activity'}).click();await reviewAi(s.p,'Suggest next activity');
     await dialog.getByRole('button',{name:'Add activity to lesson'}).click();
     await dialog.waitFor({state:'hidden'});
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan'&&v.order===1),s.demo);
@@ -518,7 +520,7 @@ const J = {
     await s.p.evaluate(()=>sessionStorage.setItem('mockStemDelayMs','1800'));
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
     await d.getByRole('radio',{name:'Adults',exact:true}).check();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Pop',exact:true}).check();await d.getByRole('radio',{name:'30 seconds',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
-    await d.getByLabel('Lyrics',{exact:true}).fill('Hello, hello, sing with me.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();
+    await d.getByLabel('Lyrics',{exact:true}).fill('Hello, hello, sing with me.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await returnDuringAi(s.p,'Classroom song');
     await d.getByText(/Preparing sing-along tracks/).waitFor();if(await d.getByRole('button',{name:'Add song to timeline'}).isEnabled())throw Error('Add should explain why tracks are not ready');
     await d.getByRole('button',{name:'Sing-along · no vocals',exact:true}).click();const audio=d.locator('audio');
     await audio.evaluate(el=>el.play());await s.p.waitForFunction(()=>document.querySelector('dialog audio')?.currentTime>.1);await audio.evaluate(el=>el.pause());
@@ -544,59 +546,7 @@ const J = {
     },{...s.demo,mediaId:copied});
     await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher&mode=player&class='+s.demo.classId+'&media='+copied);await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Play',exact:true}).click();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).click();await s.p.getByRole('button',{name:'Vocals on',exact:true}).waitFor();await s.p.getByRole('button',{name:'Vocals on',exact:true}).click();await s.p.getByRole('button',{name:'Vocals off · sing-along',exact:true}).waitFor();await s.p.getByRole('button',{name:'Pause',exact:true}).waitFor();await axe(s.p,'Copied song vocals-off player',A11Y_FOUND);return s;}finally{await s.ctx.tracing.stop({path:'outputs/song-stems-trace.zip'});}
   },
-  'Songs: topic-only lyric drafting needs no title or lesson': async (b) => {
-    const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
-    await s.p.getByRole('button',{name:'Create song',exact:true}).click();
-    const d=s.p.getByRole('dialog',{name:'Create a classroom song'});
-    await d.getByRole('radio',{name:'Young learners',exact:true}).check();
-    await d.getByRole('button',{name:'Next: music'}).click();
-    await d.getByRole('radio',{name:'Pop',exact:true}).check();
-    await d.getByRole('button',{name:'Next: lyrics'}).click();
-    await d.getByText('Help me write the lyrics',{exact:true}).click();
-    const draft=d.getByRole('button',{name:'Draft lyrics',exact:true});
-    if(await draft.isEnabled())throw Error('An empty brief should ask for a topic before drafting');
-    await d.getByText('Add a topic above, enter a teaching focus, or link a lesson to draft lyrics.',{exact:true}).waitFor();
-    await d.getByLabel('Lyric ideas',{exact:true}).fill('Parts of the body song');
-    if(await d.getByLabel('Song title',{exact:true}).inputValue())throw Error('Regression needs an empty title');
-    if(!await draft.isEnabled())throw Error('A topic must enable drafting without a title, focus or lesson');
-    await s.p.evaluate(()=>sessionStorage.setItem('mockSongDelayMs','3000'));
-    await draft.click();
-    await d.getByRole('heading',{name:'Writing your lyrics…',exact:true}).waitFor();
-    await d.getByRole('progressbar',{name:'Lyric writing in progress'}).waitFor();
-    if(await d.getByRole('button',{name:'Close song creator'}).isEnabled())throw Error('Creation should prevent accidental close or duplicate requests');
-    if(process.env.SONG_LYRICS_PROGRESS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_LYRICS_PROGRESS_SCREENSHOT});
-    await s.p.emulateMedia({reducedMotion:'reduce'});
-    if(await d.locator('.song-work-icon>span').evaluate(el=>getComputedStyle(el).animationName)!=='none')throw Error('Progress must respect reduced motion');
-    await s.p.emulateMedia({reducedMotion:'no-preference'});
-    await axe(s.p,'AI lyric creation progress',A11Y_FOUND);
-    await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
-    if(await d.getByRole('progressbar').count())throw Error('Progress remained after lyric drafting finished');
-    await d.getByText('Click “Use these lyrics” to put the AI draft into your song.',{exact:true}).waitFor();
-    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
-    if(request.name!=='recordingLyrics'||request.brief.title!=='Parts of the body song'||request.brief.prompt!=='Parts of the body song'||request.brief.lesson||request.brief.focus)throw Error('Topic-only draft did not send a complete brief');
-    if(await d.getByLabel('Song title',{exact:true}).inputValue()!=='Parts of the body song')throw Error('Suggested title was not shown');
-    if(await d.getByLabel('Lyrics',{exact:true}).inputValue())throw Error('Draft must wait for teacher review');
-    await d.getByRole('button',{name:'Use these lyrics',exact:true}).click();
-    if(!await d.getByLabel('Lyrics',{exact:true}).inputValue())throw Error('Teacher could not use drafted lyrics');
-    if(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Drafting must not approve lyrics automatically');
-    await d.getByText('Review the lyrics, then tick “I’ve reviewed the lyrics. Use these exact words.” to enable Create song.',{exact:true}).waitFor();
-    await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();
-    if(!await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Reviewed AI lyrics must enable music creation');
-    await s.p.setViewportSize({width:390,height:844});await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
-    await d.getByRole('button',{name:'Create song',exact:true}).click();
-    await d.getByRole('heading',{name:'Creating your song…',exact:true}).waitFor();
-    await d.getByRole('progressbar',{name:'Song creation in progress'}).waitFor();
-    if(await d.evaluate(el=>el.scrollWidth>el.clientWidth+2))throw Error('Song progress overflows on a phone');
-    if(process.env.SONG_MUSIC_PROGRESS_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_MUSIC_PROGRESS_SCREENSHOT});
-    await axe(s.p,'AI music creation progress on phone',A11Y_FOUND);
-    await d.locator('audio').waitFor();
-    const songRequest=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
-    if(songRequest.name!=='recordingSong'||songRequest.approved!==true||!songRequest.brief.lyrics.trim())throw Error('Reviewed AI lyrics did not reach song creation');
-    const playable=await d.locator('audio').evaluate(el=>new Promise((resolve,reject)=>{const check=()=>el.readyState>=1&&el.duration>0?resolve(true):false;if(check())return;el.addEventListener('loadedmetadata',()=>resolve(el.duration>0),{once:true});el.addEventListener('error',()=>reject(Error('Song audio failed to load')),{once:true});}));
-    if(!playable)throw Error('Created song must have playable audio');
-    if(await d.locator('.song-work').count())throw Error('Music generation progress remained after music creation finished');
-    await axe(s.p,'Topic-only lyric drafting',A11Y_FOUND);return s;
-  },
+  'Songs: topic-only lyric drafting and non-blocking AI activity': async(b)=>{const s=await session(b);await backgroundSongAudit(s,BASE,A11Y_FOUND,axe);return s;},
   'Songs: lesson-linked brief, music styles, exact lyrics and timeline': async (b) => {
     const s=await session(b);await s.p.goto(BASE+'/test/speech/fixture.html?as=teacher');
     await s.p.getByRole('button',{name:'Create song',exact:true}).click();
@@ -615,7 +565,7 @@ const J = {
     await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('Song title',{exact:true}).fill('Morning song');
     const words='  Wake up!\nWake up!\nLet’s go.  ';await d.getByLabel('Lyrics',{exact:true}).fill(words);
     if(await d.getByRole('button',{name:'Create song',exact:true}).isEnabled())throw Error('Song started before lyric approval');
-    await d.getByText('Help me write the lyrics',{exact:true}).click();if(!await d.getByRole('button',{name:'Draft lyrics',exact:true}).isEnabled())throw Error('A linked lesson should be sufficient to draft lyrics');await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();
+    await d.getByText('Help me write the lyrics',{exact:true}).click();if(!await d.getByRole('button',{name:'Draft lyrics',exact:true}).isEnabled())throw Error('A linked lesson should be sufficient to draft lyrics');await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();await reviewAi(s.p,'Classroom song');
     await d.getByRole('button',{name:'Use these lyrics',exact:true}).waitFor();
     const lyricRequest=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));
     if(lyricRequest.brief.lesson.classId!==s.demo.classId||lyricRequest.brief.lesson.itemId!==s.demo.itemId||lyricRequest.brief.language!=='English')throw Error('Lesson link did not reach lyric drafting');
@@ -626,7 +576,7 @@ const J = {
     await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();
     if(/ChatGPT|Google|Lyria|OpenAI/.test(await d.innerText()))throw Error('Provider names leaked into song creation');
     if(process.env.SONG_SCREENSHOT)await s.p.screenshot({path:process.env.SONG_SCREENSHOT});await axe(s.p,'Song lyric approval',A11Y_FOUND);
-    await d.getByRole('button',{name:'Create song',exact:true}).click();await d.locator('audio').waitFor();
+    await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockSongLastRequest')));if(request.name!=='recordingSong'||request.brief.lyrics!==words||request.approved!==true)throw Error('Approved lyrics changed');
     await d.getByRole('button',{name:'Add song to timeline',exact:true}).click();await d.waitFor({state:'hidden'});await s.p.getByRole('button',{name:'Script',exact:true}).click();await see(s.p,'.recording-script-rows textarea','song script');
     if(await s.p.locator('.recording-script-rows textarea').inputValue()!==words)throw Error('Timeline lost exact lyrics');return s;
@@ -638,12 +588,12 @@ const J = {
     await d.getByLabel('Classroom',{exact:true}).click();await s.p.getByRole('option',{name:new RegExp(unavailable.className)}).click();await d.getByLabel('Classroom lesson',{exact:true}).click();await s.p.getByRole('option',{name:unavailable.title,exact:true}).click();await d.getByRole('alert').waitFor();
     if(await d.getByRole('button',{name:'Next: music'}).isEnabled())throw Error('An unresolved lesson error can strand the later steps');
     await d.getByRole('button',{name:'Continue without a lesson'}).click();await d.getByRole('button',{name:'Next: music'}).click();await d.getByRole('radio',{name:'Custom style',exact:true}).check();await d.getByLabel('Custom music style',{exact:true}).fill('FAIL_TEST');await d.getByRole('button',{name:'Next: lyrics'}).click();
-    await d.getByLabel('Song title',{exact:true}).fill('Travel song');await d.getByLabel('Lyrics',{exact:true}).fill('Where shall we go?\nTake a train.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await d.getByRole('alert').waitFor();
+    await d.getByLabel('Song title',{exact:true}).fill('Travel song');await d.getByLabel('Lyrics',{exact:true}).fill('Where shall we go?\nTake a train.');await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.getByRole('alert').waitFor();
     if(await d.getByLabel('Lyrics',{exact:true}).inputValue()!=='Where shall we go?\nTake a train.')throw Error('Failure lost lyrics');
-    await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByLabel('Custom music style',{exact:true}).fill('Jazz');await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await d.locator('audio').waitFor();
+    await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByLabel('Custom music style',{exact:true}).fill('Jazz');await d.getByRole('button',{name:'Next: lyrics'}).click();await d.getByLabel('I’ve reviewed the lyrics. Use these exact words.').check();await d.getByRole('button',{name:'Create song',exact:true}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
     await s.p.waitForFunction(()=>Object.keys(sessionStorage).some(k=>k.startsWith('ll.songDraft:')&&JSON.parse(sessionStorage.getItem(k)).savedSong));
     await d.getByRole('button',{name:'Back',exact:true}).click();await d.getByRole('radio',{name:'Folk',exact:true}).check();await d.getByRole('button',{name:'Next: lyrics'}).click();
-    await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Create a classroom song'});await d.getByRole('button',{name:'Recover creation'}).click();await d.locator('audio').waitFor();
+    await s.p.reload();await s.p.getByRole('button',{name:'Create song',exact:true}).click();d=s.p.getByRole('dialog',{name:'Create a classroom song'});await d.getByRole('button',{name:'Recover creation'}).click();await reviewAi(s.p,'Classroom song');await d.locator('audio').waitFor();
     if(!await d.locator('.song-brief-strip').getByText('Folk',{exact:true}).count())throw Error('Recovery overwrote a newer brief');
     await d.getByRole('button',{name:'Use this song’s settings'}).click();await d.getByRole('button',{name:'Back',exact:true}).click();if(await d.getByLabel('Custom music style',{exact:true}).inputValue()!=='Jazz')throw Error('Preview settings were not restored');
     await s.p.setViewportSize({width:390,height:844});await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
@@ -673,7 +623,7 @@ const J = {
     await s.p.locator('.speech-drag').first().dragTo(s.p.locator('.speech-script-row').nth(1));
     await s.p.waitForFunction(()=>document.querySelector('[aria-label="Dialogue line 1"]')?.value==='First take.',{},{timeout:5000});
     if(await s.p.getByLabel('Dialogue line 2',{exact:true}).inputValue()!=='(laughs) Second take.')throw Error('Drag reorder lost the other line');
-    await s.p.getByRole('button',{name:'Regenerate line 1',exact:true}).click();
+    await s.p.getByRole('button',{name:'Regenerate line 1',exact:true}).click();await reviewAi(s.p,'Speech and dialogue');
     await s.p.getByRole('button',{name:'Listen to line 1',exact:true}).click();
     await axe(s.p,'Dialogue take table',A11Y_FOUND);
     return s;
@@ -718,7 +668,7 @@ const J = {
     await s.p.getByLabel('Dialogue line 3',{exact:true}).fill('See you there.');
     await s.p.getByLabel('Line 3 speaker',{exact:true}).click();
     await s.p.getByRole('option',{name:'Speaker C',exact:true}).click();
-    await s.p.getByRole('button',{name:'Create missing takes',exact:true}).click();
+    await s.p.getByRole('button',{name:'Create missing takes',exact:true}).click();await reviewAi(s.p,'Speech and dialogue');
     await s.p.getByRole('button',{name:'Add to timeline',exact:true}).waitFor({state:'visible'});
     await axe(s.p,'Dialogue composer',A11Y_FOUND);
     await s.p.getByRole('button',{name:'Add to timeline',exact:true}).click();

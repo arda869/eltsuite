@@ -1,3 +1,4 @@
+import { AiMark } from '../components/AiMark';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from 'react';
 import { doc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -958,16 +959,16 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
             ] as [DrawerKey, string, JSX.Element][]
           ).map(([k, label, icon]) => (
             <button key={k} type="button" className={'dz-railb' + (drawer === k ? ' on' : '')} onClick={() => (setPropsOpen(false), setDrawer(drawer === k ? null : k), k === 'draw' ? setTool('pen') : tool !== 'select' && k !== 'teach' && setTool('select'))} aria-pressed={drawer === k}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {k==='ai'?<AiMark size={22}/>:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 {icon}
-              </svg>
+              </svg>}
               <span>{label}</span>
             </button>
           ))}
         </nav>}
-        {drawer && canEdit && (
-          <aside className="dz-drawer" aria-label="Add to the page">
-            <Drawer k={drawer} cx={cx} onClose={() => setDrawer(null)} />
+        {canEdit && (
+          <aside className="dz-drawer" aria-label="Add to the page" hidden={!drawer}>
+            <Drawer k={drawer} cx={cx} onClose={() => setDrawer(null)} onAiOpen={()=>setDrawer('ai')}/>
             {phone && <button type="button" className="dz-sheet-scrim" aria-label="Close" onClick={() => setDrawer(null)} />}
           </aside>
         )}

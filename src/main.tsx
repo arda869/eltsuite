@@ -26,6 +26,8 @@ import { isLearnerEmail } from './lib/learners';
 import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainOrigin, onLearnSite, probeLearn } from './lib/site';
 import './styles.css';
 import './friday-ui.css';
+import './cohesion.css';
+import { AiActivityDock } from './components/AiActivity';
 
 // Pages load when they are first opened, so the first screen comes up quickly.
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
@@ -187,6 +189,7 @@ createRoot(document.getElementById('root')!).render(
         <EscapeToClose />
         <PopupGuard />
         <ConnectionBanner />
+        <AiActivityDock />
         <ProxyGate>
         <PausedGate>
         <RouteErrorBoundary>

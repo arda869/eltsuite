@@ -26,7 +26,7 @@ const tools: [RegExp, string, string?][] = [
   [/^Remove/, "trash"],
   [/^Pause for/, "videoPause"],
   [/^Share/, "groups"],
-  [/^Make|^Generate/, "videoSparkles"],
+  [/^(Make|Generate|Draft|Recover script|Continue generation)/, "ai"],
   [/^Add|^Use script/, "plus"],
   [/^Cancel|^Close|^×$/, "videoClose"],
   [/^Back|^Move scene earlier/, "prev"],

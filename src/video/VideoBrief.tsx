@@ -1,3 +1,6 @@
+
+import { AiProgress } from '../components/AiMark';
+import { useAiActivity } from '../components/AiActivity';
 import { useEffect, useRef, useState } from 'react';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -19,6 +22,7 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
   const [draft,setDraft]=useState<Draft>(()=>{try{const d=JSON.parse(localStorage.getItem(key)||'null');return d&&typeof d.brief==='string'&&Array.isArray(d.references)&&(!d.plan||Array.isArray(d.plan.scenes))?{...blank(),...d}:blank();}catch{return blank();}});
   const current=useRef(draft),running=useRef(false),stop=useRef(false),alive=useRef(true);
   const [busy,setBusy]=useState(''), [editingBrief,setEditingBrief]=useState(false);
+  useAiActivity({active:!!busy,title:'Classroom video',detail:busy});
   const commit=(patch:Partial<Draft>)=>{current.current={...current.current,...patch};localStorage.setItem(key,JSON.stringify(current.current));if(alive.current)setDraft(current.current);};
   const changeScene=(i:number,patch:Partial<PlannedScene>)=>{const p=current.current.plan!;commit({assembled:false,plan:{...p,scenes:p.scenes.map((s,n)=>n===i?{...s,...patch}:s)}});};
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;stop.current=true;};},[]);
@@ -122,7 +126,7 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
       <VideoButton disabled={!!busy} onClick={()=>setEditingBrief(true)}>Back to brief</VideoButton>
     </div>}
     {!!draft.job&&<VideoButton disabled={!!busy} onClick={()=>void plan(true)}>Recover script</VideoButton>}
-    {busy&&<p role="status">{busy}</p>}
+    {busy&&<AiProgress label={busy} detail="You can continue arranging the timeline. Keep this page open."/>}
     {busy&&!draft.job&&<VideoButton onClick={()=>{stop.current=true;}}>Pause generation after this step</VideoButton>}
   </div>;
 }

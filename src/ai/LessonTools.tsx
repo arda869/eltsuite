@@ -1,3 +1,5 @@
+import { AiButton, AiProgress } from '../components/AiMark';
+import { useAiActivity } from '../components/AiActivity';
 import { useEffect, useRef, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type { JSONContent } from '@tiptap/react';
@@ -16,7 +18,7 @@ const call=httpsCallable<Record<string,unknown>,Reply>(getFunctions(undefined,'u
 const labels:Record<Mode,string>={answers:'Generate answer key',differentiate:'Differentiate activity',next:'Suggest next activity'};
 export function LessonTools({classId,itemId,taskId,beforeOpen,onApplied}:{classId:string;itemId:string;taskId?:string;beforeOpen:()=>Promise<void>;onApplied:(id:string)=>void}) {
  const [open,setOpen]=useState<Mode|null>(null);
- return <><div className="lesson-tool-toolbar" aria-label="AI lesson tools">{(Object.keys(labels) as Mode[]).map(mode=><button key={mode} className="btn small" onClick={()=>void beforeOpen().then(()=>setOpen(mode)).catch(()=>{})}>{labels[mode]}</button>)}</div>{open&&<LessonToolDialog classId={classId} itemId={itemId} taskId={taskId} mode={open} onClose={()=>setOpen(null)} onApplied={onApplied}/>}</>;
+ return <><div className="lesson-tool-toolbar" aria-label="AI lesson tools">{(Object.keys(labels) as Mode[]).map(mode=><AiButton key={mode} className="btn small" onClick={()=>void beforeOpen().then(()=>setOpen(mode)).catch(()=>{})}>{labels[mode]}</AiButton>)}</div>{open&&<LessonToolDialog classId={classId} itemId={itemId} taskId={taskId} mode={open} onClose={()=>setOpen(null)} onApplied={onApplied}/>}</>;
 }
 function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied}:{classId:string;itemId:string;taskId?:string;mode:Mode;onClose:()=>void;onApplied:(id:string)=>void}) {
  const storageKey=`lesson-tool:${classId}:${itemId}:${mode}`;
@@ -29,6 +31,7 @@ function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied}:{classI
  const recover=async()=>{if(!pending)return;setBusy(true);setError('');try{accept((await call({action:'taskToolsStatus',classId,itemId,requestId:pending.id})).data);}catch(e){setError(e instanceof Error?e.message:'Could not recover the draft.');}finally{setBusy(false);}};
  useEffect(()=>{if(!busy)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[busy]);
  const mediaPending=media.some(a=>a.status==='queued'||a.status==='running');
+ const activity=useAiActivity({active:busy||mediaPending,title:labels[mode],detail:mediaPending?'Preparing activity media…':'Preparing your draft…',error,autoMinimise:true});
  useEffect(()=>{if(!mediaPending||!pending)return;const timer=window.setInterval(()=>{void call({action:'taskToolsStatus',classId,itemId,requestId:pending.id}).then(r=>accept(r.data)).catch(()=>setError('Could not refresh media progress. Use Recover draft.'));},4000);return()=>window.clearInterval(timer);},[mediaPending,pending?.id]); // eslint-disable-line react-hooks/exhaustive-deps
  const start=async(step:'ideas'|'generate')=>{
   if(mode==='differentiate'&&!taskId){setError('Select an activity first.');return;}
@@ -41,14 +44,14 @@ function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied}:{classI
  useEffect(()=>{if(!started.current){started.current=true;if(mode!=='answers'&&!pending)void start('ideas');}},[]); // eslint-disable-line react-hooks/exhaustive-deps
  const apply=async()=>{if(!pending)return;setBusy(true);setError('');try{const r=(await call({action:'taskToolsApply',classId,itemId,requestId:pending.id})).data;if(r.applied){remember(null);onApplied(r.taskId??taskId??'');onClose();}}catch(e){setError(e instanceof Error?e.message:'Could not apply the draft.');}finally{setBusy(false);}};
  const applyReady=!!pending&&!busy&&!media.some(a=>a.status!=='ready')&&!!(result?.native||result?.entries?.length);
- return <VideoDialog name={labels[mode]} onClose={()=>{if(!busy)onClose();}}><div className="lesson-tool-dialog"><header><div><small>TEACHER WORKSPACE</small><h2>{labels[mode]}</h2></div><button className="btn" disabled={busy} onClick={onClose}>Close</button></header>
+ return <VideoDialog minimised={activity.minimised} onMinimise={activity.minimise} name={labels[mode]} onClose={()=>{if(!busy)onClose();}}><div className="lesson-tool-dialog"><header><div><small>TEACHER WORKSPACE</small><h2>{labels[mode]}</h2></div><button className="btn" disabled={busy} onClick={onClose}>Close</button></header>
  <p>{mode==='answers'?'Fill missing inline answers and suggested responses. Your existing answers stay as they are.':mode==='differentiate'?'Change the support or challenge while keeping the learning aim. The result becomes a separate version of this activity.':'Choose a purposeful next step based on the lesson so far. The new activity will be added at the end.'}</p>
  {mode==='answers'&&<label>Answer-key scope<select value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></select></label>}
  {mode!=='answers'&&<label>Activity length (minutes)<input type="number" min={1} max={60} value={minutes} disabled={busy||!!pending} onChange={e=>setMinutes(Math.max(1,Math.min(60,Number(e.target.value)||10)))}/></label>}
  {result?.ideas&&<div className="lesson-tool-ideas">{result.ideas.map((idea,i)=><button key={i} type="button" aria-pressed={selected===idea} className={'lesson-tool-idea '+(selected===idea?'selected':'')} onClick={()=>setSelected(idea)}><small>{idea.kind==='support'?'More support':idea.kind==='challenge'?'More challenge':'Option '+(i+1)}</small><strong>{idea.title}</strong><span>{idea.reason}</span><span>{idea.direction}</span></button>)}</div>}
  {!result?.native&&!result?.entries&&<><label>{mode==='answers'?'Extra guidance (optional)':'Your direction (optional)'}<textarea rows={2} maxLength={2000} value={direction} disabled={busy||!!pending} onChange={e=>setDirection(e.target.value)} placeholder={mode==='differentiate'?'For example, add a word bank and one worked example.':mode==='next'?'For example, a pair task where learners use the language to make a decision.':'For example, accept both British and American spelling.'}/></label>
- {!pending&&<div className="lesson-tool-actions">{mode!=='answers'&&<button className="btn" disabled={busy} onClick={()=>void start('ideas')}>Suggest two options</button>}<button className="btn primary" disabled={busy} onClick={()=>void start('generate')}>{mode==='answers'?'Generate missing answers':mode==='differentiate'?'Create differentiated version':'Create next activity'}</button></div>}</>}
- {busy&&<div role="status" className="lesson-tool-progress"><span className="lesson-tool-spinner" aria-hidden="true"/><strong>{result?'Saving your reviewed changes…':'Reading the lesson and preparing your draft…'}</strong><p>Your existing lesson stays unchanged until you apply the result.</p></div>}
+ {!pending&&<div className="lesson-tool-actions">{mode!=='answers'&&<AiButton className="btn" disabled={busy} onClick={()=>void start('ideas')}>Suggest two options</AiButton>}<AiButton className="btn primary" disabled={busy} onClick={()=>void start('generate')}>{mode==='answers'?'Generate missing answers':mode==='differentiate'?'Create differentiated version':'Create next activity'}</AiButton></div>}</>}
+ {busy&&<AiProgress label={result?'Saving your reviewed changes…':'Preparing your draft…'} detail="Your existing lesson stays unchanged until you apply the result."/>}
  {pending&&!busy&&!result&&<button className="btn" onClick={()=>void recover()}>Recover draft</button>}
  {error&&<p role="alert">{error}</p>}
  {result?.issues?.map((issue,i)=><p className="hint" key={i}>{issue}</p>)}

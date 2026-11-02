@@ -3,10 +3,14 @@ export function VideoDialog({
   name,
   onClose,
   children,
+  minimised = false,
+  onMinimise,
 }: {
   name: string;
   onClose: () => void;
   children: ReactNode;
+  minimised?: boolean;
+  onMinimise?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -16,7 +20,7 @@ export function VideoDialog({
   }, []);
   return (
     <div
-      className="vx-dialog-backdrop"
+      className={"vx-dialog-backdrop"+(minimised?" ai-panel-minimised":"")}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -59,6 +63,7 @@ export function VideoDialog({
           }
         }}
       >
+        {onMinimise&&<button type="button" className="btn ai-minimise" onClick={onMinimise}>Continue working</button>}
         {children}
       </div>
     </div>

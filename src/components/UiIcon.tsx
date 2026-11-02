@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { AiMark } from './AiMark';
 import { Link } from 'react-router-dom';
 
 // Interface icons for the lesson toolbars: thin strokes, rounded ends, in the text colour.
@@ -93,6 +94,7 @@ const P: Record<string, ReactNode> = {
 };
 
 export function UiIcon({ name, size = 18 }: { name: string; size?: number }) {
+  if (name === 'ai' || name === 'videoSparkles') return <AiMark size={size}/>;
   return (
     <svg className="ui-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
       {P[name]}

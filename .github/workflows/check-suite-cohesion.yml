@@ -1,0 +1,36 @@
+name: Verify suite design and background AI
+on:
+  push:
+    branches: [codex/suite-cohesion]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: suite-cohesion-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Type check and production build
+        run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Suite pages, menus, teacher and learner journeys (AI and Firebase simulated)
+        run: npm run a11y
+      - name: Import review, correction, all native types and image persistence (AI and Firebase simulated)
+        run: node test/material-import.mjs && node test/material-native-types.mjs
+      - name: Video editing and image-to-video journey (AI simulated)
+        run: node test/video-motion.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: suite-design-evidence
+          path: outputs/
+          retention-days: 7

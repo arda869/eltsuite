@@ -68,7 +68,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   }, [open]);
 
   return (
-    <header className="topbar">
+    <header className="topbar suite-topbar">
       <AppMark />
       <OrgLogo />
       {children}
