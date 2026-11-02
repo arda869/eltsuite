@@ -107,13 +107,13 @@ export function AppGrid() {
   const apps = APPS.filter((a) => a.k !== 'reading' && (teacher || (!a.teacher && !a.soon)) && show(a.k));
   return (
     <div className="apps" ref={ref}>
-      <button type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} data-tip="Apps" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className="apps-btn" aria-label="Open apps" aria-haspopup="menu" aria-expanded={open} aria-controls="suite-apps-menu" data-tip="Apps" onClick={() => setOpen((o) => !o)}>
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
           {[3, 10, 17].flatMap((y) => [3, 10, 17].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.9" fill="currentColor" />))}
         </svg>
       </button>
       {open && (
-        <div className="apps-pop" role="menu" aria-label="Apps">
+        <div id="suite-apps-menu" className="apps-pop" role="menu" aria-label="Apps">
           {GROUPS.map(([g, label]) => {
             const list = apps.filter((a) => a.group === g && a.to).sort((x, y) => rank(x.k) - rank(y.k));
             if (!list.length) return null;
@@ -123,7 +123,7 @@ export function AppGrid() {
                 <span className="apps-h">{head}</span>
                 <div className="apps-row">
                   {list.map((a) => (
-                    <Link key={a.k} to={a.to!} role="menuitem" draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
+                    <Link key={a.k} to={a.to!} role="menuitem" draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={`${a.name}: ${a.about}`} title={a.about} data-tip={a.about} onClick={() => setOpen(false)}>
                       <span className="app-ico">{a.icon}</span>
                       <b className={a.k === 'development' ? 'app-name-wrap' : undefined}>{a.short ?? a.name}</b>
                     </Link>
