@@ -48,7 +48,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   if (enabled.value() !== 'true' || !isPilotTeacher(pilot.get('enabled'))) throw new HttpsError('failed-precondition', 'The lesson assistant is not enabled for this account yet.');
   if (['rebuildPicture','rebuildPictureStatus'].includes(d.action)) return rebuildPicture(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'readiness') return requestReadiness(req,{db,uid,cls});
-  if (['taskTools','taskToolsStatus','taskToolsApply','taskToolsRetryMedia'].includes(d.action)) return taskTools(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
+  if (['taskTools','taskToolsIdeas','taskToolsStatus','taskToolsApply','taskToolsRetryMedia'].includes(d.action)) return taskTools(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (['rebuild','rebuildStatus','importCreate'].includes(d.action)) return rebuildMaterials(req,{db,uid,cls,apiKey:key.value(),model:model.value()});
   if (d.action === 'memories') return {memories: await collectMemories(db,d.classId)};
   if (d.action === 'context') return { classContext: { name: cls.get('name'), level: cls.get('level'), kind: cls.get('kind') ?? 'language', trainingProfile:cls.get('trainingProfile') ?? null, profile: cls.get('learningProfile') ?? null }, evidence: await collectEvidence(db,d.classId) };

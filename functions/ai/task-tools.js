@@ -2,7 +2,7 @@ import { GenerationError } from './errors.js';
 import { generateChecked } from './recovery.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { Timestamp } from 'firebase-admin/firestore';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { generate } from './provider.js';
 import { activitySchema, activityInstructions, checkActivities, nativeTask } from './activities.js';
 import { mediaRequests } from './media-contract.js';
@@ -33,6 +33,30 @@ async function sources(item) {
 }
 export async function taskTools(req,{db,uid,cls,apiKey,model}) {
  const d=req.data;
+ if(d.action==='taskToolsIdeas'){
+  if(!id(d.itemId))fail('Open a lesson first.');
+  const item=cls.ref.collection('items').doc(d.itemId),saved=await item.get();
+  if(!saved.exists)fail('This lesson is no longer available.');
+  if(typeof d.direction!=='string'||d.direction.length>2500)fail('Use a direction up to 2,500 characters.');
+  const tasks=(await sources(item)).filter(t=>!t.family||t.family===t.id);
+  const minutes=Number.isInteger(d.minutes)&&d.minutes>=1&&d.minutes<=60?d.minutes:10;
+  const cacheId=hash({version:1,model,classId:d.classId,itemId:d.itemId,title:saved.get('title'),objective:saved.get('speakingFocus')??'',level:cls.get('level')??'',profile:cls.get('learningProfile')??{},training:cls.get('trainingProfile')??null,tasks,minutes,direction:d.direction});
+  const cache=db.doc(`aiPrivate/${uid}/ideaCache/${cacheId}`);
+  const requestId=await db.runTransaction(async tx=>{
+   const c=await tx.get(cache),previous=c.get('requestId');
+   if(previous){const j=await tx.get(db.doc(`aiPrivate/${uid}/jobs/${previous}`));
+    const stale=j.get('status')==='running'&&Date.now()-(j.get('createdAt')?.toMillis()??Date.now())>600000;
+    if(!j.exists||j.get('status')==='completed'||j.get('status')==='running'&&!stale||d.background===true)return previous;
+   }
+   const next='ideas_'+randomUUID();tx.set(cache,{requestId:next,createdAt:Timestamp.now(),classId:d.classId,itemId:d.itemId});return next;
+  });
+  const ref=db.doc(`aiPrivate/${uid}/jobs/${requestId}`),options={db,uid,cls,apiKey,model};
+  const read=()=>taskTools({...req,data:{...d,action:'taskToolsStatus',requestId}},options);
+  const previous=await ref.get();
+  if(previous.exists){if(previous.get('status')==='running'&&Date.now()-(previous.get('createdAt')?.toMillis()??Date.now())>600000)return {status:'failed',error:'Idea preparation was interrupted. Open task creation to try again.',requestId};return {...await read(),requestId};}
+  try{return {...await taskTools({...req,data:{...d,action:'taskTools',requestId,mode:'next',step:'ideas',scope:'lesson',minutes}},options),requestId};}
+  catch(e){if((await ref.get()).exists)return {...await read(),requestId};throw e;}
+ }
  if(!id(d.itemId)||!id(d.requestId))fail('Open a lesson and start a new request.');
  const item=cls.ref.collection('items').doc(d.itemId),itemSnap=await item.get();
  if(!itemSnap.exists)fail('This lesson is no longer available.');
@@ -89,12 +113,12 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
  if(!['answers','differentiate','next'].includes(d.mode)||!['ideas','generate'].includes(d.step))fail('Choose a lesson tool.');
  if(typeof d.direction!=='string'||d.direction.length>2500)fail('Use a direction up to 2,500 characters.');
  const all=await sources(item),selected=all.find(t=>t.id===d.taskId);
- if(d.mode!=='next'&&!selected&&d.scope!=='lesson')fail('Select an activity first.');
+ if(!selected&&(d.mode==='differentiate'||d.mode==='answers'&&d.scope!=='lesson'))fail('Select an activity first.');
  const scope=d.mode==='answers'&&d.scope==='lesson'?all:d.mode==='next'?all.filter(t=>!t.family||t.family===t.id):[selected];
- if(!scope.length)fail('Add an activity first so the AI has lesson context.');
+ if(!scope.length&&d.mode!=='next')fail('Add an activity before generating its answers or differentiated version.');
  const missing=scope.flatMap(t=>[...taskQuestions(t.content)].filter(([qid,n])=>['gap','choice','mcq','match','dropgap','order','writing','pq'].includes(n.type)&&!hasAnswer(t.key[qid])).map(([qid,n])=>({taskId:t.id,questionId:qid,type:n.type,kind:n.attrs?.kind??'',currentKey:t.key[qid]??null})));
  if(d.mode==='answers'&&!missing.length)return {status:'completed',result:{entries:[],issues:['The existing inline answer keys are already filled.']},media:[]};
- const input={classProfile:cls.get('learningProfile')??{},trainingProfile:cls.get('trainingProfile')??null,level:cls.get('level')??'',lessonTitle:itemSnap.get('title'),learningObjective:itemSnap.get('speakingFocus')??'',sourceTasks:scope,missingAnswers:missing,teacherDirection:d.direction,mode:d.mode,minutes:Number.isInteger(d.minutes)&&d.minutes>=1&&d.minutes<=60?d.minutes:10};
+ const input={classProfile:cls.get('learningProfile')??{},trainingProfile:cls.get('trainingProfile')??null,level:cls.get('level')??'',lessonTitle:itemSnap.get('title'),learningObjective:itemSnap.get('speakingFocus')??'',sourceTasks:scope,isFirstActivity:!scope.length,missingAnswers:missing,teacherDirection:d.direction,mode:d.mode,minutes:Number.isInteger(d.minutes)&&d.minutes>=1&&d.minutes<=60?d.minutes:10};
  if(Buffer.byteLength(JSON.stringify(input))>48000)fail('This lesson is too large for one request. Use the tool on an individual activity.');
  const context=await usageContext(db,req.auth);checkModel(model);
  const month=new Date().toISOString().slice(0,7),budget=db.doc(`${context.isAdmin?'aiAdminBudgets':'aiBudgets'}/${month}`);
@@ -105,6 +129,7 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   if(d.mode==='answers'){schema=keysSchema;instructions=keyInstructions;name='task_keys';}
   else if(d.step==='ideas'){schema=ideasSchema;name='task_ideas';instructions=activityInstructions+'\n'+contentReviewStandard+'\nIDEAS ONLY: Return exactly two genuinely different, concise options, not full activities. For differentiation return one support option and one challenge option addressing the SAME objective and comparable duration. Describe concrete changes to the existing native tasks (e.g. gap to choices; word bank removal), never just extra work. For next activity, read the whole lesson sequence and suggest two pedagogically justified next moves, recycling language where useful. Teacher direction takes precedence. No abstract teacher jargon in titles.';}
   else {schema=structuredClone(cls.get('kind')==='training'?trainingActivitySchema:activitySchema);schema.properties.tasks.maxItems=1;schema.properties.tasks.items.properties.roles.maxItems=0;schema.properties.tasks.items.properties.versions.maxItems=0;schema.properties.tasks.items.properties.stageId={...schema.properties.tasks.items.properties.stageId,enum:['tool']};schema.properties.tasks.items.properties.minutes={type:'integer',minimum:input.minutes,maximum:input.minutes};name='activities';instructions=activityInstructions+(cls.get('kind')==='training'?trainingActivityInstructions:'')+'\nCreate exactly ONE complete activity with stageId "tool" and exactly the requested minutes. Follow the teacher-selected direction. Differentiation must preserve the original learning aim and change scaffolding or demand, not append more work. Keep important source texts and context. Use no additional versions or roles in this request. For next activity, build a coherent next step from the lesson already taught. Create needed audio/images through mediaPlan, with complete scripts. Never refer to an image or recording that you have not supplied in mediaPlan. Do not invent existing learner evidence. When differentiating, existing pictures, recordings and dialogues are retained automatically; keep the same source and adapt only the response/scaffold. Do not request replacement media for these existing resources.';}
+  if(input.isFirstActivity)instructions+='\nThis lesson has no previous activities. Create a self-contained first activity using the teacher direction, lesson title, level and class goals. Supply all input and instructions it needs. Do not refer to previous tasks, covered language, learner responses or materials that do not exist. Offer two distinct appropriate starting points when asked for ideas.';
   const checkValue=value=>{
    if(d.mode==='answers'){const seen=new Set();for(const e of value.entries){const m=missing.find(x=>x.taskId===e.taskId&&x.questionId===e.questionId);if(!m||seen.has(e.taskId+':'+e.questionId))throw Error('Return only missing answers, once per question.');seen.add(e.taskId+':'+e.questionId);checkedKey(taskQuestions(scope.find(t=>t.id===e.taskId).content).get(e.questionId),JSON.parse(e.answerJson));}}
    else if(d.step==='ideas'){if(d.mode==='differentiate'&&(!value.ideas.some(i=>i.kind==='support')||!value.ideas.some(i=>i.kind==='challenge')))throw Error('Return one support and one challenge option.');}
