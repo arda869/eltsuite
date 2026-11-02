@@ -23,7 +23,10 @@ export async function editUntilReady({value,review,repair,check,reserve,deadline
   else {await reserve('review');checked=await review(value,deadline-now());usage.push(checked.usage);}
   await checkpoint({value,usage:[...usage],repairs,pendingReview:checked.value});
   if(!needsEditorialRepair(checked.value))return {value,review:checked.value,usage,repairs};
-  let feedback=checked.value;
+  // Passing criteria may contain optional suggestions. Repair only blockers;
+  // otherwise unrelated rewrites can introduce new defects on each review.
+  const requiredFeedback={...checked.value,checks:checked.value.checks.filter(c=>c.score<4),suggestions:[]};
+  let feedback=requiredFeedback;
   while(true) {
    if(repairs>=maxRepairs||deadline-now()<30000)throw new GenerationError('editorial');
    await reserve('repair');repairs++;
@@ -35,7 +38,7 @@ export async function editUntilReady({value,review,repair,check,reserve,deadline
     if(!(error instanceof GenerationError)||error.reason!=='editorial_patch')throw error;
     if(error.usage)usage.push(error.usage);
     if(repairs>=maxRepairs)throw new GenerationError('editorial');
-    feedback={...checked.value,criticalErrors:[...checked.value.criticalErrors,'The previous proposed edit was not applicable. Start from the unchanged currentDraft. Use only existing JSON Pointer paths, valid JSON values and the required schema. Preserve approved stage metadata. Validation feedback: '+(error.detail||'The replacement did not match the required structure.')]};
+    feedback={...requiredFeedback,criticalErrors:[...requiredFeedback.criticalErrors,'The previous proposed edit was not applicable. Start from the unchanged currentDraft. Use only existing JSON Pointer paths, valid JSON values and the required schema. Preserve approved stage metadata. Validation feedback: '+(error.detail||'The replacement did not match the required structure.')]};
    }
   }
  }
