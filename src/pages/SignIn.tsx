@@ -180,7 +180,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           <span className="code-ok" role="status">
             <b>{code.orgName ? `You’re invited to ${code.orgName}` : 'You’re invited'}</b>
             <span>
-              Your code {code.code} is filled in
+              Your invitation code {code.code} is ready
               {code.email ? `, for ${code.email}` : ''}. Create your account with Google or a password.
             </span>
           </span>
@@ -224,7 +224,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
               Password
               {mode === 'signin' && (
                 <button type="button" className="btn link small" onClick={() => go('reset')}>
-                  Forgot?
+                  Forgot password?
                 </button>
               )}
             </span>
@@ -245,7 +245,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         {notice && <span className="notice" role="status">{notice}</span>}
 
         <button type="submit" className="btn primary tall block" disabled={busy || (mode === 'code' ? cleanCode(typed).length < 8 : !email.trim() || (needsPassword && !password))}>
-          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
+          {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
         </button>
 
         {mode === 'signin' && (
@@ -268,7 +268,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
             <span />
           ) : (
             <button type="button" className="btn link small" onClick={() => go('signin')}>
-              Back to sign-in
+              Back to sign in
             </button>
           )}
           {live() && learnReady() ? (
