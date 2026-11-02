@@ -35,6 +35,8 @@ export class AppError extends Component<{ children: ReactNode }, { err: unknown 
   }
   render() {
     if (!this.state.err) return this.props.children;
+    const publicPage=['/','/explore','/pricing','/about','/signin','/contact','/privacy','/terms'].includes(window.location.pathname);
+    if(publicPage)return <div className="app-err" role="alert"><h1>This page isn’t available right now.</h1><p>We’re having trouble opening it. Please try again in a moment.</p><button className="btn primary" onClick={()=>window.location.reload()}>Try Again</button><a href="/">Return to Homepage</a></div>;
     return (
       <div className="app-err" role="alert">
         <strong>Something didn’t load</strong>

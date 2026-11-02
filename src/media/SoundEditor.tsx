@@ -1,3 +1,4 @@
+import { AiMark } from '../components/AiMark';
 import { HelpMenu } from '../help/HelpMenu';
 import { RecordingTranscript } from './RecordingTranscript';
 import { effectCaption, recordingScript } from '../lib/recordingScript';
@@ -1193,7 +1194,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       {transcriptOpen && <RecordingTranscript project={p} onLine={(id, patch) => setLine(id, patch, 'script'+id)} onEffect={(track,id,patch) => setClip(track,id,patch,'caption'+id)} onSeek={t => { setHead(t); playFrom(t); }} onClose={() => setTranscriptOpen(false)} />}
       <SpeechComposer open={speechOpen} onInsert={insertSpeech} onClose={() => setSpeechOpen(false)} />
       <SongComposer open={songOpen} onClose={() => setSongOpen(false)} onInsert={(buffer, title, lyrics, stems) => {
-        if(source.blank&&!p.tracks.some(t=>t.clips.length))setTitle(title);
+        if(source.blank&&!p.tracks.some(t=>t.clips.length))setTitle(current=>current===source.name?title:current);
         if(stems){
           const at=head,roleTracks:Track[]=[];
           for(const role of ['vocals','instrumental'] as const){
@@ -1217,9 +1218,9 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
           <HelpMenu />
           <button type="button" className="sx-act" onClick={() => setTranscriptOpen(!transcriptOpen)} aria-expanded={transcriptOpen}><UiIcon name="script" size={18} /><span>Script</span></button>
           <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSpeechOpen(true); }}>
-            <UiIcon name="script" size={18} /><span>Create speech</span>
+            <AiMark size={18}/><span>Create speech</span>
           </button>
-          <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSongOpen(true); }}><UiIcon name="music" size={18} /><span>Create song</span></button>
+          <button type="button" className="sx-act" disabled={!!rec} onClick={() => { stop(); setSongOpen(true); }}><AiMark size={18}/><span>Create song</span></button>
           <button type="button" className={'sx-act' + (keysOpen ? ' on' : '')} onClick={() => setKeysOpen((v) => !v)} aria-expanded={keysOpen}>
             <UiIcon name="help" size={18} />
             <span>Shortcuts</span>

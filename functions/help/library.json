@@ -3717,18 +3717,20 @@
       "id": "linguistics-investigations",
       "title": "Create and reuse a language investigation",
       "keywords": "applied linguistics corpus discourse pragmatics research evidence collab concordance investigate",
-      "summary": "Applied Linguistics Studio saves private investigations. You choose the exact evidence to reuse in a lesson, Collab document or Messages card.",
+      "summary": "Applied Linguistics Studio saves private working documents for six kinds of investigation. Reuse selected evidence and reviewed analysis inline in teacher-training classes, Collab documents and Messages.",
       "steps": [
-        "Open Apps and choose Applied Linguistics. Choose a tool, add a title and add evidence; extra analysis fields are optional.",
-        "Keep source attribution and reuse terms with sourced excerpts. Confirm reuse rights only for examples you may share, then save the investigation.",
-        "Choose activity and destination to create a native activity in an existing class lesson. Alternatively, use the insertion gallery or /corpus in Collab, Classes or Messages and select the saved investigation.",
-        "Review the selected evidence, choose a frozen snapshot or live reference, and confirm sharing. Recipients need access to that target; the private source is not shared.",
-        "Use Attach to Research Inquiry to link selected evidence to an existing inquiry. Raw learner samples are excluded from inquiry and Coach sharing."
+        "Open Apps and choose Applied Linguistics. Choose one of the six tools and give your document a title. Complete the relevant analysis fields, add evidence, or use both. Optional fields may stay blank; edits save automatically.",
+        "In Corpus Explorer, search for a phrase and keep examples. The concordance centres the search phrase between left and right context. Open a source button to inspect attribution. Counts describe the selected examples only.",
+        "Keep source attribution and reuse terms with excerpts. Confirm reuse rights only for examples you may share. Private notes and the introduction remain private.",
+        "Open Use and share, then Choose activity and destination to create an activity in an existing teacher-training class session. Ordinary language lessons are excluded. You can also use the insertion gallery or /corpus and the other tool names in a training class, Collab document or Messages.",
+        "Select the saved investigation, review the evidence and any analysis fields you choose to include, then choose a frozen snapshot or live reference and confirm sharing. Analysis-only forms can be inserted without separate evidence. Recipients need access to the destination.",
+        "Open Use and share and Attach to Research Inquiry to link selected evidence to an existing inquiry. Raw learner samples are excluded from inquiry and Coach sharing."
       ],
-      "source": "src/linguistics/AppliedLinguistics.tsx; src/linguistics/InlineInvestigation.tsx; src/linguistics/CreateActivity.tsx",
+      "source": "src/linguistics/AppliedLinguistics.tsx; src/linguistics/InlineInvestigation.tsx; src/linguistics/CreateActivity.tsx; src/linguistics/Notebook.tsx; src/linguistics/Concordance.tsx",
       "questions": [
         "How do I create a corpus investigation?",
-        "How do I reuse an investigation in Collab and a lesson?",
+        "How do I reuse an investigation in Collab or a teacher-training class?",
+        "Can I insert an analysis without separate evidence?",
         "How do I attach evidence to a research inquiry?"
       ],
       "reviewedAt": "2026-11-02",

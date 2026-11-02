@@ -26,7 +26,12 @@ import { isLearnerEmail } from './lib/learners';
 import { goTo, isLearnerPath, isSharedPath, learnOrigin, learnReady, live, mainOrigin, onLearnSite, probeLearn } from './lib/site';
 import './styles.css';
 import './friday-ui.css';
+import './cohesion.css';
+import { AiActivityDock } from './components/AiActivity';
 
+const PublicHome=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicHome})));
+const PublicError=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicError})));
+const ContactPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.ContactPage})));
 const ExplorePage=lazy(()=>import('./public/ExplorePage').then(m=>({default:m.ExplorePage})));
 const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.PricingPage})));
 const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
@@ -105,7 +110,7 @@ function Home() {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
   // learn.eltsuite.com: the learners' home page, to join a class.
-  if (!user) return onLearnSite() ? <LearnerJoin home /> : <SignIn />;
+  if (!user) return onLearnSite() ? <LearnerJoin home /> : new URLSearchParams(window.location.search).has('code') ? <SignIn /> : <PublicHome />;
   if (!onLearnSite() && isLearnerEmail(user.email) && live()) return <SignIn />;
   if (isLearnerEmail(user.email)) {
     return profile?.role === 'learner' ? <LearnerHome classId={profile.classId} name={profile.displayName} /> : <NoAccess />;
@@ -155,16 +160,18 @@ function Join() {
   return user ? <Navigate to="/" replace /> : <LearnerJoin />;
 }
 
+function PublicSignIn(){const {user,ready}=useAuth();if(!ready)return <Boot/>;return user?<Navigate to="/" replace/>:<SignIn/>;}
+
 function TeacherOnly({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
   if (!ready) return <Boot />;
-  return user && profile?.role === 'teacher' && !isLearnerEmail(user.email) ? children : <Navigate to="/" replace />;
+  return user && profile?.role === 'teacher' && !isLearnerEmail(user.email) ? children : <PublicError restricted />;
 }
 
 function SignedIn({ children }: { children: JSX.Element }) {
   const { user, profile, ready } = useAuth();
   if (!ready || (user && !profile)) return <Boot />;
-  return user ? children : <Navigate to="/" replace />;
+  return user ? children : <PublicError restricted />;
 }
 
 function LearnerOnly({ children }: { children: JSX.Element }) {
@@ -190,6 +197,7 @@ createRoot(document.getElementById('root')!).render(
         <EscapeToClose />
         <PopupGuard />
         <ConnectionBanner />
+        <AiActivityDock />
         <ProxyGate>
         <PausedGate>
         <RouteErrorBoundary>
@@ -207,6 +215,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/explore" element={<ExplorePage />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/signin" element={<PublicSignIn />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/storyboard/library" element={<TeacherOnly><StoryboardLibrary /></TeacherOnly>} />
           <Route path="/welcome" element={<TeacherOnly><WelcomePage /></TeacherOnly>} />
           <Route path="/guide" element={<TeacherOnly><GuidePage /></TeacherOnly>} />
@@ -248,7 +258,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/colleague/:token" element={<ColleagueJoin />} />
           <Route path="/privacy" element={<Legal kind="privacy" />} />
           <Route path="/terms" element={<Legal kind="terms" />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<PublicError />} />
         </Routes>
         </Suspense>
         </RouteErrorBoundary>

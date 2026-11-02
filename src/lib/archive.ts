@@ -101,7 +101,7 @@ const PART = 450 * 1024;
 export type SongStemIds = {vocals:string;instrumental:string;vocalsOff?:boolean};
 export type SongStemBlobs = {vocals:Blob;instrumental:Blob};
 export type StemSource = {classId:string;stems:SongStemIds};
-export type Manifest = { stems?:SongStemIds; kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
+export type Manifest = { aiGenerated?:boolean; stems?:SongStemIds; kind: 'audio' | 'link'; title?: string; type?: string; size: number; parts?: number; url?: string; script?: ScriptLine[]; duration?: number; video?: boolean; public?: boolean; v?: number };
 
 const toBase64 = (bytes: Uint8Array) => {
   let s = '';

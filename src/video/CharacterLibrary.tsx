@@ -1,3 +1,5 @@
+import { useAiActivity } from '../components/AiActivity';
+import { AiProgress } from '../components/AiMark';
 import { VideoDialog } from "./VideoDialog";
 import { VideoButton } from "./VideoButton";
 import { doc, updateDoc } from "firebase/firestore";
@@ -67,6 +69,7 @@ export function CharacterLibrary({
   const [sharing, setSharing] = useState<VideoAsset | null>(null),
     [shareOrg, setShareOrg] = useState(false),
     [readers, setReaders] = useState<string[]>([]);
+  useAiActivity({active:!!busy,title:'Character library',detail:busy});
   const file = useRef<HTMLInputElement>(null);
   const chosen = assets.find((a) => a.id === selected);
   const meta = {
@@ -238,7 +241,7 @@ export function CharacterLibrary({
           e.target.value = "";
         }}
       />
-      {busy && <p role="status">{busy}</p>}
+      {busy && <AiProgress label={busy}/>}
       <div className="vx-asset-grid">
         {assets
           .filter((a) => a.kind === "character")

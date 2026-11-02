@@ -1,3 +1,4 @@
+import {preparedScript} from './prepared-script.js';
 import { prepareEditorialIllustration } from './illustration.js';
 import { prepareCommonsImage } from './commons.js';
 import { generate } from './provider.js';
@@ -20,7 +21,7 @@ export async function savePrepared(db,classId,mediaId,bytes,meta){
   await col.doc(mediaId).set({data:'data:image/jpeg;base64,'+bytes.toString('base64'),type:'image/jpeg',size:bytes.length,public:false,aiGenerated:!meta.credit,...(meta.credit?{credit:meta.credit}: {})});
  }else{
   for(let i=0;i<Math.ceil(bytes.length/PART);i++)await col.doc(`${mediaId}_p${i}`).set({part:i,data:bytes.subarray(i*PART,(i+1)*PART).toString('base64'),size:Math.min(PART,bytes.length-i*PART),public:false});
-  await col.doc(mediaId).set({kind:'audio',type:'audio/wav',parts:Math.ceil(bytes.length/PART),size:0,title:meta.title+' · AI-generated audio',duration:(bytes.length-44)/48000,script:[],public:false,aiGenerated:true});
+  await col.doc(mediaId).set({kind:'audio',type:'audio/wav',parts:Math.ceil(bytes.length/PART),size:0,title:meta.title+' · AI-generated audio',duration:(bytes.length-44)/48000,script:meta.script??preparedScript(meta.lines),public:false,aiGenerated:true});
  }
 }
 export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/jobs/{jobId}/media/{assetId}',region:'us-central1',secrets:[key],timeoutSeconds:540,memory:'512MiB',maxInstances:3,concurrency:1,retry:false},async event=>{
@@ -61,7 +62,7 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
    }
   }else{
    const speakers=[...new Set(asset.lines.map(x=>x.speaker))],voices=['marin','cedar','coral','ash'];
-   const chunks=[];
+   const chunks=[],durations=[];
    // A line is checkpointed before the next provider call, so a retry retains completed takes.
    for(const [i,line] of asset.lines.entries()){
     const take=ref.collection('takes').doc(String(i)),old=await take.get();let pcm;
@@ -75,9 +76,9 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
      await take.set({parts});
     }
     if(old.exists){const parts=await Promise.all(Array.from({length:old.get('parts')},(_,k)=>take.collection('parts').doc(String(k)).get()));pcm=Buffer.concat(parts.map(p=>Buffer.from(p.get('data'),'base64')));}
-    chunks.push(pcm,Buffer.alloc(12000));await ref.update({completedLines:i+1});
+    durations.push(pcm.length/48000);chunks.push(pcm,Buffer.alloc(12000));await ref.update({completedLines:i+1});
    }
-   bytes=wav(Buffer.concat(chunks));
+   bytes=wav(Buffer.concat(chunks));asset.script=preparedScript(asset.lines,durations);
   }
   await savePrepared(db,asset.classId,mediaId,bytes,asset);
   await ref.update({status:'ready',mediaId,completedAt:Timestamp.now(),error:''});

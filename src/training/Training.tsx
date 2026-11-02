@@ -52,7 +52,7 @@ const RATINGS = ['Not yet', 'Achieved', 'Strong'];
 
 // ------------------------------------------------------------------ the forms
 
-function Area({ v, set, ph, ro }: { v: string; set: (v: string) => void; ph?: string; rows?: number; ro?: boolean }) {
+function Area({ v, set, ph, ro, label }: { v: string; set: (v: string) => void; ph?: string; rows?: number; ro?: boolean; label?:string }) {
   if (ro) return <span className="tt-ro">{v || <span className="hint">—</span>}</span>;
   // Grows with what is written, so a long stage never needs dragging open.
   const fit = (el: HTMLTextAreaElement | null) => {
@@ -60,41 +60,41 @@ function Area({ v, set, ph, ro }: { v: string; set: (v: string) => void; ph?: st
     el.style.height = 'auto';
     el.style.height = el.scrollHeight + 2 + 'px';
   };
-  return <textarea aria-label={ph} ref={fit} className="tt-in" rows={1} value={v} placeholder={ph} onChange={(e) => (set(e.target.value), fit(e.target))} onKeyDown={(e) => e.stopPropagation()} />;
+  return <textarea aria-label={label||ph} ref={fit} className="tt-in" rows={1} value={v} placeholder={ph} onChange={(e) => (set(e.target.value), fit(e.target))} onKeyDown={(e) => e.stopPropagation()} />;
 }
 
-function Analysis({ v, set, ro }: { v: Data; set: (k: string, x: string) => void; ro?: boolean }) {
+export function Analysis({ v, set, ro }: { v: Data; set: (k: string, x: string) => void; ro?: boolean }) {
   const ccqs = (v.ccqs ?? '').split('\n');
   const probs = (v.problems ?? '').split('\n').filter((x, i, a) => x.trim() || i === a.length - 1 || ro);
   return (
     <div className="tt-grid analysis">
       <label className="tt-f wide">
         <span>Target language</span>
-        <Area v={v.target ?? ''} set={(x) => set('target', x)} ph="I've been to Paris (present perfect for experience)" rows={1} ro={ro} />
+        <Area label="Target language" v={v.target ?? ''} set={(x) => set('target', x)} ph="I've been to Paris (present perfect for experience)" rows={1} ro={ro} />
       </label>
       <label className="tt-f wide">
         <span>Context and model sentence</span>
-        <Area v={v.context ?? ''} set={(x) => set('context', x)} ph="Two friends talk about holidays…" ro={ro} />
+        <Area label="Context and model sentence" v={v.context ?? ''} set={(x) => set('context', x)} ph="Two friends talk about holidays…" ro={ro} />
       </label>
       <label className="tt-f">
         <span className="tt-mfp m">Meaning</span>
-        <Area v={v.meaning ?? ''} set={(x) => set('meaning', x)} ph="A past experience; the time is not important" rows={3} ro={ro} />
+        <Area label="Meaning" v={v.meaning ?? ''} set={(x) => set('meaning', x)} ph="A past experience; the time is not important" rows={3} ro={ro} />
       </label>
       <label className="tt-f">
         <span className="tt-mfp f">Form</span>
-        <Area v={v.form ?? ''} set={(x) => set('form', x)} ph="subject + have/has + past participle" rows={3} ro={ro} />
+        <Area label="Form" v={v.form ?? ''} set={(x) => set('form', x)} ph="subject + have/has + past participle" rows={3} ro={ro} />
       </label>
       <label className="tt-f">
         <span className="tt-mfp p">Pronunciation</span>
-        <Area v={v.pron ?? ''} set={(x) => set('pron', x)} ph="/aɪv bɪn tə/ weak form of been, linking I‿have" rows={3} ro={ro} />
+        <Area label="Pronunciation" v={v.pron ?? ''} set={(x) => set('pron', x)} ph="/aɪv bɪn tə/ weak form of been, linking I‿have" rows={3} ro={ro} />
       </label>
-      <label className="tt-f wide"><span>Use, register and appropriacy</span><Area v={v.appropriacy ?? ''} set={x=>set('appropriacy',x)} ph="Who uses this, with whom, and in which contexts? What changes with register?" ro={ro}/></label>
+      <label className="tt-f wide"><span>Use, register and appropriacy</span><Area label="Use, register and appropriacy" v={v.appropriacy ?? ''} set={x=>set('appropriacy',x)} ph="Who uses this, with whom, and in which contexts? What changes with register?" ro={ro}/></label>
       <div className="tt-f wide">
         <span>Concept-checking questions, with answers</span>
         {ro ? (
           <ol className="tt-ccq">{ccqs.filter((x) => x.trim()).map((x, i) => <li key={i}>{x}</li>)}</ol>
         ) : (
-          <Area v={v.ccqs ?? ''} set={(x) => set('ccqs', x)} ph={'Did she go to Paris? Yes.\nDo we know when? No.\nIs it important when? No.'} rows={4} />
+          <Area label="Concept-checking questions, with answers" v={v.ccqs ?? ''} set={(x) => set('ccqs', x)} ph={'Did she go to Paris? Yes.\nDo we know when? No.\nIs it important when? No.'} rows={4} />
         )}
       </div>
       <div className="tt-f wide">
@@ -120,7 +120,7 @@ function Analysis({ v, set, ro }: { v: Data; set: (k: string, x: string) => void
             </tbody>
           </table>
         ) : (
-          <Area v={v.problems ?? ''} set={(x) => set('problems', x)} ph={tr('Learners say "I have been to Paris last year" | Timeline: finished time needs the past simple')} rows={3} />
+          <Area label="Anticipated problems and solutions" v={v.problems ?? ''} set={(x) => set('problems', x)} ph={tr('Learners say "I have been to Paris last year" | Timeline: finished time needs the past simple')} rows={3} />
         )}
         {!ro && <span className="hint">One per line: the problem, then | and the solution.</span>}
       </div>

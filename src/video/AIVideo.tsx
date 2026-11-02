@@ -1,3 +1,5 @@
+
+import { useAiActivity } from '../components/AiActivity';
 import { VideoBrief, type ReadyScene } from "./VideoBrief";
 import { VideoButton } from "./VideoButton";
 import { VIDEO_STYLES } from "../../functions/video/styles.js";
@@ -44,6 +46,8 @@ export function AIVideo({
   startingImage,
   onStartingImageUsed,
   onAssemble,
+  visible = true,
+  onOpen,
 }: {
   uid: string;
   ownerName: string;
@@ -55,6 +59,8 @@ export function AIVideo({
   startingImage?: VideoAsset | null;
   onStartingImageUsed?: () => void;
   onAssemble:(scenes:ReadyScene[],title:string)=>void;
+  visible?:boolean;
+  onOpen?:()=>void;
 }) {
   const storageKey = `ll.videoScenes.${uid}`;
   const [mode, setMode] = useState("brief"),
@@ -69,6 +75,8 @@ export function AIVideo({
       }
     }),
     [busy, setBusy] = useState("");
+  const [failure,setFailure]=useState('');
+  useAiActivity({active:!!busy||scenes.some(s=>s.status==='working'),error:failure,title:'Video scene',detail:busy?'Preparing your scene…':'Creating video…',retainResult:!visible||mode==='brief',onOpen:()=>{setMode('prompt');onOpen?.();}});
   const timer = useRef(0);
   const startingUsed = useRef<VideoAsset | null>(null);
   useEffect(() => {
@@ -102,7 +110,7 @@ export function AIVideo({
             });
             if (r.message) onError(r.message);
           } catch (e) {
-            onError((e as Error).message);
+            setFailure((e as Error).message);onError((e as Error).message);
           }
         }),
       );
@@ -110,7 +118,7 @@ export function AIVideo({
     return () => clearTimeout(timer.current);
   }, [scenes]); // eslint-disable-line react-hooks/exhaustive-deps
   const perform = async (s: Scene, action: "scene" | "generate") => {
-    setBusy(s.id);
+    setFailure('');setBusy(s.id);
     try {
       if (action === "scene") {
         const r = await videoCall<{ assetId: string }>({
@@ -143,13 +151,13 @@ export function AIVideo({
       }
     } catch (e) {
       patch(s.id, { status: "failed" });
-      onError((e as Error).message);
+      setFailure((e as Error).message);onError((e as Error).message);
     } finally {
       setBusy("");
     }
   };
   const voice = async (s: Scene) => {
-    setBusy(s.id);
+    setFailure('');setBusy(s.id);
     try {
       const take = await createSpeech({
         text: s.dialogue,
@@ -188,7 +196,7 @@ export function AIVideo({
         ready: true,
       });
     } catch (e) {
-      onError((e as Error).message);
+      setFailure((e as Error).message);onError((e as Error).message);
     } finally {
       setBusy("");
     }
@@ -207,7 +215,7 @@ export function AIVideo({
           </VideoButton>
         ))}
       </div>
-      {mode === "brief" ? <VideoBrief uid={uid} ownerName={ownerName} assets={assets} enabled={enabled} plannerEnabled={plannerEnabled} onError={onError} onAssemble={onAssemble}/> : <>
+      <div hidden={mode!=='brief'}><VideoBrief visible={visible&&mode==='brief'} onOpen={()=>{setMode('brief');onOpen?.();}} uid={uid} ownerName={ownerName} assets={assets} enabled={enabled} plannerEnabled={plannerEnabled} onError={onError} onAssemble={onAssemble}/></div>{mode!=='brief'&&<>
       {!enabled && (
         <p role="status" className="vx-notice">
           AI video creation needs its server connection set up. You can upload
@@ -380,7 +388,7 @@ export function AIVideo({
                       });
                       patch(s.id, { status: r.status });
                     } catch (e) {
-                      onError((e as Error).message);
+                      setFailure((e as Error).message);onError((e as Error).message);
                     }
                   }}
                 >

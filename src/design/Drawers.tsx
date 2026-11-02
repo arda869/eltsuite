@@ -13,8 +13,10 @@ import { searchPictures, type WebPic } from './assets';
 
 export type DrawerKey = 'ai' | 'templates' | 'elements' | 'text' | 'pictures' | 'people' | 'teach' | 'draw' | 'layers';
 
-export function Drawer({ k, cx, onClose }: { k: DrawerKey; cx: Ctx; onClose: () => void }) {
-  const title = { ai:'AI images', templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'People and things', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k];
+export function Drawer({ k, cx, onClose, onAiOpen }: { k: DrawerKey|null; cx: Ctx; onClose: () => void; onAiOpen?:()=>void }) {
+  const [seenAi,setSeenAi]=useState(k==='ai');
+  useEffect(()=>{if(k==='ai')setSeenAi(true);},[k]);
+  const title = k?{ ai:'AI images', templates: 'Templates', elements: 'Elements', text: 'Text', pictures: 'Pictures', people: 'People and things', teach: 'Teaching tools', draw: 'Draw', layers: 'Layers' }[k]:'';
   return (
     <div className="dz-dr">
       <div className="dz-dr-head">
@@ -24,7 +26,7 @@ export function Drawer({ k, cx, onClose }: { k: DrawerKey; cx: Ctx; onClose: () 
         </button>
       </div>
       <div className="dz-dr-body">
-        {k === 'ai' && <AiImages cx={cx} />}
+        {(seenAi||k==='ai')&&<div hidden={k!=='ai'}><AiImages cx={cx} visible={k==='ai'} onOpen={onAiOpen}/></div>}
         {k === 'templates' && <Templates cx={cx} />}
         {k === 'elements' && <Elements cx={cx} />}
         {k === 'text' && <TextDrawer cx={cx} />}

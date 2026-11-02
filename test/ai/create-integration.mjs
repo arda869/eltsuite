@@ -93,3 +93,25 @@ try {
  await assert.rejects(call({...request,brief:{...resumeBrief,context:'Changed context'}}));
 } finally {globalThis.fetch=originalFetch;}
 console.log('Saved review resumes without regenerating a plan, preserves unknown-usage reservations, cleans checkpoints and rejects changed briefs.');
+
+// Recover original speech from historical prepared-media records without a provider call.
+const {savePrepared}=await import('../../functions/ai/media-worker.js');
+const {wav}=await import('../../functions/ai/media-contract.js');
+const scriptJob='script-recovery',assetId='t0_m0',mediaId='ai_media_'+createHash('sha256').update(uid+scriptJob+assetId).digest('hex').slice(0,32);
+const scriptLines=[{speaker:'A',text:'Could you help me?'},{speaker:'B',text:'Of course.'}];
+const scriptAsset=db.doc(`aiPrivate/${uid}/jobs/${scriptJob}/media/${assetId}`);
+await db.doc(`aiPrivate/${uid}/jobs/${scriptJob}`).set({classId,action:'activities',status:'completed'});
+await scriptAsset.set({classId,kind:'audio',status:'ready',mediaId,lines:scriptLines});
+for(let i=0;i<2;i++){await scriptAsset.collection('takes').doc(String(i)).set({parts:1});await scriptAsset.collection('takes').doc(String(i)).collection('parts').doc('0').set({data:Buffer.alloc(48000).toString('base64')});}
+await savePrepared(db,classId,mediaId,wav(Buffer.alloc(108000)),{kind:'audio',title:'Script regression',lines:scriptLines});
+const scriptRef=db.doc(`classes/${classId}/media/${mediaId}`);
+assert.equal((await scriptRef.get()).get('script')[0].text,'Could you help me?');
+await scriptRef.update({script:[]});
+await call({action:'restoreAudioScript',mediaId});
+assert.deepEqual((await scriptRef.get()).get('script'),[{t:0,e:1,who:'A',text:'Could you help me?'},{t:1.25,e:2.25,who:'B',text:'Of course.'}]);
+await scriptRef.update({script:[{t:null,text:'Teacher-reviewed correction'}]});
+await call({action:'restoreAudioScript',mediaId});assert.equal((await scriptRef.get()).get('script')[0].text,'Teacher-reviewed correction');
+await assert.rejects(call({action:'restoreAudioScript',classId:'studio-other',mediaId}));
+await assert.rejects(lessonAssistant.run({auth:{uid:'outsider',token:{}},data:{action:'restoreAudioScript',classId,mediaId}}));
+await assert.rejects(lessonAssistant.run({auth:{uid,token:{proxyBy:'admin'}},data:{action:'restoreAudioScript',classId,mediaId}}));
+console.log('PASS: new audio retains script; historical script recovered with exact timings; teacher corrections preserved; cross-class/account/proxy access rejected; no AI generation.');

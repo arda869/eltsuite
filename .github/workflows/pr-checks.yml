@@ -60,6 +60,9 @@ jobs:
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Audio script visibility journey (Firebase simulated)
+        run: node test/audio-script-ui.mjs
+
       - name: Applied Linguistics teacher journey (Firebase simulated)
         timeout-minutes: 8
         run: node test/linguistics-ui.mjs

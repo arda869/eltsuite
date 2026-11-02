@@ -4,7 +4,7 @@ import { OrgLogo } from './OrgLook';
 import { AppGrid, AppLogo, HOME_COLOR, appAt, setAppFavicon } from './AppGrid';
 import { ThemeChoice } from '../lib/theme';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { Mark } from './Wordmark';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -24,6 +24,7 @@ export function initials(name: string) {
 }
 
 export function TopBar({ children }: { children?: ReactNode }) {
+  const navigate = useNavigate();
   const { user, profile, signOutNow } = useAuth();
   const [open, setOpen] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -68,7 +69,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
   }, [open]);
 
   return (
-    <header className="topbar">
+    <header className="topbar suite-topbar">
       <AppMark />
       <OrgLogo />
       {children}
@@ -126,7 +127,7 @@ export function TopBar({ children }: { children?: ReactNode }) {
               </span>
             )}
             <ThemeChoice />
-            <button role="menuitem" onClick={signOutNow}>
+            <button role="menuitem" onClick={async () => { await signOutNow(); navigate('/', { replace: true }); }}>
               Sign out
             </button>
             <span className="menu-legal">

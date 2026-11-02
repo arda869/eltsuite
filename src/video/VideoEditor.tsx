@@ -1052,8 +1052,10 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 onReady={() => say("")}
               />
             )}
-            {tab === "ai" && (
+            <div hidden={tab!=="ai"}>
               <AIVideo
+                visible={tab==="ai"}
+                onOpen={()=>setTab('ai')}
                 uid={uid}
                 ownerName={ownerName}
                 assets={assets}
@@ -1069,7 +1071,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 onError={say}
                 enabled={enabled}
               />
-            )}
+            </div>
           </div>
         </aside>
         <StudioDivider

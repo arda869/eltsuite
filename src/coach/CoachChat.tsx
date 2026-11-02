@@ -1,3 +1,5 @@
+import { AiButton, AiMark } from '../components/AiMark';
+import { useAiActivity } from '../components/AiActivity';
 import {CoachEvidenceReview} from '../linguistics/CoachEvidenceReview';
 import { BeliefsForm } from './BeliefsForm';
 import { reflectionDoc } from './model';
@@ -33,6 +35,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId, evidenceP
   const [journal,setJournal] = useState<{id:string;title:string;text:string}|null>(null);
   const [journalSaving,setJournalSaving] = useState(false);
   const [journalSaved,setJournalSaved] = useState('');
+  useAiActivity({active:busy,title:'Teaching coach',detail:'Thinking about your teaching question…',error});
   const review = useRef<HTMLDialogElement>(null);
   const generation = useRef(0);
   const thread = useRef<HTMLDivElement>(null);
@@ -92,10 +95,10 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId, evidenceP
       <div className="coach-chat-thread" ref={thread} tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Home'||e.key==='End')){e.preventDefault();e.currentTarget.scrollTop=e.key==='Home'?0:e.currentTarget.scrollHeight;}}} role="log" aria-label="Conversation with your teaching coach" aria-live="polite" aria-relevant="additions">
         <article className="coach-chat-message coach-chat-message-coach"><strong>Teaching coach</strong><p>{lessonContext?'Your selected teaching context is ready. Tell me what you would like to explore or improve.':'What would you like to think through today? We can reflect on a lesson, explore a teaching belief, or plan a classroom inquiry.'}</p></article>
         {messages.map((m,i) => <article key={i} className={`coach-message coach-chat-message coach-chat-message-${m.role}`}><strong>{m.role === 'teacher' ? 'You' : 'Teaching coach'}</strong><div>{m.text}</div>{m.journalDraft && <button className="btn" onClick={()=>{setJournal({id:crypto.randomUUID(),title:'A reflection from my coaching conversation',text:m.journalDraft!});setJournalSaved('');}}>Review journal draft</button>}{!!m.sources?.length&&<ul aria-label="Teaching sources">{m.sources.map((source,j)=><li key={j}><Link to={source.url}>{source.title}</Link></li>)}</ul>}{!!m.basis?.length && <details className="coach-chat-basis"><summary>Context used</summary><ul>{m.basis.map((basis,j) => <li key={j}>{basis}</li>)}</ul></details>}</article>)}
-        {busy && <><article className="coach-chat-message coach-chat-message-teacher"><strong>You</strong><div>{pendingText}</div></article><div className="coach-chat-typing" role="status"><span className="coach-thinking-dots" aria-hidden="true"><i/><i/><i/></span><span>Your coach is thinking</span></div></>}
+        {busy && <><article className="coach-chat-message coach-chat-message-teacher"><strong>You</strong><div>{pendingText}</div></article><div className="coach-chat-typing" role="status"><AiMark active/><span>Your coach is thinking</span></div></>}
       </div>
       <div className="coach-chat-bottom">
-        <form className="coach-chat-composer" onSubmit={e => { e.preventDefault(); void send(); }}><label className="coach-chat-input-label"><span className="sr-only">Message your coach</span><textarea ref={composer} aria-label="Message your coach" rows={1} maxLength={6000} value={draft} disabled={busy} placeholder="Message your coach…" onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (canSend) void send(); } }} /></label><button className="btn primary" type="submit" disabled={!canSend}>{busy ? 'Sending…' : 'Send'}</button></form>
+        <form className="coach-chat-composer" onSubmit={e => { e.preventDefault(); void send(); }}><label className="coach-chat-input-label"><span className="sr-only">Message your coach</span><textarea ref={composer} aria-label="Message your coach" rows={1} maxLength={6000} value={draft} disabled={busy} placeholder="Message your coach…" onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if (canSend) void send(); } }} /></label><AiButton className="btn primary" type="submit" disabled={!canSend}>{busy ? 'Sending…' : 'Send'}</AiButton></form>
         <div className="coach-chat-footer"><small>Enter to send · Shift + Enter for a new line</small></div>
       </div>
     </>}

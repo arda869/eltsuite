@@ -14,7 +14,7 @@ import { auth, googleProvider } from '../lib/firebase';
 import { friendlyAuthError } from '../lib/authErrors';
 import { useAuth } from '../lib/auth';
 import { cleanCode, codeProblem, keepCode, keepName, readCode, type InviteCode } from '../lib/codes';
-import { PublicHome } from '../public/PublicSite';
+import { PublicLayout } from '../public/PublicSite';
 import './welcome.css';
 import { InvitationIntro } from '../components/InvitationIntro';
 
@@ -270,6 +270,6 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         </span>
       </form>
   );
-  if (!intro && !linked && !code && !start) return <PublicHome>{form}</PublicHome>;
+  if (!intro && !linked && !code && !start) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Back to Homepage</Link></div>{form}</main></PublicLayout>;
   return <div className="signin">{intro ?? <InvitationIntro invitation={code ?? undefined}/>} {form}</div>;
 }
