@@ -39,7 +39,7 @@ export async function handleObservation(db,auth,d={}){
   const inquiryId=idOf(d.inquiryId),q=await db.doc(`teachingCoach/${who.uid}/inquiries/${inquiryId}`).get();if(!q.exists)denied();
   const prefs=await db.doc(`teachingCoach/${who.uid}/settings/context`).get();if(prefs.get('inquiries')===false)throw new HttpsError('failed-precondition','Research inquiry context is disabled in Coach settings.');
   const ref=db.doc('observationCoachPackets/obs_'+db.collection('observationCoachPackets').doc().id);
-  await ref.set({owner:who.uid,observationId:d.id,inquiryId,selected:source.notes.map(n=>n.id),versions:source.notes.map(n=>[n.id,n.version]),purpose:typeof d.purpose==='string'?d.purpose.slice(0,1000):'',expiresAt:Date.now()+3600000});return {id:ref.id};
+  await ref.set({owner:who.uid,observationId:d.id,inquiryId,selected:source.notes.map(n=>n.id),versions:Object.fromEntries(source.notes.map(n=>[n.id,n.version])),purpose:typeof d.purpose==='string'?d.purpose.slice(0,1000):'',expiresAt:Date.now()+3600000});return {id:ref.id};
  }
  if(d.action==='inquiries'){const rows=await db.collection(`teachingCoach/${who.uid}/inquiries`).limit(100).get();return {items:rows.docs.map(s=>({id:s.id,title:s.get('title')}))};}
  if(d.action==='attachInquiry'){
@@ -61,7 +61,7 @@ export async function observationCoachEvidence(db,uid,id){
  const p=(await db.doc('observationCoachPackets/'+idOf(id)).get()).data();
  if(!p||p.owner!==uid||p.expiresAt<Date.now())denied();
  const who={uid},source=await packet(db,who,p.observationId,p.selected);
- if(JSON.stringify(source.notes.map(n=>[n.id,n.version]))!==JSON.stringify(p.versions))throw new HttpsError('failed-precondition','Selected notes changed. Review them again before discussing them.');
+ if(source.notes.some(n=>p.versions[n.id]!==n.version))throw new HttpsError('failed-precondition','Selected notes changed. Review them again before discussing them.');
  if(!(await db.doc(`teachingCoach/${uid}/inquiries/${p.inquiryId}`).get()).exists)denied();
  return {inquiryId:p.inquiryId,purpose:p.purpose,packet:{schemaVersion:1,type:'research',title:source.title,fields:{focus:source.focus,context:source.context},annotations:[],evidence:source.notes.map(n=>({id:n.id,text:n.text,source:source.title,url:'/observations?id='+source.observationId,location:n.offsetSeconds+' seconds · '+n.kind,licence:'Private selected teacher evidence',origin:'teacher',shareAllowed:false,consent:true,date:new Date(source.startedAt).toISOString().slice(0,10),context:n.kind==='observed'?'Teacher-recorded observation, not independently verified.':'Teacher interpretation, not an observed fact.'}))}};
 }
