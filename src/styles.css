@@ -3292,7 +3292,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .pic-pop { width: 320px; gap: 10px; }
 .pic-row { display: flex; flex-direction: column; gap: 4px; }
 .pic-row input { height: 30px; border: 1px solid var(--hair-strong); border-radius: 8px; padding: 0 8px; font: 13px var(--sans); }
-.pic-dialog { width: min(560px, calc(100vw - 32px)); gap: 14px; }
+.pic-dialog { width: min(560px, calc(100vw - 32px)); gap: 14px; max-height: 80dvh; overflow-y: auto; overscroll-behavior: contain; }
 .pic-drop { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 26px 16px; border: 1.5px dashed var(--hair-strong); border-radius: 14px; background: var(--tint); text-align: center; cursor: pointer; font-family: var(--sans); }
 .pic-drop:hover, .pic-drop.over { border-color: var(--accent); }
 .pic-url { display: flex; gap: 8px; } .pic-url input { flex: 1; height: 36px; border: 1px solid var(--hair-strong); border-radius: 10px; padding: 0 10px; font: 14px var(--sans); }
