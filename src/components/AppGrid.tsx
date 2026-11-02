@@ -62,6 +62,7 @@ const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // The app a page belongs to, for the tab's icon.
 export function appAt(pathname: string) {
+  if (pathname === '/observations') return APPS.find(a => a.k === 'development') ?? null;
   return APPS.filter((a) => a.to && a.to !== '/' && (pathname === a.to || pathname.startsWith(a.to + '/'))).sort((a, b) => b.to!.length - a.to!.length)[0] ?? null;
 }
 // The tab's icon: the app's own symbol, white on its colour.
