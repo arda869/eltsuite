@@ -93,6 +93,22 @@ async function openAssistant(p, section = 'help') {
 // ------------------------------------------------------------------ the journeys
 const A11Y_FOUND = [];
 const J = {
+  'Monday navigation: sidebar hover stays stable and app search works': async b=>{
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    const row=s.p.locator('.task-row').filter({has:s.p.locator('.row-actions')}).first();await row.waitFor();
+    for(const width of [1300,900]){
+      await s.p.setViewportSize({width,height:900});await s.p.mouse.move(0,0);
+      const before=await row.boundingBox(),titleBefore=await row.locator('.task-pick').boundingBox();
+      await row.hover();const after=await row.boundingBox(),titleAfter=await row.locator('.task-pick').boundingBox();
+      if(Math.abs(before.height-after.height)>0.5||Math.abs(titleBefore.width-titleAfter.width)>0.5)throw Error('Hover changed the row or title dimensions');
+    }
+    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('linguistics');
+    await s.p.getByRole('menuitem',{name:'Applied Linguistics',exact:true}).waitFor();
+    if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
+    await axe(s.p,'Filtered application launcher',A11Y_FOUND);return s;
+  },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
   'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
@@ -1797,10 +1813,14 @@ const J = {
     const s = await session(b, { owner: true });
     await s.p.evaluate(() => {const fs=JSON.parse(localStorage.getItem('mockfs')||'{}');fs['users/allowance-user']={role:'learner',displayName:'Allowance learner',email:'allowance@example.test'};localStorage.setItem('mockfs',JSON.stringify(fs));});
     await s.p.goto(BASE+'/admin?tab=ai');
+    await s.p.getByRole('combobox',{name:'Songs release state',exact:true}).selectOption('testing');
+    await s.p.getByRole('button',{name:'Save feature states',exact:true}).click();
+    await s.p.getByText('Feature states saved. New requests use these settings.',{exact:true}).waitFor();
     await s.p.getByRole('button',{name:'AI allowances for user',exact:true}).click({timeout:15000}).catch(async e=>{throw Error(e.message+'\n'+s.errors.join('\n')+'\n'+await s.p.locator('body').innerText());});
     await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
     await see(s.p,'.ai-usage-row','per-feature allowances');
     if(await s.p.locator('.ai-usage-row').count()!==AI_FEATURES.length)throw Error('Missing AI features');
+    await s.p.getByRole('checkbox',{name:'Songs testing access',exact:true}).check();
     await s.p.getByRole('button',{name:'Teaching definitions allowance',exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Songs allowance',exact:true}).click();
     await s.p.getByRole('option',{name:'Custom daily limit',exact:true}).click();
@@ -1812,6 +1832,8 @@ const J = {
     await s.p.getByRole('option').filter({hasText:'Allowance learner'}).click();
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).waitFor();
     if(await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).inputValue()!=='0')throw Error('Saved zero limit missing');
+    if(!await s.p.getByRole('checkbox',{name:'Songs testing access',exact:true}).isChecked())throw Error('Saved testing access missing');
+    if(await s.p.getByRole('combobox',{name:'Songs release state',exact:true}).inputValue()!=='testing')throw Error('Saved release state missing');
     await s.p.getByRole('spinbutton',{name:'Songs uses per day',exact:true}).fill('999');
     await s.p.getByRole('button',{name:'Save AI allowances',exact:true}).click();
     await see(s.p,'[role=alert]:has-text("Test save unavailable")','visible save failure');

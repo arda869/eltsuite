@@ -244,14 +244,14 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       reserveRepair: reserveExtra
     });
     let result = { [d.action]: first.value, ...(revision?{revisionSummary}:{}), usage: [...researchUsage,...first.usage] };
-    const saveReviewCheckpoint=async(value,reviewUsage=[])=>{
-      const checkpointJson=encodeGenerationResult({...result,[d.action]:value,usage:[...result.usage,...reviewUsage],sourceEvidence:sources}).resultJson;
+    const saveReviewCheckpoint=async(value,reviewUsage=[],pendingReview=null)=>{
+      const checkpointJson=encodeGenerationResult({...result,[d.action]:value,usage:[...result.usage,...reviewUsage],sourceEvidence:sources,pendingReview}).resultJson;
       await db.runTransaction(async tx=>{const j=await tx.get(job);if(j.get('status')!=='running')throw new GenerationError('storage');tx.update(job,{checkpointJson,checkpointReservedMicroUsd:j.get('reservedMicroUsd')});});
     };
-    if(d.action==='plan'||d.action==='activities')await saveReviewCheckpoint(first.value);
+    if(d.action==='plan'||d.action==='activities')await saveReviewCheckpoint(first.value,[],resumed?.pendingReview??null);
     if ((d.action === 'plan' || d.action === 'activities') && cls.get('kind')!=='training') {
       phase='review';
-      const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,checkpoint:({value,usage})=>saveReviewCheckpoint(value,usage),
+      const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,pendingReview:resumed?.pendingReview??null,checkpoint:({value,usage,pendingReview})=>saveReviewCheckpoint(value,usage,pendingReview),
         review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
           input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...(revision?{requestedChanges:revision.instructions}:{}),[d.action]:value},
           instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
@@ -303,7 +303,9 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
         tx.update(job,{status:'failed',failure:{reason:failure.reason,phase:failure.phase},...(canResume?{retainedMicroUsd:retained,checkpointReservedMicroUsd:j.get('reservedMicroUsd')}:{})});return canResume;
       });
     } catch { warn('lessonAssistant failure status could not be saved'); }
+    let review=null;
+    if(resumable)try{review=JSON.parse((await job.get()).get('checkpointJson')).pendingReview??null;}catch{}
     const message=resumable?'Your generated draft is saved. Its quality review could not finish. Retry this step to continue reviewing the saved draft; your approved work is unchanged. ['+failure.phase+':'+failure.reason+']':failure.message;
-    throw new HttpsError('unavailable',message,{reason:failure.reason,phase:failure.phase,resumable});
+    throw new HttpsError('unavailable',message,{reason:failure.reason,phase:failure.phase,resumable,review});
   }
 });
