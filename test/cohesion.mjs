@@ -20,6 +20,7 @@ export async function backgroundSongAudit(s,base,out,axe) {
   await d.getByLabel('Lyric ideas').fill('Parts of the body song');assert.equal(await d.getByLabel('Song title',{exact:true}).inputValue(),'');
   await p.evaluate(()=>sessionStorage.setItem('mockSongDelayMs','3000'));await d.getByRole('button',{name:'Draft lyrics',exact:true}).click();await d.waitFor({state:'hidden'});
   const dock=p.getByRole('region',{name:'AI activity',exact:true});await dock.getByRole('button',{name:/Return to task/}).waitFor();
+  assert.equal(await dock.evaluate(el=>getComputedStyle(el).colorScheme),'dark','AI activity must match the dark recording workspace');
   assert.equal(await p.locator('dialog[open]').count(),0,'Generation must release the modal');
   await dock.getByRole('button',{name:/Return to task/}).click();
   await d.getByRole('heading',{name:'Writing your lyrics…',exact:true}).waitFor();
