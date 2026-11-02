@@ -69,6 +69,7 @@ const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m
 const TourPage = lazy(() => import('./pages/TourPage').then((m) => ({ default: m.TourPage })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
+const ObservationStudio = lazy(() => import('./observations/ObservationStudio').then(m => ({default:m.ObservationStudio})));
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
 const DevelopmentStudio = lazy(() => import('./coach/DevelopmentStudio').then(m => ({ default: m.DevelopmentStudio })));
 const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
@@ -193,6 +194,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/linguistics" element={<SignedIn><AppliedLinguistics /></SignedIn>} />
+          <Route path="/observations" element={<TeacherOnly><ObservationStudio /></TeacherOnly>} />
           <Route path="/development" element={<TeacherOnly><DevelopmentStudio /></TeacherOnly>} />
           <Route path="/coach" element={<Navigate to="/development?section=coach" replace />} />
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />

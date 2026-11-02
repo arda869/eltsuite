@@ -46,6 +46,10 @@ jobs:
         run: node --test functions/linguistics/*.test.mjs
       - name: Applied Linguistics privacy and reuse journeys
         run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-linguistics "node functions/linguistics/integration.mjs"
+      - name: Observation contracts and private inquiry journey
+        run: |
+          node --test functions/observations/*.test.mjs
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-observation "node functions/observations/integration.mjs"
       - name: Video editor and storyboard checks
         run: node --test test/video-model.test.mjs test/video-provider.test.mjs test/video-inline.test.mjs
       - name: Video access rules and service checks

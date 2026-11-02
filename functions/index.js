@@ -1,3 +1,4 @@
+export { classroomObservation } from './observations/index.js';
 export { observeLearnerResponses } from './learning/observations.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';
 // The one piece of ELT Suite that runs on a server: a super admin signs in as a teacher or a

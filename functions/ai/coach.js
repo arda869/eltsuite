@@ -2,6 +2,7 @@ import { loadLessonSource } from './coach-lesson-context.js';
 import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
 import { dailyGlobalUsage } from './allowance.js';
+import {observationCoachEvidence} from '../observations/service.js';
 import {coachEvidence} from '../linguistics/service.js';
 import { contextPermissions, profileComplete, beliefsComplete, relevantWriting, writingExcerpt } from './coach-context.js';
 import { HttpsError } from 'firebase-functions/v2/https';
@@ -22,15 +23,15 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   const [professional, preferences] = await Promise.all([
     db.doc(`teachingCoach/${uid}/settings/profile`).get(), db.doc(`teachingCoach/${uid}/settings/context`).get(),
   ]);
-  if (!input.lessonContext && !profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
-  if (!input.lessonContext && !beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
+  if (!input.lessonContext && !input.evidencePacketId && !profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
+  if (!input.lessonContext && !input.evidencePacketId && !beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
   const preferencesData = preferences.data();
   const permissions = contextPermissions(preferencesData);
   if (['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode'].includes(preferencesData?.mode)) input.mode = preferencesData.mode;
   const context = {}, basis = [], sources = [];
   if(input.evidencePacketId){
     if(!permissions.inquiries)throw new HttpsError('failed-precondition','Research inquiry context is disabled. Remove the evidence packet to continue without it.');
-    const selected=await coachEvidence(db,uid,input.evidencePacketId);
+    const selected=await (input.evidencePacketId.startsWith('obs_')?observationCoachEvidence:coachEvidence)(db,uid,input.evidencePacketId);
     context.selectedEvidence=selected;input.researchId=selected.inquiryId;
     basis.push('Teacher-confirmed selected evidence: '+selected.packet.title);
   }
