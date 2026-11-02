@@ -16,13 +16,13 @@ export function useAiActivity({ active, title, detail = '', error = '', progress
 }) {
   const id = useId(), wasActive = useRef(false), callback = useRef(onOpen);
   const [minimised,setMinimised] = useState(false);
-  const hiddenPanel=useRef(minimised);hiddenPanel.current=minimised;
+  const hiddenPanel=useRef(false);
   callback.current = onOpen;
-  const restore = useCallback(() => { setMinimised(false); remove(id); callback.current?.(); },[id]);
+  const restore = useCallback(() => { hiddenPanel.current=false; setMinimised(false); remove(id); callback.current?.(); },[id]);
   useEffect(() => {
-    if (!enabled) { remove(id); wasActive.current=false; setMinimised(false); return; }
+    if (!enabled) { remove(id); wasActive.current=false; hiddenPanel.current=false; setMinimised(false); return; }
     if (active) {
-      if (!wasActive.current && autoMinimise) setMinimised(true);
+      if (!wasActive.current && autoMinimise) { hiddenPanel.current=true; setMinimised(true); }
       put({id,title,detail,active:true,progress,open:restore});
     } else if (wasActive.current) {
       if(hiddenPanel.current||retainResult)put({id,title,detail:error?'Open the result to retry. Your existing work is kept.':'Ready to review.',active:false,error,open:restore});
@@ -37,7 +37,7 @@ export function useAiActivity({ active, title, detail = '', error = '', progress
     window.addEventListener('beforeunload',warn);
     return () => window.removeEventListener('beforeunload',warn);
   },[active]);
-  return { minimised, minimise: () => { setMinimised(true); put({id,title,detail,active,error,progress,open:restore}); }, restore };
+  return { minimised, minimise: () => { hiddenPanel.current=true; setMinimised(true); put({id,title,detail,active,error,progress,open:restore}); }, restore };
 }
 
 export function AiActivityDock() {

@@ -4,7 +4,7 @@ import {reviewAi,returnDuringAi,backgroundSongAudit,suiteCohesionAudit} from './
 // Each journey fails on a crash in the page, a missing screen, or something that does not stay.
 // With --a11y, each main screen is also checked for accessibility problems (axe-core).
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { chromium } from 'playwright';
 import { AI_FEATURES } from '../functions/ai/features.js';
@@ -30,6 +30,7 @@ async function up() {
 
 // ------------------------------------------------------------------ helpers
 const NOISE = [/Future Flag/, /Failed to load resource/, /ERR_TUNNEL|ERR_NAME|ERR_INTERNET|net::/, /Download the React DevTools/];
+let activeSession;
 async function session(browser, { as = 'teacher', owner = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1300, height: 900 } });
   const errors = [];
@@ -46,7 +47,7 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
   const demo = await p.evaluate(() => JSON.parse(localStorage.getItem('mockdemo')));
-  return { ctx, p, errors, demo };
+  activeSession={ctx,p,errors,demo};return activeSession;
 }
 const see = async (p, sel, what, timeout = 15000) => {
   try {
@@ -2078,11 +2079,14 @@ try {
     if (ONLY && !name.toLowerCase().includes(ONLY.toLowerCase())) continue;
     const t = Date.now();
     let s;
+    activeSession=undefined;
     let err = '';
     try {
       s = await run(browser);
       if (s.errors.length) err = s.errors.slice(0, 3).join('\n   ');
     } catch (e) {
+      s??=activeSession;
+      if(s){mkdirSync('outputs/cohesion',{recursive:true});await s.p.screenshot({path:'outputs/cohesion/failure-'+name.replace(/[^a-z0-9]/gi,'_').slice(0,120)+'.jpg'}).catch(()=>{});}
       err = e.message.slice(0, 3500) + (s?.errors?.length ? '\n   ' + s.errors.slice(0, 2).join('\n   ') : '');
     }
     await s?.ctx.close().catch(() => {});
