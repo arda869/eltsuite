@@ -21,6 +21,7 @@ const sources: [keyof ContextPermissions,string,string][] = [
   ['profile','Professional profile','Training, experience, roles, learners and goals'],
   ['beliefs','Teaching beliefs','Your ideas and assumptions about teaching'],
   ['reflections','Reflections','Relevant excerpts from your reflective journal'],
+  ['games','Games in the selected lesson','Questions and anonymised current-run scores from games in the lesson you choose'],
   ['forms','Forms in Collab','Editable development and language forms in documents you can access'],
   ['inquiries','Research inquiries','Relevant plans, observations and findings'],
 ];

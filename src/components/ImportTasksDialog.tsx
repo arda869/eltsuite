@@ -14,7 +14,7 @@ type T = { id: string; title: string; instructions: string; kind?: string; conte
 const TYPE: Record<string, string> = { lesson: 'Lesson', homework: 'Homework', exam: 'Exam', practice: 'Practice' };
 
 // "+ From another lesson": copy tasks in from any lesson in any of your classes.
-export function ImportTasksDialog({ classId, itemId, onClose, onDone }: { classId: string; itemId: string; onClose: () => void; onDone: (msg: string, firstId?: string) => void }) {
+export function ImportTasksDialog({ classId, itemId, onClose, onDone }: { classId: string; itemId: string; onClose: () => void; onDone: (msg: string, firstId?: string, ids?: string[]) => void }) {
   const { user } = useAuth();
   const [classes, setClasses] = useState<ClassDoc[]>([]);
   const [fromClass, setFromClass] = useState(classId);
@@ -56,14 +56,14 @@ export function ImportTasksDialog({ classId, itemId, onClose, onDone }: { classI
 
   async function go() {
     setErr('');
-    let first = '';
+    let first = '';const ids:string[]=[];
     try {
       for (let i = 0; i < chosen.length; i++) {
         setBusy(`Copying ${i + 1} of ${chosen.length}…`);
         const id = await copyTask(fromClass, fromItem, chosen[i].id, classId, itemId, fromClass === classId && fromItem === itemId ? ' (copy)' : '', collab);
-        first ||= id;
+        first ||= id;ids.push(id);
       }
-      onDone(chosen.length === 1 ? `Copied “${chosen[0].title || 'Untitled task'}” in.` : `Copied ${chosen.length} tasks in.`, first);
+      onDone(chosen.length === 1 ? `Copied “${chosen[0].title || 'Untitled task'}” in.` : `Copied ${chosen.length} tasks in.`, first, ids);
       onClose();
     } catch (e) {
       console.error(e);

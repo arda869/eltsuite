@@ -1,3 +1,5 @@
+async function openPlanning(p){const details=p.locator('.lesson-support-tools');if(await details.getAttribute('open')===null)await details.locator('summary').click();}
+async function blankTask(p){const gap=p.locator('.task-insert').last();await gap.locator('summary').click();await gap.getByRole('button',{name:'New task',exact:true}).click();}
 import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {slidesCut} from './slides-cut.mjs';
 import {resourcesLayout,fieldCut} from './resources-layout.mjs';
@@ -127,7 +129,7 @@ const J = {
   'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
     await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
     await dialog.getByRole('link',{name:'Discuss with coach',exact:true}).click();
@@ -147,7 +149,7 @@ const J = {
   'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     let dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
     await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
     await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
@@ -158,7 +160,7 @@ const J = {
     await s.p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).filter(k=>k.includes('/learningReports/')).length===2);
     await dialog.getByRole('button',{name:'Close',exact:true}).click();
     await s.p.reload();
-    await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
     await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
     await axe(s.p,'Learner readiness',A11Y_FOUND);return s;
@@ -167,7 +169,7 @@ const J = {
     const s=await session(b,{owner:true});
     await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'tool-source']={kind:'task',title:'Yesterday',instructions:'Complete the sentence.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]}]},order:0,hidden:false,locked:false};fs[root+'tool-source/private/key']={missing:{kind:'gap',answers:[]}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
-    await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
     let dialog=s.p.getByRole('dialog',{name:'Generate answer key'});
     await dialog.getByRole('button',{name:'Generate missing answers'}).click();await reviewAi(s.p,'Generate answer key');
     await dialog.getByRole('button',{name:'Apply answer key'}).waitFor();
@@ -189,7 +191,7 @@ const J = {
     await dialog.getByRole('button',{name:'Add activity to lesson'}).click();
     await dialog.waitFor({state:'hidden'});
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan'&&v.order===1),s.demo);
-    await s.p.reload();await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).waitFor();
+    await s.p.reload();await openPlanning(s.p);await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).waitFor();
     const added=await s.p.evaluate(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).filter(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan').map(([,v])=>v),s.demo);
     if(added.length!==1||added[0].order!==1)throw Error('Next activity was not appended exactly once');
     await axe(s.p,'Lesson tools',A11Y_FOUND);return s;
@@ -750,10 +752,10 @@ const J = {
     const s=await session(b);
     await s.p.evaluate(id=>{const data=JSON.parse(localStorage.getItem('mockfs'));data['classes/'+id].kind='training';localStorage.setItem('mockfs',JSON.stringify(data));},s.demo.classId);
     await s.p.goto(BASE+'/class/'+s.demo.classId+'/lesson/'+s.demo.itemId);
-    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await blankTask(s.p);
     await s.p.locator('.ProseMirror').nth(1).click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'Language analysis');
     await see(s.p,'text=Target language','teacher-training language analysis');
-    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await blankTask(s.p);
     await s.p.locator('.task-editor .editor-host .ProseMirror').first().click();await s.p.keyboard.press('ControlOrMeta+End');await slash(s.p,'AI conversation');
     await see(s.p,'.speak-setup','speaking practice in teacher training').catch(async e=>{throw Error(e.message+' '+(await s.p.locator('body').innerText()).slice(-5000)+' '+s.errors.join(';'));});
     return s;
@@ -762,7 +764,7 @@ const J = {
     const s=await session(b);
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await see(s.p,'.ProseMirror','the lesson editor');
-    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    await blankTask(s.p);
     await s.p.locator('.ProseMirror').nth(1).fill('At the airport, ask the airline representative to replace your damaged suitcase.');await s.p.keyboard.press('ControlOrMeta+End');await s.p.keyboard.press('Enter');await slash(s.p,'AI conversation');
     await see(s.p,'.speak-setup','the speaking task editor');
     if(!(await s.p.getByLabel('The situation',{exact:true}).inputValue()).includes('damaged suitcase')) throw Error('AI conversation lost its activity context');

@@ -1,11 +1,12 @@
+import { SpellingFields } from '../spelling/SpellingFields';
+import { TaskInsert } from '../components/TaskInsert';
 import { LearnerInsights } from '../ai/LearnerInsights';
 import { LessonTools, LessonToolDialog } from '../ai/LessonTools';
-import { MaterialImport, ImportMaterialsButton } from '../materials/MaterialImport';
+import { MaterialImport } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
 import { NSelect } from '../components/Select';
-import { VoiceDiversityPrompt } from '../components/VoiceDiversityPrompt';
 import { TeacherLiveVideo } from '../components/LiveVideo';
 import { setActivity } from '../lib/status';
 import { tr, useClassTerms } from '../lib/terms';
@@ -17,9 +18,9 @@ import { usePhone } from '../lib/useMedia';
 import { PresenterNotes, usePresenterNotes } from '../components/PresenterNotes';
 import { InstrEditor, InstrView } from '../editor/InstrEditor';
 import { Loader } from '../components/Loader';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { doc, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { doc, getDocs, writeBatch, onSnapshot, orderBy, query } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
 import { updateItem, type ClassDoc, type Item } from '../lib/classes';
@@ -704,6 +705,22 @@ export function LessonEditor() {
     if (boardView) showBoard(false);
   }
 
+  const insertBefore = useRef<string|null>(null);
+  async function placeInserted(ids:string[]) {
+    const anchor=insertBefore.current;insertBefore.current=null;
+    if(!anchor||!ids.length)return;
+    const saved=await getDocs(query(tasksCol(classId,itemId),orderBy('order')));
+    const rows=saved.docs, moving=rows.filter(r=>ids.includes(r.id)||ids.includes(r.get('family'))), rest=rows.filter(r=>!moving.includes(r));
+    const at=rest.findIndex(r=>r.id===anchor);if(at<0)return;
+    rest.splice(at,0,...moving);const batch=writeBatch(db);rest.forEach((r,i)=>batch.update(r.ref,{order:i}));await batch.commit();
+  }
+  const finishInserted=async(ids:string[])=>{try{await placeInserted(ids);if(ids[0])setSelected(ids[0]);}catch{setCopyMsg('The task was added, but its position could not be saved. Drag it into place.');}};
+  const insertAt=async(before:string|null,kind:'blank'|'import'|'ai'|'section'|'lesson')=>{
+    try {
+      if(await flush()===false)return;insertBefore.current=before;
+      if(kind==='blank')await newBlankTask();else if(kind==='section')await newSection();else if(kind==='ai')setTaskStart(true);else if(kind==='import')setMaterialImport(true);else setImporting(true);
+    } catch { insertBefore.current=null;setCopyMsg('The task could not be added. Please try again.'); }
+  };
   async function newTask() {
     if(aiPilot){await flush();setTaskStart(true);return;}
     await newBlankTask();
@@ -711,7 +728,7 @@ export function LessonEditor() {
   async function newBlankTask() {
     await flush();
     const id = await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0);
-    setSelected(id);
+    await finishInserted([id]);
   }
 
   async function newTaskFrom(init: { title: string; instructions: string; content: JSONContent }) {
@@ -721,7 +738,7 @@ export function LessonEditor() {
   }
 
   async function newSection() {
-    await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'section');
+    const id=await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'section');await finishInserted([id]);
   }
 
   const [dragId, setDragId] = useState<string | null>(null);
@@ -838,7 +855,6 @@ export function LessonEditor() {
                   <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                 </div>
                 <div className="frame-body">
-                  <VoiceDiversityPrompt key={itemId} />
                   <TaskEditor
                     key={editorKey}
                     compact
@@ -859,7 +875,7 @@ export function LessonEditor() {
   ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
-    <div className="shell wide" style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide" data-spelling={JSON.stringify([c?.spelling,item?.spelling,task?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link to="/classes">Classes</Link>
@@ -1001,9 +1017,9 @@ export function LessonEditor() {
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.currentTarget.blur())}
               onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== item.title && updateItem(classId, itemId, { title: e.target.value.replace(/\s+/g, ' ').trim() })}
             />
-            {tasks.map((t, i) => (
+            {tasks.map((t, i) => (<Fragment key={t.id}>
+              {!viewer&&!teachingHere&&!preview&&!isVariant(t)&&<TaskInsert label={'Insert before '+t.title} ai={aiPilot} onChoose={kind=>void insertAt(t.id,kind)}/>}
               <div
-                key={t.id}
                 className={'task-row' + (isVariant(t) ? ' variant-row' : '') + (t.id === selected ? ' on' : '') + (dragId === t.id ? ' dragging' : '') + (dropAt === i ? ' drop-before' : '') + (dropAt === tasks.length && i === tasks.length - 1 ? ' drop-after' : '')}
                 draggable={!isVariant(t)}
                 onDragStart={(e) => {
@@ -1093,24 +1109,8 @@ export function LessonEditor() {
                   </span>
                 )}
               </div>
-            ))}
-            {!viewer && !teachingHere && !preview && (
-              <div className="list-adds">
-                <button type="button" className="btn dashed" onClick={newTask}>
-                  + New task
-                </button>
-                {aiPilot&&<ImportMaterialsButton onClick={()=>void flush().then(()=>setMaterialImport(true))}/>}
-                <button type="button" className="btn dashed" onClick={newSection}>
-                  + Section
-                </button>
-                <button type="button" className="btn dashed wide-add" onClick={() => setImporting(true)}>
-                  + From another lesson…
-                </button>
-                <button type="button" className="btn dashed wide-add" onClick={() => setFromLib(true)}>
-                  + From the resources library…
-                </button>
-              </div>
-            )}
+            </Fragment>))}
+            {!viewer&&!teachingHere&&!preview&&<TaskInsert label="Add at the end" ai={aiPilot} onChoose={kind=>void insertAt(null,kind)}/>}
           </nav>
           {panels.left && !present && <PaneResizer side="left" width={panes.widths.left} onWidth={(px) => panes.set('left', px)} onReset={() => panes.reset('left')} />}
 
@@ -1119,8 +1119,8 @@ export function LessonEditor() {
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
-          {mode === 'edit' && !preview && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
-          {!preview && <a className="btn small-btn" href={'/observations?classId='+classId+'&itemId='+itemId} target="_blank" rel="noreferrer">Observe this lesson</a>}
+          {!preview && <details className="lesson-support-tools"><summary><UiIcon name="videoSparkles" /> Planning and review</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
+          {!preview && <a className="btn small-btn" href={'/observations?classId='+classId+'&itemId='+itemId} target="_blank" rel="noreferrer">Observe this lesson</a>}<Link className="btn small-btn" to={`/development?section=coach&classId=${classId}&itemId=${itemId}${task?.id?"&taskId="+task.id:""}`}>Discuss with coach</Link></div></details>}
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
@@ -1458,6 +1458,10 @@ export function LessonEditor() {
           )}
           {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
             <aside className="task-side folds" aria-label="Task settings">
+              <Fold id="spelling" title="Spelling" open={fold} setOpen={setFold}>
+                <SpellingFields label="Lesson spelling" value={item?.spelling} inherit onChange={v=>void updateItem(classId,itemId,{spelling:v}).catch(()=>tell('Could not save the lesson spelling setting.'))}/>
+                <SpellingFields label="Task spelling" value={task.spelling} inherit onChange={v=>void setTaskFlags(classId,itemId,task.id,{spelling:v}).catch(()=>tell('Could not save the task spelling setting.'))}/>
+              </Fold>
               <Fold id="who" title="Who sees this" open={fold} setOpen={setFold}>
               <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
               </Fold>
@@ -1589,9 +1593,9 @@ export function LessonEditor() {
           }}
         />
       )}
-      {taskStart&&<LessonToolDialog classId={classId} itemId={itemId} mode="next" onClose={()=>setTaskStart(false)} onApplied={id=>{setSelected(id);setTaskTry(n=>n+1);}} onBlank={()=>{setTaskStart(false);void newBlankTask();}} onImport={()=>{setTaskStart(false);setMaterialImport(true);}}/>}
-      {materialImport&&<MaterialImport classId={classId} itemId={itemId} creationType={item?.type||'lesson'} onClose={()=>setMaterialImport(false)} onDone={(_,id)=>{setMaterialImport(false);setSelected(id);setCopyMsg('Reviewed task added.');}}/>}
-      {importing && <ImportTasksDialog classId={classId} itemId={itemId} onClose={() => setImporting(false)} onDone={(m, id) => (setCopyMsg(m), id && setSelected(id))} />}
+      {taskStart&&<LessonToolDialog classId={classId} itemId={itemId} mode="next" onClose={()=>{setTaskStart(false);insertBefore.current=null;}} onApplied={id=>{void finishInserted([id]);setTaskTry(n=>n+1);}} onBlank={()=>{setTaskStart(false);void newBlankTask();}} onImport={()=>{setTaskStart(false);setMaterialImport(true);}}/>}
+      {materialImport&&<MaterialImport classId={classId} itemId={itemId} creationType={item?.type||'lesson'} onClose={()=>{setMaterialImport(false);insertBefore.current=null;}} onDone={(_,id)=>{setMaterialImport(false);void finishInserted([id]);setCopyMsg('Reviewed task added.');}}/>}
+      {importing && <ImportTasksDialog classId={classId} itemId={itemId} onClose={() => {setImporting(false);insertBefore.current=null;}} onDone={(m, id, ids) => {setCopyMsg(m);if(id)void finishInserted(ids??[id]);}} />}
       {copyMsg && (
         <div className="toasts">
           <div className="toast">

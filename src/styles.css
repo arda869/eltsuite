@@ -8365,3 +8365,10 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 @media(max-width:760px){.ma-list .ma-lrow{grid-template-columns:var(--resource-columns,minmax(160px,1fr) 110px 90px 120px 70px);min-width:var(--resource-row-width,626px);}.ma-list .ma-lrow>:nth-child(n+3){display:block;}}
 
 .ProseMirror-yjs-selection {background:color-mix(in srgb,var(--accent) 18%,var(--paper))!important;color:var(--ink)!important;}
+
+/* Related teacher actions stay together and out of the learner's material. */
+.lesson-support-tools{margin:8px 0;border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.lesson-support-tools>summary{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem;list-style:none}
+.lesson-support-tools>summary::after{content:'⌄';margin-left:auto}.lesson-support-tools[open]>summary{margin-bottom:10px}
+.lesson-support-actions,.lesson-support-actions .lesson-tool-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0}
+.task-insert{position:relative;min-height:18px;flex-shrink:0}.task-insert>summary{display:flex;align-items:center;justify-content:center;list-style:none;cursor:pointer;height:18px;opacity:0;transition:opacity .12s;color:var(--accent-text);border-top:1px solid transparent}.task-insert>summary::-webkit-details-marker{display:none}.task-insert>summary span{border:1px solid var(--line);border-radius:50%;width:22px;height:22px;line-height:19px;text-align:center;background:var(--paper)}.task-insert:hover>summary,.task-insert:focus-within>summary,.task-insert[open]>summary{opacity:1;border-color:var(--line)}.task-insert-menu{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:8px;margin:6px 0;background:var(--paper)}.task-insert-menu button{justify-content:flex-start;white-space:normal}.task-insert>summary:focus-visible{outline:2px solid var(--accent)}@media(hover:none){.task-insert>summary{opacity:1}}

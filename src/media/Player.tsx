@@ -667,7 +667,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
     window.addEventListener('ll:live-play', h);
     return () => window.removeEventListener('ll:live-play', h);
   }, [mediaId, teacher]);
-  const showScript = lines.length > 0 && (editing || ((teaching||scriptMode==='button'?open:null) ?? (scriptMode === 'karaoke' || (scriptMode === 'after' && e.ends > 0))));
+  const showScript = lines.length > 0 && (scriptMode === 'karaoke' ? e.playing : editing || ((teaching||scriptMode==='button'?open:null) ?? (scriptMode === 'after' && e.ends > 0)));
   const canToggleScript=!editing&&lines.length>0&&((teaching&&scriptMode!=='karaoke')||scriptMode==='button');
   const scriptMissing=!lines.length&&(editing||scriptMode==='karaoke'||scriptMode==='button'||open||(scriptMode==='after'&&e.ends>0));
   const scriptStatus=scriptMissing?<span className="mp-note" role="status">{scriptRecovery||(teacher?'No script is attached to this recording. Add or transcribe it in Recordings.':'No transcript has been added to this recording.')}{teacher&&scriptRecovery&&!scriptRecovery.startsWith('Restoring')&&<button type="button" className="btn small-btn" onClick={()=>setScriptRetry(n=>n+1)}>Retry script recovery</button>}</span>:null;

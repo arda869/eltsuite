@@ -1684,7 +1684,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
             <input ref={fileIn} type="file" accept="audio/*,video/*" multiple hidden onChange={(e) => (e.target.files && void importFiles(e.target.files), (e.target.value = ''))} />
           </div>
           <label className="check-row"><input type="checkbox" checked={autoScript} disabled={!!rec || transcribing} onChange={e => setAutoScript(e.target.checked)} /> Generate script after recording</label>
-          <span className="hint">Audio is sent to OpenAI for transcription. Scripted takes keep your existing script.</span>
+          <span className="hint">Audio is sent to our AI processing service for transcription. Scripted takes keep your existing script.</span>
           <button type="button" className="btn small-btn" disabled={!!rec || transcribing || !pickedClip || pickedTrack?.kind !== 'voice'} onClick={() => pickedClip && void makeTranscript(pickedClip)}>Generate script for selected clip</button>
           {transcribing && <span className="hint" role="status">Transcribing and identifying speakers… Your audio is safe.</span>}
           {(importBusy || recError) && <span className="hint">{importBusy || recError}</span>}
