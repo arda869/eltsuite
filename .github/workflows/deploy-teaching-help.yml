@@ -1,9 +1,8 @@
 name: Deploy teacher knowledge and contextual definitions
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['functions/help/**','functions/definitions/**','src/editor/DefinitionAI.tsx','.github/workflows/deploy-teaching-help.yml']
+# Automatic releases use deploy.yml so rules, services and Hosting stay together.
+# This narrowly scoped deployment remains an explicit maintenance shortcut.
 concurrency:
   group: firebase-production
   cancel-in-progress: false
