@@ -50,7 +50,7 @@
    The signed-in look. The public pages use the same colours, top bar, buttons, cards and page
    width as the teacher's workspace (styles.css, cohesion.css), so moving from the homepage to
    signing in feels like one product. Light and dark follow the app's own theme. */
-.pub.pub{--ink:#33302c;--muted:#696969;--soft:#868686;--paper:var(--card,#fff);--bg:var(--page,#f8f8f9);--hair:rgba(51,48,44,.12);--hair-strong:rgba(51,48,44,.2);--accent:var(--brand,#d98f63);--accent-text:#975f40;--on-ink:#fff;--pub-gutter:clamp(16px,3vw,44px);--pub-bar-gutter:16px;--pub-card-shadow:0 0 0 1px var(--hair),0 10px 30px -26px rgba(51,48,44,.6);font-family:var(--sans);background:var(--bg);color:var(--ink)}
+.pub.pub{--ink:#33302c;--muted:#5f5f5f;--soft:#646464;--paper:var(--card,#fff);--bg:var(--page,#f8f8f9);--hair:rgba(51,48,44,.12);--hair-strong:rgba(51,48,44,.2);--accent:var(--brand,#d98f63);--accent-text:#7a4a2c;--on-ink:#fff;--pub-gutter:clamp(16px,3vw,44px);--pub-bar-gutter:16px;--pub-card-shadow:0 0 0 1px var(--hair),0 10px 30px -26px rgba(51,48,44,.6);font-family:var(--sans);background:var(--bg);color:var(--ink)}
 :root[data-theme='dark'] .pub.pub{--ink:#ece7df;--muted:#b1aba2;--soft:#948e86;--paper:#22211e;--bg:#191816;--hair:rgba(236,231,223,.12);--hair-strong:rgba(236,231,223,.22);--accent-text:color-mix(in srgb,var(--accent) 62%,#fff);--on-ink:#191816;--pub-card-shadow:0 0 0 1px var(--hair);color-scheme:dark}
 /* Headings: Fraunces 500, as in the workspace. */
 .pub.pub h1,.pub.pub h2,.pub.pub h3{font-family:var(--serif);font-weight:500;letter-spacing:-.02em}
@@ -95,3 +95,8 @@
  .pub.pub .pub-signin{margin:6px 0 0;justify-content:center;height:44px}
  .pub.pub .pub-menu{height:36px;padding:0 14px;border:1px solid var(--hair-strong);border-radius:10px;background:var(--paper);color:var(--ink);font:600 14px var(--sans)}
 }
+
+/* Text on the grey panels and in tables keeps at least 4.5:1 contrast. */
+.pub.pub :is(th,td){color:var(--ink)}
+.pub.pub .eyebrow{color:var(--muted)}
+.pub.pub .pub-closing .pub-kicker,.pub.pub .pub-closing .pub-caption{color:#ecc3a8}

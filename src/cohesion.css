@@ -86,7 +86,7 @@
 :root .wordmark .wm-name { font:800 22px/1 var(--sans); letter-spacing:.005em; color:var(--ink); }
 :root .wordmark.big .wm-name { font-size:52px; letter-spacing:0; }
 :root .topbar .wordmark .wm-name { font-size:20px; }
-:root .suite-k { font:800 11.5px/1.15 var(--sans); letter-spacing:.005em; text-transform:none; color:var(--ink); opacity:.78; }
+:root .suite-k { font:800 11.5px/1.15 var(--sans); letter-spacing:.005em; text-transform:none; color:var(--ink); }
 :root .suite-mark.dark .suite-k { color:var(--studio-ink, #f3f1ed); }
 :root .pub .wordmark .wm-name { color:var(--ink); }
 @media (max-width:700px) { :root .wordmark.big .wm-name { font-size:clamp(34px, 11vw, 52px); } }
