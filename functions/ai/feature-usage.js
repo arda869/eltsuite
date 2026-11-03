@@ -1,3 +1,4 @@
+import {selectCostFeature} from '../costs/context.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { isGenerationAdmin } from './allowance.js';
 import { AI_FEATURES } from './features.js';
@@ -28,6 +29,7 @@ export async function chargeFeature(tx,db,context,feature) {
  const limit=effectiveLimit(feature,p.get('limits')??{},context.isAdmin),used=u.get('counts.'+feature)??0;
  if(!Number.isSafeInteger(used)||used<0)throw new HttpsError('internal','AI usage could not be checked. Please contact support.');
  if(limit!==null&&used>=limit)throw new HttpsError('resource-exhausted',limit===0?catalog.get(feature).label+' are disabled for your account. Contact your administrator.':catalog.get(feature).label+': you have used your '+limit+' daily uses. Your work is kept. The allowance resets at 00:00 UTC; ask your administrator to change it.');
+ selectCostFeature(feature,context.uid);
  tx.set(usage,{counts:{[feature]:used+1},day:context.day,updatedAt:Date.now()},{merge:true});
 }
 export async function reserveFeature(db,auth,feature) {

@@ -1,6 +1,7 @@
+import {trackedFetch} from '../costs/fetch.js';
 import { songPrompt } from './contract.js';
 export class SongCreationError extends Error {}
-export async function generateSong(apiKey, brief, fetchImpl = fetch) {
+export async function generateSong(apiKey, brief, fetchImpl = trackedFetch) {
   if (!apiKey) throw new SongCreationError('Song creation is not configured yet.');
   const response = await fetchImpl('https://generativelanguage.googleapis.com/v1beta/interactions', {
     method: 'POST', headers: {'x-goog-api-key': apiKey, 'Content-Type': 'application/json'}, signal: AbortSignal.timeout(420000),

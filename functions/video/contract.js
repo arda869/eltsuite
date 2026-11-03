@@ -1,3 +1,4 @@
+import {trackedFetch} from '../costs/fetch.js';
 import { videoBrief } from "./planner.js";
 import { styleOf } from "./styles.js";
 export function videoRequest(data) {
@@ -81,7 +82,7 @@ export async function runway(
   path,
   body,
   method = body ? "POST" : "GET",
-  fetchImpl = fetch,
+  fetchImpl = trackedFetch,
 ) {
   const response = await fetchImpl(`https://api.dev.runwayml.com/v1/${path}`, {
     method,
@@ -101,13 +102,13 @@ export async function runway(
           ? "The video service needs its API connection checked."
           : "The video service could not finish that request. Your project is still here.",
     );
-  return response.status === 204 ? {} : await response.json();
+  return response.status === 204 ? {} : {...await response.json(),...(response.costAttemptId?{costAttemptId:response.costAttemptId}:{})};
 }
 export async function characterImage(
   key,
   prompt,
   images = [],
-  fetchImpl = fetch,
+  fetchImpl = trackedFetch,
 ) {
   const response = await fetchImpl(
     `https://api.openai.com/v1/images/${images.length ? "edits" : "generations"}`,

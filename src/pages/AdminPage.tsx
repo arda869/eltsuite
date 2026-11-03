@@ -14,6 +14,7 @@ import { OrgBrand, OrgRules, OrgSpace } from './admin/OrgSettings';
 import { OrgDrives, OrgForms } from './admin/OrgLibrary';
 import { OrgActivity } from './admin/OrgActivity';
 import { SuperApps, SuperDefaults, SuperOrgs, SuperTeachers } from './admin/Super';
+import {AiCosts} from './admin/AiCosts';
 import { SuperAi } from './admin/SuperAi';
 import { SuperAdmins } from './admin/SuperAdmins';
 import { InviteCodes } from './admin/InviteCodes';
@@ -153,6 +154,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'teachers', label: 'Teachers', icon: 'person', n: teachers?.length },
     { k: 'codes', label: 'Invitation codes', icon: 'plus', n: codes?.filter((c) => codeState(c) === 'open').length || undefined },
     { k: 'orgs', label: 'Organisations', icon: 'groups', n: orgs.length },
+    { k: 'ai-costs', label: 'AI Cost Intelligence', icon: 'poll' },
     { k: 'ai', label: 'AI usage and access', icon: 'board' },
     { k: 'apps', label: 'Apps', icon: 'board' },
     { k: 'defaults', label: 'Sounds for everyone', icon: 'music' },
@@ -160,7 +162,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
     { k: 'supers', label: 'Super admins', icon: 'lock' },
     { k: 'brand', label: 'Brand kit', icon: 'picture' },
   ];
-  const groupKeys: [string,string[]][] = [['People and access',['teachers','orgs','codes','supers']],['Usage and limits',['ai','activity']],['Product and appearance',['apps','defaults','brand']]];
+  const groupKeys: [string,string[]][] = [['People and access',['teachers','orgs','codes','supers']],['Usage and limits',['ai','ai-costs','activity']],['Product and appearance',['apps','defaults','brand']]];
   const groups: [string,NavItem[]][] = groupKeys.map(([label,keys])=>[label,keys.map(k=>items.find(i=>i.k===k)!)]);
   const known = items.some((i) => i.k === tab) ? tab : 'overview';
   return (
@@ -193,6 +195,7 @@ function SuperArea({ orgs, tab, params, go, mainRef }: { orgs: Org[]; tab: strin
           {known === 'teachers' && <SuperTeachers d={d} go={go} params={params} />}
           {known === 'codes' && <InviteCodes orgs={orgs} />}
           {known === 'orgs' && <SuperOrgs d={d} go={go} params={params} />}
+          {known === 'ai-costs' && <AiCosts />}
           {known === 'ai' && <SuperAi teachers={teachers ?? []} loading={teachers === null} />}
           {known === 'apps' && <SuperApps d={d} />}
           {known === 'defaults' && <SuperDefaults />}

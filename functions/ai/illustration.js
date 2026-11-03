@@ -1,8 +1,9 @@
+import {trackedFetch} from '../costs/fetch.js';
 import { styleDirection } from '../designer/styles.js';
 import { imageReviewSchema } from './commons.js';
 
 // Share Designer's versioned art direction; never approximate it in a separate prompt.
-export async function prepareEditorialIllustration(asset,{generate,apiKey,model,fetchImpl=fetch}) {
+export async function prepareEditorialIllustration(asset,{generate,apiKey,model,fetchImpl = trackedFetch}) {
  let correction='';const deadline=Date.now()+450000;
  for(let attempt=0;attempt<2;attempt++) {
   if(deadline-Date.now()<30000)throw Error('Illustration verification timed out.');

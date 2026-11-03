@@ -1,4 +1,5 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import {HttpsError } from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import { defineSecret } from 'firebase-functions/params';
 import { validateSpeech } from './contract.js';
 import { generateSpeech } from './provider.js';

@@ -1,5 +1,9 @@
+import {beginAttempt,settleAttempt} from '../costs/ledger.js';
+import {costContext} from '../costs/context.js';
+import {monitorSpeakingCosts} from '../costs/realtime.js';
 import { usageContext, chargeFeature } from '../ai/feature-usage.js';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import {HttpsError } from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -55,15 +59,22 @@ export const speakingTask = onCall(options,async req=>{
     const session=activity.collection('sessions').doc();
     await db.runTransaction(async tx=>{const a=await tx.get(limit);await chargeFeature(tx,db,usagePolicy,'speakingPractice');tx.set(limit,{count:(a.get('count')??0)+1});});
     const form=new FormData();form.set('sdp',d.sdp);form.set('session',JSON.stringify({type:'realtime',model:'gpt-realtime-2.1-mini',instructions:roleplayInstructions(config),output_modalities:['audio'],max_output_tokens:250,audio:{input:{transcription:{model:'gpt-4o-mini-transcribe',language:'en'},turn_detection:{type:'semantic_vad',eagerness:'medium',create_response:true,interrupt_response:true}},output:{voice:'marin'}}}));
-    const result=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',headers:{Authorization:`Bearer ${key.value()}`,'OpenAI-Safety-Identifier':createHash('sha256').update(uid).digest('hex')},body:form,signal:AbortSignal.timeout(30000)});
-    if(!result.ok)throw new HttpsError('unavailable','The conversation could not connect. Please try again.');
+    const costAttempt=await beginAttempt({provider:'openai',model:'gpt-realtime-2.1-mini',ceilingMicroUsd:2000000});
+    let result;try{result=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',headers:{Authorization:`Bearer ${key.value()}`,'OpenAI-Safety-Identifier':createHash('sha256').update(uid).digest('hex')},body:form,signal:AbortSignal.timeout(30000)});}catch(e){await settleAttempt(costAttempt,{status:'failed',failureCode:'connection'});throw e;}
+    if(!result.ok){await settleAttempt(costAttempt,{status:'failed',failureCode:'http_'+result.status});throw new HttpsError('unavailable','The conversation could not connect. Please try again.');}
     const sdp=await result.text(), callId=result.headers.get('location')?.split('/').pop();
     if(!callId)throw new HttpsError('unavailable','The voice service did not return a session identifier.');
     const startedAt=Date.now(), deadline=startedAt+config.seconds*1000;
     try {
       await session.set({uid,name:c.name,preview:d.preview===true,status:'connecting',startedAt,deadline,updatedAt:startedAt,config,turns:[],help:false});
-      await db.doc(`speakingCalls/${session.id}`).set({callId,sessionPath:session.path,deadline:deadline+10000,status:'open'});
-    } catch(e){await hangup(callId).catch(()=>{});throw e;}
+      await db.doc(`speakingCalls/${session.id}`).set({callId,sessionPath:session.path,deadline:deadline+10000,status:'open',...(costAttempt?{costAttemptId:costAttempt.id}:{})});
+      if(costAttempt){
+       costContext.getStore().deferred.add(costAttempt.generationId);
+       // Do not release the SDP until server-side usage capture is connected.
+       let ready=false;for(let n=0;n<40;n++){if((await db.doc(`speakingCalls/${session.id}`).get()).get('costMonitorReady')){ready=true;break;}await new Promise(r=>setTimeout(r,500));}
+       if(!ready)throw new HttpsError('unavailable','The conversation could not prepare usage tracking. Please try again.');
+      }
+    } catch(e){await hangup(callId).catch(()=>{});await settleAttempt(costAttempt,{status:'failed',failureCode:'session_setup'});if(costAttempt)costContext.getStore().deferred.delete(costAttempt.generationId);throw e;}
     return {sdp,sessionId:session.id,deadline,seconds:config.seconds,focus:config.focus};
   }
   if(!valid(d.sessionId))throw new HttpsError('invalid-argument','Choose a speaking attempt.');
@@ -96,6 +107,8 @@ export const speakingTask = onCall(options,async req=>{
 // Enforce the deadline independently of a phone tab, including backgrounded/offline clients.
 export const closeSpeakingAtDeadline = onDocumentCreated({document:'speakingCalls/{id}',region:'us-central1',secrets:[key],maxInstances:5,concurrency:80,timeoutSeconds:360,memory:'256MiB',retry:true},async event=>{
   const data=event.data?.data();if(!data)return;
+  if(data.costAttemptId)try{await monitorSpeakingCosts({db:getFirestore(),ref:event.data.ref,data,key:key.value(),hangup});}catch{console.error('speaking_cost_monitor_incomplete');}
+  // Metering failures must never disarm the independent call deadline.
   await new Promise(resolve=>setTimeout(resolve,Math.max(0,Math.min(320000,data.deadline-Date.now()))));
   const fresh=await event.data.ref.get();if(fresh.get('status')==='closed')return;
   await hangup(data.callId);

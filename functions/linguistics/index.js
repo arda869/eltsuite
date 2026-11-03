@@ -1,4 +1,5 @@
-import {onCall,HttpsError} from 'firebase-functions/v2/https';
+import {HttpsError} from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import {getFirestore} from 'firebase-admin/firestore';
 import {defineSecret} from 'firebase-functions/params';
 import {analyseInvestigation} from './analysis.js';

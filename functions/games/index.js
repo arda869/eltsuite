@@ -1,4 +1,4 @@
-import { onCall } from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { gamesService } from './service.js';
 export const classroomGames = onCall({ region: 'us-central1', maxInstances: 4, timeoutSeconds: 60 }, req => gamesService(getFirestore(), req.auth, req.data || {}));

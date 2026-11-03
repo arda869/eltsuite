@@ -1,3 +1,4 @@
+import {costContext,selectCostFeature} from '../costs/context.js';
 import {reserveBudget,settleBudget,checkRequestSize} from './budget.js';
 import {generate} from './provider.js';
 // Internal checking/repair shares the monthly budget, without counting as a new
@@ -9,6 +10,7 @@ export function meteredImportReview({db,budget,job,isAdmin,apiKey,model}){
   // margin is conservative; source-image transport is bounded separately.
   checkRequestSize({model,schema:options.schema,instructions:options.instructions,input:JSON.stringify(options.input),framingMargin:' '.repeat(1500)});
   const reserved=await db.runTransaction(async tx=>{const b=await tx.get(budget),r=reserveBudget(b.get('committedMicroUsd')??0,1,isAdmin);tx.set(budget,{committedMicroUsd:r.balance},{merge:true});return r.reserved;});
+  if(!costContext.getStore()?.feature)selectCostFeature('materialImport',costContext.getStore()?.uid);
   const r=await generate({apiKey,model,...options});
   await db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]),s=settleBudget(b.get('committedMicroUsd'),reserved,[r.usage]);tx.update(budget,{committedMicroUsd:s.balance});tx.update(job,{reviewCostMicroUsd:(j.get('reviewCostMicroUsd')??0)+s.cost});});
   return r;
