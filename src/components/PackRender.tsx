@@ -219,8 +219,9 @@ function HighlightQ({ id, data, value, onChange, result, locked, num, hideAnswer
         {num(id)}
         {data.instruction}
       </p>
-      <p className="pq-hl-text">
-        {toks.map((w, i) => {
+      <div className="pq-hl-text">{(data.format==='dialogue'&&Array.isArray(data.turns)?data.turns:[{speaker:'',start:0,end:toks.length}]).map((turn:{speaker:string;start:number;end:number},row:number)=><p className={data.format==='dialogue'?'pq-hl-turn':''} key={row}>{turn.speaker&&<strong className="pq-hl-speaker">{turn.speaker}</strong>}<span>{toks.slice(turn.start,turn.end).map((w, offset) => {
+          const i=turn.start+offset;
+          if(/^[.,!?;:…]+$/.test(w))return <span key={i}>{w}</span>;
           const on = pick.includes(i);
           const st = !result ? (on ? ' on' : '') : on ? (target.has(i) ? ' right' : ' wrong') : !hideAnswers && target.has(i) ? ' missed' : '';
           return (
@@ -228,8 +229,7 @@ function HighlightQ({ id, data, value, onChange, result, locked, num, hideAnswer
               {w}
             </button>
           );
-        })}
-      </p>
+        })}</span></p>)}</div>
       {data.penalty && !result && !locked && <span className="hint">Careful: wrong taps cost a point.</span>}
     </div>
   );

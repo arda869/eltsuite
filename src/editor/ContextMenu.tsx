@@ -1,3 +1,4 @@
+import {documentClipboard} from '../collab/documentClipboard';
 import { tell } from '../lib/ask';
 import { keyLabel } from '../lib/keys';
 import type { Editor } from '@tiptap/react';
@@ -125,7 +126,7 @@ export function EditorContextMenu({
   };
   const cut = () => {
     editor.view.focus();
-    document.execCommand('cut');
+    if(!document.execCommand('cut'))void documentClipboard(editor,'cut');
   };
   const paste = async () => {
     editor.view.focus();

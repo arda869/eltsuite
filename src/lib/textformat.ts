@@ -132,7 +132,8 @@ function packExport(kind: string, d: Record<string, any>, out: string[]) {
       out.push(`[[transform words=${d.min ?? ''}-${d.max ?? ''} key=${d.keyWord ?? ''}]]`, d.first ?? '', `${d.before ?? ''} {{${list(d.answers).join('|')}}} ${d.after ?? ''}`.trim(), '[[/transform]]', '');
       return;
     case 'highlight':
-      out.push(`[[highlight${d.penalty === false ? ' penalty=no' : ''}]]`, `${d.instruction ? d.instruction.replace(/:?\s*$/, '') + ': ' : ''}${d.text ?? ''}`, '[[/highlight]]', '');
+      if(d.format==='dialogue')out.push(`[[highlight format=dialogue${d.penalty===false?' penalty=no':''}]]`,'Instruction: '+(d.instruction??''),d.text??'','[[/highlight]]','');
+      else out.push(`[[highlight${d.penalty === false ? ' penalty=no' : ''}]]`, `${d.instruction ? d.instruction.replace(/:?\s*$/, '') + ': ' : ''}${d.text ?? ''}`, '[[/highlight]]', '');
       return;
     case 'sentences':
       out.push('[[sentences]]', ...list(d.items), '[[/sentences]]', '');
@@ -296,6 +297,7 @@ function packImport(kind: string, a: Record<string, string>, content: string[], 
       return [node('transform', { first, keyWord: (a.key ?? '').toUpperCase(), before: m?.[1].trim() ?? '', after: m?.[3].trim() ?? '', answers: (m?.[2] ?? '').split('|').map((x) => x.trim()).filter(Boolean), min: mn ?? null, max: mx ?? null })];
     }
     case 'highlight':
+      if(a.format==='dialogue'){const instruction=lines[0]?.x.startsWith('Instruction:')?lines[0].x.slice(12).trim():'';const body=(instruction||lines[0]?.x.startsWith('Instruction:')?lines.slice(1):lines).map(l=>l.x).join('\n');if(!/\{\{[^}]+\}\}/.test(body))errors.push({line:start+1,message:'Mark the correct words or phrases with {{ }}'});return [node('highlight',{format:'dialogue',instruction,text:body,penalty:!/^(no|false)$/i.test(a.penalty??'')})];}
       return lines.map(({ x, k }) => {
         const brace = x.indexOf('{{');
         const colon = x.indexOf(': ');

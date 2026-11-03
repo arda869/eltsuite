@@ -1,4 +1,4 @@
-import { NSelect } from '../components/Select';
+import { NSelect, Select } from '../components/Select';
 import { tell } from '../lib/ask';
 import { mergeAttributes, Node } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
@@ -215,6 +215,12 @@ function LabelPoints({ d, set }: { d: Data; set: (p: Data) => void }) {
   );
 }
 
+function HighlightFields({d,set}:{d:Data;set:(p:Data)=>void}){
+ const input=useRef<HTMLTextAreaElement>(null),[selected,setSelected]=useState(false);const text=String(d.text??''),dialogue=d.format==='dialogue';const count=tokenise(text).groups.length;
+ const selection=()=>{const el=input.current;setSelected(!!el&&el.selectionEnd>el.selectionStart&&!/[\r\n{}]/.test(el.value.slice(el.selectionStart,el.selectionEnd)));};
+ return <><label className="inline-field">Format<Select label="Highlight format" value={dialogue?'dialogue':'text'} options={[{v:'text',label:'Text'},{v:'dialogue',label:'Dialogue script'}]} onChange={format=>set({format})}/></label><input aria-label="Instruction" className="mcq-prompt" value={d.instruction??''} placeholder="Highlight every past participle." onKeyDown={e=>e.stopPropagation()} onChange={e=>set({instruction:e.target.value})}/><textarea ref={input} aria-label="Text, with the answers in double curly brackets" className="pq-text" rows={dialogue?7:4} value={text} placeholder={dialogue?'Alex: Have you {{seen}} the film?\nSam: Yes, I have {{watched}} it twice.':'I have {{seen}} the film and she has {{read}} the book.'} onSelect={selection} onKeyDown={e=>e.stopPropagation()} onChange={e=>{set({text:e.target.value});setSelected(false);}}/><button type="button" className="btn small-btn" disabled={!selected} onMouseDown={e=>e.preventDefault()} onClick={()=>{const el=input.current;if(!el)return;const a=el.selectionStart,b=el.selectionEnd;set({text:text.slice(0,a)+'{{'+text.slice(a,b)+'}}'+text.slice(b)});setSelected(false);}}>Mark selected answer</button><span className="hint">Select a word or phrase above, then mark it as an answer. You can also put answers in {'{{ }}'}. {count} to find.{dialogue?' Write each speaker’s turn on a new line, starting with their name and a colon.':''}</span><label className="check-row"><input type="checkbox" checked={d.penalty!==false} onChange={()=>set({penalty:d.penalty===false})}/>Wrong selections cost a point</label></>;
+}
+
 function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => void }) {
   const { classId } = useEditorClass();
   switch (kind) {
@@ -288,20 +294,7 @@ function Editor({ kind, d, set }: { kind: PackKind; d: Data; set: (p: Data) => v
           </label>
         </>
       );
-    case 'highlight': {
-      const { groups } = tokenise(d.text ?? '');
-      return (
-        <>
-          <input aria-label="Instruction" className="mcq-prompt" value={d.instruction ?? ''} placeholder="Tap every past participle." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ instruction: e.target.value })} />
-          <textarea aria-label="Text, with the answers in double curly brackets" className="pq-text" rows={4} value={d.text ?? ''} placeholder="I have {{seen}} the film and she has {{read}} the book." onKeyDown={(e) => e.stopPropagation()} onChange={(e) => set({ text: e.target.value })} />
-          <span className="hint">Put the words learners should tap in {'{{ }}'}. {groups.length} to find.</span>
-          <label className="check-row">
-            <input type="checkbox" checked={d.penalty !== false} onChange={() => set({ penalty: d.penalty === false })} />
-            Wrong taps cost a point
-          </label>
-        </>
-      );
-    }
+    case 'highlight': return <HighlightFields d={d} set={set}/>;
     case 'sentences':
       return (
         <>

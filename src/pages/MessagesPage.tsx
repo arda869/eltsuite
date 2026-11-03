@@ -1,3 +1,5 @@
+import {CoachConversation} from '../coach/CoachConversation';
+import {AiMark} from '../components/AiMark';
 import { CallButtons } from '../components/Rooms';
 import { GifPicker } from '../components/GifPicker';
 import { CallCard, FileCard, callOf, fileOf } from '../components/MsgCards';
@@ -69,10 +71,11 @@ export function MessagesPage() {
   const teacher = profile?.role === 'teacher';
   // A teacher looking at the app as a learner does not see that learner's messages.
   if (isProxyTab()) return <PrivateMessages />;
+  const coachOpen=teacher&&open==='teaching-coach';
   const cur = chats?.find((c) => c.id === open);
   // Leaving this page with a chat open (on a computer): the chat comes along in the small window.
   const openRef = useRef(open);
-  openRef.current = open;
+  openRef.current = coachOpen?'':open;
   useEffect(() => () => void (openRef.current && !window.matchMedia('(max-width: 640px)').matches && dockOpen(openRef.current, true)), []);
   // A chat's menu: right-click on a computer, a long press on a phone. Deleting asks first.
   const delChat = async (c: Chat) => {
@@ -130,7 +133,7 @@ export function MessagesPage() {
           <span className="hint">Your teacher has turned off messages. You can still use the discussion board.</span>
         </div>
       ) : (
-        <div className={'msg' + (cur ? ' has-chat' : '')}>
+        <div className={'msg' + (cur||coachOpen ? ' has-chat' : '')}>
           <aside className="msg-side">
             <div className="msg-side-top">
               <h1 className="page-title">Messages</h1>
@@ -145,7 +148,8 @@ export function MessagesPage() {
               </span>
             </div>
             <input aria-label="Search people and groups" className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
-            <div className="msg-list" role={shown.length ? 'listbox' : undefined} aria-label="Chats">
+            <div className="msg-list" role={shown.length||teacher ? 'listbox' : undefined} aria-label="Chats">
+              {teacher&&(!q||/teacher|coach/i.test(q))&&<button type="button" role="option" aria-selected={coachOpen} className={'msg-row'+(coachOpen?' on':'')} onClick={()=>pick('teaching-coach')}><span className="msg-av"><AiMark/></span><span className="msg-row-t"><span className="msg-row-top"><b>Teacher’s Coach</b><span className="hint">Pinned</span></span><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
               {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
                 const un = unreadIn(c, me.key);
@@ -171,7 +175,7 @@ export function MessagesPage() {
             </div>
           </aside>
           <main className="msg-main">
-            {cur ? (
+            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid}/></div>:cur ? (
               <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} onMin={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />
             ) : (
               <div className="msg-empty">

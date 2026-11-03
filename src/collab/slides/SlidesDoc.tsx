@@ -1,3 +1,4 @@
+import {openMenu} from '../../components/ContextMenu';
 import { NSelect } from '../../components/Select';
 import { BUILD } from '../guard';
 import { usePhone } from '../../lib/useMedia';
@@ -292,6 +293,10 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
     addEl({ type: 'image', x: Math.round((W - w) / 2), y: Math.round((H - h) / 2), w, h, src: p.src });
   };
 
+  const clipboard=useRef<Y.Doc|null>(null);
+  useEffect(()=>()=>clipboard.current?.destroy(),[]);
+  const copyElement=(id:string,cut=false)=>{const m=elM(id);if(!m||cut&&!editable)return;clipboard.current?.destroy();const saved=new Y.Doc();saved.getArray<Y.Map<unknown>>('items').push([m.clone()]);clipboard.current=saved;if(cut)delEl(id);};
+  const pasteElement=()=>{if(!editable||!slide)return;const m=clipboard.current?.getArray<Y.Map<unknown>>('items').get(0);if(!m)return;const c=m.clone();c.set('id',newId());c.set('x',Math.min(W-40,Number(m.get('x'))+20));c.set('y',Math.min(H-40,Number(m.get('y'))+20));tx(()=>elsOf(slide.id)?.push([c]));setSel(String(c.get('id')));};
   // Comments on each slide
   const [draft, setDraft] = useState('');
   const postComment = () => {
@@ -308,7 +313,9 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
   // Keys: Delete removes the chosen item, arrows nudge it, Escape lets it go.
   const onKey = (e: React.KeyboardEvent) => {
     if ((e.target as HTMLElement).closest('[contenteditable="true"], input, textarea, select')) return;
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='v'&&editable){e.preventDefault();pasteElement();return;}
     if (!sel || !editable) return;
+    if((e.metaKey||e.ctrlKey)&&['c','x'].includes(e.key.toLowerCase())){e.preventDefault();copyElement(sel,e.key.toLowerCase()==='x');return;}
     const el = slide?.els.find((x) => x.id === sel);
     if (!el) return;
     if (e.key === 'Delete' || e.key === 'Backspace') return e.preventDefault(), delEl(sel);
@@ -587,7 +594,7 @@ function SlidesInner({ docKey, title, modes, teacher, me, classId, display = 'in
             </button>
           )}
         </div>
-        <div className="sl-stage" tabIndex={-1} onKeyDown={onKey} onPointerDown={(e) => e.target === e.currentTarget && setSel(null)}>
+        <div className="sl-stage" tabIndex={-1} onKeyDown={onKey} onContextMenu={e=>{if((e.target as HTMLElement).closest('[contenteditable="true"],input,textarea'))return;const id=(e.target as HTMLElement).closest<HTMLElement>('[data-slide-element]')?.dataset.slideElement;if(id)setSel(id);e.currentTarget.focus();openMenu(e,[{label:'Cut',icon:'cut',hint:'Ctrl/⌘ X',disabled:!id||!editable,onClick:()=>id&&copyElement(id,true)},{label:'Copy',icon:'copyall',hint:'Ctrl/⌘ C',disabled:!id,onClick:()=>id&&copyElement(id)},{label:'Paste',icon:'copyall',hint:'Ctrl/⌘ V',disabled:!editable||!clipboard.current,onClick:pasteElement}]);}} onPointerDown={(e) => e.target === e.currentTarget && setSel(null)}>
           {!synced && <span className="cd-sync">Opening the slides…</span>}
           {slide ? (
             <EditorClassContext.Provider value={{ classId, classmates: [] }}>
@@ -776,7 +783,7 @@ function Canvas({ doc, s, editable, sel, onSel, onActive, onTick, onPicture, onM
         const on = sel === el.id;
         const pos = { left: `${(el.x / W) * 100}%`, top: `${(el.y / H) * 100}%`, width: `${(el.w / W) * 100}%`, height: `${(el.h / H) * 100}%` };
         return (
-          <div key={el.id} className={'sl-el t-' + el.type + (on ? ' on' : '') + (editable ? ' can' : '')} style={pos} onPointerDown={(e) => (el.type === 'text' ? onSel(el.id) : start(e, el, 'move'))}>
+          <div key={el.id} data-slide-element={el.id} tabIndex={editable?0:-1} className={'sl-el t-' + el.type + (on ? ' on' : '') + (editable ? ' can' : '')} style={pos} onPointerDown={(e) => (el.type === 'text' ? onSel(el.id) : start(e, el, 'move'))}>
             {el.type === 'text' && el.text && <TextBox el={el} editable={editable} onFocus={(ed) => (onSel(el.id), onActive(ed))} onTick={onTick} />}
             {el.type === 'image' &&
               (el.src ? (

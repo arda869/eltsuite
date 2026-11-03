@@ -1,7 +1,7 @@
 export type PageSize = 'a4' | 'letter' | 'a5';
 export type Margins = 'narrow' | 'normal' | 'wide';
 export type Layout = { paged: boolean; size: PageSize; margins: Margins; font: string; pt: number; orientation: 'portrait' | 'landscape'; lineSpacing: number; columns: number; header: string; footer: string; pageNumbers: boolean; pageNumberStart: number };
-export const LAYOUT_DEFAULT: Layout = { paged: true, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12, orientation: 'portrait', lineSpacing: 1.5, columns: 1, header: '', footer: '', pageNumbers: false, pageNumberStart: 1 };
+export const LAYOUT_DEFAULT: Layout = { paged: false, size: 'a4', margins: 'normal', font: 'Georgia', pt: 12, orientation: 'portrait', lineSpacing: 1.5, columns: 1, header: '', footer: '', pageNumbers: false, pageNumberStart: 1 };
 export const SIZES: Record<PageSize, { label: string; w: number; h: number; css: string }> = {
   a4: { label: 'A4 (21 × 29.7 cm)', w: 794, h: 1123, css: 'A4' },
   letter: { label: 'Letter (8.5 × 11 in)', w: 816, h: 1056, css: 'letter' },

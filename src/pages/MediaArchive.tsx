@@ -1,3 +1,4 @@
+import {useResourceColumns} from '../components/ResizableColumns';
 import { isImageFile } from '../design/files';
 import { FileBin } from './FileBin';
 import { createPortal } from 'react-dom';
@@ -127,6 +128,9 @@ export function MediaArchive() {
   const markers = useFolders(uid);
   const shares = useMyShares(uid);
   const sharedIds = useMemo(() => new Set((shares ?? []).map((s) => s.src?.archiveId).filter(Boolean) as string[]), [shares]);
+  const [cutIds,setCutIds]=useState<string[]>([]),[pasting,setPasting]=useState(false);
+  useEffect(()=>{if(!uid)return;try{const v=JSON.parse(sessionStorage.getItem('elt.resources.cut.'+uid)||'[]');setCutIds(Array.isArray(v)?v.filter(x=>typeof x==='string'):[]);}catch{setCutIds([]);}},[uid]);
+  const setCut=(ids:string[])=>{setCutIds(ids);try{if(uid)sessionStorage.setItem('elt.resources.cut.'+uid,JSON.stringify(ids));}catch{}};
   const [folder, setFolderRaw] = useState(''); // '' is the library itself
   // Recent: everything used last, wherever it is.
   const [recent, setRecent] = useState(false);
@@ -283,6 +287,7 @@ export function MediaArchive() {
   const movable = selEntries.filter((e) => !e.cls && !e.hand);
   const fixedOne = !!one && selEntries.some((e) => e.key === one && (e.cls || e.hand));
   const filesRef = useRef<HTMLDivElement>(null);
+  const columns=useResourceColumns(uid||'',filesRef);
   const [box, setBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const marquee = (e: React.PointerEvent) => {
     if (e.button !== 0 || touch) return;
@@ -422,6 +427,26 @@ export function MediaArchive() {
     await Promise.all(list.filter((e) => e.doc && e.folder !== to).map((e) => setDocPath(e.doc!.id, to))).catch(() => {});
     setSel(new Set());
   };
+  const beginCut=(ids:string[])=>setCut(ids.filter(id=>id.startsWith('f:')?!inClasses(id.slice(2)):entries.some(e=>e.key===id&&!e.cls&&!e.hand)));
+  const pasteCut=async(to=folder)=>{
+    if(!uid||!cutIds.length||pasting)return;
+    if(inClasses(to))return void tell('Class folders follow their classes. Choose a personal folder to paste these items.');
+    const folders=cutIds.filter(k=>k.startsWith('f:')).map(k=>k.slice(2)).filter(f=>!cutIds.some(k=>k.startsWith('f:')&&k.slice(2)!==f&&inTree(f,k.slice(2))));
+    if(folders.some(f=>inTree(to,f)))return void tell('Choose a destination outside the folder you cut.');
+    const changed=folders.map(from=>({from,to:to?to+'/'+leafOf(from):leafOf(from)})).filter(f=>f.from!==f.to);
+    if(changed.some(f=>allFolders.some(x=>x.toLocaleLowerCase()===f.to.toLocaleLowerCase())))return void tell('A folder with that name already exists at the destination. Choose another folder.');
+    const files=entries.filter(e=>cutIds.includes(e.key)&&!e.cls&&!e.hand&&!folders.some(f=>inTree(e.folder,f)));
+    if(cutIds.some(id=>!id.startsWith('f:')&&!entries.some(e=>e.key===id)))return void tell('A cut item is no longer available. Cancel the cut, refresh Resources and select the remaining items.');
+    setPasting(true);
+    try{
+      for(const f of changed){await renameFolder(uid,f.from,f.to,all,allFolders);for(const t of tasks.filter(t=>inTree(t.folder,f.from)))await moveLibTasks(uid,[t.id],f.to+t.folder.slice(f.from.length));for(const d of ownDocs.filter(d=>inTree(d.path||'',f.from)))await setDocPath(d.id,f.to+(d.path||'').slice(f.from.length));}
+      const its=files.filter(e=>e.item&&e.folder!==to).map(e=>e.item!);if(its.length)await moveItems(uid,its,to);
+      const ts=files.filter(e=>e.task&&e.folder!==to).map(e=>e.task!.id);if(ts.length)await moveLibTasks(uid,ts,to);
+      await Promise.all(files.filter(e=>e.doc&&e.folder!==to).map(e=>setDocPath(e.doc!.id,to)));
+      setCut([]);setSel(new Set([...files.map(e=>e.key),...changed.map(f=>'f:'+f.to)]));
+    }catch{await tell('We couldn’t finish moving every item. Your files have not been deleted. Check the source and destination folders, then retry any items that remain.');}
+    finally{setPasting(false);}
+  };
   // Drag onto a folder (in the pane, the breadcrumbs or the files) to move it there.
   const [dropOn, setDropOn] = useState<string | null>(null);
   const folderDrop = (f: string) => ({
@@ -469,7 +494,7 @@ export function MediaArchive() {
   const entryMenu = (en: Entry): MenuItem[] => {
     if (sel.has(en.key) && sel.size > 1)
       return [
-        ...(selEntries.length ? [{ label: `Move ${selEntries.length} items to…`, icon: 'folder', onClick: () => setMoving(selEntries) } as MenuItem] : []),
+        ...(selEntries.length ? [{ label:'Cut',icon:'cut',hint:'Ctrl/⌘ X',onClick:()=>beginCut([...selEntries.map(e=>e.key),...selFolders.map(f=>'f:'+f)]) } as MenuItem,{ label: `Move ${selEntries.length} items to…`, icon: 'folder', onClick: () => setMoving(selEntries) } as MenuItem] : []),
         { label: `Download ${sel.size} items`, icon: 'import', onClick: () => void download(selEntries, selFolders) },
         ...(selEntries.length ? ['sep' as const, { label: `Remove ${selEntries.length} from the library`, icon: 'trash', danger: true, onClick: () => void removeE(selEntries) } as MenuItem] : []),
       ];
@@ -491,6 +516,7 @@ export function MediaArchive() {
           : [{ label: 'Open', icon: 'fullscreen', onClick: () => openE(en) } as MenuItem]),
         { label: COLLAB_KINDS.includes(en.kind) ? 'Share…' : 'Share with colleagues…', icon: 'person', onClick: () => setSharing(en.doc!) },
         { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
+        { label: 'Cut', icon:'cut', hint:'Ctrl/⌘ X', onClick:()=>beginCut([en.key]) },
         { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
         ...(orgFolders.length ? [{ label: 'Copy to the organisation library…', icon: 'copyall', onClick: () => setToOrg(en.doc!) } as MenuItem] : []),
         'sep',
@@ -499,7 +525,8 @@ export function MediaArchive() {
     return [
       { label: en.task ? 'Edit' : 'Open', icon: en.task ? 'edit' : 'fullscreen', onClick: () => openE(en) },
       { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => setRenaming(en.key) },
-      { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
+      { label: 'Cut', icon:'cut', hint:'Ctrl/⌘ X', onClick:()=>beginCut([en.key]) },
+        { label: 'Move to…', icon: 'folder', onClick: () => setMoving([en]) },
       en.item?.link ? { label: 'Open the link', icon: 'link', onClick: () => void downloadItem(en.item!).catch(() => {}) } : { label: en.task ? 'Download as .md' : 'Download', icon: 'import', hint: en.item?.script?.length ? '+ transcript' : undefined, onClick: () => void download([en]) },
       'sep',
       { label: 'Remove from the library', icon: 'trash', danger: true, onClick: () => void removeE([en]) },
@@ -517,6 +544,8 @@ export function MediaArchive() {
   const folderMenu = (f: string): MenuItem[] => inClasses(f) ? [{ label: 'Open', icon: 'folder', onClick: () => setFolder(f) }, { label: 'Rename…', icon: 'edit', onClick: () => void renameF(f) }] : [
     { label: 'Open', icon: 'folder', onClick: () => setFolder(f) },
     { label: 'New folder inside', icon: 'plus', onClick: () => void newFolder(f) },
+    {label:'Cut',icon:'cut',hint:'Ctrl/⌘ X',onClick:()=>beginCut(['f:'+f])},
+    ...(cutIds.length?[{label:'Paste items here',icon:'folder',disabled:pasting,onClick:()=>void pasteCut(f)} as MenuItem]:[]),
     { label: 'Rename', icon: 'edit', hint: 'F2', onClick: () => (setSel(new Set(['f:' + f])), setRenaming('f:' + f)) },
     { label: 'Download everything in it', icon: 'import', disabled: !countIn(f), onClick: () => void download([], [f]) },
     'sep',
@@ -621,7 +650,9 @@ export function MediaArchive() {
     { label: 'Recordings or videos…', icon: 'upload', onClick: () => setDialog({ tab: 'upload' }) },
   ];
   const emptyMenu: MenuItem[] = [
+    ...(cutIds.length?[{label:'Paste items here',icon:'folder',hint:'Ctrl/⌘ V',disabled:pasting||inClasses(folder),onClick:()=>void pasteCut()} as MenuItem]:[]),
     ...(inClasses(folder) ? [] : newMenu),
+    ...(view==='list'?[{label:'Reset column widths',icon:'sync',onClick:columns.reset} as MenuItem]:[]),
     ...(order.length ? ['sep' as const, { label: 'Select everything', icon: 'check', hint: 'Ctrl A', onClick: () => setSel(new Set(order)) } as MenuItem] : []),
   ];
   const clickFolder = (f: string) => (e: React.MouseEvent) => (touch || phone ? setFolder(f) : select('f:' + f, e));
@@ -630,9 +661,11 @@ export function MediaArchive() {
   const menuF = (f: string) => (e: React.MouseEvent) => (sel.has('f:' + f) || setSel(new Set(['f:' + f])), openMenu(e, folderMenu(f)));
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (section !== 'media' || editing || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true], .scrim')) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === 'a') e.preventDefault(), setSel(new Set(order));
-      else if (e.key === 'Escape') setSel(new Set());
+      if (e.defaultPrevented || section !== 'media' || editing || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable=true], [role=separator], .scrim')) return;
+      if ((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='x'&&(movable.length||selFolders.length)){e.preventDefault();beginCut([...movable.map(x=>x.key),...selFolders.map(f=>'f:'+f)]);}
+      else if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='v'&&cutIds.length){e.preventDefault();void pasteCut();}
+      else if ((e.metaKey || e.ctrlKey) && e.key === 'a') e.preventDefault(), setSel(new Set(order));
+      else if (e.key === 'Escape') {setSel(new Set());setCut([]);}
       else if (e.key.startsWith('Arrow') && order.length) {
         // Arrows move between files; with Shift they select as they go.
         e.preventDefault();
@@ -720,9 +753,9 @@ export function MediaArchive() {
   const folderRows = (f: string, depth: number): React.ReactNode[] => {
     const open = expanded.has(f);
     const head = (
-      <button
+      <div
+        role="row" tabIndex={0}
         key={'f-' + f}
-        type="button"
         data-sel={'f:' + f}
         className={'ma-lrow ma-lfolder' + (dropOn === f ? ' drop' : '') + (sel.has('f:' + f) ? ' chosen' : '') + (open ? ' open' : '')}
         onClick={(e) => (clickFolder(f)(e), !e.shiftKey && !e.metaKey && !e.ctrlKey && setExpanded((x) => (x.has(f) ? new Set([...x].filter((y) => y !== f)) : new Set([...x, f]))))}
@@ -730,24 +763,24 @@ export function MediaArchive() {
         onContextMenu={menuF(f)}
         {...folderDrop(f)}
       >
-        <span className="ma-lname" style={{ ['--depth' as string]: depth }}>
+        <span role="cell" className="ma-lname" style={{ ['--depth' as string]: depth }}>
           <span className={'ma-ltw' + (open ? ' on' : '')} aria-hidden="true">›</span>
           <FolderIcon size={18} locked={inClasses(f)} />
           {nameOf('f:' + f, leafOf(f), 'ma-lname-t')}
         </span>
-        <span className="hint">Folder</span>
-        <span className="hint">{nItems(countIn(f))}</span>
-        <span />
-        <span />
-      </button>
+        <span role="cell" className="hint">Folder</span>
+        <span role="cell" className="hint">{nItems(countIn(f))}</span>
+        <span role="cell"/>
+        <span role="cell"/>
+      </div>
     );
     if (!open) return [head];
     const files = entries.filter((e) => e.folder === f).sort((a, b) => a.name.localeCompare(b.name));
     return [head, ...kidsOf(f).flatMap((k) => folderRows(k, depth + 1)), ...files.map((en) => row(en, depth + 1))];
   };
   const row = (en: Entry, depth = 0) => (
-    <button key={en.key} type="button" data-sel={en.key} draggable={renaming !== en.key} onDragStart={dragE(en)} className={'ma-lrow' + (sel.has(en.key) ? ' chosen' : '')} onClick={clickE(en)} onDoubleClick={() => openE(en)} onContextMenu={menuE(en)}>
-      <span className="ma-lname" style={{ ['--depth' as string]: depth }}>
+    <div role="row" tabIndex={0} key={en.key} data-sel={en.key} data-cut={cutIds.includes(en.key)} draggable={renaming !== en.key} onDragStart={dragE(en)} className={'ma-lrow' + (sel.has(en.key) ? ' chosen' : '')} onClick={clickE(en)} onDoubleClick={() => openE(en)} onContextMenu={menuE(en)}>
+      <span role="cell" className="ma-lname" style={{ ['--depth' as string]: depth }}>
         {en.item && en.kind === 'image' && (en.item.thumb || en.item.link) ? <img className="ma-lthumb" src={en.item.thumb || en.item.link} alt="" draggable={false} /> : <FileIcon kind={en.kind} size={18} label={false} sub={en.cls?.type ?? subOf(en)} />}
         {nameOf(en.key, en.name, 'ma-lname-t')}
         {en.item && sharedIds.has(en.item.id) && <SharedMark />}
@@ -762,14 +795,14 @@ export function MediaArchive() {
           </span>
         ))}
       </span>
-      <span className="hint">
+      <span role="cell" className="hint">
         {kindName(en.kind)}
         {en.item?.duration ? ' · ' + fmtTime(en.item.duration) : ''}
       </span>
-      <span className="hint">{en.task ? (en.task.uses.length ? `${en.task.uses.length} ${en.task.uses.length === 1 ? 'lesson' : 'lessons'}` : '·') : en.item?.link ? 'Link' : formatBytes(en.size)}</span>
-      <span className="hint">{en.folder ? leafOf(en.folder) : '·'}</span>
-      <span className="hint">{dayOf(en.at)}</span>
-    </button>
+      <span role="cell" className="hint">{en.task ? (en.task.uses.length ? `${en.task.uses.length} ${en.task.uses.length === 1 ? 'lesson' : 'lessons'}` : '·') : en.item?.link ? 'Link' : formatBytes(en.size)}</span>
+      <span role="cell" className="hint">{en.folder ? leafOf(en.folder) : '·'}</span>
+      <span role="cell" className="hint">{dayOf(en.at)}</span>
+    </div>
   );
 
   return (
@@ -956,9 +989,11 @@ export function MediaArchive() {
             {(upBusy || busy) && <BusyToast text={upBusy || busy} onClose={() => (setBusy(''), setUpBusy(''))} />}
             {/* The selection bar sits over the tools, so nothing below moves when files are picked. */}
             <div className="ma-toolwrap">
+            {cutIds.length>0&&<div className="ma-selbar" role="status"><span>{cutIds.length} {cutIds.length===1?'item is':'items are'} ready to move.{inClasses(folder)?' Choose a personal folder to paste.':''}</span><button type="button" className="btn small-btn" disabled={pasting||inClasses(folder)} onClick={()=>void pasteCut()}>{pasting?'Moving…':'Paste items here'}</button><button type="button" className="btn small-btn" disabled={pasting} onClick={()=>setCut([])}>Cancel cut</button></div>}
             {sel.size > 0 && (
               <div className="ma-selbar">
                 <b>{sel.size} selected</b>
+                {(movable.length>0||selFolders.some(f=>!inClasses(f)))&&<button type="button" className="btn small-btn" onClick={()=>beginCut([...movable.map(e=>e.key),...selFolders.map(f=>'f:'+f)])}><UiIcon name="cut" size={14}/> Cut</button>}
                 {movable.length > 0 && (
                   <button type="button" className="btn small-btn" onClick={() => setMoving(movable)}>
                     <UiIcon name="folder" size={14} /> Move to…
@@ -1062,18 +1097,14 @@ export function MediaArchive() {
                   <span className="hint">{filtering ? 'Try another search, kind or tag.' : entries.length ? 'Drop files here, add media, or make a task. Drag items onto a folder to move them.' : 'Pictures, recordings and videos you add to a task appear here. Save tasks here from any lesson, or make new ones, to use again in other lessons.'}</span>
                 </div>
               ) : view === 'list' ? (
-                <div className="ma-list" role="table" aria-label="Library">
+                <div className="ma-list" role="table" aria-label="Library" style={columns.style}>
                   <span className="ma-lrow ma-lhead" role="row">
-                    <span>Name</span>
-                    <span>Kind</span>
-                    <span>Size</span>
-                    <span>Folder</span>
-                    <span>Added</span>
+                    {['Name','Kind','Size','Folder','Added'].map((label,i)=><span key={label} role="columnheader">{label}{columns.handle(i)}</span>)}
                   </span>
                   {subFolders.flatMap((f) => folderRows(f, 0))}
                   {groups.map(([g, list]) => (
-                    <span key={g || 'all'} style={{ display: 'contents' }}>
-                      {g && <span className="ma-group-h list">{g}</span>}
+                    <span key={g || 'all'} role="rowgroup" style={{ display: 'contents' }}>
+                      {g && <span className="ma-group-h list" role="row"><span role="cell" aria-colspan={5}>{g}</span></span>}
                       {list.map((en) => row(en))}
                     </span>
                   ))}

@@ -92,3 +92,10 @@ test('saved editorial feedback resumes at repair without paying to repeat the sa
  review:async value=>{assert.equal(value.task,'fixed');return {value:review(),usage};},repair:async(_value,feedback)=>{assert.deepEqual(feedback,review(true));return {value:{task:'fixed'},usage};},check:()=>{}});
  assert.deepEqual(events,['repair','review']);assert.equal(result.value.task,'fixed');assert.equal(checkpoints[1].pendingReview,null);assert.equal(result.usage.length,2);
 });
+test('repairs target failed criteria and critical errors without turning passing suggestions into requirements',async()=>{
+ const first=review();first.checks[0]={criterion:'objectives',score:3,evidence:'Each learner needs a real clarification opportunity.'};first.criticalErrors=['Correct the key'];first.suggestions=['Optional extra picture'];let calls=0;
+ await editUntilReady({value:{task:'draft'},deadline:Date.now()+90000,reserve:async()=>{},
+  review:async()=>({value:calls++===0?first:review(),usage}),
+  repair:async(_value,feedback)=>{assert.deepEqual(feedback.checks,[first.checks[0]]);assert.deepEqual(feedback.criticalErrors,['Correct the key']);assert.deepEqual(feedback.suggestions,[]);return {value:{task:'fixed'},usage};},check:()=>{}});
+ assert.equal(calls,2,'the repaired task still receives a full independent review');
+});

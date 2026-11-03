@@ -7,13 +7,14 @@ export async function documentClipboard(editor: Editor, action: 'copy' | 'cut' |
   try {
     if (action === 'copy' || action === 'cut') {
       const { from, to } = editor.state.selection;
+      const original=editor.state.doc;
       if (from === to) return;
       const text = editor.state.doc.textBetween(from, to, '\n', ' ');
       const div = document.createElement('div');
       div.append(DOMSerializer.fromSchema(editor.schema).serializeFragment(editor.state.selection.content().content));
       if (typeof ClipboardItem !== 'undefined' && navigator.clipboard.write) await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob([text], { type: 'text/plain' }), 'text/html': new Blob([div.innerHTML], { type: 'text/html' }) })]);
       else await navigator.clipboard.writeText(text);
-      if (action === 'cut') editor.chain().focus().deleteSelection().run();
+      if (action === 'cut'&&editor.state.doc.eq(original)&&editor.isEditable) editor.view.dispatch(editor.state.tr.delete(from,to));
     } else {
       let html = '', text = '';
       if (action === 'paste' && navigator.clipboard.read) {

@@ -329,7 +329,8 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
             cur.push({ kind: 'p', runs: [{ t: (d.before ?? '') + ' ' }, { blank: 24 }, { t: ' ' + (d.after ?? '') }] });
             break;
           case 'highlight':
-            cur.push({ kind: 'p', runs: [pre, { t: (d.instruction ?? '') + ' ', bold: true }, { t: pub.toks.join(' ') }] });
+            if(pub.format==='dialogue'&&Array.isArray(pub.turns)){cur.push({kind:'p',runs:[pre,{t:d.instruction??'',bold:true}]});pub.turns.forEach((turn:{speaker:string;start:number;end:number})=>cur.push({kind:'p',runs:[{t:turn.speaker?turn.speaker+': ':'',bold:true},{t:pub.toks.slice(turn.start,turn.end).join(' ').replace(/\s+([.,!?;:])/g,'$1')}]}));}
+            else cur.push({ kind: 'p', runs: [pre, { t: (d.instruction ?? '') + ' ', bold: true }, { t: pub.toks.join(' ') }] });
             break;
           case 'sentences':
             cur.push({ kind: 'p', runs: [pre, { t: 'Put in the right order:', bold: true }] });

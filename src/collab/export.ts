@@ -1,3 +1,4 @@
+import {studioDefinition} from '../coach/studioForms';
 import { credit } from '../lib/brand';
 import type { JSONContent } from '@tiptap/react';
 import { textColor } from '../editor/TextColor';
@@ -112,12 +113,13 @@ export function plainOnly(n: JSONContent): boolean {
 }
 function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Element[]): string {
   if (worksheetNodes.has(n)) return worksheetNodes.get(n)!;
-  if (n.type === 'doc' && live) return (n.content ?? []).map((c, i) => (worksheetNodes.has(c) || c.type === 'docSection' || plainOnly(c) || !live[i] ? blockHtml(c, o, doc) : `<div class="live doc cd-doc"><div class="ProseMirror">${cleanLive(live[i])}</div></div>`)).join('');
+  if (n.type === 'doc' && live) return (n.content ?? []).map((c, i) => (worksheetNodes.has(c) || c.type === 'docSection' || c.type === 'studioForm' || plainOnly(c) || !live[i] ? blockHtml(c, o, doc) : `<div class="live doc cd-doc"><div class="ProseMirror">${cleanLive(live[i])}</div></div>`)).join('');
   const kids = () => (n.content ?? []).map((c) => blockHtml(c, o, doc)).join('');
   const inl = () => (n.content ?? []).map((c) => inlineHtml(c, o)).join('');
   switch (n.type) {
     case 'doc':
       return kids();
+    case 'studioForm': {const a=n.attrs||{},f=studioDefinition(a.kind);return '<section><h2>'+esc(String(a.title||f?.name||'Studio form'))+'</h2>'+(f?.fields||[]).map(([key,label])=>'<h3>'+esc(label)+'</h3><p>'+esc(String(a.fields?.[key]||'')).replaceAll('\n','<br>')+'</p>').join('')+(a.examples||[]).map((e:any)=>'<blockquote>'+esc(String(e.text||''))+'</blockquote><p>'+esc([e.source,e.location,e.licence].filter(Boolean).join(' · '))+'</p>').join('')+'</section>';}
     case 'docPageBreak':
       return '<div data-doc-page-break="" class="doc-page-break"></div>';
     case 'docSection':
@@ -291,6 +293,7 @@ export async function docxBlob(json: JSONContent, title: string, o: ExportOpts =
       case 'paragraph':
         out.push(para(list?.kind === 'number' ? [{ text: `${list.i}. ` }, ...runsOf(n.content, o)] : runsOf(n.content, o), { alignment: al(n), ...(n.attrs?.indent ? { indent: { left: Math.min(8, Number(n.attrs.indent)) * 720 } } : {}), ...(list?.kind === 'bullet' ? { bullet: { level: 0 } } : {}) }));
         return;
+      case 'studioForm': {const a=n.attrs||{},f=studioDefinition(a.kind);out.push(para([{text:String(a.title||f?.name||'Studio form'),bold:true}]));for(const [key,label] of f?.fields||[]){out.push(para([{text:label,bold:true}]));out.push(para([{text:String(a.fields?.[key]||'')}]));}for(const e of a.examples||[])out.push(para([{text:[e.text,e.source,e.location,e.licence].filter(Boolean).join(' · ')}]));return;}
       case 'docPageBreak':
         out.push(new Paragraph({ pageBreakBefore: true, children: [] }));
         return;
