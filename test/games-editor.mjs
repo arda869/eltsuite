@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {chromium} from 'playwright';
+const base='http://localhost:5199';
+const vite=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port','5199'],{stdio:'ignore'});
+let browser;
+try {
+ for(let i=0;i<90;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
+ browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});
+ await page.goto(base+'/dev.html?seed&as=teacher');await page.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await page.waitForLoadState('networkidle');
+ await page.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['sharedDocs/editor-test']={owner:'teacher1',ownerName:'Teacher',title:'Game editor verification',kind:'game',memberIds:[],members:{},docKey:'editor-test'};fs['sharedDocs/editor-test/game/main']={version:1,type:'show',theme:'wood',sound:false,rounds:[]};localStorage.setItem('mockfs',JSON.stringify(fs));});
+ await page.goto(base+'/doc/editor-test');await page.getByRole('heading',{name:'Build your game'}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'Play preview',exact:true}).isEnabled(),false);
+ await page.getByRole('button',{name:'Write the first question'}).click();await page.getByLabel('Question or clue').fill('Where do planes take off?');await page.getByLabel('Answer',{exact:true}).fill('airport');
+ // Optional alternatives, class and lesson context stay blank.
+ await page.getByRole('button',{name:'Save game',exact:true}).click();await page.getByText('Saved',{exact:true}).waitFor();await page.reload();await page.getByRole('button',{name:'Play preview',exact:true}).click();await page.getByLabel('Your answer').fill('airport');await page.getByRole('button',{name:'Check answer',exact:true}).click();await page.getByRole('button',{name:'Finish game',exact:true}).click();await page.getByRole('heading',{name:'Game complete'}).waitFor();await page.getByRole('button',{name:'Back to game editor'}).click();
+ await page.getByRole('button',{name:'Duplicate',exact:true}).click();await page.getByLabel('Question or clue').fill('Where can you borrow books?');await page.getByLabel('Answer',{exact:true}).fill('library');await page.getByRole('button',{name:'Move question earlier'}).click();
+ const list=page.getByRole('navigation',{name:'Game questions'});assert.match(await list.getByRole('button').first().innerText(),/borrow books/);
+ await page.getByRole('button',{name:'Remove question 1',exact:true}).click();await page.getByRole('button',{name:'Undo last change'}).click();assert.equal(await list.locator('li').count(),2);
+ await page.locator('.game-settings select').first().selectOption('pairs');await page.getByLabel('First side').waitFor();await page.getByLabel('Matching side').waitFor();assert.equal(await page.getByText('Add answer option',{exact:true}).count(),0);
+ await page.locator('.game-settings select').first().selectOption('show');await page.getByRole('button',{name:'Add answer option',exact:true}).click();await page.getByLabel('Option 1',{exact:true}).fill('station');await page.getByText('Appearance and timing',{exact:true}).click();await page.getByLabel('Look and feel').selectOption('garden');await page.getByRole('button',{name:'Save game',exact:true}).click();await page.getByText('Saved',{exact:true}).waitFor();
+ const dimensions=await page.evaluate(()=>{const parent=document.querySelector('.dp-main'),editor=document.querySelector('.game-builder');return {parent:parent.clientWidth-parseFloat(getComputedStyle(parent).paddingLeft)-parseFloat(getComputedStyle(parent).paddingRight),editor:editor.getBoundingClientRect().width};});assert.ok(Math.abs(dimensions.parent-dimensions.editor)<2);
+ await page.screenshot({path:'/tmp/game-editor-desktop.png',fullPage:true});await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));await page.screenshot({path:'/tmp/game-editor-mobile.png',fullPage:true});
+ console.log('PASS: blank optional fields → save → reload → complete playable game; duplicate, reorder, remove/undo, type-aware fields, full shell width, mobile overflow (simulated Firebase).');
+} finally {await browser?.close();vite.kill();}

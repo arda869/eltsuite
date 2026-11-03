@@ -4,10 +4,11 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app, db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import type { GameRound, GameType } from './model';
-export function GameDraft({ gameId, type, onApply }: {
+export function GameDraft({ gameId, type, existingCount = 0, onApply }: {
     gameId: string;
     type: GameType;
-    onApply: (r: GameRound[]) => void;
+    existingCount?: number;
+    onApply: (r: GameRound[], append?: boolean) => void;
 }) {
     const { user } = useAuth();
     const [description, setDescription] = useState(''), [classId, setClassId] = useState(''), [lessonId, setLessonId] = useState(''), [classes, setClasses] = useState<{
@@ -32,5 +33,5 @@ export function GameDraft({ gameId, type, onApply }: {
     }
     finally {
         setBusy(false);
-    } }}>{busy ? 'Writing and checking your questions…' : 'Create draft'}</button>{busy && <p role="status">Your existing game is kept while the draft is prepared.</p>}{draft && <section><h3>Review questions and answers</h3><ol>{draft.map(r => <li key={r.id}>{r.prompt}<br /><strong>{r.answer}</strong></li>)}</ol><button type="button" className="btn" onClick={() => { onApply(draft); setDraft(null); }}>Use these questions</button><button type="button" className="btn" onClick={() => setDraft(null)}>Discard draft</button><p>Using this draft replaces the editor’s current questions. Save when ready.</p></section>}</details>;
+    } }}>{busy ? 'Writing and checking your questions…' : 'Create draft'}</button>{busy && <p role="status">Your existing game is kept while the draft is prepared.</p>}{draft && <section><h3>Review questions and answers</h3><ol>{draft.map(r => <li key={r.id}>{r.prompt}<br /><strong>{r.answer}</strong>{r.choices.length > 0 && <p>Other options: {r.choices.join(' · ')}</p>}</li>)}</ol><button type="button" className="btn" onClick={() => { onApply(draft); setDraft(null); }}>{existingCount ? 'Replace questions with draft' : 'Use these questions'}</button>{existingCount > 0 && <button type="button" className="btn" onClick={() => { onApply(draft, true); setDraft(null); }}>Add draft to questions</button>}<button type="button" className="btn" onClick={() => setDraft(null)}>Discard draft</button><p>Choose whether to replace or add questions. Review them in the editor, then save when ready.</p></section>}</details>;
 }
