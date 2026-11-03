@@ -220,3 +220,17 @@
 }
 /* The sample lesson now sits below the fold, so it shows in full straight away. */
 .pub.pub .pub-hero :is(.pub-aim,.pub-language,.pub-teacher-note,.pub-preview-activity){animation:none!important;opacity:1!important}
+
+/* Hero, round 4: the lesson editor, the sound editor with its tracks floating bottom left, and the
+   live answers pane standing at the top right. Fewer, larger pieces with room between them. */
+.pub-stage-main{width:104%;top:8%}
+.pub-stage-audio{left:-4%;bottom:-6%;width:50%;transform:rotate(-2.5deg);border-radius:16px!important;box-shadow:0 36px 60px -28px rgba(51,48,44,.55),0 0 0 1px var(--hair)!important;animation:pub-rise 1.1s .25s cubic-bezier(.2,.8,.2,1) both}
+.pub-stage-live{right:2%;top:-4%;width:24%;transform:rotate(2.5deg);border-radius:18px!important;box-shadow:0 30px 50px -26px rgba(51,48,44,.5),0 0 0 1px var(--hair)!important;animation:pub-rise 1.1s .45s cubic-bezier(.2,.8,.2,1) both}
+.pub-stage-audio img,.pub-stage-live img{display:block;width:100%;height:auto}
+@media (prefers-reduced-motion:reduce){.pub-stage-audio,.pub-stage-live{animation:none}}
+@media (max-width:760px){.pub-stage-audio{width:70%;left:0;bottom:2%}.pub-stage-live{display:none}}
+/* The marked sentence: on its own, with space around it. */
+.pub.pub .pub-speaks{text-align:center;padding-top:clamp(64px,8vw,120px);padding-bottom:clamp(64px,8vw,120px)}
+.pub-speaks-text{display:block;width:min(1100px,100%);height:auto;margin:18px auto 22px}
+.pub.pub .pub-speaks p{max-width:560px;margin:0 auto;color:var(--muted);font-size:17px}
+:root[data-theme='dark'] .pub-speaks-text{border-radius:18px;background:#fbfaf8;padding:12px}
