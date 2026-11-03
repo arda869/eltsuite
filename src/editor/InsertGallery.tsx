@@ -46,7 +46,7 @@ const ABOUT: Record<string, string> = {
   order: 'Write the correct sentence; learners see the words jumbled and put them in order.',
   'pq-fix': 'A sentence with one mistake. Learners tap the wrong word (1 point) and type the correction (1 point).',
   'pq-transform': 'Key word transformation: a first sentence, a word in capitals, and a second sentence with a gap to complete using that word, within a word limit.',
-  'pq-highlight': 'A text where learners tap every word or phrase that matches your instruction, for example every past participle.',
+  'pq-highlight': 'A passage or dialogue script where learners highlight the words or phrases that match your instruction.',
   'pq-categorise': 'Words sorted into columns you name, for example countable and uncountable.',
   'pq-sentences': 'Sentences or paragraphs shown shuffled; learners drag them into order.',
   'pq-gapped': 'A text with sentences removed. Learners put each removed sentence back, with extra sentences as distractors.',

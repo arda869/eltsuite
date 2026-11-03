@@ -1,4 +1,4 @@
-export const contextDefaults = { profile: true, beliefs: true, reflections: true, inquiries: true };
+export const contextDefaults = { profile: true, beliefs: true, reflections: true, inquiries: true, forms: true };
 export function contextPermissions(value = {}) {
   return Object.fromEntries(Object.keys(contextDefaults).map(key => [key, value?.[key] !== false]));
 }

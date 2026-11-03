@@ -2,9 +2,8 @@ name: Deploy tested frontend
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/deploy-frontend.yml', 'src/components/AiActivity.tsx', 'src/components/AiMark.tsx', 'src/cohesion.css']
+# Automatic releases use deploy.yml, which updates the matching services before Hosting.
+# Keep this shortcut explicit so a shared style change cannot publish a mixed UI/backend build.
 
 concurrency:
   group: firebase-production

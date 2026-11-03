@@ -165,6 +165,17 @@ function layoutWordSearch(items, seed) {
 function highlightGroups(value) {
   return Array.isArray(value) ? value.map((g) => Array.isArray(g) ? g : Array.isArray(g?.tokens) ? g.tokens : []).filter((g) => g.length) : [];
 }
+function highlightScript(text) {
+  const toks = [], groups = [], turns = [];
+  for (const line of text.split(/\r?\n/).filter((x) => x.trim())) {
+    const match = /^\s*([^:{}\n]{1,60}):\s*(.*)$/.exec(line);
+    const part = tokenise(match ? match[2] : line), start = toks.length;
+    toks.push(...part.toks);
+    groups.push(...part.groups.map((g) => g.map((i) => i + start)));
+    turns.push({ speaker: match?.[1].trim() || "", start, end: toks.length });
+  }
+  return { toks, groups, turns };
+}
 function splitPack(t, d, id) {
   switch (t) {
     case "fix": {
@@ -184,8 +195,9 @@ function splitPack(t, d, id) {
     case "transform":
       return { pub: { first: d.first ?? "", keyWord: String(d.keyWord ?? "").toUpperCase(), before: d.before ?? "", after: d.after ?? "", min: d.min ?? null, max: d.max ?? null }, key: { answers: clean(d.answers) } };
     case "highlight": {
-      const { toks, groups } = tokenise(d.text ?? "");
-      return { pub: { instruction: d.instruction ?? "", toks, penalty: !!d.penalty }, key: { groups: groups.map((tokens) => ({ tokens })), penalty: !!d.penalty } };
+      const script = d.format === "dialogue" || d.format !== "text" && String(d.text ?? "").split(/\r?\n/).filter((line) => /^\s*[^:{}\n]{1,60}:\s*\S/.test(line)).length >= 2 ? highlightScript(d.text ?? "") : null;
+      const { toks, groups } = script ?? tokenise(d.text ?? "");
+      return { pub: { instruction: d.instruction ?? "", toks, penalty: !!d.penalty, ...script ? { format: "dialogue", turns: script.turns } : {} }, key: { groups: groups.map((tokens) => ({ tokens })), penalty: !!d.penalty } };
     }
     case "sentences": {
       const items = clean(d.items);
@@ -256,7 +268,8 @@ function mergePack(t, p, k) {
         const endG = g !== void 0 && inG.get(i + 1) !== g;
         out.push((startG ? "{{" : "") + w + (endG ? "}}" : ""));
       });
-      return { instruction: p.instruction, text: out.join(" "), penalty: p.penalty };
+      const dialogue = p.format === "dialogue" && Array.isArray(p.turns);
+      return { instruction: p.instruction, text: dialogue ? p.turns.map((t2) => (t2.speaker ? t2.speaker + ": " : "") + out.slice(t2.start, t2.end).join(" ").replace(/\s+([.,!?;:])/g, "$1")).join("\n") : out.join(" "), penalty: p.penalty, ...dialogue ? { format: "dialogue" } : {} };
     }
     case "sentences":
       return { items: (k.order ?? []).map((i) => p.items[i]) };

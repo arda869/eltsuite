@@ -43,7 +43,8 @@ export default defineConfig({
   plugins: [react(), harness()],
   define: { __BUILD__: '"dev"', 'import.meta.env.VITE_ELT_AI_PILOT': '"true"' },
   resolve: { alias: { 'firebase/functions': m('functions.ts'), 'firebase/app': m('app.ts'), 'firebase/auth': m('auth.ts'), 'firebase/database': m('database.ts'), 'firebase/firestore': m('firestore.ts') } },
-  // Every page's packages are found at the start, so the app never reloads itself in the middle of a test.
-  optimizeDeps: { include: ['@azure/msal-browser'], entries: ['index.html', 'src/**/*.tsx'] },
+  // Freeze dependency optimisation before browser navigation. Late discoveries otherwise reload
+  // lazy routes during the suite-wide audit, aborting their module requests.
+  optimizeDeps: { noDiscovery: true, include: ['react-dom/client','react-dom/server','react/jsx-runtime','react/jsx-dev-runtime',...Object.keys(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).dependencies).filter(name=>!['firebase','@tiptap/pm','y-protocols'].includes(name))] },
   server: { port: 5184, strictPort: true, fs: { allow: [root] } },
 });

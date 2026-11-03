@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 // Interface icons for the lesson toolbars: thin strokes, rounded ends, in the text colour.
 const P: Record<string, ReactNode> = {
+  cut:<><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="m8 8 12 12M8 16 20 4"/></>,
   videoPlay: <path d="M8 5l11 7-11 7z" strokeLinejoin="round" />,
   videoPause: <><path d="M8 5v14M16 5v14" strokeWidth="3" /></>,
   videoStop: <rect x="6" y="6" width="12" height="12" rx="1" />,

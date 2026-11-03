@@ -1,0 +1,13 @@
+export const STUDIO_FORMS = [
+  {kind:'reflection',name:'Reflective journal page',fields:[['context','Lesson and context'],['notice','What happened?'],['interpretation','What might it mean?'],['alternatives','Other possible explanations'],['next','What will you try next?']]},
+  {kind:'plan',name:'Lesson plan',fields:[['context','Class and context'],['aims','Learning aims'],['language','Language and anticipated difficulties'],['stages','Stages, timing, procedure and interaction'],['evidence','How will you notice learning?'],['adaptations','Support and adaptations']]},
+  {kind:'reading',name:'Professional reading',fields:[['source','Author, title and source'],['excerpt','Selected excerpt and page'],['claim','What does the source claim?'],['response','Your response and questions'],['practice','Connections to your teaching']]},
+  {kind:'observation',name:'Observation form',fields:[['context','Lesson, date and observer'],['focus','Agreed observation focus'],['evidence','What was observed?'],['interpretation','Interpretation and alternatives'],['strengths','Strengths to build on'],['next','Agreed next steps']]},
+  {kind:'research',name:'Research inquiry',fields:[['question','Classroom question'],['baseline','What happens now?'],['change','What will you try?'],['ethics','Consent, anonymity and care'],['evidence','Evidence and review date'],['findings','Findings and limitations'],['next','What next?']]},
+  {kind:'corpus',name:'Corpus search',fields:[['query','Word or phrase'],['context','Context and selection notes'],['prompt','Noticing question'],['conclusions','Conclusions and limitations']]},
+  {kind:'discourse',name:'Spoken discourse',fields:[['context','Situation and participants'],['transcript','Transcript, speaker labels and timestamps'],['focus','Focus of analysis'],['features','Turns, repair, stance and interaction'],['interpretation','Interpretation and alternatives'],['teaching','Teaching implications']]},
+  {kind:'language',name:'Language analysis',fields:[['target','Target language'],['context','Context and model sentence'],['meaning','Meaning'],['form','Form'],['pron','Pronunciation and stress'],['use','Use and register'],['ccqs','Concept-checking questions and answers'],['problems','Anticipated problems and solutions']]},
+] as const;
+export type StudioKind = typeof STUDIO_FORMS[number]['kind'];
+export type StudioForm = {id:string;kind:StudioKind;title:string;fields:Record<string,string>;examples?:{id:string;text:string;before?:string;match?:string;after?:string;source?:string;url?:string;licence?:string;location?:string}[]};
+export const studioDefinition=(kind:string)=>STUDIO_FORMS.find(f=>f.kind===kind);

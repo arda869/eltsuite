@@ -146,28 +146,14 @@ export function DocPage() {
               <UiIcon name="link" size={14} /> <span className="dp-hide-phone">Copy link</span>
             </button>
           )}
-          {kind === 'doc' && d && (
-            <span className="dp-set-wrap">
-              <button type="button" className={'dp-ib' + (setOpen ? ' on' : '')} onClick={() => setSetOpen((v) => !v)} aria-label="Settings" data-tip="Document settings" aria-expanded={setOpen}>
-                <UiIcon name="settings" size={17} />
-              </button>
-              {setOpen && (
-                <span className="dp-set" role="dialog" aria-label="Document settings">
-                  <strong>Document settings</strong>
-                  <div className="field">
-                    <span>Citation style</span>
-                    <Select label="Citation style" value={cite} disabled={role !== 'edit'} search options={CITE_STYLES.map((c) => ({ v: c.k, label: c.label, hint: c.about }))} onChange={(v) => void updateDoc(fsDoc(db, 'sharedDocs', d.id), { citeStyle: v })} />
-                  </div>
-                  <span className="hint">Citations in the text and the reference list follow this style, and so do the Word and PDF downloads.{role !== 'edit' ? ' Only people who can edit can change it.' : ''}</span>
-                </span>
-              )}
-            </span>
-          )}
+
         </span>
       </header>
       <CiteStyleContext.Provider value={cite}>
-        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || kind === 'storyboard' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} toolSlot={slot} />}</main>
+        <main className="dp-main">{kind === 'flash' && d ? <FlashSet d={d} canEdit={role === 'edit'} /> : kind === 'pd' && d ? <PdReading d={d} canEdit={role === 'edit'} /> : kind === 'lesson' && d ? <LessonFile d={d} canEdit={role === 'edit'} /> : kind === 'pdf' && d ? <PdfFile d={d} canEdit={role === 'edit'} me={{ uid, name }} /> : kind === 'slides' ? <SlidesDoc {...props} /> : kind === 'file' && d && !isImageFile(d) ? <AnyFile d={d} /> : d && (kind === 'design' || kind === 'storyboard' || isImageFile(d)) ? <Suspense fallback={<div className="dp-msg">One moment…</div>}><DesignFile d={d} canEdit={role === 'edit'} /></Suspense> : <CollabDoc {...props} template={start ?? null} page heading={heading} onCitationStyle={d ? ()=>setSetOpen(true) : undefined} toolSlot={slot} />}</main>
       </CiteStyleContext.Provider>
+
+      {setOpen && kind==='doc' && d && <div className="scrim" onClick={()=>setSetOpen(false)} onKeyDown={e=>{if(e.key==='Escape')setSetOpen(false);}}><div className="dialog" role="dialog" aria-modal="true" aria-label="Citation style" onClick={e=>e.stopPropagation()}><h2>Citation style</h2><label className="field"><span>Citation style</span><Select label="Citation style" value={cite} disabled={role!=='edit'} search options={CITE_STYLES.map(c=>({v:c.k,label:c.label,hint:c.about}))} onChange={v=>void updateDoc(fsDoc(db,'sharedDocs',d.id),{citeStyle:v}).catch(e=>void tell(e.message))}/></label><p className="hint">Citations, the reference list and Word and PDF downloads follow this style.{role!=='edit'?' Only people who can edit can change it.':''}</p><button type="button" className="btn" onClick={()=>setSetOpen(false)}>Done</button></div></div>}
       {sharing && d && <ShareDialog d={d} onClose={() => setSharing(false)} />}
     </div>
   );

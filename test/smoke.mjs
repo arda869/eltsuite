@@ -1,3 +1,7 @@
+import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
+import {slidesCut} from './slides-cut.mjs';
+import {resourcesLayout,fieldCut} from './resources-layout.mjs';
+import {tuesdayForms,tuesdayCoach,tuesdayLinks} from './tuesday.mjs';
 import {reviewAi,returnDuringAi,backgroundSongAudit,suiteCohesionAudit} from './cohesion.mjs';
 // Smoke tests: the journeys teachers and learners take most, run in a real browser against the
 // app with stand-ins for Firebase (test/vite.config.ts). Run with: npm run smoke
@@ -44,7 +48,7 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`);
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 30000 });
-  await p.evaluate(async () => { await window.__mockReady; });
+  await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);
@@ -59,12 +63,13 @@ const see = async (p, sel, what, timeout = 15000) => {
   }
 };
 const count = (p, sel) => p.locator(sel).count();
-async function newFile(s, label) {
+async function newFile(s, label, paged=true) {
   await s.p.goto(`${BASE}/archive`);
   await see(s.p, 'text=+ New', 'the New button in Files');
   await s.p.click('text=+ New');
   const [tab] = await Promise.all([s.ctx.waitForEvent('page'), s.p.click(`[role=menuitem]:has-text("${label}")`)]);
   await tab.waitForLoadState();
+  if(label==='Collab document'&&paged){await tab.getByRole('menuitem',{name:'View',exact:true}).click();await tab.getByRole('menuitemradio',{name:'Pages',exact:true}).click();}
   return tab;
 }
 // The "/" menu: wait until it lists what was typed, as a slow machine takes longer.
@@ -109,6 +114,14 @@ const J = {
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
     await axe(s.p,'Filtered application launcher',A11Y_FOUND);return s;
   },
+  'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
+  'Tuesday wishlist: eight forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: pinned coach, voice playback and microphone fallback':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
+  'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday latest: highlight dialogue authoring, save and learner feedback':async b=>{const s=await session(b);await highlightJourney(s,BASE,axe,A11Y_FOUND);return s;},
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
   'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
@@ -529,7 +542,7 @@ const J = {
     await p.getByRole('status').filter({hasText:'Nothing has been sent'}).waitFor();
     await p.reload();
     await p.getByLabel('Planning note',{exact:true}).waitFor();
-    if(await p.getByLabel('Planning note',{exact:true}).inputValue()!=='')throw Error('Blank optional note did not persist');
+    if(await p.getByLabel('Planning note',{exact:true}).inputValue()!=='')throw Error('Blank optional note did not persist: '+JSON.stringify(await p.getByLabel('Planning note',{exact:true}).inputValue())+' '+await p.evaluate(()=>sessionStorage.getItem('elt-public-demo-v2')));
     await axe(p,'Public collaboration',A11Y_FOUND);
     await p.getByRole('navigation',{name:'Demo steps'}).getByRole('button',{name:/Plan & teach/}).click();
     if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='A space for our neighbourhood')throw Error('Demo title was lost');
@@ -1103,7 +1116,7 @@ const J = {
       const scale = Number(paper.style.zoom);
       const top = (el.getBoundingClientRect().top - paper.getBoundingClientRect().top) / scale;
       const height = el.getBoundingClientRect().height / scale;
-      return top + height <= (Math.floor(top / 1123) + 1) * 1123 - 96 + 1;
+      return top + height <= Math.floor(top / 1147) * 1147 + 1123 - 96 + 1;
     }));
     if (!pagesFit) throw new Error('A sound chart crosses a page boundary.');
     for (const colour of ['black', 'white']) {
@@ -1304,7 +1317,7 @@ const J = {
       const scale = Number(paper.style.zoom);
       const top = (el.getBoundingClientRect().top - paper.getBoundingClientRect().top) / scale;
       const height = el.getBoundingClientRect().height / scale;
-      return top + height <= (Math.floor(top / 1123) + 1) * 1123 - 96 + 1;
+      return top + height <= Math.floor(top / 1147) * 1147 + 1123 - 96 + 1;
     }));
     if (!pagesFit) throw new Error('A sound chart crosses a page boundary.');
     for (const colour of ['black', 'white']) {
@@ -1413,7 +1426,7 @@ const J = {
       });
       if (bounds.width > bounds.available + 1 || (mode === 'Fit page' && bounds.height > bounds.visibleHeight + 1)) throw new Error(mode + ' exceeds the available viewing area: ' + JSON.stringify(bounds));
     }
-    const contrast = await d.locator('.pg-paper').evaluate((el) => getComputedStyle(el).backgroundColor !== getComputedStyle(el.closest('.pg-desk')).backgroundColor);
+    const contrast = await d.locator('.pg-paper').evaluate((el) => getComputedStyle(el.querySelector('.pg-sheet')).backgroundColor !== getComputedStyle(el.closest('.pg-desk')).backgroundColor);
     if (!contrast) throw new Error('The sheet blends into the document canvas.');
     await axe(d, 'Document page tools', A11Y_FOUND);
     return s;
@@ -1463,7 +1476,7 @@ const J = {
     for (const [label, expected] of [['white', 'rgb(255, 255, 255)'], ['black', 'rgb(25, 24, 22)']]) {
       await d.getByRole('menuitem', { name: 'View', exact: true }).click();
       await d.getByRole('menuitemradio', { name: 'Page colour: ' + label, exact: true }).click();
-      const actual = await d.locator('.pg-paper').evaluate((el) => getComputedStyle(el).backgroundColor);
+      const actual = await d.locator('.pg-sheet').first().evaluate((el) => getComputedStyle(el).backgroundColor);
       if (actual !== expected) throw new Error('Incorrect page colour: ' + actual);
     }
     await d.reload();

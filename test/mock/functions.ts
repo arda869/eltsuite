@@ -46,6 +46,7 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     return { data: { articleIds: id ? [id] : [], version: helpLibrary.version } };
   }
   if (name === 'recordingSpeech') {
+    localStorage.setItem('mockVoiceCallCount',String(Number(localStorage.getItem('mockVoiceCallCount')||0)+1));
     if (d.text.includes('FAIL_TEST')) throw Error('Test voice unavailable.');
     const bytes=new Uint8Array(48000), view=new DataView(bytes.buffer);
     for(let i=0;i<24000;i++)view.setInt16(i*2,Math.sin(i/24000*Math.PI*440)*8000,true);
@@ -137,8 +138,8 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
     const { profileComplete, beliefsComplete, contextPermissions } = await import('../../functions/ai/coach-context.js');
     const current = (await import('firebase/auth')).getAuth().currentUser?.uid ?? 'teacher1';
     const p = (await getDoc(doc(db,'teachingCoach',current,'settings','profile'))).data();
-    if (!d.lessonContext && !beliefsComplete(p)) throw Error('Add your teaching beliefs before starting a coaching conversation.');
-    if (!d.lessonContext && !profileComplete(p)) throw Error('Complete your teaching profile before starting a coaching conversation.');
+    if (!d.formContext && !d.lessonContext && !beliefsComplete(p)) throw Error('Add your teaching beliefs before starting a coaching conversation.');
+    if (!d.formContext && !d.lessonContext && !profileComplete(p)) throw Error('Complete your teaching profile before starting a coaching conversation.');
     localStorage.setItem('mockCoachLastRequest',JSON.stringify(d));
     const prefs = contextPermissions((await getDoc(doc(db,'teachingCoach',current,'settings','context'))).data());
     await new Promise(resolve=>setTimeout(resolve,350));

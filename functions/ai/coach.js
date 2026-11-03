@@ -1,3 +1,4 @@
+import {loadStudioForms} from './coach-forms.js';
 import { loadLessonSource } from './coach-lesson-context.js';
 import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
 import { usageContext, chargeFeature } from './feature-usage.js';
@@ -23,8 +24,8 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   const [professional, preferences] = await Promise.all([
     db.doc(`teachingCoach/${uid}/settings/profile`).get(), db.doc(`teachingCoach/${uid}/settings/context`).get(),
   ]);
-  if (!input.lessonContext && !input.evidencePacketId && !profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
-  if (!input.lessonContext && !input.evidencePacketId && !beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
+  if (!input.formContext && !input.lessonContext && !input.evidencePacketId && !profileComplete(professional.data())) throw new HttpsError('failed-precondition', 'Complete your teaching profile before starting a coaching conversation.');
+  if (!input.formContext && !input.lessonContext && !input.evidencePacketId && !beliefsComplete(professional.data())) throw new HttpsError('failed-precondition', 'Add your teaching beliefs before starting a coaching conversation.');
   const preferencesData = preferences.data();
   const permissions = contextPermissions(preferencesData);
   if (['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode'].includes(preferencesData?.mode)) input.mode = preferencesData.mode;
@@ -35,6 +36,8 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
     context.selectedEvidence=selected;input.researchId=selected.inquiryId;
     basis.push('Teacher-confirmed selected evidence: '+selected.packet.title);
   }
+  if(input.formContext&&!permissions.forms)throw new HttpsError('failed-precondition','Collab form context is switched off. Enable it in Coach settings or remove the selected form.');
+  if(permissions.forms){const {forms,skipped}=await loadStudioForms(db,uid,input.prompt,input.formContext);if(skipped){context.formScope=skipped+' Collab documents could not be opened. Their forms have not been read.';basis.push('Some Collab documents were unavailable; their forms were not read.');}if(forms.length){context.forms=forms;sources.push(...forms.map(f=>({title:f.title+' · '+f.documentTitle,url:'/doc/'+f.docId+'#studio-form-'+f.id})));basis.push(...forms.map(f=>'Collab form: '+f.title));}}
   if(input.lessonContext){const selected=await loadLessonSource(db,uid,input.lessonContext);context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
   if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));

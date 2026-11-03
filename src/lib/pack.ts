@@ -65,7 +65,7 @@ export const PACK_LABELS: Record<PackKind, string> = {
   fix: 'Find and fix the mistake',
   categorise: 'Categorise',
   transform: 'Key word transformation',
-  highlight: 'Highlight in text',
+  highlight: 'Highlight',
   sentences: 'Order sentences',
   label: 'Label the image',
   odd: 'Odd one out',
@@ -273,6 +273,17 @@ export function highlightGroups(value: unknown): number[][] {
   return Array.isArray(value) ? value.map(g => Array.isArray(g) ? g : Array.isArray(g?.tokens) ? g.tokens : []).filter(g => g.length) : [];
 }
 
+export function highlightScript(text: string) {
+  const toks: string[]=[],groups:number[][]=[],turns:{speaker:string;start:number;end:number}[]=[];
+  for(const line of text.split(/\r?\n/).filter(x=>x.trim())) {
+    const match=/^\s*([^:{}\n]{1,60}):\s*(.*)$/.exec(line);
+    const part=tokenise(match?match[2]:line),start=toks.length;
+    toks.push(...part.toks);groups.push(...part.groups.map(g=>g.map(i=>i+start)));
+    turns.push({speaker:match?.[1].trim()||'',start,end:toks.length});
+  }
+  return {toks,groups,turns};
+}
+
 // Editor data -> public data + key.
 export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: Data | null } {
   switch (t) {
@@ -293,8 +304,9 @@ export function splitPack(t: PackKind, d: Data, id: string): { pub: Data; key: D
     case 'transform':
       return { pub: { first: d.first ?? '', keyWord: String(d.keyWord ?? '').toUpperCase(), before: d.before ?? '', after: d.after ?? '', min: d.min ?? null, max: d.max ?? null }, key: { answers: clean(d.answers) } };
     case 'highlight': {
-      const { toks, groups } = tokenise(d.text ?? '');
-      return { pub: { instruction: d.instruction ?? '', toks, penalty: !!d.penalty }, key: { groups: groups.map(tokens => ({ tokens })), penalty: !!d.penalty } };
+      const script=d.format==='dialogue'||(d.format!=='text'&&String(d.text??'').split(/\r?\n/).filter(line=>/^\s*[^:{}\n]{1,60}:\s*\S/.test(line)).length>=2)?highlightScript(d.text??''):null;
+      const { toks, groups } = script??tokenise(d.text ?? '');
+      return { pub: { instruction: d.instruction ?? '', toks, penalty: !!d.penalty,...(script?{format:'dialogue',turns:script.turns}:{}) }, key: { groups: groups.map(tokens => ({ tokens })), penalty: !!d.penalty } };
     }
     case 'sentences': {
       const items = clean(d.items);
@@ -368,7 +380,8 @@ export function mergePack(t: PackKind, p: Data, k: Data | undefined): Data {
         const endG = g !== undefined && inG.get(i + 1) !== g;
         out.push((startG ? '{{' : '') + w + (endG ? '}}' : ''));
       });
-      return { instruction: p.instruction, text: out.join(' '), penalty: p.penalty };
+      const dialogue=p.format==='dialogue'&&Array.isArray(p.turns);
+      return { instruction: p.instruction, text: dialogue?p.turns.map((t:Data)=>(t.speaker?t.speaker+': ':'')+out.slice(t.start,t.end).join(' ').replace(/\s+([.,!?;:])/g,'$1')).join('\n'):out.join(' '), penalty: p.penalty,...(dialogue?{format:'dialogue'}:{}) };
     }
     case 'sentences':
       return { items: (k.order ?? []).map((i: number) => p.items[i]) };

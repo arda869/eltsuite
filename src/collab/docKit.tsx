@@ -1,3 +1,5 @@
+import {StudioFormNode,newStudioForm} from '../coach/StudioFormNode';
+import {STUDIO_FORMS} from '../coach/studioForms';
 import { InvestigationNode } from '../linguistics/InvestigationNode';
 import { auth } from '../lib/firebase';
 import { isLearnerEmail } from '../lib/learners';
@@ -51,6 +53,7 @@ import { imageToData } from '../lib/flash';
 // opens the same document uses this list, so the shared text always fits.
 export const DOC_NODES = [
   InvestigationNode,
+  StudioFormNode,
   StarterKit.configure({ history: false, heading: { levels: [1, 2, 3] }, codeBlock: false, orderedList: false, listItem: false }),
   ListItem.extend({ content: '(paragraph | dialogue) block*' }),
   OrderedList.extend({
@@ -163,6 +166,7 @@ export function docCommands():Cmd[]{
   if(cachedCommands)return cachedCommands;
 // The "/" menu in a document, in the order a writer reaches for things.
 const DOC_ALL: (Cmd | null)[] = [
+  ...STUDIO_FORMS.map(f=>({key:'studio-'+f.kind,label:f.name,hint:'An editable studio form in this document',group:'Training' as const,run:(e:Editor)=>block(e,newStudioForm(f.kind))})),
   { key: 'h1', label: 'Heading 1', hint: 'A big section heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 1 }).run() },
   { key: 'h2', label: 'Heading 2', hint: 'A medium heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 2 }).run() },
   { key: 'h3', label: 'Heading 3', hint: 'A small heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
@@ -227,6 +231,7 @@ export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'ph
 type DocSection={title:string;blurb:string;keys:string[]};
 let cachedSections:DocSection[]|undefined;
 export function docSections():DocSection[]{return cachedSections??=[
+  {title:'Studio forms',blurb:'Editable forms, gathered in Development Studio and available to your coach.',keys:STUDIO_FORMS.map(f=>'studio-'+f.kind)},
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
   { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'inline-video', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },

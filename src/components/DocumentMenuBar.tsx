@@ -1,5 +1,5 @@
 import { UiIcon } from './UiIcon';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { useMenuKeys } from './menuKeys';
 export type DocumentMenuItem = { label: string; run: () => void; disabled?: boolean; checked?: boolean; hint?: string; icon?: string } | 'sep';
@@ -10,11 +10,13 @@ const commandIcon = (label: string) => {
 export function DocumentMenuBar({ menus }: { menus: { label: string; items: DocumentMenuItem[] }[] }) {
   const [active, setActive] = useState<number | null>(null);
   const root = useDismiss<HTMLDivElement>(active !== null, () => setActive(null));
+  const [hidden,setHidden]=useState(false),[headerHeight,setHeaderHeight]=useState(64);
+  useEffect(()=>{const header=root.current?.closest('.dp')?.querySelector('.dp-bar');if(!header)return;const measure=()=>setHeaderHeight(header.getBoundingClientRect().height);measure();const observer=new ResizeObserver(measure);observer.observe(header);let previous=window.scrollY;const scroll=()=>{const current=Math.max(0,window.scrollY);if(current!==previous)setHidden(current>header.getBoundingClientRect().height&&current>previous);previous=current;};window.addEventListener('scroll',scroll,{passive:true});return()=>{observer.disconnect();window.removeEventListener('scroll',scroll);};},[]);
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
   useMenuKeys(menu, active === null ? null : active + 1, () => setActive(null), true);
   const next = (i: number) => (i + menus.length) % menus.length;
-  return <div className="document-menubar" role="menubar" aria-label="Document menus" ref={root} onKeyDown={(e) => {
+  return <div className={'document-menubar'+(hidden&&active===null?' is-hidden':'')} style={{top:headerHeight}} role="menubar" aria-label="Document menus" ref={root} onKeyDown={(e) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
       e.preventDefault();
       const buttons = [...root.current!.querySelectorAll<HTMLButtonElement>('.document-menu-trigger')];

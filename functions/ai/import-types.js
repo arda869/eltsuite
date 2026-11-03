@@ -36,7 +36,7 @@ const entries=[
  ['pq-fix','Find and fix the mistake','Select the wrong word(s), then supply a correction.',{sentence:required,wrong:word,fixes:answers}],
  ['pq-categorise','Categorise','Sort items into named categories.',{cats:list(obj({name:word,items:list(word,1,30)}),2,10)}],
  ['pq-transform','Key word transformation','Rewrite using a keyword, with before/after text and accepted gap answers.',{first:required,keyWord:word,before:short,after:short,answers,min:integer(0,50),max:integer(0,50)}],
- ['pq-highlight','Highlight in text','Mark target words with {{double braces}}; learners select words, not type an essay.',{instruction:required,text:required,penalty:bool}],
+ ['pq-highlight','Highlight','Highlight words or phrases in text or a dialogue. Keep dialogue turns on separate lines as Name: speech. Mark target words with {{double braces}}; learners select words, not type an essay.',{instruction:required,text:required,penalty:bool}],
  ['pq-sentences','Order sentences','Sentences/paragraphs supplied in the correct order, then shuffled for learners.',{items:list(required,2,20)}],
  ['pq-label','Label the image','Labels and percentage coordinates. Leave image empty and flag attachment if the source picture is unavailable.',{image:short,points:list(obj({x:number(),y:number(),label:word}),1,20),extras}],
  ['pq-odd','Odd one out','Choose the item that does not belong.',{words:options,odd:integer(0,11),reason:bool}],

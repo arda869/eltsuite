@@ -46,3 +46,5 @@ test('journal drafts are structured, bounded and absent during ordinary chat',as
  assert.throws(()=>validate(coachReplySchema,{reply:'Saved.',journalDraft:null}));
  assert.throws(()=>validate(coachReplySchema,{reply:'Review.',journalDraft:'x'.repeat(12001)}));
 });
+
+test('form references accept only ids and strip browser-supplied form contents',()=>{assert.deepEqual(coachRequest({...base(),formContext:{docId:'doc1',formId:'form-1',fields:{text:'forged'}}}).formContext,{docId:'doc1',formId:'form-1'});for(const v of [{docId:'../secret',formId:'x'},{docId:'doc',formId:''},{docId:42,formId:'x'}])assert.throws(()=>coachRequest({...base(),formContext:v}));});

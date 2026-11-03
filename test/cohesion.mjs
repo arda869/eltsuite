@@ -46,7 +46,7 @@ export async function suiteCohesionAudit(s,base,out,axe) {
   const p=s.p, demo=s.demo;await mkdir('outputs/cohesion',{recursive:true});const result=[];
   const routes=['/','/classes','/timetable','/rooms','/archive','/collab','/pdf','/design','/recordings','/development','/development?section=reflections','/development?section=reading','/development?section=research','/development?section=coach','/observations','/linguistics','/messages','/colleagues','/settings','/guide',`/class/${demo.classId}`,`/class/${demo.classId}/lesson/${demo.itemId}`,`/class/${demo.classId}/assistant`];
   for(const width of [1440,390])for(const theme of ['light','dark'])for(const route of routes) {
-    await p.setViewportSize({width,height:1000});await p.goto(base+route);await p.locator('.suite-topbar').waitFor();await p.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
+    await p.setViewportSize({width,height:1000});await p.goto(base+route);await p.locator('.suite-topbar').waitFor().catch(async()=>{throw Error('Missing header on '+route+' '+width+' '+theme+': '+(await p.locator('body').innerText()).slice(0,1800));});await p.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
     const measurement=await p.locator('.suite-topbar').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,overflow:document.documentElement.scrollWidth-innerWidth};});
     assert.equal(measurement.height,width<700?60:64,'Shared header on '+route);assert.ok(measurement.overflow<=2,'Horizontal overflow on '+route+' '+width+' '+theme+': '+measurement.overflow);
     const menus=[];const controls=p.locator('.suite-topbar button[aria-expanded],.suite-topbar button[aria-haspopup]');
