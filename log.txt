@@ -1,0 +1,46 @@
+LOGO public-home 800 22px / 22px Karla, "Segoe UI", system-ui, sans-serif
+shot preview-out/01-public-home.png
+LOGO public-explore 800 22px / 22px Karla, "Segoe UI", system-ui, sans-serif
+shot preview-out/02-public-explore.png
+LOGO public-pricing 800 22px / 22px Karla, "Segoe UI", system-ui, sans-serif
+shot preview-out/03-public-pricing.png
+LOGO public-signin 800 22px / 22px Karla, "Segoe UI", system-ui, sans-serif
+shot preview-out/04-public-signin.png
+LOGO public-home-phone 800 22px / 22px Karla, "Segoe UI", system-ui, sans-serif
+shot preview-out/05-public-home-phone.png
+TOPBAR settings ELT Suite
+Settings
+shot preview-out/06-settings.png
+TOPBAR games ELT Suite
+Games
+shot preview-out/07-games.png
+TOPBAR home ELT Suite
+Home
+shot preview-out/08-home.png
+TEXTAREAS ["1r 51px","1r 51px","1r 51px","1r 51px"]
+shot preview-out/09-collab-top.png
+shot preview-out/10-collab-forms.png
+shot preview-out/11-collab-forms-2.png
+FAILED young page.evaluate: Error: No document to update: classes/89j72elmz39plco37n
+shot preview-out/12-game-shark.png
+shot preview-out/13-game-taxi.png
+shot preview-out/14-game-drive.png
+shot preview-out/15-game-blocks.png
+shot preview-out/16-game-show.png
+shot preview-out/17-game-targets.png
+shot preview-out/18-game-pinball.png
+shot preview-out/19-game-maze.png
+shot preview-out/20-game-hangman.png
+shot preview-out/21-game-search.png
+shot preview-out/22-game-slice.png
+shot preview-out/23-game-moles.png
+shot preview-out/24-game-wager.png
+shot preview-out/25-game-auction.png
+shot preview-out/26-game-pairs.png
+shot preview-out/27-game-cloud.png
+shot preview-out/28-theme-arcade.png
+shot preview-out/29-theme-garden.png
+shot preview-out/30-theme-space.png
+shot preview-out/31-theme-paper.png
+shot preview-out/32-answer-right.png
+FAILED answer locator.click: Timeout 30000ms exceeded.
