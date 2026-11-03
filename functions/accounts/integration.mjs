@@ -40,6 +40,15 @@ assert.equal((await db.doc('accounts/teacher').get()).get('suspended'),true);
 // Inject an interruption; a new attempt must resume rather than report success.
 await assert.rejects(processDeletion(db,{...identities,updateUser:async()=>{throw Error('transient');}},realtime,'teacher'));
 assert.equal((await db.doc('accountDeletions/teacher').get()).get('status'),'pending');
+const originalDelete = db.recursiveDelete.bind(db);
+let interrupted = false;
+db.recursiveDelete = async ref => {
+ if(ref.path === 'classes/owned' && !interrupted){ interrupted=true; await ref.delete(); throw Error('interrupted after parent removal'); }
+ return originalDelete(ref);
+};
+await assert.rejects(processDeletion(db,identities,realtime,'teacher'));
+assert.equal((await db.doc('classes/owned').get()).exists,false);
+assert.equal((await db.doc('classes/owned/items/i/tasks/t/versions/v').get()).exists,true);
 await processDeletion(db,identities,realtime,'teacher');
 assert.equal((await db.doc('accountDeletions/teacher').get()).get('status'),'complete');
 assert.deepEqual(deleted.sort(),['learner','teacher']);

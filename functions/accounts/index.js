@@ -10,5 +10,8 @@ export const finishAccountDeletion = onDocumentCreated({ document: 'accountDelet
 export const retryAccountDeletions = onSchedule({ schedule: 'every 15 minutes', region: 'us-central1', timeoutSeconds: 540, maxInstances: 1 }, async () => {
   const db = getFirestore();
   const jobs = await db.collection('accountDeletions').where('status', '==', 'pending').limit(10).get();
-  for (const job of jobs.docs) await processDeletion(db, getAuth(), getDatabase(undefined, 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app'), job.id);
+  for (const job of jobs.docs) {
+    try { await processDeletion(db, getAuth(), getDatabase(undefined, 'https://lesson-lit-default-rtdb.asia-southeast1.firebasedatabase.app'), job.id); }
+    catch { console.error('Account cleanup remains pending', job.id); }
+  }
 });

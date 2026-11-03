@@ -29,6 +29,9 @@ export async function requestDeletion(db, identities, auth, data) {
   await db.runTransaction(async tx => {
     const current = await tx.get(job);
     if (current.exists && current.get('status') !== 'complete') return;
+    const organisations = orgs.empty ? [] : await tx.getAll(...orgs.docs.map(o => o.ref));
+    if (organisations.some(o => o.exists && (o.get('adminEmails') || []).filter(e => e !== lower(target.email)).length === 0)) throw new HttpsError('failed-precondition', 'Assign another organisation admin first. Nothing has been deleted.');
+    for (const org of organisations) if (org.exists) tx.update(org.ref, { adminEmails: FieldValue.arrayRemove(lower(target.email)) });
     tx.set(job, { uid, email: target.email || '', requestedBy: auth.uid, requestedAt: FieldValue.serverTimestamp(), status: 'pending' });
     tx.set(db.doc(`accounts/${uid}`), { suspended: true, deletionRequested: true }, { merge: true });
   });
@@ -44,9 +47,18 @@ export async function processDeletion(db, identities, realtime, uid) {
     tx.update(job, { leaseUntil: Date.now() + 600000, status: 'pending' }); return true;
   });
   if (!claimed) return;
+  // recursiveDelete may remove the parent before a child batch fails. Keep each
+  // path durably until success, so an orphaned subtree is still discoverable.
+  const purge = async ref => {
+    const marker = job.collection('cleanupPaths').doc(Buffer.from(ref.path).toString('base64url'));
+    await marker.set({ path: ref.path });
+    await db.recursiveDelete(ref);
+    await marker.delete();
+  };
   try {
     await ignoreMissing(() => identities.updateUser(uid, { disabled: true }));
     await ignoreMissing(() => identities.revokeRefreshTokens(uid));
+    for (const pending of (await job.collection('cleanupPaths').get()).docs) await purge(db.doc(pending.get('path')));
     const classes = await db.collection('classes').where('teacherId', '==', uid).get();
     for (const c of classes.docs) {
       for (const learner of (await c.ref.collection('learners').get()).docs) {
@@ -56,20 +68,21 @@ export async function processDeletion(db, identities, realtime, uid) {
           // Never delete a teacher attending a training course, or an unrelated identity.
           if (p.get('role') === 'learner' && p.get('classId') === c.id) {
             await ignoreMissing(() => identities.deleteUser(learnerUid));
-            await db.recursiveDelete(p.ref);
+            await purge(p.ref);
           }
         }
       }
       for (const root of ['sessions', 'classOwners', 'classTeachers']) await realtime.ref(`${root}/${c.id}`).remove();
       if (c.get('classCode')) await db.doc(`classCodes/${c.get('classCode')}`).delete();
-      await db.recursiveDelete(c.ref);
+      await purge(c.ref);
     }
-    for (const collection of ['sharedDocs', 'sharedFolders', 'videoAssets', 'classroomObservations', 'observationCoachPackets', 'linguisticsInvestigations', 'linguisticsCoachPackets', 'linguisticsEmbeds']) {
+    for (const collection of ['sharedDocs', 'sharedFolders', 'videoAssets', 'classroomObservations', 'observationCoachPackets', 'linguisticsInvestigations', 'linguisticsCoachPackets', 'linguisticsEmbeds', 'shares', 'sessions']) {
       for (const item of (await db.collection(collection).where('owner', '==', uid).get()).docs) {
         if (item.get('docKey')) await realtime.ref('collab/' + item.get('docKey').replace(/[.#$[\]]/g, '_')).remove();
-        await db.recursiveDelete(item.ref);
+        await purge(item.ref);
       }
     }
+    for (const collection of ['teacherSfx', 'teacherSounds', 'faces']) for (const row of (await db.collection(collection).where('by', '==', uid).get()).docs) await purge(row.ref);
     const email = lower((await job.get()).get('email'));
     for (const org of (await db.collection('orgs').get()).docs) {
       if (org.get('teachers')?.[uid] || org.get('adminEmails')?.includes(email)) {
@@ -80,7 +93,7 @@ export async function processDeletion(db, identities, realtime, uid) {
       await c.ref.update(new FieldPath('coTeachers', uid), FieldValue.delete(), 'teacherIds', FieldValue.arrayRemove(uid));
       await realtime.ref(`classTeachers/${c.id}/${uid}`).remove();
     }
-    for (const root of ['users', 'teachingCoach', 'featureDiscovery', 'teacherProfiles', 'usage', 'aiAllowances', 'aiFeatureUsage', 'aiPilot', 'photos', 'zones']) await db.recursiveDelete(db.doc(`${root}/${uid}`));
+    for (const root of ['users', 'teachingCoach', 'featureDiscovery', 'teacherProfiles', 'usage', 'aiAllowances', 'aiFeatureUsage', 'aiPilot', 'photos', 'zones']) await purge(db.doc(`${root}/${uid}`));
     for (const token of (await db.collection('pushTokens').where('key', '==', uid).get()).docs) await token.ref.delete();
     await realtime.ref(`presence/${uid}`).remove();
     await ignoreMissing(() => identities.deleteUser(uid));
