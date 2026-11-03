@@ -1,7 +1,8 @@
 /* Shared suite geometry and AI identity. Feature content retains its own purpose. */
 :root { --suite-width:100%; --suite-gutter:16px; --suite-header-height:64px; --suite-space:28px; --suite-radius:14px; scrollbar-gutter:stable; }
-/* Shared pages keep the same viewport width with classic window scrollbars. */
-:root:has(.suite-topbar) { overflow-y:scroll; }
+/* Shared pages keep the same width whether or not they scroll (scrollbar-gutter above), without
+   showing an empty scroll bar on pages that fit the screen. */
+:root:has(.suite-topbar) { overflow-y:auto; }
 .sr-only { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip-path:inset(50%)!important; white-space:nowrap!important; border:0!important; }
 .dz-drawer[hidden] { display:none!important; }
 .vx [hidden] { display:none!important; }
@@ -100,3 +101,9 @@ html { touch-action:pan-x pan-y; }
 :root .set-card > :not(.set-row):not(button):not(.btn) + :not(.set-row):not(button):not(.btn) { padding-top: 0; }
 :root .set-card > button:not(.set-row), :root .set-card > .btn { margin: 0 18px 16px; }
 :root .set-card > :not(.set-row) h2, :root .set-card > :not(.set-row) h3 { margin-top: 0; }
+/* "Add lesson, homework, exam or practice" and "New topic" are the main ways to build a class, so
+   they look like buttons you can press, not small underlined links. */
+:root .btn.link.add-link { display:inline-flex; align-items:center; gap:6px; height:34px; margin:6px 0 2px; padding:0 14px; border:1.5px dashed var(--hair-strong); border-radius:10px; background:transparent; color:var(--accent-text); font-weight:600; font-size:13px; text-decoration:none; }
+:root .btn.link.add-link:hover { border-style:solid; border-color:var(--accent); background:color-mix(in srgb, var(--accent) 7%, transparent); }
+/* Room at the bottom of every page for the Messages bar, so it never covers the last card. */
+:root:has(.dock-bar) .shell { padding-bottom:72px; }
