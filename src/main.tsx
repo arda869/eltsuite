@@ -7,6 +7,7 @@ import { startTilt } from './lib/tilt';
 import { startTheme } from './lib/theme';
 import { startViewport, stopPinchZoom } from './lib/viewport';
 import { startAutogrow } from './lib/autogrow';
+import { startOutsideClose } from './lib/outsideClose';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
 import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -188,6 +189,7 @@ startTheme();
 startViewport();
 stopPinchZoom();
 startAutogrow();
+startOutsideClose();
 startTilt();
 watchChunkErrors();
 

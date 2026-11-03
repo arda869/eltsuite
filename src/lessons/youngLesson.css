@@ -74,3 +74,80 @@
 [data-lesson-style='young'] :is(.pk, .pq-crossword, .pq-wordsearch) { --serif: Fraunces, Georgia, serif; --sans: Karla, sans-serif; font-family: var(--sans); }
 
 .rd-clear .task-frame[data-lesson-style='young'] :is(.task-body, .ProseMirror) :is(.ipa, .ipa-play, .dc-ipa) { font-family: var(--ipa-font) !important; }
+
+/* ---------------------------------------------------------------------------------------------
+   Young learners, inside the task only. Classes set to the young learners' style get a task that
+   feels like a children's tablet app: big, chunky, colourful things to tap, a little bounce when
+   you press, a cheer when you're right and a gentle wobble when you're not. Nothing outside the
+   task changes, and other classes are untouched. */
+[data-lesson-style='young'] {
+  --yl-pink: #ef7c8e; --yl-sun: #f6b941; --yl-sky: #4fa6dd; --yl-leaf: #5cb874; --yl-plum: #9b7be0;
+  --yl-ink: #2f2a4a;
+}
+[data-lesson-style='young'] .task-body {
+  font-size: 19px; color: var(--yl-ink);
+  padding: 22px clamp(16px, 3vw, 34px) 28px; border-radius: 28px;
+  background:
+    radial-gradient(circle at 12px 12px, color-mix(in srgb, var(--accent) 14%, transparent) 2.2px, transparent 2.6px) 0 0 / 26px 26px,
+    color-mix(in srgb, var(--accent) 5%, var(--paper));
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+[data-lesson-style='young'] .task-title { font-size: clamp(24px, 3vw, 32px); letter-spacing: -.01em; }
+[data-lesson-style='young'] .yl-activity-number {
+  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; margin-right: .45em; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: .85em; vertical-align: .08em;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 65%, #000);
+}
+[data-lesson-style='young'] .task-instr { font-size: 20px; }
+/* Choices: big coloured tiles, each a different colour, with a chunky shadow to press down. */
+[data-lesson-style='young'] .task-body .opts { flex-direction: row; flex-wrap: wrap; gap: 14px; padding-left: 0; margin: 14px 0; }
+[data-lesson-style='young'] .task-body .opt {
+  --c: var(--yl-sky);
+  flex: 1 1 200px; min-height: 64px; padding: 12px 18px; gap: 14px; border-radius: 20px;
+  background: #fff; border: 3px solid var(--c); box-shadow: 0 6px 0 var(--c);
+  font-family: Karla, sans-serif; font-weight: 700; font-size: 20px;
+  transition: transform .12s ease, box-shadow .12s ease, background .15s;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+[data-lesson-style='young'] .task-body .opt:nth-child(5n+2) { --c: var(--yl-pink); }
+[data-lesson-style='young'] .task-body .opt:nth-child(5n+3) { --c: var(--yl-leaf); }
+[data-lesson-style='young'] .task-body .opt:nth-child(5n+4) { --c: var(--yl-sun); }
+[data-lesson-style='young'] .task-body .opt:nth-child(5n+5) { --c: var(--yl-plum); }
+[data-lesson-style='young'] .task-body .opt:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--c); }
+[data-lesson-style='young'] .task-body .opt:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--c); }
+[data-lesson-style='young'] .task-body .opt .letter, [data-lesson-style='young'] .task-body .opt .radio {
+  width: 36px; height: 36px; flex: none; border-radius: 50%; border: 3px solid var(--c); background: #fff; color: var(--c); font-size: 17px; display: grid; place-items: center;
+}
+[data-lesson-style='young'] .task-body .opt.on { background: color-mix(in srgb, var(--c) 16%, #fff); }
+[data-lesson-style='young'] .task-body .opt.on :is(.letter, .radio) { background: var(--c); color: #fff; border-color: var(--c); }
+[data-lesson-style='young'] .task-body .opt.right { --c: var(--yl-leaf); background: color-mix(in srgb, var(--yl-leaf) 18%, #fff); animation: yl-cheer .55s cubic-bezier(.2, 1.7, .4, 1); }
+[data-lesson-style='young'] .task-body .opt.right::after { content: '★'; margin-left: auto; font-size: 26px; color: var(--yl-sun); text-shadow: 0 2px 0 #c98a14; animation: yl-star .6s cubic-bezier(.2, 1.7, .4, 1) both; }
+[data-lesson-style='young'] .task-body .opt.wrong { --c: #d98a80; animation: yl-wobble .45s ease; }
+/* Gaps and answers: big rounded boxes to write in. */
+[data-lesson-style='young'] .task-body :is(.gap-input, input[type=text], textarea) {
+  min-height: 46px; padding: 6px 14px; border-radius: 14px; border: 3px dashed color-mix(in srgb, var(--accent) 55%, #fff); background: #fff;
+  font: 700 20px/1.4 Karla, sans-serif; color: var(--yl-ink);
+}
+[data-lesson-style='young'] .task-body :is(.gap-input, input[type=text], textarea):focus { outline: none; border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
+[data-lesson-style='young'] .task-body .ans.right { color: var(--yl-leaf); font-weight: 800; animation: yl-cheer .5s cubic-bezier(.2, 1.7, .4, 1); }
+[data-lesson-style='young'] .task-body .ans.wrong { animation: yl-wobble .45s ease; }
+/* Word banks, matching and drag-and-drop: tiles you want to pick up. */
+[data-lesson-style='young'] .task-body :is(.bank-word, .match-item) {
+  min-height: 48px; padding: 8px 16px; border-radius: 16px; border: 3px solid var(--yl-plum); background: #fff; box-shadow: 0 5px 0 var(--yl-plum);
+  font: 700 19px Karla, sans-serif; color: var(--yl-ink); cursor: grab; transition: transform .12s, box-shadow .12s;
+}
+[data-lesson-style='young'] .task-body .bank-word:nth-child(3n+2) { border-color: var(--yl-sky); box-shadow: 0 5px 0 var(--yl-sky); }
+[data-lesson-style='young'] .task-body .bank-word:nth-child(3n+3) { border-color: var(--yl-pink); box-shadow: 0 5px 0 var(--yl-pink); }
+[data-lesson-style='young'] .task-body :is(.bank-word, .match-item):active { transform: translateY(4px) scale(.98); box-shadow: 0 1px 0 var(--yl-plum); cursor: grabbing; }
+[data-lesson-style='young'] .task-body .bank-word.placed { opacity: .35; box-shadow: none; transform: scale(.94); }
+[data-lesson-style='young'] .task-body :is(.drop-slot, .match-slot) { min-height: 50px; border-radius: 16px; border: 3px dashed color-mix(in srgb, var(--yl-plum) 55%, #fff); background: color-mix(in srgb, var(--yl-plum) 6%, #fff); }
+/* Buttons in the task: big and round. */
+[data-lesson-style='young'] .task-body .btn, [data-lesson-style='young'] .task-body button.check {
+  min-height: 52px; padding: 0 26px; border-radius: 999px; font: 800 19px Karla, sans-serif; box-shadow: 0 5px 0 color-mix(in srgb, var(--accent) 60%, #000);
+}
+[data-lesson-style='young'] .task-body .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
+[data-lesson-style='young'] .task-body img, [data-lesson-style='young'] .task-body .task-img img { border-radius: 22px; box-shadow: 0 8px 0 color-mix(in srgb, var(--accent) 18%, transparent); }
+@keyframes yl-cheer { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: none; } }
+@keyframes yl-star { 0% { transform: scale(0) rotate(-90deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes yl-wobble { 0%, 100% { transform: none; } 25% { transform: rotate(-2deg) translateX(-4px); } 50% { transform: rotate(2deg) translateX(4px); } 75% { transform: rotate(-1deg); } }
+@media (prefers-reduced-motion: reduce) { [data-lesson-style='young'] .task-body * { animation: none !important; transition: none !important; } }

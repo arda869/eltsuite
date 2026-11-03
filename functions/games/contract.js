@@ -1,5 +1,5 @@
 export function validGame(g){
- if(!g||g.version!==1||!['shark','taxi','drive','blocks','show','targets','pinball','maze','hangman','search','slice','moles','wager','auction','pairs'].includes(g.type)||!['wood','paper','arcade','garden','space'].includes(g.theme))return false;
+ if(!g||g.version!==1||!['shark','taxi','drive','blocks','show','targets','pinball','maze','hangman','search','slice','moles','wager','auction','pairs','cloud'].includes(g.type)||!['wood','paper','arcade','garden','space'].includes(g.theme))return false;
  if(g.roundSeconds!==undefined&&![20,30,60,120].includes(g.roundSeconds))return false;
  if(!Array.isArray(g.rounds)||!g.rounds.length||g.rounds.length>60)return false;
  if(g.type==='search'&&g.rounds.length>16||g.type==='pairs'&&(g.rounds.length<2||g.rounds.length>12))return false;

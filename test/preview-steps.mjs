@@ -56,8 +56,10 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
   // Young learners: switch the demo class to the young learners' style and open a lesson.
   await safe('young', async () => {
     await p.evaluate(async (id) => {
-      const fs = await import('/test/mock/firestore.ts');
-      await fs.updateDoc(fs.doc({}, 'classes', id), { lessonStyle: 'young' });
+      const { getClass, updateClass } = await import('/src/lib/classes.ts');
+      const c = await getClass(id);
+      if (c) await updateClass(c, { lessonStyle: 'young' });
+      else { const fs = await import('/test/mock/firestore.ts'); await fs.setDoc(fs.doc({}, 'classes', id), { lessonStyle: 'young' }, { merge: true }); }
     }, cls);
     await p.goto(`${BASE}/class/${cls}/lesson/${item}`); await p.waitForTimeout(3000);
     await shot('young-editor');
@@ -88,8 +90,11 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
     await p.goto(`${BASE}/test/games-gallery.html?type=show&theme=garden`); await p.waitForTimeout(1500);
     await p.getByRole('button', { name: 'library', exact: false }).first().click();
     await p.waitForTimeout(250); await shot('answer-right');
-    await p.waitForTimeout(1600);
-    await p.getByRole('button', { name: 'museum', exact: false }).first().click().catch(() => p.locator('.game-options button').first().click());
-    await p.waitForTimeout(250); await shot('answer-wrong');
+    await p.waitForTimeout(1200); await shot('answer-right-settled');
+    await p.getByRole('button', { name: 'Next round' }).click(); await p.waitForTimeout(400);
+    await p.getByRole('button', { name: /museum/ }).first().click();
+    await p.waitForTimeout(200); await shot('answer-wrong');
+    await p.goto(`${BASE}/test/games-gallery.html?type=cloud&theme=space`); await p.waitForTimeout(1500); await shot('cloud-space');
+    await p.goto(`${BASE}/test/games-gallery.html?type=show&theme=arcade`); await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(1500); await shot('show-phone');
   });
 }

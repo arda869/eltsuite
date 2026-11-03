@@ -16,3 +16,71 @@
 .game-frame{min-width:0}.game-frame-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:8px 0}.game-expanded{position:fixed;inset:0;z-index:60;overflow:auto;overscroll-behavior:contain;background:var(--paper,#f7f5f0);color:var(--ink,#282725);padding:16px 24px 90px;box-sizing:border-box}.game-expanded .game-frame-content{max-width:1100px;margin:auto}.game-expanded .game-frame-bar{position:sticky;top:-16px;z-index:6;background:var(--paper,#f7f5f0);padding:12px 0;margin:0}.game-expanded .game-stage{margin-top:8px}.game-frame-anchor{min-width:0}@media(max-width:600px){.game-expanded{padding:8px 8px 80px}.game-expanded .game-frame-bar{top:-8px;gap:8px;font-size:.85rem}.game-expanded .game-frame-bar button{min-height:44px}}@media print{.game-frame-bar{display:none}.game-expanded{position:static;inset:auto;overflow:visible;padding:0;z-index:auto}}
 
 @media(max-width:600px){body.game-view-active .dock-bar{left:8px;right:8px;max-width:none;flex-direction:column;align-items:flex-end;gap:4px}body.game-view-active .dock-bar .dock-win{width:calc(100vw - 16px);max-width:calc(100vw - 16px);height:min(65dvh,520px);margin-bottom:4px}body.game-view-active .dock-max-scrim .dock-win{width:calc(100vw - 16px);height:calc(100dvh - 40px)}}
+
+/* Feedback you can see as well as hear. A right answer bursts into confetti in the look's colours;
+   a wrong one gives the stage a small shake; the score pops when it changes; the end of a game
+   gets a bigger burst. All of it stops for people who ask for reduced motion. */
+.game-burst{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+.game-burst i{position:absolute;left:50%;top:42%;width:10px;height:14px;border-radius:3px;background:var(--g-accent);opacity:0;transform:translate(-50%,-50%);animation:game-confetti 1.1s cubic-bezier(.2,.7,.3,1) forwards;animation-delay:calc(var(--i) * 12ms)}
+.game-burst i:nth-child(3n){background:#f2c14e;border-radius:50%;width:9px;height:9px}
+.game-burst i:nth-child(3n+1){background:#e8715a}
+.game-burst i:nth-child(4n){background:#5ab0a0;height:8px}
+@keyframes game-confetti{0%{opacity:1;transform:translate(-50%,-50%) rotate(0) scale(.6)}70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + cos(calc(var(--i) / var(--n) * 6.283rad)) * 46vmin),calc(-50% + sin(calc(var(--i) / var(--n) * 6.283rad)) * 32vmin + 18vmin)) rotate(calc(var(--i) * 97deg)) scale(1)}}
+.game-stage[data-result=right] .game-feedback{animation:game-pop .45s cubic-bezier(.2,1.6,.4,1) both}
+.game-stage[data-result=wrong]{animation:game-shake .42s ease both}
+.game-stage[data-result=wrong] .game-feedback{animation:game-pop .3s ease-out both}
+@keyframes game-shake{0%,100%{transform:none}20%{transform:translateX(-7px) rotate(-.4deg)}40%{transform:translateX(6px) rotate(.3deg)}60%{transform:translateX(-4px)}80%{transform:translateX(2px)}}
+@keyframes game-pop{0%{transform:scale(.85);opacity:0}100%{transform:none;opacity:1}}
+.game-score{display:inline-block;animation:game-score .5s cubic-bezier(.2,1.8,.4,1)}
+@keyframes game-score{0%{transform:scale(1.5)}100%{transform:none}}
+.game-options button,.game-cloud button,.game-pairs button,.game-keyboard button,.game-wordgrid button{transition:transform .12s ease,box-shadow .12s ease}
+.game-options button:not(:disabled):hover,.game-cloud button:not(:disabled):hover,.game-pairs button:not(:disabled):hover{transform:translateY(-3px) scale(1.03)}
+.game-options button:not(:disabled):active,.game-cloud button:not(:disabled):active,.game-pairs button:not(:disabled):active,.game-keyboard button:not(:disabled):active{transform:translateY(2px) scale(.97)}
+.game-pairs button{transition:transform .35s ease,background .2s}
+.game-pairs button.matched{animation:game-pop .4s cubic-bezier(.2,1.6,.4,1)}
+.game-finish>span{display:inline-block;animation:game-trophy 1s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes game-trophy{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:none;opacity:1}}
+
+/* Word cloud: words of different sizes drift gently; tap the one that answers the question. */
+.game-cloud{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px 22px;min-height:280px;padding:28px 18px;margin:16px 0;border-radius:50% 46% 48% 52%/60% 56% 44% 40%;background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--g-face) 92%,#fff),color-mix(in srgb,var(--g-face) 70%,transparent) 70%,transparent 72%)}
+.game-cloud button{font:700 calc(var(--s) * 18px)/1.1 var(--sans,Karla,system-ui,sans-serif);color:var(--g-ink);background:transparent;border:0;padding:6px 10px;border-radius:14px;cursor:pointer;transform:rotate(var(--r));animation:game-drift 5.5s ease-in-out infinite alternate;animation-delay:calc(var(--d) * -1)}
+.game-cloud button:nth-child(odd){color:var(--g-accent)}
+.game-cloud button:not(:disabled):hover{background:color-mix(in srgb,var(--g-accent) 14%,transparent);animation-play-state:paused}
+.game-cloud button:focus-visible{outline:3px solid var(--g-accent);outline-offset:2px}
+@keyframes game-drift{0%{translate:0 0}50%{translate:6px -8px}100%{translate:-5px 5px}}
+@media (prefers-reduced-motion:reduce){.game-burst,.game-cloud button,.game-stage[data-result],.game-score,.game-finish>span{animation:none!important}}
+
+/* The board, made more of a game. The question sits on a card, answers are big coloured tiles with
+   a letter badge (four colours that suit each look), and each look has its own surface: wood grain,
+   a garden lawn, a starfield, an arcade screen, lined paper. Shapes for particular games (round
+   targets, moles, pinball bumpers) keep their own rules above. */
+.game-stage{--t1:#e0644f;--t2:#3f86c6;--t3:#e2a930;--t4:#4f9e62}
+.game-theme-arcade{--t1:#ff4f8b;--t2:#38c6ff;--t3:#ffd23f;--t4:#4fe08a}
+.game-theme-garden{--t1:#e97b5c;--t2:#5aa3c8;--t3:#e9b949;--t4:#6aa84f}
+.game-theme-space{--t1:#ff7a9c;--t2:#6fb8ff;--t3:#ffc857;--t4:#62d6a8}
+.game-theme-paper{--t1:#d4574a;--t2:#3570b8;--t3:#c58d16;--t4:#3c8c55}
+.game-theme-wood:not(.game-adventure),.game-stage:not([class*=game-theme-]){background:repeating-linear-gradient(92deg,#0000 0 22px,#00000008 22px 24px,#0000 24px 61px,#ffffff10 61px 63px),repeating-linear-gradient(90deg,#c9a77a,#d8b88a 140px,#c39e6e 260px,#d6b284 380px)}
+.game-theme-garden{background:radial-gradient(ellipse 60% 40% at 15% 110%,#7fa552 0 60%,#0000 61%),radial-gradient(ellipse 50% 35% at 85% 110%,#6e9a47 0 60%,#0000 61%),radial-gradient(circle at 85% 12%,#fff6c4 0 36px,#0000 38px),linear-gradient(#cfe7f2,#e6f0c8 70%)}
+.game-theme-space{background:radial-gradient(circle at 12% 18%,#fff 0 1.2px,#0000 1.6px) 0 0/90px 70px,radial-gradient(circle at 60% 70%,#ffffffb0 0 1px,#0000 1.4px) 0 0/53px 61px,radial-gradient(ellipse at 80% 0%,#3b2f75,#0000 60%),#0e1630}
+.game-toolbar{align-items:center;gap:12px}
+.game-toolbar strong{font:800 15px/1.2 var(--sans,Karla,sans-serif);letter-spacing:.04em;text-transform:uppercase}
+.game-toolbar .game-score{padding:6px 14px;border-radius:999px;background:var(--g-face);color:var(--g-ink);box-shadow:0 3px 0 var(--g-accent);font:800 16px var(--sans,Karla,sans-serif)}
+.game-toolbar .game-score::before{content:'★ ';color:var(--t3)}
+.game-stage .game-round{display:inline-block;margin:14px 0 6px;padding:3px 12px;border-radius:999px;background:color-mix(in srgb,var(--g-face) 75%,transparent);font:700 12px var(--sans,Karla,sans-serif);letter-spacing:.08em;text-transform:uppercase}
+.game-stage>.game-controls>h2,.game-stage .game-controls>h2{margin:6px 0 4px;padding:18px 22px;border-radius:18px;background:var(--g-face);color:var(--g-ink);box-shadow:0 6px 0 color-mix(in srgb,var(--g-accent) 70%,#000),inset 0 1px 0 #fff8;font:600 clamp(22px,3vw,32px)/1.25 var(--serif,Fraunces,Georgia,serif);letter-spacing:-.01em}
+.game-stage:not(.game-pinboard):not(.game-adventure):not(.game-targets):not(.game-moles):not(.game-pinball) .game-options button{display:flex;align-items:center;gap:16px;min-height:92px;padding:14px 20px;text-align:left;font:800 clamp(18px,2.2vw,26px)/1.2 var(--sans,Karla,sans-serif);color:var(--g-ink);background:var(--g-face);border:4px solid var(--c,var(--t1));border-radius:20px;box-shadow:0 7px 0 color-mix(in srgb,var(--c,var(--t1)) 75%,#000);cursor:pointer}
+.game-stage .game-options button:nth-child(4n+1){--c:var(--t1)}
+.game-stage .game-options button:nth-child(4n+2){--c:var(--t2)}
+.game-stage .game-options button:nth-child(4n+3){--c:var(--t3)}
+.game-stage .game-options button:nth-child(4n+4){--c:var(--t4)}
+.game-stage:not(.game-pinboard):not(.game-adventure):not(.game-targets):not(.game-moles):not(.game-pinball) .game-options .game-object{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:var(--c);color:#fff;font:800 24px var(--sans,Karla,sans-serif);box-shadow:inset 0 -4px 0 #0002}
+.game-stage:not(.game-pinboard):not(.game-adventure):not(.game-targets):not(.game-moles):not(.game-pinball) .game-options button:disabled{opacity:.6}
+.game-stage .game-feedback{margin-top:18px;padding:16px 20px;border-radius:18px;background:var(--g-face);color:var(--g-ink);display:flex;align-items:center;justify-content:space-between;gap:16px;font:800 20px var(--sans,Karla,sans-serif)}
+.game-stage[data-result=right] .game-feedback{box-shadow:0 0 0 4px var(--t4),0 7px 0 var(--t4)}
+.game-stage[data-result=wrong] .game-feedback{box-shadow:0 0 0 4px var(--t1),0 7px 0 var(--t1)}
+.game-stage[data-result=right] .game-feedback p::before{content:'✓  ';color:var(--t4)}
+.game-stage .game-feedback button{min-height:48px;padding:0 22px;border-radius:999px;border:0;background:var(--g-accent);color:#fff;font:800 17px var(--sans,Karla,sans-serif);box-shadow:0 5px 0 color-mix(in srgb,var(--g-accent) 60%,#000);cursor:pointer}
+.game-stage .game-feedback button:active{transform:translateY(4px);box-shadow:0 1px 0 color-mix(in srgb,var(--g-accent) 60%,#000)}
+.game-stage .game-finish h2{font:600 clamp(30px,4vw,44px)/1.1 var(--serif,Fraunces,Georgia,serif)}
+.game-stage .game-finish>span{font-size:72px}
+@media (max-width:620px){.game-stage:not(.game-pinboard):not(.game-adventure):not(.game-targets):not(.game-moles):not(.game-pinball) .game-options{grid-template-columns:1fr}.game-stage:not(.game-pinboard):not(.game-adventure):not(.game-targets):not(.game-moles):not(.game-pinball) .game-options button{min-height:68px}}

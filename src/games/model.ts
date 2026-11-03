@@ -15,6 +15,7 @@ export const GAME_TYPES = [
     { id: 'wager', name: 'Win or lose', about: 'Choose a stake before answering.' },
     { id: 'auction', name: 'Sentence auction', about: 'Bid on sentences you believe are correct.' },
     { id: 'pairs', name: 'Pelmanism', about: 'Turn cards over and find matching pairs.' },
+    { id: 'cloud', name: 'Word cloud', about: 'Find the answer in a cloud of drifting words.' },
 ] as const;
 export type GameType = typeof GAME_TYPES[number]['id'];
 export const THEMES = [
@@ -38,7 +39,7 @@ export type GameConfig = {
     sourceId?: string;
     roundSeconds?: number;
 };
-export const blankGame = (): GameConfig => ({ version: 1, type: 'show', theme: 'wood', rounds: [], sound: false });
+export const blankGame = (): GameConfig => ({ version: 1, type: 'show', theme: 'wood', rounds: [], sound: true });
 export const norm = (s: string) => s.normalize('NFKC').trim().toLocaleLowerCase();
 export function gameProblems(game: GameConfig): string[] {
     const errors: string[] = [];
