@@ -1,3 +1,4 @@
+import {InternalLinks} from './InternalLinks';
 import { Mark, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -32,7 +33,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const [q, setQ] = useState('');
-  const [tab, setTab] = useState<'task' | 'web' | 'notebook'>('task');
+  const [tab, setTab] = useState<'task' | 'web' | 'notebook' | 'suite'>('task');
   const { classId } = useEditorClass();
   const pages = useBankPages(classId, open);
   const [url, setUrl] = useState('');
@@ -44,7 +45,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
     const web = editor.getAttributes('link').href as string | undefined;
     if (open && web) editor.chain().extendMarkRange('link').run();
     setUrl(web ?? '');
-    setTab(web ? 'web' : editor.getAttributes('lessonLink').kind === 'notebook' ? 'notebook' : 'task');
+    setTab(web ? 'web' : editor.getAttributes('lessonLink').kind === 'notebook' ? 'notebook' : places.length ? 'task' : 'suite');
     setQ('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -58,7 +59,7 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
 
   useEffect(() => {
     if (!open) return;
-    const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && onClose();
+    const down = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && !(e.target as Element).closest?.('.sel-list') && onClose();
     // Escape closes this panel only, and the cursor goes back to the text.
     const key = (e: KeyboardEvent) => e.key === 'Escape' && (e.preventDefault(), e.stopPropagation(), onClose(), editor.commands.focus());
     document.addEventListener('mousedown', down);
@@ -89,7 +90,9 @@ export function LinkPop({ editor, open, onClose, places }: { editor: Editor; ope
         <button type="button" role="tab" aria-selected={tab === 'notebook'} className={tab === 'notebook' ? 'on' : ''} onClick={() => setTab('notebook')}>
           Notebook
         </button>
+        <button type="button" role="tab" aria-selected={tab==='suite'} onClick={()=>setTab('suite')}>ELT Suite</button>
       </div>
+      {tab==='suite'&&<InternalLinks onPick={(url,title)=>{const chain=editor.chain().focus().unsetMark('lessonLink').setLink({href:url});if(editor.state.selection.empty)chain.insertContent(title);chain.run();onClose();}}/>}
       {tab === 'web' && (
         <form
           className="link-web"

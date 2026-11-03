@@ -224,11 +224,13 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
     },
     [session],
   );
+  const formAnchor=useRef('');
+  useEffect(()=>{if(!editor||!synced)return;let frame=0;const go=()=>{const hash=location.hash;if(!/^#studio-form-[\w-]+$/.test(hash)||formAnchor.current===hash)return;cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>{const target=document.getElementById(hash.slice(1));if(target){target.scrollIntoView({block:'start'});formAnchor.current=hash;}});};const changed=()=>{formAnchor.current='';go();};editor.on('update',go);window.addEventListener('hashchange',changed);go();return()=>{cancelAnimationFrame(frame);editor.off('update',go);window.removeEventListener('hashchange',changed);};},[editor,synced,docKey]);
   const edRef = useRef(editor);
   edRef.current = editor;
   useEffect(() => editor?.setEditable(eff !== 'view'), [editor, eff]);
   // The "/" menu: the lesson editor's elements, without learner tasks.
-  const docCmds = useMemo(() => docCommands().filter((c) => (profileTeacher || !c.key.startsWith('tt-')) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
+  const docCmds = useMemo(() => docCommands().filter((c) => (profileTeacher || (!c.key.startsWith('tt-')&&!c.key.startsWith('studio-'))) && (gate('pron') !== 'hide' || !PRON_KEYS.includes(c.key)) && (profileTeacher || c.key !== 'cite')), [profileTeacher, gate]);
   const slash = useSlash(editor, docCmds, false, true, () => true);
   // ⌘K: a link on the selected words; Alt+↑/↓ moves a paragraph, as in lessons.
   useEditorKeys(editor, () => {
@@ -380,7 +382,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
         {B(<SV d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />, false, () => editor.chain().focus().undo().run(), `Undo (${keyLabel('Mod+Z')})`, !editor.can().undo())}
         {B(<SV d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />, false, () => editor.chain().focus().redo().run(), `Redo (${keyLabel('Mod+Shift+Z')})`, !editor.can().redo())}
       </span>
-      {layout.paged && (
+      {(
         <span className="pb-g">
           <PageTools editor={editor} layout={layout} setLayout={setLayout} part="fonts" />
         </span>
@@ -726,7 +728,7 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
                 {hostEl}
               </>;
               return (
-                <Paper layout={layout} appearance={paperAppearance} paged={paged}>
+                <Paper editor={editor} layout={layout} appearance={paperAppearance} paged={paged}>
                   {heading}
                   {contents}
                 </Paper>

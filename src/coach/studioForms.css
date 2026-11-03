@@ -1,0 +1,14 @@
+.studio-form { border:1px solid var(--hair); border-radius:14px; padding:clamp(16px,3vw,28px); margin:20px 0; background:var(--surface); color:var(--ink); font:400 15px/1.5 var(--sans); break-inside:avoid; scroll-margin-top:180px; }
+.studio-form header { display:flex; justify-content:space-between; align-items:start; gap:16px; margin-bottom:12px; }
+.studio-form header>div { flex:1; min-width:0; }
+.studio-form label { display:grid; gap:6px; margin:16px 0; font:600 14px/1.4 var(--sans); }
+.studio-form input,.studio-form textarea { box-sizing:border-box; width:100%; max-width:100%; font:400 16px/1.55 var(--serif); color:var(--ink); background:var(--bg); border:1px solid var(--hair); border-radius:9px; padding:12px; }
+.studio-form textarea { resize:vertical; min-height:82px; }
+.studio-form-answer { white-space:pre-wrap; font-weight:400; }
+.studio-forms-list { display:grid; gap:16px; }
+.studio-forms-list article { padding:20px; border:1px solid var(--hair); border-radius:14px; background:var(--surface); }
+.studio-forms-list h3 { margin:8px 0; }
+.studio-forms-list .coach-actions { flex-wrap:wrap; }
+.studio-form .ling-panel { padding:12px 0; border:0; }
+
+.pg-paper .studio-form {background:transparent;border-color:transparent;}

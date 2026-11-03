@@ -150,8 +150,8 @@ export const setShared = (key: string, v: boolean) => set(collabRef(key, 'flags/
 export const setLock = (classId: string, key: string, v: boolean) => set(lockRef(classId, key), v || null);
 
 // Everything written in a document so far, as one update (for starting another from it).
-export async function readState(key: string): Promise<Uint8Array | null> {
-  const [snap, list] = await Promise.all([get(collabRef(key, 'snap')).catch(() => null), get(collabRef(key, 'u')).catch(() => null)]);
+export async function readState(key: string, strict=false): Promise<Uint8Array | null> {
+  const [snap, list] = await Promise.all([get(collabRef(key, 'snap')).catch(e => {if(strict)throw e;return null;}), get(collabRef(key, 'u')).catch(e => {if(strict)throw e;return null;})]);
   const parts: Uint8Array[] = [];
   const s = snap?.val() as { s?: string } | null;
   if (s?.s) parts.push(unb64(s.s));

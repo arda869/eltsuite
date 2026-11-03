@@ -77,7 +77,7 @@
   --surface: #2b2926; --selected: #34322e; --track: #3a3834;
   --hair: rgba(236,231,223,.14); --hair-strong: rgba(236,231,223,.25);
   --on-ink: #191816;
-  background: #191816; color: var(--ink); color-scheme: dark;
+  background: transparent; color: var(--ink); color-scheme: dark;
 }
 @media print { .pg-paper { --ink: #23211d !important; --muted: #69645c !important; background: #fff !important; color: #23211d !important; } .document-menubar { display: none; } }
 .cd { position: relative; }
@@ -133,9 +133,9 @@
 .document-tool-notice > span { flex: 1; }
 @media print { .document-find, .document-tool-notice { display: none; } }
 @media (max-width: 600px) { .pg-zoom { right: 12px; gap: 8px; max-width: calc(100vw - 24px); box-sizing: border-box; } .pg-zoom input { width: 70px; } .pg-page-info { font-size: 11px; } }
-.pg-desk { justify-content: flex-start; padding: 24px 24px 112px; background: var(--surface); min-height: calc(100vh - 160px); box-sizing: border-box; }
+.pg-desk { justify-content: flex-start; padding: 24px 16px; background: var(--surface); min-height: 0; box-sizing: border-box; }
 .pg-paper { touch-action: pan-x pan-y; }
-.pg-paper { margin-inline: auto; outline: 1px solid var(--hair-strong); box-shadow: 0 2px 6px #0003, 0 16px 36px #0003; }
+.pg-paper { margin-inline: auto; outline: none; box-shadow: none; }
 @media print { .pg-zoom { display: none; } .pg-paper { zoom: 1 !important; outline: none; } .pg-desk { background: transparent; min-height: 0; padding: 0; } }
 
 .pg-pop { max-height: calc(100dvh - 170px); overflow-y: auto; }
@@ -202,3 +202,7 @@
 
 /* Timestamps remain readable on the soft message bubbles in either theme. */
 .chat .bub .bub-meta { color: color-mix(in srgb, var(--ink) 80%, var(--paper)); }
+
+.dp.k-doc .dp-main {padding-bottom:0;}
+.dp.k-doc .cd-page:not(.pg-on) {width:100%;max-width:none;padding-inline:var(--suite-gutter);}
+.dp.k-doc:has(.pg-on) {background:var(--surface);}

@@ -715,6 +715,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       ...(one && (one.t === 'text' || one.t === 'label' || (one.t === 'shape' && !isLine(one.shape))) ? [{ label: 'Type', icon: 'pen', hint: 'Enter', onClick: () => setEditing(one.id) } as MenuItem] : []),
       ...(one?.t === 'image' && one.img ? [{ label: 'Crop', icon: 'edit', onClick: () => setCropOf(one.id) } as MenuItem] : []),
       ...(one?.t === 'image' ? [{ label: one.img ? 'Change the picture…' : 'Add a picture…', icon: 'picture', onClick: () => ((frameFor.current = one.id), frameIn.current?.click()) } as MenuItem] : []),
+      { label: 'Cut', icon: 'cut', hint: 'Ctrl+X', disabled:!list.some(x=>!x.locked), onClick: () => {const movable=list.filter(x=>!x.locked);copy(movable);remove(movable.map(x=>x.id));} },
       { label: 'Copy', icon: 'copyall', hint: 'Ctrl+C', onClick: () => copy(list) },
       paste,
       { label: 'Duplicate', icon: 'copyall', hint: 'Ctrl+D', onClick: duplicate },

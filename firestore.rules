@@ -63,7 +63,7 @@ service cloud.firestore {
     match /teachingCoach/{uid}/{kind}/{id} {
       function ownCoach() { return isSelf(uid) && isTeacher() && request.auth.token.get('proxyBy', null) == null; }
       allow read, delete: if ownCoach() && kind in ['settings', 'reflections', 'inquiries'];
-      function validContext() { return kind != 'settings' || id != 'context' || (request.resource.data.keys().hasOnly(['profile','beliefs','reflections','inquiries','mode','version']) && request.resource.data.profile is bool && request.resource.data.beliefs is bool && request.resource.data.reflections is bool && request.resource.data.inquiries is bool && request.resource.data.get('mode','Reflect with me') in ['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode']); }
+      function validContext() { return kind != 'settings' || id != 'context' || (request.resource.data.keys().hasOnly(['profile','beliefs','reflections','inquiries','forms','mode','version']) && request.resource.data.profile is bool && request.resource.data.beliefs is bool && request.resource.data.reflections is bool && request.resource.data.inquiries is bool && request.resource.data.get('forms',true) is bool && request.resource.data.get('mode','Reflect with me') in ['Reflect with me','Challenge my thinking','Help me experiment','Teacher trainer mode']); }
       allow create: if ownCoach() && kind in ['settings', 'reflections', 'inquiries']
         && (kind != 'settings' || id in ['profile', 'context'])
         && validContext() && request.resource.data.size() < 30 && request.resource.data.version == 1;

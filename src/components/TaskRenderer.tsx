@@ -1,3 +1,5 @@
+import {Concordance,concordanceRows} from '../linguistics/Concordance';
+import {studioDefinition} from '../coach/studioForms';
 import {InlineInvestigation} from '../linguistics/InlineInvestigation';
 import { SpeakingActivity } from '../speaking/SpeakingActivity';
 import type { SpeakingConfig } from '../speaking/types';
@@ -1133,6 +1135,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           </section>
         );
       }
+      case 'studioForm': {const a=node.attrs||{},f=studioDefinition(a.kind);return <section key={key} className="studio-form" id={'studio-form-'+a.id}><span className="coach-kicker">{f?.name}</span><h3>{a.title||f?.name}</h3>{f?.fields.map(([k,l])=><section key={k}><h4>{l}</h4><p className="studio-form-answer">{a.fields?.[k]||'Not recorded'}</p></section>)}{a.kind==='corpus'&&<><Concordance rows={concordanceRows(a.examples||[],a.fields?.query||'')} caption={'Kept examples · '+(a.fields?.query||'search phrase')}/>{a.examples?.map((e:any)=><p key={e.id}>{e.text} — {e.source} · {e.licence}</p>)}</>}</section>;}
       case 'investigation':
         return node.attrs?.embedId ? <InlineInvestigation key={key} embedId={String(node.attrs.embedId)} compact={!classId||classId.startsWith('chat:')} readOnly={!!teacher}/> : <p key={key}>No investigation selected.</p>;
       case 'collab':

@@ -1,4 +1,4 @@
-export type ContextPermissions = { profile: boolean; beliefs: boolean; reflections: boolean; inquiries: boolean };
+export type ContextPermissions = { profile: boolean; beliefs: boolean; reflections: boolean; inquiries: boolean; forms: boolean };
 export const contextDefaults: ContextPermissions;
 export function contextPermissions(value?: Partial<ContextPermissions> | null): ContextPermissions;
 export function profileComplete(profile: unknown): boolean;

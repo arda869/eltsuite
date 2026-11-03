@@ -1,0 +1,17 @@
+import {NSelect} from '../components/Select';
+import {useEffect,useState} from 'react';
+import * as Y from 'yjs';
+import {yXmlFragmentToProsemirrorJSON} from 'y-prosemirror';
+import {readState} from '../collab/provider';
+import {Link} from 'react-router-dom';
+import {useMyDocs} from '../lib/sharedDocs';
+import {STUDIO_FORMS,studioDefinition,type StudioForm} from './studioForms';
+import './studioForms.css';
+export function StudioForms({uid}:{uid:string}){
+ const docs=useMyDocs(uid),[rows,setRows]=useState<(StudioForm&{docId:string;docTitle:string})[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[query,setQuery]=useState(''),[kind,setKind]=useState(''),[refresh,setRefresh]=useState(0);
+ const files=[...new Map([...(docs.mine||[]),...(docs.withMe||[])].filter(d=>d.kind==='doc'&&!d.deletedAt&&!d.purgingAt&&!d.purgeRequestedAt).map(d=>[d.id,d])).values()];
+ const key=files.map(d=>d.id+':'+d.title).sort().join('|');
+ useEffect(()=>{if(docs.mine===null||docs.withMe===null)return;let alive=true;setBusy(true);setError('');void Promise.all(files.map(async f=>{const state=await readState(f.docKey,true),d=new Y.Doc();try{if(state)Y.applyUpdate(d,state);const body=yXmlFragmentToProsemirrorJSON(d.getXmlFragment('default'));const rows:(StudioForm&{docId:string;docTitle:string})[]=[];const visit=(n:any)=>{if(n.type==='studioForm'&&studioDefinition(n.attrs?.kind))rows.push({...n.attrs,docId:f.id,docTitle:f.title});n.content?.forEach(visit);};visit(body);return rows;}finally{d.destroy();}})).then(all=>{if(alive)setRows(all.flat().filter(f=>studioDefinition(f.kind)));}).catch(()=>{if(alive){setRows([]);setError('We couldn’t load the document forms. Check your connection and try again.');}}).finally(()=>{if(alive)setBusy(false);});return()=>{alive=false;};},[key,refresh,docs.mine===null,docs.withMe===null]);
+ const shown=rows.filter(r=>(!kind||r.kind===kind)&&[r.title,r.docTitle,studioDefinition(r.kind)?.name].join(' ').toLowerCase().includes(query.toLowerCase()));
+ return <section aria-label="Forms in Collab"><div className="coach-row"><div><h2>Forms in Collab</h2><p>Find the forms in your documents and documents shared with you. Open the document to edit the original.</p></div><button type="button" className="btn" disabled={busy} onClick={()=>setRefresh(n=>n+1)}>Refresh forms</button></div><div className="coach-formgrid"><label>Find a form<input aria-label="Find a form" type="search" value={query} onChange={e=>setQuery(e.target.value)}/></label><label>Form type<NSelect aria-label="Form type" value={kind} onChange={e=>setKind(e.target.value)}><option value="">All forms</option>{STUDIO_FORMS.map(f=><option key={f.kind} value={f.kind}>{f.name}</option>)}</NSelect></label></div>{busy&&<p role="status">Opening document forms…</p>}{error&&<p role="alert">{error}</p>}<div className="studio-forms-list">{shown.map(r=><article key={r.docId+':'+r.id}><span className="coach-kicker">{studioDefinition(r.kind)?.name}</span><h3>{r.title||studioDefinition(r.kind)?.name}</h3><p>{r.docTitle}</p><div className="coach-actions"><Link className="btn" to={'/doc/'+r.docId+'#studio-form-'+r.id}>Open form</Link><Link className="btn" to={'/development?section=coach&formDoc='+r.docId+'&formId='+r.id}>Discuss with Teacher’s Coach</Link></div></article>)}</div>{!busy&&!error&&!shown.length&&<p>Add a studio form from Insert in a Collab document. It will appear here after saving.</p>}</section>;
+}

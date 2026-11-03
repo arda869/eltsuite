@@ -1,3 +1,4 @@
+import {StudioForms} from './DocumentForms';
 // Initialise the shared editor graph in the same order as the document page.
 import '../pdf/PdfFile';
 import { BeliefsForm } from './BeliefsForm';
@@ -20,9 +21,9 @@ import { CoachChat } from './CoachChat';
 import { download, emptyProfile, newInquiry, newReflection, type CoachProfile, type Inquiry, type Reflection } from './model';
 import './coach.css';
 
-type Tab = 'Home' | 'Coach' | 'Reflections' | 'Research' | 'Timeline' | 'Profile & beliefs' | 'Reading';
-const tabs: Tab[] = ['Home', 'Reflections', 'Reading', 'Research', 'Coach'];
-const sections: Record<Tab, string> = { Home: '', Reading: 'reading', Reflections: 'reflections', Research: 'research', Coach: 'coach', Timeline: 'timeline', 'Profile & beliefs': 'profile' };
+type Tab = 'Forms' | 'Home' | 'Coach' | 'Reflections' | 'Research' | 'Timeline' | 'Profile & beliefs' | 'Reading';
+const tabs: Tab[] = ['Home', 'Reflections', 'Reading', 'Research', 'Forms', 'Coach'];
+const sections: Record<Tab, string> = { Forms:'forms', Home: '', Reading: 'reading', Reflections: 'reflections', Research: 'research', Coach: 'coach', Timeline: 'timeline', 'Profile & beliefs': 'profile' };
 const tabFor = (section: string | null): Tab => (Object.keys(sections) as Tab[]).find(k => sections[k] === section) ?? 'Home';
 const date = (at: number) => new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const fieldNames: [keyof Inquiry, string][] = [['title', 'Your classroom question'], ['baseline', 'What happens now?'], ['intervention', 'What small change will you try?'], ['evidence', 'What evidence will you collect, and when?'], ['ethics', 'Consent, anonymity and care'], ['observations', 'What did you observe?'], ['interpretation', 'What might the evidence suggest?'], ['limitations', 'What else could explain it?'], ['next', 'What will you explore next?'], ['sources', 'Research sources: titles, links and your notes']];
@@ -119,9 +120,9 @@ function Workspace({ uid }: { uid: string }) {
     <header className="coach-hero"><div><span className="coach-kicker">Ideas into practice</span><h1>Development Studio</h1><p>Read, reflect and explore your teaching.<br />Bring your professional learning together.</p></div><div className="development-account"><span className="coach-private">Private reflections</span><button className="btn" disabled={busy} onClick={() => navigate('Profile & beliefs')}>Profile and beliefs</button></div></header>
     <nav className="coach-nav" aria-label="Development Studio">{tabs.map(t => <button key={t} aria-current={tab === t ? 'page' : undefined} disabled={busy} onClick={() => navigate(t)}>{t}</button>)}<Link to="/observations">Observations</Link></nav>
     {error && <div role="alert" className="coach-notice coach-error">{error}</div>}{notice && <div role="status" className="coach-notice">{notice}</div>}
-    {ready && <div className="coach-chat-host" hidden={tab !== 'Coach'}><CoachChat uid={uid} profile={profile} initialPrompt={prompt||(lessonContext?'Help me think through this activity and identify one useful improvement.':'')} reflectionId={entryId} evidencePacketId={params.get('evidence')||''} lessonContext={lessonContext} onClearLesson={()=>setParams({section:'coach'})} /></div>}
+    {ready && <div className="coach-chat-host" hidden={tab !== 'Coach'}><CoachChat uid={uid} profile={profile} initialPrompt={prompt||(lessonContext?'Help me think through this activity and identify one useful improvement.':'')} reflectionId={entryId} formContext={params.get('formDoc')&&params.get('formId')?{docId:params.get('formDoc')!,formId:params.get('formId')!}:undefined} onClearForm={()=>setParams({section:'coach'})} evidencePacketId={params.get('evidence')||''} lessonContext={lessonContext} onClearLesson={()=>setParams({section:'coach'})} /></div>}
     <div className="studio-section-scroll" hidden={tab === 'Coach'} key={tab}>
-    {tab === 'Coach' ? (!ready ? <p role="status">Opening your coach…</p> : null) : tab === 'Reading' ? <AppFiles app="reading" embedded /> : !ready ? <p role="status">Loading your private workspace…</p> : <div className={tab === 'Home' ? "development-home-layout" : "coach-layout"}><section className="coach-panel" aria-label={tab}><fieldset className="coach-content" disabled={busy}>
+    {tab === 'Coach' ? (!ready ? <p role="status">Opening your coach…</p> : null) : tab === 'Forms' ? <StudioForms uid={uid}/> : tab === 'Reading' ? <AppFiles app="reading" embedded /> : !ready ? <p role="status">Loading your private workspace…</p> : <div className={tab === 'Home' ? "development-home-layout" : "coach-layout"}><section className="coach-panel" aria-label={tab}><fieldset className="coach-content" disabled={busy}>
       {tab === 'Home' && <><div className="coach-row"><div><span className="coach-kicker">Make space for your practice</span><h2>What would help your teaching today?</h2></div><button className="btn" onClick={() => navigate('Timeline')}>View my timeline</button></div><div className="development-paths">{[
         { title: 'Reflect on a lesson', text: 'Capture a moment, consider what it means, and choose one next step.', section: 'Reflections' as Tab, number: '01' },
         { title: 'Explore your reading', text: 'Return to a source and connect one useful idea to your classroom.', section: 'Reading' as Tab, number: '02' },

@@ -131,3 +131,22 @@ dialog.coach-journal-review{margin:0;width:100%;height:100%;max-width:none;max-h
 .coach-formgrid{align-items:start}.coach .nsel{display:block;width:100%;min-width:0}.coach .nsel>.sel{width:100%;min-height:46px;padding:12px;border-radius:10px}
 
 .coach-nav a{display:flex;align-items:center;white-space:nowrap;padding:13px 18px;font-size:14px;color:var(--muted);text-decoration:none}.coach-nav a:hover{color:var(--ink);background:var(--selected)}.development-resume{padding:22px;border:1px solid var(--hair);border-radius:16px;margin:0 0 28px;background:var(--paper)}.development-resume h3{margin:0;font:24px var(--serif)}.development-resume p{color:var(--muted)}.development-paths{gap:12px}.development-path{padding:22px;min-height:175px}.development-path>span{margin-bottom:14px}.development-path b{font-size:21px}.development-home-layout{grid-template-columns:minmax(0,1fr)240px}.coach-nav{scrollbar-width:thin}.development-history .coach-entry p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}@media(max-width:900px){.development-home-layout{grid-template-columns:1fr}}@media(max-width:540px){.development-paths{grid-template-columns:1fr}.development-path{min-height:0}.development-path>span{float:left;margin:5px 12px 0 0}.development-resume .coach-actions{align-items:stretch;flex-direction:column}}
+
+.coach-voice {padding:12px 20px;border-bottom:1px solid var(--hair);flex:none;}
+.coach-voice audio {width:min(100%,420px);margin-top:12px;}
+.msg-coach {height:100%;min-height:0;display:flex;flex-direction:column;padding:16px;gap:12px;}
+.msg-coach .coach-chat {flex:1;min-height:0;}
+.internal-links {display:grid;gap:12px;padding:12px;}
+.internal-links label {display:grid;gap:6px;}
+.internal-links select {width:100%;}
+
+.msg-coach.coach {width:100%;max-width:none;margin:0;padding:16px;overflow:hidden;}
+.msg-coach>.btn {align-self:flex-start;flex:none;}
+.msg-coach .coach-chat {display:flex;flex-direction:column;min-width:0;overflow:hidden;}
+.msg-coach .coach-chat-header,.msg-coach .coach-chat-bottom {flex-shrink:0;}
+.msg-coach .coach-chat-thread {flex:1;min-height:80px;height:auto;overflow-y:auto;}
+.msg-coach .coach-chat-onboarding {flex:1;min-height:0;overflow:auto;}
+.coach-voice {max-height:260px;overflow:auto;}
+@media(max-width:760px){.msg-coach.coach{padding:8px;}.msg-coach .coach-chat-header{padding:12px;}.msg-coach .coach-chat-header .coach-kicker{display:none;}.coach-voice{padding:10px 12px;max-height:220px;}}
+
+.link-pop [role=tablist] {display:flex;flex-wrap:wrap;max-width:100%;}

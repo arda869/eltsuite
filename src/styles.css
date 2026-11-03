@@ -8342,3 +8342,26 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 .im-script { display:block; padding:6px; }
 
 .apps-search{display:grid;gap:6px;padding:4px 12px 12px;font-size:12px;color:var(--muted)}.apps-search input{width:100%;min-width:0;font:inherit;padding:9px 12px;border:1px solid var(--hair);border-radius:9px;background:var(--paper);color:var(--ink)}
+
+/* Separate sheets stay visible at every document zoom. */
+.pg-paper {background:transparent;box-shadow:none;isolation:isolate;}
+.pg-sheet {position:absolute;left:0;right:0;z-index:0;background:var(--pg-sheet-background,#fff);border:1px solid var(--hair-strong);box-shadow:0 4px 18px -10px #0006;pointer-events:none;}
+.pg-paper[data-paper-theme="black"] {--pg-sheet-background:#191816;}
+.pg-paper[data-paper-theme="white"] {--pg-sheet-background:#fff;}
+:root[data-theme="dark"] .pg-paper[data-paper-theme="auto"] {--pg-sheet-background:#191816;}
+.pg-break {border:0;}
+@media print {.pg-sheet,.pg-break {display:none;}.pg-paper {background:white;}}
+
+/* Resources columns use the same tracks for the header, folders and files. */
+.ma-list {overflow-x:auto;}
+.ma-list .ma-lrow {grid-template-columns:var(--resource-columns,minmax(0,1fr) 110px 90px 120px 70px);min-width:var(--resource-row-width,0);flex-shrink:0;}
+.ma-lhead>span {position:relative;min-width:0;}
+.resource-column-resize {position:absolute;right:-10px;top:-7px;bottom:-7px;width:14px;cursor:col-resize;touch-action:none;z-index:2;}
+.resource-column-resize::after {content:" ";position:absolute;top:4px;bottom:4px;left:6px;width:1px;background:var(--hair-strong);}
+.resource-column-resize:hover::after,.resource-column-resize:focus-visible::after {width:3px;background:var(--accent-text);}
+.ma-files [data-cut=true] {opacity:.5;}
+@media(max-width:760px){.ma-list .ma-lrow {grid-template-columns:var(--resource-columns,minmax(0,1fr) 80px);}.ma-list:has(.resource-column-resize:focus-visible) {overflow-x:auto;}}
+
+@media(max-width:760px){.ma-list .ma-lrow{grid-template-columns:var(--resource-columns,minmax(160px,1fr) 110px 90px 120px 70px);min-width:var(--resource-row-width,626px);}.ma-list .ma-lrow>:nth-child(n+3){display:block;}}
+
+.ProseMirror-yjs-selection {background:color-mix(in srgb,var(--accent) 18%,var(--paper))!important;color:var(--ink)!important;}

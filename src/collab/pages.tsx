@@ -2,13 +2,12 @@ import { NSelect } from '../components/Select';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Mark, mergeAttributes, type Editor } from '@tiptap/react';
 import type * as Y from 'yjs';
-import { ask } from '../lib/ask';
 import { useDismiss } from '../lib/useDismiss';
 
-// A Collab document opens paged, or can use one long pageless canvas,
+// A Collab document opens pageless, or can use one long pageless canvas,
 // like Word: a page size, margins, a font for the whole document, and fonts and sizes for any
 // text. The setting is part of the shared document, so everyone writing in it sees the same pages.
-// Switching back to pageless takes the fonts and sizes away again (after asking).
+// Switching layout preserves the document's text formatting.
 
 import { LAYOUT_DEFAULT, SIZES, MARGINS, type Layout, type PageSize, type Margins } from './documentLayout';
 export { LAYOUT_DEFAULT, SIZES, MARGINS, type Layout } from './documentLayout';
@@ -81,15 +80,10 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
     if (!sizeDraft.trim() || !Number.isFinite(value)) { setSizeDraft(String(selectedSize)); return; }
     changeSize(value);
   };
-  const toPageless = async () => {
-    if (!(await ask('Make it pageless again? The page size and margins go, and so do the fonts and sizes you chose for parts of the text.'))) return;
-    editor.chain().focus().selectAll().unsetMark('fontStyle').setTextSelection(0).run();
-    setLayout({ paged: false });
-    setOpen(false);
-  };
+  const toPageless = () => {setLayout({paged:false});setOpen(false);};
   return (
     <>
-      {layout.paged && part !== 'setup' && (
+      {part !== 'setup' && (
         <span className="pg-fonts">
           <NSelect className="pg-sel pg-font" aria-label="Font" value={cur.family ?? ''} onChange={(e) => apply({ family: e.target.value || null })} onMouseDown={(e) => e.stopPropagation()}>
             <option value="">{layout.font}</option>
@@ -190,7 +184,7 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
               <label className="pg-check"><input type="checkbox" checked={layout.pageNumbers} onChange={(e) => setLayout({ pageNumbers: e.target.checked })} />Show page numbers</label>
               {layout.pageNumbers && <label>Start numbering at<input type="number" min="1" max="9999" aria-label="Starting page number" value={layout.pageNumberStart} onChange={(e) => setLayout({ pageNumberStart: Math.max(1, Math.min(9999, Number(e.target.value) || 1)) })} /></label>}
             </div>}
-            <span className="hint">{layout.paged ? 'Select text to give it its own font and size, in the toolbar. Everyone in the document sees the same pages.' : 'Choose Pages to set a page size and margins, and to change fonts and sizes.'}</span>
+            <span className="hint">{layout.paged ? 'Select text to give it its own font and size, in the toolbar. Everyone in the document sees the same pages.' : 'Fonts and text formatting stay the same in either layout. Choose Pages to set a page size and margins.'}</span>
           </div>
         )}
       </span>}
@@ -200,7 +194,7 @@ export function PageTools({ editor, layout, setLayout, part = 'both', openReques
 
 // A paged document: white sheets of the chosen size, with a line and a page number where each
 // page ends, and the same page size and margins when printed.
-export function Paper({ layout, children, appearance = 'auto', paged = layout.paged }: { layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean }) {
+export function Paper({ layout, children, appearance = 'auto', paged = layout.paged, editor }: { editor?:Editor; layout: Layout; children: ReactNode; appearance?: 'auto' | 'white' | 'black'; paged?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState(1);
   const desk = useRef<HTMLDivElement>(null);
@@ -210,6 +204,7 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
   const s = layout.orientation === 'landscape' ? { ...base, w: base.h, h: base.w } : base;
   const m = MARGINS[layout.margins].px;
   const inner = s.h - 2 * m;
+  const pageGap=24, stride=s.h+pageGap;
   const fitWidth = available.width / s.w;
   const scale = zoomChoice === 'fit' ? Math.min(fitWidth, available.height / s.h) : zoomChoice === 'fill' ? fitWidth : Number(zoomChoice) / 100;
   const zoom = Math.max(10, Math.min(200, Math.floor(scale * 100)));
@@ -268,41 +263,30 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
     window.addEventListener('resize', measure);
     return () => { ro.disconnect(); window.removeEventListener('resize', measure); };
   }, []);
-  // The text's own height decides how many pages there are.
+  // Reserve the top and bottom margins between sheets in document coordinates.
+  // Zoom only scales this layout; it must never change the number of sheets.
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (!paged) {
-      el.querySelectorAll<HTMLElement>('.ph-node:has(.ph-chart), .cd-view .ph-chart, .doc-section').forEach((block) => { block.style.marginBlockStart = ''; });
-      return;
-    }
-    const measure = () => {
-      const paper = el.closest<HTMLElement>('.pg-paper');
-      if (paper) {
-        const blocks = [...el.querySelectorAll<HTMLElement>('.ph-node:has(.ph-chart), .cd-view .ph-chart, .doc-page-break, .doc-section[data-new-page]')];
-        blocks.forEach((block) => { block.style.marginBlockStart = ''; });
-        const scale = Number.parseFloat(getComputedStyle(paper).zoom) || 1;
-        const sheetTop = paper.getBoundingClientRect().top;
-        blocks.forEach((block) => {
-          const rect = block.getBoundingClientRect();
-          const top = (rect.top - sheetTop) / scale;
-          const height = rect.height / scale;
-          const page = Math.floor(top / s.h);
-          if (block.matches('.doc-page-break')) {
-            block.style.height = `${(page + 1) * s.h + m - top}px`;
-          } else if (block.matches('.doc-section[data-new-page]') || (height <= inner && top + height > (page + 1) * s.h - m)) {
-            const margin = Number.parseFloat(getComputedStyle(block).marginBlockStart) || 0;
-            block.style.marginBlockStart = `${margin + (page + 1) * s.h + m - top}px`;
-          }
-        });
+    const el=ref.current;if(!el)return;
+    const originals=new Map<HTMLElement,string>();let measuring=false,frame=0;
+    const restore=()=>{for(const [block,margin] of originals)block.style.marginBlockStart=margin;originals.clear();};
+    if(!paged)return;
+    // Layout-only styles must not be reparsed as collaborative document edits.
+    const mutate=(fn:()=>void)=>{const observer=editor&&!editor.isDestroyed?(editor.view as unknown as {domObserver:{flush:()=>void;stop:()=>void;start:()=>void}}).domObserver:null;observer?.flush();observer?.stop();try{fn();}finally{observer?.start();}};
+    const measure=()=>{if(measuring)return;measuring=true;mutate(()=>{restore();
+      const paper=el.closest<HTMLElement>('.pg-paper');if(!paper)return;
+      const scale=Number.parseFloat(getComputedStyle(paper).zoom)||1,top=paper.getBoundingClientRect().top;
+      const roots=[...el.querySelectorAll<HTMLElement>('.ProseMirror > *, .cd-view > *')].filter(b=>b.getClientRects().length>0);
+      const blocks=roots.flatMap(b=>b.matches('.studio-form')&&b.offsetHeight>inner?[...b.children].filter(c=>c instanceof HTMLElement) as HTMLElement[]:[b]);
+      for(const block of blocks){const r=block.getBoundingClientRect(),y=(r.top-top)/scale,height=r.height/scale,page=Math.max(0,Math.floor(y/stride)),end=page*stride+s.h-m;
+        const forced=block.matches('.doc-page-break,.doc-section[data-new-page]');
+        if(forced||(height<=inner&&y+height>end)||y>end){const delta=(page+1)*stride+m-y;if(delta>0){originals.set(block,block.style.marginBlockStart);const margin=parseFloat(getComputedStyle(block).marginBlockStart)||0;block.style.marginBlockStart=(margin+delta)+'px';}}
       }
-      setPages(Math.max(1, Math.ceil(el.offsetHeight / inner)));
+      const height=el.offsetHeight+2*m;setPages(Math.max(1,Math.ceil((height+pageGap)/stride)));});measuring=false;
     };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [m, inner, s.h, zoom, paged]);
+    const schedule=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(measure);};measure();
+    const ro=new ResizeObserver(schedule);ro.observe(el);const mo=new MutationObserver(records=>{if(records.some(r=>r.type!=='attributes'||r.attributeName!=='style'))schedule();});mo.observe(el,{subtree:true,childList:true,characterData:true});
+    return()=>{cancelAnimationFrame(frame);ro.disconnect();mo.disconnect();mutate(restore);};
+  },[m,inner,s.h,stride,paged,zoom,editor]);
   useEffect(() => {
     if (!paged) return;
     const st = document.createElement('style');
@@ -313,18 +297,19 @@ export function Paper({ layout, children, appearance = 'auto', paged = layout.pa
   }, [s.css, m, layout.orientation, paged, layout.header, layout.footer, layout.pageNumbers]);
   return (
     <div className={paged ? 'pg-desk' : undefined} ref={desk}>
-      <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, ['--pg-columns' as string]: layout.columns, zoom: zoom / 100 } : undefined}>
+      <div className={paged ? 'pg-paper' : 'pg-flow'} data-paper-theme={appearance} style={paged ? { width: s.w, minHeight: pages * s.h + (pages-1)*pageGap, padding: m, ['--pg-font' as string]: `'${layout.font}'`, ['--pg-pt' as string]: `${layout.pt}pt`, ['--pg-line-height' as string]: layout.lineSpacing, ['--pg-columns' as string]: layout.columns, zoom: zoom / 100 } : undefined}>
+        {paged&&Array.from({length:pages},(_,i)=><div key={'sheet-'+i} className="pg-sheet" aria-hidden="true" style={{top:i*stride,height:s.h}}/>)}
         <div ref={ref} className={paged ? 'pg-text' : undefined}>
           {children}
         </div>
         {paged && Array.from({ length: pages - 1 }, (_, i) => (
-          <span key={i} className="pg-break" style={{ top: (i + 1) * s.h }} aria-hidden="true">
+          <span key={i} className="pg-break" style={{ top: (i + 1) * stride - pageGap }} aria-hidden="true">
             <span>Page {i + 2}</span>
           </span>
         ))}
         {paged && Array.from({ length: pages }, (_, i) => <div key={'running-' + i} className="pg-running" aria-hidden="true">
-          {layout.header && <span className="pg-running-header" style={{ top: i * s.h + 22, left: m, right: m }}>{layout.header}</span>}
-          {(layout.footer || layout.pageNumbers) && <span className="pg-running-footer" style={{ top: (i + 1) * s.h - 36, left: m, right: m }}>{layout.footer}{layout.footer && layout.pageNumbers ? ' · ' : ''}{layout.pageNumbers ? i + layout.pageNumberStart : ''}</span>}
+          {layout.header && <span className="pg-running-header" style={{ top: i * stride + 22, left: m, right: m }}>{layout.header}</span>}
+          {(layout.footer || layout.pageNumbers) && <span className="pg-running-footer" style={{ top: i * stride + s.h - 36, left: m, right: m }}>{layout.footer}{layout.footer && layout.pageNumbers ? ' · ' : ''}{layout.pageNumbers ? i + layout.pageNumberStart : ''}</span>}
         </div>)}
       </div>
       {paged && <div className="pg-zoom" role="group" aria-label="Document zoom">

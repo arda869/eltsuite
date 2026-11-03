@@ -1,3 +1,4 @@
+import {captureFieldSelection,editFieldClipboard} from '../lib/fieldClipboard';
 import { copyText } from '../lib/copyText';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { keyLabel } from '../lib/keys';
@@ -42,13 +43,14 @@ export function MenuHost() {
       const t = e.target as HTMLElement;
       const field = t.closest('input, textarea, [contenteditable=true], .ProseMirror') as HTMLElement | null;
       const link = t.closest('a[href]') as HTMLAnchorElement | null;
-      const text = window.getSelection()?.toString() ?? '';
+      const saved=field?captureFieldSelection(field):null;
+      const text = saved?.text ?? window.getSelection()?.toString() ?? '';
       const items: MenuItem[] = [];
       const copy = (v: string) => void copyText(v).catch(() => {});
       if (field) {
         items.push(
-          { label: 'Cut', icon: '', hint: keyLabel('Mod+X'), disabled: !text, onClick: () => document.execCommand('cut') },
-          { label: 'Copy', icon: 'copyall', hint: keyLabel('Mod+C'), disabled: !text, onClick: () => document.execCommand('copy') },
+          { label: 'Cut', icon: 'cut', hint: keyLabel('Mod+X'), disabled: !text||!!(field as HTMLInputElement).readOnly||!!(field as HTMLInputElement).disabled, onClick: () => void editFieldClipboard(field,'cut',saved!) },
+          { label: 'Copy', icon: 'copyall', hint: keyLabel('Mod+C'), disabled: !text, onClick: () => void editFieldClipboard(field,'copy',saved!) },
           { label: 'Paste', icon: '', hint: keyLabel('Mod+V'), onClick: () => void (navigator.clipboard?.readText ? navigator.clipboard.readText() : Promise.reject()).then((v) => (field.focus(), document.execCommand('insertText', false, v))).catch(() => (field.focus(), void tell(`Your browser doesn’t let menus paste. Press ${keyLabel('Mod+V')} to paste.`))) },
           'sep',
           { label: 'Select all', icon: '', hint: keyLabel('Mod+A'), onClick: () => (field.focus(), document.execCommand('selectAll')) },
