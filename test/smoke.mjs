@@ -547,6 +547,7 @@ const J = {
     await p.getByRole('button',{name:'Apply this suggestion'}).click();
     await p.getByRole('textbox',{name:'Demo Collab document'}).filter({hasText:'Partner A prioritises'}).waitFor();
     await p.getByLabel('Planning note',{exact:true}).fill('');
+    await p.waitForFunction(()=>JSON.parse(sessionStorage.getItem('elt-public-demo-v2')??'null')?.notes==='');
     await p.getByRole('button',{name:'Keep note in this demo'}).click();
     await p.getByRole('status').filter({hasText:'Nothing has been sent'}).waitFor();
     await p.reload();
