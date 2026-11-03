@@ -46,6 +46,6 @@ export default defineConfig({
   resolve: { alias: { 'firebase/functions': m('functions.ts'), 'firebase/app': m('app.ts'), 'firebase/auth': m('auth.ts'), 'firebase/database': m('database.ts'), 'firebase/firestore': m('firestore.ts') } },
   // Freeze dependency optimisation before browser navigation. Late discoveries otherwise reload
   // lazy routes during the suite-wide audit, aborting their module requests.
-  optimizeDeps: { noDiscovery: true, include: ['react-dom/client','react-dom/server','react/jsx-runtime','react/jsx-dev-runtime',...Object.keys(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).dependencies).filter(name=>!['firebase','@tiptap/pm','y-protocols'].includes(name))] },
+  optimizeDeps: { noDiscovery: true, include: ['@tiptap/pm/model','@tiptap/pm/state','@tiptap/pm/view','y-protocols/awareness','react-dom/client','react-dom/server','react/jsx-runtime','react/jsx-dev-runtime',...Object.keys(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).dependencies).filter(name=>!['firebase','@tiptap/pm','y-protocols'].includes(name))] },
   server: { hmr: false, port: 5184, strictPort: true, fs: { allow: [root] } },
 });

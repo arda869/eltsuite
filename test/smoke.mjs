@@ -1436,7 +1436,7 @@ const J = {
     const s = await session(b);
     await s.p.goto(BASE + '/dev.html?as=teacher&friday');
     await s.p.waitForFunction(() => !!window.__mockReady);
-    await s.p.evaluate(async () => { await window.__mockReady; });
+    await s.p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await s.p.waitForLoadState('networkidle');
     await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the fixture session');
     const d = await newFile(s, 'Collab document');
@@ -1485,7 +1485,7 @@ const J = {
     await see(d, '.cite:has-text("Thornbury, 2006, p. 24")', 'the saved citation');
     await s.p.goto(BASE + '/dev.html?as=teacher&friday-brand');
     await s.p.waitForFunction(() => !!window.__mockReady);
-    await s.p.evaluate(async () => { await window.__mockReady; });
+    await s.p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await s.p.waitForLoadState('networkidle');
     await s.p.goto(BASE + '/');
     await see(s.p, '.hm-hero', 'the organisation-brand fixture');
     await d.reload();
@@ -2192,7 +2192,7 @@ if(!LIVE_PUBLIC) {
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 180000 });
-  await p.evaluate(async () => { await window.__mockReady; });
+  await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await p.waitForLoadState('networkidle');
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 180000 });
   for (const u of ['/archive', '/admin', '/messages', '/settings']) await p.goto(BASE + u, { timeout: 120000 }).catch(() => {});
   await p.waitForTimeout(1500);

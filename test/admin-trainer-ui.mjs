@@ -11,7 +11,7 @@ try {
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1300,height:900}});
  p.setDefaultTimeout(60000);
  const crashes=[];p.on('pageerror',e=>{crashes.push(e.message);console.log('Page error:',e.message);});p.on('console',m=>{if(m.type()==='error')console.log('Browser error:',m.text().slice(0,1000));});
- await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.evaluate(()=>window.__mockReady);
+ await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await p.waitForLoadState('networkidle');
  await p.waitForFunction(()=>!!localStorage.getItem('mockdemo'));
  await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});
  await p.goto(base+'/admin');await p.getByRole('heading',{name:'What do you need to do?',exact:true}).waitFor();console.log('Admin overview loaded');
