@@ -149,10 +149,12 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
   const needsPassword = mode === 'signin' || mode === 'create';
 
+  // On the public sign-in page the heading beside the form already welcomes the teacher back.
+  const onPublicPage = !intro && !linked && !code && !start;
   const form = (
       <form id="teacher-sign-in" className="card" onSubmit={submit}>
-        <h1>{TITLES[mode]}</h1>
-        {mode === 'signin' && <p className="hint">Your lessons, materials and next teaching day are waiting.</p>}
+        {onPublicPage && mode === 'signin' ? <h2 className="sr-only">Sign in</h2> : onPublicPage ? <h2>{TITLES[mode]}</h2> : <h1>{TITLES[mode]}</h1>}
+        {mode === 'signin' && !onPublicPage && <p className="hint">Your lessons, materials and next teaching day are waiting.</p>}
 
         {notInvited && !error && (
           <span className="error" role="alert">
@@ -270,6 +272,6 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         </span>
       </form>
   );
-  if (!intro && !linked && !code && !start) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Back to Homepage</Link></div>{form}</main></PublicLayout>;
+  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Back to Homepage</Link></div>{form}</main></PublicLayout>;
   return <div className="signin">{intro ?? <InvitationIntro invitation={code ?? undefined}/>} {form}</div>;
 }

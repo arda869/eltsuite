@@ -152,7 +152,10 @@ function AppMark() {
   }, [pathname]);
   // Every app shows its name under ELT Suite, in its own colour.
   const own = pathname.startsWith('/linguistics') ? {k:'linguistics',name:'Applied Linguistics',color:'#497b75'} : pathname.startsWith('/development') || pathname.startsWith('/coach') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/design') ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
-  const app = own ??
+  // Any other app in the app list (Games, say) shows its own name and logo rather than "Classes".
+  const listed = appAt(pathname);
+  const own2 = own ?? (listed && !['classes', 'home'].includes(listed.k) && !pathname.startsWith('/class') ? { k: listed.k, name: listed.name, color: listed.color } : null);
+  const app = own2 ??
     (pathname.startsWith('/archive') || pathname.startsWith('/doc') || pathname.startsWith('/library')
       ? { name: 'Resources', color: '#3667a6' }
       : pathname.startsWith('/messages')
@@ -180,7 +183,7 @@ function AppMark() {
                 : { name: 'Classes', color: '#c8764a' });
   return (
     <Link to="/" className="suite-mark" style={{ ['--app' as string]: app.color }} aria-label={`ELT Suite ${app.name}: Home`} data-tip="Home">
-      {own ? <AppLogo k={own.k} size={28} /> : <Mark size={26} />}
+      {own2 ? <AppLogo k={own2.k} size={28} /> : <Mark size={26} />}
       <span>
         <span className="suite-k">ELT Suite</span>
         <b>{app.name}</b>

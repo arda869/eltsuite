@@ -45,3 +45,53 @@
 @media(prefers-reduced-motion:reduce){.pub *{animation:none!important;transition:none!important}}
 .pub-launch-notice{border-left:3px solid var(--accent);background:var(--surface);padding:18px 22px;margin-top:28px;max-width:750px;font-size:15px}.pub-page-hero p+p{margin-top:18px}.pub-plan-grid ul{padding-left:18px;font-size:14px;margin:0 0 25px}.pub-plan-grid li{margin-bottom:10px}.pub-plan-disclaimer{max-width:1165px;margin:20px auto!important;padding:0 20px;font-size:13px!important;color:var(--muted)}.pub-guidance{display:grid;grid-template-columns:repeat(4,1fr);gap:25px;margin:35px 0}.pub-guidance p{font-size:16px}.pub-table-scroll:focus-visible{outline:2px solid var(--accent-text);outline-offset:5px}@media(max-width:760px){.pub-guidance{grid-template-columns:1fr 1fr}}
 .pub-preview-switch{display:flex;border-bottom:1px solid var(--hair);padding:10px;gap:6px;background:var(--paper)}.pub-preview-switch button{flex:1;border:1px solid transparent;border-radius:8px;padding:10px 7px;font:700 11px Karla,sans-serif;background:none;color:var(--muted)}.pub-preview-switch button[aria-pressed=true]{background:var(--selected);color:var(--ink);border-color:var(--hair)}.pub-preview-explainer{padding:15px 20px;font-size:12px!important;line-height:1.6;background:var(--surface);border-bottom:1px solid var(--hair)}.pub-preview-activity>p{font-size:13px;line-height:1.7}.pub-preview-working{padding:20px}.pub-preview-working .pub-native{border:0;padding:0}.pub-preview-footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding:15px 20px;border-top:1px solid var(--hair);font-size:10px}.pub-preview-footer a{font-weight:700;text-underline-offset:3px}.pub-hero .pub-preview-activity{animation:pub-reveal 1.4s 2.4s both}.pub-hero .pub-language{animation:none}.pub-collab-demo .pg-flow{padding:0;min-width:0;background:var(--paper);color:var(--ink)}.pub-lesson .pub-aim{margin:0 0 22px}.pub-hero .pub-lesson h3{font-size:25px}.pub-hero .pub-lesson-body{grid-template-columns:32% 68%}@media(max-width:760px){.pub-hero .pub-lesson-body{display:block}.pub-preview-switch button{font-size:11px;padding:8px 4px}}
+
+/* ---------------------------------------------------------------------------------------------
+   The signed-in look. The public pages use the same colours, top bar, buttons, cards and page
+   width as the teacher's workspace (styles.css, cohesion.css), so moving from the homepage to
+   signing in feels like one product. Light and dark follow the app's own theme. */
+.pub.pub{--ink:#33302c;--muted:#696969;--soft:#868686;--paper:var(--card,#fff);--bg:var(--page,#f8f8f9);--hair:rgba(51,48,44,.12);--hair-strong:rgba(51,48,44,.2);--accent:var(--brand,#d98f63);--accent-text:#975f40;--on-ink:#fff;--pub-gutter:clamp(16px,3vw,44px);--pub-card-shadow:0 0 0 1px var(--hair),0 10px 30px -26px rgba(51,48,44,.6);font-family:var(--sans);background:var(--bg);color:var(--ink)}
+:root[data-theme='dark'] .pub.pub{--ink:#ece7df;--muted:#b1aba2;--soft:#948e86;--paper:#22211e;--bg:#191816;--hair:rgba(236,231,223,.12);--hair-strong:rgba(236,231,223,.22);--accent-text:color-mix(in srgb,var(--accent) 62%,#fff);--on-ink:#191816;--pub-card-shadow:0 0 0 1px var(--hair);color-scheme:dark}
+/* Headings: Fraunces 500, as in the workspace. */
+.pub.pub h1,.pub.pub h2,.pub.pub h3{font-family:var(--serif);font-weight:500;letter-spacing:-.02em}
+.pub.pub p{font-size:15px;line-height:1.65}
+.pub.pub .pub-hero-copy>p{font-size:16px;color:var(--muted);max-width:520px}
+/* Kickers: the workspace's small uppercase line in terracotta text. */
+.pub.pub .pub-kicker{font:600 11.5px/1.6 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--accent-text)}
+/* The top bar: the same height, border and logo position as the workspace's. */
+.pub.pub .pub-header{position:sticky;top:0;z-index:30;height:var(--suite-header-height,64px);max-width:none;padding:0 var(--pub-gutter);background:var(--bg);border-bottom:1px solid var(--hair)}
+.pub.pub .pub-header nav{gap:6px;font-size:14px}
+.pub.pub .pub-header nav a{padding:8px 12px;border-radius:10px;font-weight:500;color:var(--ink)}
+.pub.pub .pub-header nav a:hover{text-decoration:none;background:var(--surface,#f4f4f3)}
+.pub.pub .pub-header nav a[aria-current=page]{background:var(--surface,#f4f4f3)}
+.pub.pub .pub-signin{display:inline-flex;align-items:center;height:36px;margin-left:8px;padding:0 14px;border:1px solid var(--hair-strong);border-radius:10px;background:var(--paper)}
+.pub.pub .pub-signin span{margin-left:8px}
+/* Full width with padding at the sides, like every workspace page. Running text keeps a
+   comfortable line length inside it. */
+.pub.pub :is(.pub-hero,.pub-section,.pub-footer,.pub-page-hero,.pub-tour-intro){max-width:none;padding-left:var(--pub-gutter);padding-right:var(--pub-gutter)}
+.pub.pub :is(.pub-plan-grid,.pub-demo-banner,.pub-tour-shell,.pub-plan-disclaimer){max-width:none;margin-left:var(--pub-gutter);margin-right:var(--pub-gutter)}
+.pub.pub :is(.pub-prose,.pub-about-prose,.pub-page-hero>p,.pub-tour-intro>p,.pub-section>p){max-width:760px}
+/* Buttons: the workspace's. Main actions are terracotta, the rest are quiet outlined buttons. */
+.pub.pub .pub-button{gap:10px;min-height:42px;padding:0 18px;border-radius:10px;border:1px solid color-mix(in srgb,var(--accent) 72%,#000);background:color-mix(in srgb,var(--accent) 72%,#000);color:#fff!important;font:600 14px var(--sans);transform:none;box-shadow:none}
+.pub.pub .pub-button:hover{background:color-mix(in srgb,var(--accent) 64%,#000);transform:none}
+.pub.pub .pub-button:active{transform:translateY(1px)}
+.pub.pub :is(.pub-secondary,.pub-text-button,.pub-demo-banner button,.pub-preview-switch button,.pub-role-tabs button){border-radius:10px}
+.pub.pub .pub-demo-banner button{height:36px;border:1px solid var(--hair-strong);background:var(--paper);color:var(--ink)}
+.pub.pub :is(button,a):focus-visible{outline:2px solid var(--accent-text);outline-offset:3px}
+.pub.pub .pub-text-link{color:var(--accent-text);font-weight:600}
+/* Cards and product previews: white, rounded, with the workspace's soft edge instead of borders. */
+.pub.pub :is(.pub-lesson,.pub-tour-shell,.pub-plan-grid,.pub-class-entry,.pub-workflow-product,.pub-collab-demo,.pub-role-card,.pub-auth>.card,.pub-faq details,.pub-craft){border:0;border-radius:20px;background:var(--paper);box-shadow:var(--pub-card-shadow);overflow:hidden}
+.pub.pub .pub-plan-grid{gap:0}
+.pub.pub .pub-plan-grid>*{background:var(--paper);border-color:var(--hair)}
+.pub.pub .pub-demo-banner{border:0;border-radius:14px;background:var(--surface,#f4f4f3)}
+.pub.pub :is(.pub-window,.pub-lesson-body aside,.pub-tour-shell>nav,.pub-launch-notice,.pub-language,.pub-preview-explainer){background:var(--surface,#f4f4f3);border-color:var(--hair)}
+.pub.pub .pub-launch-notice{border-radius:0 12px 12px 0;border-left:3px solid var(--accent)}
+.pub.pub .pub-preview-switch button[aria-pressed=true],.pub.pub .pub-lesson-body button[aria-pressed=true],.pub.pub .pub-workflow-tabs button[aria-pressed=true]{background:color-mix(in srgb,var(--accent) 16%,var(--paper));color:var(--ink)}
+.pub.pub .pub-footer{border-top:1px solid var(--hair);background:var(--bg)}
+:root[data-theme='dark'] .pub.pub :is(.pub-window,.pub-lesson-body aside,.pub-launch-notice,.pub-language,.pub-preview-explainer,.pub-demo-banner){background:#2b2926}
+@media(max-width:760px){
+ .pub.pub .pub-header nav{top:var(--suite-header-height,64px);background:var(--bg);padding:12px var(--pub-gutter) 18px}
+ .pub.pub .pub-header nav a{padding:12px}
+ .pub.pub .pub-signin{margin:6px 0 0;justify-content:center;height:44px}
+ .pub.pub .pub-menu{height:36px;padding:0 14px;border:1px solid var(--hair-strong);border-radius:10px;background:var(--paper);color:var(--ink);font:600 14px var(--sans)}
+}

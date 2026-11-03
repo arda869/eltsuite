@@ -25,6 +25,6 @@ export async function transcribeRecording(samples: Float32Array, rate: number) {
   return response.data.segments;
 }
 
-export async function draftDialogue(input: {situation:string;focus:string;level:string;turns:number;speakers:{id:string;name:string}[]}) {
+export async function draftDialogue(input: {situation:string;focus:string;level:string;turns:number;speakers:{id:string;name:string}[];context?:import('../media/DialogueAudience').DialogueContext}) {
   return (await httpsCallable<typeof input,{lines:{speaker:string;text:string;direction:string}[]}>(getFunctions(app,'us-central1'),'recordingDialogue',{timeout:240000})(input)).data.lines;
 }

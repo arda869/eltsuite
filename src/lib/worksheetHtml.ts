@@ -28,7 +28,7 @@ const esc = (s: string) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&a
 const LET = 'abcdefghijklmnop';
 const SIZES: Record<string, [number, number]> = { A4: [210, 297], Letter: [215.9, 279.4], A5: [148, 210] };
 
-const logo = (accent: string) => `<span class="logo"><span class="logo-mark">${MARK(accent)}</span><b>ELT</b> Suite</span>`;
+const logo = (accent: string) => `<span class="logo"><span class="logo-mark">${MARK(accent)}</span>ELT Suite</span>`;
 
 // Safari (and iPhone printing) paints SVG colours given as var() or color-mix() black, so the cover
 // gets plain colours here.
@@ -284,7 +284,7 @@ h1 { margin: 0 0 ${small ? 2.5 : 3.2}mm; font: 800 ${small ? 12.5 : 15.5}pt/1.12
 .band-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, var(--band) 0%, rgba(236,235,231,0) 28%); }
 .brand { background: rgba(255,255,255,.88); padding: 1.6mm 2.6mm 1.4mm; border-radius: 1.6mm; }
 .brand { position: absolute; right: var(--side); bottom: ${small ? 2.5 : 3.2}mm; display: flex; flex-direction: column; align-items: flex-end; gap: .6mm; }
-.org-logo { display: block; max-height: ${small ? 26 : 36}pt; max-width: ${small ? 90 : 130}pt; object-fit: contain; margin-left: auto; } .logo-mark svg { width: 1em; height: 1em; vertical-align: -0.12em; margin-right: .3em; } .logo b { font-weight: 700; } .logo { font: 600 ${small ? 14 : 18}pt/1 Fraunces, serif; letter-spacing: -.015em; color: var(--ink); white-space: nowrap; }
+.org-logo { display: block; max-height: ${small ? 26 : 36}pt; max-width: ${small ? 90 : 130}pt; object-fit: contain; margin-left: auto; } .logo-mark svg { width: 1em; height: 1em; vertical-align: -0.12em; margin-right: .3em; } .logo b { font-weight: 800; } .logo { font: 800 ${small ? 13 : 16}pt/1 Karla, sans-serif; letter-spacing: .005em; color: var(--ink); white-space: nowrap; }
 .li-i { position: relative; display: inline-block; } .li-i svg { position: absolute; left: 50%; top: .08em; transform: translateX(-50%); width: .32em; height: auto; }
 .kicker { font: 700 7.5pt Karla, sans-serif; letter-spacing: .04em; color: #3d3a36; }
 

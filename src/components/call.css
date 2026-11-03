@@ -174,7 +174,7 @@ body.ks-dragging, body.ks-dragging * { user-select: none !important; cursor: gra
 .kp { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); }
 .kp-in { height: 100vh; height: 100dvh; background: #1b1a18; }
 .kp-top { display: flex; align-items: center; padding: 16px 22px; }
-.kp-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font: 500 18px var(--serif); }
+.kp-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font: 800 19px var(--sans); letter-spacing: .005em; }
 .kp-main { flex: 1; display: grid; place-items: center; padding: 20px; }
 .kp-card { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 40px 32px; border-radius: 22px; background: var(--paper); box-shadow: 0 0 0 1px var(--hair), 0 24px 60px -30px rgba(0, 0, 0, 0.35); max-width: 440px; }
 .kp-card h1 { margin: 0; font: 500 26px var(--serif); }

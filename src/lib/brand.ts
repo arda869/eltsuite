@@ -41,17 +41,17 @@ async function make(): Promise<Brand> {
     c.height = h;
     g.drawImage(img, 0, 0, w, h);
   } else {
-    // The mark, then "ELT Suite" in the app's serif.
-    await document.fonts?.load('500 72px Fraunces').catch(() => {});
+    // The mark, then "ELT Suite" in Karla ExtraBold, as in the brand kit.
+    await document.fonts?.load('800 72px Karla').catch(() => {});
     const img = await loadImg('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(MARK(color)));
     const h = 120;
-    g.font = '500 72px Fraunces, Georgia, serif';
+    g.font = '800 72px Karla, "Segoe UI", sans-serif';
     const tw = Math.ceil(g.measureText('ELT Suite').width);
     c.width = h + 28 + tw + 8;
     c.height = h;
     g.drawImage(img, 0, 0, h, h);
-    g.font = '500 72px Fraunces, Georgia, serif';
-    g.fillStyle = '#2b2a28';
+    g.font = '800 72px Karla, "Segoe UI", sans-serif';
+    g.fillStyle = '#33302c';
     g.textBaseline = 'middle';
     g.fillText('ELT Suite', h + 28, h / 2 + 4);
   }

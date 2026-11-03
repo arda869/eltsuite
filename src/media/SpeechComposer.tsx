@@ -9,6 +9,7 @@ import { newId } from '../lib/tasks';
 import './speech.css';
 import { performanceText, spokenText } from '../lib/performanceText';
 import type { SpeechInsertion } from '../lib/speechTimeline';
+import { DialogueAudience, type DialogueContext } from './DialogueAudience';
 
 type Speaker = { id: string; name: string; voice: string; accent: string };
 type Utterance = { id: string; speaker: string; text: string; direction: string; gap: number; take?: SpeechTake; signature?: string };
@@ -23,6 +24,7 @@ export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onI
   const [paste, setPaste] = useState(''), [showPaste, setShowPaste] = useState(false);
   const [aiOpen,setAiOpen] = useState(false), [aiBusy,setAiBusy] = useState(false);
   const [brief,setBrief] = useState({situation:'',focus:'',level:'B1',turns:12});
+  const [audience,setAudience] = useState<DialogueContext>({courseType:'General English',ageGroup:'Adults'});
   const textAreas=useRef<Record<string,HTMLTextAreaElement|null>>({});
   const cancel = useRef(false), mounted = useRef(true), lock = useRef(false);
   const ctx = useRef<AudioContext | null>(null), nodes = useRef<AudioBufferSourceNode[]>([]);
@@ -116,7 +118,7 @@ export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onI
   const makeDialogue = async () => {
     if(lock.current || aiBusy)return;
     setAiBusy(true);setError('');
-    try {const rows=await draftDialogue({...brief,speakers:speakers.map(({id,name})=>({id,name}))});
+    try {const rows=await draftDialogue({...brief,context:audience,speakers:speakers.map(({id,name})=>({id,name}))});
       if(!mounted.current)return;
       setLines(rows.map(l=>({...l,text:(l.direction?'('+l.direction+') ':'')+l.text,direction:'',id:newId(),gap:.25})));setAiOpen(false);
     }catch(e){setError((e as Error).message);}finally{if(mounted.current)setAiBusy(false);}
@@ -131,7 +133,7 @@ export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onI
         <p className="speech-preview-note">Voice previews use saved recordings. No speech is generated when you preview.</p>
       </section>
       <section aria-label="Dialogue"><div className="speech-section"><h3>2. Shape the conversation</h3><AiButton type="button" className="btn small-btn" disabled={!!busy || aiBusy} onClick={()=>setAiOpen(!aiOpen)}>Draft with AI</AiButton><button type="button" className="btn small-btn" disabled={!!busy || aiBusy} onClick={() => setShowPaste(!showPaste)}>Paste a script</button></div>
-        {aiOpen && <div className="speech-paste"><h4>Describe the dialogue</h4><label>Situation<textarea rows={2} maxLength={2000} value={brief.situation} onChange={e=>setBrief({...brief,situation:e.target.value})} placeholder="Two colleagues rearrange a meeting after a misunderstanding."/></label><label>Language or skill to focus on<input maxLength={1000} value={brief.focus} onChange={e=>setBrief({...brief,focus:e.target.value})} placeholder="e.g. polite requests, clarification, past experiences"/></label><div className="speech-line-top"><label>Learner level<NSelect aria-label="Dialogue level" value={brief.level} onChange={e=>setBrief({...brief,level:e.target.value})}>{['A1','A2','B1','B2','C1','C2'].map(l=><option key={l}>{l}</option>)}</NSelect></label><label>Length<NSelect aria-label="Dialogue length" value={brief.turns} onChange={e=>setBrief({...brief,turns:Number(e.target.value)})}>{[6,12,20].map(n=><option key={n} value={n}>{n} utterances</option>)}</NSelect></label></div><p className="hint">Uses your speakers above. The new draft replaces the composer’s script; edit it before creating voices.</p><AiButton type="button" className="btn primary" disabled={aiBusy||!brief.situation.trim()} onClick={()=>void makeDialogue()}>{aiBusy?'Writing your dialogue…':'Create dialogue'}</AiButton></div>}
+        {aiOpen && <div className="speech-paste"><h4>Describe the dialogue</h4><DialogueAudience onChange={setAudience} onLevel={level=>setBrief(b=>({...b,level}))}/><label>Situation<textarea rows={2} maxLength={2000} value={brief.situation} onChange={e=>setBrief({...brief,situation:e.target.value})} placeholder="Two colleagues rearrange a meeting after a misunderstanding."/></label><label>Language or skill to focus on<input maxLength={1000} value={brief.focus} onChange={e=>setBrief({...brief,focus:e.target.value})} placeholder="e.g. polite requests, clarification, past experiences"/></label><div className="speech-line-top"><label>Learner level<NSelect aria-label="Dialogue level" value={brief.level} onChange={e=>setBrief({...brief,level:e.target.value})}>{['A1','A2','B1','B2','C1','C2'].map(l=><option key={l}>{l}</option>)}</NSelect></label><label>Length<NSelect aria-label="Dialogue length" value={brief.turns} onChange={e=>setBrief({...brief,turns:Number(e.target.value)})}>{[6,12,20].map(n=><option key={n} value={n}>{n} utterances</option>)}</NSelect></label></div><p className="hint">Uses your speakers above. The new draft replaces the composer’s script; edit it before creating voices.</p><AiButton type="button" className="btn primary" disabled={aiBusy||!brief.situation.trim()} onClick={()=>void makeDialogue()}>{aiBusy?'Writing your dialogue…':'Create dialogue'}</AiButton></div>}
         {showPaste && <div className="speech-paste"><label>One utterance per line, with optional speaker names<textarea rows={5} value={paste} onChange={e => setPaste(e.target.value)} placeholder={'Alex: I was going to— no, hang on. Friday works.\nSam: Friday? Um… yes, I think so.'} /></label><p className="hint">Import replaces the lines in this composer.</p><button type="button" className="btn" onClick={importScript}>Use this script</button></div>}
         <p className="speech-hint">Write naturally. <kbd>Enter</kbd> starts the next speaker’s line; <kbd>Shift + Enter</kbd> stays with the same speaker. Put directions in parentheses: <b>(hesitates)</b>, <b>(whispers)</b>, <b>(laughs)</b>. Directions guide the voice; they aren’t read aloud.</p>
         <p className="speech-sr" role="status">{moveNotice}</p><div className="speech-script" aria-label="Dialogue script"><div className="speech-table-head" aria-hidden="true"><span>Speaker</span><span>Your dialogue</span><span>Take controls</span></div>{lines.map((l,i)=><div className={'speech-script-row'+(dragOver===l.id?' drop-target':'')} key={l.id} onDragOver={e=>{if(dragId.current&&!busy&&!aiBusy){e.preventDefault();setDragOver(l.id);e.dataTransfer.dropEffect='move';}}} onDrop={e=>{e.preventDefault();if(dragId.current&&!busy&&!aiBusy)moveLine(dragId.current,l.id);dragId.current=null;setDragOver('');}}>
