@@ -1,8 +1,20 @@
 import {splitKey} from '../ai/import-question-core.js';
 import {questionIds,scoreQuestion} from '../learning/question-core.js';
 const norm=s=>String(s||'').normalize('NFKC').trim().toLowerCase();
-export function scoreMove(game,state,previous={},awards={}){
+export function scoreMove(game,state,previous={},awards={},now=Date.now()){
  const next={...state};const ledger={...awards};const rounds=game.rounds;
+ const timed=['shark','taxi','drive','blocks'].includes(game.type);let gameOver=false;
+ if(timed){
+  const old=previous.arcade||{};next.arcade={...next.arcade};
+  if(next.arcade.phase==='running'&&old.phase!=='running')next.arcade.deadline=now+([20,30,60,120].includes(game.roundSeconds)?game.roundSeconds:30)*1000;
+  else if(old.phase==='running'){
+   next.arcade.deadline=old.deadline;
+   const expired=now>=old.deadline,blocked=game.type==='blocks'&&next.arcade.loss==='stack'&&(old.stack||[]).some(i=>i<20);
+   if(expired||blocked){next.arcade.phase='lost';next.arcade.loss=blocked?'stack':'time';next.answer='';next.feedback=blocked?'The blocks reached the top.':'Time ran out.';gameOver=true;}
+   else if(next.arcade.phase==='lost')return {state:previous,awards:{...awards}};
+  }
+ }
+
  if(previous.finished)return {state:previous,awards:ledger};
  if(next.round>(previous.round||0)+1||next.round<(previous.round||0))throw Error('Wait for the current round to finish.');
  if(next.round>(previous.round||0)&&previous.feedback==null)throw Error('Answer the current round first.');
@@ -17,5 +29,5 @@ export function scoreMove(game,state,previous={},awards={}){
   if(r.content){const {content,key}=splitKey(r.content);const questions=questionIds(content);unscored=!questions.length||questions.some(q=>['writing','reflect','upload'].includes(q.type));const scores=questions.map(q=>scoreQuestion(key[q.id],next.responses[q.id]));correct=!unscored&&scores.length>0&&scores.every(s=>s.max>0&&s.got===s.max);}
   const stake=[5,10,20,50].includes(next.stake)?next.stake:10;ledger[next.round]=unscored?0:game.type==='wager'?(correct?stake:-stake):(correct?10:0);
  }
- next.score=Object.values(ledger).reduce((n,p)=>n+p,0);next.finished=next.finished&&next.round===rounds.length-1&&Object.keys(ledger).length===rounds.length;return {state:next,awards:ledger};
+ next.score=Object.values(ledger).reduce((n,p)=>n+p,0);next.finished=gameOver||(next.finished&&next.round===rounds.length-1&&Object.keys(ledger).length===rounds.length);return {state:next,awards:ledger};
 }

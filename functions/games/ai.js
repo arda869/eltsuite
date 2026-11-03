@@ -18,7 +18,7 @@ export async function generateGame(db, auth, data, key, provider = generate) {
     if (!description)
         throw new HttpsError('invalid-argument', 'Describe what learners should practise.');
     const type = String(data.type || 'show');
-    if (!['show', 'targets', 'pinball', 'maze', 'hangman', 'search', 'slice', 'moles', 'wager', 'auction', 'pairs'].includes(type))
+    if (!['shark','taxi','drive','blocks','show', 'targets', 'pinball', 'maze', 'hangman', 'search', 'slice', 'moles', 'wager', 'auction', 'pairs'].includes(type))
         throw new HttpsError('invalid-argument', 'Choose a game type.');
     let context = {};
     if (data.classId) {

@@ -20,3 +20,23 @@ test('leaderboard points are computed from answers, not client-supplied scores',
 test('players cannot skip directly to the finish screen',()=>{const game={type:'show',rounds:[{answer:'a'},{answer:'b'},{answer:'c'}]};assert.throws(()=>scoreMove(game,cleanState({round:2,finished:true},3)),/current round/);assert.equal(scoreMove(game,cleanState({round:0,finished:true},3)).state.finished,false);});
 
 test('invalid saved drafts cannot be published into a class',()=>{assert.equal(validGame({...blankGame(),type:'search',rounds:[{id:'r',prompt:'A place',answer:'two words',choices:[]}]}),false);assert.equal(validGame({...blankGame(),rounds:[{id:'r',prompt:'Books?',answer:'library',choices:[]}]}),true);});
+
+test('timed games use a server deadline, reject premature defeat and end on expiry',()=>{
+ const game={type:'blocks',roundSeconds:30,rounds:[{answer:'library'},{answer:'bank'}]};
+ const start=scoreMove(game,cleanState({arcade:{phase:'running',deadline:99999999}},2),{},{},1000);
+ assert.equal(start.state.arcade.deadline,31000);
+ const premature=scoreMove(game,cleanState({...start.state,finished:true,arcade:{...start.state.arcade,phase:'lost',loss:'time'}},2),start.state,start.awards,2000);
+ assert.equal(premature.state.finished,false);
+ const expired=scoreMove(game,cleanState({...start.state,answer:'library',feedback:'Correct!',arcade:{...start.state.arcade,phase:'cleared'}},2),start.state,start.awards,31001);
+ assert.equal(expired.state.finished,true);assert.equal(expired.state.arcade.loss,'time');assert.equal(expired.state.score,0);
+ const correct=scoreMove(game,cleanState({...start.state,answer:'library',feedback:'Correct!',arcade:{...start.state.arcade,phase:'cleared'}},2),start.state,start.awards,2000);
+ assert.equal(correct.state.score,10);assert.equal(correct.state.finished,false);
+});
+test('falling pieces rotate, land above occupied cells and clear full rows',async()=>{
+ const js=ts.transpileModule(readFileSync(new URL('../../src/games/blockModel.ts',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+ const {piece,landing,settle}=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
+ assert.equal(Math.max(...piece(2,1).map(c=>c[0])),0);
+ const drop=landing([],2,0,3);assert.equal(drop.y,17);assert.deepEqual(drop.cells,[173,174,175,176]);
+ const row=[170,171,172,177,178,179];assert.deepEqual(settle(row,drop.cells),[]);
+ assert.equal(landing([0,1,2,3],2,0,0).blocked,true);
+});

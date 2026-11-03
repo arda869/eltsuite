@@ -1,5 +1,9 @@
 import type { JSONContent } from '@tiptap/react';
 export const GAME_TYPES = [
+    { id: 'shark', name: 'Shark escape', about: 'Answer in time to escape the shark.' },
+    { id: 'taxi', name: 'Taxi town', about: 'Deliver passengers by answering each question.' },
+    { id: 'drive', name: 'Checkpoint driver', about: 'Race between checkpoints with correct answers.' },
+    { id: 'blocks', name: 'Falling blocks', about: 'Answer before the block drops. Fill rows to clear them.' },
     { id: 'show', name: 'Game show', about: 'Answer rounds using any inline task type.' },
     { id: 'targets', name: 'Target practice', about: 'Hit the target that answers the question.' },
     { id: 'pinball', name: 'Pinball', about: 'Choose an answer bumper and launch the ball.' },
@@ -32,6 +36,7 @@ export type GameConfig = {
     rounds: GameRound[];
     sound: boolean;
     sourceId?: string;
+    roundSeconds?: number;
 };
 export const blankGame = (): GameConfig => ({ version: 1, type: 'show', theme: 'wood', rounds: [], sound: false });
 export const norm = (s: string) => s.normalize('NFKC').trim().toLocaleLowerCase();
@@ -59,7 +64,7 @@ export function gameProblems(game: GameConfig): string[] {
                 errors.push(`Question ${i + 1}: use a different word.`);
             words.add(norm(r.answer));
         }
-        if (['targets', 'pinball', 'maze', 'slice', 'moles'].includes(game.type) && new Set([r.answer, ...r.choices].map(norm).filter(Boolean)).size < 2)
+        if (['targets', 'pinball', 'maze', 'slice', 'moles','shark','taxi','drive','blocks'].includes(game.type) && new Set([r.answer, ...r.choices].map(norm).filter(Boolean)).size < 2)
             errors.push(`Question ${i + 1}: add at least one different answer option.`);
         if (game.type === 'auction' && !['correct', 'incorrect'].includes(norm(r.answer)))
             errors.push(`Sentence ${i + 1}: answer must be Correct or Incorrect.`);
