@@ -218,3 +218,5 @@
  .pub-stage-young{display:none}
  .pub.pub .pub-hero-try{display:none}
 }
+/* The sample lesson now sits below the fold, so it shows in full straight away. */
+.pub.pub .pub-hero :is(.pub-aim,.pub-language,.pub-teacher-note,.pub-preview-activity){animation:none!important;opacity:1!important}
