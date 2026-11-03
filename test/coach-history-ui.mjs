@@ -7,7 +7,11 @@ const server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config',
 try{
  for(let i=0;i<180;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
  // Finish the shared editor prebundle before the seed page can trigger a reload.
- await fetch(base+'/test/document-tools-check.ts');
+ for(let i=0;i<120;i++){
+  const editor=await fetch(base+'/test/document-tools-check.ts').then(r=>r.ok?r.text():'',()=> '');
+  if(editor.includes('@tiptap_core.js'))break;
+  await new Promise(r=>setTimeout(r,500));
+ }
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1400,height:960}});p.setDefaultTimeout(45000);p.setDefaultNavigationTimeout(180000);
  await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return !!localStorage.getItem('mockdemo');},null,{timeout:180000});await p.waitForLoadState('networkidle');
  const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
