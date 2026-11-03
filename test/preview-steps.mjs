@@ -9,10 +9,12 @@ export default async function steps({ p, ctx, say, BASE }) {
   await q.goto(`${BASE}/dev.html?as=teacher`); await q.waitForTimeout(2500);
 
   await safe('marks', async () => {
-    await q.setViewportSize({ width: 1200, height: 760 });
-    await q.goto(`${BASE}/test/landing-gallery.html?show=marks`); await q.waitForTimeout(2000);
-    await q.locator('.def-trigger').first().hover(); await q.waitForTimeout(700);
-    await hide(q); await q.screenshot({ path: 'preview-out/landing-marks.png' }); say('landing marks');
+    const m4 = await ctx.browser().newContext({ viewport: { width: 760, height: 520 }, deviceScaleFactor: 4, storageState: await ctx.storageState() });
+    const r = await m4.newPage();
+    await r.goto(`${BASE}/test/landing-gallery.html?show=marks`); await r.waitForTimeout(2500);
+    await r.locator('.def-trigger').first().hover(); await r.waitForTimeout(800);
+    await r.screenshot({ path: 'preview-out/landing-marks.png' }); say('landing marks');
+    await m4.close();
   });
   await safe('live', async () => {
     await q.setViewportSize({ width: 1440, height: 900 });
@@ -22,7 +24,8 @@ export default async function steps({ p, ctx, say, BASE }) {
   await safe('audio', async () => {
     q.setDefaultTimeout(60000);
     await q.setViewportSize({ width: 1440, height: 900 });
-    await q.goto(`${BASE}/test/speech/fixture.html?as=teacher&savedStudio`); await q.waitForTimeout(2500);
+    await q.goto(`${BASE}/test/speech/fixture.html?as=teacher&savedStudio`);
+    for (let i = 0; i < 8; i++) { await q.waitForTimeout(1000); say('audio at', q.url(), (await q.locator('body').innerText().catch(() => '')).slice(0, 120).replace(/\n/g, ' | ')); }
     await q.evaluate(() => sessionStorage.setItem('mockStemDelayMs', '300'));
     await q.getByRole('button', { name: 'Create song', exact: true }).click();
     const d = q.getByRole('dialog', { name: 'Create a classroom song' });

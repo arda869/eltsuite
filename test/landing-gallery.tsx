@@ -23,7 +23,7 @@ const sentence = { type: 'doc', content: [{ type: 'paragraph', content: [
 ] }] };
 
 function Marks() {
-  return <main className="lg-marks" style={{ padding: '90px 60px 300px', fontSize: 44 }}><div className="task-body" style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 44, lineHeight: 2.2 }}><TaskRenderer content={sentence as any} responses={{}} onChange={() => {}} /></div></main>;
+  return <main className="lg-marks" style={{ padding: '40px 30px 300px', background: '#fff', minHeight: '100vh' }}><div className="task-body"><TaskRenderer content={sentence as any} responses={{}} onChange={() => {}} /></div></main>;
 }
 
 const SRC = `# Opinions\n\n## Task 1: Giving reasons\n[[mcq]]\nWhich phrase introduces a reason?\n- I see your point\n* The main reason is\n- Let me think\n[[/mcq]]\n\nI {{agree}} with you, but what {{about}} the cost?\n`;
@@ -45,6 +45,6 @@ function Live() {
     setReady({ classId, content, key });
   })(); }, []);
   if (!ready) return <p>One moment…</p>;
-  return <div style={{ display: 'flex', justifyContent: 'flex-end', minHeight: '100vh', background: 'var(--page)' }}><div style={{ width: 380 }}><LivePanel classId={ready.classId} taskId="t-live" content={ready.content} answerKey={ready.key} presence={[]} seeLearners={false} /></div></div>;
+  return <div style={{ display: 'flex', justifyContent: 'flex-end', minHeight: '100vh', background: '#fff' }}><div style={{ width: 380 }}><LivePanel classId={ready.classId} taskId="t-live" content={ready.content} answerKey={ready.key} presence={[]} seeLearners={false} /></div></div>;
 }
 createRoot(document.getElementById('root')!).render(show === 'live' ? <Live /> : <Marks />);
