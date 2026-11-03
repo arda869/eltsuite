@@ -4,6 +4,7 @@ import {compactSchema} from '../../functions/ai/compact-schema.js';
 import {activitySchema} from '../../functions/ai/activities.js';
 import {generationSchema} from '../../functions/ai/contract.js';
 import {stageContract} from '../../functions/ai/sequence.js';
+import {importModelSchema} from '../../functions/ai/import-model.js';
 function expand(node,root=node){if(!node||typeof node!=='object')return node;if(node.$ref)return expand(root.$defs[node.$ref.slice(8)],root);return Array.isArray(node)?node.map(v=>expand(v,root)):Object.fromEntries(Object.entries(node).filter(([k])=>k!=='$defs').map(([k,v])=>[k,expand(v,root)]));}
 test('compact activity schemas preserve every constraint including named stage references',()=>{
  const approved={stages:Array.from({length:9},(_,i)=>({id:String(i),title:'Stage',aim:'Use language',minutes:10,interaction:'pairs'}))};
@@ -12,5 +13,16 @@ test('compact activity schemas preserve every constraint including named stage r
   assert.deepEqual(expand(after),expand(source));assert.deepEqual(source,before);
   assert.ok(JSON.stringify(after).length<JSON.stringify(source).length*0.6);
   assert.deepEqual(expand(compactSchema(after)),expand(source));
+ }
+});
+test('import schemas keep property maps literal when an inline tool has a field named type',()=>{
+ for(const training of [false,true]){
+  const source=generationSchema(importModelSchema(training)),compact=compactSchema(source);
+  const visit=node=>{if(!node||typeof node!=='object')return;if(node.type==='object'){
+   assert.equal(Object.hasOwn(node.properties,'$ref'),false,'properties must be a map of field schemas, not a reference');
+   assert.deepEqual([...node.required].sort(),Object.keys(node.properties).sort());
+   assert.equal(node.additionalProperties,false);
+  }for(const child of Object.values(node))visit(child);};
+  visit(compact);assert.deepEqual(expand(compact),expand(source));
  }
 });
