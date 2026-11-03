@@ -100,3 +100,78 @@
 .pub.pub :is(th,td){color:var(--ink)}
 .pub.pub .eyebrow{color:var(--muted)}
 .pub.pub .pub-closing .pub-kicker,.pub.pub .pub-closing .pub-caption{color:#ecc3a8}
+
+/* ---------------------------------------------------------------------------------------------
+   Homepage, round 2: the product first. A two-line headline with one button, then the sample
+   lesson large enough to read; a strip of real screens; full-width bands that alternate
+   paper, a soft terracotta tint and grey, ending on a dark band. Nothing under 13px. */
+.pub.pub .pub-band{max-width:none;padding-top:clamp(56px,7vw,96px);padding-bottom:clamp(56px,7vw,96px);padding-left:var(--pub-gutter);padding-right:var(--pub-gutter)}
+.pub.pub .pub-band-paper{background:var(--paper)}
+.pub.pub .pub-band-tint{background:color-mix(in srgb,var(--accent) 7%,var(--paper))}
+.pub.pub .pub-band-grey{background:var(--bg)}
+.pub.pub .pub-band-dark{background:#2b2926;color:#f6f2ec}
+.pub.pub .pub-band-dark :is(h2,p){color:#f6f2ec}
+.pub.pub .pub-band-dark .pub-button{background:#f6f2ec;border-color:#f6f2ec;color:#2b2926!important}
+.pub.pub .pub-band-dark .pub-button:hover{background:#fff}
+:root[data-theme='dark'] .pub.pub .pub-band-paper{background:#22211e}
+:root[data-theme='dark'] .pub.pub .pub-band-dark{background:#11100e}
+/* Hero: text across the top, the lesson underneath it, wide. */
+.pub.pub .pub-hero{display:block;padding-top:clamp(40px,6vw,80px)}
+.pub.pub .pub-hero-copy{max-width:880px}
+.pub.pub .pub-hero h1{margin:14px 0 18px;font-size:clamp(38px,4.6vw,66px);line-height:1.06;letter-spacing:-.025em}
+.pub.pub .pub-hero-copy>p{max-width:640px;font-size:17px;line-height:1.65}
+.pub.pub .pub-hero .pub-actions{margin-top:24px;display:flex;align-items:center;gap:20px}
+.pub.pub .pub-caption{font-size:14px;color:var(--muted)}
+.pub.pub .pub-hero-visual{margin-top:clamp(36px,5vw,64px)}
+.pub.pub .pub-hero-phone{display:none}
+/* The sample lesson, at a readable size. */
+.pub.pub .pub-lesson{font-size:15px}
+.pub.pub .pub-lesson :is(.pub-window,.pub-window span,.pub-preview-footer,.pub-preview-footer a,.pub-demo-label){font-size:13px!important}
+.pub.pub .pub-lesson :is(.pub-preview-switch button){font-size:15px;min-height:44px}
+.pub.pub .pub-lesson .pub-preview-explainer{font-size:15px}
+.pub.pub .pub-lesson .pub-lesson-body aside li button{font-size:15px;padding:10px 12px}
+.pub.pub .pub-lesson .pub-lesson-body aside strong{font-size:24px}
+.pub.pub .pub-lesson :is(.pub-aim span,.pub-language span,.pub-teacher-note strong,.pub-lesson-meta span){font-size:12px!important;letter-spacing:.1em}
+.pub.pub .pub-lesson :is(.pub-aim p,.pub-preview-activity p,.pub-teacher-note){font-size:16px;line-height:1.6}
+.pub.pub .pub-lesson .pub-preview-activity h3{font-size:30px}
+.pub.pub .pub-lesson .pub-language p{font-size:22px}
+.pub.pub .pub-lesson-body{min-height:440px}
+/* Real screens in a light window frame. */
+.pub-shot{margin:0;border-radius:14px;overflow:hidden;background:var(--paper);box-shadow:0 0 0 1px var(--hair),0 24px 48px -28px rgba(51,48,44,.45)}
+.pub-shot-bar{display:flex;gap:6px;padding:9px 12px;background:var(--surface,#f4f4f3);border-bottom:1px solid var(--hair)}
+.pub-shot-bar i{width:9px;height:9px;border-radius:50%;background:#d6d3cd}
+.pub-shot img{display:block;width:100%;height:auto}
+/* A look around: six screens. */
+.pub.pub .pub-band-head{max-width:760px;margin-bottom:clamp(28px,4vw,48px)}
+.pub.pub .pub-band-head h2{margin-top:10px}
+.pub-tour-strip{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,2.4vw,36px)}
+.pub-tour-strip h3{margin:16px 0 4px;font-size:22px!important}
+.pub-tour-strip p{margin:0;font-size:15px;color:var(--muted)}
+/* Sections: text and one large picture side by side. */
+.pub.pub :is(.pub-philosophy,.pub-collab,.pub-journey){display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(28px,5vw,80px);align-items:center}
+.pub.pub .pub-philosophy>.pub-kicker,.pub.pub .pub-collab>.pub-kicker{grid-column:1/-1}
+.pub.pub :is(.pub-philosophy,.pub-collab,.pub-journey) h2{margin:10px 0 16px}
+.pub.pub .pub-journey .pub-button{margin-top:24px}
+.pub.pub .pub-class-entry{display:block;padding:0;text-decoration:none;color:inherit;border-radius:16px;background:transparent;box-shadow:none;overflow:visible}
+.pub.pub .pub-class-entry:hover .pub-shot{box-shadow:0 0 0 2px var(--accent),0 24px 48px -28px rgba(51,48,44,.45)}
+.pub-class-entry-text{display:flex;flex-direction:column;gap:4px;margin-top:14px}
+.pub-class-entry-text strong{font:500 22px var(--serif)}
+.pub-class-entry-text>span{font-size:15px;color:var(--muted)}
+.pub.pub .pub-costs{text-align:left}
+.pub.pub .pub-costs p{max-width:720px}
+.pub.pub .pub-closing{text-align:center}
+.pub.pub .pub-closing p{margin-left:auto;margin-right:auto;max-width:640px}
+.pub.pub .pub-closing .pub-caption{display:block;margin-top:14px}
+.pub.pub .pub-hero-bottom{display:none}
+@media (max-width:1050px){.pub-tour-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Phones: headline and one button, then one picture of the real editor. */
+@media (max-width:760px){
+ .pub.pub .pub-hero-visual{display:none}
+ .pub.pub .pub-hero-phone{display:block;margin-top:32px;margin-right:calc(var(--pub-gutter) * -1)}
+ .pub.pub .pub-hero-phone .pub-shot{border-radius:14px 0 0 14px}
+ .pub.pub .pub-hero-phone img{width:170%;max-width:none}
+ .pub.pub .pub-hero-phone .pub-shot{overflow:hidden}
+ .pub.pub :is(.pub-philosophy,.pub-collab,.pub-journey){grid-template-columns:1fr}
+ .pub-tour-strip{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;margin-right:calc(var(--pub-gutter) * -1);padding-right:var(--pub-gutter);padding-bottom:8px}
+ .pub-tour-strip li{flex:0 0 82%;scroll-snap-align:start}
+}
