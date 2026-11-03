@@ -5,11 +5,11 @@ import {spawn} from 'node:child_process';
 const base='http://127.0.0.1:5203',server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port','5203','--host','127.0.0.1'],{stdio:'ignore',detached:true});let browser,p;
 try{
  for(let i=0;i<120;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
- browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);await p.goto(base+'/test/audio-script-fixture.html');
+ browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);await p.goto(base+'/test/audio-script-fixture.html');await p.waitForLoadState('networkidle');
  for(const layout of ['false','true']){
   await p.getByLabel('Player layout').selectOption(layout);
   for(const role of ['teaching','learner']){
-   await p.reload();await p.getByLabel('Player layout').selectOption(layout);
+   await p.reload();await p.waitForLoadState('networkidle');await p.getByLabel('Player layout').selectOption(layout);
    await p.getByLabel('View',{exact:true}).selectOption(role);await p.getByLabel('Script setting').selectOption('button');
    await p.getByRole('button',{name:'Show the script',exact:true}).click();await p.getByText('Could you help me?',{exact:false}).waitFor();
    await p.getByRole('button',{name:'Hide the script',exact:true}).click();assert.equal(await p.locator('.kl,.im-script').count(),0);

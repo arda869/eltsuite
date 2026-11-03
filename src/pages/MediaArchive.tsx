@@ -50,8 +50,8 @@ const KINDS = [
   { k: 'audio', label: 'Recordings', icon: 'music' },
   { k: 'video', label: 'Videos', icon: 'video' },
 ] as const;
-type Kind = 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'design';
-const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, { k: 'design', label: 'Designer files' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
+type Kind = 'game' | 'image' | 'audio' | 'video' | 'task' | 'lesson' | 'doc' | 'slides' | 'flash' | 'pd' | 'pdf' | 'storyboard' | 'file' | 'design';
+const ALL_KINDS: { k: Kind; label: string }[] = [{ k: 'game', label: 'Games' }, { k: 'lesson', label: 'Lessons' }, { k: 'doc', label: 'Collab documents' }, { k: 'flash', label: 'Flashcards' }, { k: 'pd', label: 'Reading Journal' }, { k: 'pdf', label: 'PDFs' }, { k: 'storyboard', label: 'Storyboards' }, { k: 'design', label: 'Designer files' }, ...KINDS.map((k) => ({ k: k.k as Kind, label: k.label })), { k: 'file', label: 'Other files' }];
 const COLLAB_KINDS: Kind[] = ['doc', 'slides', 'pdf', 'file', 'design'];
 type Sort = 'new' | 'name' | 'size' | 'type';
 type Group = 'none' | 'type';
@@ -65,8 +65,8 @@ const MOVE = 'application/x-ll-media';
 const monthOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Earlier');
 const dayOf = (t: number) => (t ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '');
 const nItems = (n: number) => (n === 1 ? '1 item' : `${n} items`);
-const kindName = (k: string) => ({ image: 'Picture', video: 'Video', task: 'Task', audio: 'Recording', lesson: 'Lesson', doc: 'Collab document', pdf: 'PDF', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal' })[k] ?? 'File';
-const ORDER: Record<Kind, number> = { lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, storyboard: 7, image: 8, audio: 9, video: 10, file: 11, design: 7.5 };
+const kindName = (k: string) => ({ game: 'Game', image: 'Picture', video: 'Video', task: 'Task', audio: 'Recording', lesson: 'Lesson', doc: 'Collab document', pdf: 'PDF', slides: 'Slides', flash: 'Flashcards', pd: 'Reading Journal' })[k] ?? 'File';
+const ORDER: Record<Kind, number> = { game: 4.5, lesson: 0, task: 1, doc: 2, slides: 3, flash: 4, pd: 5, pdf: 6, storyboard: 7, image: 8, audio: 9, video: 10, file: 11, design: 7.5 };
 
 // The space an item takes: its size in each class that has a copy.
 const spaceOf = (i: ArchiveItem) => (i.size || 0) * (1 + Object.keys(i.copies ?? {}).filter((c) => c !== i.home?.classId).length) + (i.thumb?.length ?? 0);
@@ -385,9 +385,19 @@ export function MediaArchive() {
     }
     setSel(new Set());
   };
+  const downloadOffline = async (entry: Entry) => {
+    setBusy('Preparing offline HTML and embedding media…');
+    try {
+      const {makeOfflineFile,saveOfflineFile} = await import('../offline/export');
+      const file = await makeOfflineFile({doc:entry.doc,lesson:entry.cls});
+      if(file.warnings.length && !(await ask('Some content needs internet and will be labelled in the file:\n'+file.warnings.join('\n'),{ok:'Download with these notes'}))) {setBusy('');return;}
+      saveOfflineFile(file);setBusy('');
+    } catch(error) {setBusy('');await tell(error instanceof Error?error.message:'Could not prepare the offline file.');}
+  };
   const download = async (list: Entry[], folders: string[] = []) => {
     const every = [...new Map([...list, ...entries.filter((e) => folders.some((f) => inTree(e.folder, f)))].map((e) => [e.key, e])).values()];
     if (!every.length) return;
+    if(every.length===1&&!folders.length&&(every[0].cls||['game','lesson'].includes(every[0].doc?.kind||'')))return downloadOffline(every[0]);
     if (every.length === 1 && !folders.length && every[0].doc?.kind === 'file') return void downloadAnyFile(every[0].doc.id, every[0].doc.file ? { ...every[0].doc.file, name: dlName(every[0].doc) } : undefined).catch(() => {});
     if (every.length === 1 && !folders.length && (every[0].item || every[0].task)) return every[0].item ? void downloadItem(every[0].item).catch(() => {}) : every[0].task && downloadTask(every[0].task);
     setBusy('Putting the files together…');
@@ -503,11 +513,13 @@ export function MediaArchive() {
     if (en.cls)
       return [
         { label: 'Open', icon: 'fullscreen', onClick: () => openE(en) },
+        { label: 'Download offline HTML', icon: 'import', onClick: () => void downloadOffline(en) },
         { label: 'Export as a worksheet…', icon: 'import', onClick: () => setExporting(en.cls!) },
         { label: 'Share with a colleague…', icon: 'person', onClick: () => (setLessonWarned(false), setSharingLesson(en.cls!)) },
       ];
     if (en.doc)
       return [
+        ...(['game','lesson'].includes(en.doc.kind)?[{label:'Download offline HTML',icon:'import',onClick:()=>void downloadOffline(en)} as MenuItem]:[]),
         ...(en.doc.kind === 'file'
           ? ([
               { label: 'Download', icon: 'import', onClick: () => openE(en) },
@@ -636,6 +648,7 @@ export function MediaArchive() {
     { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
     'sep',
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
+    ...(appOn('games') ? [{ label: 'Game', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
     ...(appOn('design') ? [{ label: 'Designer', icon: 'design', hint: 'images and storyboards', onClick: () => void makeDoc('design') } as MenuItem] : []),
@@ -1194,6 +1207,7 @@ export function MediaArchive() {
               <button type="button" className="btn small-btn" onClick={() => setExporting(oneEntry.cls!)}>
                 <UiIcon name="import" size={14} /> Export
               </button>
+              <button type="button" className="btn small-btn" onClick={()=>void downloadOffline(oneEntry)}>Download offline HTML</button>
             </span>
           </aside>
         )}
@@ -1219,6 +1233,7 @@ export function MediaArchive() {
               <button type="button" className="btn small-btn primary" onClick={() => openE(oneEntry)}>
                 <UiIcon name="fullscreen" size={14} /> Open
               </button>
+              {['game','lesson'].includes(oneEntry.doc.kind) && <button className="btn small-btn" onClick={()=>void downloadOffline(oneEntry)}>Download offline HTML</button>}
               <button type="button" className="btn small-btn" onClick={() => setSharing(oneEntry.doc!)}>
                 <UiIcon name="person" size={14} /> Share
               </button>

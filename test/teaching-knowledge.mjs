@@ -11,7 +11,7 @@ try {
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1300,height:900}});
  p.setDefaultTimeout(60000);
  const crashes=[];p.on('pageerror',e=>{crashes.push(e.message);console.log('Page error:',e.message);});p.on('console',m=>{if(m.type()==='error')console.log('Browser error:',m.text().slice(0,1000));});
- await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.evaluate(()=>window.__mockReady);
+ await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await p.waitForLoadState('networkidle');
  const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  await p.evaluate(async({classId,itemId})=>{
   const {doc,setDoc}=await import('/test/mock/firestore.ts');

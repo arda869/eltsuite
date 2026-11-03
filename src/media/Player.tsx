@@ -579,7 +579,7 @@ export function MediaPlayer({ classId, mediaId, title, scriptMode = 'karaoke', p
   const e = useEngine(classId, mediaId, manifest);
   const [open, setOpen] = useState<boolean|null>(null);
   const [scriptRecovery,setScriptRecovery]=useState(''),[scriptRetry,setScriptRetry]=useState(0);
-  useEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
+  useLayoutEffect(()=>setOpen(null),[classId,mediaId,scriptMode,editing,teaching]);
   const lines = (e.m?.script ?? []).filter((l) => l.text.trim());
   useEffect(()=>{
     let active=true;setScriptRecovery('');
