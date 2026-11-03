@@ -24,9 +24,9 @@ function ask(variant:string,words?:string[],limit?:number):Promise<Wrong[]>{
  return new Promise((resolve,reject)=>{waiting.set(id,{resolve,reject});w.postMessage({id,variant,words,limit});});
 }
 // The words that aren't in the dictionary, with up to five suggestions each, stopping at limit.
-export const checkWords=(variant:Spelling['variant'],words:string[],limit=12)=>ask(variant,words,limit);
+export const checkWords=(variant:Spelling['variant'],words:string[],limit=12)=>ask(variant??'en-GB',words,limit);
 // Start building a dictionary in the background, before it's needed.
-export const warmDictionary=(variant:Spelling['variant'])=>{void ask(variant).catch(()=>{});};
+export const warmDictionary=(variant:Spelling['variant'])=>{void ask(variant??'en-GB').catch(()=>{});};
 
 const cache=new Map<string,Promise<Checker>>();
 export function dictionary(variant:Spelling['variant']='en-GB'){
