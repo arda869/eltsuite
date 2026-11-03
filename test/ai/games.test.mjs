@@ -19,6 +19,42 @@ test('selected learner moves once; stale moves and moves after ending are reject
 test('leaderboard points are computed from answers, not client-supplied scores',()=>{const game={type:'show',rounds:[{id:'r',answer:'library'}]};const next=cleanState({round:0,answer:'bank',score:3000,feedback:'Correct!',finished:true},1);const r=scoreMove(game,next);assert.equal(r.state.score,0);assert.equal(r.state.finished,true);assert.equal(scoreMove(game,{...next,answer:'library',score:999}).state.score,10);});
 test('players cannot skip directly to the finish screen',()=>{const game={type:'show',rounds:[{answer:'a'},{answer:'b'},{answer:'c'}]};assert.throws(()=>scoreMove(game,cleanState({round:2,finished:true},3)),/current round/);assert.equal(scoreMove(game,cleanState({round:0,finished:true},3)).state.finished,false);});
 
+test('game show: the server sets the clock, scores late answers as nothing and spends each lifeline once',()=>{
+ const game={type:'show',showTimer:30,rounds:[{id:'a',answer:'library',choices:['bank','park']},{id:'b',answer:'bakery',choices:['zoo','bank']}]};
+ const show=(extra={})=>({phase:'play',deadline:0,lockedAt:0,fifty:null,extra:null,results:'',...extra});
+ // Opening a question stamps the deadline from the server clock, whatever the client proposed.
+ const opened=scoreMove(game,cleanState({round:0,show:show({deadline:999999999})},2),{},{},10000);
+ assert.equal(opened.state.show.deadline,40000);
+ // Extra time adds 20 seconds, once; a second claim is ignored.
+ const extra=scoreMove(game,cleanState({round:0,show:show({extra:0,deadline:1})},2),opened.state,opened.awards,15000);
+ assert.equal(extra.state.show.deadline,60000);assert.equal(extra.state.show.extra,0);
+ const again=scoreMove(game,cleanState({round:0,show:show({extra:1,deadline:1})},2),{...extra.state,round:0},extra.awards,16000);
+ assert.equal(again.state.show.extra,0);assert.equal(again.state.show.deadline,60000);
+ // Locked before the deadline, revealed after it: still counts.
+ const locked=scoreMove(game,cleanState({round:0,answer:'library',show:show({phase:'locked',extra:0})},2),extra.state,extra.awards,59000);
+ assert.equal(locked.state.show.lockedAt,59000);
+ const revealed=scoreMove(game,cleanState({round:0,answer:'library',feedback:'Correct!',show:show({phase:'locked',extra:0,results:'1'})},2),locked.state,locked.awards,62000);
+ assert.equal(revealed.state.score,10);assert.equal(revealed.state.show.results,'1');
+ // Locked well after the deadline: the answer is dropped and the round scores nothing.
+ const late0=scoreMove(game,cleanState({round:0,show:show()},2),{},{},0);
+ const lateLock=scoreMove(game,cleanState({round:0,answer:'library',show:show({phase:'locked'})},2),late0.state,late0.awards,40000);
+ const lateReveal=scoreMove(game,cleanState({round:0,answer:'library',feedback:'Correct!',show:show({phase:'locked',results:'1'})},2),lateLock.state,lateLock.awards,41000);
+ assert.equal(lateReveal.state.score,0);assert.equal(lateReveal.state.feedback,'Time ran out.');assert.equal(lateReveal.state.show.results,'0');
+ // Take two away is remembered on the round it was spent.
+ const fifty=scoreMove(game,cleanState({round:0,show:show({fifty:0})},2),late0.state,late0.awards,100);
+ const reuse=scoreMove(game,cleanState({round:0,show:show({fifty:1})},2),fifty.state,fifty.awards,200);
+ assert.equal(reuse.state.show.fifty,0);
+ // Without a timer there is never a deadline, and the ladder follows the ledger not the claim.
+ const untimed={...game,showTimer:0};
+ const u=scoreMove(untimed,cleanState({round:0,answer:'bank',feedback:'Answer: library',show:show({deadline:5,results:'1'})},2),{},{},0);
+ assert.equal(u.state.show.deadline,0);assert.equal(u.state.show.results,'0');assert.equal(u.state.score,0);
+ // Old boards without show state keep working.
+ assert.equal(scoreMove(game,cleanState({round:0,answer:'library',feedback:'Correct!'},2)).state.score,10);
+ assert.equal(validGame({...blankGame(),rounds:[{id:'r',prompt:'Books?',answer:'library',choices:[],note:'x'.repeat(601)}]}),false);
+ assert.equal(validGame({...blankGame(),showTimer:25,rounds:[{id:'r',prompt:'Books?',answer:'library',choices:[]}]}),false);
+ assert.equal(validGame({...blankGame(),showTimer:30,showLock:false,showLifelines:true,rounds:[{id:'r',prompt:'Books?',answer:'library',choices:[],note:'Books live in a library.'}]}),true);
+});
+
 test('invalid saved drafts cannot be published into a class',()=>{assert.equal(validGame({...blankGame(),type:'search',rounds:[{id:'r',prompt:'A place',answer:'two words',choices:[]}]}),false);assert.equal(validGame({...blankGame(),rounds:[{id:'r',prompt:'Books?',answer:'library',choices:[]}]}),true);});
 
 test('timed games use a server deadline, reject premature defeat and end on expiry',()=>{
@@ -39,4 +75,17 @@ test('falling pieces rotate, land above occupied cells and clear full rows',asyn
  const drop=landing([],2,0,3);assert.equal(drop.y,17);assert.deepEqual(drop.cells,[173,174,175,176]);
  const row=[170,171,172,177,178,179];assert.deepEqual(settle(row,drop.cells),[]);
  assert.equal(landing([0,1,2,3],2,0,0).blocked,true);
+});
+
+test('show deadline cannot be renewed by returning from lock to play',()=>{
+ const game={...blankGame(),showTimer:15,rounds:[{id:'a',prompt:'Place?',answer:'library',choices:[]}]};
+ const previous=cleanState({round:0,show:{phase:'locked',deadline:16000,lockedAt:14000}},1);
+ const next=cleanState({round:0,show:{phase:'play',deadline:999999}},1);
+ assert.equal(scoreMove(game,next,previous,{},20000).state.show.deadline,16000);
+});
+test('show timed-out inline answers never earn points',()=>{
+ const game={...blankGame(),showTimer:15,rounds:[{id:'a',prompt:'Place?',answer:'library',choices:[],content:{type:'doc',content:[{type:'paragraph',content:[{type:'gap',attrs:{id:'g',answers:['library']}}]}]}}]};
+ const previous=cleanState({round:0,show:{phase:'play',deadline:16000}},1);
+ const next=cleanState({round:0,answer:'library',responses:{g:'library'},feedback:'Time ran out.',show:{phase:'play'}},1);
+ assert.equal(scoreMove(game,next,previous,{},20000).state.score,0);
 });

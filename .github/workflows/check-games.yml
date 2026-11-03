@@ -31,6 +31,7 @@ jobs:
       - run: node test/games-offline-resources.mjs
       - run: node test/games.mjs
       - run: node test/games-editor.mjs
+      - run: node test/games-show.mjs
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

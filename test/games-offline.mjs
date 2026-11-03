@@ -14,7 +14,7 @@ try{
  for(const type of (process.env.OFFLINE_TYPES||'show,shark,taxi,drive,blocks,pairs,search,hangman,maze,pinball,targets,slice,moles,wager,auction').split(',')){
   const game={version:1,type,theme:'paper',sound:false,rounds:type==='auction'?rounds.map((r,i)=>({...r,answer:i?'Incorrect':'Correct'})):rounds};
   await writeFile('/tmp/elt-offline-'+type+'.html',offlineHtml('Town game',{title:'Town game',game},js,css));
-  await p.goto('file:///tmp/elt-offline-'+type+'.html');await p.locator('.game-stage.game-'+type).waitFor();
+  await p.goto('file:///tmp/elt-offline-'+type+'.html');await p.locator(type==='show'?'.show-stage':'.game-stage.game-'+type).waitFor();if(type==='show')await p.getByRole('button',{name:'Start the show',exact:true}).click();
   if(type==='pairs'){
    for(const r of rounds)for(const side of ['a','b'])await p.locator(`[data-card-id="${r.id+side}"]`).click();
   }else if(type==='search'){
@@ -27,11 +27,12 @@ try{
     else if(type==='hangman'){for(const c of new Set(r.answer.toUpperCase()))await p.getByRole('button',{name:c,exact:true}).click().catch(async e=>{console.log(await p.locator('body').innerText());throw e;});}
     else if(type==='maze'){await p.getByRole('button',{name:'Up',exact:true}).click();await p.getByRole('button',{name:'Up',exact:true}).click();const x=optionsFor(r).indexOf(r.answer)*2;for(let i=0;i<Math.abs(x-2);i++)await p.getByRole('button',{name:x<2?'Left':'Right',exact:true}).click();await p.getByRole('button',{name:'Up',exact:true}).click();await p.getByRole('button',{name:'Up',exact:true}).click();}
     else if(type==='pinball'){await p.getByRole('button',{name:r.answer,exact:true}).click();await p.getByRole('button',{name:'Launch ball'}).click();}
+    else if(type==='show'){await p.getByRole('button',{name:new RegExp(r.answer)}).click();await p.getByRole('button',{name:'Lock it in',exact:true}).click();}
     else {await p.getByRole('button',{name:new RegExp(r.answer)}).click();}
-    await p.getByRole('button',{name:r.id==='r2'?'Finish game':'Next round',exact:true}).click();
+    await p.getByRole('button',{name:r.id==='r2'?'Finish game':type==='show'?'Next question':'Next round',exact:true}).click();
    }
   }
-  if(type!=='auction'){console.log((await p.locator('.game-stage').innerText()).slice(-500));await p.getByRole('heading',{name:'Game complete'}).waitFor();}
+  if(type!=='auction'){console.log((await p.locator('.game-stage,.show-stage').innerText()).slice(-500));await p.getByRole('heading',{name:'Game complete'}).waitFor();}
   console.log('Offline complete:',type);
  }
  assert.equal(errors.length,0,errors.join('\n'));

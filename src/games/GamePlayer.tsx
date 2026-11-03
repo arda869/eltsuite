@@ -8,15 +8,24 @@ import { questionIds, scoreTask, splitKey, type Responses } from '../lib/questio
 import { GAME_TYPES, gameProblems, norm, optionsFor, shuffled, wordGrid, type GameConfig } from './model';
 import './games.css';
 import { playSfx } from './sfx';
+import { ShowPlayer } from './show/ShowPlayer';
 const stable = (v: any): string => JSON.stringify(v, (_k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x);
-export function GamePlayer({ game, onFinish, remote, onState, readOnly = false, expandable = true }: {
+type PlayerProps = {
     game: GameConfig;
+    /** The saved game's title, shown on the game show's opening screen. */
+    title?: string;
     onFinish?: (score: number, total: number) => void;
     remote?: Record<string, any> | null;
     onState?: (state: Record<string, unknown>) => void;
     readOnly?: boolean;
     expandable?: boolean;
-}) {
+};
+// The game show has its own stage (./show); the other games share the board below. The choice is
+// fixed by the game's type, so a board never changes component while it is being played.
+export function GamePlayer(props: PlayerProps) {
+    return props.game.type === 'show' ? <ShowPlayer {...props}/> : <BoardPlayer {...props}/>;
+}
+function BoardPlayer({ game, onFinish, remote, onState, readOnly = false, expandable = true }: PlayerProps) {
     const [round, setRound] = useState(0), [score, setScore] = useState(0), [answer, setAnswer] = useState(''), [feedback, setFeedback] = useState<string | null>(null), [stake, setStake] = useState(10), [responses, setResponses] = useState<Responses>({});
     const [auction, setAuction] = useState<AuctionState>(newAuction);
     const [arcade, setArcade] = useState<Record<string, any>>({});
