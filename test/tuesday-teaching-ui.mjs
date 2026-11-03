@@ -10,7 +10,7 @@ try{for(let i=0;i<120;i++){
   if(editor.includes('@tiptap_core.js')&&spelling.includes('@tiptap_react.js'))break;
  }
  await new Promise(r=>setTimeout(r,500));
-}browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);p.setDefaultNavigationTimeout(180000);p.on('pageerror',e=>console.log('Browser error',e.message));await p.goto(base+'/test/spelling-fixture.html');
+}browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage();p.setDefaultTimeout(30000);p.setDefaultNavigationTimeout(180000);p.on('pageerror',e=>console.log('Browser error',e.message));await p.goto(base+'/test/spelling-fixture.html');await p.waitForLoadState('networkidle');await p.reload();
  const writing=p.getByRole('textbox',{name:'Writing',exact:true});await writing.click();await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'the ');assert.equal(await p.getByLabel('Saved plain').textContent(),'the ');await writing.press('Backspace');assert.equal(await writing.inputValue(),'teh');
  await p.getByLabel('Scope spell check').selectOption('off');await writing.fill('');await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'teh ');await p.waitForFunction(()=>document.querySelector('textarea')?.getAttribute('spellcheck')==='false');assert.equal(await writing.getAttribute('spellcheck'),'false');
  await p.getByLabel('Scope spell check').selectOption('on');await p.getByLabel('Scope autocorrect').selectOption('off');await writing.fill('');await writing.pressSequentially('teh ');assert.equal(await writing.inputValue(),'teh ');
