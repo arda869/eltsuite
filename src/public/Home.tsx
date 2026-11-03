@@ -122,7 +122,7 @@ const SHOWCASES: Showcase[] = [
     id: 'plan', kicker: 'PLAN', title: 'From the first idea to the finished lesson.',
     body: ['Build a lesson task by task: a recording to listen to, the language to notice, a speaking activity and a moment to look back. Each task keeps its own teaching notes, and only you see them.'],
     points: ['Questions, gaps, writing, speaking prompts and post-it boards in one lesson.', 'Language boxes and pronunciation, marked the way you’d mark them on the board.', 'Every lesson sits in its class, unit by unit.'],
-    status: 'Available now. Writing a lesson with AI is in a small pilot.',
+    status: 'Available now. AI can help create and adapt individual activities.',
     main: { name: 'editor-language', alt: 'The lesson editor on the task “Notice the language”: a useful language box, sentences with gaps for point, about and because, and the teacher’s notes.' },
     details: [{ name: 'class', alt: 'The class page: Unit 1 · Talking together and Unit 2 · Opinions and decisions, with their lessons.', at: { x: 0.01, y: 0.44, w: 0.6, h: 0.56 }, caption: 'Units and lessons in the class' }],
   },

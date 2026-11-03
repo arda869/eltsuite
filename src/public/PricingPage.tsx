@@ -21,7 +21,7 @@ const NONE = 'Not expected to use credits';
 const USES = 'Uses credits · amounts to be confirmed';
 const ROWS: [string, [string, string][]][] = [
   ['Teaching and collaboration', [['Lesson planning', NONE], ['Classes and lesson delivery', NONE], ['Activities and assessments', NONE], ['Rooms: class video rooms and calls', 'Call minutes may be limited'], ['Collab documents and slides', NONE], ['Development Studio', NONE], ['Communities (planned)', 'Planned feature']]],
-  ['Services with running costs', [['AI lesson writing', USES], ['AI speech and songs', USES], ['AI video', USES], ['Teaching coach', USES], ['Storage', 'Allowance to be confirmed']]],
+  ['Services with running costs', [['AI activity creation', USES], ['AI speech and songs', USES], ['AI video', USES], ['Teaching coach', USES], ['Storage', 'Allowance to be confirmed']]],
   ['Accounts', [['Monthly credit allowance', 'To be confirmed'], ['Buying more credits', 'Not available yet'], ['Organisation administration', NONE]]],
 ];
 
@@ -96,7 +96,7 @@ export function PricingPage() {
           <div>
             <span className="pub-kicker">CREDITS</span>
             <h2 id="pub-credits-h">Use what you need. Know what it costs.</h2>
-            <p>Some things in ELT Suite, such as AI lesson writing, voices, songs and video, run on services that cost money each time they’re used. Credits are how we plan to share that cost fairly.</p>
+            <p>Some things in ELT Suite, such as AI activity creation, voices, songs and video, run on services that cost money each time they’re used. Credits are how we plan to share that cost fairly.</p>
             <p>We plan to give eligible new teachers some welcome credits to try these tools, with no card needed and nothing to upgrade. The amount, who receives them and any expiry will be explained before this starts.</p>
             <p className="pub-note">No amounts or rates are promised here.</p>
           </div>

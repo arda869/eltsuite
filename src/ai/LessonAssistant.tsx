@@ -37,7 +37,7 @@ function PreparedAsset({asset,classId}:{asset:MediaStatus;classId:string}) {
   if(asset.status!=='ready')return null;
   return asset.kind==='audio'?<MediaPlayer classId={classId} mediaId={asset.mediaId} title={asset.title} scriptMode="none" teacher/>:<figure>{url?<img src={url} alt={asset.alt||asset.title} style={{maxWidth:'100%',maxHeight:360,objectFit:'contain'}}/>:<p>Loading photograph…</p>}{asset.credit&&<figcaption>{asset.credit}</figcaption>}</figure>;
 }
-type Result = { revisionSummary?:string; brief?:Brief|null; media?:MediaStatus[]; memories?:Memory[]; activities?:Activities;createdItemId?:string;profileSaved?:boolean;classContext?:{name:string;level:string;kind:string;trainingProfile?:TrainingProfile|null;profile:LearningProfile|null};evidence?:Evidence; outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number }[]; draft?: { creationType?:string; brief: Brief; plan: RecordValue; version: number } };
+type Result = { creationType?:string; revisionSummary?:string; brief?:Brief|null; media?:MediaStatus[]; memories?:Memory[]; activities?:Activities;createdItemId?:string;profileSaved?:boolean;classContext?:{name:string;level:string;kind:string;trainingProfile?:TrainingProfile|null;profile:LearningProfile|null};evidence?:Evidence; outline?: RecordValue; plan?: RecordValue; review?: Review; version?: number; drafts?: { id: string; title: string; version: number; creationType?:string }[]; draft?: { creationType?:string; brief: Brief; plan: RecordValue; version: number } };
 const call = httpsCallable<Record<string, unknown>, Result>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 600000 });
 const initial: Brief = { topic: '', objectives: '', context: '', level: 'B1', methodology: 'Recommend', duration: 60 };
 const labels: Record<string, string> = { activityType: 'Activity', learnerAction: 'What learners do', material: 'What they use', outcome: 'What they achieve', id: 'Reference', mainAim: 'Main aim', subsidiaryAims: 'Subsidiary aims', assumedKnowledge: 'Assumed knowledge', languageAnalysis: 'Meaning, form, pronunciation and appropriacy', instructionChecks: 'Instruction checks', anticipatedProblems: 'Anticipated problems', materialIds: 'Material references', learnerMaterials: 'Learner materials', answerKey: 'Answer key or response criteria', accessibleAlternative: 'Accessible alternative' };
@@ -115,7 +115,7 @@ export function LessonAssistant() {
   const [trainingProfile,setTrainingProfile]=useState<TrainingProfile>(defaultTrainingProfile);
   const [step,setStep]=useState(0);
   const [activeActivity,setActiveActivity]=useState(0);
-  const [creationType,setCreationType]=useState('lesson');
+  const [creationType,setCreationType]=useState('practice');
   const [profile,setProfile]=useState<LearningProfile>(defaultProfile);
   const [profileDirty,setProfileDirty]=useState(false);
   const [className,setClassName]=useState('Your class');
@@ -198,6 +198,11 @@ export function LessonAssistant() {
         Object.assign(payload, { requestId: pending.current.requestId });
       }
       const result = (await withReviewRecovery(()=>call(payload),()=>setNotice('Your draft is saved. Continuing its quality review automatically; you do not need to start again.'))).data;
+      if ((action === 'load' && (result.draft?.creationType ?? 'lesson') === 'lesson') || (action === 'resumeActivities' && (result.creationType ?? 'lesson') === 'lesson')) {
+        if (action === 'resumeActivities') localStorage.removeItem('ai-media-job:'+classId);
+        setNotice('This saved lesson plan is unavailable while full AI lesson creation is hidden. Your draft is still saved.');
+        return;
+      }
       setNotice('');
       if(extra.revision){
         if(result.activities){const status=(await call({action:'mediaStatus',classId,sourceRequestId:pending.current?.requestId})).data;result.media=status.media??[];}
@@ -217,7 +222,7 @@ export function LessonAssistant() {
       if(result.brief)setBrief(result.brief);
       if (result.plan) { setStep(action==='resumeActivities'?3:2);setPlan(result.plan); setReview(result.review ?? null); setDirty(true); }
       if (result.version) { setVersion(result.version); setDirty(false); setNotice('Saved privately. Your learners cannot see this plan.'); }
-      if (result.drafts) setDrafts(result.drafts);
+      if (result.drafts) setDrafts(result.drafts.filter(d => d.creationType && d.creationType !== 'lesson'));
       if (result.draft) { setStep(2);setActivities(null);setMedia([]);setCreatedItemId(''); setCreationType(result.draft.creationType ?? 'lesson');setBrief(result.draft.brief); setPlan(result.draft.plan); setOutline(null); setReview(null); setVersion(result.draft.version); setDraftId(String(extra.draftId)); setDirty(false); }
       if (action === 'delete') { setDrafts(drafts.filter(d => d.id !== extra.draftId)); setNotice('Saved plan deleted.'); }
     } catch (e) {
@@ -254,7 +259,7 @@ export function LessonAssistant() {
   };
   if (!enabled) return <><TopBar /><main className="ai-assistant"><h1>Lesson assistant</h1><p>The pilot is not enabled yet.</p><Link to={`/class/${classId}`}>Back to class</Link></main></>;
   return <MaterialNames.Provider value={Object.fromEntries((Array.isArray(plan?.learnerMaterials)?plan.learnerMaterials:[]).map(m=>[String((m as RecordValue).id),String((m as RecordValue).title)]))}><TopBar /><main className="ai-assistant">
-    {materialImport&&<MaterialImport classId={classId} creationType={creationType} onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);setDirty(false);navigate(`/class/${classId}/lesson/${id}`);}}/>}
+    {materialImport&&<MaterialImport classId={classId} creationType="lesson" onClose={()=>setMaterialImport(false)} onDone={id=>{setMaterialImport(false);setDirty(false);navigate(`/class/${classId}/lesson/${id}`);}}/>}
     <Link to={`/class/${classId}`}>Back to class</Link>
     <header className="ai-hero"><div><span className="ai-eyebrow">{isTraining?'TRAINER STUDIO':'CREATION STUDIO'} · {className}</span><h1>{isTraining?'Develop teachers.':'Great teaching.'}<br/><em>{isTraining?'Shape their practice.':'Your starting point.'}</em></h1><p>{isTraining?'Purposeful input, rehearsal and reflection, tailored to your trainees.':'Shape an idea into thoughtful, ready-to-teach activities.'}<br/>{isTraining?'Grounded in their course. Led by your judgement.':'Built around your class. Refined by you.'}</p></div><div className="ai-orbit" aria-hidden="true"><span>Discover</span><StudioMark/><div className="ai-orbit-labels"><span>Practise</span><span>Connect</span><span>Grow</span></div></div></header>
     <ol className="ai-progress" aria-label="Creation progress" role="tablist">{['Your brief','Learning sequence',isTraining?'Trainer plan':'Teaching plan',isTraining?'Training activities':'Class activities'].map((x,i)=><li role="presentation" key={x} className={i===step?'current':''}><button type="button" role="tab" tabIndex={i===step?0:-1} onKeyDown={e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tabs=Array.from(e.currentTarget.closest('[role="tablist"]')!.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));const at=tabs.indexOf(e.currentTarget),next=e.key==='Home'?0:e.key==='End'?tabs.length-1:(at+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;tabs[next]?.focus();tabs[next]?.click();}} id={`creation-tab-${i}`} aria-controls={`creation-panel-${i}`} aria-selected={i===step} disabled={locked || (i===1&&!outline) || (i===2&&!plan) || (i===3&&!activities)} aria-current={i===step?'step':undefined} onClick={()=>setStep(i)}><span>0{i+1}</span>{x}</button></li>)}</ol>
@@ -273,7 +278,7 @@ export function LessonAssistant() {
       </div>}
     </section>}
     {step===0 && <form role="tabpanel" id="creation-panel-0" aria-labelledby="creation-tab-0" onSubmit={e => { e.preventDefault(); if(profileDirty) {setError('Save the class profile changes before generating.');return;} void run('outline'); }}><fieldset disabled={locked}><legend>1. Your brief</legend>
-      <div className="ai-type-grid" role="group" aria-label="What would you like to create?">{[['lesson',isTraining?'Training session':'Lesson',isTraining?'Experience, analyse and rehearse':'Explore, practise and communicate'],['exam',isTraining?'Practice exam':'Exam','Assess clearly and fairly'],['homework','Homework','Extend learning beyond class'],['practice','Practice','Retrieve, repeat and improve']].map(([id,title,desc])=><button type="button" key={id} aria-pressed={creationType===id} onClick={()=>{if(id!==creationType){setCreationType(id);changeBrief(brief);}}}><CreationIcon type={id}/><strong>{title}</strong><span>{desc}</span></button>)}</div>
+      <div className="ai-type-grid" role="group" aria-label="What would you like to create?">{[['practice','Practice','Retrieve, repeat and improve'],['homework','Homework','Extend learning beyond class'],['exam',isTraining?'Practice exam':'Exam','Assess clearly and fairly']].map(([id,title,desc])=><button type="button" key={id} aria-pressed={creationType===id} onClick={()=>{if(id!==creationType){setCreationType(id);changeBrief(brief);}}}><CreationIcon type={id}/><strong>{title}</strong><span>{desc}</span></button>)}</div>
       <details className="ai-context"><summary>{isTraining?`Training profile · ${trainingProfile.programme} · ${trainingProfile.experience}`:`Your class · ${brief.level} · ${profile.courseType} · ${profile.ageGroup}`}</summary><p>These shared details come from Class settings. Save changes here to update future briefs too.</p>{isTraining?<TrainingProfileFields value={trainingProfile} onChange={v=>{setTrainingProfile(v);setProfileDirty(true);changeBrief({...brief,level:v.experience==='Mixed experience'?'Mixed experience':['Two to five years','Over five years'].includes(v.experience)?'Experienced':v.experience==='Under two years'?'Developing':'Foundation'});}}/>:<ClassProfileFields value={profile} onChange={v=>{setProfile(v);setProfileDirty(true);changeBrief({...brief,objectives:!brief.objectives || brief.objectives===profile.goals?v.goals:brief.objectives,context:!brief.context || brief.context===profile.needs?v.needs:brief.context});}}/>}<button type="button" className="btn ai-profile-save" disabled={!profileDirty} onClick={()=>void run('profile',{profile,trainingProfile,level:brief.level})}>Save to class settings</button></details>
       <details className="ai-context"><summary>Build on what came before {evidence?`· ${evidence.counts.items} recent items`:''}</summary><label><input type="checkbox" checked={useEvidence} onChange={e=>{setUseEvidence(e.target.checked);changeBrief(brief);}}/> Use class history and recorded learning evidence</label><p>{evidence?.limitations ?? 'Loading the available class evidence…'}</p>{evidence && <><p>{evidence.counts.submittedTasks} submitted task records · {evidence.counts.portfolioRecords} portfolio records</p><ul>{evidence.recent.map((x,i)=><li key={i}>{x.title}{x.result?` · ${Math.round(100*x.result.score/x.result.total)}% across ${x.result.attempts} task submissions`: ' · No scored submissions in this sample'}</li>)}</ul></>}</details>
       {!isTraining && <fieldset className="ai-context"><legend>Classroom memories</legend>

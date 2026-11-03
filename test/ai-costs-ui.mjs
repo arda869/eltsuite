@@ -19,7 +19,12 @@ try{
  }
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1440,height:1000}});p.setDefaultTimeout(90000);const crashes=[];p.on('pageerror',e=>{crashes.push(e.message);console.log('Page error',e.message);});p.on('console',m=>{if(m.type()==='error')console.log('Browser error',m.text().slice(0,1000));});
  await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{await window.__mockReady;return true;},null,{timeout:180000});
- await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});
+ // Vite may reload once after its first dependency optimisation. Keep the seeded
+ // account edit on the new document if that happens between readiness and evaluate.
+ for(let attempt=0;attempt<3;attempt++){
+  try{await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});break;}
+  catch(e){if(attempt===2||!String(e).includes('Execution context was destroyed'))throw e;await p.waitForLoadState('networkidle');}
+ }
  await p.goto(base+'/admin?tab=ai-costs');await p.getByRole('heading',{name:'AI Cost Intelligence',exact:true}).waitFor();
  await p.getByLabel('Proposed credits: Songs',{exact:true}).waitFor();assert.equal(await p.locator('tbody').first().locator('tr').count(),21);
  // All proposals optional and blank: save, refresh, reload remains valid.
@@ -30,7 +35,11 @@ try{
  await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});let violations=await p.evaluate(async()=>(await axe.run(document,{runOnly:['wcag2a','wcag2aa']})).violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)})));assert.deepEqual(violations,[]);
  await mkdir('outputs/ai-costs',{recursive:true});await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/desktop.png'});
  await p.evaluate(()=>{localStorage.setItem('ll.theme','dark');document.documentElement.dataset.theme='dark';});violations=await p.evaluate(async()=>(await axe.run(document,{runOnly:['wcag2a','wcag2aa']})).violations.map(v=>v.id));assert.deepEqual(violations,[]);await p.screenshot({path:'outputs/ai-costs/dark.png'});
- await p.setViewportSize({width:390,height:844});const open=p.getByRole('button',{name:'Open it anyway',exact:true});if(await open.count())await open.click();await p.getByLabel('Admin section',{exact:true}).selectOption('ai-costs');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/mobile.png'});
+ await p.setViewportSize({width:390,height:844});
+ const open=p.getByRole('button',{name:'Open it anyway',exact:true});
+ await open.waitFor({state:'visible',timeout:15000}).catch(()=>{});
+ if(await open.isVisible())await open.click();
+ await p.getByLabel('Admin section',{exact:true}).selectOption('ai-costs');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/mobile.png'});
  await p.evaluate(()=>localStorage.setItem('mockCostEmpty','1'));await p.getByRole('button',{name:'Refresh report'}).click();await p.getByText(/No AI costs recorded in this range/).waitFor();
  await p.evaluate(()=>localStorage.setItem('mockCostFailure','1'));await p.getByRole('button',{name:'Refresh report'}).click();await p.getByRole('alert').filter({hasText:'Could not load costs'}).waitFor();
  assert.deepEqual(crashes,[]);console.log('PASS: 21 features, optional proposals blank, save/reload, inline invalid price, 75% margin, learner attribution, empty/error states, desktop/mobile and accessibility. Firebase/provider data simulated.');

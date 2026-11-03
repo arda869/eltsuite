@@ -128,7 +128,7 @@ const J = {
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
-  'Tuesday wishlist: eight forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: available forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: pinned coach, voice playback and microphone fallback':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
@@ -377,8 +377,8 @@ const J = {
     await selection.waitFor();
     if(await selection.isChecked()) throw Error('Responses must not be preselected');
     await selection.check();
-    await s.p.getByLabel('Learning objective',{exact:true}).fill('Planning a trip');
-    await s.p.getByLabel('Learning objective',{exact:true}).fill('Make and compare plans.');
+    await s.p.getByLabel('Success criteria',{exact:true}).fill('Planning a trip');
+    await s.p.getByLabel('Success criteria',{exact:true}).fill('Make and compare plans.');
     await s.p.getByLabel('Context',{exact:true}).fill('Adult learners working in pairs.');
     await s.p.getByRole('button',{name:'Suggest an outline'}).click();
     await see(s.p,'text=2. Review the outline','memory outline');
@@ -680,7 +680,7 @@ const J = {
     await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['aiPilot/teacher1']={enabled:true};fs['classes/'+classId].kind='training';fs['classes/'+classId].level='CELTA';fs['classes/'+classId].trainingProfile={programme:'CELTA',stage:'Pre-service',experience:'New to teaching',goals:'Prepare for teaching practice',context:'Teachers beginning their first course',focus:'Checking instructions',examDate:''};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
     await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).waitFor();
-    await s.p.getByLabel('Learning objective',{exact:true}).fill('Checking instructions');
+    await s.p.getByLabel('Success criteria',{exact:true}).fill('Checking instructions');
     await s.p.getByRole('button',{name:'Suggest an outline'}).click();
     await s.p.getByRole('button',{name:'Approve outline and make the plan'}).click();
     await s.p.getByRole('button',{name:'Prepare training activities'}).click();
@@ -692,7 +692,7 @@ const J = {
     await axe(s.p,'Trainer completion form',A11Y_FOUND);
     await s.p.evaluate(({classId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['classes/'+classId].kind='language';fs['classes/'+classId].level='B1';localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
     await s.p.goto(BASE+'/class/'+s.demo.classId+'/assistant');
-    await s.p.getByLabel('Learning objective',{exact:true}).waitFor();
+    await s.p.getByLabel('Success criteria',{exact:true}).waitFor();
     if(await s.p.getByRole('heading',{name:'Develop teachers. Shape their practice.'}).count()) throw Error('Trainer studio leaked into a language class');
     return s;
   },
@@ -1007,7 +1007,7 @@ const J = {
     await toggle.click();
     await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Learning objective', { exact: true }).waitFor();
+    await s.p.getByLabel('Success criteria', { exact: true }).waitFor();
     await s.p.goto(BASE + '/admin?tab=ai');
     await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
     await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
@@ -1046,15 +1046,16 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1'] = { enabled: true }; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    const topicBox=s.p.getByLabel('Learning objective',{exact:true});
+    const topicBox=s.p.getByLabel('Success criteria',{exact:true});
     await topicBox.waitFor({state:'visible'}).catch(async e=>{throw Error(e.message+' '+s.errors.join('; ')+' '+(await s.p.locator('body').innerText()).slice(0,600));});
+    if(await s.p.getByRole('group',{name:'What would you like to create?'}).getByRole('button',{name:/^Lesson /}).count())throw Error('Full AI lesson creation is still visible');
     await s.p.locator('.ai-context > summary').first().click();
     await s.p.getByLabel('Course type',{exact:true}).selectOption('Academic English');
     await s.p.getByLabel('Course goals',{exact:true}).fill('Compare academic arguments.');
-    if(await s.p.getByLabel('Learning objective',{exact:true}).inputValue()!=='Compare academic arguments.') throw Error('Shared goals did not update the default brief');
-    await s.p.getByLabel('Learning objective',{exact:true}).fill('Keep my lesson-specific objective.');
+    if(await s.p.getByLabel('Success criteria',{exact:true}).inputValue()!=='Compare academic arguments.') throw Error('Shared goals did not update the default brief');
+    await s.p.getByLabel('Success criteria',{exact:true}).fill('Keep my lesson-specific objective.');
     await s.p.getByLabel('Course goals',{exact:true}).fill('Evaluate evidence.');
-    if(await s.p.getByLabel('Learning objective',{exact:true}).inputValue()!=='Keep my lesson-specific objective.') throw Error('Shared goals overwrote a customized brief');
+    if(await s.p.getByLabel('Success criteria',{exact:true}).inputValue()!=='Keep my lesson-specific objective.') throw Error('Shared goals overwrote a customized brief');
     await s.p.getByRole('button',{name:'Save to class settings'}).click();
     await see(s.p,'text=Class settings updated.','profile save');
     await s.p.getByRole('button',{name:'Exam Assess clearly and fairly'}).click();
@@ -1063,15 +1064,15 @@ const J = {
     await s.p.getByLabel('Independent-work instructions',{exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Practice Retrieve, repeat and improve'}).click();
     await s.p.getByLabel('Practice setup',{exact:true}).waitFor();
-    await s.p.getByRole('button',{name:'Lesson Explore, practise and communicate'}).click();
+    await s.p.getByRole('button',{name:'Practice Retrieve, repeat and improve'}).click();
     const shortHeight=await topicBox.evaluate(el=>el.getBoundingClientRect().height);
     if(shortHeight>70) throw Error('Empty brief field is not compact');
     await topicBox.fill('Travel\nFood\nWork\nStudy');
     if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)<=shortHeight) throw Error('Brief field did not expand');
     await topicBox.fill('Travel');
     if(await topicBox.evaluate(el=>el.getBoundingClientRect().height)>shortHeight+2) throw Error('Brief field did not shrink');
-    await s.p.getByLabel('Learning objective', { exact: true }).fill('Compare options and agree on a trip.');
-    await s.p.getByLabel('Context', { exact: true }).fill('Adult B1 class working in pairs.');
+    await s.p.getByLabel('Success criteria', { exact: true }).fill('Compare options and agree on a trip.');
+    await s.p.getByLabel('Practice setup', { exact: true }).fill('Adult B1 class working in pairs.');
     await s.p.getByRole('button', { name: 'Suggest an outline' }).click();
     await see(s.p, 'text=2. Review the outline', 'outline approval');
     await s.p.getByRole('table',{name:'Lesson stages'}).waitFor();
@@ -1108,8 +1109,10 @@ const J = {
     await see(s.p, 'text=Answer key or response criteria', 'separate learner material editor');
     await s.p.getByRole('button', { name: 'Save private draft' }).click();
     await see(s.p, 'text=Saved privately.', 'private save confirmation');
+    await s.p.evaluate(()=>{const drafts=JSON.parse(localStorage.getItem('mockAiDrafts')||'{}');drafts['archived-lesson']={brief:{},plan:{title:'Archived AI lesson'},creationType:'lesson',version:1};localStorage.setItem('mockAiDrafts',JSON.stringify(drafts));});
     await s.p.getByRole('button', { name: 'Start a new plan' }).click();
     await s.p.getByRole('button', { name: 'Open saved plans' }).click();
+    if(await s.p.getByRole('button',{name:'Archived AI lesson',exact:true}).count())throw Error('Saved full AI lesson drafts are still listed');
     await s.p.getByRole('button', { name: 'Choose a trip', exact: true }).click();
     await s.p.getByRole('button', { name: 'Teacher plan', exact: true }).click();
     if (await s.p.getByRole('textbox', { name: 'Main aim', exact: true }).inputValue() !== 'Explain a choice with two reasons') throw Error('Saved edits were lost');
@@ -1155,7 +1158,7 @@ const J = {
     await s.p.getByRole('heading',{name:'Revised travel choice',exact:true}).waitFor();
     await s.p.getByRole('table',{name:'Travel options'}).waitFor();
 
-    await s.p.getByRole('button',{name:'Create lesson in Classes'}).click();
+    await s.p.getByRole('button',{name:'Create practice in Classes'}).click();
     await see(s.p,'text=Created in Classes, hidden','hidden creation');
     await axe(s.p, 'Lesson assistant', A11Y_FOUND);
     await s.p.setViewportSize({ width: 390, height: 844 });
@@ -1355,7 +1358,7 @@ const J = {
     await toggle.click();
     await see(s.p, '[role=status]:has-text("turned on")', 'grant saved');
     await s.p.goto(`${BASE}/class/${s.demo.classId}/assistant`);
-    await s.p.getByLabel('Learning objective', { exact: true }).waitFor();
+    await s.p.getByLabel('Success criteria', { exact: true }).waitFor();
     await s.p.goto(BASE + '/admin?tab=ai');
     await s.p.getByRole('switch', { name: 'AI access for teacher@example.com', exact: true }).click();
     await see(s.p, '[role=status]:has-text("turned off")', 'revocation saved');
@@ -2273,6 +2276,17 @@ const J = {
     const preserved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/existing-reading']);
     if (JSON.stringify(preserved.memberIds) !== JSON.stringify(['colleague'])) throw Error('Reading sharing was changed');
     if (process.env.DEVELOPMENT_SCREENSHOT) { await s.p.getByRole('button', { name: 'Home', exact: true }).click(); await s.p.screenshot({ path: process.env.DEVELOPMENT_SCREENSHOT, fullPage: false }); }
+    return s;
+  },
+  'Observation entry points hidden while existing lessons remain usable': async (b) => {
+    const s = await session(b);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await openPlanning(s.p);
+    if (await s.p.getByRole('link',{name:'Observe this lesson'}).count()) throw Error('Lesson observation is still available');
+    await s.p.getByRole('link',{name:'Discuss with coach'}).waitFor();
+    await s.p.goto(BASE+'/observations');
+    await s.p.waitForURL(/\/development$/);
+    if (await s.p.getByRole('link',{name:'Observations',exact:true}).count()) throw Error('Observation navigation is still visible');
     return s;
   },
   'An invitation that is gone': async (b) => {

@@ -79,7 +79,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       });
     }
     const media=await job.collection('media').get();
-    return {...(d.action==='resumeActivities'?{activities:readGenerationResult(j.data()).activities,plan:j.get('sourcePlan'),brief:j.get('brief')??null,createdItemId:j.get('createdItemId')??''}:{}),media:media.docs.map(m=>({id:m.id,kind:m.get('kind'),title:m.get('title'),status:['running','queued'].includes(m.get('status'))&&Date.now()-((m.get('startedAt')??m.get('createdAt'))?.toMillis()??Date.now())>600000?'failed':m.get('status'),completedLines:m.get('completedLines')??0,totalLines:m.get('lines')?.length??0,error:m.get('error')||'Preparation was interrupted. Retry this asset.',mediaId:m.get('mediaId')??'',alt:m.get('alt')??'',credit:m.get('credit')??''}))};
+    return {...(d.action==='resumeActivities'?{creationType:j.get('creationType')??'lesson',activities:readGenerationResult(j.data()).activities,plan:j.get('sourcePlan'),brief:j.get('brief')??null,createdItemId:j.get('createdItemId')??''}:{}),media:media.docs.map(m=>({id:m.id,kind:m.get('kind'),title:m.get('title'),status:['running','queued'].includes(m.get('status'))&&Date.now()-((m.get('startedAt')??m.get('createdAt'))?.toMillis()??Date.now())>600000?'failed':m.get('status'),completedLines:m.get('completedLines')??0,totalLines:m.get('lines')?.length??0,error:m.get('error')||'Preparation was interrupted. Retry this asset.',mediaId:m.get('mediaId')??'',alt:m.get('alt')??'',credit:m.get('credit')??''}))};
   }
   if (d.action === 'create') {
     if (!id(d.sourceRequestId)) fail('Prepare activities first.');
@@ -119,7 +119,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const drafts = db.collection('aiPrivate').doc(uid).collection('drafts');
   if (d.action === 'list') {
     const snap = await drafts.where('classId', '==', d.classId).limit(50).get();
-    return { drafts: snap.docs.map(s => ({ id: s.id, title: s.get('plan.title'), version: s.get('version') })) };
+    return { drafts: snap.docs.map(s => ({ id: s.id, title: s.get('plan.title'), version: s.get('version'), creationType: s.get('creationType')??'lesson' })) };
   }
   if (d.action === 'load' || d.action === 'delete') {
     if (!id(d.draftId)) fail('Choose a saved plan.');
