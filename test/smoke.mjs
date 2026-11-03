@@ -131,6 +131,26 @@ const J = {
   'Tuesday wishlist: pinned coach, voice playback and microphone fallback':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday latest: highlight dialogue authoring, save and learner feedback':async b=>{const s=await session(b);await highlightJourney(s,BASE,axe,A11Y_FOUND);return s;},
+  'New task: blank and import choices remain available before AI starts':async b=>{
+    const s=await session(b);
+    await s.p.evaluate(async()=>{const {doc,setDoc}=await import('/test/mock/firestore.ts');await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    const insert=s.p.locator('.task-insert').last();
+    await insert.locator('summary').click();
+    await insert.getByRole('button',{name:'New task',exact:true}).waitFor();
+    await insert.getByRole('button',{name:'Create with AI',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
+    await dialog.getByRole('button',{name:'Start blank',exact:true}).waitFor();
+    if(!await dialog.getByRole('button',{name:'Start blank',exact:true}).isEnabled())throw Error('Blank task choice was hidden or disabled');
+    await dialog.getByRole('button',{name:'Upload existing material',exact:true}).waitFor();
+    if(await s.p.getByRole('region',{name:'AI activity'}).getByText('AI is working').count())throw Error('Opening a blank task started AI without a choice');
+    await dialog.getByRole('button',{name:'Start blank',exact:true}).click();
+    await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    await s.p.reload();
+    await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    await axe(s.p,'Blank task authoring after choosing how to start',A11Y_FOUND);
+    return s;
+  },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
   'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
