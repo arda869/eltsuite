@@ -379,7 +379,7 @@ const J = {
     await selection.check();
     await s.p.getByLabel('Success criteria',{exact:true}).fill('Planning a trip');
     await s.p.getByLabel('Success criteria',{exact:true}).fill('Make and compare plans.');
-    await s.p.getByLabel('Context',{exact:true}).fill('Adult learners working in pairs.');
+    await s.p.getByLabel('Practice setup',{exact:true}).fill('Adult learners working in pairs.');
     await s.p.getByRole('button',{name:'Suggest an outline'}).click();
     await see(s.p,'text=2. Review the outline','memory outline');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockAiLastRequest')));
@@ -682,7 +682,7 @@ const J = {
     await s.p.getByRole('button',{name:'Prepare training activities'}).click();
 
     await see(s.p,'text=Trainee completion form:','trainer form preview');
-    await s.p.getByRole('button',{name:'Create session in Classes'}).click();
+    await s.p.getByRole('button',{name:'Create practice in Classes'}).click();
     await s.p.getByRole('link',{name:'Open in Classes'}).click();
     await see(s.p,'text=Teaching move and intended learner outcome','native rehearsal form');
     await axe(s.p,'Trainer completion form',A11Y_FOUND);
