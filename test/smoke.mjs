@@ -135,6 +135,7 @@ const J = {
     const s=await session(b);
     await s.p.evaluate(async()=>{const {doc,setDoc}=await import('/test/mock/firestore.ts');await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    const originalTitle = await s.p.getByRole('textbox',{name:'Task title',exact:true}).inputValue();
     const insert=s.p.locator('.task-insert').last();
     await insert.locator('summary').click();
     await insert.getByRole('button',{name:'New task',exact:true}).waitFor();
@@ -145,9 +146,18 @@ const J = {
     await dialog.getByRole('button',{name:'Upload existing material',exact:true}).waitFor();
     if(await s.p.getByRole('region',{name:'AI activity'}).getByText('AI is working').count())throw Error('Opening a blank task started AI without a choice');
     await dialog.getByRole('button',{name:'Start blank',exact:true}).click();
-    await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    await s.p.locator('.task-row.on').filter({hasText:'New task'}).waitFor();
+    await s.p.waitForFunction(() => document.querySelector('input[aria-label="Task title"]')?.value === 'New task');
+    await s.p.waitForTimeout(1000);
+    if(await s.p.getByRole('textbox',{name:'Task title',exact:true}).inputValue()!=='New task')throw Error('Previous task title appeared in the new blank task');
     await s.p.reload();
+    await s.p.locator('.task-row').filter({hasText:'New task'}).getByRole('button').first().click();
+    await s.p.locator('.task-row.on').filter({hasText:'New task'}).waitFor();
     await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    if(await s.p.getByRole('textbox',{name:'Task title',exact:true}).inputValue()!=='New task')throw Error('New blank task did not stay blank after reload');
+    if(originalTitle==='New task')throw Error('The fixture needs a distinct source task title');
+    await s.p.locator('.task-row .task-pick').first().click();
+    await s.p.waitForFunction(title=>document.querySelector('input[aria-label="Task title"]')?.value===title,originalTitle);
     await axe(s.p,'Blank task authoring after choosing how to start',A11Y_FOUND);
     return s;
   },

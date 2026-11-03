@@ -680,7 +680,9 @@ export function LessonEditor() {
   }
 
   function change(patch: Partial<Draft>) {
-    if (!task || !draft) return;
+    // Selection changes before the next task's answer key finishes loading. Never
+    // apply an event from the previous editor to the newly selected task.
+    if (!task || !draft || !editorKey.startsWith(task.id + ':')) return;
     setDraft({ ...draft, ...patch });
     pending.current = { taskId: task.id, patch: { ...(pending.current?.taskId === task.id ? pending.current.patch : {}), ...patch } };
     setStatus('saving');
@@ -841,7 +843,7 @@ export function LessonEditor() {
   const sheetData = useSheet(item?.title ?? '', sheetTasks, { classId, accent: th.accent, className: c?.name, level: c?.level, cover: c?.cover, lessonStyle: lessonStyleOf(c) }, sheet && mode === 'edit');
 
   // The task being edited, in the digital view or on its worksheet page.
-  const editFrame = task && draft ? (
+  const editFrame = task && draft && editorKey.startsWith(task.id + ':') ? (
               <div className="frame-inner">
                 <div className="frame-head">
                   {teachingHere && (
@@ -1073,7 +1075,7 @@ export function LessonEditor() {
                   {isVariant(t) ? (
                     <span className="variant-label">{t.variant && /^[A-Z]$/.test(t.variant) ? `Version ${t.variant}` : t.variant}</span>
                   ) : (
-                    <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
+                    <span className={t.hidden ? 'hidden-title' : ''}>{t.id === selected && draft && editorKey.startsWith(t.id + ':') ? draft.title || 'Untitled task' : t.title || 'Untitled task'}</span>
                   )}
                   {!isVariant(t) && (t.variants?.length ?? 0) > 0 && <span className="variant-count" title={`${(t.variants?.length ?? 0) + 1} versions`}>{vLabel(t)}</span>}
                   {!isVariant(t) && t.audience && t.audience.mode !== 'all' && <span className="state-mark aud-mark" title={tr('Only some learners see this')}>{PEOPLE}</span>}
@@ -1209,7 +1211,7 @@ export function LessonEditor() {
                   <LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} />
                 </div>
               </div>
-            ) : !task || !draft ? (
+            ) : !task || !draft || !editorKey.startsWith(task.id + ':') ? (
               <div className="empty" style={{ padding: 28 }}>
                 {taskErr ? (
                   <div className="frame-loading">
