@@ -22,12 +22,16 @@ export function GamePlayer({ game, onFinish, remote, onState, readOnly = false, 
     const [arcade, setArcade] = useState<Record<string, any>>({});
     const [guessed, setGuessed] = useState<string[]>([]), [flipped, setFlipped] = useState<string[]>([]), [matched, setMatched] = useState<string[]>([]), [found, setFound] = useState<string[]>([]), [selected, setSelected] = useState<number[]>([]), [sound, setSound] = useState(game.sound), [finished, setFinished] = useState(false);
     const signature = useRef('');
+    const mounted = useRef(false);
     const hydrating = useRef(false);
     const send = useRef(onState);
     send.current = onState;
     useEffect(() => { if (!remote || signature.current === stable(remote))
         return; hydrating.current=true; signature.current = stable(remote); setRound(remote.round || 0); setScore(remote.score || 0); setAnswer(remote.answer || ''); setFeedback(remote.feedback ?? null); setStake(remote.stake || 10); setResponses(remote.responses || {}); setGuessed(remote.guessed || []); setFlipped(remote.flipped || []); setMatched(remote.matched || []); setFound(remote.found || []); setSelected(remote.selected || []); setFinished(!!remote.finished); setArcade(remote.arcade || {}); setAuction(remote.auction || newAuction()); }, [remote]);
-    useEffect(() => { const state = { round, score, answer, feedback, stake, responses, guessed, flipped, matched, found, selected, finished, arcade, auction }; const json = stable(state); if(hydrating.current){hydrating.current=false;return;} if (readOnly || json === signature.current)
+    useEffect(() => { const state = { round, score, answer, feedback, stake, responses, guessed, flipped, matched, found, selected, finished, arcade, auction }; const json = stable(state);
+        // Joining a board is a read: do not race other players with an empty initial move.
+        if (!mounted.current) { mounted.current = true; if (!remote) { signature.current = json; return; } }
+        if(hydrating.current){hydrating.current=false;return;} if (readOnly || json === signature.current)
         return; signature.current = json; send.current?.(state); }, [round, score, answer, feedback, stake, responses, guessed, flipped, matched, found, selected, finished, arcade, auction, readOnly]);
     const r = game.rounds[round];
     const options = r ? optionsFor(r) : [];
