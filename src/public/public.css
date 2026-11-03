@@ -382,3 +382,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pub *, .pub *::before, .pub *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Keep public sign-in contrast independent of signed-in app theme overrides. */
+.pub .pub-auth form .btn.primary:not(:disabled),
+.pub .pub-auth form .btn.primary:not(:disabled):hover { background: var(--charcoal); color: var(--on-charcoal); border-color: var(--charcoal); }
