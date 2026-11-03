@@ -1,0 +1,6 @@
+desktop overflow -10
+shot preview-out/01-home-desktop.png
+shot preview-out/02-speaks-desktop.png
+phone overflow -10
+shot preview-out/03-home-phone.png
+shot preview-out/04-speaks-phone.png
