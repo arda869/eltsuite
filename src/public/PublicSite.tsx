@@ -23,7 +23,7 @@ export function LessonPreview({compact=false,title}:{compact?:boolean;title?:str
 }
 // A real screen from ELT Suite (demo data), in a simple window frame. Pictures are in
 // public/landing at twice their shown size, so they stay sharp.
-const SIZES:Record<string,[number,number]>={editor:[1600,930],class:[1600,860],collab:[1600,970],development:[1600,930],game:[1200,640],young:[1200,742],games:[1600,1000]};
+const SIZES:Record<string,[number,number]>={editor:[1600,930],class:[1600,860],collab:[1600,970],development:[1600,930],game:[1200,640],young:[1200,742],games:[1600,1000],live:[780,575],audio:[1600,1000]};
 function Shot({src,alt,eager=false,bare=false,className=''}:{src:string;alt:string;eager?:boolean;bare?:boolean;className?:string}){const [w,h]=SIZES[src]??[1600,1000];return <figure className={'pub-shot '+className}>{!bare&&<div className="pub-shot-bar" aria-hidden="true"><i/><i/><i/></div>}<img src={'/landing/'+src+'.webp'} alt={alt} width={w} height={h} loading={eager?'eager':'lazy'} decoding="async"/></figure>;}
 const tour:[string,string,string,string][]=[
  ['editor','Lessons','Build a lesson from tasks, then teach it live or set it as homework.','The lesson editor with a speaking task and its teaching notes'],
