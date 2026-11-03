@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {gameReferences,gameEvidence,loadGameEvidence} from '../../functions/ai/coach-games.js';
+test('bounded game references ignore forged paths',()=>{assert.deepEqual(gameReferences({content:[{type:'classroomGame',attrs:{sessionId:'g1'}},{type:'classroomGame',attrs:{sessionId:'../../other'}}]}),['g1']);});
+test('game context omits names, IDs and raw answers, and distinguishes scores from proficiency',()=>{const out=gameEvidence({title:'Past forms',game:{type:'auction',rounds:[{prompt:'I went.',answer:'correct',choices:[]}]},state:{score:300},mode:'individual'},[{name:'PRIVATE',uid:'SECRET',state:{score:7,finished:true,answers:{x:'RAW'}}}]);assert.equal(out.players[0].score,7);assert.doesNotMatch(JSON.stringify(out),/PRIVATE|SECRET|RAW/);assert.match(out.limitations,/not.*proficiency/);});
+test('only game sessions belonging to the authorised class are read',async()=>{let reads=0;const db={doc:()=>({get:async()=>({data:()=>({target:{type:'class',id:'other'}})}),collection:()=>{reads++;throw Error('Must not read players');}})};assert.deepEqual(await loadGameEvidence(db,'mine',['g1']),[]);assert.equal(reads,0);});
+
+test('native question text is included without arbitrary attributes',()=>{const out=gameEvidence({game:{rounds:[{content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Choose the past tense.'}]}],attrs:{private:'SECRET'}}}]}});assert.equal(out.questions[0].material,'Choose the past tense.');assert.doesNotMatch(JSON.stringify(out),/SECRET/);});

@@ -12,16 +12,17 @@ try{
    await p.reload();await p.waitForLoadState('networkidle');await p.getByLabel('Player layout').selectOption(layout);
    await p.getByLabel('View',{exact:true}).selectOption(role);await p.getByLabel('Script setting').selectOption('button');
    await p.getByRole('button',{name:'Show the script',exact:true}).click();await p.getByText('Could you help me?',{exact:false}).waitFor();
-   await p.getByRole('button',{name:'Hide the script',exact:true}).click();assert.equal(await p.locator('.kl,.im-script').count(),0);
-   await p.getByLabel('Script setting').selectOption('karaoke');await p.getByText('Could you help me?',{exact:false}).waitFor();
-   await p.getByLabel('Script setting').selectOption('after');assert.equal(await p.locator('.kl,.im-script').count(),0);
+   await p.getByRole('button',{name:'Hide the script',exact:true}).click();await p.locator('.kl,.im-script').waitFor({state:'hidden'});assert.equal(await p.locator('.kl,.im-script').count(),0);
+   await p.getByLabel('Script setting').selectOption('karaoke');await p.locator('.kl,.im-script').waitFor({state:'hidden'});assert.equal(await p.locator('.kl,.im-script').count(),0);await p.getByRole('button',{name:'Play',exact:true}).click();await p.getByText('Could you help me?',{exact:false}).waitFor();await p.getByRole('button',{name:'Pause',exact:true}).click();await p.locator('.kl,.im-script').waitFor({state:'hidden'});assert.equal(await p.locator('.kl,.im-script').count(),0);
+   await p.getByLabel('Script setting').selectOption('after');await p.locator('.kl,.im-script').waitFor({state:'hidden'});assert.equal(await p.locator('.kl,.im-script').count(),0);
    await p.getByRole('button',{name:'Play',exact:true}).click();await p.getByText('Could you help me?',{exact:false}).waitFor();
-   if(role==='teaching'){await p.getByRole('button',{name:'Hide the script',exact:true}).click();assert.equal(await p.locator('.kl,.im-script').count(),0);}
-   await p.getByLabel('Script setting').selectOption('none');assert.equal(await p.locator('.kl,.im-script').count(),0);
+   if(role==='teaching'){await p.getByRole('button',{name:'Hide the script',exact:true}).click();await p.locator('.kl,.im-script').waitFor({state:'hidden'});assert.equal(await p.locator('.kl,.im-script').count(),0);}
+   await p.getByLabel('Script setting').selectOption('none');await p.locator('.kl,.im-script').waitFor({state:'hidden'});assert.equal(await p.locator('.kl,.im-script').count(),0);
    if(role==='teaching'){await p.getByRole('button',{name:'Show the script',exact:true}).click();await p.getByText('Could you help me?',{exact:false}).waitFor();}
   }
+  await p.getByLabel('View',{exact:true}).selectOption('editing');await p.getByLabel('Script setting').selectOption('karaoke');await p.locator('.kl,.im-script').waitFor({state:'hidden'});await p.getByRole('button',{name:'Play',exact:true}).click();await p.locator('.kl,.im-script').waitFor({state:'visible'});await p.locator('.kl,.im-script').waitFor({state:'hidden'});await p.getByLabel('View',{exact:true}).selectOption('learner');
   await p.getByLabel('Recording',{exact:true}).selectOption('empty');await p.getByLabel('Script setting').selectOption('karaoke');await p.getByText('No transcript has been added to this recording.',{exact:true}).waitFor();
   await p.getByLabel('Recording',{exact:true}).selectOption('spoken');await p.reload();
  }
- console.log('PASS: block and inline players; teacher and learner show/hide, always-visible, after-playback and hidden modes; playable WAV; missing-transcript guidance. Firebase simulated.');
+ console.log('PASS: block and inline players; teacher and learner show/hide, only-while-playing, after-playback and hidden modes; playable WAV; missing-transcript guidance. Firebase simulated.');
 }catch(e){console.log(await p?.locator('body').innerText());throw e;}finally{await browser?.close();try{process.kill(-server.pid,'SIGTERM');}catch{}}

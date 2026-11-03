@@ -1,7 +1,6 @@
 import { NSelect } from '../components/Select';
 import { AiButton, AiMark } from '../components/AiMark';
 import { useAiActivity } from '../components/AiActivity';
-import { VoiceDiversityPrompt } from '../components/VoiceDiversityPrompt';
 import { useEffect, useRef, useState } from 'react';
 import { createSpeech, draftDialogue, SPEECH_VOICES, type SpeechTake } from '../lib/speech';
 import { loadVoicePreview } from '../lib/voicePreviews';
@@ -127,7 +126,6 @@ export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onI
   return <dialog ref={dialog} className="speech-dialog" aria-labelledby="speech-title" onCancel={e => { e.preventDefault(); close(); }} onKeyDown={e => e.stopPropagation()}>
     <header className="speech-head"><AiMark size={24}/><div><span className="speech-eyebrow">RECORDING STUDIO</span><h2 id="speech-title">Bring your dialogue to life</h2><p>Choose your cast. Write a conversation. Hear it come to life.</p></div><button type="button" className="btn ai-minimise" onClick={activity.minimise}>Continue working</button><button type="button" className="btn" onClick={close} disabled={!!busy || aiBusy} aria-label="Close speech composer">Close</button></header>
     <div className="speech-body">
-      <VoiceDiversityPrompt />
       <section aria-label="Speakers"><div className="speech-section"><h3>1. Cast your voices</h3><button type="button" className="btn small-btn" disabled={!!busy || aiBusy || speakers.length >= 8} onClick={() => setSpeakers([...speakers, { id: newId(), name: `Speaker ${String.fromCharCode(65+speakers.length)}`, voice: SPEECH_VOICES[speakers.length % SPEECH_VOICES.length], accent: '' }])}>+ Add speaker</button></div>
         <div className="speech-speakers">{speakers.map((s, i) => <fieldset className={'speech-cast-card cast-'+i%4} key={s.id} disabled={!!busy || aiBusy}><legend>Speaker {i + 1}</legend><span className="speech-avatar" aria-hidden="true">{String.fromCharCode(65+i)}</span><label>Name<input aria-label={"Speaker "+(i+1)+" name"} value={s.name} maxLength={40} onChange={e => setSpeakers(speakers.map(x => x.id === s.id ? { ...x, name: e.target.value } : x))} /></label><label>Voice<NSelect aria-label={"Speaker "+(i+1)+" voice"} value={s.voice} onChange={e => setSpeakers(speakers.map(x => x.id === s.id ? { ...x, voice: e.target.value } : x))}>{SPEECH_VOICES.map(v => <option key={v} value={v}>{v[0].toUpperCase() + v.slice(1)}</option>)}</NSelect></label><button type="button" className="btn speech-voice-preview" disabled={!!busy||aiBusy} onClick={()=>void previewVoice(s)} aria-label={"Preview voice for "+s.name}>{busy==='preview:'+s.id?'Loading…':playing==='preview:'+s.id?'■ Stop':'▷ Preview'}</button></fieldset>)}</div>
         <p className="speech-preview-note">Voice previews use saved recordings. No speech is generated when you preview.</p>

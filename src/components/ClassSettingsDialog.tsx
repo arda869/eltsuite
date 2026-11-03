@@ -1,3 +1,5 @@
+import { SpellingFields } from '../spelling/SpellingFields';
+import type {Spelling} from '../spelling/model';
 import { LessonStylePicker } from './LessonStylePicker';
 import { lessonStyleOf, type LessonStyle } from '../lib/lessonStyle';
 import { TrainingProfileFields, profileFromClass } from '../training/TrainingProfileFields';
@@ -31,6 +33,7 @@ export function meetingProvider(url: string) {
 export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () => void }) {
   const [trainingProfile,setTrainingProfile]=useState(profileFromClass(c.trainingProfile,c.level));
   const [learningProfile,setLearningProfile]=useState(c.learningProfile ?? defaultProfile);
+  const [spelling,setSpelling]=useState<Spelling>(c.spelling??{});
   const [name, setName] = useState(c.name);
   const [level, setLevel] = useState(c.level);
   const [start, setStart] = useState(c.dates?.start ?? '');
@@ -90,6 +93,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
         name: name.trim() || c.name,
         level,
         learningProfile,
+        spelling,
         trainingProfile,
         dates: { start: start || null, end: end || null },
         themeColor,
@@ -355,6 +359,7 @@ export function ClassSettingsDialog({ c, onClose }: { c: ClassDoc; onClose: () =
             </span>
           )}
         </div>
+        <SpellingFields label="Class spelling" value={spelling} onChange={setSpelling} inherit/>
         <div className="row-between" style={{ justifyContent: 'flex-end' }}>
           <button type="button" className="btn" onClick={onClose} disabled={busy}>
             Cancel

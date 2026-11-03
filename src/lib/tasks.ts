@@ -19,6 +19,7 @@ import { noteFeature } from '../discovery/store';
 export * from './questions';
 
 export type Task = {
+  spelling?: import('../spelling/model').Spelling;
   id: string;
   kind?: 'task' | 'section'; // sections are headings in the task list
   title: string;
@@ -94,7 +95,7 @@ export async function saveTask(classId: string, itemId: string, taskId: string, 
   if (patch.content && JSON.stringify(patch.content).includes('"text"')) noteFeature('lessons', classId + ':' + itemId);
 }
 
-export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print'>>) =>
+export const setTaskFlags = (classId: string, itemId: string, taskId: string, patch: Partial<Pick<Task, 'spelling' | 'hidden' | 'locked' | 'order' | 'afterCheck' | 'layout' | 'colScroll' | 'title' | 'showScore' | 'audience' | 'dist' | 'variant' | 'exam' | 'examReleased' | 'print'>>) =>
   updateDoc(taskRef(classId, itemId, taskId), patch);
 
 export async function deleteTask(classId: string, itemId: string, taskId: string) {

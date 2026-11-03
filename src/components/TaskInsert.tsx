@@ -1,0 +1,4 @@
+import {UiIcon} from './UiIcon';
+export function TaskInsert({label,onChoose,ai=true}:{label:string;onChoose:(kind:'blank'|'import'|'ai'|'section'|'lesson')=>void;ai?:boolean}){
+ return <details className="task-insert"><summary aria-label={label} title={label}><span aria-hidden="true">+</span></summary><div className="task-insert-menu" role="group" aria-label={label}>{([['blank','New task','plus'],['import','Import material','upload'],['ai','Create with AI','videoSparkles'],['section','Section','heading'],['lesson','From another lesson','copy']] as const).map(([kind,text,icon])=><button type="button" className="btn small-btn" key={kind} disabled={!ai&&(kind==='import'||kind==='ai')} onClick={e=>{e.currentTarget.closest('details')?.removeAttribute('open');onChoose(kind);}}><UiIcon name={icon}/>{text}</button>)}{!ai&&<small>AI creation and import are not enabled for this account.</small>}</div></details>;
+}
