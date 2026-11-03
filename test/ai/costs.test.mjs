@@ -35,7 +35,7 @@ test('full catalogue, nearest-rank p95, retries, failures and margin alerts',()=
  attempts.push({...attempts[0],costMicroUsd:500});
  const r=costReport(gens,attempts,{song:1}),f=r.features.find(f=>f.id==='song');assert.equal(r.features.length,21);assert.equal(AI_FEATURES.length,21);
  assert.equal(f.success,19);assert.equal(f.failed,1);assert.equal(f.p95MicroUsd,19000);assert.equal(f.maxMicroUsd,20000);assert.equal(f.recommendedCredits,8);assert.equal(f.alert,'below-cost');assert.equal(r.invoiceConfirmedMicroUsd,null);
- attempts.push({...attempts[0],costMicroUsd:null,basis:'unknown'});const bad=costReport(gens,attempts,{song:99}).features.find(f=>f.id==='song');assert.equal(bad.recommendedCredits,null);assert.equal(bad.alert,'incomplete');
+ attempts.push({...attempts[0],costMicroUsd:null,basis:'unknown'});const bad=costReport(gens,attempts,{song:99}).features.find(f=>f.id==='song');assert.equal(bad.recommendedCredits,null);assert.equal(bad.alert,'incomplete');assert.equal(bad.margin,null);assert.equal(bad.profitMicroUsd,null);
 });
 test('no samples or no successes cannot claim a sustainable price',()=>{
  const empty=costReport([],[]);assert.ok(empty.features.every(f=>f.recommendedCredits===null));
