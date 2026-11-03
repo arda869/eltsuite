@@ -231,6 +231,10 @@
 @media (max-width:760px){.pub-stage-audio{width:70%;left:0;bottom:2%}.pub-stage-live{display:none}}
 /* The marked sentence: on its own, with space around it. */
 .pub.pub .pub-speaks{text-align:center;padding-top:clamp(64px,8vw,120px);padding-bottom:clamp(64px,8vw,120px)}
-.pub-speaks-text{display:block;width:min(1100px,100%);height:auto;margin:18px auto 22px}
+.pub-speaks-text{display:block;width:min(720px,100%);height:auto;margin:18px auto 22px}
 .pub.pub .pub-speaks p{max-width:560px;margin:0 auto;color:var(--muted);font-size:17px}
 :root[data-theme='dark'] .pub-speaks-text{border-radius:18px;background:#fbfaf8;padding:12px}
+
+/* Two pieces in the hero for now: the editor, with live answers standing in front. */
+.pub-stage-live{right:auto;left:-2%;top:auto;bottom:-6%;width:30%;transform:rotate(-2deg)}
+@media (max-width:760px){.pub-stage-live{display:block;width:52%;left:0;bottom:2%}}
