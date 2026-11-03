@@ -1,3 +1,4 @@
+import {GameFrame} from './GameFrame';
 import {learnOrigin} from '../lib/site';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
@@ -100,9 +101,9 @@ export function GameSession({ id }: {
         setBusy(false);
     } }}>Start this mode</button><p>Changing modes starts a new shared board.</p>{qr && <img src={qr} width="180" height="180" alt="QR code to open this game on a phone"/>}<p><a href={'/game/' + id}>Open this game</a> · Class membership is required.</p><button className="btn" type="button" onClick={() => window.print()}>Print game link</button></details>}
  {!canPlay && <p role="status">{s.ended ? 'This game has ended.' : 'Watch the shared board. Your teacher chooses who plays.'}</p>}
- <div className="game-live-board" onPointerMove={e => { if (!canPlay || s.mode === 'individual' || Date.now() - pointerAt.current < 700)
+ <GameFrame title={s.title}><div className="game-live-board" onPointerMove={e => { if (!canPlay || s.mode === 'individual' || Date.now() - pointerAt.current < 700)
         return; pointerAt.current = Date.now(); const r = e.currentTarget.getBoundingClientRect(); void gameApi('pointer', { id, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, clicked: false }).catch(() => { }); }} onPointerDown={e => { if (!canPlay || s.mode === 'individual')
-        return; const r = e.currentTarget.getBoundingClientRect(); void gameApi('pointer', { id, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, clicked: true }).catch(() => { }); }}><GamePlayer key={s.mode+":"+(s.runId||0)} game={s.game} remote={remote} readOnly={!canPlay} onState={send}/>{s.pointer && s.pointer.by !== uid && Date.now() - s.pointer.at < 5000 && <span aria-hidden="true" className={"game-live-cursor" + (s.pointer.clicked ? " clicked" : "")} style={{ left: `${s.pointer.x * 100}%`, top: `${s.pointer.y * 100}%` }}>➤</span>}</div>
+        return; const r = e.currentTarget.getBoundingClientRect(); void gameApi('pointer', { id, x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, clicked: true }).catch(() => { }); }}><GamePlayer expandable={false} key={s.mode+":"+(s.runId||0)} game={s.game} remote={remote} readOnly={!canPlay} onState={send}/>{s.pointer && s.pointer.by !== uid && Date.now() - s.pointer.at < 5000 && <span aria-hidden="true" className={"game-live-cursor" + (s.pointer.clicked ? " clicked" : "")} style={{ left: `${s.pointer.x * 100}%`, top: `${s.pointer.y * 100}%` }}>➤</span>}</div></GameFrame>
  {s.mode === 'individual' && <section><h3>Class leaderboard</h3><p>Practice points · completed games</p><ol>{value.players.filter(p => p.state?.finished).sort((a, b) => (b.state.score || 0) - (a.state.score || 0)).map(p => <li key={p.id}>{p.name}: {p.state.score || 0}</li>)}</ol></section>}
  {teacher && <button className="btn" type="button" onClick={async () => { try {
         await gameApi('end', { id });

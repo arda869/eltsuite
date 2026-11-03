@@ -90,6 +90,8 @@ function useDock() {
 }
 
 export function ChatDock() {
+  const [gameExpanded,setGameExpanded]=useState(()=>!!document.querySelector('.game-expanded'));
+  useEffect(()=>{const changed=()=>setGameExpanded(!!document.querySelector('.game-expanded'));window.addEventListener('elt-game-view',changed);changed();return()=>window.removeEventListener('elt-game-view',changed);},[]);
   const { user, profile } = useAuth();
   const loc = useLocation();
   const phone = usePhone();
@@ -166,7 +168,7 @@ export function ChatDock() {
   phoneRef.current = phone;
   const bannerEl = banner && phone && !loc.pathname.startsWith('/messages') ? <MsgBanner key={banner.at} b={banner} onDone={() => setBanner(null)} /> : null;
 
-  const hidden = !me || isProxyTab() || phone || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || loc.pathname.startsWith('/call/') || document.body.classList.contains('presenting');
+  const hidden = !me || isProxyTab() || (phone && !gameExpanded) || loc.pathname.startsWith('/messages') || loc.pathname.startsWith('/play/') || loc.pathname.startsWith('/r/') || loc.pathname.startsWith('/studio') || loc.pathname.startsWith('/call/') || document.body.classList.contains('presenting');
   if (hidden) return bannerEl;
   const list = chats ?? [];
   const unread = list.filter((c) => unreadIn(c, me!)).length;

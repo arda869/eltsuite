@@ -1,3 +1,4 @@
+import {GameFrame} from './GameFrame';
 import {AdventureBoard,ADVENTURES} from './AdventureBoard';
 import { AuctionBoard, newAuction, type AuctionState } from './AuctionBoard';
 import { ArcadeBoard } from './ArcadeBoard';
@@ -7,12 +8,13 @@ import { questionIds, scoreTask, splitKey, type Responses } from '../lib/questio
 import { GAME_TYPES, gameProblems, norm, optionsFor, shuffled, wordGrid, type GameConfig } from './model';
 import './games.css';
 const stable = (v: any): string => JSON.stringify(v, (_k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x);
-export function GamePlayer({ game, onFinish, remote, onState, readOnly = false }: {
+export function GamePlayer({ game, onFinish, remote, onState, readOnly = false, expandable = true }: {
     game: GameConfig;
     onFinish?: (score: number, total: number) => void;
     remote?: Record<string, any> | null;
     onState?: (state: Record<string, unknown>) => void;
     readOnly?: boolean;
+    expandable?: boolean;
 }) {
     const [round, setRound] = useState(0), [score, setScore] = useState(0), [answer, setAnswer] = useState(''), [feedback, setFeedback] = useState<string | null>(null), [stake, setStake] = useState(10), [responses, setResponses] = useState<Responses>({});
     const [auction, setAuction] = useState<AuctionState>(newAuction);
@@ -82,7 +84,7 @@ export function GamePlayer({ game, onFinish, remote, onState, readOnly = false }
                 finish(f.length * 10, f.length * 10);
         }
     } };
-    return <section className={`game-stage game-${game.type} game-theme-${game.theme}`} aria-label={GAME_TYPES.find(g => g.id === game.type)?.name}>
+    const body = <section className={`game-stage game-${game.type} game-theme-${game.theme}`} aria-label={GAME_TYPES.find(g => g.id === game.type)?.name}>
  <header className="game-toolbar"><strong>{GAME_TYPES.find(g => g.id === game.type)?.name}</strong><span>{score} points</span><button type="button" onClick={() => setSound(!sound)} aria-pressed={sound}>Sound {sound ? 'on' : 'off'}</button></header>
  <fieldset disabled={readOnly} className="game-controls">{game.type === 'auction' ? <AuctionBoard rounds={game.rounds} state={auction} onChange={a => { setAuction(a); if (a.complete) {
             const points = a.bought.filter(b => norm(game.rounds[b.lot].answer) === 'correct').length * 10;
@@ -99,4 +101,5 @@ export function GamePlayer({ game, onFinish, remote, onState, readOnly = false }
  {(native || options.length <= 1) && <button type="button" disabled={feedback !== null} onClick={() => check()}>Check answer</button>}</>}
  {feedback !== null && <div className="game-feedback" role="status"><p>{feedback}</p><button type="button" onClick={next}>{round + 1 === game.rounds.length ? 'Finish game' : 'Next round'}</button></div>}</>}
  </fieldset></section>;
+ return expandable?<GameFrame title={GAME_TYPES.find(g=>g.id===game.type)?.name||'Game'}>{body}</GameFrame>:body;
 }
