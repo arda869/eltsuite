@@ -30,7 +30,11 @@ try{
  await p.addScriptTag({path:require.resolve('axe-core/axe.min.js')});let violations=await p.evaluate(async()=>(await axe.run(document,{runOnly:['wcag2a','wcag2aa']})).violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)})));assert.deepEqual(violations,[]);
  await mkdir('outputs/ai-costs',{recursive:true});await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/desktop.png'});
  await p.evaluate(()=>{localStorage.setItem('ll.theme','dark');document.documentElement.dataset.theme='dark';});violations=await p.evaluate(async()=>(await axe.run(document,{runOnly:['wcag2a','wcag2aa']})).violations.map(v=>v.id));assert.deepEqual(violations,[]);await p.screenshot({path:'outputs/ai-costs/dark.png'});
- await p.setViewportSize({width:390,height:844});const open=p.getByRole('button',{name:'Open it anyway',exact:true});if(await open.count())await open.click();await p.getByLabel('Admin section',{exact:true}).selectOption('ai-costs');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/mobile.png'});
+ await p.setViewportSize({width:390,height:844});
+ const open=p.getByRole('button',{name:'Open it anyway',exact:true});
+ await open.waitFor({state:'visible',timeout:15000}).catch(()=>{});
+ if(await open.isVisible())await open.click();
+ await p.getByLabel('Admin section',{exact:true}).selectOption('ai-costs');assert(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.evaluate(()=>window.scrollTo(0,0));await p.screenshot({path:'outputs/ai-costs/mobile.png'});
  await p.evaluate(()=>localStorage.setItem('mockCostEmpty','1'));await p.getByRole('button',{name:'Refresh report'}).click();await p.getByText(/No AI costs recorded in this range/).waitFor();
  await p.evaluate(()=>localStorage.setItem('mockCostFailure','1'));await p.getByRole('button',{name:'Refresh report'}).click();await p.getByRole('alert').filter({hasText:'Could not load costs'}).waitFor();
  assert.deepEqual(crashes,[]);console.log('PASS: 21 features, optional proposals blank, save/reload, inline invalid price, 75% margin, learner attribution, empty/error states, desktop/mobile and accessibility. Firebase/provider data simulated.');
