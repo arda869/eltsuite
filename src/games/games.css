@@ -33,22 +33,22 @@
 @keyframes game-pop{0%{transform:scale(.85);opacity:0}100%{transform:none;opacity:1}}
 .game-score{display:inline-block;animation:game-score .5s cubic-bezier(.2,1.8,.4,1)}
 @keyframes game-score{0%{transform:scale(1.5)}100%{transform:none}}
-.game-options button,.game-cloud button,.game-pairs button,.game-keyboard button,.game-wordgrid button{transition:transform .12s ease,box-shadow .12s ease}
-.game-options button:not(:disabled):hover,.game-cloud button:not(:disabled):hover,.game-pairs button:not(:disabled):hover{transform:translateY(-3px) scale(1.03)}
-.game-options button:not(:disabled):active,.game-cloud button:not(:disabled):active,.game-pairs button:not(:disabled):active,.game-keyboard button:not(:disabled):active{transform:translateY(2px) scale(.97)}
+.game-options button,.game-wordcloud button,.game-pairs button,.game-keyboard button,.game-wordgrid button{transition:transform .12s ease,box-shadow .12s ease}
+.game-options button:not(:disabled):hover,.game-wordcloud button:not(:disabled):hover,.game-pairs button:not(:disabled):hover{transform:translateY(-3px) scale(1.03)}
+.game-options button:not(:disabled):active,.game-wordcloud button:not(:disabled):active,.game-pairs button:not(:disabled):active,.game-keyboard button:not(:disabled):active{transform:translateY(2px) scale(.97)}
 .game-pairs button{transition:transform .35s ease,background .2s}
 .game-pairs button.matched{animation:game-pop .4s cubic-bezier(.2,1.6,.4,1)}
 .game-finish>span{display:inline-block;animation:game-trophy 1s cubic-bezier(.2,1.6,.4,1) both}
 @keyframes game-trophy{0%{transform:scale(.2) rotate(-25deg);opacity:0}100%{transform:none;opacity:1}}
 
 /* Word cloud: words of different sizes drift gently; tap the one that answers the question. */
-.game-cloud{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px 22px;min-height:280px;padding:28px 18px;margin:16px 0;border-radius:50% 46% 48% 52%/60% 56% 44% 40%;background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--g-face) 92%,#fff),color-mix(in srgb,var(--g-face) 70%,transparent) 70%,transparent 72%)}
-.game-cloud button{font:700 calc(var(--s) * 18px)/1.1 var(--sans,Karla,system-ui,sans-serif);color:var(--g-ink);background:transparent;border:0;padding:6px 10px;border-radius:14px;cursor:pointer;transform:rotate(var(--r));animation:game-drift 5.5s ease-in-out infinite alternate;animation-delay:calc(var(--d) * -1)}
-.game-cloud button:nth-child(odd){color:var(--g-accent)}
-.game-cloud button:not(:disabled):hover{background:color-mix(in srgb,var(--g-accent) 14%,transparent);animation-play-state:paused}
-.game-cloud button:focus-visible{outline:3px solid var(--g-accent);outline-offset:2px}
+.game-wordcloud{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px 22px;min-height:280px;padding:28px 18px;margin:16px 0;border-radius:50% 46% 48% 52%/60% 56% 44% 40%;background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--g-face) 92%,#fff),color-mix(in srgb,var(--g-face) 70%,transparent) 70%,transparent 72%)}
+.game-wordcloud button{font:700 calc(var(--s) * 18px)/1.1 var(--sans,Karla,system-ui,sans-serif);color:var(--g-ink);background:transparent;border:0;padding:6px 10px;border-radius:14px;cursor:pointer;transform:rotate(var(--r));animation:game-drift 5.5s ease-in-out infinite alternate;animation-delay:calc(var(--d) * -1)}
+.game-wordcloud button:nth-child(odd){color:var(--g-accent)}
+.game-wordcloud button:not(:disabled):hover{background:color-mix(in srgb,var(--g-accent) 14%,transparent);animation-play-state:paused}
+.game-wordcloud button:focus-visible{outline:3px solid var(--g-accent);outline-offset:2px}
 @keyframes game-drift{0%{translate:0 0}50%{translate:6px -8px}100%{translate:-5px 5px}}
-@media (prefers-reduced-motion:reduce){.game-burst,.game-cloud button,.game-stage[data-result],.game-score,.game-finish>span{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.game-burst,.game-wordcloud button,.game-stage[data-result],.game-score,.game-finish>span{animation:none!important}}
 
 /* The board, made more of a game. The question sits on a card, answers are big coloured tiles with
    a letter badge (four colours that suit each look), and each look has its own surface: wood grain,

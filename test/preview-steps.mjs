@@ -53,23 +53,13 @@ export default async function steps({ p, ctx, shot, say, demo, BASE }) {
     await tab.close();
   });
 
-  // Young learners: switch the demo class to the young learners' style and open a lesson.
-  await safe('young', async () => {
-    await p.evaluate(async (id) => {
-      const { getClass, updateClass } = await import('/src/lib/classes.ts');
-      const c = await getClass(id);
-      if (c) await updateClass(c, { lessonStyle: 'young' });
-      else { const fs = await import('/test/mock/firestore.ts'); await fs.setDoc(fs.doc({}, 'classes', id), { lessonStyle: 'young' }, { merge: true }); }
-    }, cls);
-    await p.goto(`${BASE}/class/${cls}/lesson/${item}`); await p.waitForTimeout(3000);
-    await shot('young-editor');
-    await p.goto(`${BASE}/dev.html?as=Mia`); await p.waitForTimeout(2500);
-    await p.goto(`${BASE}/learn/${item}`); await p.waitForTimeout(3500);
-    await shot('young-learner');
-    await p.mouse.wheel(0, 700); await p.waitForTimeout(600);
-    await shot('young-learner-2');
+  // Young learners' tasks, and the same tasks in an ordinary class.
+  for (const st of ['young', 'adult']) await safe('young ' + st, async () => {
+    await p.setViewportSize({ width: 1280, height: 900 });
+    await p.goto(`${BASE}/test/young-gallery.html?style=${st}`); await p.waitForTimeout(2000);
+    await shot('tasks-' + st);
+    if (st === 'young') { await p.locator('.opt').nth(1).click().catch(() => {}); await p.waitForTimeout(500); await shot('tasks-young-chosen'); }
   });
-
   // Every game in the wooden skin, then one game in every skin.
   const types = ['shark', 'taxi', 'drive', 'blocks', 'show', 'targets', 'pinball', 'maze', 'hangman', 'search', 'slice', 'moles', 'wager', 'auction', 'pairs', 'cloud'];
   await p.setViewportSize({ width: 1280, height: 860 });

@@ -111,5 +111,5 @@ export function GamePlayer({ game, onFinish, remote, onState, readOnly = false, 
 // A cloud of words drifting on the stage. Learners tap the one that answers the question.
 function WordCloud({ words, disabled, onPick }: { words: string[]; disabled: boolean; onPick: (w: string) => void }) {
     const sizes = [1.9, 1.25, 1.55, 1.05, 1.7, 1.15, 1.4, 1.0, 1.6, 1.2, 1.35, 1.1, 1.5, 1.0];
-    return <div className="game-cloud" role="group" aria-label="Word cloud">{words.map((w, i) => <button key={w} type="button" disabled={disabled} onClick={() => onPick(w)} style={{ ['--s' as string]: sizes[i % sizes.length], ['--d' as string]: `${(i * 0.37) % 2.4}s`, ['--r' as string]: `${((i * 53) % 9) - 4}deg` }}>{w}</button>)}</div>;
+    return <div className="game-wordcloud" role="group" aria-label="Word cloud">{words.map((w, i) => <button key={w} type="button" disabled={disabled} onClick={() => onPick(w)} style={{ ['--s' as string]: sizes[i % sizes.length], ['--d' as string]: `${(i * 0.37) % 2.4}s`, ['--r' as string]: `${((i * 53) % 9) - 4}deg` }}>{w}</button>)}</div>;
 }
