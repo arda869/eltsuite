@@ -714,7 +714,7 @@ export function LessonEditor() {
     const at=rest.findIndex(r=>r.id===anchor);if(at<0)return;
     rest.splice(at,0,...moving);const batch=writeBatch(db);rest.forEach((r,i)=>batch.update(r.ref,{order:i}));await batch.commit();
   }
-  const finishInserted=async(ids:string[])=>{try{await placeInserted(ids);if(ids[0])setSelected(ids[0]);}catch{setCopyMsg('The task was added, but its position could not be saved. Drag it into place.');}};
+  const finishInserted=async(ids:string[],select=true)=>{try{await placeInserted(ids);if(select&&ids[0])setSelected(ids[0]);}catch{setCopyMsg('The task was added, but its position could not be saved. Drag it into place.');}};
   const insertAt=async(before:string|null,kind:'blank'|'import'|'ai'|'section'|'lesson')=>{
     try {
       if(await flush()===false)return;insertBefore.current=before;
@@ -738,7 +738,7 @@ export function LessonEditor() {
   }
 
   async function newSection() {
-    const id=await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'section');await finishInserted([id]);
+    const id=await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'section');await finishInserted([id],false);
   }
 
   const [dragId, setDragId] = useState<string | null>(null);
