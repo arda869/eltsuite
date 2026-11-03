@@ -1711,7 +1711,7 @@ const J = {
     await s.p.evaluate(()=>localStorage.removeItem('mockDeleteError'));
     await action.click();
     await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockDeleteRequest')||'{}').uid==='teacher1');
-    await s.p.waitForURL(url=>!url.pathname.includes('settings'));
+    await s.p.getByRole('heading',{name:'Welcome back',exact:true}).waitFor();
     return s;
   },
   'Admin account deletion confirmation': async (b) => {
