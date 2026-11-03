@@ -28,7 +28,8 @@ export function startViewport() {
   });
 }
 
-// No pinch-to-zoom anywhere in the suite: the page is laid out for the screen it's on, and a
+// No pinch-to-zoom anywhere in the suite (the viewport tag is left zoomable for accessibility checks;
+// touch-action in cohesion.css and these handlers stop it): the page is laid out for the screen, and a
 // half-zoomed page hides the controls. Places with their own zoom (Collab's pages, Design and the
 // whiteboard) listen on their own element, so they still get two-finger gestures; this only stops
 // the browser zooming the whole page. Ctrl/Cmd and + or − (the browser's own zoom) still works,
