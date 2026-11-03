@@ -1695,6 +1695,37 @@ const J = {
     await axe(s.p, 'Rooms', A11Y_FOUND);
     return s;
   },
+  'Account deletion confirmation': async (b) => {
+    const s = await session(b);
+    await s.p.goto(`${BASE}/settings`);
+    await s.p.getByRole('button',{name:'Delete…',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Delete account',exact:true});
+    const action=dialog.getByRole('button',{name:'Permanently delete account',exact:true});
+    if(await action.isEnabled())throw Error('Blank confirmation enables deletion');
+    await dialog.getByText('Enter DELETE exactly to enable account deletion.').waitFor();
+    await dialog.getByRole('textbox').fill('DELETE');
+    await s.p.evaluate(()=>localStorage.setItem('mockDeleteError','Sign out and sign in again before deleting an account. Nothing has been deleted.'));
+    await action.click();
+    await dialog.getByRole('alert').waitFor();
+    if(await s.p.evaluate(()=>!!localStorage.getItem('mockDeleteRequest')))throw Error('Rejected deletion was accepted');
+    await s.p.evaluate(()=>localStorage.removeItem('mockDeleteError'));
+    await action.click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockDeleteRequest')||'{}').uid==='teacher1');
+    await s.p.waitForURL(url=>!url.pathname.includes('settings'));
+    return s;
+  },
+  'Admin account deletion confirmation': async (b) => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/admin`);
+    await s.p.click('.hq-nav-i:has-text("Teachers")');
+    await s.p.click('.hq-table tbody tr >> nth=0');
+    await s.p.getByRole('button',{name:'Delete account…',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Delete account',exact:true});
+    await dialog.getByText('Type DELETE to confirm').waitFor();
+    await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
+    if(await s.p.evaluate(()=>!!localStorage.getItem('mockDeleteRequest')))throw Error('Cancel submitted deletion');
+    return s;
+  },
   'Settings': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/settings`);

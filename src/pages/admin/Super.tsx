@@ -1,3 +1,4 @@
+import { DeleteAccountDialog } from '../../components/DeleteAccountDialog';
 import { VoicePreviews } from './VoicePreviews';
 import { useEffect, useState } from 'react';
 import { Select } from '../../components/Select';
@@ -274,6 +275,7 @@ function TrainerAccess({t,account,org,go}:{t:Teacher;account:import('../../lib/a
 }
 
 function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go; onClose: () => void }) {
+  const [deleting, setDeleting] = useState(false);
   const a = d.accounts[t.uid] ?? {};
   const org = d.orgs.find((o) => o.id === a.org) ?? null;
   const mine = d.classes.filter((c) => teachesIn(c, t.uid));
@@ -295,6 +297,7 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
       onClose={onClose}
       foot={
         <>
+        <button type="button" className="btn small-btn danger" onClick={() => setDeleting(true)}>Delete account…</button>
         <button type="button" className="btn small-btn" onClick={() => void openAsUser({ uid: t.uid, name }).then((m) => m && void tell(m))} data-tip="A new tab, signed in as them, to see ELT Suite as they do">
           Sign in as {name.split(' ')[0]}
         </button>
@@ -304,6 +307,7 @@ function SuperTeacher({ d, t, go, onClose }: { d: SuperData; t: Teacher; go: Go;
         </>
       }
     >
+      {deleting && <DeleteAccountDialog target={{ uid: t.uid, email: t.email }} onClose={() => setDeleting(false)} />}
       <div className="hq-dfacts">
         {a.suspended && <span className="hq-chip">Paused</span>}
         {a.over && <span className="hq-chip late">Full</span>}

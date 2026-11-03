@@ -35,6 +35,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Account deletion permission and cleanup checks
+        run: |
+          node --test functions/accounts/security.test.mjs
+          npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-account-deletion "node functions/accounts/integration.mjs"
       - name: Verify AI access security rules
         run: |
           npm install --prefix functions --no-package-lock --no-audit --no-fund

@@ -5,6 +5,7 @@ import { db } from '../../src/lib/firebase';
 // Test-only callable stand-in. Production builds never import this module.
 export const getFunctions = () => ({});
 export const httpsCallable = (_app: unknown, name: string) => async (d: any) => {
+  if(name==='deleteAccount'){if(localStorage.getItem('mockDeleteError'))throw Error(localStorage.getItem('mockDeleteError')!);localStorage.setItem('mockDeleteRequest',JSON.stringify(d));return {data:{accepted:true}};}
   if(name==='adminAiCosts')return (await import('./ai-costs')).aiCosts(d);
   if(name==='appliedLinguistics')return (await import('./linguistics')).linguistics(d);
   if (d.action === 'activities' && localStorage.getItem('mockAiPause')) await new Promise<void>(resolve => { const timer=setInterval(()=>{if(!localStorage.getItem('mockAiPause')) {clearInterval(timer);resolve();}},50); });

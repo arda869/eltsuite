@@ -1,48 +1,40 @@
 import { useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { signOut } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, auth } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
-import { deleteTeacherAccount } from '../lib/deletion';
-import type { ClassDoc } from '../lib/classes';
 
-export function DeleteAccountDialog({ onClose }: { onClose: () => void }) {
+export function DeleteAccountDialog({ onClose, target }: { onClose: () => void; target?: { uid: string; email: string } }) {
   const { user } = useAuth();
   const [typed, setTyped] = useState('');
-  const [step, setStep] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const [err, setErr] = useState('');
+  const self = !target || target.uid === user?.uid;
   async function go() {
-    if (!user) return;
-    setErr('');
+    if (!user || busy || typed !== 'DELETE') return;
+    setErr(''); setBusy(true);
     try {
-      const s = await getDocs(query(collection(db, 'classes'), where('teacherId', '==', user.uid)));
-      await deleteTeacherAccount(s.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ClassDoc, 'id'>) })), setStep);
-      window.location.href = '/';
+      await httpsCallable(getFunctions(app, 'us-central1'), 'deleteAccount')({ uid: target?.uid || user.uid, confirmation: typed });
+      setAccepted(true);
+      if (self) await signOut(auth);
     } catch (e) {
-      const code = (e as { code?: string }).code;
-      setStep('');
-      setErr(code === 'auth/requires-recent-login' ? 'Your classes are deleted. To delete the account itself, sign out, sign in again and do this step again.' : 'That didn’t work. Try again, and if it keeps happening, write to us from Support.');
-    }
+      setErr(e instanceof Error ? e.message : 'Could not request account deletion. Please try again.');
+    } finally { setBusy(false); }
   }
-  return (
-    <div className="scrim" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-label="Delete my account" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: 0 }}>Delete your account?</h2>
-        <p style={{ margin: 0 }}>This deletes every class you teach straight away, including the learner accounts and all their work, and then your account. You can’t undo this.</p>
-        <label className="field">
-          Type DELETE to confirm
-          <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus />
-        </label>
-        {step && <span className="hint">{step}…</span>}
-        {err && <span className="error">{err}</span>}
-        <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn danger" disabled={typed !== 'DELETE' || !!step} onClick={go}>
-            Delete everything
-          </button>
-        </span>
-      </div>
+  return <div className="scrim" onClick={() => !busy && onClose()}>
+    <div className="dialog" role="dialog" aria-modal="true" aria-label="Delete account" onClick={e => e.stopPropagation()}>
+      <h2 style={{ margin: 0 }}>{accepted ? 'Account deletion requested' : self ? 'Delete your account?' : 'Delete this account?'}</h2>
+      {accepted ? <><p role="status">Deletion will continue securely in the background. You can close this window. The account, its owned classes, learner accounts and personal files are being removed.</p><button type="button" className="btn" onClick={onClose}>Close</button></> : <>
+        <p><strong>{target?.email || user?.email}</strong></p>
+        <p>This permanently removes the account, classes it owns, those classes’ learner accounts and work, and its personal files. Co-taught classes owned by someone else are kept. Messages and copies already shared with others may remain. This cannot be undone.</p>
+        <p>Sign in again first if your last sign-in was more than five minutes ago. Site-owner accounts are protected; remove super-admin access and assign another organisation admin where needed before deleting.</p>
+        <label className="field">Type DELETE to confirm<input value={typed} onChange={e => setTyped(e.target.value)} disabled={busy} autoFocus /></label>
+        {typed !== 'DELETE' && <p className="hint">Enter DELETE exactly to enable account deletion.</p>}
+        {busy && <p role="status">Requesting deletion…</p>}
+        {err && <p role="alert" className="error">{err}</p>}
+        <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}><button type="button" className="btn" disabled={busy} onClick={onClose}>Cancel</button><button type="button" className="btn danger" disabled={typed !== 'DELETE' || busy} onClick={() => void go()}>Permanently delete account</button></span>
+      </>}
     </div>
-  );
+  </div>;
 }
