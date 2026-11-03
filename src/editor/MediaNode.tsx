@@ -96,7 +96,7 @@ function MediaView({ node, updateAttributes, deleteNode, editor, getPos, selecte
             </label>
             <label className="check-row up-shrink">
               <input type="checkbox" checked={!!(a as MediaAttrs & { notes?: boolean }).notes} onChange={(e) => updateAttributes({ notes: e.target.checked })} />
-              Comments at moments in it: for lesson observation and feedback
+              Comments at moments in it for feedback
             </label>
             <span className="md-btns">
               <button type="button" className="btn small-btn" onClick={() => window.open(a.kind === 'video' ? `/studio/video/new?archive=${encodeURIComponent(a.archiveId)}` : recordingEditorUrl(space, a.media, a.archiveId), '_blank')}>
