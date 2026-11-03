@@ -172,7 +172,6 @@ export const updateTopic = (classId: string, topicId: string, patch: Partial<Omi
 export const TRAINING_ADDS = [
   'Language analysis cards: meaning, form, pronunciation, concept questions, problems and solutions',
   'Lesson plan templates with PPP, test-teach-test, task-based, ESA and skills frameworks',
-  'Observation forms with criteria, strengths and action points',
   'Comments pinned to moments in a lesson video, for feedback',
   'Loop input: a step-back note you reveal after modelling a technique',
 ];
