@@ -1,0 +1,11 @@
+// Only gameplay fields are accepted from a controller; never accept changes to the game or access list.
+export function cleanState(input, roundCount) {
+    if (!input || typeof input !== 'object' || Array.isArray(input) || JSON.stringify(input).length > 40000)
+        throw Error('Invalid game state.');
+    const integer = (v, min, max, fallback) => Number.isInteger(v) && v >= min && v <= max ? v : fallback;
+    const strings = v => Array.isArray(v) && v.length <= 120 && v.every(x => typeof x === 'string' && x.length <= 160) ? v : [];
+    const indices = v => Array.isArray(v) && v.length <= 256 && v.every(x => Number.isInteger(x) && x >= 0 && x < 256) ? v : [];
+    const a = input.auction || {};
+    const auction = { lot: integer(a.lot, 0, roundCount - 1, 0), bid: integer(a.bid, 0, 100, 0), bidder: integer(a.bidder, -1, 1, -1), cash: Array.isArray(a.cash) && a.cash.length === 2 ? a.cash.map(v => integer(v, 0, 100, 100)) : [100, 100], bought: Array.isArray(a.bought) ? a.bought.slice(0, roundCount).filter(b => Number.isInteger(b.lot) && b.lot >= 0 && b.lot < roundCount && [0, 1].includes(b.team) && Number.isInteger(b.price) && b.price >= 0 && b.price <= 100) : [], complete: a.complete === true };
+    return { auction, round: integer(input.round, 0, roundCount - 1, 0), score: integer(input.score, -3000, 3000, 0), answer: typeof input.answer === 'string' ? input.answer.slice(0, 2000) : '', feedback: typeof input.feedback === 'string' ? input.feedback.slice(0, 2000) : null, stake: integer(input.stake, 1, 50, 10), responses: input.responses && typeof input.responses === 'object' && !Array.isArray(input.responses) ? input.responses : {}, guessed: strings(input.guessed).filter(x => /^[A-Z]$/.test(x)), flipped: strings(input.flipped).slice(0, 2), matched: strings(input.matched), found: strings(input.found), selected: indices(input.selected), finished: input.finished === true, arcade: input.arcade && typeof input.arcade === 'object' ? { x: integer(input.arcade.x, 0, 120, 2), y: integer(input.arcade.y, 0, 4, 4), bumper: integer(input.arcade.bumper, 0, 60, 0), ball: typeof input.arcade.ball === 'number' && input.arcade.ball >= 0 && input.arcade.ball <= 1 ? input.arcade.ball : null, active: integer(input.arcade.active, 0, 60, 0), sliced: integer(input.arcade.sliced, 0, 60, null) } : {} };
+}

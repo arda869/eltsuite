@@ -1,3 +1,4 @@
+import {GameSession} from '../games/GameSession';
 import {InlineInvestigation} from '../linguistics/InlineInvestigation';
 import { SpeakingActivity } from '../speaking/SpeakingActivity';
 import type { SpeakingConfig } from '../speaking/types';
@@ -1133,6 +1134,8 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           </section>
         );
       }
+      case 'classroomGame':
+        return node.attrs?.sessionId ? <GameSession key={key} id={String(node.attrs.sessionId)}/> : <p key={key}>Choose a saved game.</p>;
       case 'investigation':
         return node.attrs?.embedId ? <InlineInvestigation key={key} embedId={String(node.attrs.embedId)} compact={!classId||classId.startsWith('chat:')} readOnly={!!teacher}/> : <p key={key}>No investigation selected.</p>;
       case 'collab':

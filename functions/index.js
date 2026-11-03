@@ -1,3 +1,4 @@
+export {classroomGames,classroomGameDraft} from './games/index.js';
 export { classroomObservation } from './observations/index.js';
 export { observeLearnerResponses } from './learning/observations.js';
 export { buildLearningReport, reportEndedLesson, reportInactiveLessons } from './learning/reports.js';

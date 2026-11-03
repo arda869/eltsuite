@@ -544,6 +544,7 @@ export const declineInvite = (inv: OrgInvite, uid: string) => updateDoc(doc(db, 
 // ------------------------------------------------------------------ for the admin pages
 // Every app a switch can turn on or off, as the apps menu shows them. APP_KEYS above is the older list.
 export const APP_LIST: { k: string; name: string; about: string }[] = [
+ {k:'games',name:'Games',about:'Reusable classroom games'},
   { k: 'classes', name: 'Classes', about: 'Classes, lessons, homework and live teaching' },
   { k: 'timetable', name: 'Timetable', about: 'Classes and meetings, week by week' },
   { k: 'rooms', name: 'Rooms', about: 'Audio and video calls, and each class’s video room' },

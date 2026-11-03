@@ -1,3 +1,4 @@
+import {GameSessionPage} from './games/GameSession';
 import { AppError, watchChunkErrors } from './components/AppError';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
@@ -240,6 +241,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<Navigate to="/development?section=reading" replace />} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
+          <Route path="/game/:id" element={<GameSessionPage/>} />
+          <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/storyboard" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />
