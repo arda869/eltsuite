@@ -1,0 +1,44 @@
+MEASURE home {"scroll":90,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/01-home.png
+MEASURE classes {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/02-classes.png
+MEASURE class {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/03-class.png
+MEASURE lesson-editor {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":"1r/58px"}
+shot preview-out/04-lesson-editor.png
+MEASURE games {"scroll":679,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/05-games.png
+MEASURE resources {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/06-resources.png
+MEASURE collab {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/07-collab.png
+MEASURE development {"scroll":0,"widest":"0..10 (1430/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/08-development.png
+MEASURE linguistics {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/09-linguistics.png
+MEASURE observations {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/10-observations.png
+MEASURE messages {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/11-messages.png
+MEASURE settings {"scroll":2842,"widest":"235..245 (960/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/12-settings.png
+MEASURE timetable {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/13-timetable.png
+MEASURE colleagues {"scroll":0,"widest":"16..26 (1398/1440)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/14-colleagues.png
+shot preview-out/15-resources-new-menu.png
+MENU after outside click 0
+MEASURE phone-home {"scroll":969,"widest":"50..-80 (420/390)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/16-phone-home.png
+MEASURE phone-class {"scroll":176,"widest":"16..26 (348/390)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/17-phone-class.png
+MEASURE phone-games {"scroll":3118,"widest":"16..26 (348/390)","main":"0 w0","logos":"suite-mark: Fraunces 500 | suite-k: Karla 700","viewport":"width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content","textareas":""}
+shot preview-out/18-phone-games.png
+shot preview-out/19-public-home.png
+shot preview-out/20-public-explore.png
+shot preview-out/21-public-pricing.png
+shot preview-out/22-public-about.png
+shot preview-out/23-public-signin.png
+shot preview-out/24-public-contact.png
+shot preview-out/25-public-404.png
+shot preview-out/26-public-home-phone.png
