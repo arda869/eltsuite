@@ -1,3 +1,4 @@
+import { SpellingSettings } from '../spelling/SpellingSettings';
 import { CoachPreferences } from '../coach/CoachPreferences';
 import { isLearnerEmail } from '../lib/learners';
 import { NSelect } from '../components/Select';
@@ -205,6 +206,7 @@ export function SettingsPage() {
 
         {profile?.role === 'teacher' && <Section icon="help" title="Feature discovery"><p>Useful ideas based on the tools you use, with quiet hours and room to explore at your own pace.</p><button className="btn" onClick={() => window.dispatchEvent(new Event('elt-discovery-settings'))}>Discovery preferences</button></Section>}
         {teacher && user && <Section icon="message" title="Teaching coach"><CoachPreferences uid={user.uid} /></Section>}
+        {user&&<Section icon="edit" title="Spelling and English variant"><SpellingSettings uid={user.uid}/></Section>}
         <Section icon="message" title="Messages">
           <Row title="Enter to send" hint="Off: Enter starts a new line, and you send with the button">
             <Toggle label="Enter to send" on={enter} onChange={(v) => (saveEnterSend(v), setEnter(v))} />

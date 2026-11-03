@@ -137,7 +137,7 @@ export function SpeakingActivity({ config: initialConfig, classId, teacher = fal
       <audio ref={audio} autoPlay playsInline />
       {error.includes('Play partner audio')&&<button type="button" className="btn" onClick={()=>void audio.current?.play().then(()=>setError(''))}>Play partner audio</button>}
       {!enabled&&!active&&<p className="speak-note">Your teacher will make this task available when it’s ready.</p>}
-      <p className="speak-note">{preview?'AI voice partner · Your test replies go to OpenAI. Preview attempts are excluded from the learner count.':'AI voice partner · Use headphones in class. Your microphone audio goes to OpenAI; your teacher can see your transcript and feedback. Other learners cannot listen in.'}</p>
+      <p className="speak-note">{preview?'AI voice partner · Your test replies go to our AI processing service. Preview attempts are excluded from the learner count.':'AI voice partner · Use headphones in class. Your microphone audio goes to our AI processing service; your teacher can see your transcript and feedback. Other learners cannot listen in.'}</p>
       {feedback&&<Feedback value={feedback}/>}
       {!!turns.length&&<details className="speak-transcript"><summary>Your conversation · {turns.filter(t=>t.role==='learner').length} speaking turns</summary><Transcript turns={turns}/></details>}
       {!active&&sessions[0]&&!sessions[0].feedback&&sessions[0].status==='ended'&&<AiButton type="button" className="btn" onClick={()=>{sessionId.current=sessions[0].id;turnRef.current=sessions[0].turns;void finish();}}>Get feedback for last attempt</AiButton>}

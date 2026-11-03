@@ -11,3 +11,4 @@ preview-out/
 .vite-test/
 
 public/offline-player/
+/public/spelling/

@@ -123,7 +123,7 @@ export function VideoBrief({uid,ownerName,assets,enabled,plannerEnabled,onError,
       <p>{total} seconds of video · up to US${(total*.12).toFixed(2)} for video, plus scene images, script planning and narration. Saved scenes are reused when continuing.</p>
       <p className="vx-help">Scenes, narration and 3-second question cards will be placed in order on your timeline. Voice-over does not guarantee matching mouth movements.</p>
       <VideoButton icon="videoSparkles" disabled={!enabled||!!busy||draft.assembled} onClick={()=>void generate()}>{draft.assembled?'Added to your timeline':draft.plan.scenes.some(s=>s.videoJob||s.imageJob||s.audio)?'Continue generation':'Generate video from this script'}</VideoButton>
-      {!enabled&&<p className="vx-help">Your script can be prepared now. Video generation needs the Runway connection.</p>}
+      {!enabled&&<p className="vx-help">Your script can be prepared now. Video generation is awaiting service setup by your administrator.</p>}
       <VideoButton disabled={!!busy} onClick={()=>setEditingBrief(true)}>Back to brief</VideoButton>
     </div>}
     {!!draft.job&&<VideoButton disabled={!!busy} onClick={()=>void plan(true)}>Recover script</VideoButton>}

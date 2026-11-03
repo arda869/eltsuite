@@ -80,6 +80,10 @@ jobs:
       - name: Trainer grant and course creation journey (Firebase simulated)
         run: node test/admin-trainer-ui.mjs
 
+      - name: Spelling and scoped teaching controls
+        run: node --test test/spelling.test.mjs test/coach/games.test.mjs
+      - name: Task insertion and spelling journey (Firebase simulated)
+        run: node test/tuesday-teaching-ui.mjs
       - name: Audio script visibility journey (Firebase simulated)
         run: node test/audio-script-ui.mjs
 

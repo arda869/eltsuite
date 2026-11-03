@@ -1,3 +1,4 @@
+import { SpellingAssistant } from './spelling/SpellingAssistant';
 import { AppError, watchChunkErrors } from './components/AppError';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
@@ -190,6 +191,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <BrowserRouter>
+        <SpellingAssistant />
         <SiteGate />
         <UpdateBanner />
         <OrgLook />
