@@ -28,7 +28,13 @@ async function up() {
   vite.stdout.on('data', (d) => (log += d));
   vite.stderr.on('data', (d) => (log += d));
   for (let i = 0; i < 60; i++) {
-    if (await fetch(BASE).then((r) => r.ok, () => false)) return vite;
+    if (await fetch(BASE).then((r) => r.ok, () => false)) {
+      // Finish the editor dependency prebundle before any browser context loads a
+      // second ProseMirror copy. The first transform can otherwise trigger a
+      // Vite reload halfway through a later document-export journey.
+      const editorModule = await fetch(BASE + '/test/document-tools-check.ts').then((r) => r.ok ? r.text() : '', () => '');
+      if (editorModule.includes('@tiptap_core.js')) return vite;
+    }
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error('The test server did not start:\n' + log);
