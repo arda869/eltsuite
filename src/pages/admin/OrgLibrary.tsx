@@ -295,7 +295,6 @@ const FIELD_KINDS: { v: FField['kind']; label: string }[] = [
   { v: 'check', label: 'Tick box' },
 ];
 const STARTERS: Record<string, { name: string; about: string; fields: [string, FField['kind']][] }> = {
-  observe: { name: 'Observation form', about: 'For observed lessons', fields: [['Lesson aims were clear', 'rating'], ['Instructions and checking', 'rating'], ['Learner talking time', 'rating'], ['Strengths', 'long'], ['Action points', 'long']] },
   feedback: { name: 'Feedback after teaching practice', about: 'The trainee reflects, then the trainer adds', fields: [['What went well', 'long'], ['What I would change', 'long'], ['Trainer comments', 'long'], ['Ready for the next stage', 'check']] },
   blank: { name: 'New form', about: '', fields: [['Question', 'short']] },
 };
@@ -320,9 +319,6 @@ export function OrgForms({ d }: { d: OrgData }) {
   };
   const starters = (
     <span className="lib-adds">
-      <button type="button" className="btn small-btn" onClick={() => add('observe')}>
-        + Observation form
-      </button>
       <button type="button" className="btn small-btn" onClick={() => add('feedback')}>
         + Feedback form
       </button>
@@ -333,9 +329,9 @@ export function OrgForms({ d }: { d: OrgData }) {
   );
   return (
     <div className="hq-page">
-      <PageHead title="Training forms" lede="What trainers observe and how trainees reflect. Trainers add these to lessons from “Your organisation’s forms” in the Insert list. Changes apply to new copies; lessons keep the form they have." actions={forms.length ? starters : undefined} />
+      <PageHead title="Training forms" lede="Create feedback and planning forms for trainer-led lessons. Changes apply to new copies; lessons keep the form they have." actions={forms.length ? starters : undefined} />
       {!forms.length ? (
-        <Empty title="No forms yet" text="Start from an observation form, a feedback form or a blank one, then change the questions." action={starters} />
+        <Empty title="No forms yet" text="Start from a feedback form or a blank one, then change the questions." action={starters} />
       ) : (
         forms.map((f) => (
           <section key={f.id} className={'hq-panel hq-form-card' + (open === f.id ? ' open' : '')}>

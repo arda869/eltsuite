@@ -220,7 +220,6 @@ export const COMMANDS: Cmd[] = [
   { key:'tt-exam',label:'Exam practice debrief',hint:'Task demands, pacing, evidence and next practice',group:'Text',run:e=>e.chain().focus().insertContent([newTT('exam'),{type:'paragraph'}]).run() },
   { key:'tt-reflection',label:'Reflective inquiry',hint:'Evidence, interpretation, a change and follow-up',group:'Text',run:e=>e.chain().focus().insertContent([newTT('reflection'),{type:'paragraph'}]).run() },
   { key: 'tt-plan', label: 'Lesson plan', hint: 'Aims, assumptions and stages, from a framework', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('plan'), { type: 'paragraph' }]).run() },
-  { key: 'tt-observe', label: 'Observation form', hint: 'Criteria, strengths and action points', group: 'Text', run: (e) => e.chain().focus().insertContent([newTT('observe'), { type: 'paragraph' }]).run() },
   {
     key: 'tt-org',
     label: 'Your organisation’s forms',

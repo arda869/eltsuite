@@ -16,7 +16,7 @@ const SECTIONS: Section[] = [
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a gap, a choice or any question.', keys: ['dg-mind', 'dg-venn', 'dg-compare', 'dg-cline', 'dg-flow', 'dg-cycle', 'dg-tree', 'dg-quad', 'dg-pyramid'] },
   { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'storyboard', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
-  { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans, observation and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org'] },
+  { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Question bank', blurb: 'Questions you saved to use again.', keys: ['bankpick'] },
 ];
