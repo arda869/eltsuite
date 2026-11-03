@@ -13,8 +13,8 @@ try{
  const rounds=[{id:'r1',prompt:'Where do you borrow books?',answer:'library',choices:['bank','park']},{id:'r2',prompt:'Where can you see paintings?',answer:'gallery',choices:['school','bank']}];
  for(const type of (process.env.OFFLINE_TYPES||'show,shark,taxi,drive,blocks,pairs,search,hangman,maze,pinball,targets,slice,moles,wager,auction').split(',')){
   const game={version:1,type,theme:'paper',sound:false,rounds:type==='auction'?rounds.map((r,i)=>({...r,answer:i?'Incorrect':'Correct'})):rounds};
-  await writeFile('/tmp/elt-offline-game.html',offlineHtml('Town game',{title:'Town game',game},js,css));
-  await p.goto('file:///tmp/elt-offline-game.html');await p.locator('.game-'+type).waitFor();
+  await writeFile('/tmp/elt-offline-'+type+'.html',offlineHtml('Town game',{title:'Town game',game},js,css));
+  await p.goto('file:///tmp/elt-offline-'+type+'.html');await p.locator('.game-stage.game-'+type).waitFor();
   if(type==='pairs'){
    for(const r of rounds)for(const side of ['a','b'])await p.locator(`[data-card-id="${r.id+side}"]`).click();
   }else if(type==='search'){
