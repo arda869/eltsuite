@@ -133,6 +133,27 @@ const J = {
   'Tuesday wishlist: pinned coach, voice playback and microphone fallback':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday latest: highlight dialogue authoring, save and learner feedback':async b=>{const s=await session(b);await highlightJourney(s,BASE,axe,A11Y_FOUND);return s;},
+  'New task: empty lesson opens a blank editor even with AI enabled':async b=>{
+    const s=await session(b);
+    await s.p.evaluate(async demo=>{
+      const {doc,setDoc,collection,getDocs,deleteDoc}=await import('/test/mock/firestore.ts');
+      await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});
+      const tasks=await getDocs(collection({},'classes',demo.classId,'items',demo.itemId,'tasks'));
+      await Promise.all(tasks.docs.map(t=>deleteDoc(t.ref)));
+    },s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'+ New task',exact:true}).click();
+    const title=s.p.getByRole('textbox',{name:'Task title',exact:true});
+    await title.waitFor();
+    if(await s.p.getByRole('dialog',{name:'Suggest next activity'}).count())throw Error('New task opened AI creation');
+    if(await title.inputValue()!=='New task')throw Error('New task did not open a blank task');
+    await title.fill('Manual task regression');await title.blur();
+    await s.p.waitForTimeout(1400);await s.p.reload();
+    await s.p.getByRole('button',{name:/Manual task regression/}).first().click();
+    await title.waitFor();
+    if(await title.inputValue()!=='Manual task regression')throw Error('Manual task did not persist');
+    return s;
+  },
   'New task: blank and import choices remain available before AI starts':async b=>{
     const s=await session(b);
     await s.p.evaluate(async()=>{const {doc,setDoc}=await import('/test/mock/firestore.ts');await setDoc(doc({},'aiPilot','teacher1'),{enabled:true});});

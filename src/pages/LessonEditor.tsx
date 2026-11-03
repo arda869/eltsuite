@@ -724,8 +724,7 @@ export function LessonEditor() {
     } catch { insertBefore.current=null;setCopyMsg('The task could not be added. Please try again.'); }
   };
   async function newTask() {
-    if(aiPilot){await flush();setTaskStart(true);return;}
-    await newBlankTask();
+    await insertAt(null, 'blank');
   }
   async function newBlankTask() {
     await flush();
