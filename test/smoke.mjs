@@ -118,9 +118,11 @@ const J = {
       if(Math.abs(before.height-after.height)>0.5||Math.abs(titleBefore.width-titleAfter.width)>0.5)throw Error('Hover changed the row or title dimensions');
     }
     await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('linguistics');
-    await s.p.getByRole('menuitem',{name:'Applied Linguistics',exact:true}).waitFor();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('development');
+    await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).waitFor();
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('linguistics');
+    await s.p.getByText('No apps match your search.').waitFor();
     await axe(s.p,'Filtered application launcher',A11Y_FOUND);return s;
   },
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
