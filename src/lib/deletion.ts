@@ -1,6 +1,5 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, updateDoc, type DocumentReference } from 'firebase/firestore';
-import { deleteUser } from 'firebase/auth';
-import { auth, db } from './firebase';
+import { db } from './firebase';
 import { removeLearner, type Learner } from './learners';
 import type { ClassDoc } from './classes';
 
@@ -50,15 +49,3 @@ export async function purgeClass(c: ClassDoc, onStep?: (s: string) => void) {
   await deleteDoc(doc(db, 'classes', id));
 }
 
-// Deletes the teacher's account and every class in it.
-export async function deleteTeacherAccount(classes: ClassDoc[], onStep?: (s: string) => void) {
-  for (const c of classes) {
-    onStep?.(`Deleting ${c.name}`);
-    await purgeClass(c);
-  }
-  const u = auth.currentUser;
-  if (!u) return;
-  await deleteDoc(doc(db, 'featureDiscovery', u.uid));
-  await deleteDoc(doc(db, 'users', u.uid)).catch(() => {});
-  await deleteUser(u);
-}
