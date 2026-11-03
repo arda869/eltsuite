@@ -156,3 +156,5 @@
 [data-lesson-style='young'] .task-body .opt { flex: none; height: auto; min-width: 0; }
 [data-lesson-style='young'] .task-body :is(p, .para, li) { font-size: 20px; line-height: 1.6; }
 [data-lesson-style='young'] .task-body .q-num { font: 800 15px Karla, sans-serif; color: var(--accent-text); }
+/* Tiles flow across the row when there's room. */
+[data-lesson-style='young'] .task-body .opt { display: inline-flex !important; min-width: 200px; margin: 0 14px 16px 0; vertical-align: top; }
