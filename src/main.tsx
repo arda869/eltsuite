@@ -32,7 +32,7 @@ import './friday-ui.css';
 import './cohesion.css';
 import { AiActivityDock } from './components/AiActivity';
 
-const PublicHome=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicHome})));
+const PublicHome=lazy(()=>import('./public/Home').then(m=>({default:m.PublicHome})));
 const PublicError=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicError})));
 const ContactPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.ContactPage})));
 const ExplorePage=lazy(()=>import('./public/ExplorePage').then(m=>({default:m.ExplorePage})));

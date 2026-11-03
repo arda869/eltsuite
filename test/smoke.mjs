@@ -569,7 +569,8 @@ const J = {
     if(await p.getByRole('link',{name:/Ask for an invitation|Request an invitation|Join ELT Suite|Buy now/}).count())throw Error('Unapproved public acquisition action');
     await axe(p,'Public homepage desktop',A11Y_FOUND);
     if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
-    await p.getByRole('link',{name:'Explore ELT Suite'}).first().click();
+    if(await p.locator('.pub-home a[href^="/explore"]').count())throw Error('The homepage links to the demo');
+    await p.goto(BASE+'/explore');
     await p.getByRole('button',{name:'Start Exploring'}).click();
     await p.getByText('Getting to know our class',{exact:true}).click();
     await p.getByText('Ask follow-up questions about interests.',{exact:true}).waitFor();
@@ -620,7 +621,10 @@ const J = {
     }
     await p.setViewportSize({width:390,height:844});
     await p.getByRole('button',{name:'Menu +',exact:true}).click();
-    await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Explore',exact:true}).click();
+    const nav=p.getByRole('navigation',{name:'Main navigation'});
+    await nav.getByRole('link',{name:'Plans & Pricing',exact:true}).waitFor();
+    if(await nav.getByRole('link',{name:'Explore',exact:true}).count())throw Error('The menu still links to the demo');
+    await p.goto(BASE+'/explore');
     await p.getByRole('button',{name:'Start Exploring'}).click();
     await axe(p,'Public demo mobile',A11Y_FOUND);
     if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public demo overflows on mobile');
@@ -646,7 +650,7 @@ const J = {
     p.on('pageerror', (e) => errors.push(e.message));
     await p.goto(BASE + '/');
     await see(p, '.pub-hero', 'public homepage');
-    await see(p, '.pub-hero .pub-lesson', 'interactive sample lesson');
+    await see(p, '.pub-hero .pub-stage-main img', 'lesson editor screenshot');
     await p.reload();
     await see(p, '.pub-hero', 'public homepage after reload');
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Sign In'}).click();
