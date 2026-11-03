@@ -19,7 +19,12 @@ try{
  }
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1440,height:1000}});p.setDefaultTimeout(90000);const crashes=[];p.on('pageerror',e=>{crashes.push(e.message);console.log('Page error',e.message);});p.on('console',m=>{if(m.type()==='error')console.log('Browser error',m.text().slice(0,1000));});
  await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{await window.__mockReady;return true;},null,{timeout:180000});
- await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});
+ // Vite may reload once after its first dependency optimisation. Keep the seeded
+ // account edit on the new document if that happens between readiness and evaluate.
+ for(let attempt=0;attempt<3;attempt++){
+  try{await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('mockauth'));a.teacher1.email='ardanurioglu@gmail.com';localStorage.setItem('mockauth',JSON.stringify(a));});break;}
+  catch(e){if(attempt===2||!String(e).includes('Execution context was destroyed'))throw e;await p.waitForLoadState('networkidle');}
+ }
  await p.goto(base+'/admin?tab=ai-costs');await p.getByRole('heading',{name:'AI Cost Intelligence',exact:true}).waitFor();
  await p.getByLabel('Proposed credits: Songs',{exact:true}).waitFor();assert.equal(await p.locator('tbody').first().locator('tr').count(),21);
  // All proposals optional and blank: save, refresh, reload remains valid.
