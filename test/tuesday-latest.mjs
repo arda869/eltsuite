@@ -2,7 +2,20 @@ import assert from 'node:assert/strict';
 export async function documentChrome(s,base,newFile,axe,out){
  const p=await newFile(s,'Collab document',false),ed=p.getByRole('textbox',{name:'Document text',exact:true});await ed.fill(Array.from({length:100},(_,i)=>'Paragraph '+i+' for scrolling.').join('\n'));
  const buttons=[p.getByRole('button',{name:'Comments and suggestions',exact:true}),p.getByRole('button',{name:'Document mode',exact:true}),p.getByRole('button',{name:'Share',exact:true}),p.getByRole('button',{name:'Copy link',exact:true})],heights=[];for(const b of buttons)heights.push(await b.evaluate(el=>el.getBoundingClientRect().height));assert.ok(Math.max(...heights)-Math.min(...heights)<1,'Header action heights must match: '+heights);assert.equal(await p.getByRole('button',{name:'Settings',exact:true}).count(),0);
- await p.evaluate(()=>scrollTo(0,900));await p.locator('.document-menubar.is-hidden').waitFor({state:'attached'});await p.evaluate(()=>scrollBy(0,-1));await p.getByRole('menubar',{name:'Document menus'}).waitFor({state:'visible'});await p.waitForTimeout(150);assert.ok(await p.getByRole('menubar').evaluate(el=>el.getBoundingClientRect().top>=document.querySelector('.dp-bar').getBoundingClientRect().bottom-1),'Menu returns below the header after one pixel upward');
+ // Filling a contenteditable may scroll its caret to the end. Establish the
+ // starting position before asserting scroll direction, rather than treating an
+ // absolute jump to 900 as a downward scroll from an unknown position.
+ await ed.evaluate(el=>el.blur());
+ await p.waitForFunction(()=>document.documentElement.scrollHeight-innerHeight>=1000);
+ await p.evaluate(()=>scrollTo(0,document.documentElement.scrollHeight));
+ await p.waitForFunction(()=>scrollY>900);
+ await p.evaluate(()=>scrollTo(0,0));
+ await p.waitForFunction(()=>scrollY===0&&!document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ await p.evaluate(()=>scrollTo(0,900));
+ await p.waitForFunction(()=>scrollY===900&&document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ await p.evaluate(()=>scrollBy(0,-1));
+ await p.waitForFunction(()=>scrollY===899&&!document.querySelector('.document-menubar')?.classList.contains('is-hidden'));
+ await p.getByRole('menubar',{name:'Document menus'}).waitFor({state:'visible'});await p.waitForTimeout(150);assert.ok(await p.getByRole('menubar').evaluate(el=>el.getBoundingClientRect().top>=document.querySelector('.dp-bar').getBoundingClientRect().bottom-1),'Menu returns below the header after one pixel upward');
  await p.getByRole('menuitem',{name:'File',exact:true}).click();await p.getByRole('menuitem',{name:'Citation style…',exact:true}).click();const dialog=p.getByRole('dialog',{name:'Citation style',exact:true});await dialog.getByRole('button',{name:'Citation style',exact:true}).click();await p.getByRole('option',{name:/^Harvard/}).click();await dialog.getByRole('button',{name:'Done',exact:true}).click();await p.reload();await p.getByRole('menuitem',{name:'File',exact:true}).click();await p.getByRole('menuitem',{name:'Citation style…',exact:true}).click();assert.ok((await dialog.innerText()).includes('Harvard'),'Citation style survives reload');await axe(p,'Document File citation style and matching header controls',out);await dialog.getByRole('button',{name:'Done',exact:true}).click();
 }
 export async function highlightJourney(s,base,axe,out){
