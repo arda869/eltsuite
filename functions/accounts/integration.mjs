@@ -50,5 +50,7 @@ assert.deepEqual((await db.doc('orgs/o').get()).get('adminEmails'),['other@examp
 assert.ok(realRemoved.includes('collab/owned_doc'));
 await processDeletion(db,identities,realtime,'teacher');
 assert.equal(deleted.length,2);
+await assert.rejects(submit(login('admin'),'other'));
+await db.doc('orgs/o').update({adminEmails:['other@example.com','admin@example.com']});
 assert.equal((await submit(login('admin'),'other')).accepted,true);
 console.log('PASS: real Firestore cleanup and retry; simulated Auth/Realtime adapters; self/admin access, stale sign-in, preview, owner/super-admin protection, organisation admin guard, recursive cleanup, retained unrelated classes and training teachers.');
