@@ -9,7 +9,7 @@ try{
  // Finish the shared editor prebundle before the seed page can trigger a reload.
  await fetch(base+'/test/document-tools-check.ts');
  browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});p=await browser.newPage({viewport:{width:1400,height:960}});p.setDefaultTimeout(45000);p.setDefaultNavigationTimeout(180000);
- await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(()=>window.__mockReady);await p.evaluate(()=>window.__mockReady);await p.waitForLoadState('networkidle');
+ await p.goto(base+'/dev.html?seed&as=teacher');await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return !!localStorage.getItem('mockdemo');},null,{timeout:180000});await p.waitForLoadState('networkidle');
  const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  const url=base+'/development?section=coach&classId='+demo.classId+'&itemId='+demo.itemId;
  await p.goto(url);const question='How can I make instructions clearer?';
