@@ -7,6 +7,7 @@ const idOf = v => { if (typeof v !== 'string' || !v || v.length > 160 || v.inclu
     throw new HttpsError('invalid-argument', 'Choose a valid game.'); return v; };
 const deny = () => { throw new HttpsError('permission-denied', 'This game is not shared with you.'); };
 const modes = ['teacher', 'selected', 'multiplayer', 'individual'];
+const controls = (s, teacher, uid) => !s.ended && (s.mode === 'teacher' ? teacher : s.mode === 'individual' || s.selected.includes(uid));
 export async function gamesService(db, auth, data) {
     const who = await actor(db, auth);
     const action = data.action;
@@ -35,7 +36,7 @@ export async function gamesService(db, auth, data) {
             deny();
         if (!modes.includes(data.mode))
             throw new HttpsError('invalid-argument', 'Choose a play mode.');
-        const selected = Array.isArray(data.selected) ? [...new Set(data.selected.map(idOf))].slice(0, 100) : [];
+        const selected = ['selected','multiplayer'].includes(data.mode) && Array.isArray(data.selected) ? [...new Set(data.selected.map(idOf))].slice(0, 100) : [];
         if (data.mode === 'selected' && selected.length !== 1)
             throw new HttpsError('invalid-argument', 'Choose one learner.');
         if (data.mode === 'multiplayer' && selected.length < 2)
@@ -54,7 +55,7 @@ export async function gamesService(db, auth, data) {
         return { ok: true };
     }
     if (action === 'state') {
-        if (session.ended || !(teacher || session.mode === 'individual' || session.selected.includes(who.uid)))
+        if (!controls(session, teacher, who.uid))
             deny();
         let state;
         try {
@@ -67,7 +68,7 @@ export async function gamesService(db, auth, data) {
         if (session.mode === 'individual') {
             return db.runTransaction(async tx => {
                 const current = (await tx.get(ref)).data();
-                if(current.ended || current.mode !== 'individual' || current.revision !== data.revision) throw new HttpsError('aborted', 'The play mode changed. Your board will refresh.');
+                if(current.ended || current.mode !== 'individual' || current.revision !== data.revision || (data.runId !== undefined && data.runId !== (current.runId || 0))) throw new HttpsError('aborted', 'The play mode changed. Your board will refresh.');
                 const playerRef=ref.collection('players').doc(who.uid);const prior=(await tx.get(playerRef)).data()||{};
                 const checked=scoreMove(current.game,state,prior.state||{},prior.awards||{});
                 tx.set(playerRef, { name: who.profile.displayName || 'Player', ...checked, updatedAt: Date.now() });
@@ -75,12 +76,12 @@ export async function gamesService(db, auth, data) {
                 return {ok:true};
             });
         }
-        return db.runTransaction(async (tx) => { const current = (await tx.get(ref)).data(); if (current.ended || !(teacher || current.selected.includes(who.uid)))
-            deny(); if (current.revision !== data.revision)
+        return db.runTransaction(async (tx) => { const current = (await tx.get(ref)).data(); if (!controls(current, teacher, who.uid))
+            deny(); if (current.revision !== data.revision || (data.runId !== undefined && data.runId !== (current.runId || 0)))
             throw new HttpsError('aborted', 'Another player has just moved. Your board will refresh.'); const checked=scoreMove(current.game,state,current.state||{},current.awards||{}); tx.update(ref, { ...checked, revision: current.revision + 1, actor: who.uid }); return { ok: true }; });
     }
     if (action === 'pointer') {
-        if (!teacher && !session.selected.includes(who.uid))
+        if (!controls(session, teacher, who.uid) || session.mode === 'individual')
             deny();
         const x = Number(data.x), y = Number(data.y);
         if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 1 || y < 0 || y > 1)
