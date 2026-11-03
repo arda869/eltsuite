@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { contextPermissions, beliefsComplete, profileComplete, relevantWriting, writingExcerpt } from '../../functions/ai/coach-context.js';
 const complete = () => ({ qualifications: 'None', experience: '10+', roles: ['Teacher'], context: 'Adults at B1' });
 test('all context sources start enabled and saved opt-outs take precedence', () => {
-  assert.deepEqual(contextPermissions(), { profile:true, beliefs:true, reflections:true, inquiries:true, forms:true, games:true });
-  assert.deepEqual(contextPermissions({ profile:false, reflections:false }), { profile:false, beliefs:true, reflections:false, inquiries:true, forms:true, games:true });
+  assert.deepEqual(contextPermissions(), { profile:true, beliefs:true, reflections:true, inquiries:true, forms:true, games:true, lessons:true });
+  assert.deepEqual(contextPermissions({ profile:false, reflections:false }), { profile:false, beliefs:true, reflections:false, inquiries:true, forms:true, games:true, lessons:true });
   assert.equal(contextPermissions({ inquiries:false }).inquiries, false);
 });
 test('profile setup accepts expertise without formal training and requires actual context', () => {

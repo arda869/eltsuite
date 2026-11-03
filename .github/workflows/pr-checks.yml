@@ -42,6 +42,8 @@ jobs:
           npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/ai/firestore-access.mjs && node test/file-access.mjs && node test/onboarding-access.mjs && node test/ai/create-integration.mjs && node test/ai/task-tools-integration.mjs && node test/ai/learning-integration.mjs && node test/ai/learning-access.mjs && node test/designer/integration.mjs && node test/speech/firestore-access.mjs && node test/speech/song-jobs.mjs'
       - name: Per-user AI allowances and admin security
         run: npx --yes firebase-tools@14 emulators:exec --only firestore,auth --config firebase.ai-usage.json --project demo-ai-allowances "node test/ai/feature-usage-integration.mjs"
+      - name: Private coaching history and durable replies
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-coach-history "node test/coach-history-access.mjs && node test/coach-history-service.mjs"
       - name: Applied Linguistics contracts and corpus adapter
         run: node --test functions/linguistics/*.test.mjs
       - name: Applied Linguistics privacy and reuse journeys
@@ -60,8 +62,11 @@ jobs:
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Saved coaching history and pinned panel (AI and Firebase simulated)
+        run: node test/coach-history-ui.mjs
+
       - name: Spelling and scoped teaching controls
-        run: node --test test/spelling.test.mjs test/coach/games.test.mjs
+        run: node --test test/spelling.test.mjs test/coach/*.test.mjs
       - name: Task insertion and spelling journey (Firebase simulated)
         run: node test/tuesday-teaching-ui.mjs
       - name: Audio script visibility journey (Firebase simulated)

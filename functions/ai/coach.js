@@ -1,3 +1,5 @@
+import {findTeacherLessons} from './coach-lessons.js';
+import {coachHistoryKey} from './coach-history.js';
 import {loadStudioForms} from './coach-forms.js';
 import { loadLessonSource } from './coach-lesson-context.js';
 import { contentReviewStandard, trainerSessionStandard } from './pedagogy.js';
@@ -13,7 +15,7 @@ import { canCoach, coachInstructions, coachRequest, coachReplySchema, dialogueFr
 import { generate } from './provider.js';
 import { checkModel, reserveBudget, settleBudget } from './budget.js';
 
-export async function teachingCoach(req, { apiKey, model, enabled }) {
+export async function teachingCoach(req, { apiKey, model, enabled, generateReply = generate }) {
   if (!req.auth || req.auth.token.proxyBy) throw new HttpsError('unauthenticated', 'Sign in with your own teacher account.');
   let input; try { input = coachRequest(req.data); } catch (e) { throw new HttpsError('invalid-argument', e.message); }
   const db = getFirestore(), uid = req.auth.uid;
@@ -38,7 +40,9 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   }
   if(input.formContext&&!permissions.forms)throw new HttpsError('failed-precondition','Collab form context is switched off. Enable it in Coach settings or remove the selected form.');
   if(permissions.forms){const {forms,skipped}=await loadStudioForms(db,uid,input.prompt,input.formContext);if(skipped){context.formScope=skipped+' Collab documents could not be opened. Their forms have not been read.';basis.push('Some Collab documents were unavailable; their forms were not read.');}if(forms.length){context.forms=forms;sources.push(...forms.map(f=>({title:f.title+' · '+f.documentTitle,url:'/doc/'+f.docId+'#studio-form-'+f.id})));basis.push(...forms.map(f=>'Collab form: '+f.title));}}
+  if(input.lessonContext&&!permissions.lessons)throw new HttpsError('failed-precondition','Lesson context is switched off. Enable it in Coach settings or remove the selected lesson.');
   if(input.lessonContext){const selected=await loadLessonSource(db,uid,input.lessonContext,{games:permissions.games});context.lesson=selected.context;sources.push(...selected.sources);basis.push(...selected.sources.map(s=>s.title));}
+  if(permissions.lessons){const found=await findTeacherLessons(db,uid,input.prompt,input.lessonContext,{games:permissions.games});context.lessonSearchScope=found.scope;if(found.lessons.length){context.relatedLessons=found.lessons.map(l=>({className:l.className,...l.context}));sources.push(...found.lessons.flatMap(l=>l.sources));basis.push(...found.lessons.map(l=>'Lesson: '+l.context.title));}basis.push(found.scope);}
   if (input.useProfile && permissions.profile && profileComplete(professional.data())) {
     context.profile = Object.fromEntries(['qualifications','experience','roles','context','goals'].map(k => [k, typeof professional.get(k) === 'string' ? professional.get(k).slice(0,3000) : professional.get(k) ?? '']));
     basis.push('Your professional profile');
@@ -70,39 +74,51 @@ export async function teachingCoach(req, { apiKey, model, enabled }) {
   const payload = { mode: input.mode, prompt: input.prompt, history: [...input.history], context: bounded };
   while (Buffer.byteLength(JSON.stringify(payload),'utf8') > 64000 && payload.history.length) payload.history.splice(0,2);
   if (Buffer.byteLength(JSON.stringify(payload), 'utf8') > 65000) throw new HttpsError('invalid-argument', 'Choose less context or shorten this conversation. Your writing is still here.');
-  const fingerprint = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  const fingerprint = createHash('sha256').update(JSON.stringify(input.conversationId?{payload,conversationId:input.conversationId}:payload)).digest('hex');
   const day = new Date().toISOString().slice(0,10), month = day.slice(0,7);
   const usagePolicy = await usageContext(db,req.auth);
   const job = db.doc(`aiPrivate/${uid}/jobs/coach_${req.data.requestId}`), quota = db.doc(`aiPrivate/${uid}/usage/${day}`), global = db.doc(`aiUsage/${day}`), budget = db.doc(`${usagePolicy.isAdmin ? 'aiAdminBudgets' : 'aiBudgets'}/${month}`);
   const generationAdmin = usagePolicy.isAdmin;
+  const conversation=input.conversationId?db.doc(`teachingCoach/${uid}/conversations/${input.conversationId}`):null;
+  const turn=conversation?.collection('turns').doc(req.data.requestId);
   const existing = await db.runTransaction(async tx => {
     const [j,q,g,b] = await Promise.all([tx.get(job),tx.get(quota),tx.get(global),tx.get(budget)]);
+    const savedConversation=conversation?await tx.get(conversation):null;
     if (j.exists) {
       if (j.get('fingerprint') !== fingerprint) throw new HttpsError('invalid-argument', 'The question or selected context changed. Clear the conversation and try again.');
       if (j.get('expiresAt')?.toMillis() <= Date.now()) throw new HttpsError('failed-precondition', 'This response has expired. Clear the conversation and start again.');
       if (j.get('status') === 'completed') return j.get('result');
       throw new HttpsError('failed-precondition', j.get('status') === 'running' ? 'This response is still running. Retry shortly. If it remains unavailable, clear the conversation and start again.' : 'This response could not finish. Clear the conversation and try again.');
     }
+    if(savedConversation?.get('activeRequest')&&savedConversation.get('updatedAt')>Date.now()-300000)throw new HttpsError('failed-precondition','Your coach is already replying in this conversation. Wait for that reply before sending another message.');
     await chargeFeature(tx,db,usagePolicy,'coach');
     let reservation; try { reservation = reserveBudget(b.get('committedMicroUsd') ?? 0, 1, usagePolicy.isAdmin); } catch(e) { throw new HttpsError('resource-exhausted', e.message); }
     tx.set(budget, { committedMicroUsd: reservation.balance, month, limitMicroUsd: 20_000_000 }, { merge: true });
     tx.set(quota, { calls: (q.get('calls') ?? 0)+1 }); tx.set(global, dailyGlobalUsage(g.data(),1,generationAdmin), {merge:true});
     tx.create(job, { action: 'coach', status: 'running', fingerprint, reservedMicroUsd: reservation.reserved, createdAt: Timestamp.now(), expiresAt: Timestamp.fromMillis(Date.now()+86400000) });
+    if(conversation&&turn){
+      const now=Date.now(),sequence=(savedConversation?.get('turnCount')||0)+1;
+      tx.set(conversation,{title:savedConversation?.get('title')||input.prompt.slice(0,100),createdAt:savedConversation?.get('createdAt')||now,updatedAt:now,turnCount:sequence,activeRequest:req.data.requestId,context:{lessonContext:input.lessonContext,formContext:input.formContext,evidencePacketId:input.evidencePacketId,reflectionId:input.entryId}},{merge:true});
+      tx.create(turn,{prompt:input.prompt,status:'running',at:now,sequence,contextKey:coachHistoryKey(professional.get('version'),preferences.get('version'),input)});
+    }
     return null;
   });
   if (existing) return existing;
   try {
-    const generated = await generate({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied activity, not to generate a lesson plan or assess the teacher. Give concrete, optional improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
+    const generated = await generateReply({ apiKey, model, schema: coachReplySchema, name: 'teaching_coach', input: payload, instructions: coachInstructions + '\n' + dialogueFramework + '\n' + contentReviewStandard + '\n' + trainerSessionStandard + '\nCOACHING APPLICATION: Use these shared teaching standards to discuss the supplied activity, not to generate a lesson plan or assess the teacher. Give concrete, optional improvements with a brief reason and a short example when useful. Keep learner instructions simple and match support to the same objective. Distinguish actual report evidence from predictions; never treat time, revisions or a small sample as proof of ability, motivation or a diagnosis. Refer to supplied source titles, but never claim to have read a whole course or book from excerpts. Do not repeat assessment answers unnecessarily. The required coach reply schema and conversational word limit take precedence over material-authoring requirements.' });
     const result = { reply: generated.value.reply, journalDraft: generated.value.journalDraft ?? null, basis, sources };
     await db.runTransaction(async tx => {
       const [b,j] = await Promise.all([tx.get(budget),tx.get(job)]);
+      const savedConversation=conversation?await tx.get(conversation):null;
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd'), [generated.usage]);
       tx.update(budget, { committedMicroUsd: settled.balance }); tx.update(job, { status: 'completed', result, costMicroUsd: settled.cost });
+      if(conversation&&turn){tx.update(turn,{status:'completed',result});tx.update(conversation,{updatedAt:Date.now(),...(savedConversation?.get('activeRequest')===req.data.requestId?{activeRequest:''}:{})});}
     });
     return result;
   } catch {
     // Retain the full reservation when provider usage is unknown. Never log private writing.
     await job.update({ status: 'failed' }).catch(() => {});
+    if(conversation&&turn)await db.runTransaction(async tx=>{const saved=await tx.get(conversation);tx.update(turn,{status:'failed'});if(saved.get('activeRequest')===req.data.requestId)tx.update(conversation,{activeRequest:'',updatedAt:Date.now()});}).catch(()=>{});
     throw new HttpsError('unavailable', 'We couldn’t finish that response. Your writing is still here. Clear the conversation to start a fresh request.');
   }
 }
