@@ -37,6 +37,7 @@ try{
     else if(type==='hangman'){for(const c of new Set(r.answer.toUpperCase()))await page.getByRole('button',{name:c,exact:true}).click();}
     else if(type==='maze'){await page.getByRole('button',{name:'Up',exact:true}).click();await page.getByRole('button',{name:'Up',exact:true}).click();const x=optionsFor(r).indexOf(r.answer)*2;for(let i=0;i<Math.abs(x-2);i++)await page.getByRole('button',{name:x<2?'Left':'Right',exact:true}).click();await page.getByRole('button',{name:'Up',exact:true}).click();await page.getByRole('button',{name:'Up',exact:true}).click();}
     else if(type==='pinball'){await page.getByRole('button',{name:r.answer,exact:true}).click();await page.getByRole('button',{name:'Launch ball'}).click();}
+    else if(type==='cloud'){await page.getByRole('button',{name:r.answer,exact:true}).press('Enter');}
     else {await page.getByRole('button',{name:new RegExp(r.answer)}).click();}
     await page.getByRole('button',{name:r.id==='r2'?'Finish game':'Next round',exact:true}).click();
    }
