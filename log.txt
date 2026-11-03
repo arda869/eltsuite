@@ -1,0 +1,7 @@
+desktop overflow -10
+shot preview-out/01-home-desktop.png
+tablet overflow -10
+shot preview-out/02-home-tablet.png
+phone overflow -10
+shot preview-out/03-home-phone.png
+shot preview-out/04-home-dark.png
