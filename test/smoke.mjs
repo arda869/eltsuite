@@ -128,7 +128,7 @@ const J = {
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Slides object Cut and paste preserve the object':async b=>{const s=await session(b,{owner:true});await slidesCut(s,BASE);return s;},
-  'Tuesday wishlist: eight forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
+  'Tuesday wishlist: available forms, current document collection and separate sheets':async b=>{const s=await session(b,{owner:true});await tuesdayForms(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: internal document and classroom links persist':async b=>{const s=await session(b,{owner:true});await tuesdayLinks(s,BASE,newFile,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: pinned coach, voice playback and microphone fallback':async b=>{const s=await session(b,{owner:true});await tuesdayCoach(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday latest: document menus, citation style and matching controls':async b=>{const s=await session(b,{owner:true});await documentChrome(s,BASE,newFile,axe,A11Y_FOUND);return s;},
