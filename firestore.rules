@@ -1134,6 +1134,13 @@ service cloud.firestore {
     }
     match /aiBudgets/{month} { allow read: if isOwner(); }
     // Only the verified-super-admin callable may change limits. No client can reset usage.
+    // Monetary ledgers and safeguards are server-only, including for administrators.
+    // Verified Super Admin access is through adminAiCosts, with bounded queries.
+    match /aiCostAttempts/{id} { allow read, write: if false; }
+    match /aiCostGenerations/{id} { allow read, write: if false; }
+    match /aiCostGuards/{id} { allow read, write: if false; }
+    match /aiCostSettings/{id} { allow read, write: if false; }
+    match /aiCostSettingsAudit/{id} { allow read, write: if false; }
     match /aiAllowances/{uid} { allow read: if aiAdmin(); }
     match /aiFeatureUsage/{uid}/days/{day} { allow read: if aiAdmin(); }
     match /aiAdminBudgets/{month} { allow read: if aiAdmin(); }

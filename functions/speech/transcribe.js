@@ -1,4 +1,6 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import {trackedFetch} from '../costs/fetch.js';
+import {HttpsError } from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import { defineSecret } from 'firebase-functions/params';
 import { authorizeTeacher, reserveSpeech } from './access.js';
 const key = defineSecret('OPENAI_API_KEY');
@@ -23,7 +25,7 @@ export const recordingTranscript = onCall({ region: 'us-central1', secrets: [key
   body.set('response_format', 'diarized_json');
   body.set('chunking_strategy', 'auto');
   try {
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${key.value()}` }, body, signal: AbortSignal.timeout(270000) });
+    const response = await trackedFetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${key.value()}` }, body, signal: AbortSignal.timeout(270000) });
     if (!response.ok) throw Error('The transcription service is unavailable. Your recording is safe; try again later.');
     const segments = transcriptSegments(await response.json(), req.data.duration);
     if (!segments.length) throw Error('No speech was detected. Your recording is unchanged.');

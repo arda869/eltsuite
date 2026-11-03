@@ -125,3 +125,6 @@ export { adminAiUsage } from './ai/admin-usage.js';
 export { designerImage } from "./designer/index.js";
 
 export { recordingSongStems } from './songs/stems.js';
+
+export {adminAiCosts} from './costs/admin.js';
+export {recoverAiCosts} from './costs/recovery.js';

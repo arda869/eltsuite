@@ -1,3 +1,5 @@
+import {withCosts} from '../costs/callable.js';
+import {markCostFailure} from '../costs/context.js';
 import {onDocumentCreated,onDocumentWritten} from 'firebase-functions/v2/firestore';
 import {onSchedule} from 'firebase-functions/v2/scheduler';
 import {defineSecret,defineString} from 'firebase-functions/params';
@@ -60,9 +62,9 @@ export async function prepareLearningReport(db,ref,{apiKey,model,resolveUser=uid
    }
   }
   await ref.update({status:'completed',aiStatus,completedAt:Timestamp.now()});await watch.delete();
- }catch(e){await ref.update({status:'completed',aiStatus:'unavailable',error:'AI advice could not be completed. Any recorded evidence below is still available.',completedAt:Timestamp.now()});await watch.delete();}
+ }catch(e){markCostFailure();await ref.update({status:'completed',aiStatus:'unavailable',error:'AI advice could not be completed. Any recorded evidence below is still available.',completedAt:Timestamp.now()});await watch.delete();}
 }
-export const buildLearningReport=onDocumentCreated({document:'classes/{classId}/learningReports/{reportId}',region:'us-central1',secrets:[apiKey],timeoutSeconds:540,maxInstances:2},event=>prepareLearningReport(getFirestore(),event.data.ref,{apiKey:apiKey.value(),model:model.value()}));
+export const buildLearningReport=onDocumentCreated({document:'classes/{classId}/learningReports/{reportId}',region:'us-central1',secrets:[apiKey],timeoutSeconds:540,maxInstances:2},event=>withCosts({uid:event.data.get('teacherUid'),classId:event.params.classId,feature:'coach'},()=>prepareLearningReport(getFirestore(),event.data.ref,{apiKey:apiKey.value(),model:model.value()})));
 export const reportEndedLesson=onDocumentWritten({document:'classes/{classId}/live/state',region:'us-central1',maxInstances:2,retry:true},async event=>{
  const db=getFirestore(),before=event.data?.before.data(),after=event.data?.after.data(),classId=event.params.classId;
  const active=db.collection('learningLiveSessions').doc(classId);

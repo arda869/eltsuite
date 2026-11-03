@@ -1,3 +1,4 @@
+import {selectCostFeature} from '../costs/context.js';
 import {restorePreparedScript} from './prepared-script.js';
 import { conversionInput } from './conversion-input.js';
 import {revisionInput,revisionSchema,revisionInstructions,applyRevision,preserveStageContract,outlineFromPlan} from './revision.js';
@@ -20,7 +21,8 @@ import { collectEvidence, classProfile } from './context.js';
 import { isAbandonedJob } from './jobs.js';
 import { warn } from 'firebase-functions/logger';
 import { GenerationError, describeFailure } from './errors.js';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import {HttpsError } from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import { defineSecret, defineString } from 'firebase-functions/params';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { createHash } from 'node:crypto';
@@ -170,6 +172,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       if (j.get('fingerprint') !== fingerprint) fail('Use a new request for a changed brief.');
       if (j.get('status') === 'completed') return { kind: 'completed', result: readGenerationResult(j.data()) };
       if(j.get('status')==='failed'&&j.get('failure')?.phase==='review'&&j.get('checkpointJson')&&j.get('budgetMonth')===month&&j.get('expiresAt')?.toMillis?.()>Date.now()) {
+        selectCostFeature({outline:'lessonOutline',plan:'lessonPlan',activities:'lessonActivities'}[d.action],req.auth.uid);
         const checkpoint=JSON.parse(j.get('checkpointJson'));
         tx.update(job,{status:'running',createdAt:Timestamp.now(),failure:FieldValue.delete()});
         return {kind:'resume-review',checkpoint};

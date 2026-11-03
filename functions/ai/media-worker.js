@@ -1,3 +1,6 @@
+import {withCosts} from '../costs/callable.js';
+import {markCostFailure} from '../costs/context.js';
+import {trackedFetch} from '../costs/fetch.js';
 import {preparedScript} from './prepared-script.js';
 import { prepareEditorialIllustration } from './illustration.js';
 import { prepareCommonsImage } from './commons.js';
@@ -24,7 +27,7 @@ export async function savePrepared(db,classId,mediaId,bytes,meta){
   await col.doc(mediaId).set({kind:'audio',type:'audio/wav',parts:Math.ceil(bytes.length/PART),size:0,title:meta.title+' · AI-generated audio',duration:(bytes.length-44)/48000,script:meta.script??preparedScript(meta.lines),public:false,aiGenerated:true});
  }
 }
-export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/jobs/{jobId}/media/{assetId}',region:'us-central1',secrets:[key],timeoutSeconds:540,memory:'512MiB',maxInstances:3,concurrency:1,retry:false},async event=>{
+export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/jobs/{jobId}/media/{assetId}',region:'us-central1',secrets:[key],timeoutSeconds:540,memory:'512MiB',maxInstances:3,concurrency:1,retry:false},event=>withCosts({uid:event.params.uid,classId:event.data?.after.get('classId')},async()=>{
  if(event.data?.after.get('status')!=='queued')return;
  const db=getFirestore(),ref=event.data.after.ref,{uid,jobId,assetId}=event.params;
  let asset;
@@ -54,7 +57,7 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
     bytes=illustration.bytes;asset.alt=illustration.alt;
     await ref.update({alt:illustration.alt,visualReview:illustration.review,imageStyle:'editorial'});
    } else {
-    const response=await fetch('https://api.openai.com/v1/images/generations',{method:'POST',signal:AbortSignal.timeout(180000),headers:{Authorization:`Bearer ${key.value()}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2.5-flare',prompt:'Create one original classroom learning image. No text, labels, logos or watermarks. '+asset.prompt,n:1,size:'1024x1024',quality:'low',output_format:'jpeg',output_compression:65})});
+    const response=await trackedFetch('https://api.openai.com/v1/images/generations',{method:'POST',signal:AbortSignal.timeout(180000),headers:{Authorization:`Bearer ${key.value()}`,'Content-Type':'application/json'},body:JSON.stringify({model:'gpt-image-2.5-flare',prompt:'Create one original classroom learning image. No text, labels, logos or watermarks. '+asset.prompt,n:1,size:'1024x1024',quality:'low',output_format:'jpeg',output_compression:65})});
     if(!response.ok)throw Error('Image generation failed.');
     const result=await response.json();if(!result.data?.[0]?.b64_json)throw Error('Missing image.');
     bytes=Buffer.from(result.data[0].b64_json,'base64');
@@ -83,6 +86,7 @@ export const prepareLessonMedia=onDocumentWritten({document:'aiPrivate/{uid}/job
   await savePrepared(db,asset.classId,mediaId,bytes,asset);
   await ref.update({status:'ready',mediaId,completedAt:Timestamp.now(),error:''});
  }catch(error){
+  markCostFailure();
   await ref.update({status:'failed',error:error instanceof Error && error.code==='resource-exhausted'?error.message:String(error.message).includes('allowance')?'Monthly AI allowance reached.':String(error.message).includes('script')?'Audio did not match the script. Retry this recording.':'Media could not be prepared. Retry this asset.',failedAt:Timestamp.now()});
  }
-});
+}));

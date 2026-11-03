@@ -1,8 +1,10 @@
+import {finishAsyncAttempt} from '../costs/ledger.js';
 import { usageContext, chargeFeature } from '../ai/feature-usage.js';
 import { planVideo } from "./planner.js";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { styleOf } from "./styles.js";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import {HttpsError } from 'firebase-functions/v2/https';
+import {onCall} from '../costs/callable.js';
 import { defineSecret } from "firebase-functions/params";
 import { getFirestore } from "firebase-admin/firestore";
 import { authorizeTeacher } from "../speech/access.js";
@@ -211,6 +213,7 @@ export const videoStudio = onCall(
           "DELETE",
         );
         await ref.update({ status: "cancelled" });
+        await finishAsyncAttempt(DB(),j.costAttemptId,"failed");
         return { status: "cancelled" };
       }
       let result;
@@ -223,6 +226,7 @@ export const videoStudio = onCall(
         throw error("unavailable", e.message);
       }
       if (["FAILED", "CANCELLED"].includes(result.status)) {
+        await finishAsyncAttempt(DB(),j.costAttemptId,"failed");
         await ref.update({
           status: result.status === "FAILED" ? "failed" : "cancelled",
           message:
@@ -282,6 +286,7 @@ export const videoStudio = onCall(
           },
         );
         await ref.update({ status: "complete", assetId, importingAt: 0 });
+        await finishAsyncAttempt(DB(),j.costAttemptId,"success");
         return { status: "complete", assetId };
       } catch (e) {
         await ref.update({ importingAt: 0 });
@@ -347,6 +352,7 @@ export const videoStudio = onCall(
         await reservation.ref.update({
           status: "working",
           providerId: result.id,
+          ...(result.costAttemptId?{costAttemptId:result.costAttemptId}:{}),
         });
         return { jobId: d.requestId, status: "working" };
       }
