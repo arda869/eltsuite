@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { UiIcon } from '../components/UiIcon';
 import { Select } from '../components/Select';
 import { TopBar } from '../components/TopBar';
+import { APP_MARKS, AppGlyph } from '../components/AppGrid';
 import { playSound } from '../lib/phonAudio';
 import './guide.css';
 
@@ -129,80 +130,80 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/[’']/g, "'").repla
 
 // ------------------------------------------------------------------ 1. getting around
 
-type GuideApp = { k: string; name: string; color: string; to: string; tag: string; about: string; can: string[]; d: string; soon?: boolean };
+type GuideApp = { k: string; name: string; color: string; to: string; tag: string; about: string; can: string[]; glyph: string; soon?: boolean };
 const APPS: GuideApp[] = [
   {
     k: 'home', name: 'Home', color: '#8b3d6b', to: '/', tag: 'Your day in one look',
     about: 'Opens on today: the classes you teach next, the files you were working on and what is new, so the first thing you see is what you need.',
     can: ['Join today’s live lesson in one tap', 'Pick up the file you were working on', 'Starred files and new messages, without searching'],
-    d: 'M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z',
+    glyph: APP_MARKS.home,
   },
   {
     k: 'classes', name: 'Classes', color: '#c8764a', to: '/classes', tag: 'Lessons, learners and live teaching',
     about: 'Each class holds its learners and its lessons. Write a lesson like a document, with questions, sound and language notation inside, then teach it live or set it as homework.',
     can: ['Many question types, marked for you', 'Teach live: every learner’s screen follows yours', 'See who answered what, mark writing, send a recap'],
-    d: 'M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13z',
+    glyph: APP_MARKS.classes,
   },
   {
     k: 'timetable', name: 'Timetable', color: '#8a6a4a', to: '/timetable', tag: 'Your week, planned',
     about: 'Every class and meeting in your week. Add a session once and it repeats each week; open the class or its video room straight from it.',
     can: ['Drag sessions to plan the week', 'Weekly sessions repeat on their own', 'Start the lesson or the call from the session'],
-    d: 'M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM4 10h16M8 4v4M16 4v4',
+    glyph: APP_MARKS.timetable,
   },
   {
     k: 'rooms', name: 'Rooms', color: '#3b7f7a', to: '/rooms', tag: 'Video and audio calls for teaching',
     about: 'A video room for every class, always at the same link, and calls with anyone you work with. Teach in it, or keep using Zoom, Teams or Meet if you prefer.',
     can: ['One room per class, the same link every week', 'Video or audio only', 'Calls with colleagues and learners from Messages'],
-    d: 'M3.5 7A1.5 1.5 0 0 1 5 5.5h9A1.5 1.5 0 0 1 15.5 7v10a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 17zM15.5 10.5l5-3v9l-5-3',
+    glyph: APP_MARKS.rooms,
   },
   {
     k: 'collab', name: 'Collab', color: '#2f6f9f', to: '/collab', tag: 'Write together, live',
     about: 'Documents and slides you write at the same time as others: with colleagues to plan a course, or with learners for a class story or a shared essay. Unlike other editors, it speaks ELT: the marks you use on the board are built in.',
     can: ['Tense timelines, substitution slots, word and sentence stress, IPA and sound cards, from the / menu', 'See each other’s cursors; suggest changes and comment', 'Download as Word, PDF or PowerPoint'],
-    d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 12.5h6M9 16h4',
+    glyph: APP_MARKS.collab,
   },
   {
     k: 'reading', name: 'Development Studio', color: '#a56748', to: '/development', tag: 'Reading, reflection and classroom inquiry',
     about: 'For CELTA, Delta, an MA or your own development: each book or article with your notes, and its reference written for you.',
     can: ['Notes under each source', 'References in APA, Harvard and more', 'Cite a source in a Collab document in one click'],
-    d: 'M5 4.5h10.5A2.5 2.5 0 0 1 18 7v13H7.5A2.5 2.5 0 0 1 5 17.5zM5 17.5A2.5 2.5 0 0 1 7.5 15H18M9 8.5h5',
+    glyph: APP_MARKS.development,
   },
   {
     k: 'pdf', name: 'PDF', color: '#a6463a', to: '/pdf', tag: 'Write on any PDF',
     about: 'Bring in a coursebook page or a worksheet as a PDF and write on it: on your own, with a colleague, or with your learners in class.',
     can: ['Type in the gaps, highlight and draw', 'Write on it together, live', 'Print it with everything you added'],
-    d: 'M7 3.5h7l4.5 4.5v12.5H7a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 7 3.5zM14 3.5V8h4.5M9 16.5l2-5 2 5M9.6 15h2.8',
+    glyph: APP_MARKS.pdf,
   },
 
   {
     k: 'recordings', name: 'Recordings', color: '#a8473a', to: '/recordings', tag: 'Make your own listening',
     about: 'Record yourself, edit like audio software, or record a dialogue with colleagues, each on their own device. The script lights up as it plays, like karaoke.',
     can: ['Cut, move and change the volume of each clip', 'A speaker for each track, with their lines', 'Use it in any lesson, or download an MP3'],
-    d: 'M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6 11a6 6 0 0 0 12 0M12 17v3.5',
+    glyph: APP_MARKS.recordings,
   },
   {
     k: 'files', name: 'Resources', color: '#3667a6', to: '/archive', tag: 'Everything you keep',
     about: 'Lessons, documents, flashcards, PDFs, pictures and recordings in one place, in folders like on your computer, with your organisation’s library beside them.',
     can: ['Folders, tags and search', 'Share a folder with colleagues', 'Copy from the library into a class'],
-    d: 'M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2h8a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z',
+    glyph: APP_MARKS.files,
   },
   {
     k: 'messages', name: 'Messages', color: '#7a4fa3', to: '/messages', tag: 'Talk to learners and teachers',
     about: 'Chats with your learners and colleagues, one to one or in groups, with lessons and files inside the messages.',
     can: ['One-to-one and group chats', 'Send a lesson or a file in a message', 'Start a call from the chat'],
-    d: 'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z',
+    glyph: APP_MARKS.messages,
   },
   {
     k: 'colleagues', name: 'Colleagues', color: '#4f6b7a', to: '/colleagues', tag: 'Share and plan together',
     about: 'The teachers you work with, and everything you share with them, so nobody starts from a blank page.',
     can: ['Invite a colleague with a link', 'Share lessons, folders and recordings', 'Plan in Collab, record together in Studio'],
-    d: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.3a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .7 3.2 2.4 3.5 5.2',
+    glyph: APP_MARKS.colleagues,
   },
   {
     k: 'money', name: 'Money', color: '#2f7a5a', to: '/', soon: true, tag: 'For freelance teachers · under development',
     about: 'Being built now: for teachers who work for themselves. Your rates and lesson packages, invoices made from the lessons you taught, who has paid, and what to put aside, from the Timetable you already keep.',
     can: ['Your real hourly rate, after prep and holidays', 'Invoices from your Timetable, in your learner’s currency', 'Paid, due and late at a glance; a cushion for quiet months'],
-    d: 'M4 7.5A1.5 1.5 0 0 1 5.5 6h13A1.5 1.5 0 0 1 20 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM7 9v6M17 9v6',
+    glyph: APP_MARKS.money,
   },
 ];
 
@@ -217,9 +218,7 @@ export function Start({ tour = false }: { tour?: boolean }) {
           {APPS.map((p, i) => (
             <button key={p.k} type="button" role="radio" aria-checked={i === pick} className={'gu-app' + (i === pick ? ' on' : '')} style={{ ['--c' as string]: p.color }} onClick={() => setPick(i)}>
               <span className="gu-app-ico">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d={p.d} />
-                </svg>
+                <AppGlyph glyph={p.glyph} size={20} strokeWidth={1.7} />
               </span>
               {p.name}
               {p.soon && <span className="gu-soon">Soon</span>}
@@ -1586,9 +1585,7 @@ function FilesTopic() {
             return (
               <Link key={x.k} to={ap.to} target="_blank" rel="noopener" className="gu-fapp" style={{ ['--c' as string]: ap.color }}>
                 <span className="gu-logo" aria-hidden="true">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                    <path d={ap.d} />
-                  </svg>
+                  <AppGlyph glyph={ap.glyph} size={20} strokeWidth={1.9} />
                 </span>
                 <span>
                   <b>{ap.name}</b>

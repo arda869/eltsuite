@@ -148,7 +148,7 @@ function AppMark() {
   // The tab shows the app's icon, as the page does.
   useEffect(() => {
     const a = appAt(pathname);
-    setAppFavicon(a ? { color: a.color, d: a.d } : null);
+    setAppFavicon(a ? { color: a.color, glyph: a.glyph } : null);
   }, [pathname]);
   // Every app shows its name under ELT Suite, in its own colour.
   const own = pathname.startsWith('/linguistics') || pathname.startsWith('/development') || pathname.startsWith('/coach') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/collab') ? { k: 'collab', name: 'Collab', color: '#2f6f9f' } : pathname.startsWith('/reading') ? { k: 'development', name: 'Development Studio', color: '#a56748' } : pathname.startsWith('/pdf') ? { k: 'pdf', name: 'PDF', color: '#a6463a' } : pathname === '/storyboard' ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/design') ? { k: 'design', name: 'Designer', color: '#6d5bd0' } : pathname.startsWith('/recordings') ? { k: 'recordings', name: 'Recordings', color: '#a8473a' } : null;
