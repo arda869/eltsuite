@@ -1,0 +1,11 @@
+landing marks
+landing live
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+audio at http://localhost:5184/test/speech/fixture.html?as=teacher&savedStudio ELT Suite | Recording editor | Script | Create speech | Create song | Shortcuts | Discard | Save | 0:00.00 | / 0:00.20 | − | All | + | Ready when 
+FAILED audio locator.waitFor: Timeout 60000ms exceeded.
