@@ -45,6 +45,7 @@ export function gameProblems(game: GameConfig): string[] {
         errors.push('Word search supports up to 16 words.');
     if (game.type === 'pairs' && (game.rounds.length < 2 || game.rounds.length > 12))
         errors.push('Matching pairs needs 2–12 pairs.');
+    if(game.type==='pairs'&&(new Set(game.rounds.map(r=>norm(r.prompt))).size!==game.rounds.length||new Set(game.rounds.map(r=>norm(r.answer))).size!==game.rounds.length))errors.push('Use distinct clues and answers so each pair has only one match.');
     const words = new Set<string>();
     game.rounds.forEach((r, i) => {
         if (!r.prompt.trim() && !r.content)
@@ -70,15 +71,30 @@ export function shuffled<T>(values: T[], seed: string): T[] { let n = 2166136261
     n = Math.imul(n ^ c.charCodeAt(0), 16777619); return values.map(v => { n = (Math.imul(n, 1664525) + 1013904223) | 0; return { v, k: n >>> 0 }; }).sort((a, b) => a.k - b.k).map(x => x.v); }
 export function optionsFor(r: GameRound) { return shuffled([...new Map([r.answer, ...r.choices].map(s => s.trim()).filter(Boolean).map(s => [norm(s), s])).values()], r.id); }
 export function wordGrid(rounds: GameRound[]) {
-    const size = Math.max(8, ...rounds.map(r => r.answer.length));
-    const rows = rounds.slice(0, 16);
-    const height = Math.max(size, rows.length);
-    const grid = Array.from({ length: height }, (_, y) => Array.from({ length: size }, (_, x) => String.fromCharCode(65 + ((x * 17 + y * 11 + 7) % 26))));
-    const paths: Record<string, number[]> = {};
-    rows.forEach((r, y) => { const word = r.answer.toUpperCase(); const reverse = y % 2 === 1; const start = (size - word.length) % (y + 1); const path: number[] = []; for (let i = 0; i < word.length; i++) {
-        const x = reverse ? size - 1 - start - i : start + i;
-        grid[y][x] = word[i];
-        path.push(y * size + x);
-    } paths[r.id] = path; });
-    return { grid, paths, size };
+    if(rounds.length>16||rounds.some(r=>!/^[A-Za-z]{2,16}$/.test(r.answer)))return {grid:[] as string[][],paths:{} as Record<string,number[]>,size:0};
+    const size=Math.max(8,...rounds.map(r=>r.answer.length));
+    const height=Math.max(size,Math.min(16,rounds.length));
+    const directions=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]];
+    for(let attempt=0;attempt<12;attempt++){
+        const grid=Array.from({length:height},()=>Array<string>(size).fill(''));
+        const paths:Record<string,number[]>={};
+        for(const r of [...rounds].sort((a,b)=>b.answer.length-a.answer.length)){
+            const word=r.answer.toUpperCase();
+            const candidates:number[][]=[];
+            for(let y=0;y<height;y++)for(let x=0;x<size;x++)for(const [dx,dy] of directions){
+                const path:number[]=[];
+                for(let i=0;i<word.length;i++){const xx=x+dx*i,yy=y+dy*i;if(xx<0||xx>=size||yy<0||yy>=height||(grid[yy][xx]&&grid[yy][xx]!==word[i]))break;path.push(yy*size+xx);}
+                if(path.length===word.length)candidates.push(path);
+            }
+            const path=shuffled(candidates,r.id+':'+attempt)[0];
+            if(!path)break;
+            paths[r.id]=path;path.forEach((p,i)=>grid[Math.floor(p/size)][p%size]=word[i]);
+        }
+        if(Object.keys(paths).length===rounds.length){grid.forEach((row,y)=>row.forEach((letter,x)=>{if(!letter)row[x]=String.fromCharCode(65+(x*17+y*11+attempt*3)%26);}));return {grid,paths,size};}
+    }
+    // Dense sets still have a guaranteed solution: one word per row.
+    const grid=Array.from({length:height},(_,y)=>Array.from({length:size},(_,x)=>String.fromCharCode(65+(x*17+y*11)%26)));
+    const paths:Record<string,number[]>={};
+    rounds.slice(0,16).forEach((r,y)=>{paths[r.id]=[...r.answer.toUpperCase()].map((c,x)=>{grid[y][x]=c;return y*size+x;});});
+    return {grid,paths,size};
 }

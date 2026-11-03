@@ -4,7 +4,8 @@ on:
     paths:
       - 'src/games/**'
       - 'functions/games/**'
-      - 'test/games.mjs'
+      - 'test/games*'
+      - 'firestore.rules'
       - 'test/ai/games.test.mjs'
       - '.github/workflows/check-games.yml'
 permissions:
@@ -24,3 +25,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node --test test/ai/games.test.mjs
       - run: node test/games.mjs
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm install --no-save --package-lock=false @firebase/rules-unit-testing@4
+      - run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ai-access 'node test/games-access.mjs' 

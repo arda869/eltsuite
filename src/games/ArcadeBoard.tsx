@@ -36,8 +36,8 @@ export function ArcadeBoard({ type, options, onAnswer, disabled, remote, onState
     }
     if (type === 'pinball') {
         const launch = () => { if (disabled || ball !== null)
-            return; let start = 0; const animate = (t: number) => { if (!start)
-            start = t; const elapsed = Math.min(1, (t - start) / 900); setBall(elapsed); if (elapsed < 1)
+            return; let start = 0, lastStep=-1; const animate = (t: number) => { if (!start)
+            start = t; const elapsed = Math.min(1, (t - start) / 900); const step=Math.floor(elapsed*5);if(step!==lastStep){setBall(elapsed);lastStep=step;} if (elapsed < 1)
             frame.current = requestAnimationFrame(animate);
         else
             onAnswer(options[bumper]); }; frame.current = requestAnimationFrame(animate); };

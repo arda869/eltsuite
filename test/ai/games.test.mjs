@@ -1,3 +1,5 @@
+import {validGame} from '../../functions/games/contract.js';
+import {scoreMove} from '../../functions/games/scoring.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';
@@ -13,3 +15,8 @@ function memory(){const data=new Map(Object.entries({'users/teacher':{role:'teac
 const auth=uid=>({uid,token:{email:uid+'@example.com'}});
 test('outsiders cannot open a class game, and spectators cannot submit or move the pointer',async()=>{const{db}=memory();for(const action of ['open','state','pointer'])await assert.rejects(()=>gamesService(db,auth('outsider'),{id:'game1',action,state:{},x:.5,y:.5}),/not shared/);for(const action of ['state','pointer'])await assert.rejects(()=>gamesService(db,auth('student'),{id:'game1',action,state:{},x:.5,y:.5}),/not shared/);});
 test('selected learner moves once; stale moves and moves after ending are rejected',async()=>{const{db,data}=memory();Object.assign(data.get('gameSessions/game1'),{mode:'selected',selected:['student']});await gamesService(db,auth('student'),{id:'game1',action:'state',revision:0,state:{answer:'cat'}});assert.equal(data.get('gameSessions/game1').revision,1);await assert.rejects(()=>gamesService(db,auth('student'),{id:'game1',action:'state',revision:0,state:{}}),/just moved/);await gamesService(db,auth('teacher'),{id:'game1',action:'end'});await assert.rejects(()=>gamesService(db,auth('student'),{id:'game1',action:'state',revision:1,state:{}}),/not shared/);});
+
+test('leaderboard points are computed from answers, not client-supplied scores',()=>{const game={type:'show',rounds:[{id:'r',answer:'library'}]};const next=cleanState({round:0,answer:'bank',score:3000,feedback:'Correct!',finished:true},1);const r=scoreMove(game,next);assert.equal(r.state.score,0);assert.equal(r.state.finished,true);assert.equal(scoreMove(game,{...next,answer:'library',score:999}).state.score,10);});
+test('players cannot skip directly to the finish screen',()=>{const game={type:'show',rounds:[{answer:'a'},{answer:'b'},{answer:'c'}]};assert.throws(()=>scoreMove(game,cleanState({round:2,finished:true},3)),/current round/);assert.equal(scoreMove(game,cleanState({round:0,finished:true},3)).state.finished,false);});
+
+test('invalid saved drafts cannot be published into a class',()=>{assert.equal(validGame({...blankGame(),type:'search',rounds:[{id:'r',prompt:'A place',answer:'two words',choices:[]}]}),false);assert.equal(validGame({...blankGame(),rounds:[{id:'r',prompt:'Books?',answer:'library',choices:[]}]}),true);});

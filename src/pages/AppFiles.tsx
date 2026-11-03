@@ -1,3 +1,4 @@
+import {GameGallery} from '../games/GameGallery';
 import { CharacterLibrary } from '../design/Characters';
 import { startDesigner, isImageFile } from '../design/DesignerFile';
 import { useMemo, useRef, useState } from 'react';
@@ -175,6 +176,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </button>
           ))}
         </header>
+        {app === 'games' && tab === 'mine' && !s && <GameGallery/>}
         {app === 'design' && <section className="dc-home"><div><h2>Characters</h2><p>Your recurring people, animals and mascots, ready for every design.</p></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
         <div className="af-bar">
           <span className="af-tabs" role="tablist" aria-label="Which files">

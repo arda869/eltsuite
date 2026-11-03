@@ -1,3 +1,5 @@
+import {validGame} from './contract.js';
+import {scoreMove} from './scoring.js';
 import { cleanState } from './state.js';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { actor, targetAccess } from '../linguistics/service.js';
@@ -13,8 +15,8 @@ export async function gamesService(db, auth, data) {
         if (!await targetAccess(db, who, { type: 'doc', id }, true) || !await targetAccess(db, who, data.target, true))
             deny();
         const [source, settings] = await Promise.all([db.doc('sharedDocs/' + id).get(), db.doc(`sharedDocs/${id}/game/main`).get()]);
-        if (source.data()?.kind !== 'game' || !settings.exists || !settings.data().rounds?.length)
-            throw new HttpsError('failed-precondition', 'Save questions in the game first.');
+        if (source.data()?.kind !== 'game' || !settings.exists || !validGame(settings.data()))
+            throw new HttpsError('failed-precondition', 'Open the game and fix the highlighted question requirements before inserting it.');
         const ref = db.collection('gameSessions').doc();
         await ref.set({ owner: who.uid, sourceId: id, title: source.data().title, target: data.target, game: settings.data(), mode: 'teacher', selected: [], state: null, revision: 0, ended: false, createdAt: Date.now() });
         return { id: ref.id };
@@ -42,10 +44,12 @@ export async function gamesService(db, auth, data) {
             if (!await targetAccess(db, { uid, teacher: false, profile: {} }, session.target))
                 deny();
         const oldPlayers = await ref.collection('players').get();
+        const oldScores=await ref.collection('scores').get();
         const batch = db.batch();
+        for(const p of oldScores.docs)batch.delete(p.ref);
         for (const p of oldPlayers.docs)
             batch.delete(p.ref);
-        batch.update(ref, { mode: data.mode, selected, state: null, revision: session.revision + 1, ended: false, pointer: null });
+        batch.update(ref, { mode: data.mode, selected, state: null, awards: {}, revision: session.revision + 1, ended: false, runId: Date.now(), pointer: null });
         await batch.commit();
         return { ok: true };
     }
@@ -64,13 +68,16 @@ export async function gamesService(db, auth, data) {
             return db.runTransaction(async tx => {
                 const current = (await tx.get(ref)).data();
                 if(current.ended || current.mode !== 'individual' || current.revision !== data.revision) throw new HttpsError('aborted', 'The play mode changed. Your board will refresh.');
-                tx.set(ref.collection('players').doc(who.uid), { name: who.profile.displayName || 'Player', state, updatedAt: Date.now() });
+                const playerRef=ref.collection('players').doc(who.uid);const prior=(await tx.get(playerRef)).data()||{};
+                const checked=scoreMove(current.game,state,prior.state||{},prior.awards||{});
+                tx.set(playerRef, { name: who.profile.displayName || 'Player', ...checked, updatedAt: Date.now() });
+                tx.set(ref.collection('scores').doc(who.uid), {name:who.profile.displayName||'Player',score:checked.state.score,finished:checked.state.finished});
                 return {ok:true};
             });
         }
         return db.runTransaction(async (tx) => { const current = (await tx.get(ref)).data(); if (current.ended || !(teacher || current.selected.includes(who.uid)))
             deny(); if (current.revision !== data.revision)
-            throw new HttpsError('aborted', 'Another player has just moved. Your board will refresh.'); tx.update(ref, { state, revision: current.revision + 1, actor: who.uid }); return { ok: true }; });
+            throw new HttpsError('aborted', 'Another player has just moved. Your board will refresh.'); const checked=scoreMove(current.game,state,current.state||{},current.awards||{}); tx.update(ref, { ...checked, revision: current.revision + 1, actor: who.uid }); return { ok: true }; });
     }
     if (action === 'pointer') {
         if (!teacher && !session.selected.includes(who.uid))

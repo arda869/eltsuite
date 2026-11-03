@@ -1,4 +1,3 @@
-import {GameSessionPage} from './games/GameSession';
 import { AppError, watchChunkErrors } from './components/AppError';
 import { AskHost } from './lib/ask';
 import { MenuHost } from './components/ContextMenu';
@@ -38,6 +37,7 @@ const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.Pr
 const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
 
 // Pages load when they are first opened, so the first screen comes up quickly.
+const GameSessionPage = lazy(() => import('./games/GameSession').then(m=>({default:m.GameSessionPage})));
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
 const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
