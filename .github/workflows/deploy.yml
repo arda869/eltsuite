@@ -87,6 +87,9 @@ jobs:
         timeout-minutes: 8
         run: node test/linguistics-ui.mjs
 
+      - name: Material import review and every native task type (AI and Firebase simulated)
+        run: node test/material-import.mjs && node test/material-native-types.mjs
+
       - name: Smoke and accessibility tests
         timeout-minutes: 20
         run: |

@@ -49,6 +49,7 @@ async function session(browser, { as = 'teacher', owner = false } = {}) {
   await p.goto(`${BASE}/dev.html?seed&as=teacher`);
   await p.waitForFunction(() => !!window.__mockReady, null, { timeout: 30000 });
   await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});
+  await p.waitForLoadState('networkidle');
   await p.waitForFunction(() => !!localStorage.getItem('mockdemo'), null, { timeout: 30000 });
   if (owner) await p.evaluate((e) => { const a = JSON.parse(localStorage.getItem('mockauth')); a.teacher1.email = e; localStorage.setItem('mockauth', JSON.stringify(a)); }, OWNER);
   if (as !== 'teacher') await p.goto(`${BASE}/dev.html?as=${as}`);

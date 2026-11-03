@@ -9,7 +9,7 @@ const require=createRequire(import.meta.url),base=process.env.MATERIAL_TEST_URL|
 let server=null;if(!await fetch(base).then(r=>r.ok,()=>false)){server=spawn(process.execPath,['node_modules/vite/bin/vite.js','--config','test/vite.config.ts','--port',new URL(base).port],{stdio:'ignore',detached:true});for(let i=0;i<80;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}}
 const browser=await chromium.launch({executablePath:process.env.SMOKE_BROWSER_PATH||undefined});const ctx=await browser.newContext({viewport:{width:1300,height:900}}),p=await ctx.newPage(),crashes=[];p.setDefaultTimeout(60000);p.on('pageerror',e=>crashes.push(e.message));
 try{
- await p.goto(base+'/dev.html?seed&as=teacher&materials');await p.waitForFunction(()=>!!window.__mockReady);await p.evaluate(()=>window.__mockReady);const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
+ await p.goto(base+'/dev.html?seed&as=teacher&materials');await p.waitForFunction(()=>!!window.__mockReady);await p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;});await p.waitForLoadState('networkidle');const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  for(const type of ['lesson','homework','exam','practice']){
   await p.goto(`${base}/class/${demo.classId}/assistant`);await p.getByRole('button',{name:'Import existing materials',exact:true}).click();const dialog=p.getByRole('dialog',{name:'Import existing materials'});await dialog.getByLabel('Rebuild as').selectOption(type);
   assert.equal(await dialog.getByRole('button',{name:'Rebuild materials',exact:true}).isDisabled(),true);
