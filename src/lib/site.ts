@@ -58,7 +58,7 @@ export const mainOrigin = () => (live() ? MAIN : location.origin);
 // Paths only learners use: on the teachers' address they move to the learners' one.
 export const LEARNER_PATHS = [/^\/join\b/, /^\/learn\//, /^\/recap\//, /^\/discuss\b/];
 // Pages anyone opens from a link, on either address.
-export const SHARED_PATHS = [/^\/call\//, /^\/r\//, /^\/play\//, /^\/s\//, /^\/doc\//, /^\/privacy/, /^\/terms/, /^\/auth\/link/, /^\/messages/, /^\/settings/];
+export const SHARED_PATHS = [/^\/game\//,/^\/call\//, /^\/r\//, /^\/play\//, /^\/s\//, /^\/doc\//, /^\/privacy/, /^\/terms/, /^\/auth\/link/, /^\/messages/, /^\/settings/];
 export const isLearnerPath = (p: string) => LEARNER_PATHS.some((r) => r.test(p));
 export const isSharedPath = (p: string) => SHARED_PATHS.some((r) => r.test(p));
 

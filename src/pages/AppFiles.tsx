@@ -1,3 +1,4 @@
+import {GameGallery} from '../games/GameGallery';
 import { CharacterLibrary } from '../design/Characters';
 import { startDesigner, isImageFile } from '../design/DesignerFile';
 import { useMemo, useRef, useState } from 'react';
@@ -21,11 +22,12 @@ import { AppLogo } from '../components/AppGrid';
 // apps in Google's suite as well as being in Drive: each lists the teacher's own files of that
 // kind, the ones shared with them, the ones in their organisation's library, and the starred ones.
 
-export type AppKey = 'collab' | 'reading' | 'pdf' | 'recordings' | 'design' | 'storyboard';
+export type AppKey = 'games' | 'collab' | 'reading' | 'pdf' | 'recordings' | 'design' | 'storyboard';
 type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
+  games: { name: 'Games', kinds: ['game'], color: '#996525', empty: 'Create games, reuse flashcards and play together in class.' },
   collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
   storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
@@ -119,7 +121,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     }
   };
   const news: { label: string; run: () => void }[] =
-    app === 'collab'
+    app === 'games' ? [{ label: 'Create game', run: () => void make('game') }] : app === 'collab'
       ? [
           { label: 'New document', run: () => void make('doc') },
           { label: 'New slides', run: () => void make('slides') },
@@ -174,6 +176,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </button>
           ))}
         </header>
+        {app === 'games' && tab === 'mine' && !s && <GameGallery/>}
         {app === 'design' && <section className="dc-home"><div><h2>Characters</h2><p>Your recurring people, animals and mascots, ready for every design.</p></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
         <div className="af-bar">
           <span className="af-tabs" role="tablist" aria-label="Which files">

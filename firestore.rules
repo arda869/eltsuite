@@ -769,6 +769,25 @@ service cloud.firestore {
       allow update: if permitted(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['version'])
         && request.resource.data.version == resource.data.version + 1;
     }
+    // Live games: clients observe; all controller moves and scores go through the callable.
+    function canReadGameTarget(t) {
+      return active() && (t.type == 'class' && (viewsClass(t.id) || memberOf(t.id))
+        || t.type == 'doc' && (get(/databases/$(database)/documents/sharedDocs/$(t.id)).data.owner == request.auth.uid
+          || request.auth.uid in get(/databases/$(database)/documents/sharedDocs/$(t.id)).data.memberIds));
+    }
+    match /gameSessions/{id} {
+      allow read: if canReadGameTarget(resource.data.target);
+      allow write: if false;
+      match /scores/{uid} {
+        allow read: if canReadGameTarget(get(/databases/$(database)/documents/gameSessions/$(id)).data.target);
+        allow write: if false;
+      }
+      match /players/{uid} {
+        allow read: if isSelf(uid) && canReadGameTarget(get(/databases/$(database)/documents/gameSessions/$(id)).data.target);
+        allow write: if false;
+      }
+    }
+
     match /sharedDocs/{id} {
       allow read: if signedIn() && (resource.data.owner == request.auth.uid || request.auth.uid in resource.data.memberIds);
       // In a shared folder, files belong to the folder's owner, whoever makes them.

@@ -38,6 +38,7 @@ const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.Pr
 const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
 
 // Pages load when they are first opened, so the first screen comes up quickly.
+const GameSessionPage = lazy(() => import('./games/GameSession').then(m=>({default:m.GameSessionPage})));
 const DocPage = lazy(() => import('./pages/DocPage').then((m) => ({ default: m.DocPage })));
 const TimetablePage = lazy(() => import('./pages/TimetablePage').then((m) => ({ default: m.TimetablePage })));
 const RoomsPage = lazy(() => import('./pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
@@ -242,6 +243,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
           <Route path="/reading" element={<Navigate to="/development?section=reading" replace />} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
+          <Route path="/game/:id" element={<GameSessionPage/>} />
+          <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />
           <Route path="/design" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/storyboard" element={<TeacherOnly><AppFiles app="design" /></TeacherOnly>} />
           <Route path="/recordings" element={<TeacherOnly><AppFiles app="recordings" /></TeacherOnly>} />

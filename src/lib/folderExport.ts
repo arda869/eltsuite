@@ -193,6 +193,11 @@ export async function classLessonFiles(c: ClassLesson): Promise<OutFile[]> {
 export async function sharedDocFiles(d: SharedDoc): Promise<OutFile[]> {
   const brand = await brandMark().catch(() => null);
   switch (d.kind) {
+    case 'game': {
+      const {makeOfflineFile}=await import('../offline/export');
+      const file=await makeOfflineFile({doc:d});
+      return [{name:file.name,data:new TextEncoder().encode(file.html)}];
+    }
     case 'doc':
       return collabDoc(d, brand);
     case 'slides':

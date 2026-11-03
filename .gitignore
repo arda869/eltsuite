@@ -10,4 +10,5 @@ preview-out/
 # Isolate browser-test dependency caches per checkout.
 .vite-test/
 
+public/offline-player/
 /public/spelling/

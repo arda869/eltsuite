@@ -14,6 +14,7 @@ const I = (d: string) => (
 // Home has its own colour, used by the top bar's mark on the home page too.
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
+ {k:'games',group:'make',name:'Games',about:'Make reusable classroom games and play together',to:'/games',teacher:true,color:'#996525',d:'M4 8h16v12H4zM8 3v10M5 10h6M15 12h.01M18 15h.01',icon:I('M4 8h16v12H4zM8 3v10M5 10h6M15 12h.01M18 15h.01')},
   {k:'linguistics',group:'develop',name:'Applied Linguistics',about:'Language investigations and selected evidence for teaching',to:'/linguistics',teacher:true,color:'#497b75',d:'M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1',icon:I('M4 5h10v12H4zM7 9h4M7 12h3M19 13l3 7M18 10a4 4 0 1 0 0 .1')},
   { k: 'development', group: 'develop', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', d: 'M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3', icon: I('M12 20V6M12 9C9 4 4 5 4 5v11c4 0 6 1 8 4M12 9c3-5 8-4 8-4v11c-4 0-6 1-8 4M8 2v3M16 2v3') },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, d: 'M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z', icon: I('M4 10.6 12 4l8 6.6V19a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z') },
