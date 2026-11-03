@@ -47,6 +47,7 @@ const CallPage = lazy(() => import('./pages/CallPage').then((m) => ({ default: m
 const CallHost = lazy(() => import('./components/Rooms').then((m) => ({ default: m.CallHost })));
 const HelpAssistant = lazy(() => import('./help/HelpAssistant').then(m => ({ default: m.HelpAssistant })));
 const ChatDock = lazy(() => import('./components/ChatDock').then((m) => ({ default: m.ChatDock })));
+const CoachPanel = lazy(() => import('./coach/CoachPanel').then(m=>({default:m.CoachPanel})));
 const UsageWatch = lazy(() => import('./lib/usage').then((m) => ({ default: m.UsageWatch })));
 const ColleagueJoin = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.ColleagueJoin })));
 const SharedPage = lazy(() => import('./pages/SharedPage').then((m) => ({ default: m.SharedPage })));
@@ -271,6 +272,7 @@ createRoot(document.getElementById('root')!).render(
         <Suspense fallback={null}>
           <HelpAssistant />
           <ChatDock />
+          <CoachPanel />
           <UsageWatch />
           <FeatureDiscovery />
           <CallHost />

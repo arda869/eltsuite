@@ -1,3 +1,5 @@
+import {setCoachPanel} from '../coach/panelState';
+import {lastConversation} from '../coach/conversations';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { autoFocusOk } from '../lib/keys';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -347,6 +349,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
         </div>
       ) : (
         <div className="dock-list">
+          {profile?.role==='teacher'&&(!q.trim()||/coach|teach/i.test(q))&&<button type="button" className="msg-row" onClick={()=>{const context={lessonContext:null,formContext:null,evidencePacketId:'',reflectionId:''};setCoachPanel({uid:me,conversationId:lastConversation(me,JSON.stringify(context)),context});closeWin(w.id);}}><span className="msg-av"><UiIcon name="message" size={18}/></span><span className="msg-row-t"><b>Teaching Coach</b><span className="msg-row-last">Open a pinned conversation</span></span></button>}
           {dir && <DockFind me={me} dir={dir} chats={chats} onOpen={(id) => replaceWin(w.id, id)} q={q} setQ={setQ} />}
           {!q.trim() && chats.length === 0 && <span className="hint dock-none">No messages yet. Search for someone above.</span>}
           {!q.trim() && chats.map((c) => {

@@ -2207,7 +2207,11 @@ const J = {
     await s.p.getByRole('link',{name:'Settings',exact:true}).click();
     await s.p.getByRole('checkbox', { name: /^Teaching beliefs/ }).uncheck();
     await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.beliefs === false);
-    if (await s.p.locator('.coach-message').count()) throw Error('Changing coach settings did not clear the conversation');
+    await s.p.goto(BASE+'/development?section=coach');
+    await see(s.p,'.coach-message:has-text("What did you notice")','history retained after privacy change');
+    await s.p.getByLabel('Message your coach').fill('Continue without my beliefs.');await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).prompt==='Continue without my beliefs.');
+    if((await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).history)).length)throw Error('Previous context was sent after privacy settings changed');
     const preserved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/existing-reading']);
     if (JSON.stringify(preserved.memberIds) !== JSON.stringify(['colleague'])) throw Error('Reading sharing was changed');
     if (process.env.DEVELOPMENT_SCREENSHOT) { await s.p.getByRole('button', { name: 'Home', exact: true }).click(); await s.p.screenshot({ path: process.env.DEVELOPMENT_SCREENSHOT, fullPage: false }); }

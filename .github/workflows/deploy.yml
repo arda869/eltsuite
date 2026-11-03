@@ -44,6 +44,8 @@ jobs:
       - name: Help assistant checks
         run: node --test test/ai/help.test.mjs
 
+      - name: Private coaching history and durable replies
+        run: npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-coach-history "node test/coach-history-access.mjs && node test/coach-history-service.mjs"
       - name: Applied Linguistics contracts and corpus adapter
         run: node --test functions/linguistics/*.test.mjs
       - name: Applied Linguistics privacy and reuse journeys
@@ -79,6 +81,9 @@ jobs:
 
       - name: Trainer grant and course creation journey (Firebase simulated)
         run: node test/admin-trainer-ui.mjs
+
+      - name: Saved coaching history and pinned panel (AI and Firebase simulated)
+        run: node test/coach-history-ui.mjs
 
       - name: Spelling and scoped teaching controls
         run: node --test test/spelling.test.mjs test/coach/games.test.mjs
