@@ -10,7 +10,7 @@ const key=(uid:string,scope:string)=>'elt.coach.active:'+uid+':'+scope;
 export function lastConversation(uid:string,scope:string){try{return localStorage.getItem(key(uid,scope))||crypto.randomUUID();}catch{return crypto.randomUUID();}}
 export function rememberConversation(uid:string,scope:string,id:string){try{localStorage.setItem(key(uid,scope),id);}catch{/* The cloud history still works without local storage. */}}
 export function readDraft(uid:string,id:string){try{return sessionStorage.getItem('elt.coach.draft:'+uid+':'+id)||'';}catch{return '';}}
-export function saveDraft(uid:string,id:string,text:string){try{sessionStorage.setItem('elt.coach.draft:'+uid+':'+id,text);}catch{}}
+export function saveDraft(uid:string,id:string,text:string){try{sessionStorage.setItem('elt.coach.draft:'+uid+':'+id,text);}catch{}window.dispatchEvent(new CustomEvent('elt-coach-draft',{detail:{uid,id,text}}));}
 export function useConversations(uid:string,id:string,contextKey:string){
  const [conversations,setConversations]=useState<Conversation[]>([]),[turns,setTurns]=useState<Turn[]>([]),[ready,setReady]=useState(false),[loadedId,setLoadedId]=useState(''),[error,setError]=useState(''),[listError,setListError]=useState(''),[now,setNow]=useState(Date.now);
  useEffect(()=>{const timer=window.setInterval(()=>setNow(Date.now()),15000);return()=>clearInterval(timer);},[]);

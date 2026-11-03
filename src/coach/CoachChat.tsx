@@ -61,6 +61,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId:incomingRe
   useEffect(()=>{const id=initialConversationId||lastConversation(uid,scope);setConversationId(id);setContext(requestedContext);setDraft(readDraft(uid,id)||initialPrompt);setApprovedPacket('');},[uid,scope,initialConversationId]);
   useEffect(()=>{rememberConversation(uid,scope,conversationId);generation.current++;request.current=null;setJournal(null);},[uid,conversationId]);
   useEffect(()=>{saveDraft(uid,conversationId,draft);},[draft]);
+  useEffect(()=>{const change=(e:Event)=>{const d=(e as CustomEvent).detail;if(d.uid===uid&&d.id===conversationId)setDraft(d.text);};window.addEventListener('elt-coach-draft',change);return()=>window.removeEventListener('elt-coach-draft',change);},[uid,conversationId]);
   useEffect(()=>{if(initialPrompt)setDraft(old=>old||initialPrompt);},[initialPrompt]);
   function chooseConversation(id:string,nextContext:CoachContext=context){saveDraft(uid,conversationId,draft);setConversationId(id);rememberConversation(uid,scope,id);setContext(nextContext);setDraft(readDraft(uid,id));setApprovedPacket('');setShowHistory(false);setError('');if(compact)setCoachPanel({uid,conversationId:id,context:nextContext});}
 
