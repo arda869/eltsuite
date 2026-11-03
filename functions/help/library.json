@@ -3067,11 +3067,11 @@
         "Can I turn off coach memory sources?"
       ],
       "keywords": "ask the teaching coach and control its context can ai help me reflect on my teaching? what information does the coach read? can i turn off coach memory sources?",
-      "summary": "The teaching coach uses selectable professional-context sources. It does not automatically read Reading Journal text, lesson plans or learner records.",
+      "summary": "The teaching coach saves private conversation history and can search relevant lessons in classes you own or co-teach by default. Standalone Reading Journal text and learner records are not read automatically.",
       "steps": [
         "Open Development Studio → Coach and ask a focused professional question.",
-        "Open coach settings to choose sources such as your professional profile, teaching beliefs, reflections and research inquiries, and choose a coaching style.",
-        "Changing the source settings clears the current chat so earlier context is not retained there. Chats stay in the current window unless you save them to Reflections."
+        "Open coach settings to choose sources such as your professional profile, teaching beliefs, reflections, research inquiries and lessons in your classes. Lesson access starts on; source links and Context used show the excerpts actually read.",
+        "Use History to reopen saved conversations. New chat keeps previous conversations. Pin chat opens a compact top-right panel that stays with you across pages. Changing source settings keeps saved history but excludes earlier context from new AI turns."
       ],
       "source": "src/coach/CoachChat.tsx; src/coach/CoachPreferences.tsx",
       "href": "/development?section=coach",
