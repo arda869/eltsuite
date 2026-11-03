@@ -1,90 +1,54 @@
-// Check by eye: the public pages in the workspace's look, the logo, Settings at full width, the
-// Games top bar, inline studio forms beside other document elements, every game and skin, and a
-// young learners' lesson.
-export default async function steps({ p, ctx, shot, say, demo, BASE }) {
+// Product pictures for the public homepage: real screens with the demo data, at twice the pixels,
+// without the Messages bar. Saved as preview-out/landing-*.png.
+export default async function steps({ ctx, say, demo, BASE }) {
   const safe = async (name, fn) => { try { await fn(); } catch (e) { say('FAILED', name, e.message.split('\n')[0]); } };
-
-  // Signed out.
-  const guest = await ctx.browser().newContext({ viewport: { width: 1440, height: 900 } });
-  const g = await guest.newPage();
-  for (const [path, name, w] of [['/', 'public-home', 1440], ['/explore', 'public-explore', 1440], ['/pricing', 'public-pricing', 1440], ['/signin', 'public-signin', 1440], ['/', 'public-home-phone', 390]]) {
-    await safe(name, async () => {
-      await g.setViewportSize({ width: w, height: w > 500 ? 900 : 844 });
-      await g.goto(BASE + path); await g.waitForTimeout(2500);
-      say('LOGO', name, await g.evaluate(() => { const e = document.querySelector('.wm-name'); return e ? getComputedStyle(e).font : 'none'; }));
-      await shot(name, g);
-    });
-  }
-  await guest.close();
-
-  // Signed in.
+  const browser = ctx.browser();
+  const state = await ctx.storageState();
+  const hi = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, storageState: state });
+  const q = await hi.newPage();
+  const hide = async (page) => page.addStyleTag({ content: '.dock-bar,.ai-activity-dock,.help-fab,[class*="toast"]{display:none!important}' }).catch(() => {});
+  const grab = async (page, name) => { await hide(page); await page.waitForTimeout(600); await page.screenshot({ path: `preview-out/landing-${name}.png` }); say('landing', name); };
+  await q.goto(`${BASE}/dev.html?as=teacher`); await q.waitForTimeout(2500);
   const cls = demo.classId, item = demo.itemId;
-  for (const [path, name] of [['/settings', 'settings'], ['/games', 'games'], ['/', 'home']]) {
-    await safe(name, async () => {
-      await p.goto(BASE + path); await p.waitForTimeout(2500);
-      say('TOPBAR', name, await p.locator('.suite-mark').first().innerText().catch(() => '?'));
-      await shot(name);
-    });
-  }
-
-  // A Collab document with a callout, a question and studio forms.
+  await safe('editor', async () => { await q.goto(`${BASE}/class/${cls}/lesson/${item}`); await q.waitForTimeout(3500); await grab(q, 'editor'); });
+  await safe('class', async () => { await q.goto(`${BASE}/class/${cls}`); await q.waitForTimeout(3000); await grab(q, 'class'); });
+  await safe('home', async () => { await q.goto(`${BASE}/`); await q.waitForTimeout(3000); await grab(q, 'home'); });
+  await safe('development', async () => { await q.goto(`${BASE}/development`); await q.waitForTimeout(3000); await grab(q, 'development'); });
+  await safe('games', async () => { await q.goto(`${BASE}/games`); await q.waitForTimeout(2500); await grab(q, 'games'); });
+  await safe('game', async () => {
+    await q.setViewportSize({ width: 1200, height: 760 });
+    await q.goto(`${BASE}/test/games-gallery.html?type=show&theme=garden`); await q.waitForTimeout(1500);
+    await q.getByRole('button', { name: /library/ }).first().click(); await q.waitForTimeout(350);
+    await grab(q, 'game');
+    await q.setViewportSize({ width: 1440, height: 900 });
+  });
+  await safe('young', async () => {
+    await q.setViewportSize({ width: 1000, height: 760 });
+    await q.goto(`${BASE}/test/young-gallery.html?style=young`); await q.waitForTimeout(2000);
+    await q.locator('.opt').nth(1).click().catch(() => {}); await q.waitForTimeout(500);
+    await grab(q, 'young');
+    await q.setViewportSize({ width: 1440, height: 900 });
+  });
   await safe('collab', async () => {
-    await p.goto(BASE + '/archive'); await p.waitForTimeout(2000);
-    await p.click('text=+ New');
-    const [tab] = await Promise.all([ctx.waitForEvent('page'), p.click('[role=menuitem]:has-text("Collab document")')]);
+    await q.goto(`${BASE}/archive`); await q.waitForTimeout(2000);
+    await q.click('text=+ New');
+    const [tab] = await Promise.all([hi.waitForEvent('page'), q.click('[role=menuitem]:has-text("Collab document")')]);
     await tab.waitForLoadState(); await tab.setViewportSize({ width: 1440, height: 900 });
     const ed = tab.getByRole('textbox', { name: 'Document text', exact: true });
-    await ed.waitFor();
-    await ed.click(); await tab.keyboard.type('Week 3 reflection');
-    for (const key of ['callout', 'studio-reflection', 'studio-plan', 'studio-language']) {
-      await ed.press('ControlOrMeta+End'); await ed.press('Enter');
-      await tab.keyboard.type('/' + key); await tab.waitForTimeout(400);
-      await tab.getByRole('option').first().click(); await tab.waitForTimeout(500);
-      if (key === 'callout') await tab.keyboard.type('Bring the observation notes to Thursday’s meeting.');
-    }
-    await tab.waitForTimeout(800);
-    say('TEXTAREAS', JSON.stringify(await tab.evaluate(() => [...document.querySelectorAll('.studio-form textarea')].slice(0, 4).map((t) => `${t.rows}r ${Math.round(t.getBoundingClientRect().height)}px`))));
-    await tab.evaluate(() => window.scrollTo(0, 0));
-    await shot('collab-top', tab);
-    await tab.locator('[data-studio-kind="reflection"]').scrollIntoViewIfNeeded();
-    await shot('collab-forms', tab);
-    await tab.locator('[data-studio-kind="language"]').scrollIntoViewIfNeeded();
-    await shot('collab-forms-2', tab);
+    await ed.waitFor(); await ed.click();
+    await tab.keyboard.type('Speaking lesson: giving opinions (B1)');
+    await tab.keyboard.press('Enter');
+    await tab.keyboard.type('Learners agree on one proposal for a new community space. Partner A has the facts about cost; Partner B knows what older neighbours want. They need to give reasons, not just preferences.');
+    await tab.keyboard.press('Enter');
+    await tab.keyboard.type('/studio-plan'); await tab.waitForTimeout(400); await tab.getByRole('option').first().click(); await tab.waitForTimeout(600);
+    const form = tab.locator('[data-studio-kind="plan"]');
+    await form.getByRole('textbox', { name: /title/ }).fill('Lesson 8 · Expressing and justifying opinions').catch(() => {});
+    const boxes = form.locator('textarea');
+    const lines = ['B1 English for Communication · eight adults · 60 minutes', 'Give and justify an opinion; respond to a different view', '“I see your point, but…” · “The main reason is…” · stress on reasons', 'Notice (8) · rehearse in pairs (12) · role cards A/B (20) · agree a proposal (15) · feedback (5)'];
+    for (let i = 0; i < lines.length; i++) await boxes.nth(i).fill(lines[i]).catch(() => {});
+    await tab.evaluate(() => window.scrollTo(0, 0)); await tab.waitForTimeout(500);
+    await grab(tab, 'collab');
     await tab.close();
   });
-
-  // Young learners' tasks, and the same tasks in an ordinary class.
-  for (const st of ['young', 'adult']) await safe('young ' + st, async () => {
-    await p.setViewportSize({ width: 1280, height: 900 });
-    await p.goto(`${BASE}/test/young-gallery.html?style=${st}`); await p.waitForTimeout(2000);
-    await shot('tasks-' + st);
-    if (st === 'young') { await p.locator('.opt').nth(1).click().catch(() => {}); await p.waitForTimeout(500); await shot('tasks-young-chosen'); }
-  });
-  // Every game in the wooden skin, then one game in every skin.
-  const types = ['shark', 'taxi', 'drive', 'blocks', 'show', 'targets', 'pinball', 'maze', 'hangman', 'search', 'slice', 'moles', 'wager', 'auction', 'pairs', 'cloud'];
-  await p.setViewportSize({ width: 1280, height: 860 });
-  for (const t of types) {
-    await safe('game ' + t, async () => {
-      await p.goto(`${BASE}/test/games-gallery.html?type=${t}&theme=wood`); await p.waitForTimeout(1500);
-      await shot('game-' + t);
-    });
-  }
-  for (const th of ['arcade', 'garden', 'space', 'paper']) {
-    await safe('theme ' + th, async () => {
-      await p.goto(`${BASE}/test/games-gallery.html?type=show&theme=${th}`); await p.waitForTimeout(1500);
-      await shot('theme-' + th);
-    });
-  }
-  // Answering: what a right and a wrong answer look like.
-  await safe('answer', async () => {
-    await p.goto(`${BASE}/test/games-gallery.html?type=show&theme=garden`); await p.waitForTimeout(1500);
-    await p.getByRole('button', { name: 'library', exact: false }).first().click();
-    await p.waitForTimeout(250); await shot('answer-right');
-    await p.waitForTimeout(1200); await shot('answer-right-settled');
-    await p.getByRole('button', { name: 'Next round' }).click(); await p.waitForTimeout(400);
-    await p.getByRole('button', { name: /museum/ }).first().click();
-    await p.waitForTimeout(200); await shot('answer-wrong');
-    await p.goto(`${BASE}/test/games-gallery.html?type=cloud&theme=space`); await p.waitForTimeout(1500); await shot('cloud-space');
-    await p.goto(`${BASE}/test/games-gallery.html?type=show&theme=arcade`); await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(1500); await shot('show-phone');
-  });
+  await hi.close();
 }
