@@ -148,3 +148,11 @@
   .pub-float { animation: none; }
   .pub-float:is(:hover, :focus-within, [data-open]) .pub-float-card { transform: none; }
 }
+
+.pub-home .pub-stage-main{transform:rotate(-2deg);box-shadow:0 14px 32px -16px #241d2055}.pub-belief aside{max-width:30rem;margin:2rem auto;padding:1.25rem;text-align:left;border-inline-start:3px solid var(--accent);background:var(--paper)}
+@media(max-width:760px){.pub-home .pub-stage-main{width:98%;transform:rotate(-1deg)}}
+
+.pub-float:is(:hover,:focus-within,[data-open]){z-index:5}
+@media(hover:none){.pub-home .pub-float:not([data-open]) .pub-float-more{display:none}}
+.pub-lang-sentence + p{margin-top:1rem;color:var(--muted);font-size:1.2rem}
+.pub-legal p,.pub-legal li{line-height:1.65}.pub-legal h2{margin-top:1.25rem}

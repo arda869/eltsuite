@@ -61,10 +61,10 @@ function Shot({ name, alt, caption, eager, at, className = '' }: { name: string;
 
 type Preview = { id: string; title: string; line: string; more: string; to: string; name: string; at: Region; alt: string };
 const PREVIEWS: Preview[] = [
-  { id: 'a', title: 'See how your learners are progressing.', line: 'Progress, feedback and next steps.', more: 'See what your learners have done and use their progress to inform what you teach next.', to: '#understand', name: 'reports', at: { x: 0.005, y: 0.495, w: 0.56, h: 0.37 }, alt: 'Class report: each learner’s score in every lesson' },
-  { id: 'b', title: 'Record. Edit. Refine.', line: 'Shape audio for your classroom.', more: 'Record your own audio, edit it or generate a new recording. Then bring it straight into your lesson.', to: '#audio', name: 'sound', at: { x: 0, y: 0.065, w: 0.72, h: 0.6 }, alt: 'Recording editor: a dialogue’s waveform with each speaker’s lines' },
-  { id: 'c', title: 'Create with AI. Make it your own.', line: 'Voices, recordings and songs.', more: 'Create a song for your lesson, refine the result and make it work for your learners.', to: '#audio', name: 'speech', at: { x: 0.13, y: 0.53, w: 0.74, h: 0.38 }, alt: 'Speech composer: a two-person dialogue, line by line' },
-  { id: 'd', title: 'Bring your lesson to life.', line: 'Activities made for participation.', more: 'Move from planning to participation with activities learners can actually use.', to: '#teach', name: 'teach', at: { x: 0.815, y: 0.1, w: 0.185, h: 0.48 }, alt: 'Live teaching panel: learners’ answers arriving as they choose' },
+  { id: 'a', title: 'See how your learners are progressing.', line: "Learner progress", more: "Explore responses, feedback and progress across lessons.", to: '#understand', name: 'reports', at: { x: 0.005, y: 0.495, w: 0.56, h: 0.37 }, alt: 'Class report: each learner’s score in every lesson' },
+  { id: 'b', title: 'Record. Edit. Refine.', line: "Audio editor", more: "Create and shape recordings for your classroom.", to: '#audio', name: 'sound', at: { x: 0, y: 0.065, w: 0.72, h: 0.6 }, alt: 'Recording editor: a dialogue’s waveform with each speaker’s lines' },
+  { id: 'c', title: 'Create with AI. Make it your own.', line: "AI media", more: "Develop voices, dialogues and songs that fit your lesson.", to: '#audio', name: 'speech', at: { x: 0.13, y: 0.53, w: 0.74, h: 0.38 }, alt: 'Speech composer: a two-person dialogue, line by line' },
+  { id: 'd', title: 'Bring your lesson to life.', line: "Interactive teaching", more: "Turn activities into opportunities for participation.", to: '#teach', name: 'teach', at: { x: 0.815, y: 0.1, w: 0.185, h: 0.48 }, alt: 'Live teaching panel: learners’ answers arriving as they choose' },
 ];
 
 function HeroPreview({ p, i }: { p: Preview; i: number }) {
@@ -81,7 +81,7 @@ function HeroPreview({ p, i }: { p: Preview; i: number }) {
         </span>
       </button>
       <p id={`pub-float-more-${p.id}`} className="pub-float-more">
-        {p.more} <Link to={p.to} tabIndex={open ? 0 : -1}>Take a closer look →</Link>
+        {p.more} <Link to={p.to} >Take a closer look →</Link>
       </p>
     </div>
   );
@@ -93,12 +93,12 @@ function Hero() {
       <div className="pub-hero-copy">
         <span className="pub-kicker">A place for English language teachers.</span>
         <h1 id="pub-hero-h">Everything you need to <em>teach.</em><br />A community to <em>grow with.</em></h1>
-        <p>Created out of a love for English language teaching, ELT Suite brings lesson planning, classroom tools, professional learning and collaboration into one connected space. Built around teachers and the work they do every day.</p>
+        <p>ELT Suite brings lesson planning, classroom activities, assessment, creative tools and professional development into one connected space. Built for English language teachers, and shaped by the work they do every day.</p>
         <div className="pub-actions">
-          <a className="pub-button" href="#plan">Explore ELT Suite</a>
+          <a className="pub-button" href="#plan">Discover the Platform</a>
           <Link className="pub-secondary" to="/signin">Sign In</Link>
         </div>
-        <span className="pub-note">Take a look around. No account needed.</span>
+        <span className="pub-note">Currently welcoming teachers by invitation.</span>
       </div>
       <div className="pub-stage">
         <figure className="pub-stage-main">
@@ -119,18 +119,18 @@ type Detail = { name: string; alt: string; at: Region; caption: string };
 type Showcase = { id: string; kicker: string; title: string; body: string[]; points: string[]; status: string; main: { name: string; alt: string }; details?: Detail[] };
 const SHOWCASES: Showcase[] = [
   {
-    id: 'plan', kicker: 'PLAN', title: 'From the first idea to the finished lesson.',
-    body: ['Build a lesson task by task: a recording to listen to, the language to notice, a speaking activity and a moment to look back. Each task keeps its own teaching notes, and only you see them.'],
-    points: ['Questions, gaps, writing, speaking prompts and post-it boards in one lesson.', 'Language boxes and pronunciation, marked the way you’d mark them on the board.', 'Every lesson sits in its class, unit by unit.'],
-    status: 'Available now. AI can help create and adapt individual activities.',
+    id: 'plan', kicker: 'PLAN', title: "From first idea to finished lesson.",
+    body: ["Plan lessons task by task, with clear aims, engaging activities and your own teaching notes in one place.", "Create materials yourself or draw on AI support when it helps. Every lesson remains yours to shape."],
+    points: ["Build lessons around your learners.", "Bring different activity types together.", "Keep your materials and teaching notes organised."],
+    status: "",
     main: { name: 'editor-language', alt: 'The lesson editor on the task “Notice the language”: a useful language box, sentences with gaps for point, about and because, and the teacher’s notes.' },
     details: [{ name: 'class', alt: 'The class page: Unit 1 · Talking together and Unit 2 · Opinions and decisions, with their lessons.', at: { x: 0.01, y: 0.44, w: 0.6, h: 0.56 }, caption: 'Units and lessons in the class' }],
   },
   {
-    id: 'teach', kicker: 'TEACH', title: 'Bring your lesson to life.',
-    body: ['Teach from the same lesson you planned. Show one task at a time, keep your notes beside you and see each learner’s answer arrive as they choose it. In the room or online.'],
-    points: ['Learners follow along on their own devices.', 'Show an answer to the whole class with one click.', 'Rooms gives every class its own video room. Start it from the lesson, or call a colleague.', 'Timers and games when the class needs a change of pace.'],
-    status: 'Available now.',
+    id: 'teach', kicker: 'TEACH', title: "Bring your lesson to life.",
+    body: ["Teach from the lesson you prepared. Present activities, involve learners and follow their responses as the class progresses.", "Whether you're teaching in person or online, your lesson stays at the centre."],
+    points: ["Interactive activities for learners.", "Responses and feedback during teaching.", "Classroom and online teaching tools."],
+    status: "",
     main: { name: 'teach', alt: 'Teaching the lesson live: the task on screen, the teacher’s notes below and, on the right, each learner’s answer to the question.' },
     details: [
       { name: 'learner', alt: 'What a learner sees: the same task with the recording and three answer choices.', at: { x: 0.17, y: 0.08, w: 0.83, h: 0.55 }, caption: 'The learner’s view of the same task' },
@@ -138,35 +138,35 @@ const SHOWCASES: Showcase[] = [
     ],
   },
   {
-    id: 'understand', kicker: 'UNDERSTAND', title: 'Every learner has a story to tell.',
-    body: ['See the whole class at a glance, then open one learner’s portfolio. Results, kept pieces of work and skills sit together, so the next step is easier to see.'],
-    points: ['A class report across every lesson.', 'A portfolio for each learner, with their results over the course.', 'A grey dot means not started, not a score of zero.'],
-    status: 'Available now.',
+    id: 'understand', kicker: 'UNDERSTAND', title: "See how your learners are progressing.",
+    body: ["Explore results across lessons and take a closer look at each learner's work.", "Notice patterns, revisit feedback and use what you discover to decide where to go next."],
+    points: ["Class-level progress and results.", "Individual learner portfolios.", "Evidence to inform your next lesson."],
+    status: "",
     main: { name: 'reports', alt: 'The class report: eight learners and their scores in each of eight lessons.' },
     details: [{ name: 'portfolio', alt: 'A learner’s portfolio: her average, lessons completed and pieces of work kept.', at: { x: 0.19, y: 0.55, w: 0.81, h: 0.25 }, caption: 'One learner’s portfolio' }],
   },
   {
-    id: 'audio', kicker: 'AUDIO AND MEDIA', title: 'Make your materials sound the way you want.',
-    body: ['Record a dialogue, trim it and give each line to a speaker. Learners can follow the words as they listen. Or write the conversation and choose voices, or make a short song for your lesson.'],
-    points: ['A recording editor with tracks, a script and sound cues.', 'Two-voice dialogues, written line by line.', 'Songs made for a level, a group of learners and a lesson.'],
-    status: 'Available now. Voices and songs made with AI have running costs, so how much you can make may be limited.',
+    id: 'audio', kicker: 'AUDIO AND MEDIA', title: "Make materials that sound like your classroom.",
+    body: ["Record and edit audio, create dialogues with different voices, or develop original songs for your lessons.", "Refine your materials until they fit your teaching aims and your learners."],
+    points: ["Recordings with editing and transcript tools.", "Speech and dialogue creation.", "Songs and other classroom media."],
+    status: "",
     main: { name: 'sound', alt: 'The recording editor: a dialogue between Flo and Dan as a waveform, their lines on separate script tracks and the script with timings.' },
     details: [{ name: 'song', alt: 'Making a classroom song: choose young learners, teenagers or adults, a language level and a lesson.', at: { x: 0.15, y: 0.02, w: 0.7, h: 0.5 }, caption: 'Making a classroom song' }],
   },
   {
-    id: 'language', kicker: 'LANGUAGE', title: 'A deeper understanding of language.',
-    body: ['Look at a phrase the way learners meet it. Search real example sentences, line them up around the words you’re teaching and keep the ones that help.'],
-    points: ['A concordance with left and right context.', 'Keep examples with their source, and note what you notice.', 'The examples come from Tatoeba, a shared collection of sentences. It isn’t a balanced corpus, and the page says so.'],
-    status: 'Available now in Development Studio.',
+    id: 'language', kicker: 'LANGUAGE', title: "Look more closely at language.",
+    body: ["Explore language through real examples, investigate patterns and examine how words and phrases are used in context.", "Keep useful evidence and bring what you've discovered back into your teaching."],
+    points: ["Concordances and contextual examples.", "Language analysis and investigation.", "Connections to professional learning."],
+    status: "Examples from Tatoeba illustrate usage. They do not measure how common a phrase is.",
     main: { name: 'concordance', alt: 'A concordance for “your point”: example sentences lined up around the phrase, such as “I see your point.” and “What’s your point?”' },
   },
   {
-    id: 'collaborate', kicker: 'COLLABORATE', title: 'Good teaching doesn’t happen in isolation.',
-    body: ['Plan with colleagues in the same document, at the same time. Then make room for your own reflection, reading and questions in Development Studio.'],
-    points: ['Documents and slides you write together, live.', 'An organisation’s shared library.', 'Private reflections, reading journals and a teaching coach.'],
-    status: 'Available now.',
-    main: { name: 'development', alt: 'Development Studio: reflect on a lesson, explore your reading, investigate a question or discuss with your coach.' },
-    details: [{ name: 'collab', alt: 'Collab: your documents, the ones shared with you and the Harbour School library.', at: { x: 0, y: 0.09, w: 0.62, h: 0.25 }, caption: 'Collab: documents and slides you write together' }],
+    id: 'collaborate', kicker: 'COLLABORATE', title: "Better teaching, together.",
+    body: ["Work on materials with colleagues, exchange ideas and make room for reflection.", "With Collab and Development Studio, the practical and professional sides of teaching become part of the same journey."],
+    points: ["Collaborative documents and shared materials.", "Reflection and professional learning.", "Support for questions about teaching practice."],
+    status: "",
+    main: { name: 'collab', alt: 'Collab materials shared by a fictional teaching team.' },
+    details: [{ name: 'development', alt: 'Development Studio', at: {x:0,y:0,w:1,h:1}, caption: 'Reflection and professional learning in Development Studio' }],
   },
 ];
 
@@ -178,7 +178,7 @@ function ShowcaseSection({ s, i }: { s: Showcase; i: number }) {
         <h2 id={`pub-${s.id}-h`}>{s.title}</h2>
         {s.body.map((b) => <p key={b}>{b}</p>)}
         <ul>{s.points.map((p) => <li key={p}>{p}</li>)}</ul>
-        <p className="pub-status">{s.status}</p>
+        {s.status && <p className="pub-status">{s.status}</p>}
       </div>
       <div className="pub-show-media">
         <Shot name={s.main.name} alt={s.main.alt} />
@@ -195,11 +195,11 @@ function ShowcaseSection({ s, i }: { s: Showcase; i: number }) {
 // ------------------------------------------------------------------ connected journey
 
 const JOURNEY = [
-  { k: 'Plan', line: 'Choose the tasks, the language and the notes you’ll need.', name: 'editor-speaking', alt: 'Planning a speaking task: a prompt, questions for the card and the teacher’s notes.' },
-  { k: 'Teach', line: 'Teach from the same lesson, in the classroom or in Rooms, and see answers as they arrive.', name: 'teach', alt: 'Teaching live, with learners’ answers in the side panel.' },
-  { k: 'Understand', line: 'See what each learner did, lesson by lesson.', name: 'reports', alt: 'The class report, learner by lesson.' },
-  { k: 'Reflect', line: 'Write down what worked, and what you’d like to try.', name: 'development', alt: 'Development Studio: reflect on a lesson or investigate a question.' },
-  { k: 'Grow', line: 'Talk it through with a coach, then take it into the next lesson.', name: 'coach', alt: 'The teaching coach in Development Studio.' },
+  { k: 'Plan', line: "Prepare the activities, language and notes you'll need.", name: 'editor-speaking', alt: 'Planning a speaking task: a prompt, questions for the card and the teacher’s notes.' },
+  { k: 'Teach', line: "Bring your lesson into the classroom and involve your learners.", name: 'teach', alt: 'Teaching live, with learners’ answers in the side panel.' },
+  { k: 'Understand', line: "Review learner responses, results and feedback.", name: 'reports', alt: 'The class report, learner by lesson.' },
+  { k: 'Reflect', line: "Look back on your teaching and explore what you noticed.", name: 'development', alt: 'Development Studio: reflect on a lesson or investigate a question.' },
+  { k: 'Grow', line: "Develop your practice and carry new ideas into the next lesson.", name: 'coach', alt: 'The teaching coach in Development Studio.' },
 ];
 
 function Journey() {
@@ -210,7 +210,7 @@ function Journey() {
       <div className="pub-journey-head">
         <span className="pub-kicker">YOUR TEACHING, CONNECTED</span>
         <h2 id="pub-journey-h">One lesson leads to another.</h2>
-        <p>Plan a lesson. Teach it. Explore what your learners have done. Reflect on what worked. Then take what you’ve learned into the next lesson. ELT Suite brings these moments together, so your teaching can develop as you go.</p>
+        <p>Plan a lesson. Teach it. See how your learners respond. Reflect on what worked, then take what you've learned into the next lesson.</p><p>ELT Suite connects these parts of teaching, helping you build on the work you've already done.</p>
       </div>
       <div className="pub-journey-steps" role="tablist" aria-label="From one lesson to the next">
         {JOURNEY.map((j, i) => (
@@ -239,7 +239,7 @@ export function PublicHome() {
           <div className="pub-lang-copy">
             <span className="pub-kicker">WE SPEAK YOUR LANGUAGE</span>
             <h2 id="pub-lang-h">The little things matter in teaching.</h2>
-            <p>From a phonemic transcription to a classroom recording, from a carefully chosen activity to a learner’s next step, we’ve thought about the details that make teaching work.</p>
+            <p>From pronunciation and language analysis to classroom recordings and learner responses, the details matter. ELT Suite brings tools for those details into the everyday work of teaching.</p>
           </div>
           <Mounted label="Good teaching is worth sharing."><LanguageMoment /></Mounted>
           <p className="pub-lang-close">From the sounds of a word to the shape of a lesson, ELT Suite is built for the details of teaching.</p>
@@ -248,22 +248,22 @@ export function PublicHome() {
           {SHOWCASES.map((s, i) => <ShowcaseSection key={s.id} s={s} i={i} />)}
         </div>
         <Journey />
+        <section className="pub-community pub-belief"><span className="pub-kicker">BUILT AROUND TEACHERS</span><h2>Good teaching begins with teachers.</h2><p>Every class is different. Teachers bring their experience, creativity and understanding of their learners to the decisions they make every day.</p><p>We believe technology should support that expertise, not replace it.</p><p>That's why ELT Suite is designed to put useful tools within reach while keeping teachers at the centre of their work.</p><aside aria-label="Lesson aim"><strong>Lesson aim</strong><p>Give an opinion, ask for a reason and respond to a partner.</p></aside></section>
         <section className="pub-community" aria-labelledby="pub-community-h">
           <span className="pub-kicker">BETTER TOGETHER</span>
           <h2 id="pub-community-h">Good ideas are worth sharing.</h2>
-          <p>Some of the most valuable things we learn about teaching come from other teachers. ELT Suite is designed to make that exchange easier, bringing teachers and their ideas closer together.</p>
+          <p>Some of the most useful things we learn about teaching come from other teachers.</p><p>A conversation after class. A resource shared by a colleague. A different way of approaching a familiar challenge.</p><p>We want ELT Suite to make those exchanges easier and create more opportunities for teachers to learn from one another.</p>
           <div className="pub-future">
             <strong>Coming later: Communities for teachers.</strong>
-            <p>We’re working towards a space where teachers with shared interests can find one another, exchange ideas and explore their practice together. It isn’t open yet.</p>
+            <p>We’re building towards a professional space where teachers with shared interests can connect, exchange ideas and explore their practice together.</p>
           </div>
         </section>
         <section className="pub-closing" aria-labelledby="pub-closing-h">
-          <h2 id="pub-closing-h">Made for teachers. Built for teaching. Better together.</h2>
+          <span className="pub-kicker">THE NEXT CHAPTER</span><h2 id="pub-closing-h">We’re growing something together.</h2><p>ELT Suite was created out of a love for English language teaching and a belief that teachers grow stronger together.</p><p>We're starting small, bringing teaching tools, professional learning and collaboration into one connected space.</p><p>And there's more to come.</p>
           <div className="pub-actions">
-            <Link className="pub-button" to="/signin">Sign In</Link>
-            <Link className="pub-secondary" to="/pricing">Plans & Pricing</Link>
+            <a className="pub-button" href="#plan">See the Platform</a><Link className="pub-secondary" to="/signin">Sign In</Link>
           </div>
-          <span className="pub-note">ELT Suite is open to invited teachers for now. More coming soon.</span>
+          <span className="pub-note">ELT Suite is currently available to invited teachers.</span>
         </section>
       </main>
     </PublicLayout>

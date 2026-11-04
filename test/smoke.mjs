@@ -599,7 +599,7 @@ const J = {
     return s;
   },
 
-  'Public homepage: isolated tour, local edits, pricing and mobile navigation': async (b) => {
+  'Public homepage: showcase navigation, screenshot previews and pricing': async (b) => {
     const ctx=await b.newContext({viewport:{width:1440,height:1000}}),p=await ctx.newPage(),errors=[];
     p.on('pageerror',e=>errors.push(e.message));
     const requests=[];p.on('request',r=>{if(/cloudfunctions.net|firestore.googleapis.com/.test(r.url()))requests.push(r.url());});
@@ -609,49 +609,22 @@ const J = {
     await axe(p,'Public homepage desktop',A11Y_FOUND);
     if(process.env.PUBLIC_SCREENSHOT)await p.screenshot({path:process.env.PUBLIC_SCREENSHOT,fullPage:false});
     if(await p.locator('.pub-home a[href^="/explore"]').count())throw Error('The homepage links to the demo');
-    await p.goto(BASE+'/explore');
-    await p.getByRole('button',{name:'Start Exploring'}).click();
-    await p.getByText('Getting to know our class',{exact:true}).click();
-    await p.getByText('Ask follow-up questions about interests.',{exact:true}).waitFor();
-    await p.getByRole('button',{name:/CURRENT LESSON/}).click();
-    await p.getByLabel('Lesson title',{exact:true}).fill('A space for our neighbourhood');
-    await p.getByRole('button',{name:'Learner B',exact:true}).click();
-    await p.getByRole('heading',{name:'The practical view'}).waitFor();
-    if(await p.getByText('Many older neighbours want a quiet place to meet.',{exact:true}).count())throw Error('Both private role cards exposed at once');
-    await p.locator('.pub-native input').fill('point');
-    await p.getByRole('button',{name:'Check the phrase'}).click();
-    await p.getByRole('status').filter({hasText:'That’s right'}).waitFor();
-    await axe(p,'Public native learner activity',A11Y_FOUND);
-    await p.getByRole('button',{name:'Continue: Lesson Intelligence'}).click();
-    await p.getByRole('button',{name:'Evaluate this Lesson'}).click();
-    await p.getByText('PREPARED DEMONSTRATION RESPONSE',{exact:true}).waitFor();
-    await p.getByRole('button',{name:'Show the reasoning'}).click();
-    await p.getByRole('button',{name:'See a suggested improvement'}).click();
-    await p.getByText('Before the discussion · 3 minutes:',{exact:true}).waitFor();
-    await p.getByRole('button',{name:'Continue: Learner work'}).click();
-    await p.getByLabel('View a sample submission').selectOption('6');
-    await p.getByText('Missing evidence, not evidence of low ability.',{exact:true}).waitFor();
-    await p.getByRole('button',{name:'Continue: What comes next'}).click();
-    await p.getByRole('button',{name:/Develop reasons and examples/}).click();
-    await p.getByText('EXAMPLE LESSON OUTLINE',{exact:true}).waitFor();
-    await p.getByRole('button',{name:'Continue: Collaboration'}).click();
-    await p.getByRole('textbox',{name:'Demo Collab document'}).fill('A shared teaching idea.');
-    await p.getByRole('button',{name:'Show a sample colleague suggestion'}).click();
-    await p.getByRole('button',{name:'Apply this suggestion'}).click();
-    await p.getByRole('textbox',{name:'Demo Collab document'}).filter({hasText:'Partner A prioritises'}).waitFor();
-    await p.getByLabel('Planning note',{exact:true}).fill('');
-    await p.waitForFunction(()=>JSON.parse(sessionStorage.getItem('elt-public-demo-v2')??'null')?.notes==='');
-    await p.getByRole('button',{name:'Keep note in this demo'}).click();
-    await p.getByRole('status').filter({hasText:'Nothing has been sent'}).waitFor();
-    await p.reload();
-    await p.getByLabel('Planning note',{exact:true}).waitFor();
-    if(await p.getByLabel('Planning note',{exact:true}).inputValue()!=='')throw Error('Blank optional note did not persist: '+JSON.stringify(await p.getByLabel('Planning note',{exact:true}).inputValue())+' '+await p.evaluate(()=>sessionStorage.getItem('elt-public-demo-v2')));
-    await axe(p,'Public collaboration',A11Y_FOUND);
-    await p.getByRole('navigation',{name:'Demo steps'}).getByRole('button',{name:/Plan & teach/}).click();
-    if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='A space for our neighbourhood')throw Error('Demo title was lost');
-    await p.getByRole('button',{name:'Reset demo'}).click();
-    if(await p.getByLabel('Lesson title',{exact:true}).inputValue()!=='Expressing and Justifying Opinions')throw Error('Demo reset did not restore fixture');
-    await axe(p,'Public demo desktop',A11Y_FOUND);
+    for(const legacy of ['/explore?step=lesson','/tour']){
+      await p.goto(BASE+legacy);await p.waitForURL(BASE+'/#plan');
+      await p.locator('#plan').getByRole('heading',{name:'From first idea to finished lesson.'}).waitFor();
+    }
+    for(const section of ['plan','teach','understand','audio','language','collaborate']){
+      const shot=p.locator('#'+section+' .pub-frame').first();
+      await shot.click();const dialog=p.getByRole('dialog');await dialog.waitFor();
+      await dialog.locator('img').evaluate(img=>img.decode());await dialog.getByRole('button',{name:'Close'}).click();
+    }
+    await p.locator('.pub-lang-sentence').scrollIntoViewIfNeeded();
+    await p.getByText('/ɡʊd ˈtiːtʃɪŋ ɪz wɜːθ ˈʃeərɪŋ/',{exact:true}).waitFor();
+    for(const preview of await p.locator('.pub-float').all()){
+      await preview.getByRole('button').focus();
+      await preview.getByRole('link').click();
+      if(!['#audio','#understand','#teach'].includes(new URL(p.url()).hash))throw Error('Preview did not reach its showcase');
+    }
     await p.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Plans & Pricing',exact:true}).click();
     await p.getByRole('heading',{name:'Find the right space for your teaching.'}).waitFor();
     await axe(p,'Proposed pricing',A11Y_FOUND);
@@ -663,11 +636,8 @@ const J = {
     const nav=p.getByRole('navigation',{name:'Main navigation'});
     await nav.getByRole('link',{name:'Plans & Pricing',exact:true}).waitFor();
     if(await nav.getByRole('link',{name:'Explore',exact:true}).count())throw Error('The menu still links to the demo');
-    await p.goto(BASE+'/explore');
-    await p.getByRole('button',{name:'Start Exploring'}).click();
-    await axe(p,'Public demo mobile',A11Y_FOUND);
-    if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public demo overflows on mobile');
-    await p.getByRole('link',{name:'ELT Suite home',exact:true}).first().click();
+    await nav.getByRole('link',{name:'The Platform'}).click();
+    await p.waitForURL(BASE+'/#plan');
     await axe(p,'Public homepage mobile',A11Y_FOUND);
     if(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Public homepage overflows on mobile');
     await p.getByRole('button',{name:'Menu +',exact:true}).click();
@@ -2103,7 +2073,7 @@ const J = {
     await s.p.getByRole('searchbox').fill('no such topic');
     await see(s.p, 'text=No matching topics', 'search empty state');
     await s.p.setViewportSize({ width: 390, height: 844 });
-    for (const route of ['/welcome', '/guide', '/tour']) {
+    for (const route of ['/welcome', '/guide']) {
       await s.p.goto(BASE + route);
       await see(s.p, 'h1', 'mobile heading');
       if (await s.p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) throw new Error('Mobile overflow: ' + route);
@@ -2120,10 +2090,7 @@ const J = {
       const fits = await s.p.getByRole('listbox', { name: 'What would you like to do?' }).evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1; });
       if (!fits) throw new Error('Goal dropdown overflows at ' + width);
       await picker.press('Escape');
-      await s.p.goto(BASE + '/tour');
-      await see(s.p, '.pub-tour-shell', 'responsive public tour');
-      const clipped = await s.p.locator('.pub-tour-shell > *').evaluateAll(els => els.some(el => el.getBoundingClientRect().right > innerWidth + 1));
-      if (clipped) throw new Error('Tour illustration clipped at ' + width);
+
     }
     await s.p.goto(BASE + '/welcome');
     await s.p.getByRole('button', { name: 'I’ll explore on my own' }).click();
