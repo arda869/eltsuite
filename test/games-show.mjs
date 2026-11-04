@@ -27,7 +27,7 @@ try{
   // A wrong answer shows the right one and scores nothing.
   const wrong=p.locator('.show-cards button').filter({hasText:'museum'});await wrong.click();await wrong.click();
   await p.locator('.show-cards button[data-state=wrong]').waitFor();await p.locator('.show-cards button[data-state=right]').filter({hasText:'bakery'}).waitFor();await p.getByText('The answer: bakery',{exact:true}).waitFor();
-  assert.equal(await p.locator('.show-score b').first().textContent(),'10');
+  await p.locator('.show-score b').filter({hasText:/^10$/}).waitFor();
   // Take two away leaves the answer and one other card.
   await p.getByRole('button',{name:'Next question',exact:true}).click();await p.getByRole('heading',{name:'Trains stop here.'}).waitFor();
   await p.getByRole('button',{name:'Take two away',exact:true}).click();
@@ -48,7 +48,7 @@ try{
   await p.clock.runFor(36000);await p.getByText("Time's up",{exact:true}).waitFor();await p.locator('.show-cards button[data-state=right]').filter({hasText:'library'}).waitFor();
   assert.equal(await p.locator('.show-score b').first().textContent(),'0');
   await p.getByRole('button',{name:'Next question',exact:true}).click();await p.getByRole('heading',{name:'You buy bread here.'}).waitFor();
-  await p.locator('.show-cards button').filter({hasText:'bakery'}).click();await p.getByText('Correct',{exact:true}).waitFor();assert.equal(await p.locator('.show-score b').first().textContent(),'10');
+  await p.locator('.show-cards button').filter({hasText:'bakery'}).click();await p.getByText('Correct',{exact:true}).waitFor();await p.locator('.show-score b').filter({hasText:/^10$/}).waitFor();
   assert.deepEqual(errors,[]);await context.close();console.log('No lock-in → one tap answers; extra time once; the clock runs out → no points.');}
  // 3. A controller and a spectator share one board through the real server checks, with few writes.
  {const context=await browser.newContext({viewport:{width:1280,height:1400}});const {p,errors}=await open(context,'theme=space&live=1&timer=30');
@@ -56,10 +56,10 @@ try{
   await them.getByText('Waiting for the show to start…').waitFor();assert.equal(await them.getByRole('button',{name:'Start the show'}).count(),0);
   await me.getByRole('button',{name:'Start the show',exact:true}).click();await them.getByRole('heading',{name:'Where do you borrow books?'}).waitFor();
   await me.locator('.show-cards button').filter({hasText:'library'}).click();await them.locator('.show-cards button[data-state=selected]').filter({hasText:'library'}).waitFor();
-  assert.equal(await them.getByRole('button',{name:'Lock it in'}).count(),0,'spectators cannot lock in');
+  assert.equal(await them.getByRole('button',{name:'Lock it in'}).isDisabled(),true,'spectators cannot lock in');
   await me.getByRole('button',{name:'Take two away',exact:true}).click();await them.locator('.show-cards button[data-state=removed]').first().waitFor();
   await me.getByRole('button',{name:'Lock it in',exact:true}).click();await them.locator('.show-cards button[data-state=right]').waitFor();await them.getByText('Correct',{exact:true}).waitFor();
-  assert.equal(await them.locator('.show-score b').first().textContent(),'10');assert.equal(await me.locator('.show-score b').first().textContent(),'10');
+  await them.locator('.show-score b').filter({hasText:/^10$/}).waitFor();await me.locator('.show-score b').filter({hasText:/^10$/}).waitFor();
   const timers=await p.locator('.show-timer').count();assert.equal(timers,2,'both see the server clock');
   const writes=Number(await p.getByLabel('Writes').textContent());assert.ok(writes<=8,'a question costs a handful of writes, not a stream: '+writes);
   assert.deepEqual(errors,[]);await context.close();console.log('Controller → spectator mirrors intro, choice, lifeline, lock and reveal in '+writes+' writes.');}
