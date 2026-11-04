@@ -1,3 +1,4 @@
+import { teacherPanel } from '../ai/teacherPanel';
 import { AiNotice } from '../ai/kit';
 import { AiButton, AiProgress } from '../components/AiMark';
 import { useAiActivity } from '../components/AiActivity';
@@ -32,7 +33,7 @@ function typeSummary(task:Rebuilt['tasks'][number]):string {
  return [...counts].map(([name,n])=>name+(n>1?' × '+n:'')).join(' · ');
 }
 function normalizeReview(value:Rebuilt):Rebuilt{return {...value,tasks:value.tasks.map(t=>({...t,inlineElements:t.inlineElements??[],subTasks:Array.isArray(t.subTasks)?t.subTasks.map(st=>typeof st==='object'&&st!==null&&!Array.isArray(st)?{...st,inlineElements:st.inlineElements??[]}:st):[]}))};}
-export function MaterialImport({classId,itemId,creationType='lesson',onClose,onDone}:{classId:string;itemId?:string;creationType?:string;onClose:()=>void;onDone:(itemId:string,taskId:string)=>void}){
+function MaterialImportPanel({classId,itemId,creationType='lesson',onClose,onDone}:{classId:string;itemId?:string;creationType?:string;onClose:()=>void;onDone:(itemId:string,taskId:string)=>void}){
  const training=useTrainingClass(classId);
  const [sourcePreviews,setSourcePreviews]=useState<string[]>([]),[prepared,setPrepared]=useState<Record<string,PreparedPicture>>({});
  const [checks,setChecks]=useState<SourceCheck[]>([]),[editedTasks,setEditedTasks]=useState<Set<string>>(new Set());
@@ -94,3 +95,5 @@ export function TaskStartChoice({onBlank,onImport,onClose}:{onBlank:()=>void;onI
  const ref=useRef<HTMLDivElement>(null);useEffect(()=>{const old=document.activeElement as HTMLElement;ref.current?.querySelector('button')?.focus();return()=>old?.focus();},[]);
  return <div className="scrim mi-scrim" onClick={onClose}><div ref={ref} className="dialog" role="dialog" aria-modal="true" aria-labelledby="mi-new-task" onClick={e=>e.stopPropagation()} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Tab'){const a=Array.from(ref.current!.querySelectorAll('button'));if(e.shiftKey&&document.activeElement===a[0]){e.preventDefault();a.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===a.at(-1)){e.preventDefault();a[0]?.focus();}}}}><h2 id="mi-new-task">Add a task</h2><p>Start with a blank task, or rebuild a task you already have.</p><div className="mi-actions"><button className="btn primary" onClick={onBlank}><UiIcon name="plus"/> Start blank</button><ImportMaterialsButton onClick={onImport}/><button className="btn" onClick={onClose}>Cancel</button></div></div></div>;
 }
+
+export const MaterialImport = teacherPanel(MaterialImportPanel);

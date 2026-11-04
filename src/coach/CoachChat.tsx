@@ -1,3 +1,4 @@
+import { teacherPanel } from '../ai/teacherPanel';
 import {coachContextOnPage} from './pageContext';
 import {coachHistoryKey} from '../../functions/ai/coach-history.js';
 import {lastConversation,rememberConversation,readDraft,saveDraft,useConversations,type CoachContext} from './conversations';
@@ -27,7 +28,7 @@ export type LessonCoachContext={classId:string;itemId:string;taskId?:string;repo
 type Source={title:string;url:string};
 const call = httpsCallable<Record<string, unknown>, { reply: string; basis: string[]; journalDraft?: string | null; sources?:Source[] }>(getFunctions(app, 'us-central1'), 'lessonAssistant', { timeout: 240000 });
 
-export function CoachChat({ uid, profile, initialPrompt, reflectionId:incomingReflection, formContext:incomingForm, onClearForm, evidencePacketId:incomingEvidence = '', lessonContext:incomingLesson, pageContext:incomingPage, onClearLesson, initialConversationId, compact=false }: {
+function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingReflection, formContext:incomingForm, onClearForm, evidencePacketId:incomingEvidence = '', lessonContext:incomingLesson, pageContext:incomingPage, onClearLesson, initialConversationId, compact=false }: {
   initialConversationId?:string;compact?:boolean;formContext?:{docId:string;formId:string};onClearForm?:()=>void;
   uid: string; profile: CoachProfile; initialPrompt: string; reflectionId: string; evidencePacketId?:string; lessonContext?:LessonCoachContext; pageContext?:CoachContext['pageContext']; onClearLesson?:()=>void;
 }) {
@@ -109,6 +110,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId:incomingRe
   }
   function newChat() { setChatId(n=>n+1);setJournal(null);setJournalSaved('');chooseConversation(crypto.randomUUID());request.current=null; }
   const evidenceReady=!evidencePacketId||approvedPacket===evidencePacketId;
+  const journalError=error==='We couldn’t save your reflection. Your edits are still here.';
   const canSend = complete && preferencesReady && saved.ready && !saved.pending && !busy && !!draft.trim() && evidenceReady;
   return <section className="coach-chat" aria-label="Teacher’s Companion chat">
     {evidencePacketId&&<CoachEvidenceReview id={evidencePacketId} onConfirm={()=>setApprovedPacket(evidencePacketId)}/>}
@@ -121,7 +123,7 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId:incomingRe
     {formContext&&<aside className="coach-notice" aria-label="Selected studio form"><p>Your coach will read this form from its current Collab document when you send. The document’s sharing settings still apply.</p><Link to={'/doc/'+formContext.docId+'#studio-form-'+formContext.formId}>Open selected form</Link> <button type="button" className="btn" disabled={busy} onClick={()=>{setContext(c=>({...c,formContext:null}));onClearForm?.();}}>Remove form context</button></aside>}
     {lessonContext&&<aside className="coach-notice" aria-label="Selected teaching context"><p>{lessonContext.taskId?'This activity':'This lesson'} is attached. Teacher’s Companion will read its current content when you send, subject to your access and context settings.</p><Link to={`/class/${lessonContext.classId}/lesson/${lessonContext.itemId}${lessonContext.taskId?'?task='+lessonContext.taskId:''}`}>Open selected lesson</Link> <button className="btn" disabled={busy} onClick={()=>{setContext(c=>({...c,lessonContext:null}));onClearLesson?.();}}>Remove lesson context</button></aside>}
     {!lessonContext&&pageContext&&<aside className="coach-notice" aria-label="Current page context">Current page: {pageContext.name}. The page name is available; its content is not automatically shared.</aside>}
-    {error && <AiNotice kind="error" action={draft.trim()?()=>void send():undefined} actionDisabled={!canSend} onDismiss={()=>setError('')}>{error}</AiNotice>}
+    {error && <AiNotice kind="error" action={journalError?()=>void saveJournal():draft.trim()?()=>void send():undefined} actionDisabled={journalError?journalSaving:!canSend} onDismiss={()=>setError('')}>{error}</AiNotice>}
     {!formContext && !lessonContext && !evidencePacketId && !profileComplete(profile) ? <div className="coach-chat-onboarding"><div className="coach-chat-greeting"><span className="coach-chat-avatar" aria-hidden="true">C</span><div><h3>Let’s start with your teaching</h3><p>Before we chat, add a few details so I can understand your work. Your qualifications aren’t a measure of your expertise.</p></div></div><ProfileSetup uid={uid} profile={profile} /></div> : !formContext && !lessonContext && !evidencePacketId && !beliefsComplete(profile) ? <div className="coach-chat-onboarding"><div className="coach-chat-greeting"><span className="coach-chat-avatar" aria-hidden="true">C</span><div><h3>What guides your teaching?</h3><p>Add your teaching beliefs before we begin. A few honest sentences are enough, and it’s fine to be uncertain.</p></div></div><BeliefsSetup uid={uid} profile={profile} /></div> : <>
       <div className="coach-chat-thread" ref={thread} tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Home'||e.key==='End')){e.preventDefault();e.currentTarget.scrollTop=e.key==='Home'?0:e.currentTarget.scrollHeight;}}} role="log" aria-label="Conversation with your Teacher’s Companion" aria-live="polite" aria-relevant="additions">
         <article className="coach-chat-message coach-chat-message-coach"><strong>Teacher’s Companion</strong><p>{lessonContext?'Your selected teaching context is ready. Tell me what you would like to explore or improve.':'What would you like to think through today? We can reflect on a lesson, explore a teaching belief, or plan a classroom inquiry.'}</p></article>
@@ -177,3 +179,5 @@ function BeliefsSetup({ uid, profile }: { uid: string; profile: CoachProfile }) 
   }
   return <form className="coach-setup-form" onSubmit={e=>{e.preventDefault();void save();}}><fieldset disabled={saving}><legend>Your teaching beliefs</legend><BeliefsForm value={beliefs} onChange={setBeliefs} disabled={saving}/>{error&&<p role="alert" className="coach-error">{error}</p>}{!beliefsComplete({beliefs})&&<p className="hint">Add a short response to each teaching-beliefs question to continue.</p>}<button className="btn primary" disabled={saving||!beliefsComplete({beliefs})}>{saving?'Saving…':'Save beliefs and start chatting'}</button></fieldset></form>;
 }
+
+export const CoachChat = teacherPanel(CoachChatPanel);

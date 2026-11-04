@@ -1,3 +1,4 @@
+import { teacherPanel } from '../ai/teacherPanel';
 // Questions for a game, drafted by AI from a short description and, if you like, a class and a lesson.
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -16,7 +17,7 @@ const EXAMPLES = [
   'Prepositions of place with classroom objects',
 ];
 
-export function GameDraft({ gameId, type, existingCount = 0, onApply }: { gameId: string; type: GameType; existingCount?: number; onApply: (r: GameRound[], append?: boolean) => void }) {
+function GameDraftPanel({ gameId, type, existingCount = 0, onApply }: { gameId: string; type: GameType; existingCount?: number; onApply: (r: GameRound[], append?: boolean) => void }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState(''), [classId, setClassId] = useState(''), [lessonId, setLessonId] = useState('');
@@ -72,7 +73,7 @@ export function GameDraft({ gameId, type, existingCount = 0, onApply }: { gameId
       </AiMore>
       {busy
         ? <AiWorking title="Writing and checking your questions…" detail="Each question is checked for one clear answer. Your existing questions stay as they are." />
-        : <AiActions note={AI_ALLOWANCE}><AiButton type="button" className="btn primary" disabled={!description.trim()} onClick={() => void create()}>Write questions</AiButton></AiActions>}
+        : <AiActions note={description.trim()?AI_ALLOWANCE:"Describe the questions or choose an example to begin."}><AiButton type="button" className="btn primary" disabled={!description.trim()} onClick={() => void create()}>Write questions</AiButton></AiActions>}
       {error && <AiNotice kind="error" action={() => void create()} actionDisabled={busy || !description.trim()}>{error} Your description is still here.</AiNotice>}
     </>}
     {draft && <AiDraft title={`${draft.length} questions`} meta={description.slice(0, 80)} actions={<>
@@ -87,3 +88,5 @@ export function GameDraft({ gameId, type, existingCount = 0, onApply }: { gameId
     <AiFootnote>Only your description and, if you chose them, the class level and lesson text are sent. Learners’ names are not.</AiFootnote>
   </section>;
 }
+
+export const GameDraft = teacherPanel(GameDraftPanel);

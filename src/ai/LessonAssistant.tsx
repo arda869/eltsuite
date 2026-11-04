@@ -1,3 +1,4 @@
+import { teacherPanel } from '../ai/teacherPanel';
 import { AiNotice } from './kit';
 import { withReviewRecovery } from './reviewRecovery';
 import { AiButton } from '../components/AiMark';
@@ -106,7 +107,7 @@ function RevisionPreview({value}:{value:Value}) {
   return <dl>{Object.entries(value).filter(([key])=>!['id','stageId','sourceEvidence'].includes(key)).map(([key,v])=><div key={key}><dt><strong>{label(key)}</strong></dt><dd><RevisionPreview value={v}/></dd></div>)}</dl>;
 }
 
-export function LessonAssistant() {
+function LessonAssistantPanel() {
   const { classId = '' } = useParams();
   const enabled = useAiPilot();
   const navigate=useNavigate();
@@ -308,3 +309,5 @@ export function LessonAssistant() {
     {(busy||preparingMedia) && <GenerationProgress backHref={`/class/${classId}`} action={busy||'media'} media={media} useEvidence={useEvidence} evidenceCount={evidence?.counts.items ?? 0}/>} 
   </main></MaterialNames.Provider>;
 }
+
+export const LessonAssistant = teacherPanel(LessonAssistantPanel);

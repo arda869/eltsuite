@@ -42,7 +42,7 @@ try {
  await p.locator('.dcut-img').waitFor();assert(await p.locator('.dcut-img').evaluate(im=>im.complete&&im.naturalWidth>0),'Saved media image must load after reopen');
  assert((await p.locator('.dcut-img').getAttribute('alt')).includes('bank'));
  await p.getByRole('radio',{name:'Worksheet: the lesson as printed pages',exact:true}).check();
- await p.locator('img.dcut-img:visible').waitFor();assert(await p.locator('img.dcut-img:visible').evaluate(im=>im.complete&&im.naturalWidth>0),'Worksheet must include the generated picture');
+ await p.getByRole('region',{name:'The worksheet',exact:true}).locator('img.dcut-img:visible').waitFor();assert(await p.getByRole('region',{name:'The worksheet',exact:true}).locator('img.dcut-img:visible').evaluate(im=>im.complete&&im.naturalWidth>0),'Worksheet must include the generated picture');
  await p.getByRole('radio',{name:'Digital: the lesson on screen',exact:true}).check();
  // Inline definition path, including teacher review before the mark is applied.
  const editor=p.getByRole('textbox',{name:'Task',exact:true});const sentence=editor.locator('p').filter({hasText:'We sat on the bank of the river.'}).last();

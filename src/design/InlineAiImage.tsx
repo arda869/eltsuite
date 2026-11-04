@@ -1,3 +1,4 @@
+import { teacherPanel } from '../ai/teacherPanel';
 import { AiNotice } from '../ai/kit';
 import {useRef,useState} from 'react';
 import {doc,writeBatch} from 'firebase/firestore';
@@ -8,7 +9,7 @@ import {AiImages} from './AiImages';
 import {elsCol,pagesCol,metaRef,storePicture} from './model';
 import './design.css';
 
-export function InlineAiImage({onPick}:{onPick:(blob:Blob,title:string)=>Promise<void>}) {
+function InlineAiImagePanel({onPick}:{onPick:(blob:Blob,title:string)=>Promise<void>}) {
  const {user,profile}=useAuth();
  const [id,setId]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const saved=useRef<Blob|null>(null);
@@ -18,3 +19,5 @@ export function InlineAiImage({onPick}:{onPick:(blob:Blob,title:string)=>Promise
   await onPick(blob,'AI classroom image');
  }}}/>}{error&&<AiNotice kind="error">{error}</AiNotice>}</section>;
 }
+
+export const InlineAiImage = teacherPanel(InlineAiImagePanel);

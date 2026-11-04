@@ -1,3 +1,4 @@
+import { teacherPanel } from '../ai/teacherPanel';
 import { NSelect } from '../components/Select';
 import { AiButton, AiMark } from '../components/AiMark';
 import { useAiActivity } from '../components/AiActivity';
@@ -18,7 +19,7 @@ const signature = (line: Utterance, speaker: Speaker) => JSON.stringify([line.te
 const presets = ['Natural', 'Loud', 'Whisper', 'Hesitant', 'Excited', 'Self-correction'];
 const directions: Record<string, string> = { Natural: '', Loud: 'Speak loudly, projecting to someone across the room, without clipping.', Whisper: 'Whisper confidentially but intelligibly.', Hesitant: 'Sound unsure; preserve the scripted fillers and pauses.', Excited: 'Sound animated and excited, with natural changes of pitch.', 'Self-correction': 'Cut yourself off at the dash, pause briefly, then naturally repair what you just said.' };
 const plain = spokenText;
-export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onInsert: (lines: SpeechInsertion[]) => void; onClose: () => void }) {
+function SpeechComposerPanel({ open, onInsert, onClose }: { open: boolean; onInsert: (lines: SpeechInsertion[]) => void; onClose: () => void }) {
   const [speakers, setSpeakers] = useState<Speaker[]>([{ id: 'a', name: 'Speaker A', voice: 'marin', accent: '' }, { id: 'b', name: 'Speaker B', voice: 'cedar', accent: '' }]);
   const [lines, setLines] = useState<Utterance[]>([{ id: newId(), speaker: 'a', text: '', direction: '', gap: 0.25 }]);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [playing, setPlaying] = useState('');
@@ -156,3 +157,5 @@ export function SpeechComposer({ open, onInsert, onClose }: { open: boolean; onI
     <footer className="speech-footer"><div className="speech-feedback"><span>AI-generated voices</span>{error && <p role="alert">{error}</p>}{busy && <p role="status">{busy.startsWith('preview:')?'Preparing voice preview…':`Creating line ${lines.findIndex(l => l.id === busy) + 1}… Completed takes stay here.`}</p>}</div><div className="speech-actions">{busy ? <button type="button" className="btn" onClick={() => { cancel.current = true; setError('Stopping after the current take finishes.'); }}>{busy.startsWith('preview:')?'Preparing preview…':'Stop after this take'}</button> : <><AiButton type="button" className="btn" disabled={aiBusy || allReady || !writtenLines.length} onClick={() => void generate()}>Create missing takes</AiButton><button type="button" className="btn" disabled={aiBusy || !allReady} onClick={() => playing ? stop() : void play(writtenLines)}>{playing ? 'Stop playback' : 'Listen to dialogue'}</button><button type="button" className="btn primary" disabled={aiBusy || !allReady || speakers.some(s => !s.name.trim())} onClick={() => { stop(); onInsert(writtenLines.map(l => ({ speakerId: l.speaker, speaker: speakerOf(l).name.trim(), text: plain(l.text) || l.text, gap: l.gap, take: l.take! }))); setLines([{ id: newId(), speaker: speakers[0].id, text: '', direction: '', gap: 0.25 }]); }}>Add to timeline</button></>}</div></footer>
   </dialog>;
 }
+
+export const SpeechComposer = teacherPanel(SpeechComposerPanel);
