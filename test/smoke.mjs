@@ -234,7 +234,6 @@ const J = {
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
     await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
-    await openPlanning(s.p);
     const discuss=dialog.getByRole('link',{name:'Discuss with Teacher’s Companion',exact:true});
     await discuss.waitFor({timeout:12000}).catch(async()=>{throw Error('Saved report discussion missing: '+(await dialog.innerText()).slice(0,1000));});
     await discuss.click();
