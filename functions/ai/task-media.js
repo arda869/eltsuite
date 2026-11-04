@@ -1,6 +1,9 @@
 // Only teacher-authored media from the current class and pictures in the caller's own Resources.
 const validId = value => typeof value === 'string' && /^[\w-]{1,150}$/.test(value);
 const clean = (value, limit) => typeof value === 'string' ? value.trim().slice(0, limit) : '';
+// The native picture store accepts a single small raster. Do not send file bytes to the model.
+const usableFile = f => f && ['image/jpeg','image/png','image/gif','image/webp'].includes(f.type) &&
+  Number.isInteger(f.bytes) && f.bytes>0 && f.bytes<=600*1024 && f.parts===Math.ceil(f.bytes/(450*1024));
 const terms = text => new Set(text.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? []);
 
 function referencedRecordings(tasks) {
@@ -16,10 +19,11 @@ function referencedRecordings(tasks) {
 export async function taskMediaContext({db, uid, cls, tasks, direction, title}) {
   const classMedia = cls.ref.collection('media');
   const referenced = referencedRecordings(tasks);
-  const [audio, refs, pictures] = await Promise.all([
+  const [audio, refs, pictures, files] = await Promise.all([
     classMedia.where('kind', 'in', ['audio', 'link']).select('kind', 'title', 'script', 'video').limit(100).get(),
     Promise.all(referenced.map(id => classMedia.where('__name__', '==', id).select('kind', 'title', 'script', 'video').get())),
     db.collection(`users/${uid}/archive`).where('kind', '==', 'image').select('name', 'tags', 'folder', 'home', 'copies', 'deletedAt', 'purgingAt', 'purgeRequestedAt').limit(120).get(),
+    db.collection('sharedDocs').where('owner','==',uid).where('kind','==','file').select('title','file','deletedAt').limit(120).get(),
   ]);
   const wanted = terms([direction, title, ...tasks.map(t=>t.title)].join(' '));
   const rank = text => [...terms(text)].filter(t=>wanted.has(t)).length;
@@ -41,6 +45,7 @@ export async function taskMediaContext({db, uid, cls, tasks, direction, title}) 
   const images = pictures.docs.filter(s=>!s.get('deletedAt')&&!s.get('purgingAt')&&!s.get('purgeRequestedAt') &&
       (validId(s.get('copies')?.[cls.id])||validId(s.get('home')?.mediaId)))
     .map(s=>({ref:'image:'+s.id,title:clean(s.get('name'),160),tags:(Array.isArray(s.get('tags'))?s.get('tags'):[]).slice(0,8).map(t=>clean(t,50))}))
+    .concat(files.docs.filter(s=>!s.get('deletedAt')&&usableFile(s.get('file'))).map(s=>({ref:'file:'+s.id,title:clean(s.get('title'),160),tags:[]})))
     .sort((a,b)=>rank(b.title+' '+b.tags.join(' '))-rank(a.title+' '+a.tags.join(' '))).slice(0,24);
   return {recordings,images};
 }
@@ -53,11 +58,11 @@ export function checkExistingMedia(selection, catalogue, planned, task, retained
   if(!Array.isArray(selection)||selection.length+planned.length>2)throw Error('Use at most two media attachments.');
   const used=new Set();
   for(const {ref,alt} of selection){
-    if(!known.has(ref)||used.has(ref)||ref.startsWith('image:')&&!alt.trim())throw Error('Choose a listed resource once and supply image alt text.');
+    if(!known.has(ref)||used.has(ref)||!ref.startsWith('recording:')&&!alt.trim())throw Error('Choose a listed resource once and supply image alt text.');
     used.add(ref);
   }
   const kinds = new Set(planned.map(asset=>asset.kind));
-  for(const ref of used)kinds.add(ref.startsWith('image:')?'image':'audio');
+  for(const ref of used)kinds.add(ref.startsWith('recording:')?'audio':'image');
   for(const node of retained){if(node.type==='paragraph')kinds.add('image');else if(node.type==='media'||node.type==='dialogue')kinds.add('audio');}
   const instructions=[task.instructions,...(task.subTasks??[]).map(part=>part.instructions)].join(' ');
   if(!kinds.has('image')&&/\b(?:look at|compare|label|describe|match) (?:the |these |both |two |each )*(?:pictures?|photographs?|photos?|illustrations?|images?)\b/i.test(instructions)){
@@ -74,6 +79,19 @@ export async function resolveExistingMedia(tx,{db,uid,cls},selection) {
       const s=await tx.get(cls.ref.collection('media').doc(id));
       if(!s.exists||s.get('video')||!['audio','link'].includes(s.get('kind')))throw Error('Class recording is no longer available.');
       return {asset:{kind:'audio',existing:true,title:clean(s.get('title'),150)||'Class recording',mediaId:id}};
+    }
+    if(type==='file'){
+      const fileRef=db.doc('sharedDocs/'+id),file=await tx.get(fileRef),info=file.get('file');
+      if(file.get('owner')!==uid||file.get('deletedAt')||!usableFile(info))throw Error('Resource file is no longer available.');
+      const parts=await Promise.all(Array.from({length:info.parts},(_,i)=>tx.get(fileRef.collection('blob').doc('p'+i))));
+      const bytes=Buffer.concat(parts.map((part,i)=>{
+        if(part.get('part')!==i||typeof part.get('data')!=='string')throw Error('Incomplete image file.');
+        return Buffer.from(part.get('data'),'base64');
+      }));
+      if(bytes.length!==info.bytes)throw Error('Incomplete image file.');
+      const dest=cls.ref.collection('media').doc();
+      return {asset:{kind:'image',existing:true,mediaId:dest.id,title:clean(file.get('title'),150),alt},dest,
+        copy:{data:'data:'+info.type+';base64,'+bytes.toString('base64'),type:info.type,size:bytes.length,public:false}};
     }
     const s=await tx.get(db.doc(`users/${uid}/archive/${id}`));
     if(!s.exists||s.get('kind')!=='image'||s.get('deletedAt')||s.get('purgingAt')||s.get('purgeRequestedAt'))throw Error('Resource image is no longer available.');

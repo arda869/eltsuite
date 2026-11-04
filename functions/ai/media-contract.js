@@ -5,7 +5,7 @@ export function mediaRequests(activities){
  const requests=[];
  for(const [taskIndex,t] of activities.tasks.entries()) for(const [index,asset] of (t.mediaPlan??[]).entries()) {
   if(asset.sourceRef){
-   if(!new RegExp('^'+(asset.kind==='image'?'image':'recording')+':[\\w-]{1,150}$').test(asset.sourceRef)||asset.kind==='image'&&!asset.alt.trim()||asset.lines.length)throw Error('Use the listed reference, image alt text, and no generated lines for existing media.');
+   if(!new RegExp('^'+(asset.kind==='image'?'(?:image|file)':'recording')+':[\\w-]{1,150}$').test(asset.sourceRef)||asset.kind==='image'&&!asset.alt.trim()||asset.lines.length)throw Error('Use the listed reference, image alt text, and no generated lines for existing media.');
   }else if(asset.kind==='image'&&(!asset.prompt.trim()||!asset.alt.trim()||asset.lines.length))throw Error('An image needs a prompt and alt text.');
   if(!asset.sourceRef&&asset.kind==='audio'&&(!asset.lines.length||asset.lines.map(x=>x.text).join('').length>4000||asset.prompt||asset.alt))throw Error('A recording needs a bounded spoken script.');
   requests.push({learnerAction:t.instructions,id:`t${taskIndex}_m${index}`,taskIndex,index,...asset});

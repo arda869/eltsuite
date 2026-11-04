@@ -47,3 +47,15 @@ test('Wikimedia and generated image plans queue real preparation and unused less
  assert.deepEqual(result.map(x=>[x.source,x.status]),[['commons','queued'],['generate','queued']]);
  assert.deepEqual(await prepareActivityAssets(env.tx,env,[]),[]);
 });
+test('uploaded Resources files copy their actual bytes into a native class picture',async()=>{
+ const env=fixture(),bytes=Buffer.from('test image data');
+ env.db.doc=path=>({path,collection:n=>({doc:id=>({path:path+'/'+n+'/'+id})})});
+ env.docs.set('sharedDocs/upload',{owner:'u',kind:'file',title:'Market sketch',file:{type:'image/png',bytes:bytes.length,parts:1}});
+ env.docs.set('sharedDocs/upload/blob/p0',{part:0,data:bytes.toString('base64')});
+ const c=await taskMediaContext({...env,tasks:[],direction:'market',title:'Market'});
+ assert.ok(c.images.some(img=>img.ref==='file:upload'));
+ const [resolved]=await resolveExistingMedia(env.tx,env,[{ref:'file:upload',alt:'Market sketch'}]);
+ assert.equal(resolved.copy.data,'data:image/png;base64,'+bytes.toString('base64'));
+ env.docs.get('sharedDocs/upload').owner='other';
+ await assert.rejects(resolveExistingMedia(env.tx,env,[{ref:'file:upload',alt:'Market sketch'}]));
+});
