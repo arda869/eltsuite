@@ -1,5 +1,6 @@
-import {setCoachPanel} from '../coach/panelState';
-import {lastConversation} from '../coach/conversations';
+import {CoachConversation} from '../coach/CoachConversation';
+import {coachContextOnPage} from '../coach/pageContext';
+import type {CoachContext} from '../coach/conversations';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { autoFocusOk } from '../lib/keys';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { CallButtons } from './Rooms';
 // all of them can be minimised or closed at once. They stay as you move between apps.
 
 const KEY = 'll.dock2';
-export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number }; // id: a chat, or 'list'; at: when it was opened
+export type DockWin = { id: string; min?: boolean; max?: boolean; at?: number; coachContext?: CoachContext }; // id: a chat, 'teaching-coach', or 'list'
 type DockState = { wins: DockWin[] };
 const read = (): DockState => {
   try {
@@ -65,11 +66,11 @@ export function setDock(v: { open?: boolean; chat?: string; min?: boolean }) {
   if (v.open) dockOpen(v.chat || 'list', !!v.min);
 }
 // A window shows another chat in its place (picking from the list, or starting a new chat).
-const replaceWin = (from: string, to: string) => {
+const replaceWin = (from: string, to: string, coachContext?: CoachContext) => {
   const wins = read().wins.filter((w) => w.id !== to);
   const at = wins.findIndex((w) => w.id === from);
   if (at < 0) return dockOpen(to);
-  wins[at] = { ...wins[at], id: to, min: false, at: Date.now() };
+  wins[at] = { ...wins[at], id: to, coachContext, min: false, at: Date.now() };
   save({ wins });
 };
 // Larger and smaller: the window moves from where it was to where it goes (no pop-in).
@@ -174,7 +175,7 @@ export function ChatDock() {
   if (hidden) return bannerEl;
   const list = chats ?? [];
   const unread = list.filter((c) => unreadIn(c, me!)).length;
-  const wins = st.wins.filter((w) => w.id === 'list' || list.some((c) => c.id === w.id) || !chats || Date.now() - (w.at ?? 0) < 20000);
+  const wins = st.wins.filter((w) => w.id === 'list' || (w.id === 'teaching-coach' && profile?.role === 'teacher') || list.some((c) => c.id === w.id) || !chats || Date.now() - (w.at ?? 0) < 20000);
   const big = wins.find((w) => w.max && !w.min);
   const anyOpen = wins.some((w) => !w.min);
   return (
@@ -221,7 +222,7 @@ export function ChatDock() {
 
 // A minimised chat: a slim tab on the bottom edge. A click opens it again.
 function DockTab({ me, c, id }: { me: string; c?: Chat; id: string }) {
-  const title = id === 'list' ? 'All chats' : c ? chatTitle(c, me) : 'Chat';
+  const title = id === 'list' ? 'All chats' : id === 'teaching-coach' ? 'Teacher’s Companion' : c ? chatTitle(c, me) : 'Chat';
   const un = c ? unreadIn(c, me) : false;
   return (
     <span className={'dock-tab' + (un ? ' has-new' : '')}>
@@ -279,7 +280,8 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
   const { profile } = useAuth();
   const cur = chats.find((c) => c.id === w.id);
   const [leaving, setLeaving] = useState<'' | 'min' | 'close'>('');
-  const title = cur ? chatTitle(cur, me) : 'Messages';
+  const coachOpen = w.id === 'teaching-coach' && profile?.role === 'teacher';
+  const title = coachOpen ? 'Teacher’s Companion' : cur ? chatTitle(cur, me) : 'Messages';
   // Folding away: the window shrinks down into its tab, then becomes the tab.
   const go = (what: 'min' | 'close') => {
     setLeaving(what);
@@ -309,7 +311,7 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
     <div ref={winRef} onKeyDown={(e) => e.key === 'Escape' && !(e.target as HTMLElement).closest('[role=menu]') && go('min')} data-win={w.id} className={'dock-win' + (w.max ? ' max' : '') + (flipping ? ' flipping' : '') + (leaving ? ' leaving-' + leaving : '')} role="dialog" aria-label={title}>
       {!w.max && <span className="dock-size" onPointerDown={sizeWins} title="Drag to make the windows larger or smaller" aria-hidden="true" />}
       <div className="dock-head">
-        {cur ? (
+        {coachOpen ? <span className="dock-face"><UiIcon name="message" size={18}/></span> : cur ? (
           <span className={'dock-face' + (cur.kind === 'group' ? ' group' : '')}>
             {other ? <PersonFace id={other} name={title} size={28} status /> : <UiIcon name={cur.kind === 'group' ? 'groups' : 'pen'} size={15} />}
           </span>
@@ -336,20 +338,20 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
             <WinIcon d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" />
           </button>
         )}
-        <Link to={cur ? `/messages?c=${cur.id}` : '/messages'} className="icon-btn dock-ic" aria-label="Open in Messages" data-tip="Open in Messages" onClick={() => closeWin(w.id)}>
+        <Link to={coachOpen ? '/messages?c=teaching-coach' : cur ? `/messages?c=${cur.id}` : '/messages'} state={coachOpen ? {coachContext:w.coachContext} : undefined} className="icon-btn dock-ic" aria-label="Open in Messages" data-tip="Open in Messages" onClick={() => closeWin(w.id)}>
           <WinIcon d="M14 4h6v6M20 4l-8 8M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4" />
         </Link>
         <button type="button" className="icon-btn dock-ic" onClick={() => go('close')} aria-label="Close" data-tip="Close">
           <WinIcon d="M6 6l12 12M18 6L6 18" />
         </button>
       </div>
-      {cur && dir ? (
+      {coachOpen ? <div className="dock-chat dock-coach coach"><CoachConversation uid={me} context={w.coachContext ?? coachContextOnPage()} compact /></div> : cur && dir ? (
         <div className="dock-chat">
           <ChatView key={cur.id} c={cur} me={dir.me} dir={dir} teacher={profile?.role === 'teacher'} onBack={() => closeWin(w.id)} />
         </div>
       ) : (
         <div className="dock-list">
-          {profile?.role==='teacher'&&(!q.trim()||/coach|teach/i.test(q))&&<button type="button" className="msg-row" onClick={()=>{const context={lessonContext:null,formContext:null,evidencePacketId:'',reflectionId:''};setCoachPanel({uid:me,conversationId:lastConversation(me,JSON.stringify(context)),context});closeWin(w.id);}}><span className="msg-av"><UiIcon name="message" size={18}/></span><span className="msg-row-t"><b>Teaching Coach</b><span className="msg-row-last">Open a pinned conversation</span></span></button>}
+          {profile?.role==='teacher'&&(!q.trim()||/companion|coach|teach/i.test(q))&&<button type="button" className="msg-row" onClick={()=>replaceWin(w.id,'teaching-coach',coachContextOnPage())}><span className="msg-av"><UiIcon name="message" size={18}/></span><span className="msg-row-t"><b>Teacher’s Companion</b><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
           {dir && <DockFind me={me} dir={dir} chats={chats} onOpen={(id) => replaceWin(w.id, id)} q={q} setQ={setQ} />}
           {!q.trim() && chats.length === 0 && <span className="hint dock-none">No messages yet. Search for someone above.</span>}
           {!q.trim() && chats.map((c) => {

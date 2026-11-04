@@ -14,7 +14,7 @@ export function voiceWav(chunks:{pcm:string;rate:number}[]){
 export function CoachVoice({disabled,onTranscript,reply,resetKey,reason,turn}:{turn:number;reason:string;disabled:boolean;onTranscript:(text:string)=>void;reply:string;resetKey:string}){
  const [enabled,setEnabled]=useState(false),[recording,setRecording]=useState(false),[stage,setStage]=useState(''),[error,setError]=useState(''),[url,setUrl]=useState(''),[last,setLast]=useState('');
  const recorder=useRef<MediaRecorder|null>(null),stream=useRef<MediaStream|null>(null),timer=useRef(0),alive=useRef(true),audio=useRef<HTMLAudioElement>(null),generation=useRef(0),urlRef=useRef('');
- const busy=!!stage;useAiActivity({active:busy,title:'Teacher’s Coach voice',detail:stage,error});
+ const busy=!!stage;useAiActivity({active:busy,title:'Teacher’s Companion voice',detail:stage,error});
  const clear=()=>{audio.current?.pause();if(urlRef.current)URL.revokeObjectURL(urlRef.current);urlRef.current='';setUrl('');};
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;generation.current++;window.clearTimeout(timer.current);if(recorder.current){recorder.current.onstop=null;if(recorder.current.state!=='inactive')recorder.current.stop();}stream.current?.getTracks().forEach(t=>t.stop());audio.current?.pause();if(urlRef.current)URL.revokeObjectURL(urlRef.current);};},[]);
  useEffect(()=>{generation.current++;window.clearTimeout(timer.current);if(recorder.current){recorder.current.onstop=null;if(recorder.current.state!=='inactive')recorder.current.stop();recorder.current=null;}stream.current?.getTracks().forEach(t=>t.stop());stream.current=null;setRecording(false);clear();setLast('');setStage('');},[resetKey]);

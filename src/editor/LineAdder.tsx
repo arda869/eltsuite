@@ -26,6 +26,8 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
       keep();
       if (!editor.isEditable) return hide();
       if ((e.target as HTMLElement).closest('.line-add')) return;
+      // Keep the selected line while the pointer crosses the margin to the button.
+      if (target.current && e.clientX < dom.getBoundingClientRect().left) return;
       // A gap or choice shows its own drag handle at the start of the line; keep out of its way.
       if ((e.target as HTMLElement).closest('.grip')) return;
       // The top-level block level with the pointer, or the nearest one when the pointer is in a gap.
@@ -55,7 +57,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
     const leave = (e: MouseEvent) => {
       if (host.contains(e.relatedTarget as Node)) return;
       keep();
-      later.current = window.setTimeout(hide, 450);
+      later.current = window.setTimeout(hide, 1000);
     };
     host.addEventListener('mousemove', move);
     host.addEventListener('mouseleave', leave);
@@ -80,7 +82,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
   };
   return (
     <>
-    <button type="button" className="line-add" style={{ top: below }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 300))} onClick={add}>
+    <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 1000))} onClick={add}>
       <UiIcon name="plus" />
     </button>
     <span className="line-add-guide" style={{ top: below }} aria-hidden="true" />

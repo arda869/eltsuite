@@ -17,20 +17,20 @@ try{
  const demo=await p.evaluate(()=>JSON.parse(localStorage.getItem('mockdemo')));
  const url=base+'/development?section=coach&classId='+demo.classId+'&itemId='+demo.itemId;
  await p.goto(url);const question='How can I make instructions clearer?';
- await p.getByRole('textbox',{name:'Message your coach'}).fill(question);await p.getByRole('button',{name:'Send',exact:true}).click();
+ await p.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill(question);await p.getByRole('button',{name:'Send',exact:true}).click();
  await p.getByText('What did you notice about learners’ responses? What other explanation might fit what happened?',{exact:true}).waitFor();
  await p.reload();await p.getByText(question,{exact:true}).waitFor();
- await p.getByRole('button',{name:'Pin chat ↗',exact:true}).click();const panel=p.getByRole('complementary',{name:'Pinned Teaching Coach'});await panel.getByText(question,{exact:true}).waitFor();
+ await p.getByRole('button',{name:'Pin chat ↗',exact:true}).click();const panel=p.getByRole('complementary',{name:'Pinned Teacher’s Companion'});await panel.getByText(question,{exact:true}).waitFor();
  await p.goto(base+'/classes');await panel.getByText(question,{exact:true}).waitFor();
- await panel.getByRole('button',{name:'Minimise Teaching Coach'}).click();assert.equal(await panel.getByRole('textbox',{name:'Message your coach'}).isVisible(),false);
- await p.reload();await panel.getByRole('button',{name:'Expand Teaching Coach'}).click();await panel.getByText(question,{exact:true}).waitFor();
- await panel.getByRole('textbox',{name:'Message your coach'}).fill('Would a short demonstration help?');await panel.getByRole('button',{name:'Send',exact:true}).click();await panel.getByRole('log').getByText('Would a short demonstration help?',{exact:true}).waitFor();await panel.getByRole('button',{name:'New chat',exact:true}).waitFor({state:'visible'});
+ await panel.getByRole('button',{name:'Minimise Teacher’s Companion'}).click();assert.equal(await panel.getByRole('textbox',{name:'Message Teacher’s Companion'}).isVisible(),false);
+ await p.reload();await panel.getByRole('button',{name:'Expand Teacher’s Companion'}).click();await panel.getByText(question,{exact:true}).waitFor();
+ await panel.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('Would a short demonstration help?');await panel.getByRole('button',{name:'Send',exact:true}).click();await panel.getByRole('log').getByText('Would a short demonstration help?',{exact:true}).waitFor();await panel.getByRole('button',{name:'New chat',exact:true}).waitFor({state:'visible'});
  await p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).history.length===2);
  await panel.getByRole('button',{name:'New chat',exact:true}).click();await panel.getByRole('log').getByText(question,{exact:true}).waitFor({state:'hidden'});
  await panel.getByRole('button',{name:'History',exact:true}).click();await panel.getByRole('navigation',{name:'Saved coaching conversations'}).getByRole('button',{name:new RegExp(question.replace('?','\\?'))}).click();await panel.getByRole('log').getByText('Would a short demonstration help?',{exact:true}).waitFor();await panel.getByRole('button',{name:'New chat',exact:true}).waitFor({state:'visible'});
- await panel.getByRole('button',{name:'Unpin Teaching Coach'}).click();assert.equal(await panel.count(),0);
+ await panel.getByRole('button',{name:'Unpin Teacher’s Companion'}).click();assert.equal(await panel.count(),0);
  await p.goto(url);await p.getByText(question,{exact:true}).waitFor();
- await p.getByRole('textbox',{name:'Message your coach'}).fill('Draft stays when pinned');await p.getByRole('button',{name:'Pin chat ↗',exact:true}).click();assert.equal(await panel.getByRole('textbox',{name:'Message your coach'}).inputValue(),'Draft stays when pinned');await panel.getByRole('textbox',{name:'Message your coach'}).fill('Shared draft from the small panel');await p.waitForFunction(()=>[...document.querySelectorAll('textarea[aria-label="Message your coach"]')].every(t=>t.value==='Shared draft from the small panel')); 
+ await p.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('Draft stays when pinned');await p.getByRole('button',{name:'Pin chat ↗',exact:true}).click();assert.equal(await panel.getByRole('textbox',{name:'Message Teacher’s Companion'}).inputValue(),'Draft stays when pinned');await panel.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('Shared draft from the small panel');await p.waitForFunction(()=>[...document.querySelectorAll('textarea[aria-label="Message Teacher’s Companion"]')].every(t=>t.value==='Shared draft from the small panel')); 
  await p.setViewportSize({width:390,height:844});assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await p.screenshot({path:'/tmp/coach-history-mobile.png'});await p.setViewportSize({width:1400,height:960});await p.screenshot({path:'/tmp/coach-history-desktop.png'});
  console.log('PASS saved conversation reload; recent context; pinned panel navigation, minimise/reload, full history, new chat retention, draft handoff and mobile fit. AI/Firebase simulated.');
 }catch(e){console.log(await p?.locator('body').innerText());throw e;}finally{await browser?.close();try{process.kill(-server.pid,'SIGTERM');}catch{}}

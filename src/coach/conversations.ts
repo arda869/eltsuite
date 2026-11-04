@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {collection,onSnapshot,orderBy,query} from 'firebase/firestore';
 import {db} from '../lib/firebase';
 import type {LessonCoachContext} from './CoachChat';
-export type CoachContext={lessonContext?:LessonCoachContext|null;formContext?:{docId:string;formId:string}|null;evidencePacketId?:string;reflectionId?:string};
+export type CoachContext={lessonContext?:LessonCoachContext|null;formContext?:{docId:string;formId:string}|null;evidencePacketId?:string;reflectionId?:string;pageContext?:{name:string;path:string}|null};
 export type CoachMessage={role:'teacher'|'coach';text:string;basis?:string[];journalDraft?:string|null;sources?:{title:string;url:string}[]};
 type Turn={id:string;prompt:string;status:string;contextKey?:string;at:number;sequence:number;result?:{reply:string;basis?:string[];journalDraft?:string|null;sources?:{title:string;url:string}[]}};
 export type Conversation={id:string;title:string;updatedAt:number;context:CoachContext};

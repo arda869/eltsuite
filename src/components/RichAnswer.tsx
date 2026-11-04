@@ -4,12 +4,12 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 
 // A small rich-text box for long answers: bold, italics, underline and lists.
-export function RichAnswer({ value, onChange, disabled, spellcheck, label }: { value: JSONContent | null; onChange: (v: JSONContent) => void; disabled?: boolean; spellcheck: boolean; label: string }) {
+export function RichAnswer({ value, onChange, disabled, spellcheck, label }: { value: JSONContent | null; onChange: (v: JSONContent) => void; disabled?: boolean; spellcheck?: boolean; label: string }) {
   const editor = useEditor({
     extensions: [StarterKit.configure({ heading: false, codeBlock: false, code: false, blockquote: false, horizontalRule: false }), Underline],
     content: value ?? '',
     editable: !disabled,
-    editorProps: { attributes: { spellcheck: spellcheck ? 'true' : 'false', 'aria-label': label, class: 'rich-answer-doc' } },
+    editorProps: { attributes: { ...(spellcheck===undefined?{}:{spellcheck:spellcheck ? 'true' : 'false'}), 'aria-label': label, class: 'rich-answer-doc' } },
     onUpdate: ({ editor }) => onChange(editor.getJSON()),
   });
   useEffect(() => {

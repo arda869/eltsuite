@@ -18,6 +18,13 @@ export type Responses = Record<string, Response>;
 
 export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect', 'upload', 'pq', 'tt'] as const;
 export const isQuestion = (n: JSONContent) => !!n.attrs?.id && !n.attrs?.example && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '') && !(n.type === 'pq' && n.attrs?.kind === 'speaking') && !(n.type === 'tt' && n.attrs?.mode !== 'complete');
+export function questionSpellingOverride(content:JSONContent,id:string):boolean {
+ if(content.attrs?.id===id)return content.attrs.spellingOverride===true;
+ return content.content?.some(n=>questionSpellingOverride(n,id))??false;
+}
+export function withQuestionSpellingOverride(content:JSONContent,id:string,enabled:boolean):JSONContent {
+ return {...content,...(content.attrs?.id===id?{attrs:{...content.attrs,spellingOverride:enabled}}:{}),...(content.content?{content:content.content.map(n=>withQuestionSpellingOverride(n,id,enabled))}:{})};
+}
 
 // Seeded shuffle so a question always appears in the same shuffled order.
 export function shuffle<T>(list: T[], seed: string): T[] {
@@ -95,6 +102,7 @@ export function splitKey(content: JSONContent): { content: JSONContent; key: Ans
         out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5, genre: a.genre ?? '', rubric: a.rubric ?? 'none', criteria: a.criteria ?? [] };
       }
       if (key[id]) {
+        if (a.spellingOverride === true) out.attrs = { ...out.attrs, spellingOverride: true };
         if (a.feedback?.trim()) key[id].feedback = a.feedback.trim();
         if (a.hint?.trim()) key[id].hint = a.hint.trim();
         if (out.attrs) {
@@ -147,6 +155,7 @@ export function mergeKey(content: JSONContent, key: AnswerKey): JSONContent {
       if (n.type === 'writing' && k.kind === 'writing') out.attrs = { ...a, model: k.model };
       if (n.type === 'pq' && k.kind === 'pack') out.attrs = { id: a.id, kind: a.kind, data: mergePack(a.kind as PackKind, a.data ?? {}, k.k) };
       out.attrs = { ...out.attrs, feedback: k.feedback ?? '', hint: k.hint ?? '' };
+      if (a.spellingOverride === true) out.attrs.spellingOverride = true;
     }
     if (n.type === 'wordbank') out.attrs = { extras: a.extras ?? [] };
     if (n.content) out.content = n.content.map(walk);

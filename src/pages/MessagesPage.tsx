@@ -10,7 +10,8 @@ import { FileIcon, type FileKind } from '../components/FileIcon';
 import { startSessionWith } from './StudioSession';
 import { isProxyTab } from '../lib/proxy';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import type {CoachContext} from '../coach/conversations';
 import { collection, getDocs, type DocumentData } from 'firebase/firestore';
 import type { JSONContent } from '@tiptap/react';
 import { db } from '../lib/firebase';
@@ -64,6 +65,7 @@ export function MessagesPage() {
   const rawChats = useChats(me?.key);
   const chats = useMemo(() => withShownNames(rawChats, dir?.nameFor), [rawChats, dir]);
   const navigate = useNavigate();
+  const location = useLocation();
   const [params, setParams] = useSearchParams();
   const open = params.get('c') ?? '';
   const [creating, setCreating] = useState<false | 'chat' | 'group'>(false);
@@ -149,7 +151,7 @@ export function MessagesPage() {
             </div>
             <input aria-label="Search people and groups" className="ma-search" type="search" value={q} placeholder="Search people and groups" onChange={(e) => setQ(e.target.value)} />
             <div className="msg-list" role={shown.length||teacher ? 'listbox' : undefined} aria-label="Chats">
-              {teacher&&(!q||/teacher|coach/i.test(q))&&<button type="button" role="option" aria-selected={coachOpen} className={'msg-row'+(coachOpen?' on':'')} onClick={()=>pick('teaching-coach')}><span className="msg-av"><AiMark/></span><span className="msg-row-t"><span className="msg-row-top"><b>Teacher’s Coach</b><span className="hint">Pinned</span></span><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
+              {teacher&&(!q||/companion|teacher|coach/i.test(q))&&<button type="button" role="option" aria-selected={coachOpen} className={'msg-row'+(coachOpen?' on':'')} onClick={()=>pick('teaching-coach')}><span className="msg-av"><AiMark/></span><span className="msg-row-t"><span className="msg-row-top"><b>Teacher’s Companion</b><span className="hint">Pinned</span></span><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
               {shown.length === 0 && <span className="hint msg-none">{chats.length ? 'No chats match.' : teacher ? 'No messages yet. Write to a learner, a group or a colleague.' : dir?.mode === 'free' || !dir?.mode ? 'No messages yet. Write to a classmate or your teacher.' : 'No messages yet. Write to your teacher.'}</span>}
               {shown.map((c) => {
                 const un = unreadIn(c, me.key);
@@ -175,7 +177,7 @@ export function MessagesPage() {
             </div>
           </aside>
           <main className="msg-main">
-            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid}/></div>:cur ? (
+            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid} context={(location.state as {coachContext?:CoachContext}|null)?.coachContext}/></div>:cur ? (
               <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} onMin={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />
             ) : (
               <div className="msg-empty">
