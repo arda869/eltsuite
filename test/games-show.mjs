@@ -38,7 +38,7 @@ try{
   await p.getByRole('button',{name:'Finish game',exact:true}).click();await p.getByRole('heading',{name:'Game complete',exact:true}).waitFor();
   await p.getByText('Choose one question you want to remember.',{exact:false}).waitFor();await p.getByText('Worth another look',{exact:true}).waitFor();await p.getByText('You buy bread here.').waitFor();
   const score=Number(await p.locator('.show-final b').textContent());assert.ok(score>=20&&score<=50&&score%10===0,'score is 10 a question: '+score);
-  await p.getByRole('button',{name:'Play again',exact:true}).click();await p.getByRole('button',{name:'Start the show',exact:true}).waitFor();
+  await p.getByRole('button',{name:'Play again',exact:true}).click();await p.getByRole('heading',{name:'Where do you borrow books?'}).waitFor();assert.equal(await p.locator('.show-score b').first().innerText(),'0');
   assert.deepEqual(errors,[]);await context.close();console.log('Keyboard play → lock in → explanation → wrong answer → take two away → finish → play again.');}
  // 2. Without lock-in a tap answers at once; the timer runs out and the round scores nothing.
  {const context=await browser.newContext({viewport:{width:1180,height:820}});const {p,errors}=await open(context,'theme=arcade&lock=0&lifelines=1&timer=15');
