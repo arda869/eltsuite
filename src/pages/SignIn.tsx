@@ -204,9 +204,9 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         )}
 
         {needsPassword && (
-          <label className="field">
+          <div className="field">
             <span className="row-between">
-              Password
+              <label htmlFor="teacher-password">Password</label>
               {mode === 'signin' && (
                 <button type="button" className="btn link small" onClick={() => go('reset')}>
                   Forgot password?
@@ -214,6 +214,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
               )}
             </span>
             <input
+              id="teacher-password"
               type="password"
               aria-label="Password"
               value={password}
@@ -222,7 +223,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
               required
             />
             {mode === 'create' && <span className="hint">At least 8 characters.</span>}
-          </label>
+          </div>
         )}
 
         {mode === 'link' && <span className="hint">We’ll email you a link that signs you in. No password needed.</span>}
