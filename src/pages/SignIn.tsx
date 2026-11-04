@@ -34,7 +34,7 @@ const TITLES: Record<Mode, string> = {
   create: 'Make your teacher account',
   reset: 'Reset your password',
   link: 'Sign in with an email link',
-  code: 'I have an invitation',
+  code: 'I Have an Invitation',
 };
 
 // The link in an invitation email: /?code=<the code> opens the form with the code filled in.
@@ -158,7 +158,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
 
         {notInvited && !error && (
           <span className="error" role="alert">
-            {notInvited} couldn’t finish account setup without a valid invitation. ELT Suite is invitation-only for now. If you have a code, choose “I have an invitation”.
+            {notInvited} couldn’t finish account setup without a valid invitation. ELT Suite is invitation-only for now. If you have a code, choose “I Have an Invitation”.
           </span>
         )}
         {mode === 'create' && code && (
@@ -204,16 +204,17 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         )}
 
         {needsPassword && (
-          <label className="field">
+          <div className="field">
             <span className="row-between">
-              Password
+              <label htmlFor="teacher-password">Password</label>
               {mode === 'signin' && (
                 <button type="button" className="btn link small" onClick={() => go('reset')}>
-                  Forgot?
+                  Forgot password?
                 </button>
               )}
             </span>
             <input
+              id="teacher-password"
               type="password"
               aria-label="Password"
               value={password}
@@ -222,7 +223,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
               required
             />
             {mode === 'create' && <span className="hint">At least 8 characters.</span>}
-          </label>
+          </div>
         )}
 
         {mode === 'link' && <span className="hint">We’ll email you a link that signs you in. No password needed.</span>}
@@ -231,12 +232,12 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         {notice && <span className="notice" role="status">{notice}</span>}
 
         <button type="submit" className="btn primary tall block" disabled={busy}>
-          {busy ? 'One moment…' : mode === 'signin' ? 'Sign in' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
+          {busy ? 'One moment…' : mode === 'signin' ? 'Sign In' : mode === 'create' ? 'Make my account' : mode === 'reset' ? 'Send reset link' : mode === 'code' ? 'Continue' : 'Email me a link'}
         </button>
 
         {mode === 'signin' && (
           <button type="button" className="btn tall block" onClick={() => go('link')}>
-            Email me a sign-in link instead
+            Email me a sign-in link
           </button>
         )}
 
@@ -244,7 +245,7 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
           <div className="invite-cta">
             <span>New to ELT Suite?</span>
             <button type="button" className="btn block tall invite-btn" onClick={() => go('code')}>
-              I have an invitation
+              I Have an Invitation
             </button>
           </div>
         )}
@@ -272,6 +273,6 @@ export function SignIn({ intro, start }: { intro?: React.ReactNode; start?: { mo
         </span>
       </form>
   );
-  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Back to Homepage</Link></div>{form}</main></PublicLayout>;
+  if (onPublicPage) return <PublicLayout><main id="public-main" className="pub-auth pub-section"><div><span className="pub-kicker">YOUR TEACHING SPACE</span><h1>Welcome back to ELT Suite.</h1><p>Sign in to continue your teaching.</p><p className="pub-note">ELT Suite is currently available to invited teachers.</p><Link className="pub-text-link" to="/">Return to homepage</Link></div>{form}</main></PublicLayout>;
   return <div className="signin">{intro ?? <InvitationIntro invitation={code ?? undefined}/>} {form}</div>;
 }

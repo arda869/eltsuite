@@ -5,7 +5,7 @@ export function friendlyAuthError(e: unknown): string {
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'That email and password don’t match. Try again, or use “Forgot?”.';
+      return 'That email and password don’t match. Try again, or use “Forgot password?”.';
     case 'auth/invalid-email':
       return 'That doesn’t look like an email address.';
     case 'auth/email-already-in-use':

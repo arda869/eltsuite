@@ -35,7 +35,6 @@ import { AiActivityDock } from './components/AiActivity';
 const PublicHome=lazy(()=>import('./public/Home').then(m=>({default:m.PublicHome})));
 const PublicError=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicError})));
 const ContactPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.ContactPage})));
-const ExplorePage=lazy(()=>import('./public/ExplorePage').then(m=>({default:m.ExplorePage})));
 const PricingPage=lazy(()=>import('./public/PricingPage').then(m=>({default:m.PricingPage})));
 const AboutPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.AboutPage})));
 
@@ -219,8 +218,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />
           <Route path="/timetable" element={<TeacherOnly><TimetablePage /></TeacherOnly>} />
           <Route path="/rooms" element={<TeacherOnly><RoomsPage /></TeacherOnly>} />
-          <Route path="/tour" element={<Navigate to="/explore" replace />} />
-          <Route path="/explore" element={<ExplorePage />} />
+          <Route path="/tour" element={<Navigate to="/#plan" replace />} />
+          <Route path="/explore" element={<Navigate to="/#plan" replace />} />
           <Route path="/pricing" element={<PricingPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/signin" element={<PublicSignIn />} />
