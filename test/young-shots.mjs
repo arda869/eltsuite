@@ -23,7 +23,7 @@ for (const [name, [width, height]] of Object.entries(SIZES)) {
     const overflow = await p.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
     if (overflow) errors.push(`${name}${checked ? ' checked' : ''}: page scrolls sideways`);
     // Tap targets under 44 × 44 px, other than words inside running text.
-    const small = await p.evaluate(() => [...document.querySelectorAll('.task-body :is(.opt, .slash-opt, .bank-word, .match-item, .drop-slot, .gap-input, .lg-slot), .frame-foot .btn')].filter((el) => { const r = el.getBoundingClientRect(); return r.width && (r.height < 44 || r.width < (el.matches('.lg-slot') && innerWidth <= 700 ? 40 : 44)); }).map((el) => el.className + ' ' + el.textContent.trim().slice(0, 20)));
+    const small = await p.evaluate(() => [...document.querySelectorAll('.task-body :is(.opt, .slash-opt, .bank-word, .match-item, .drop-slot, .gap-input, .lg-slot), .frame-foot .btn')].filter((el) => { const r = el.getBoundingClientRect(); return r.width && (r.height < 44 || r.width < 44); }).map((el) => el.className + ' ' + el.textContent.trim().slice(0, 20)));
     if (small.length) errors.push(`${name}${checked ? ' checked' : ''}: small targets: ${small.join(', ')}`);
     if (name === 'ipad-landscape') {
       await p.addScriptTag({ path: 'node_modules/axe-core/axe.min.js' });
