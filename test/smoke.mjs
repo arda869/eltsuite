@@ -413,7 +413,7 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Generate answer key',exact:true}).click().catch(async e=>{throw Error(e.message+' '+s.errors.join(';')+' '+(await s.p.locator('body').innerText()).slice(0,2500));});
     let dialog=s.p.getByRole('dialog',{name:'Generate answer key'});
-    await dialog.getByRole('button',{name:'Generate missing answers'}).click();await reviewAi(s.p,'Generate answer key');
+    await dialog.getByRole('button',{name:'Fill in missing answers'}).click();await reviewAi(s.p,'Generate answer key');
     await dialog.getByRole('button',{name:'Apply answer key'}).waitFor();
     await axe(s.p,'Answer key review',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Apply answer key'}).click();
@@ -421,7 +421,7 @@ const J = {
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
     dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
     await dialog.getByRole('button',{name:/More support Add choices/}).click();
-    await dialog.getByRole('button',{name:'Create differentiated version'}).click();await reviewAi(s.p,'Differentiate activity');
+    await dialog.getByRole('button',{name:'Make the version'}).click();await reviewAi(s.p,'Differentiate activity');
     await dialog.getByRole('button',{name:'Add differentiated version'}).waitFor();
     await axe(s.p,'Differentiated preview',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Add differentiated version'}).click();
@@ -429,7 +429,7 @@ const J = {
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
     dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
     await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
-    await dialog.getByRole('button',{name:'Create next activity'}).click();await reviewAi(s.p,'Suggest next activity');
+    await dialog.getByRole('button',{name:'Make the activity'}).click();await reviewAi(s.p,'Suggest next activity');
     await dialog.getByRole('button',{name:'Add activity to lesson'}).click();
     await dialog.waitFor({state:'hidden'});
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.title==='Our next plan'&&v.order===1),s.demo);

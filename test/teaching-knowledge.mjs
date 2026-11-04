@@ -27,11 +27,11 @@ try {
  const card=p.locator('.dcut-edit');await card.getByLabel('Headword',{exact:true}).fill('bank');
  const ai=card.getByRole('region',{name:'Teaching definition with AI'});
  // Leave optional extra context blank; level comes from the class.
- await ai.getByText('A1',{exact:true}).waitFor();
+ await ai.getByText('Class level A1',{exact:true}).waitFor();
  await card.getByLabel('Meaning',{exact:true}).fill('My own explanation.');
- await ai.getByRole('button',{name:'Suggest definition with AI',exact:true}).click();
+ await ai.getByRole('button',{name:'Suggest definition',exact:true}).click();
  await ai.locator('img').waitFor();assert(await ai.locator('img').evaluate(im=>im.complete&&im.naturalWidth>0));
- await ai.getByRole('button',{name:'Use suggested definition',exact:true}).click();
+ await ai.getByRole('button',{name:'Use this definition',exact:true}).click();
  assert.equal(await card.getByLabel('Meaning',{exact:true}).inputValue(),'My own explanation.');
  assert.equal(await card.getByLabel('Example sentence',{exact:true}).inputValue(),'We sat on the river bank.');
  await card.getByLabel('Meaning',{exact:true}).fill('The land beside a river.');
@@ -49,7 +49,7 @@ try {
  await sentence.evaluate(el=>{const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);let text;while((text=walker.nextNode())){const at=text.textContent.indexOf('bank');if(at>=0){const range=document.createRange();range.setStart(text,at);range.setEnd(text,at+4);const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);break;}}});
  assert.equal(await p.evaluate(()=>getSelection().toString()),'bank');await p.waitForTimeout(150);
  await p.getByRole('button',{name:'Add a definition to the selected word',exact:true}).click();
- const pop=p.getByRole('dialog',{name:'Definition',exact:true});await pop.getByRole('button',{name:'Suggest definition with AI',exact:true}).click();await pop.getByRole('button',{name:'Use suggested definition',exact:true}).click();await pop.getByRole('button',{name:'Done',exact:true}).click();
+ const pop=p.getByRole('dialog',{name:'Definition',exact:true});await pop.getByRole('button',{name:'Suggest definition',exact:true}).click();await pop.getByRole('button',{name:'Use this definition',exact:true}).click();await pop.getByRole('button',{name:'Done',exact:true}).click();
  await p.waitForTimeout(1200);await p.reload();
  assert.equal((await p.locator('.def-word').first().textContent()).trim(),'bank');
  await p.getByRole('button',{name:'Help',exact:true}).click();await p.getByRole('menuitem',{name:/Ask ELT Suite/}).click();
@@ -63,7 +63,7 @@ try {
  const docEditor=p.getByRole('textbox',{name:'Document text',exact:true});await docEditor.fill('Aviation includes flying aircraft.');
  await docEditor.evaluate(el=>{const text=el.querySelector('p').firstChild;const range=document.createRange();range.setStart(text,0);range.setEnd(text,8);const sel=getSelection();sel.removeAllRanges();sel.addRange(range);});
  await p.getByRole('button',{name:'Definition: select a word, then add its meaning',exact:true}).click();
- const dp=p.getByRole('dialog',{name:'Definition',exact:true});await dp.getByRole('button',{name:'Suggest definition with AI',exact:true}).click();await dp.getByText('Designer style: Editorial',{exact:true}).waitFor();await dp.getByRole('button',{name:'Use suggested definition',exact:true}).click();await dp.getByRole('button',{name:'Done',exact:true}).click();
+ const dp=p.getByRole('dialog',{name:'Definition',exact:true});await dp.getByRole('button',{name:'Suggest definition',exact:true}).click();await dp.getByText(/^Editorial · /).waitFor();await dp.getByRole('button',{name:'Use this definition',exact:true}).click();await dp.getByRole('button',{name:'Done',exact:true}).click();
  await p.waitForFunction(()=>Object.keys(JSON.parse(localStorage.getItem('mockfs'))).some(k=>k.startsWith('sharedDocs/definition-doc/media/definition_')));
  await p.waitForTimeout(1200);await p.reload();await p.getByRole('button',{name:'Document mode',exact:true}).click();await p.getByRole('option',{name:'Viewing',exact:true}).click();await p.getByRole('button',{name:'Aviation',exact:true}).click();await p.locator('.dc-img').waitFor();assert(await p.locator('.dc-img').evaluate(im=>im.complete&&im.naturalWidth>0),'Reopened Collab reader must resolve its own saved image');
  console.log('PASS: outside-course Editorial definition saved to document media and reopened in reader with a loaded image. Model/Firebase simulated.');

@@ -49,6 +49,8 @@
 .ai-button .ai-mark { width:18px; height:18px; color:currentColor; }
 .ai-inline-progress { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--hair); border-radius:var(--suite-radius); background:var(--paper); color:var(--ink); }
 .ai-inline-progress p { margin:4px 0 0; color:var(--muted); font:13px/1.5 var(--sans); }
+.ai-inline-progress>div { flex:1; min-width:0; }
+.ai-inline-elapsed { flex:none; align-self:flex-start; font:600 12px/1 var(--sans); color:var(--muted); font-variant-numeric:tabular-nums; padding-top:3px; }
 .ai-activity-dock { position:fixed; inset:auto auto max(20px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)); width:min(336px,calc(100vw - 32px)); max-height:min(60dvh,620px); margin:0; padding:0; border:1px solid var(--hair-strong); border-radius:18px; background:var(--paper); color:var(--ink); box-shadow:0 12px 44px #0002; font:14px/1.5 var(--sans); z-index:10000; overflow:auto; }
 .ai-activity-dock::backdrop { background:transparent; pointer-events:none; }
 :root:has(.sx,.vx) .ai-activity-dock { --paper:#24211e; --surface:#302c28; --ink:#ece8e1; --muted:#b4aaa0; --hair:#ffffff18; --hair-strong:#ffffff30; --accent-text:#e9a77d; color-scheme:dark; }

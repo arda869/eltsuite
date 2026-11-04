@@ -1,4 +1,5 @@
-import { AiButton, AiProgress } from '../components/AiMark';
+import { AiButton } from '../components/AiMark';
+import { AI_ALLOWANCE, AiActions, AiDraft, AiExamples, AiField, AiHeader, AiMore, AiNotice, AiUses, AiWorking } from './kit';
 import { useAiActivity } from '../components/AiActivity';
 import { useEffect, useRef, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -58,22 +59,43 @@ export function LessonToolDialog({classId,itemId,taskId,mode,onClose,onApplied,o
  useEffect(()=>{if(!started.current){started.current=true;if(mode!=='answers'&&!pending&&!onBlank)void start('ideas');}},[]); // eslint-disable-line react-hooks/exhaustive-deps
  const apply=async()=>{if(!pending)return;setBusy(true);setError('');try{const r=(await call({action:'taskToolsApply',classId,itemId,requestId:pending.id})).data;if(r.applied){remember(null);onApplied(r.taskId??taskId??'');onClose();}}catch(e){setError(e instanceof Error?e.message:'Could not apply the draft.');}finally{setBusy(false);}};
  const applyReady=!!pending&&!busy&&!media.some(a=>a.status!=='ready')&&!!(result?.native||result?.entries?.length);
- return <VideoDialog portal minimised={activity.minimised} onMinimise={activity.minimise} name={labels[mode]} onClose={()=>{if(!busy)onClose();}}><div className="lesson-tool-dialog"><header><div><small>TEACHER WORKSPACE</small><h2>{onBlank?'Create an activity':labels[mode]}</h2></div><button className="btn" disabled={busy} onClick={onClose}>Close</button></header>
- <p>{mode==='answers'?'Fill missing inline answers and suggested responses. Your existing answers stay as they are.':mode==='differentiate'?'Change the support or challenge while keeping the learning aim. The result becomes a separate version of this activity.':'Choose a purposeful next step based on the lesson so far. The new activity will be added at the end.'}</p>
- {onBlank&&<div className="lesson-tool-actions"><button className="btn" disabled={busy} onClick={onBlank}>Start blank</button>{onImport&&<button className="btn" disabled={busy} onClick={onImport}>Upload existing material</button>}</div>}
- {mode==='answers'&&<label>Answer-key scope<select value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></select></label>}
- {mode!=='answers'&&<label>Activity length (minutes)<input type="number" min={1} max={60} value={minutes} disabled={busy||!!pending} onChange={e=>setMinutes(Math.max(1,Math.min(60,Number(e.target.value)||10)))}/></label>}
- {result?.ideas&&<div className="lesson-tool-ideas">{result.ideas.map((idea,i)=><button key={i} type="button" aria-pressed={selected===idea} className={'lesson-tool-idea '+(selected===idea?'selected':'')} onClick={()=>setSelected(idea)}><small>{idea.kind==='support'?'More support':idea.kind==='challenge'?'More challenge':'Option '+(i+1)}</small><strong>{idea.title}</strong><span>{idea.reason}</span><span>{idea.direction}</span></button>)}</div>}
- {!result?.native&&!result?.entries&&<><label>{mode==='answers'?'Extra guidance (optional)':'Your direction (optional)'}<textarea rows={2} maxLength={2000} value={direction} disabled={busy||!!pending} onChange={e=>setDirection(e.target.value)} placeholder={mode==='differentiate'?'For example, add a word bank and one worked example.':mode==='next'?'For example, a pair task where learners use the language to make a decision.':'For example, accept both British and American spelling.'}/></label>
- {!pending&&<div className="lesson-tool-actions">{mode!=='answers'&&<AiButton className="btn" disabled={busy} onClick={()=>void start('ideas')}>Suggest two options</AiButton>}<AiButton className="btn primary" disabled={busy} onClick={()=>void start('generate')}>{mode==='answers'?'Generate missing answers':mode==='differentiate'?'Create differentiated version':'Create next activity'}</AiButton></div>}</>}
- {busy&&<AiProgress label={result?'Saving your reviewed changes…':'Preparing your draft…'} detail="Your existing lesson stays unchanged until you apply the result."/>}
- {pending&&!busy&&!result&&<><p role="status">{pending.step==='ideas'?'Your background ideas are still being prepared. This panel will update when they are ready.':'Your draft is saved while preparation continues.'}</p><AiButton className="btn" onClick={()=>void recover()}>Recover draft</AiButton></>}
- {error&&<p role="alert">{error}</p>}
- {result?.issues?.map((issue,i)=><p className="hint" key={i}>{issue}</p>)}
- {result?.entries&&<div className="lesson-tool-keys"><h3>{result.entries.length} missing answers prepared</h3>{result.entries.map((e,i)=><article key={e.taskId+e.questionId}><strong>{i+1}. {String(e.key.model??e.key.answer??(Array.isArray(e.key.answers)?e.key.answers.join(' / '):e.reason))}</strong>{e.reason&&<p>{e.reason}</p>}</article>)}</div>}
- {result?.native&&<section className="lesson-tool-preview"><h3>{result.activity?.title}</h3><p><strong>{result.activity?.instructions}</strong></p><TaskRenderer classId={classId} content={result.native.content} responses={{}} disabled teacher revealed={result.native.key}/><details><summary>Teacher notes</summary><p style={{whiteSpace:'pre-wrap'}}>{result.native.notes}</p></details></section>}
- {!!media.length&&<ul aria-label="Activity media">{media.map(a=><li key={a.id}>{a.title} — {a.status==='ready'?'Ready':a.status==='failed'?'Preparation failed': 'Preparing…'}{a.status==='failed'&&<button className="btn small" onClick={()=>{if(pending)void call({action:'taskToolsRetryMedia',classId,itemId,requestId:pending.id,assetId:a.id}).then(()=>recover()).catch(()=>setError('Could not retry this media. Please try again.'));}}>Retry media</button>}</li>)}</ul>}
- {applyReady&&<button className="btn primary" onClick={()=>void apply()}>{mode==='answers'?'Apply answer key':mode==='differentiate'?'Add differentiated version':'Add activity to lesson'}</button>}
- {pending&&!busy&&<button className="btn" onClick={()=>{remember(null);setResult(null);setMedia([]);setError('');}}>Start a new draft</button>}
+ const ready=!!(result?.native||result?.entries);
+ const lede=mode==='answers'?'Fills in missing inline answers and suggested responses. Answers you’ve written stay as they are.':mode==='differentiate'?'A version of this activity with more support or more challenge, keeping the same learning aim. It’s added as a separate version.':'A purposeful next step that follows what the lesson has done so far. It’s added at the end.';
+ const examples=mode==='differentiate'?['Add a word bank and one worked example','Remove the scaffolding and ask for full sentences','Shorter text, same questions']:mode==='next'?['A pair task where learners use the language to make a decision','A short writing task that reuses today’s vocabulary','A quick game to review the key language']:['Accept both British and American spelling','Keep model answers under 20 words'];
+ const retry=()=>{setError('');if(pending&&!result)void recover();else void start(mode==='next'&&!selected&&!direction.trim()?'ideas':'generate');};
+ return <VideoDialog portal minimised={activity.minimised} onMinimise={activity.minimise} name={labels[mode]} onClose={()=>{if(!busy)onClose();}}><div className="lesson-tool-dialog">
+ <AiHeader title={onBlank?'Create an activity':labels[mode]} lede={onBlank?'Start from a blank activity, bring in existing material, or let AI suggest the next step.':lede} onClose={onClose} closeDisabled={busy}>
+  <AiUses items={['This lesson',taskId?'The selected activity':false,'Your class profile']}/>
+ </AiHeader>
+ {onBlank&&<AiActions><button className="btn" disabled={busy} onClick={onBlank}>Start blank</button>{onImport&&<button className="btn" disabled={busy} onClick={onImport}>Upload existing material</button>}</AiActions>}
+ {result?.ideas&&!ready&&<div className="lesson-tool-ideas" role="group" aria-label="Suggested options">{result.ideas.map((idea,i)=><button key={i} type="button" aria-pressed={selected===idea} className={'lesson-tool-idea '+(selected===idea?'selected':'')} disabled={busy} onClick={()=>setSelected(idea)}><small>{idea.kind==='support'?'More support':idea.kind==='challenge'?'More challenge':'Option '+(i+1)}</small><strong>{idea.title}</strong><span>{idea.reason}</span><span className="lesson-tool-idea-direction">{idea.direction}</span></button>)}</div>}
+ {!ready&&<>
+  <AiField label={mode==='answers'?'Anything the AI should know':'What would you like?'} optional hint={mode==='answers'?'Rules for marking, spellings to accept, how long model answers should be.':result?.ideas?'Pick an option above, or describe your own.':'Describe the activity in a sentence, or ask for options.'}>
+   <textarea rows={2} maxLength={2000} value={direction} disabled={busy||!!pending} onChange={e=>setDirection(e.target.value)} placeholder={examples[0]}/>
+  </AiField>
+  <AiExamples examples={examples} disabled={busy||!!pending} onPick={setDirection}/>
+  <AiMore summary="Options">
+   {mode==='answers'&&<AiField label="Answer-key scope"><select value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></select></AiField>}
+   {mode!=='answers'&&<AiField label="Activity length (minutes)"><input type="number" min={1} max={60} value={minutes} disabled={busy||!!pending} onChange={e=>setMinutes(Math.max(1,Math.min(60,Number(e.target.value)||10)))}/></AiField>}
+  </AiMore>
+  {!pending&&!busy&&<AiActions note={AI_ALLOWANCE}>
+   <AiButton className="btn primary" onClick={()=>void start('generate')}>{mode==='answers'?'Fill in missing answers':mode==='differentiate'?'Make the version':'Make the activity'}</AiButton>
+   {mode!=='answers'&&<AiButton className="btn" onClick={()=>void start('ideas')}>{result?.ideas?'Suggest two more':'Suggest two options'}</AiButton>}
+  </AiActions>}
+ </>}
+ {busy&&<AiWorking title={result&&ready?'Saving your reviewed changes…':pending?.step==='ideas'||(!pending&&mode!=='answers'&&!selected&&!direction.trim())?'Thinking of options…':'Preparing your draft…'} detail="Your lesson stays unchanged until you apply the result. You can close this and come back; the draft is kept." steps={mode==='answers'?['Reading the lesson','Solving each question','Checking the answers']:['Reading the lesson','Writing the activity','Checking it and solving the key']} step={1}/>}
+ {pending&&!busy&&!result&&<AiNotice kind="info" action={()=>void recover()} actionLabel="Check progress">{pending.step==='ideas'?'Options are still being prepared in the background. This panel updates when they’re ready.':'Your draft is saved and still being prepared.'}</AiNotice>}
+ {error&&<AiNotice kind="error" action={retry} actionDisabled={busy}>{error}</AiNotice>}
+ {result?.issues?.map((issue,i)=><AiNotice kind="info" key={i}>{issue}</AiNotice>)}
+ {result?.entries&&<AiDraft title={`${result.entries.length} missing ${result.entries.length===1?'answer':'answers'} prepared`} actions={applyReady&&<button className="btn primary" onClick={()=>void apply()}>Apply answer key</button>} note="Only empty answers are filled. You can edit any of them in the lesson afterwards.">
+  <ol className="aik-items">{result.entries.map(e=><li key={e.taskId+e.questionId}><span><span className="aik-item-answer">{String(e.key.model??e.key.answer??(Array.isArray(e.key.answers)?e.key.answers.join(' / '):e.reason))}</span>{e.reason&&<p className="aik-item-sub">{e.reason}</p>}</span></li>)}</ol>
+ </AiDraft>}
+ {result?.native&&<AiDraft title={result.activity?.title} meta={mode==='differentiate'?(selected?.kind==='challenge'?'More challenge':'More support'):`${minutes} minutes`} actions={applyReady&&<button className="btn primary" onClick={()=>void apply()}>{mode==='differentiate'?'Add differentiated version':'Add activity to lesson'}</button>}>
+  <p className="lesson-tool-instructions">{result.activity?.instructions}</p>
+  <div className="lesson-tool-preview"><TaskRenderer classId={classId} content={result.native.content} responses={{}} disabled teacher revealed={result.native.key}/></div>
+  {result.native.notes&&<AiMore summary="Teacher notes"><p style={{whiteSpace:'pre-wrap',margin:0}}>{result.native.notes}</p></AiMore>}
+ </AiDraft>}
+ {!!media.length&&<ul className="lesson-tool-media" aria-label="Activity media">{media.map(a=><li key={a.id}><span className={'lesson-tool-media-dot '+a.status} aria-hidden="true"/>{a.title}<small>{a.status==='ready'?'Ready':a.status==='failed'?'Didn’t finish':'Preparing…'}</small>{a.status==='failed'&&<button className="btn small-btn" onClick={()=>{if(pending)void call({action:'taskToolsRetryMedia',classId,itemId,requestId:pending.id,assetId:a.id}).then(()=>recover()).catch(()=>setError('We couldn’t retry this media. Please try again.'));}}>Retry</button>}</li>)}</ul>}
+ {pending&&!busy&&<AiActions><button className="btn link" onClick={()=>{remember(null);setResult(null);setMedia([]);setError('');setSelected(null);}}>Start a new draft</button></AiActions>}
  </div></VideoDialog>;
 }

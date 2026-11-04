@@ -1,4 +1,5 @@
 import { AiButton } from '../components/AiMark';
+import { AI_ALLOWANCE, AiActions, AiDraft, AiField, AiHeader, AiMore, AiNotice, AiUses, AiWorking } from '../ai/kit';
 import { useAiActivity } from '../components/AiActivity';
 import {useEffect,useRef,useState} from 'react';
 import {doc,getDoc,setDoc,serverTimestamp} from 'firebase/firestore';
@@ -54,21 +55,46 @@ export function DefinitionAI({word,context,existingImage='',onUse,onBusyChange}:
   });setDraft(null);
  }
  if(profile?.role!=='teacher'||isProxyTab())return null;
+ const picture=draft?.picture;
+ const fieldNames:Record<string,string>={pos:'Part of speech',family:'Word family',forms:'Irregular forms',countable:'Countability',patterns:'Common patterns',ipa:'IPA',stress:'Stressed syllable',mistakes:'Common mistakes'};
  return <section className="definition-ai" aria-label="Teaching definition with AI">
-  <strong>A teaching explanation, in context</strong>
-  <p>Helpful pictures are generated automatically using your Designer image allowance: Bright &amp; bold for children’s courses, Editorial for adults, teacher training and work outside a course.</p>
-  <p>Draft a meaning for this use of the word or phrase, with examples and useful form, pronunciation and learner help. Review it before saving.</p>
-  {classLevel?<p>Using class level: <b>{classLevel}</b>. The AI also reads this task and the lesson’s learner-facing content.</p>:<label>Learner level<select aria-label="Definition learner level" value={level} disabled={busy} onChange={e=>{setLevel(e.target.value);setDraft(null);}}>{levels.map(v=><option key={v}>{v}</option>)}</select></label>}
-  <details><summary>Context or sense to clarify (optional)</summary><label>Extra context<textarea aria-label="Definition extra context (optional)" rows={2} maxLength={1000} value={focus} disabled={busy} onChange={e=>{setFocus(e.target.value);setDraft(null);}} placeholder="For example: bank means the side of a river here." /></label></details>
-  {!word.trim()&&<p>Enter or select a word or phrase first.</p>}
-  <AiButton type="button" className="btn small-btn" disabled={busy||!word.trim()} onClick={()=>void suggest()}>{busy?'Drafting a teaching definition…':'Suggest definition with AI'}</AiButton>
-  {busy&&<p role="status">Preparing the definition and, where helpful, a picture. Pictures can take a little longer. Your current fields are kept.</p>}
-  {error&&<p role="alert">{error}</p>}
-  {draft&&<div className="definition-ai-draft" aria-label="Suggested teaching definition"><p><b>Draft for {draft.level}</b>{draft.ageGroup&&draft.ageGroup!=='Not specified'?' · '+draft.ageGroup:''}</p><p>{draft.note}</p>
-    {draft.illustration&&<div className="definition-ai-picture"><p>{draft.illustration.reason}</p>{draft.picture?.status==='ready'&&draft.picture.data&&<><img src={draft.picture.data} alt={draft.illustration.alt}/><p>Designer style: {draft.picture.style==='bright'?'Bright & bold':'Editorial'}</p><label><input type="checkbox" checked={usePicture} onChange={e=>setUsePicture(e.target.checked)}/>Use this picture</label></>}{draft.picture?.status==='existing'&&<p>Your existing picture is kept. Clear it first if you want an AI picture.</p>}{draft.picture?.status==='failed'&&<><p role="alert">{draft.picture.error}</p><AiButton type="button" className="btn small-btn" disabled={busy} onClick={()=>void suggest(true)}>Retry picture only</AiButton></>}{['running','pending'].includes(draft.picture?.status||'')&&<><p>The picture is still being prepared. Check again before applying, or use the text.</p><AiButton type="button" className="btn small-btn" disabled={busy} onClick={()=>void suggest(true)}>Check picture</AiButton></>}</div>}
-    {draft.data.meaning&&<p><b>Meaning: </b>{draft.data.meaning}</p>}{draft.data.example&&<p><b>Example: </b>{draft.data.example}</p>}
-    <details><summary>All suggested fields</summary><dl>{Object.entries(draft.data).filter(([k,v])=>v&&k!=='meaning'&&k!=='example').map(([k,v])=><div key={k}><dt>{({pos:'Part of speech',family:'Word family',forms:'Irregular forms',countable:'Countability',patterns:'Common patterns',ipa:'IPA',stress:'Stressed syllable',mistakes:'Common mistakes'} as Record<string,string>)[k]||k}</dt><dd>{String(v)}</dd></div>)}{draft.translations.map(t=><div key={t.language}><dt>{t.language}</dt><dd>{t.text}</dd></div>)}</dl></details>
-    {draft.needsContext?<p>Add a sentence or clarify the intended meaning above, then suggest again.</p>:<><label className="definition-ai-replace"><input type="checkbox" checked={replace} onChange={e=>setReplace(e.target.checked)}/>Replace fields I’ve already filled</label><button type="button" className="btn small-btn primary" disabled={busy} onClick={()=>void apply()}>Use suggested definition</button><p>By default, only empty fields are filled. You can edit everything before saving.</p></>}
-  </div>}
+  <AiHeader level={3} title="Suggest a definition" lede="A teaching explanation of this word as it’s used here: meaning, example, form and learner help, pitched at the level. With a picture when one would help.">
+   <AiUses items={[word.trim()?`“${word.trim()}”`:false,classLevel?`Class level ${classLevel}`:`Level ${level}`,'This task’s text',lessonId?'The lesson’s learner-facing content':false]}/>
+  </AiHeader>
+  {!draft&&<>
+   {!classLevel&&<AiField label="Learner level"><select aria-label="Definition learner level" value={level} disabled={busy} onChange={e=>{setLevel(e.target.value);setDraft(null);}}>{levels.map(v=><option key={v}>{v}</option>)}</select></AiField>}
+   <AiMore summary={focus.trim()?'Sense to clarify: '+focus.trim().slice(0,40):'Clarify the sense'}>
+    <AiField label="Which meaning?" optional hint="Useful when the word has several meanings.">
+     <textarea aria-label="Definition extra context (optional)" rows={2} maxLength={1000} value={focus} disabled={busy} onChange={e=>{setFocus(e.target.value);setDraft(null);}} placeholder="For example: bank means the side of a river here."/>
+    </AiField>
+   </AiMore>
+   {!word.trim()&&<AiNotice kind="info">Enter or select a word or phrase first.</AiNotice>}
+   {busy
+    ?<AiWorking title="Drafting the definition…" detail="The text comes first; a picture, when useful, can take a little longer. Your current fields are kept." steps={['Reading the context','Writing the explanation','Drawing a picture if it helps']} step={1}/>
+    :<AiActions note={<>{AI_ALLOWANCE} Pictures use your Designer image allowance.</>}><AiButton type="button" className="btn primary small-btn" disabled={!word.trim()} onClick={()=>void suggest()}>Suggest definition</AiButton></AiActions>}
+  </>}
+  {error&&<AiNotice kind="error" action={()=>void suggest()} actionDisabled={busy||!word.trim()}>{error}</AiNotice>}
+  {draft&&<AiDraft title={word.trim()} meta={<>For {draft.level}{draft.ageGroup&&draft.ageGroup!=='Not specified'?' · '+draft.ageGroup:''}</>} note={draft.needsContext?undefined:'By default only empty fields are filled. You can edit everything before saving.'} actions={draft.needsContext?<button type="button" className="btn small-btn" onClick={()=>setDraft(null)}>Add context</button>:<>
+    <button type="button" className="btn small-btn primary" disabled={busy} onClick={()=>void apply()}>Use this definition</button>
+    <AiButton type="button" className="btn small-btn" disabled={busy} onClick={()=>void suggest()}>Suggest another</AiButton>
+    <button type="button" className="btn small-btn link" disabled={busy} onClick={()=>setDraft(null)}>Discard</button>
+    <label className="definition-ai-replace"><input type="checkbox" checked={replace} onChange={e=>setReplace(e.target.checked)}/>Replace fields I’ve already filled</label>
+   </>}>
+   {draft.note&&<p className="definition-ai-note">{draft.note}</p>}
+   {draft.needsContext&&<AiNotice kind="info">This word has more than one likely meaning here. Say which one you mean under “Clarify the sense”, then suggest again.</AiNotice>}
+   <div className="definition-ai-grid">
+    <div>
+     {draft.data.meaning&&<p><b>Meaning</b><br/>{draft.data.meaning}</p>}
+     {draft.data.example&&<p><b>Example</b><br/><i>{draft.data.example}</i></p>}
+    </div>
+    {draft.illustration&&<div className="definition-ai-picture">
+     {picture?.status==='ready'&&picture.data&&<><img src={picture.data} alt={draft.illustration.alt}/><label><input type="checkbox" checked={usePicture} onChange={e=>setUsePicture(e.target.checked)}/>Use this picture</label><small>{picture.style==='bright'?'Bright & bold':'Editorial'} · {draft.illustration.reason}</small></>}
+     {picture?.status==='existing'&&<small>Your existing picture is kept. Clear it first if you want an AI picture.</small>}
+     {picture?.status==='failed'&&<AiNotice kind="error" action={()=>void suggest(true)} actionLabel="Retry picture" actionDisabled={busy}>{picture.error||'The picture didn’t finish.'} The text is ready to use.</AiNotice>}
+     {['running','pending'].includes(picture?.status||'')&&<AiNotice kind="info" action={()=>void suggest(true)} actionLabel="Check picture" actionDisabled={busy}>The picture is still being prepared. You can use the text now and check again later.</AiNotice>}
+    </div>}
+   </div>
+   <AiMore summary="All suggested fields"><dl>{Object.entries(draft.data).filter(([k,v])=>v&&k!=='meaning'&&k!=='example').map(([k,v])=><div key={k}><dt>{fieldNames[k]||k}</dt><dd>{String(v)}</dd></div>)}{draft.translations.map(t=><div key={t.language}><dt>{t.language}</dt><dd>{t.text}</dd></div>)}</dl></AiMore>
+  </AiDraft>}
  </section>;
 }
