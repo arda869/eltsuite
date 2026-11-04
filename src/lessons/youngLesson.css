@@ -52,12 +52,6 @@
   background: var(--yl-panel); transform: rotate(45deg);
 }
 [data-lesson-style='young'] .dialogue .dl-who { align-self: start; margin-top: 13px; }
-[data-lesson-style='young'] :is(.bank-word, .word-bank) { border-radius: 3px; }
-[data-lesson-style='young'] .bank-word { box-shadow: 1px 2px 0 var(--yl-edge); }
-[data-lesson-style='young'] .gap-input { background: transparent; border-radius: 0; border-width: 0 0 2px; }
-[data-lesson-style='young'] .slash-opt.on {
-  border-radius: 48% 54% 44% 52%; outline: 2px solid var(--accent-text); outline-offset: 1px;
-}
 @media (max-width: 640px) {
   [data-lesson-style='young'] .tbox.s-speech .bubble { max-width: 100%; }
   [data-lesson-style='young'] .tbox.s-speech.side-right { padding-left: 12px; }
@@ -75,86 +69,448 @@
 
 .rd-clear .task-frame[data-lesson-style='young'] :is(.task-body, .ProseMirror) :is(.ipa, .ipa-play, .dc-ipa) { font-family: var(--ipa-font) !important; }
 
-/* ---------------------------------------------------------------------------------------------
-   Young learners, inside the task only. Classes set to the young learners' style get a task that
-   feels like a children's tablet app: big, chunky, colourful things to tap, a little bounce when
-   you press, a cheer when you're right and a gentle wobble when you're not. Nothing outside the
-   task changes, and other classes are untouched. */
+/* =============================================================================================
+   Young learners. A task in a young learners' class feels like a good children's tablet app:
+   calm surfaces, big tiles that press down, the class colour for what you chose, green with a
+   tick for right and soft orange with a cross for not right. Colour never works alone: every
+   state also changes shape or shows an icon. Nothing outside the lesson frame changes.
+   ============================================================================================= */
 [data-lesson-style='young'] {
-  --yl-pink: #ef7c8e; --yl-sun: #f6b941; --yl-sky: #4fa6dd; --yl-leaf: #5cb874; --yl-plum: #9b7be0;
-  --yl-ink: #2f2a4a;
+  --yl-read: 'Atkinson Hyperlegible', Verdana, sans-serif;
+  --yl-label: Karla, 'Segoe UI', system-ui, sans-serif;
+  --yl-ink: var(--ink);
+  --yl-soft: color-mix(in srgb, var(--ink) 76%, var(--paper));
+  --yl-surface: var(--paper);
+  --yl-stage: color-mix(in srgb, var(--accent) 6%, var(--paper));
+  --yl-tray: color-mix(in srgb, var(--ink) 5%, var(--paper));
+  --yl-line: color-mix(in srgb, var(--ink) 18%, var(--paper));
+  --yl-key: color-mix(in srgb, var(--ink) 14%, var(--paper));
+  --yl-strong: var(--accent-text);
+  --yl-on-strong: #fff;
+  --yl-pick: color-mix(in srgb, var(--accent) 16%, var(--paper));
+  --yl-pick-key: color-mix(in srgb, var(--accent) 55%, var(--accent-text));
+  --yl-ok: #22744a; --yl-ok-line: #3a9a63; --yl-ok-bg: color-mix(in srgb, #3fae6f 14%, var(--paper));
+  --yl-no: #a3432a; --yl-no-line: #dc7b54; --yl-no-bg: color-mix(in srgb, #ef8a63 14%, var(--paper));
+  --yl-sun: #f6c34f; --yl-sky: #8ccbef; --yl-leaf: #9fd6ab; --yl-rose: #f4aab0; --yl-lilac: #c3b2ef; --yl-peach: #f8c49c;
+  --yl-sky-ink: #2f7fb5; --yl-leaf-ink: #2f8a55; --yl-art-paper: #fff;
+  --yl-r: 18px;
+  --yl-size: 20px;
+  --yl-ease: cubic-bezier(.3, 1.45, .5, 1);
+  --yl-i-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --yl-i-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 7l10 10M17 7L7 17' fill='none' stroke='black' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  --yl-i-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12h14M12.5 6l6 6-6 6' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --yl-i-bulb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 18h6M10 21.2h4M12 2.8a6.2 6.2 0 0 0-3.7 11.2c.7.5 1.2 1.3 1.2 2.2v.3h5v-.3c0-.9.5-1.7 1.2-2.2A6.2 6.2 0 0 0 12 2.8z' fill='none' stroke='black' stroke-width='2.1' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E");
+  --yl-i-hand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9.5 12V4.8a1.6 1.6 0 0 1 3.2 0V11l4.3.8a2.4 2.4 0 0 1 1.9 2.7l-.7 4.4a3 3 0 0 1-3 2.6h-3.7a3 3 0 0 1-2.4-1.2L5.6 16a1.7 1.7 0 0 1 2.5-2.3z' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
-[data-lesson-style='young'] .task-body {
-  font-size: 19px; color: var(--yl-ink);
-  padding: 22px clamp(16px, 3vw, 34px) 28px; border-radius: 28px;
-  background:
-    radial-gradient(circle at 12px 12px, color-mix(in srgb, var(--accent) 14%, transparent) 2.2px, transparent 2.6px) 0 0 / 26px 26px,
-    color-mix(in srgb, var(--accent) 5%, var(--paper));
-  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+:root[data-theme='dark'] [data-lesson-style='young'] {
+  --yl-on-strong: #191816;
+  --yl-ok: #93dcae; --yl-ok-line: #4fb37a; --yl-no: #f4ad92; --yl-no-line: #e08a66;
+  --yl-sky-ink: #8ccbef; --yl-leaf-ink: #9fd6ab; --yl-art-paper: #f3efe8;
 }
-[data-lesson-style='young'] .task-title { font-size: clamp(24px, 3vw, 32px); letter-spacing: -.01em; }
+
+/* The head: number, title, then the instruction next to a picture of what to do. */
+[data-lesson-style='young'] .frame-head { border-bottom: 0; padding: 20px clamp(18px, 3vw, 32px) 14px; gap: 12px; }
+[data-lesson-style='young'] h1.task-title { display: flex; align-items: center; gap: 14px; margin: 0; font: 800 clamp(24px, 2.4vw, 32px)/1.2 var(--yl-label); letter-spacing: -.01em; }
 [data-lesson-style='young'] .yl-activity-number {
-  display: inline-grid; place-items: center; width: 1.6em; height: 1.6em; margin-right: .45em; border-radius: 50%;
-  background: var(--accent); color: #fff; font-size: .85em; vertical-align: .08em;
-  box-shadow: 0 4px 0 color-mix(in srgb, var(--accent) 65%, #000);
+  flex: none; display: inline-grid; place-items: center; width: 1.55em; height: 1.55em; margin: 0; border-radius: 50%;
+  background: var(--yl-strong); color: var(--yl-on-strong); font-size: .8em; font-weight: 800; vertical-align: 0;
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--yl-strong) 70%, #000);
 }
-[data-lesson-style='young'] .task-instr { font-size: 20px; }
-/* Choices: big coloured tiles, each a different colour, with a chunky shadow to press down. */
-[data-lesson-style='young'] .task-body .opts { flex-direction: row; flex-wrap: wrap; gap: 14px; padding-left: 0; margin: 14px 0; }
-[data-lesson-style='young'] .task-body .opt {
+[data-lesson-style='young'] .task-instr { margin: 0; font: 700 clamp(19px, 1.8vw, 22px)/1.45 var(--yl-label); color: var(--yl-ink); }
+[data-lesson-style='young'] .task-instr.rich .task-body { font: inherit; color: inherit; padding: 0; background: none; box-shadow: none; }
+[data-lesson-style='young'] .task-instr.rich :is(p, .para) { margin: 0; font: inherit; line-height: inherit; }
+[data-lesson-style='young'] .yl-instr { display: flex; align-items: center; gap: 14px; }
+[data-lesson-style='young'] .yl-instr-text { flex: 1; min-width: 0; }
+[data-lesson-style='young'] .yl-cue {
   --c: var(--yl-sky);
-  flex: 1 1 200px; min-height: 64px; padding: 12px 18px; gap: 14px; border-radius: 20px;
-  background: #fff; border: 3px solid var(--c); box-shadow: 0 6px 0 var(--c);
-  font-family: Karla, sans-serif; font-weight: 700; font-size: 20px;
-  transition: transform .12s ease, box-shadow .12s ease, background .15s;
-  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  flex: none; display: grid; place-items: center; width: 54px; height: 54px; border-radius: 16px; color: var(--yl-ink);
+  background: color-mix(in srgb, var(--c) 26%, var(--yl-surface)); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 55%, var(--yl-surface));
 }
-[data-lesson-style='young'] .task-body .opt:nth-child(5n+2) { --c: var(--yl-pink); }
-[data-lesson-style='young'] .task-body .opt:nth-child(5n+3) { --c: var(--yl-leaf); }
-[data-lesson-style='young'] .task-body .opt:nth-child(5n+4) { --c: var(--yl-sun); }
-[data-lesson-style='young'] .task-body .opt:nth-child(5n+5) { --c: var(--yl-plum); }
-[data-lesson-style='young'] .task-body .opt:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--c); }
-[data-lesson-style='young'] .task-body .opt:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--c); }
-[data-lesson-style='young'] .task-body .opt .letter, [data-lesson-style='young'] .task-body .opt .radio {
-  width: 36px; height: 36px; flex: none; border-radius: 50%; border: 3px solid var(--c); background: #fff; color: var(--c); font-size: 17px; display: grid; place-items: center;
+[data-lesson-style='young'] .yl-cue svg { width: 38px; height: 38px; overflow: visible; }
+[data-lesson-style='young'] .yl-cue-write { --c: var(--yl-sun); }
+[data-lesson-style='young'] .yl-cue-drag, [data-lesson-style='young'] .yl-cue-speak { --c: var(--yl-leaf); }
+[data-lesson-style='young'] .yl-cue-match { --c: var(--yl-rose); }
+[data-lesson-style='young'] .yl-cue-order { --c: var(--yl-peach); }
+[data-lesson-style='young'] .yl-cue-listen { --c: var(--yl-lilac); }
+[data-lesson-style='young'] .yl-cue-read { --c: var(--yl-peach); }
+
+/* The stage the activity sits on. Only the task's own body, not instructions or examples inside it. */
+[data-lesson-style='young'] .frame-body .task-body:not(.task-body .task-body) {
+  font-size: var(--yl-size); color: var(--yl-ink);
+  padding: clamp(18px, 3vw, 34px); border-radius: 26px; background: var(--yl-stage);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 14%, transparent);
 }
-[data-lesson-style='young'] .task-body .opt.on { background: color-mix(in srgb, var(--c) 16%, #fff); }
-[data-lesson-style='young'] .task-body .opt.on :is(.letter, .radio) { background: var(--c); color: #fff; border-color: var(--c); }
-[data-lesson-style='young'] .task-body .opt.right { --c: var(--yl-leaf); background: color-mix(in srgb, var(--yl-leaf) 18%, #fff); animation: yl-cheer .55s cubic-bezier(.2, 1.7, .4, 1); }
-[data-lesson-style='young'] .task-body .opt.right::after { content: '★'; margin-left: auto; font-size: 26px; color: var(--yl-sun); text-shadow: 0 2px 0 #c98a14; animation: yl-star .6s cubic-bezier(.2, 1.7, .4, 1) both; }
-[data-lesson-style='young'] .task-body .opt.wrong { --c: #d98a80; animation: yl-wobble .45s ease; }
-/* Gaps and answers: big rounded boxes to write in. */
-[data-lesson-style='young'] .task-body :is(.gap-input, input[type=text], textarea) {
-  min-height: 46px; padding: 6px 14px; border-radius: 14px; border: 3px dashed color-mix(in srgb, var(--accent) 55%, #fff); background: #fff;
-  font: 700 20px/1.4 Karla, sans-serif; color: var(--yl-ink);
+[data-lesson-style='young'] .task-body :is(p, li) { font-size: 1em; line-height: calc(1.8 * var(--rd-line, 1)); }
+[data-lesson-style='young'] .task-body :is(.para, p) { margin-block: 0 .75em; }
+[data-lesson-style='young'] .task-body h3 { font: 800 1.05em/1.3 var(--yl-label); margin: 1em 0 .5em; }
+[data-lesson-style='young'] .task-body img,
+[data-lesson-style='young'] .task-body .task-img { border-radius: 20px; }
+
+/* Question numbers: a small round chip, not a superscript. */
+[data-lesson-style='young'] .task-body .q-num {
+  position: relative; top: 0; display: inline-grid; grid-auto-flow: column; place-items: center; gap: 3px;
+  min-width: 26px; height: 26px; padding: 0 7px; margin: 0 8px 0 2px; border: 0; border-radius: 999px; vertical-align: middle;
+  font: 800 14px/1 var(--yl-label); color: var(--yl-strong); background: var(--yl-pick);
 }
-[data-lesson-style='young'] .task-body :is(.gap-input, input[type=text], textarea):focus { outline: none; border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
-[data-lesson-style='young'] .task-body .ans.right { color: var(--yl-leaf); font-weight: 800; animation: yl-cheer .5s cubic-bezier(.2, 1.7, .4, 1); }
-[data-lesson-style='young'] .task-body .ans.wrong { animation: yl-wobble .45s ease; }
-/* Word banks, matching and drag-and-drop: tiles you want to pick up. */
-[data-lesson-style='young'] .task-body :is(.bank-word, .match-item) {
-  min-height: 48px; padding: 8px 16px; border-radius: 16px; border: 3px solid var(--yl-plum); background: #fff; box-shadow: 0 5px 0 var(--yl-plum);
-  font: 700 19px Karla, sans-serif; color: var(--yl-ink); cursor: grab; transition: transform .12s, box-shadow .12s;
+[data-lesson-style='young'] .task-body .q-num.flag-btn { cursor: pointer; }
+[data-lesson-style='young'] .task-body .q-num.flag-btn::after { content: ''; position: absolute; inset: -9px; }
+[data-lesson-style='young'] .task-body .q-num.flag-btn.flagged { background: var(--yl-strong); color: var(--yl-on-strong); }
+[data-lesson-style='young'] .task-body .q-num.flag-btn .flag-icon { color: inherit; }
+
+/* Shared by everything you tap: a tile that sits on a little edge and presses down into it. */
+[data-lesson-style='young'] .task-body :is(.opt, .slash-opt, .bank-word, .match-item:not(:disabled), .drop-slot):focus-visible,
+[data-lesson-style='young'] .task-body .opt:has(input:focus-visible) {
+  outline: 3px solid var(--yl-strong); outline-offset: 3px;
 }
-[data-lesson-style='young'] .task-body .bank-word:nth-child(3n+2) { border-color: var(--yl-sky); box-shadow: 0 5px 0 var(--yl-sky); }
-[data-lesson-style='young'] .task-body .bank-word:nth-child(3n+3) { border-color: var(--yl-pink); box-shadow: 0 5px 0 var(--yl-pink); }
-[data-lesson-style='young'] .task-body :is(.bank-word, .match-item):active { transform: translateY(4px) scale(.98); box-shadow: 0 1px 0 var(--yl-plum); cursor: grabbing; }
-[data-lesson-style='young'] .task-body .bank-word.placed { opacity: .35; box-shadow: none; transform: scale(.94); }
-[data-lesson-style='young'] .task-body :is(.drop-slot, .match-slot) { min-height: 50px; border-radius: 16px; border: 3px dashed color-mix(in srgb, var(--yl-plum) 55%, #fff); background: color-mix(in srgb, var(--yl-plum) 6%, #fff); }
-/* Buttons in the task: big and round. */
-[data-lesson-style='young'] .task-body .btn, [data-lesson-style='young'] .task-body button.check {
-  min-height: 52px; padding: 0 26px; border-radius: 999px; font: 800 19px Karla, sans-serif; box-shadow: 0 5px 0 color-mix(in srgb, var(--accent) 60%, #000);
+[data-lesson-style='young'] .task-body .opt input:focus-visible + :is(.letter, .radio) { outline: 0; }
+
+/* Choices -------------------------------------------------------------------------------------- */
+[data-lesson-style='young'] .task-body .mcq-q { margin: 4px 0 28px; }
+[data-lesson-style='young'] .task-body .mcq-q legend { display: block; margin-bottom: 12px; font: 700 1.05em/1.45 var(--yl-read); }
+[data-lesson-style='young'] .task-body :is(.mcq-q .opts, .stacked-choice .stack) {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 16px 14px; padding: 0; margin: 0;
 }
-[data-lesson-style='young'] .task-body .btn:active { transform: translateY(4px); box-shadow: 0 1px 0 color-mix(in srgb, var(--accent) 60%, #000); }
-[data-lesson-style='young'] .task-body img, [data-lesson-style='young'] .task-body .task-img img { border-radius: 22px; box-shadow: 0 8px 0 color-mix(in srgb, var(--accent) 18%, transparent); }
-@keyframes yl-cheer { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: none; } }
-@keyframes yl-star { 0% { transform: scale(0) rotate(-90deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
-@keyframes yl-wobble { 0%, 100% { transform: none; } 25% { transform: rotate(-2deg) translateX(-4px); } 50% { transform: rotate(2deg) translateX(4px); } 75% { transform: rotate(-1deg); } }
-@media (prefers-reduced-motion: reduce) { [data-lesson-style='young'] .task-body * { animation: none !important; transition: none !important; } }
-/* Choice tiles sit side by side in a grid, whatever container the choice question uses. */
-[data-lesson-style='young'] .task-body :has(> .opt) { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 16px; padding-left: 0; margin: 14px 0 18px; }
-[data-lesson-style='young'] .task-body .opt { flex: none; height: auto; min-width: 0; }
-[data-lesson-style='young'] .task-body :is(p, .para, li) { font-size: 20px; line-height: 1.6; }
-[data-lesson-style='young'] .task-body .q-num { font: 800 15px Karla, sans-serif; color: var(--accent-text); }
-/* Tiles flow across the row when there's room. */
-[data-lesson-style='young'] .task-body .opt { display: inline-flex !important; min-width: 200px; margin: 0 14px 16px 0; vertical-align: top; }
+[data-lesson-style='young'] .task-body :is(.mcq-q .opts, .stacked-choice .stack):has(> .opt:nth-child(4):last-child) { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+[data-lesson-style='young'] .task-body .stacked-choice { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 8px; margin: 8px 0 24px; }
+[data-lesson-style='young'] .task-body .stacked-choice .stack-num { padding-top: 18px; }
+[data-lesson-style='young'] .task-body .opt {
+  position: relative; display: flex; align-items: center; gap: 14px; min-width: 0; min-height: 64px; margin: 0; padding: 12px 18px 12px 12px;
+  border-radius: var(--yl-r); border: 2px solid var(--yl-line); background: var(--yl-surface); box-shadow: 0 4px 0 var(--yl-key);
+  font: 700 1em/1.3 var(--yl-read); color: var(--yl-ink); text-align: left; overflow-wrap: break-word;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
+  transition: transform .16s var(--yl-ease), box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+[data-lesson-style='young'] .task-body .opt :is(.letter, .radio) {
+  flex: none; display: grid; place-items: center; width: 38px; height: 38px; margin: 0; padding: 0; border: 0; border-radius: 50%;
+  background: var(--yl-tray); color: var(--yl-soft); box-shadow: inset 0 0 0 2px var(--yl-line);
+  font: 800 17px/1 var(--yl-label); text-transform: lowercase; transition: background-color .16s, color .16s, box-shadow .16s;
+}
+[data-lesson-style='young'] .task-body .opt .square { border-radius: 11px; }
+[data-lesson-style='young'] .task-body .opt :is(.letter, .radio)::before { content: ''; display: none; width: 20px; height: 20px; background: currentColor; -webkit-mask: var(--m) center / contain no-repeat; mask: var(--m) center / contain no-repeat; }
+@media (hover: hover) {
+  [data-lesson-style='young'] .task-body .opt:not(:has(input:disabled)):hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, var(--yl-line)); box-shadow: 0 6px 0 var(--yl-key); }
+}
+[data-lesson-style='young'] .task-body .opt:not(:has(input:disabled)):active { transform: translateY(4px); box-shadow: 0 0 0 var(--yl-key); }
+[data-lesson-style='young'] .task-body .opt:has(input:disabled) { cursor: default; }
+[data-lesson-style='young'] .task-body .opt.on {
+  border-color: var(--accent); background: var(--yl-pick); box-shadow: 0 4px 0 var(--yl-pick-key);
+  animation: yl-pick .32s var(--yl-ease);
+}
+[data-lesson-style='young'] .task-body .opt.on :is(.letter, .radio) { background: var(--yl-strong); color: var(--yl-on-strong); box-shadow: none; }
+[data-lesson-style='young'] .task-body .opt.on .radio { box-shadow: inset 0 0 0 9px var(--yl-strong), inset 0 0 0 30px var(--yl-on-strong); }
+[data-lesson-style='young'] .task-body .opt.on .square { font-size: 0; }
+[data-lesson-style='young'] .task-body .opt.on .square::before { --m: var(--yl-i-tick); display: block; }
+/* Marked: a tick or a cross takes the place of the letter. */
+[data-lesson-style='young'] .task-body .opt:is(.right, .wrong) :is(.letter, .radio) { font-size: 0; color: #fff; }
+[data-lesson-style='young'] .task-body .opt:is(.right, .wrong) :is(.letter, .radio)::before { display: block; }
+[data-lesson-style='young'] .task-body .opt.right { border-color: var(--yl-ok-line); background: var(--yl-ok-bg); box-shadow: 0 4px 0 var(--yl-ok-line); color: var(--yl-ok); animation: yl-cheer .5s var(--yl-ease); }
+[data-lesson-style='young'] .task-body .opt.right :is(.letter, .radio) { --m: var(--yl-i-tick); background: var(--yl-ok-line); box-shadow: none; }
+[data-lesson-style='young'] .task-body .opt.right > span:last-child { color: inherit; font-weight: 700; }
+[data-lesson-style='young'] .task-body .opt.right > span:last-child::after { content: none; }
+/* The right answer the learner didn't choose: outlined, not filled. */
+[data-lesson-style='young'] .task-body .opt.right:not(:has(input:checked)) { background: var(--yl-surface); border-style: dashed; box-shadow: none; animation: none; }
+[data-lesson-style='young'] .task-body .opt.right:not(:has(input:checked)) :is(.letter, .radio) { background: var(--yl-surface); color: var(--yl-ok-line); box-shadow: inset 0 0 0 2.5px var(--yl-ok-line); }
+[data-lesson-style='young'] .task-body .opt.wrong { border-color: var(--yl-no-line); background: var(--yl-no-bg); box-shadow: 0 4px 0 var(--yl-no-line); color: var(--yl-no); animation: yl-wobble .45s ease; }
+[data-lesson-style='young'] .task-body .opt.wrong :is(.letter, .radio) { --m: var(--yl-i-cross); background: var(--yl-no-line); box-shadow: none; }
+[data-lesson-style='young'] .task-body .opt.wrong > span:last-child { color: inherit; text-decoration-thickness: 2px; text-decoration-color: color-mix(in srgb, var(--yl-no) 55%, transparent); }
+
+/* A choice inside a sentence: word pills that keep the sentence together. */
+[data-lesson-style='young'] .task-body .inline-choice { display: inline; }
+[data-lesson-style='young'] .task-body .inline-choice .opt {
+  display: inline-flex; vertical-align: middle; min-height: 46px; padding: 4px 18px; margin: 4px 8px 4px 0; gap: 8px;
+  border-radius: 999px; box-shadow: 0 3px 0 var(--yl-key); line-height: 1.2;
+}
+[data-lesson-style='young'] .task-body .inline-choice .opt:not(:has(input:disabled)):active { transform: translateY(3px); box-shadow: none; }
+[data-lesson-style='young'] .task-body .inline-choice .opt.on { box-shadow: 0 3px 0 var(--yl-pick-key); }
+[data-lesson-style='young'] .task-body .inline-choice .opt :is(.letter:not(.square), .radio:not(.square)) { display: none; }
+[data-lesson-style='young'] .task-body .inline-choice .opt:is(.right, .wrong) :is(.letter, .radio) { display: grid; width: 26px; height: 26px; margin-left: -8px; }
+[data-lesson-style='young'] .task-body .inline-choice .opt:is(.right, .wrong) :is(.letter, .radio)::before { width: 15px; height: 15px; }
+[data-lesson-style='young'] .task-body .inline-choice .opt .square { width: 26px; height: 26px; border-radius: 8px; margin-left: -6px; }
+[data-lesson-style='young'] .task-body .inline-choice .opt:is(.right, .wrong) { box-shadow: 0 3px 0 var(--yl-ok-line); }
+[data-lesson-style='young'] .task-body .inline-choice .opt.wrong { box-shadow: 0 3px 0 var(--yl-no-line); }
+[data-lesson-style='young'] .task-body .inline-choice .opt.right:not(:has(input:checked)) { box-shadow: none; }
+[data-lesson-style='young'] .task-body .inline-choice > .q-num { top: 0; }
+
+/* The same pills for options separated by slashes. */
+[data-lesson-style='young'] .task-body .slash-choice { display: inline; }
+[data-lesson-style='young'] .task-body .slash-sep { margin: 0 2px; color: var(--yl-soft); font-weight: 700; }
+[data-lesson-style='young'] .task-body .slash-opt {
+  display: inline-flex; align-items: center; vertical-align: middle; min-height: 46px; padding: 4px 18px; margin: 4px 2px;
+  border-radius: 999px; border: 2px solid var(--yl-line); background: var(--yl-surface); box-shadow: 0 3px 0 var(--yl-key);
+  font: 700 1em/1.2 var(--yl-read); color: var(--yl-ink); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform .16s var(--yl-ease), box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+@media (hover: hover) { [data-lesson-style='young'] .task-body .slash-opt:not(:disabled):hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, var(--yl-line)); } }
+[data-lesson-style='young'] .task-body .slash-opt:not(:disabled):active { transform: translateY(3px); box-shadow: none; }
+[data-lesson-style='young'] .task-body .slash-opt.on { outline: 0; border-radius: 999px; border-color: var(--accent); background: var(--yl-pick); color: var(--yl-strong); box-shadow: 0 3px 0 var(--yl-pick-key); animation: yl-pick .32s var(--yl-ease); }
+[data-lesson-style='young'] .task-body .slash-opt:disabled { cursor: default; }
+[data-lesson-style='young'] .task-body .slash-opt:disabled:not(.on, .right, .wrong) { opacity: .6; box-shadow: none; }
+[data-lesson-style='young'] .task-body .slash-opt.right { border-color: var(--yl-ok-line); background: var(--yl-ok-bg); color: var(--yl-ok); box-shadow: 0 3px 0 var(--yl-ok-line); animation: yl-cheer .5s var(--yl-ease); }
+[data-lesson-style='young'] .task-body .slash-opt.right:not(:has(+ .tick)) { background: var(--yl-surface); border-style: dashed; box-shadow: none; animation: none; }
+[data-lesson-style='young'] .task-body .slash-opt.wrong { gap: 6px; border-color: var(--yl-no-line); background: var(--yl-no-bg); color: var(--yl-no); box-shadow: 0 3px 0 var(--yl-no-line); text-decoration-thickness: 2px; animation: yl-wobble .45s ease; }
+[data-lesson-style='young'] .task-body .slash-opt.wrong::before { content: ''; flex: none; width: 15px; height: 15px; margin-left: -4px; background: currentColor; -webkit-mask: var(--yl-i-cross) center / contain no-repeat; mask: var(--yl-i-cross) center / contain no-repeat; }
+
+/* Writing a word ------------------------------------------------------------------------------- */
+[data-lesson-style='young'] .task-body .gap-input {
+  min-width: 4.6em; min-height: 48px; padding: 4px 14px; margin: 3px 2px; vertical-align: middle;
+  border: 2px dashed color-mix(in srgb, var(--accent) 55%, var(--yl-line)); border-radius: 14px; background: var(--yl-surface);
+  font: 700 1em/1.3 var(--yl-read); color: var(--yl-ink); text-align: center;
+  transition: border-color .16s, box-shadow .16s, background-color .16s;
+}
+[data-lesson-style='young'] .task-body .gap-input:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 80%, var(--yl-line)); }
+[data-lesson-style='young'] .task-body .gap-input:not(:placeholder-shown) { border-style: solid; border-color: color-mix(in srgb, var(--accent) 65%, var(--yl-line)); }
+[data-lesson-style='young'] .task-body :is(.gap-input, input[type=text], textarea):focus { outline: none; border-style: solid; border-color: var(--yl-strong); background: var(--yl-surface); padding-bottom: 4px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); }
+[data-lesson-style='young'] .task-body .gap-input:disabled { opacity: .7; }
+[data-lesson-style='young'] .task-body .wf-stem { margin-left: 6px; font: 800 .8em var(--yl-label); letter-spacing: .04em; color: var(--yl-strong); }
+
+/* Spelling one letter at a time: a row of letter boxes. */
+[data-lesson-style='young'] .task-body .lg-word { gap: 6px; margin-right: .6em; vertical-align: middle; align-items: center; }
+[data-lesson-style='young'] .task-body :is(.lg-slot, .lg-given) {
+  display: inline-grid; place-items: center; width: max(44px, 2.1em); height: max(52px, 2.5em); padding: 0; box-sizing: border-box; border-radius: 12px; text-align: center;
+  font: 700 1em/1 var(--yl-read); color: var(--yl-ink);
+}
+[data-lesson-style='young'] .task-body .lg-slot { border: 2px solid var(--yl-line); border-bottom-width: 4px; background: var(--yl-surface); transition: border-color .16s, box-shadow .16s, transform .16s var(--yl-ease); }
+[data-lesson-style='young'] .task-body .lg-slot:not([value='']) { border-color: color-mix(in srgb, var(--accent) 65%, var(--yl-line)); }
+[data-lesson-style='young'] .task-body .lg-slot:focus { outline: none; border-color: var(--yl-strong); background: var(--yl-surface); border-radius: 12px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent); transform: translateY(-2px); }
+[data-lesson-style='young'] .task-body .lg-given { background: var(--yl-tray); color: var(--yl-soft); }
+
+/* Writing more: a page with lines. */
+[data-lesson-style='young'] .task-body .writing-q { gap: 10px; margin: 4px 0 24px; }
+[data-lesson-style='young'] .task-body .writing-q > .q-num { align-self: flex-start; }
+[data-lesson-style='young'] .task-body .writing-q textarea {
+  min-height: 12em; padding: 8px 20px; border: 2px solid var(--yl-line); border-radius: 20px; resize: vertical;
+  font: 400 1em/2em var(--yl-read); color: var(--yl-ink); background-color: var(--yl-surface); background-attachment: local;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(2em - 2px), color-mix(in srgb, var(--accent) 28%, var(--yl-line)) calc(2em - 2px), color-mix(in srgb, var(--accent) 28%, var(--yl-line)) 2em);
+  background-position: 0 8px;
+}
+[data-lesson-style='young'] .task-body .word-count { align-self: flex-start; padding: 6px 14px; border-radius: 999px; background: var(--yl-tray); font: 700 15px/1.3 var(--yl-label); color: var(--yl-soft); }
+[data-lesson-style='young'] .task-body .word-count.off { background: var(--yl-pick); color: var(--yl-strong); }
+
+/* Word banks, word order and pins: tiles you pick up ------------------------------------------- */
+[data-lesson-style='young'] .task-body .word-bank {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 4px 0 22px; padding: 16px; border: 0; border-radius: 22px;
+  background: var(--yl-tray); box-shadow: inset 0 2px 0 color-mix(in srgb, var(--ink) 5%, transparent);
+}
+[data-lesson-style='young'] .task-body .bank-word {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 52px; min-width: 52px; padding: 6px 20px; margin: 0;
+  border-radius: 16px; border: 2px solid var(--yl-line); background: var(--yl-surface); box-shadow: 0 4px 0 var(--yl-key);
+  font: 700 1em/1.2 var(--yl-read); color: var(--yl-ink); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
+  transition: transform .16s var(--yl-ease), box-shadow .16s ease, border-color .16s ease, background-color .16s ease, opacity .16s;
+}
+[data-lesson-style='young'] .task-body .bank-word[draggable='true'] { cursor: grab; }
+@media (hover: hover) { [data-lesson-style='young'] .task-body .bank-word:not(:disabled):hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, var(--yl-line)); box-shadow: 0 6px 0 var(--yl-key); } }
+[data-lesson-style='young'] .task-body .bank-word:not(:disabled):active { transform: translateY(4px); box-shadow: none; cursor: grabbing; }
+[data-lesson-style='young'] .task-body .bank-word.picked {
+  border-color: var(--accent); background: var(--yl-pick); color: var(--yl-strong); transform: translateY(-5px) scale(1.04);
+  box-shadow: 0 4px 0 var(--yl-pick-key), 0 14px 22px -10px color-mix(in srgb, var(--accent-text) 55%, transparent);
+}
+/* A word already in a gap leaves its place behind, so learners can see what's left. */
+[data-lesson-style='young'] .task-body .bank-word.used { background: transparent; border-style: dashed; box-shadow: none; color: color-mix(in srgb, var(--ink) 38%, var(--paper)); text-decoration: none; cursor: default; }
+[data-lesson-style='young'] .task-body .bank-word:disabled:not(.used) { cursor: default; }
+[data-lesson-style='young'] .task-body .bank-word.right { border-color: var(--yl-ok-line); background: var(--yl-ok-bg); color: var(--yl-ok); box-shadow: 0 4px 0 var(--yl-ok-line); }
+[data-lesson-style='young'] .task-body .bank-word.wrong { border-color: var(--yl-no-line); background: var(--yl-no-bg); color: var(--yl-no); box-shadow: 0 4px 0 var(--yl-no-line); }
+[data-lesson-style='young'] .task-body .bank-hint,
+[data-lesson-style='young'] .task-body .match-help {
+  display: inline-flex; align-items: center; gap: 8px; margin: 0; font: 700 15px/1.35 var(--yl-label); color: var(--yl-soft);
+}
+[data-lesson-style='young'] .task-body .bank-hint { flex-basis: 100%; order: 99; margin-left: 2px; }
+[data-lesson-style='young'] .task-body :is(.bank-hint, .match-help)::before { content: ''; flex: none; width: 20px; height: 20px; background: currentColor; -webkit-mask: var(--yl-i-hand) center / contain no-repeat; mask: var(--yl-i-hand) center / contain no-repeat; }
+
+/* Gaps for words from the bank. */
+[data-lesson-style='young'] .task-body .drop-slot {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; min-width: 5em; min-height: 50px; padding: 4px 16px; margin: 4px 2px;
+  border-radius: 14px; border: 2px dashed color-mix(in srgb, var(--accent) 50%, var(--yl-line)); background: color-mix(in srgb, var(--accent) 7%, var(--paper));
+  font: 700 1em/1.2 var(--yl-read); color: var(--yl-ink); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  transition: transform .16s var(--yl-ease), box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+[data-lesson-style='young'] .task-body .drop-slot.ready { border-color: var(--yl-strong); background: var(--yl-pick); animation: yl-breathe 1.6s ease-in-out infinite; }
+[data-lesson-style='young'] .task-body .drop-slot.filled { border: 2px solid var(--accent); background: var(--yl-surface); box-shadow: 0 3px 0 var(--yl-pick-key); animation: yl-land .34s var(--yl-ease); }
+[data-lesson-style='young'] .task-body .drop-slot.filled.ready { animation: yl-breathe 1.6s ease-in-out infinite; }
+@media (hover: hover) { [data-lesson-style='young'] .task-body .drop-slot:not(:disabled):hover { border-color: var(--yl-strong); } }
+
+/* Word order: a sentence strip above, the words to use below. */
+[data-lesson-style='young'] .task-body .order-q { gap: 14px; margin: 4px 0 28px; }
+[data-lesson-style='young'] .task-body .order-line {
+  min-height: 76px; gap: 10px; padding: 10px 14px; border: 2px dashed var(--yl-line); border-radius: 20px; background: var(--yl-surface);
+  transition: border-color .16s;
+}
+[data-lesson-style='young'] .task-body .order-line:has(.bank-word) { border-style: solid; border-color: color-mix(in srgb, var(--accent) 45%, var(--yl-line)); }
+[data-lesson-style='young'] .task-body .order-empty { font: 700 16px var(--yl-label); color: var(--yl-soft); }
+[data-lesson-style='young'] .task-body .order-pool { gap: 12px; padding: 2px 2px 4px; }
+[data-lesson-style='young'] .task-body .bank-word.placed { opacity: 1; transform: none; border-color: var(--accent); background: var(--yl-pick); color: var(--yl-ink); box-shadow: 0 3px 0 var(--yl-pick-key); animation: yl-land .34s var(--yl-ease); }
+
+/* Matching: two columns of cards; each pair you make gets its own colour. ----------------------- */
+[data-lesson-style='young'] .task-body .match-q { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(18px, 6vw, 72px); row-gap: 14px; max-width: 820px; margin: 6px 0 26px; }
+[data-lesson-style='young'] .task-body :is(.match-left, .match-right) { gap: 12px; }
+[data-lesson-style='young'] .task-body .match-left li { align-items: center; gap: 6px; }
+[data-lesson-style='young'] .task-body .match-right li { display: flex; }
+[data-lesson-style='young'] .task-body .match-item {
+  --pc: var(--accent);
+  flex: 1; min-width: 0; min-height: 62px; margin: 0; padding: 10px 12px 10px 16px; gap: 12px; justify-content: space-between;
+  border-radius: var(--yl-r); border: 2px solid var(--yl-line); background: var(--yl-surface); box-shadow: 0 4px 0 var(--yl-key);
+  font: 700 1em/1.25 var(--yl-read); color: var(--yl-ink); overflow-wrap: break-word; hyphens: auto; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
+  transition: transform .16s var(--yl-ease), box-shadow .16s ease, border-color .16s ease, background-color .16s ease;
+}
+[data-lesson-style='young'] .task-body .match-right .match-item { justify-content: flex-start; padding-left: 12px; }
+@media (hover: hover) { [data-lesson-style='young'] .task-body .match-item:not(:disabled):hover { background: var(--yl-surface); transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 60%, var(--yl-line)); box-shadow: 0 6px 0 var(--yl-key); } }
+[data-lesson-style='young'] .task-body .match-item:not(:disabled):active { transform: translateY(4px); box-shadow: none; }
+[data-lesson-style='young'] .task-body .match-item:disabled { cursor: default; }
+[data-lesson-style='young'] .task-body .match-item .letter {
+  flex: none; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%;
+  background: var(--yl-tray); color: var(--yl-soft); box-shadow: inset 0 0 0 2px var(--yl-line); font: 800 16px/1 var(--yl-label); opacity: 1;
+}
+[data-lesson-style='young'] .task-body .match-slot {
+  flex: none; display: grid; place-items: center; width: 36px; min-width: 36px; height: 36px; border: 2px dashed var(--yl-line); border-radius: 50%;
+  font: 800 16px/1 var(--yl-label); color: var(--yl-ink);
+}
+[data-lesson-style='young'] .task-body .match-item.active {
+  border-color: var(--accent); background: var(--yl-pick); transform: translateY(-3px);
+  box-shadow: 0 4px 0 var(--yl-pick-key), 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+[data-lesson-style='young'] .task-body .match-item.active .match-slot { border-color: var(--yl-strong); animation: yl-breathe 1.6s ease-in-out infinite; }
+[data-lesson-style='young'] .task-body .match-q[class*='waiting-'] .match-item:not(.active):not(:disabled) { border-style: dashed; }
+[data-lesson-style='young'] .task-body .match-q.waiting-l .match-left .match-item:not(.active),
+[data-lesson-style='young'] .task-body .match-q.waiting-r .match-right .match-item:not(.active) { border-style: solid; }
+[data-lesson-style='young'] .task-body .match-item[data-pair='0'] { --pc: var(--yl-sky); }
+[data-lesson-style='young'] .task-body .match-item[data-pair='1'] { --pc: var(--yl-rose); }
+[data-lesson-style='young'] .task-body .match-item[data-pair='2'] { --pc: var(--yl-leaf); }
+[data-lesson-style='young'] .task-body .match-item[data-pair='3'] { --pc: var(--yl-sun); }
+[data-lesson-style='young'] .task-body .match-item[data-pair='4'] { --pc: var(--yl-lilac); }
+[data-lesson-style='young'] .task-body .match-item[data-pair='5'] { --pc: var(--yl-peach); }
+[data-lesson-style='young'] .task-body .match-item[data-pair] { border-color: color-mix(in srgb, var(--pc) 85%, var(--ink) 15%); background: color-mix(in srgb, var(--pc) 22%, var(--yl-surface)); box-shadow: 0 4px 0 color-mix(in srgb, var(--pc) 70%, var(--ink) 30%); color: var(--yl-ink); }
+[data-lesson-style='young'] .task-body .match-item[data-pair] :is(.letter, .match-slot) { border: 0; background: var(--pc); color: #2b2630; box-shadow: none; animation: yl-land .34s var(--yl-ease); }
+[data-lesson-style='young'] .task-body .match-item.active[data-pair] { border-color: var(--accent); }
+[data-lesson-style='young'] .task-body .match-help { grid-column: 1 / -1; margin-top: 2px; }
+[data-lesson-style='young'] .task-body .match-item .gap-result { flex: none; }
+
+/* Marked answers you wrote or placed: a pill, with a tick, or a cross and the answer. ---------- */
+[data-lesson-style='young'] .task-body :is(.gap-result, .order-q) .ans,
+[data-lesson-style='young'] .task-body .gap-result .fix,
+[data-lesson-style='young'] .task-body .order-q .fix {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 4px 14px; margin: 3px 2px; vertical-align: middle;
+  border: 0; border-radius: 999px; font: 700 1em/1.2 var(--yl-read); white-space: normal;
+}
+[data-lesson-style='young'] .task-body :is(.gap-result, .order-q) .ans.right { color: var(--yl-ok); background: var(--yl-ok-bg); box-shadow: inset 0 0 0 2px var(--yl-ok-line); animation: yl-cheer .5s var(--yl-ease); }
+[data-lesson-style='young'] .task-body :is(.gap-result, .order-q) .ans.wrong { color: var(--yl-no); background: var(--yl-no-bg); box-shadow: inset 0 0 0 2px var(--yl-no-line); text-decoration: line-through; text-decoration-thickness: 2px; text-decoration-color: color-mix(in srgb, var(--yl-no) 55%, transparent); }
+[data-lesson-style='young'] .task-body :is(.gap-result, .order-q) .ans.wrong::before { content: ''; flex: none; width: 15px; height: 15px; background: currentColor; -webkit-mask: var(--yl-i-cross) center / contain no-repeat; mask: var(--yl-i-cross) center / contain no-repeat; }
+[data-lesson-style='young'] .task-body :is(.gap-result, .order-q) .fix { color: var(--yl-ok); background: var(--yl-surface); box-shadow: inset 0 0 0 2px var(--yl-ok-line); font-size: 1em; }
+[data-lesson-style='young'] .task-body :is(.gap-result, .order-q) .fix::before { content: ''; flex: none; width: 16px; height: 16px; background: currentColor; -webkit-mask: var(--yl-i-arrow) center / contain no-repeat; mask: var(--yl-i-arrow) center / contain no-repeat; }
+[data-lesson-style='young'] .task-body .tick { display: inline-grid; place-items: center; width: 28px; height: 28px; margin: 0 4px 0 -2px; border-radius: 50%; background: var(--yl-ok-line); color: #fff; vertical-align: middle; animation: yl-pop .45s var(--yl-ease) both; }
+[data-lesson-style='young'] .task-body .tick svg { width: 15px; height: 15px; }
+[data-lesson-style='young'] .task-body .tick svg * { stroke-width: 3; }
+[data-lesson-style='young'] .task-body .match-item .gap-result .ans { min-height: 34px; min-width: 34px; padding: 2px 10px; justify-content: center; }
+[data-lesson-style='young'] .task-body .match-item .gap-result .fix { min-height: 34px; padding: 2px 10px; }
+[data-lesson-style='young'] .task-body .order-q:has(> .ans) { align-items: center; gap: 6px; }
+
+/* A note after marking: a hint from the teacher in a soft yellow bubble with a bulb. */
+[data-lesson-style='young'] .task-body .q-notes {
+  position: relative; gap: 4px; margin: 8px 0 18px; padding: 12px 16px 12px 48px; border-radius: 18px;
+  background: color-mix(in srgb, var(--yl-sun) 20%, var(--paper)); color: var(--yl-ink); font: 400 17px/1.5 var(--yl-read);
+}
+[data-lesson-style='young'] .task-body .q-notes::before { content: ''; position: absolute; left: 16px; top: 13px; width: 22px; height: 22px; background: #9a6b12; -webkit-mask: var(--yl-i-bulb) center / contain no-repeat; mask: var(--yl-i-bulb) center / contain no-repeat; }
+:root[data-theme='dark'] [data-lesson-style='young'] .task-body .q-notes::before { background: var(--yl-sun); }
+[data-lesson-style='young'] .task-body .q-notes .q-num { height: 22px; min-width: 22px; font-size: 12px; }
+[data-lesson-style='young'] .task-body .reveal-ans { display: inline-flex; align-items: center; min-height: 34px; padding: 2px 12px; margin: 2px 4px; border-radius: 999px; background: var(--yl-ok-bg); color: var(--yl-ok); font: 700 .9em var(--yl-read); vertical-align: middle; }
+
+/* Examples: shown answered, with a small label. */
+[data-lesson-style='young'] .task-body .ex-tag { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; background: var(--yl-tray); font: 800 12px/1.2 var(--yl-label); letter-spacing: .04em; text-transform: uppercase; color: var(--yl-soft); }
+[data-lesson-style='young'] .task-body .example-block { padding: 14px 16px; border-radius: 20px; background: color-mix(in srgb, var(--paper) 60%, transparent); box-shadow: inset 0 0 0 2px var(--yl-line); margin-bottom: 18px; }
+[data-lesson-style='young'] .task-body .example-q .ex-answer { padding: 2px 12px; border-radius: 999px; background: var(--yl-tray); font-weight: 700; }
+
+/* Buttons in the task (next part, reveal, draw a card): big and round. */
+[data-lesson-style='young'] .task-body .btn {
+  min-height: 48px; padding: 0 22px; border-radius: 999px; font: 800 17px var(--yl-label);
+  transition: transform .16s var(--yl-ease), box-shadow .16s ease;
+}
+[data-lesson-style='young'] .task-body .btn:not(:disabled):active { transform: translateY(3px); }
+
+/* The foot: progress, then a big Check button. ----------------------------------------------- */
+[data-lesson-style='young'] .frame-foot { gap: 14px; padding: 14px clamp(16px, 3vw, 28px); border-top: 0; flex-wrap: wrap; }
+[data-lesson-style='young'] .frame-foot .foot-status { display: inline-flex; align-items: center; gap: 12px; font: 700 15px/1.3 var(--yl-label); color: var(--yl-soft); }
+[data-lesson-style='young'] .frame-foot .btn.primary {
+  min-height: 54px; padding: 0 30px; border: 0; border-radius: 999px; background: var(--yl-strong); color: var(--yl-on-strong);
+  font: 800 19px var(--yl-label); box-shadow: 0 4px 0 color-mix(in srgb, var(--yl-strong) 68%, #000);
+  touch-action: manipulation; transition: transform .16s var(--yl-ease), box-shadow .16s ease, opacity .16s;
+}
+@media (hover: hover) { [data-lesson-style='young'] .frame-foot .btn.primary:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 6px 0 color-mix(in srgb, var(--yl-strong) 68%, #000); } }
+[data-lesson-style='young'] .frame-foot .btn.primary:not(:disabled):active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
+[data-lesson-style='young'] .frame-foot .btn.primary:disabled { opacity: .45; box-shadow: none; }
+[data-lesson-style='young'] .frame-foot .btn.primary:focus-visible { outline: 3px solid var(--yl-strong); outline-offset: 3px; }
+[data-lesson-style='young'] .frame-foot .nav-arrow { width: 48px; height: 48px; min-width: 48px; border-radius: 50%; }
+[data-lesson-style='young'] .yl-progress { display: inline-flex; align-items: center; gap: 6px; }
+[data-lesson-style='young'] .yl-progress.steps i { width: 14px; height: 14px; border-radius: 50%; background: var(--yl-tray); box-shadow: inset 0 0 0 2px var(--yl-line); transition: background-color .2s, box-shadow .2s, transform .3s var(--yl-ease); }
+[data-lesson-style='young'] .yl-progress.steps i.on { background: var(--accent); box-shadow: none; transform: scale(1.12); }
+[data-lesson-style='young'] .yl-progress.full.steps i.on { background: var(--yl-strong); }
+[data-lesson-style='young'] .yl-progress.bar { width: min(180px, 30vw); height: 12px; border-radius: 999px; background: var(--yl-tray); box-shadow: inset 0 0 0 2px var(--yl-line); overflow: hidden; }
+[data-lesson-style='young'] .yl-progress.bar i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .3s ease; }
+
+/* The result: a star (filled as far as you got) and a few kind words. Every answer right: the star sparkles. */
+[data-lesson-style='young'] .yl-score { display: inline-flex; align-items: center; gap: 12px; color: var(--yl-ink); }
+[data-lesson-style='young'] .yl-medal { position: relative; display: grid; place-items: center; width: 48px; height: 48px; flex: none; color: color-mix(in srgb, var(--ink) 45%, var(--paper)); }
+[data-lesson-style='young'] .yl-score.all .yl-medal svg { animation: yl-star .7s var(--yl-ease) both; filter: drop-shadow(0 3px 0 #d79e2f); }
+[data-lesson-style='young'] .yl-score-text { display: flex; flex-direction: column; line-height: 1.25; }
+[data-lesson-style='young'] .yl-score-n { font: 700 15px var(--yl-label); color: var(--yl-soft); }
+[data-lesson-style='young'] .yl-score-n .big { font: 800 22px var(--yl-label); color: var(--yl-ink); margin-right: 4px; }
+[data-lesson-style='young'] .yl-score-msg { font: 700 17px/1.3 var(--yl-label); color: var(--yl-ink); }
+[data-lesson-style='young'] .yl-burst { position: absolute; inset: 0; pointer-events: none; }
+[data-lesson-style='young'] .yl-burst i {
+  --a: calc(var(--i) * 36deg);
+  position: absolute; left: 50%; top: 50%; width: 7px; height: 12px; margin: -6px 0 0 -3.5px; border-radius: 3px; opacity: 0;
+  background: var(--yl-sky); animation: yl-confetti .9s cubic-bezier(.2, .7, .3, 1) .15s both;
+}
+[data-lesson-style='young'] .yl-burst i:nth-child(3n+2) { background: var(--yl-rose); }
+[data-lesson-style='young'] .yl-burst i:nth-child(3n) { background: var(--yl-leaf); border-radius: 50%; width: 8px; height: 8px; }
+
+/* Teachers: what learners will see, and tips. */
+.yl-author { margin-top: 4px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 7%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); font-family: var(--sans); }
+.yl-author-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.yl-author .yl-cue { width: 40px; height: 40px; border-radius: 12px; }
+.yl-author .yl-cue svg { width: 28px; height: 28px; }
+.yl-author-text { flex: 1 1 220px; display: flex; flex-direction: column; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.yl-author-text b { font-size: 14px; color: var(--ink); }
+.yl-author-list { margin: 10px 0 2px; padding: 0 0 0 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45; color: var(--ink); }
+
+@keyframes yl-pick { 0% { transform: scale(.96); } 60% { transform: scale(1.03); } 100% { transform: none; } }
+@keyframes yl-cheer { 0% { transform: scale(.92); } 55% { transform: scale(1.06); } 100% { transform: none; } }
+@keyframes yl-pop { 0% { transform: scale(0); } 100% { transform: none; } }
+@keyframes yl-land { 0% { transform: translateY(-8px) scale(1.06); } 100% { transform: none; } }
+@keyframes yl-wobble { 0%, 100% { transform: none; } 25% { transform: translateX(-5px); } 50% { transform: translateX(4px); } 75% { transform: translateX(-2px); } }
+@keyframes yl-breathe { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 24%, transparent); } }
+@keyframes yl-star { 0% { transform: scale(.3) rotate(-30deg); opacity: 0; } 70% { transform: scale(1.15) rotate(6deg); opacity: 1; } 100% { transform: none; } }
+@keyframes yl-confetti {
+  0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(-40px) rotate(120deg) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-lesson-style='young'] *, [data-lesson-style='young'] *::before, [data-lesson-style='young'] *::after { animation: none !important; transition: none !important; }
+  [data-lesson-style='young'] .task-body :is(.bank-word.picked, .match-item.active) { transform: none; }
+  [data-lesson-style='young'] .yl-burst { display: none; }
+}
+
+/* Smaller screens: a little smaller, never cramped. Phones keep two matching columns. */
+@media (max-width: 700px) {
+  [data-lesson-style='young'] { --yl-size: 18px; --yl-r: 16px; }
+  [data-lesson-style='young'] .frame-head { padding: 14px 16px 10px; }
+  [data-lesson-style='young'] .yl-cue { width: 46px; height: 46px; border-radius: 14px; }
+  [data-lesson-style='young'] .yl-cue svg { width: 32px; height: 32px; }
+  [data-lesson-style='young'] .frame-body .task-body:not(.task-body .task-body) { padding: 16px 14px; border-radius: 20px; }
+  [data-lesson-style='young'] .task-body .opt { min-height: 58px; }
+  [data-lesson-style='young'] .task-body .lg-word { flex-wrap: wrap; white-space: normal; gap: 5px; }
+  [data-lesson-style='young'] .task-body :is(.lg-slot, .lg-given) { width: 40px; height: 50px; }
+  [data-lesson-style='young'] .task-body .match-q { column-gap: 10px; }
+  [data-lesson-style='young'] .task-body .match-left li { gap: 2px; }
+  [data-lesson-style='young'] .task-body .match-left li > .q-num { min-width: 22px; height: 22px; padding: 0 5px; margin: 0; font-size: 12px; }
+  [data-lesson-style='young'] .task-body .match-item { min-height: 56px; padding: 8px 6px 8px 10px; gap: 6px; }
+  [data-lesson-style='young'] .task-body .match-right .match-item { padding-left: 6px; }
+  [data-lesson-style='young'] .task-body :is(.match-item .letter, .match-slot) { width: 30px; min-width: 30px; height: 30px; font-size: 14px; }
+  [data-lesson-style='young'] .frame-foot { flex-wrap: wrap; padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); }
+  [data-lesson-style='young'] .frame-foot > .yl-score { flex: 1 1 100%; max-width: none; overflow: visible; white-space: normal; font-size: inherit; }
+  [data-lesson-style='young'] .frame-foot > .yl-score .big { font-size: 22px; }
+  [data-lesson-style='young'] .frame-foot .foot-acts { flex: 1; }
+  [data-lesson-style='young'] .frame-foot .btn.primary { flex: 1; }
+}
+/* Big screens and projectors: more room, same proportions. */
+@media (min-width: 1600px) {
+  [data-lesson-style='young'] { --yl-size: 22px; }
+}

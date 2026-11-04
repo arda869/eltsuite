@@ -6,6 +6,8 @@ import { MaterialImport } from '../materials/MaterialImport';
 import { useAiPilot } from '../ai/pilot';
 import { lessonStyleOf } from '../lib/lessonStyle';
 import '../lessons/youngLesson.css';
+import { YoungAuthorBar, YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
+import { isAnswered, scoreTask } from '../lib/questions';
 import { NSelect } from '../components/Select';
 import { TeacherLiveVideo } from '../components/LiveVideo';
 import { setActivity } from '../lib/status';
@@ -854,6 +856,7 @@ export function LessonEditor() {
                   {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={async () => { await flush(); }} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
+                  {lessonStyleOf(c) === 'young' && <YoungAuthorBar content={draft.content} instructions={draft.instructions} onPreview={() => void changeMode('preview')} />}
                 </div>
                 <div className="frame-body">
                   <TaskEditor
@@ -1250,7 +1253,13 @@ export function LessonEditor() {
                   )}
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
                   <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{draft.title}</h1>
-                  <InstrView classId={classId} doc={draft.instrDoc} text={draft.instructions} />
+                  {lessonStyleOf(c) === 'young' && (draft.instrDoc || draft.instructions) ? (
+                    <YoungInstr content={draft.content}>
+                      <InstrView classId={classId} doc={draft.instrDoc} text={draft.instructions} />
+                    </YoungInstr>
+                  ) : (
+                    <InstrView classId={classId} doc={draft.instrDoc} text={draft.instructions} />
+                  )}
                 </div>
                 {!preview && boardView && user && item && <div className="board-pane"><LessonBoard classId={classId} item={item} uid={user.uid} teacher page={boardPage} onPage={goBoardPage} people={inLesson.map((p) => ({ uid: p.id, name: p.name }))} /></div>}
                 {!preview && <SpotlightCard spotlight={live?.spotlight} taskId={task.id} onClose={() => setLive(classId, { spotlight: null })} />}
@@ -1291,6 +1300,15 @@ export function LessonEditor() {
                   />
                 </div>
                 <div className="frame-foot">
+                  {preview && lessonStyleOf(c) === 'young' && previewKey && (() => {
+                    const qs = questionIds(previewKey.content);
+                    const r = scoreTask(qs, previewKey.key, previewResponses);
+                    return previewChecked && !r.hasWriting ? (
+                      <YoungScore got={r.score} total={r.total}>
+                        {r.total > 0 && <><span className="big">{Math.round(r.score * 10) / 10}</span> of {r.total} correct</>}
+                      </YoungScore>
+                    ) : !previewChecked ? <YoungProgress done={qs.filter((q) => isAnswered(previewResponses[q.id])).length} total={qs.length} /> : null;
+                  })()}
                   <span className="hint">{preview ? 'Preview · answers here aren’t saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
                     {!preview && qCount > 0 && (
