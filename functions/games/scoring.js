@@ -15,6 +15,23 @@ export function scoreMove(game,state,previous={},awards={},now=Date.now()){
   }
  }
 
+ // Game show: the server owns the clock and remembers which lifelines were spent. A deadline is set
+ // when a question opens; an answer locked after it (plus a little latency) earns nothing.
+ if(game.type==='show'&&next.show){
+  const old=previous.show||{};const seconds=[15,30,45,60,90].includes(game.showTimer)?game.showTimer:0;next.show={...next.show};
+  const opened=next.show.phase==='play'&&(next.round!==(previous.round||0)||!old.deadline&&old.phase!=='locked');
+  if(!seconds)next.show.deadline=0;
+  else if(opened)next.show.deadline=now+seconds*1000;
+  else next.show.deadline=old.deadline||0;
+  if(old.fifty!==undefined&&old.fifty!==null)next.show.fifty=old.fifty;
+  if(old.extra!==undefined&&old.extra!==null)next.show.extra=old.extra;
+  else if(seconds&&next.show.extra!==null&&next.show.extra!==undefined&&!opened&&next.show.deadline)next.show.deadline+=20000;
+  next.show.lockedAt=next.show.phase==='locked'&&old.phase!=='locked'?now:(old.lockedAt||0);
+  if(next.feedback!==null&&previous.feedback==null&&next.show.deadline){
+   const at=old.phase==='locked'&&old.lockedAt?old.lockedAt:now;
+   if(at>next.show.deadline+1500){next.answer='';next.feedback='Time ran out.';}
+  }
+ }
  if(previous.finished)return {state:previous,awards:ledger};
  if(next.round>(previous.round||0)+1||next.round<(previous.round||0))throw Error('Wait for the current round to finish.');
  if(next.round>(previous.round||0)&&previous.feedback==null)throw Error('Answer the current round first.');
@@ -27,7 +44,11 @@ export function scoreMove(game,state,previous={},awards={},now=Date.now()){
  if(next.feedback!==null&&ledger[next.round]===undefined){
   const r=rounds[next.round];let correct=norm(next.answer)===norm(r.answer),unscored=false;
   if(r.content){const {content,key}=splitKey(r.content);const questions=questionIds(content);unscored=!questions.length||questions.some(q=>['writing','reflect','upload'].includes(q.type));const scores=questions.map(q=>scoreQuestion(key[q.id],next.responses[q.id]));correct=!unscored&&scores.length>0&&scores.every(s=>s.max>0&&s.got===s.max);}
+  if(game.type==='show'&&next.feedback==='Time ran out.')correct=false;
   const stake=[5,10,20,50].includes(next.stake)?next.stake:10;ledger[next.round]=unscored?0:game.type==='wager'?(correct?stake:-stake):(correct?10:0);
  }
- next.score=Object.values(ledger).reduce((n,p)=>n+p,0);next.finished=gameOver||(next.finished&&next.round===rounds.length-1&&Object.keys(ledger).length===rounds.length);return {state:next,awards:ledger};
+ next.score=Object.values(ledger).reduce((n,p)=>n+p,0);next.finished=gameOver||(next.finished&&next.round===rounds.length-1&&Object.keys(ledger).length===rounds.length);
+ // The progress ladder shown to everyone follows the ledger, not what a client claims.
+ if(game.type==='show'&&next.show){const claimed=next.show.results||'';next.show.results=rounds.map((_,i)=>ledger[i]===undefined?'.':ledger[i]>0?'1':(claimed[i]==='x'?'x':'0')).join('').replace(/\.+$/,'');}
+ return {state:next,awards:ledger};
 }

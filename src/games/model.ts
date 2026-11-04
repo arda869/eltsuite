@@ -29,7 +29,11 @@ export type GameRound = {
     answer: string;
     choices: string[];
     content?: JSONContent;
+    /** Game show: a short explanation shown with the correct answer. */
+    note?: string;
 };
+/** Game show timer choices in seconds; 0 means no timer. */
+export const SHOW_TIMERS = [0, 15, 30, 45, 60, 90] as const;
 export type GameConfig = {
     version: 1;
     type: GameType;
@@ -38,6 +42,12 @@ export type GameConfig = {
     sound: boolean;
     sourceId?: string;
     roundSeconds?: number;
+    /** Game show: seconds to answer each question (0 or missing: no timer). */
+    showTimer?: number;
+    /** Game show: ask players to lock in an answer before it's checked (missing: yes). */
+    showLock?: boolean;
+    /** Game show: offer the lifelines (missing: yes). */
+    showLifelines?: boolean;
 };
 export const blankGame = (): GameConfig => ({ version: 1, type: 'show', theme: 'wood', rounds: [], sound: true });
 export const norm = (s: string) => s.normalize('NFKC').trim().toLocaleLowerCase();
@@ -69,7 +79,11 @@ export function gameProblems(game: GameConfig): string[] {
             errors.push(`Question ${i + 1}: add at least one different answer option.`);
         if (game.type === 'auction' && !['correct', 'incorrect'].includes(norm(r.answer)))
             errors.push(`Sentence ${i + 1}: answer must be Correct or Incorrect.`);
+        if (game.type === 'show' && (r.note || '').length > 600)
+            errors.push(`Question ${i + 1}: keep the explanation under 600 characters.`);
     });
+    if (game.type === 'show' && game.showTimer !== undefined && !(SHOW_TIMERS as readonly number[]).includes(game.showTimer))
+        errors.push('Choose one of the timer options.');
     return errors;
 }
 // Seeded order survives redraws and is shared by all players in the same round.
