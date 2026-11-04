@@ -1,7 +1,7 @@
 /* Taxi town: a street in perspective, in five times of day. The taxi's lane is --lane and the
    cone's --cone (as a percentage of the width); --p brings the cone closer as the clock runs. */
 .taxi-stage { --tx-sky-top: #f1a66b; --tx-sky-bottom: #fde9cc; --tx-sun: #ffd27a; --tx-far: #c98a66; --tx-far-light: #ffe0b0; --tx-ground: #cdb79a; --tx-road: #4a4745; --tx-road-far: #6a6563; --tx-dash: #f5e9c8; --tx-edge: #e8dcc3; --tx-taxi: #f2b63a; --tx-taxi-dark: #d99a1f; --tx-glass: #9fd3e8; --tx-sign: #fff4c2; --tx-light: #e8453c; --tx-cone: #f0712d; --tx-cone-dark: #b84e1a; --tx-dest: #e9dcc7; --tx-dest-dark: #a08a6c; --tx-window: #4f6f8c; --tx-door: #6b4a33; --tx-skin: #e7b48f; --tx-skin-2: #a86f4a; --tx-shirt: #d2694a; --tx-shirt-2: #3f6a8a; --tx-honk: #fff; --tx-danger: #3a1a10; --tx-stars: none; --tx-wall-filter: none;
-  --ch-bg: #2b2320; --ch-face: #fffaf2; --ch-ink: #262420; --ch-muted: #66615b; --ch-accent: #d2694a; --ch-accent-ink: #fff; --ch-right: #3f8f5a; --ch-wrong: #c2473a; --ch-hud: rgba(255, 250, 242, .92); --ch-hud-ink: #262420; --ch-on-scene: #f3e9dc; }
+  --ch-bg: #2b2320; --ch-face: #fffaf2; --ch-ink: #262420; --ch-muted: #66615b; --ch-accent: #d2694a; --ch-accent-ink: #140c09; --ch-right: #3f8f5a; --ch-wrong: #c2473a; --ch-hud: rgba(255, 250, 242, .92); --ch-hud-ink: #262420; --ch-on-scene: #f3e9dc; }
 .taxi-theme-paper { --tx-sky-top: #e6ecef; --tx-sky-bottom: #f9fafa; --tx-sun: #f2d58a; --tx-far: #b7c1c6; --tx-far-light: #fff; --tx-ground: #d9d6cf; --tx-road: #5b5b5b; --tx-road-far: #7a7a7a; --tx-dash: #f4f4f4; --tx-edge: #e6e6e6; --tx-danger: #2a2a2a; --tx-wall-filter: saturate(.55) brightness(1.05);
   --ch-bg: #4a4f55; --ch-face: #fff; --ch-accent: #c95f41; }
 .taxi-theme-arcade { --tx-sky-top: #15103a; --tx-sky-bottom: #3b1d6b; --tx-sun: #f3eaff; --tx-far: #241a52; --tx-far-light: #ff6bd6; --tx-ground: #2a2246; --tx-road: #262235; --tx-road-far: #3a3352; --tx-dash: #ffe66d; --tx-edge: #ff6bd6; --tx-taxi: #ffcc3d; --tx-glass: #6ad7ff; --tx-light: #ff4d6d; --tx-cone: #ff7a3d; --tx-dest: #3a2d6e; --tx-dest-dark: #241a52; --tx-window: #ffd36b; --tx-door: #1a1333; --tx-honk: #6ad7ff; --tx-danger: #3a0a2a; --tx-stars: radial-gradient(circle at 20% 30%, #fff 0 1px, #0000 1.6px) 0 0 / 90px 70px, radial-gradient(circle at 70% 60%, #ffffffb0 0 1px, #0000 1.4px) 0 0 / 53px 61px; --tx-wall-filter: brightness(.55) saturate(1.3) hue-rotate(-10deg);
@@ -46,7 +46,7 @@
 .tx-scene[data-mood=idle] .tx-road, .tx-scene[data-mood=idle] .tx-wall, .tx-scene[data-mood=lost] .tx-road, .tx-scene[data-mood=lost] .tx-wall { animation-play-state: paused; }
 .tx-scene[data-mood=cleared] .tx-road { animation-duration: .5s; }
 .tx-scene[data-mood=cleared] .tx-wall { animation-duration: 1.2s; }
-.tx-lane-note { flex: 1; min-width: 0; text-align: center; padding: 8px 12px; border-radius: 999px; background: color-mix(in srgb, var(--ch-face) 14%, transparent); }
+.tx-lane-note { color: #fff; opacity: 1; flex: 1; min-width: 0; text-align: center; padding: 8px 12px; border-radius: 999px; background: color-mix(in srgb, var(--ch-face) 14%, transparent); }
 .tx-lane-note.blocked { background: color-mix(in srgb, var(--ch-wrong) 40%, transparent); color: #fff; opacity: 1; font-weight: 800; animation: ch-nope .4s ease both; }
 
 @container (min-width: 900px) { .chase-stage[data-phase=finished] .tx-taxi { left: 75%; } .chase-stage[data-phase=finished] .tx-cone { left: 75%; } }

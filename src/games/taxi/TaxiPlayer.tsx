@@ -37,7 +37,7 @@ export function TaxiPlayer(props: ChaseProps) {
         <span className="ch-kicker">Taxi town</span>
         <h2>{title || 'Taxi town'}</h2>
         <Facts items={facts} />
-        <p className="ch-how">Each passenger asks a question. Steer out of the cone's lane, answer before the meter runs out, and drop them off.</p>
+        <p className="ch-how">Each passenger asks a question. Steer out of the cone’s lane, answer before the meter runs out, and drop them off.</p>
         <div className="ch-panel-actions">{readOnly ? <p className="ch-waiting" role="status">Waiting for the game to start…</p> : <button type="button" className="ch-primary big" onClick={start}>Start your shift</button>}{soundButton}</div>
       </div></div>}
       {state.finished && <div className="ch-overlay ch-overlay-side"><div className="ch-panel tx-finish" role="status">

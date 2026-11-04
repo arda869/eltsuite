@@ -66,7 +66,7 @@ export function useChase({ game, onFinish, remote, onState, readOnly = false }: 
   const result = resultOf(state);
   const running = phase === 'running' && !state.finished && state.feedback === null;
   const canAct = !readOnly && running;
-  const welcome = state.round === 0 && phase === 'ready' && state.feedback === null && !state.finished;
+  const welcome = phase === 'ready' && state.feedback === null && !state.finished;
   const fraction = timeFraction(state, seconds, now);
   const remaining = remainingSeconds(state, now);
   const lane = state.arcade.roadLane;
@@ -121,7 +121,7 @@ export function useChase({ game, onFinish, remote, onState, readOnly = false }: 
     lastTries.current = wrongTries.length;
   }, [wrongTries.length, running, theme]);
 
-  const problems = gameProblems(game);
+  const problems = useMemo(() => gameProblems(game), [game]);
 
   const startRound = (round: number, extra: Partial<ChaseState> = {}) => {
     const s = stateRef.current;
@@ -131,7 +131,8 @@ export function useChase({ game, onFinish, remote, onState, readOnly = false }: 
   const start = () => {
     if (readOnly) return;
     if (stateRef.current.finished) { setRun(n => n + 1); lastTries.current = 0; setState(initialChase()); signature.current = ''; }
-    startRound(0, { score: 0, finished: false });
+    // Older saved boards pause between rounds. Resume their island or passenger with its existing score.
+    startRound(stateRef.current.round);
   };
   const choose = (option: string) => {
     const s = stateRef.current;
@@ -156,6 +157,6 @@ export function useChase({ game, onFinish, remote, onState, readOnly = false }: 
     startRound(s.round + 1);
   };
 
-  return { state, r, options, phase, result, running, canAct, welcome, fraction, remaining, seconds, count, lane, cone, blocked, wrongTries, sound, setSound, run, problems, start, choose, steer, next, readOnly, theme };
+  return { state, r, options, phase, result, running, canAct, welcome, fraction, remaining, seconds, count, lane, cone, blocked, wrongTries, sound, setSound, run, problems, start, choose, steer, next, readOnly, steering, theme };
 }
 export type Chase = ReturnType<typeof useChase>;

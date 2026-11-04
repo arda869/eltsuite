@@ -2,7 +2,7 @@
    progress and score laid over it; the question card and answer tiles below. Each game sets the
    --ch-* palette for each of the five looks in its own stylesheet. */
 .chase-stage:focus { outline: none; }
-.chase-stage { --ch-bg: #1b2a3a; --ch-face: #fffaf2; --ch-ink: #262420; --ch-muted: #66615b; --ch-accent: #d2694a; --ch-accent-ink: #fff; --ch-right: #3f8f5a; --ch-wrong: #c2473a; --ch-hair: rgba(38, 36, 32, .12); --ch-on-scene: #fff; --ch-hud: rgba(255, 250, 242, .92); --ch-hud-ink: #262420;
+.chase-stage { --ch-bg: #1b2a3a; --ch-face: #fffaf2; --ch-ink: #262420; --ch-muted: #66615b; --ch-accent: #d2694a; --ch-accent-ink: #140c09; --ch-right: #3f8f5a; --ch-wrong: #c2473a; --ch-hair: rgba(38, 36, 32, .12); --ch-on-scene: #fff; --ch-hud: rgba(255, 250, 242, .92); --ch-hud-ink: #262420;
   position: relative; container-type: inline-size; isolation: isolate; margin: 16px 0; border-radius: 26px; overflow: hidden; background: var(--ch-bg); color: var(--ch-ink); font-family: var(--sans, Karla, system-ui, sans-serif); box-shadow: 0 24px 50px -30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .08); }
 .chase-stage, .chase-stage * { box-sizing: border-box; }
 .chase-stage h2, .chase-stage p, .chase-stage button { overflow-wrap: anywhere; }
@@ -36,7 +36,7 @@
 .ch-clock.urgent .ch-clock-track i { background: var(--ch-wrong); }
 .ch-score { display: inline-flex; align-items: baseline; gap: 5px; min-height: 36px; padding: 0 14px; border-radius: 999px; background: var(--ch-accent); color: var(--ch-accent-ink); box-shadow: 0 4px 14px -6px rgba(0, 0, 0, .5); font-variant-numeric: tabular-nums; }
 .ch-score b { font: 800 18px/36px var(--sans, Karla, sans-serif); display: inline-block; animation: ch-score .5s cubic-bezier(.2, 1.8, .4, 1); }
-.ch-score small { font: 700 11px var(--sans, Karla, sans-serif); opacity: .85; }
+.ch-score small { font: 700 11px var(--sans, Karla, sans-serif); }
 .ch-sound { display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--ch-hud); color: var(--ch-hud-ink); box-shadow: 0 4px 14px -6px rgba(0, 0, 0, .4); backdrop-filter: blur(6px); }
 .ch-sound[aria-pressed=false] { opacity: .75; }
 
@@ -54,7 +54,7 @@
 .ch-answer { position: relative; display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 12px 16px; text-align: left; border: 2px solid transparent; border-radius: 18px; background: var(--ch-face); color: var(--ch-ink); box-shadow: 0 10px 24px -16px rgba(0, 0, 0, .6), 0 0 0 1px rgba(0, 0, 0, .05); transition: transform .15s ease, box-shadow .15s ease, border-color .15s, background .2s, opacity .3s; animation: ch-rise .5s cubic-bezier(.2, .9, .3, 1.1) backwards; animation-delay: calc(80ms + var(--k, 0) * 60ms); }
 .ch-answer:not(:disabled):hover { transform: translateY(-3px); box-shadow: 0 16px 30px -16px rgba(0, 0, 0, .7), 0 0 0 1px rgba(0, 0, 0, .05); border-color: color-mix(in srgb, var(--ch-accent) 55%, transparent); }
 .ch-answer:not(:disabled):active { transform: translateY(1px) scale(.99); }
-.ch-lozenge { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--ch-accent) 16%, var(--ch-face)); color: var(--ch-accent); font: 800 17px var(--sans, Karla, sans-serif); transition: background .2s, color .2s; }
+.ch-lozenge { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--ch-accent) 16%, var(--ch-face)); color: var(--ch-ink); font: 800 17px var(--sans, Karla, sans-serif); transition: background .2s, color .2s; }
 .ch-answer-text { flex: 1; font: 700 clamp(16px, 2.3cqi, 21px)/1.25 var(--sans, Karla, sans-serif); }
 .ch-answer[data-state=wrong] { opacity: .6; border-color: color-mix(in srgb, var(--ch-wrong) 50%, transparent); background: color-mix(in srgb, var(--ch-wrong) 7%, var(--ch-face)); cursor: default; animation: ch-nope .4s ease both; }
 .ch-answer[data-state=wrong] .ch-lozenge { background: var(--ch-wrong); color: #fff; }

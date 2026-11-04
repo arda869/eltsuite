@@ -17,7 +17,7 @@ export type ChaseState = {
 };
 
 export const HINTS = { wrong: 'Not yet. Try another answer.', cone: 'Steer around the cone first.' } as const;
-export const FEEDBACK = { right: 'Correct!', timeout: 'Time ran out.' } as const;
+export const FEEDBACK = { right: 'Correct.', timeout: 'Time ran out.' } as const;
 /** Milliseconds a client waits past the deadline before calling time, so a slow network never calls it early. */
 export const GRACE = 450;
 export const LANES = 3;

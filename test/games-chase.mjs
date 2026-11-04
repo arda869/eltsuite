@@ -47,6 +47,22 @@ try{
   await score(p,10,1);
   const writes=+(await p.getByLabel('Writes').innerText());await p.waitForTimeout(700);assert.equal(+(await p.getByLabel('Writes').innerText()),writes,'Remote state must not produce a write loop');assert.ok(writes<=4,'start, wrong, right: at most four writes, got '+writes);
   assert.deepEqual(errors,[]);await context.close();console.log('Live → spectator mirrors the controller with',writes,'writes and no loop.');}
+ // A pre-redesign shared game can be between questions with its points already saved.
+ for (const type of ['shark', 'taxi']) {
+  const context = await browser.newContext();
+  try {
+   const {p,errors} = await open(context, 'type='+type+'&live=1&resume=1');
+   const controller=p.getByRole('region',{name:'Controller'}), spectator=p.getByRole('region',{name:'Spectator'});
+   await controller.getByRole('button',{name:START[type],exact:true}).click();
+   await spectator.getByText('2 of 4',{exact:true}).waitFor();
+   await score(p,10,1);
+   if(type==='taxi')await controller.getByRole('button',{name:'Steer right',exact:true}).click();
+   await controller.getByRole('button',{name:'bakery',exact:true}).click();
+   await spectator.getByRole('heading',{name:type==='shark'?'Island reached':'Passenger delivered'}).waitFor();
+   await score(p,20,1);
+   assert.deepEqual(errors,[]);
+  } finally { await context.close(); }
+ }
  // 5. Sizes: desktop, iPad portrait and a phone, with and without motion. No sideways scroll, play by touch.
  for(const [w,h,motion] of [[1180,820,'no-preference'],[820,1180,'no-preference'],[390,844,'reduce']]){const context=await browser.newContext({viewport:{width:w,height:h},hasTouch:true,reducedMotion:motion});
   for(const type of ['shark','taxi']){const {p,errors}=await open(context,`type=${type}&theme=${w<500?'arcade':'space'}`);await p.getByRole('button',{name:START[type],exact:true}).tap();await p.getByRole('timer').waitFor();

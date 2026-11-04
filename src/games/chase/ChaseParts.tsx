@@ -120,9 +120,9 @@ export function useCountUp(value: number) {
 /** Arrow keys steer, letters and numbers answer. Lives on the stage so focus anywhere inside works. */
 export function useChaseKeys(chase: Chase) {
   return (e: React.KeyboardEvent) => {
-    if (!chase.canAct || (e.target as HTMLElement).closest('input,textarea,select,[contenteditable]')) return;
-    if (e.key === 'ArrowLeft') { e.preventDefault(); chase.steer(-1); return; }
-    if (e.key === 'ArrowRight') { e.preventDefault(); chase.steer(1); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || !chase.canAct || (e.target as HTMLElement).closest('input,textarea,select,[contenteditable]')) return;
+    if (chase.steering && e.key === 'ArrowLeft') { e.preventDefault(); chase.steer(-1); return; }
+    if (chase.steering && e.key === 'ArrowRight') { e.preventDefault(); chase.steer(1); return; }
     const k = e.key.toUpperCase();
     const i = k.length === 1 && LETTERS.includes(k) ? LETTERS.indexOf(k) : /^[1-8]$/.test(k) ? +k - 1 : -1;
     if (i >= 0 && i < chase.options.length) { e.preventDefault(); chase.choose(chase.options[i]); }

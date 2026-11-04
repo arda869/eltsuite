@@ -20,10 +20,10 @@ const FEATURED: GameType[] = ['shark', 'taxi', 'show'];
 const FEATURE_NOTE: Partial<Record<GameType, string>> = {
   shark: 'Row from island to island. Every right answer puts water between you and the shark.',
   taxi: 'Drive a passenger across town. Steer round cones and answer before the fare runs out.',
-  show: 'Buzzers, lock-ins and a scoreboard. Works with any inline task type, from gaps to ordering.',
+  show: 'Choose an answer, lock it in and compare scores. Add a question or an inline activity.',
 };
 const STEPS = [
-  { title: 'Pick a game', text: 'Any of them takes the same questions, so start with the mood you want.' },
+  { title: 'Pick a game', text: 'Choose a game that fits the language you want to practise.' },
   { title: 'Add questions', text: 'Type them, reuse a flashcard set, or ask AI for a first draft to edit.' },
   { title: 'Play in class', text: 'Open it on the board, share a link so learners play along, or print it.' },
 ];
@@ -45,9 +45,9 @@ export function GameGallery() {
       const id = await newSharedDoc({ uid: user.uid, name: user.displayName || 'Teacher' }, 'game');
       await setDoc(doc(db, 'sharedDocs', id, 'game', 'main'), { ...blankGame(), type });
       if (w) w.location.href = '/doc/' + id; else setError('Your game was saved. Open it from the file list below.');
-    } catch (e) {
+    } catch {
       w?.close();
-      setError('We couldn’t make that game just now. Check your connection and try again. ' + (e as Error).message);
+      setError('We couldn’t make that game just now. Check your connection and try again.');
     } finally { setBusy(''); }
   };
 
@@ -69,7 +69,7 @@ export function GameGallery() {
       <div className="gh-hero-text">
         <span className="gh-kicker">Make room for play</span>
         <h2 id={headingId}>A little competition.<br />A lot of language.</h2>
-        <p>Sixteen games that all run on the same questions. Choose one, add your questions, and bring it into any class.</p>
+        <p>Choose from sixteen games, add questions for your learners and play together in class.</p>
       </div>
       <ol className="gh-steps" aria-label="How it works">
         {STEPS.map((s, i) => <li key={s.title}><i>{i + 1}</i><strong>{s.title}</strong><span>{s.text}</span></li>)}
