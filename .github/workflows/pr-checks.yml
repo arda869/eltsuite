@@ -66,6 +66,8 @@ jobs:
         run: npm run build
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+      - name: Lesson and Collab PDF exports (Firebase simulated)
+        run: node test/inline-pdf-audit.mjs
       - name: Saved coaching history and pinned panel (AI and Firebase simulated)
         run: node test/coach-history-ui.mjs
 

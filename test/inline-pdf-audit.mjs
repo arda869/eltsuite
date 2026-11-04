@@ -59,7 +59,7 @@ try{
     for(let i=0;i<300&&!rendered.contentWindow.__laidOut;i++)await new Promise(resolve=>setTimeout(resolve,100));
     if(!rendered.contentWindow.__laidOut)throw Error('Sample did not paginate.');
     const columns=[...d.querySelectorAll('#pages .col')];
-    if(columns.some(col=>col.scrollHeight>col.clientHeight+2))throw Error('Sample clipped an activity.');
+    if(columns.some(col=>col.scrollHeight>col.clientHeight+2))throw Error('Sample clipped an activity. '+JSON.stringify(columns.map(col=>({h:col.clientHeight,scroll:col.scrollHeight,children:[...col.querySelectorAll('.ex-body > *')].map(c=>[c.tagName,c.textContent.slice(0,45),Math.round(c.getBoundingClientRect().height)])}))));
     for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Ask a neighbour','Could you help me?']) {
       if(!columns.some(col=>col.textContent.includes(expected)))throw Error('Rendered sample lost '+expected);
     }

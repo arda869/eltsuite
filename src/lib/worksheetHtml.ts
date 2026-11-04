@@ -60,7 +60,7 @@ function runs(rs: Run[]) {
         const src = MEDIA[r.pic.key ?? r.pic.src]?.data ?? MEDIA[r.pic.src]?.data ?? (r.pic.src.startsWith('media:') ? '' : r.pic.src);
         const dots = (r.pic.pts ?? []).map((p, i) => `<span class="pic-pt" style="left:${p.x}%;top:${p.y}%">${i + 1}</span>`).join('');
         const tags = (r.pic.tags ?? []).map((t) => `<span class="pic-tag" style="left:${t.x}%;top:${t.y}%">${esc(t.text)}</span>`).join('');
-        return `<span class="pic pic-${esc(r.pic.size)}${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>`;
+        return `<span class="pic pic-${esc(r.pic.size)}${tags ? ' has-tags' : ''}">${src ? `<img src="${esc(src)}" ${MEDIA[r.pic.key ?? r.pic.src] ? 'width="'+MEDIA[r.pic.key ?? r.pic.src].w+'" height="'+MEDIA[r.pic.key ?? r.pic.src].h+'"' : ''} alt="${esc(r.pic.alt ?? '')}">` : '<span class="pic-wait"></span>'}${r.pic.label ? `<span class="pic-label">${esc(r.pic.label)}</span>` : ''}${dots}${tags}</span>`;
       }
       if (r.pl) return renderToStaticMarkup(createElement(LinkMark, { k: r.pl.k, s: r.pl.s }));
       if (r.phon) return renderToStaticMarkup(createElement(PhonView, { type: r.phon.type, a: r.phon.a }));
@@ -764,7 +764,7 @@ ${sheetCss(opts)}
   }
   // Lay out only once our fonts have loaded, so the measurements match what is printed.
   var done = false;
-  var go = function () { if (!done) { done = true; ${opts.lessonStyle === 'young' ? `
+  var go = function () { if (!done) { done = true;
     // Templates are inert: images start loading only once the first layout puts them on pages.
     // Wait for their intrinsic sizes and any newly used fonts, then measure the final pages.
     layout(true);
@@ -773,7 +773,7 @@ ${sheetCss(opts)}
       if (img.complete) return Promise.resolve();
       return new Promise(function (resolve) { img.onload = resolve; img.onerror = resolve; });
     })).then(function () { return document.fonts ? document.fonts.ready : null; }).then(function () { layout(); }, function () { layout(); });
-  ` : 'layout();'} } };
+  } };
   if (document.fonts && document.fonts.load) {
     Promise.all(['400 10pt Fraunces', '600 10pt Fraunces', 'italic 400 10pt Fraunces', '400 10pt Karla', '700 10pt Karla', '800 10pt Karla'${opts.lessonStyle === 'young' ? ", '400 10pt Atkinson Hyperlegible', '700 10pt Atkinson Hyperlegible', '400 10pt Kalam', '400 10pt Lesson IPA'" : ''}].map(function (f) { return document.fonts.load(f); }))
       .then(function () { return document.fonts.ready; })
