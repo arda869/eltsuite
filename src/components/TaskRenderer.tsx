@@ -385,6 +385,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     <span key={key} className="gap-result">
       {num(id)}
       <span className={right ? 'ans right' : 'ans wrong'}>{shown || '—'}</span>
+      <span className="sr-only">{right ? 'Correct.' : 'Not right.'}{!right && !hideAnswers && fix ? ' The answer is' : ''}</span>
       {right ? TICK : !hideAnswers && fix && <span className="fix">{fix}</span>}
     </span>
   );
@@ -456,7 +457,11 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
               {LETTERS[i]}
             </span>
           )}
-          <span>{o}</span>
+          <span>
+            {o}
+            {results && optionState(i, chosen, correct) === 'right' && <span className="sr-only">{chosen.includes(i) ? ', correct' : ', the right answer'}</span>}
+            {results && optionState(i, chosen, correct) === 'wrong' && <span className="sr-only">, not right</span>}
+          </span>
         </label>
       ) : null,
     );
@@ -498,6 +503,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
                   onClick={() => pick(i)}
                 >
                   {o}
+                  {results && state && <span className="sr-only">{state === 'wrong' ? ', not right' : chosen.includes(i) ? ', correct' : ', the right answer'}</span>}
                 </button>
                 {isOk && TICK}
               </span>
@@ -583,11 +589,12 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             return (
               <li key={i}>
                 {num(id, i)}
-                <button type="button" className={'match-item' + (active('l', i) ? ' active' : '')} disabled={!live} onClick={() => pickLeft(i)}>
+                <button type="button" className={'match-item' + (active('l', i) ? ' active' : '')} data-pair={!results && c >= 0 ? i % 6 : undefined} disabled={!live} onClick={() => pickLeft(i)}>
                   <span className="match-l">{l}</span>
                   {results ? (
                     <span className="gap-result">
                       <span className={ok ? 'ans right' : 'ans wrong'}>{c >= 0 ? LETTERS[c] : '—'}</span>
+                      <span className="sr-only">{ok ? 'Correct.' : 'Not right.'}{!ok && !hideAnswers && map[i] >= 0 ? ' The answer is' : ''}</span>
                       {ok ? TICK : !hideAnswers && map[i] >= 0 && <span className="fix">{LETTERS[map[i]]}</span>}
                     </span>
                   ) : (
@@ -603,7 +610,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <ul className="match-right">
           {right.map((r, k) => (
             <li key={k}>
-              <button type="button" className={'match-item' + (active('r', k) ? ' active' : '') + (chosen.includes(k) && !results ? ' used' : '')} disabled={!live} onClick={() => pickRight(k)}>
+              <button type="button" className={'match-item' + (active('r', k) ? ' active' : '') + (chosen.includes(k) && !results ? ' used' : '')} data-pair={chosen.includes(k) && !results ? chosen.indexOf(k) % 6 : undefined} disabled={!live} onClick={() => pickRight(k)}>
                 <span className="letter" aria-hidden="true">
                   {LETTERS[k]}
                 </span>
@@ -612,7 +619,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             </li>
           ))}
         </ul>
-        {live && <span className="match-help">{waiting ? (pair!.side === 'l' ? 'Now choose its match on the right.' : 'Now choose the item on the left.') : 'Tap an item, then tap its match.'}</span>}
+        {live && <span className="match-help" aria-live="polite">{waiting ? (pair!.side === 'l' ? 'Now choose its match on the right.' : 'Now choose the item on the left.') : 'Tap an item, then tap its match.'}</span>}
         {notesFor(node)}
         {revealChip(node) && <div className="match-reveal">{revealChip(node)}</div>}
       </div>
@@ -711,6 +718,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
         <div key={key} className="order-q" data-qid={id}>
           {num(id)}
           <span className={ok ? 'ans right' : 'ans wrong'}>{placed.join(' ') || '—'}</span>
+          <span className="sr-only">{ok ? 'Correct.' : 'Not right.'}{!ok && !hideAnswers && entry?.kind === 'order' ? ' The answer is' : ''}</span>
           {ok ? TICK : !hideAnswers && entry?.kind === 'order' && <span className="fix">{entry.answer}</span>}
           {notesFor(node)}
         </div>

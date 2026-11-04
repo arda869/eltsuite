@@ -32,6 +32,23 @@ node test/lesson-style-context.mjs
 selects an installed Chromium executable. The Firebase stand-ins are used for browser
 journeys; they do not validate security rules.
 
+### Young learner task elements
+
+`src/lessons/young.tsx` holds the instruction cue pictures, progress dots, score medal and the
+editor's young learner bar; `src/lessons/youngLesson.css` styles every task element. Two scripts
+check them against the same server:
+
+```
+node test/young-shots.mjs     # gallery at iPad, phone and desktop sizes, open and checked
+node test/young-journey.mjs   # editor, preview and learner page in a young class
+```
+
+`young-shots.mjs` fails on sideways scrolling, targets under 44 px or WCAG 2.2 AA issues found by
+axe. `YL_OUT` chooses the screenshot directory, `YL_STYLE=adult` takes the same shots in the adult
+style, and `YL_SIZES=phone,ipad-portrait` limits the sizes. The gallery itself is
+`/test/young-gallery.html`, with `?style=adult`, `&checked=1`, `&only=3`, `&theme=dark` and
+`?icons=1`.
+
 Run `test/lesson-style-rules.mjs` against a Firestore emulator started with the repository's
 `firestore.rules`, project `demo-lesson-style`, host `127.0.0.1`, port `8089`.
 `STYLE_FIRESTORE_EMULATOR=host:port` overrides the address. These are real emulator rule

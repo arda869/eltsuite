@@ -1,5 +1,6 @@
 import { useLearningTime } from '../lib/learningTime';
 import { lessonStyleOf } from '../lib/lessonStyle';
+import { YoungInstr, YoungProgress, YoungScore } from '../lessons/young';
 import '../lessons/youngLesson.css';
 import { LearnerLiveVideo } from '../components/LiveVideo';
 import { tr, useClassTerms } from '../lib/terms';
@@ -458,7 +459,13 @@ export function LearnerLesson() {
                   </span>
                 )}
                 <h1 className="task-title">{lessonStyleOf(c) === 'young' && <span className="yl-activity-number" aria-hidden="true">{tasks.filter(t => t.kind !== 'section').findIndex(t => t.id === task?.id) + 1}</span>}{task.title}</h1>
-                <InstrView classId={classId} doc={task.instrDoc} text={task.instructions} />
+                {lessonStyleOf(c) === 'young' && (task.instrDoc || task.instructions) ? (
+                  <YoungInstr content={task.content}>
+                    <InstrView classId={classId} doc={task.instrDoc} text={task.instructions} />
+                  </YoungInstr>
+                ) : (
+                  <InstrView classId={classId} doc={task.instrDoc} text={task.instructions} />
+                )}
                 {discussions.filter((d) => d.link?.taskId === task.id || (!d.link?.taskId && d.link?.itemId === itemId)).map((d) => (
                   <Link key={d.id} className="disc-chip" to={`/discuss/${d.id}`}>
                     Discuss: {d.title} · {d.replyCount} {d.replyCount === 1 ? 'reply' : 'replies'} →
@@ -590,6 +597,14 @@ export function LearnerLesson() {
                   </span>
                 ) : scope && examState === 'submitted' ? (
                   <span className="hint">{tr('Handed in. Your teacher will share the results soon.')}</span>
+                ) : checked && key && showScore && lessonStyleOf(c) === 'young' && !result.hasWriting ? (
+                  <YoungScore got={score} total={result.total}>
+                    {result.total > 0 ? (
+                      <>
+                        <span className="big">{Math.round(score * 10) / 10}</span> of {result.total} correct
+                      </>
+                    ) : null}
+                  </YoungScore>
                 ) : checked && key && showScore ? (
                   <span className="score">
                     {result.total > 0 ? (
@@ -601,6 +616,7 @@ export function LearnerLesson() {
                   </span>
                 ) : (
                   <span className="hint foot-status">
+                    {lessonStyleOf(c) === 'young' && <YoungProgress done={answered} total={qs.length} />}
                     {qs.length > 0 && <span className="foot-short">{answered}/{qs.length}</span>}
                     {qs.length > 0 ? <span className="foot-long">{`${answered} of ${qs.length} answered`}</span> : ''}
                     {qs.length > 0 && <span className={'save-dot' + (pendingSave ? ' pending' : '')}>{pendingSave ? ' · saving…' : ' · saved'}</span>}
