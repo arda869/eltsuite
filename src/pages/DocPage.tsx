@@ -114,7 +114,7 @@ export function DocPage() {
   return (
     <div className={'dp k-' + kind}>
       <header className="dp-bar">
-        <Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : kind === 'pd' ? '/development?section=reading' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : kind === 'pd' ? 'Back to Development Studio' : 'Back to ELT Suite'}>
+<Link to={profile?.role === 'learner' ? '/' : inDesigner ? '/design' : kind === 'pd' ? '/reading' : '/archive?s=docs'} className="dp-home" aria-label={inDesigner ? 'Back to Designer' : kind === 'pd' ? 'Back to Reading Journal' : 'Back to ELT Suite'}>
           <Mark size={30} />
         </Link>
         <OrgLogo />

@@ -891,7 +891,7 @@ export function LessonEditor() {
         <span className="icon-row tb-icons">
         {c && !viewer && <TeacherLiveVideo c={c} live={live} teachingHere={teachingHere} groupSets={groupSets} itemId={itemId} />}
         {!preview && <details className="lesson-support-tools"><summary><UiIcon name="videoSparkles" /> Planning and review</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
-          <Link className="btn small-btn" to={`/development?section=coach&classId=${classId}&itemId=${itemId}${task?.id?"&taskId="+task.id:""}`}>Discuss with Teacher’s Companion</Link></div></details>}
+          <Link className="btn small-btn" to="/messages?c=teaching-coach" state={{coachContext:{lessonContext:{classId,itemId,taskId:task?.id||''}}}}>Discuss with Teacher’s Companion</Link></div></details>}
         {NOTEBOOK && <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />

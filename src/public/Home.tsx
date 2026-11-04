@@ -163,11 +163,11 @@ const SHOWCASES: Showcase[] = [
   },
   {
     id: 'collaborate', kicker: 'COLLABORATE', title: "Better teaching, together.",
-    body: ["Work on materials with colleagues, exchange ideas and make room for reflection.", "With Collab and Development Studio, the practical and professional sides of teaching become part of the same journey."],
+    body: ["Work on materials with colleagues, exchange ideas and make room for reflection.", "With Collab and Reading Journal, the practical and professional sides of teaching become part of the same journey."],
     points: ["Collaborative documents and shared materials.", "Reflection and professional learning.", "Support for questions about teaching practice."],
     status: "",
     main: { name: 'collab-editor', alt: 'A shared Collab document with a lesson aim, discussion instructions and teaching notes.' },
-    details: [{ name: 'development', alt: 'Development Studio', at: {x:0,y:0,w:1,h:1}, caption: 'Reflection and professional learning in Development Studio' }],
+    details: [{ name: 'collab', alt: 'A Collab document', at: {x:0,y:0,w:1,h:1}, caption: 'Reflection and professional learning in Collab' }],
   },
 ];
 
@@ -199,8 +199,8 @@ const JOURNEY = [
   { k: 'Plan', line: "Prepare the activities, language and notes you'll need.", name: 'editor-speaking', alt: 'Planning a speaking task: a prompt, questions for the card and the teacher’s notes.' },
   { k: 'Teach', line: "Bring your lesson into the classroom and involve your learners.", name: 'teach', alt: 'Teaching live, with learners’ answers in the side panel.' },
   { k: 'Understand', line: "Review learner responses, results and feedback.", name: 'reports', alt: 'The class report, learner by lesson.' },
-  { k: 'Reflect', line: "Look back on your teaching and explore what you noticed.", name: 'development', alt: 'Development Studio: reflect on a lesson or investigate a question.' },
-  { k: 'Grow', line: "Develop your practice and carry new ideas into the next lesson.", name: 'coach', alt: 'Teacher’s Companion in Development Studio.' },
+  { k: 'Reflect', line: "Look back on your teaching and explore what you noticed.", name: 'collab', alt: 'Collab: reflect on a lesson or investigate a question.' },
+  { k: 'Grow', line: "Develop your practice and carry new ideas into the next lesson.", name: 'coach', alt: 'Teacher’s Companion in Messages.' },
 ];
 
 function Journey() {

@@ -351,8 +351,8 @@ function DockWindow({ me, w, chats, onNew }: { me: string; w: DockWin; chats: Ch
         </div>
       ) : (
         <div className="dock-list">
-          {profile?.role==='teacher'&&(!q.trim()||/companion|coach|teach/i.test(q))&&<button type="button" className="msg-row" onClick={()=>replaceWin(w.id,'teaching-coach',coachContextOnPage())}><span className="msg-av"><UiIcon name="message" size={18}/></span><span className="msg-row-t"><b>Teacher’s Companion</b><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
           {dir && <DockFind me={me} dir={dir} chats={chats} onOpen={(id) => replaceWin(w.id, id)} q={q} setQ={setQ} />}
+          {profile?.role==='teacher'&&(!q.trim()||/companion|coach|teach/i.test(q))&&<button type="button" className="msg-row" onClick={()=>replaceWin(w.id,'teaching-coach',coachContextOnPage())}><span className="msg-av"><UiIcon name="message" size={18}/></span><span className="msg-row-t"><b>Teacher’s Companion</b><span className="msg-row-last">Reflect, plan and talk through your teaching.</span></span></button>}
           {!q.trim() && chats.length === 0 && <span className="hint dock-none">No messages yet. Search for someone above.</span>}
           {!q.trim() && chats.map((c) => {
             const un = unreadIn(c, me);

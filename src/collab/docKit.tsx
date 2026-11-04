@@ -230,7 +230,7 @@ export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'ph
 type DocSection={title:string;blurb:string;keys:string[]};
 let cachedSections:DocSection[]|undefined;
 export function docSections():DocSection[]{return cachedSections??=[
-  {title:'Studio forms',blurb:'Editable forms, gathered in Development Studio and available to your coach.',keys:STUDIO_FORMS.filter(f=>f.kind!=='observation').map(f=>'studio-'+f.kind)},
+{title:'Professional forms',blurb:'Editable forms kept in this document and available to Teacher’s Companion.',keys:STUDIO_FORMS.filter(f=>f.kind!=='observation').map(f=>'studio-'+f.kind)},
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
   { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'inline-video', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },

@@ -74,7 +74,7 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
   };
   const upload = async (f: File) => {
     if (!classId) return setBusy('PDFs can be added inside a class.');
-    if (f.size > MAX_PDF) return setBusy('That PDF is over 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    if (f.size > MAX_PDF) return setBusy('That PDF is over 30 MB. Make it smaller first, for example by saving it with smaller pictures.');
     try {
       setBusy('Uploading the PDF…');
       const bytes = new Uint8Array(await f.arrayBuffer());
@@ -93,7 +93,7 @@ export function PdfPick({ classId, onPick, onClose }: { classId: string; onPick:
         <span className="hint">The lesson gets its own copy with the text boxes and highlights, so you can change it here without changing the file.</span>
         <button type="button" className="pdf-pick-up" onClick={() => input.current?.click()} disabled={!!busy}>
           <strong>Upload a PDF</strong>
-          <span className="hint">Up to 15 MB. Then add text boxes, gaps and highlights on its pages.</span>
+          <span className="hint">Up to 30 MB. Then add text boxes, gaps and highlights on its pages.</span>
         </button>
         <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => (e.target.files?.[0] && void upload(e.target.files[0]), (e.target.value = ''))} />
         {files.length > 0 && <span className="pdf-pick-h">From your files</span>}

@@ -18,6 +18,13 @@
 .coach-chat-header .coach-kicker { margin-bottom: 5px; }
 .coach-chat-tools { display: flex; gap: 8px; }
 .coach-chat-tools .btn { padding: 8px 12px; font-size: 12px; }
+.coach-chat-tools { flex-wrap: nowrap; align-items: center; flex-shrink: 0; }
+.coach-voice-slot { display: contents; }
+.coach-tool-icon { display: inline-grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid var(--hair); border-radius: 10px; background: var(--paper-soft); color: var(--ink); cursor: pointer; text-decoration: none; }
+.coach-tool-icon:hover, .coach-tool-icon[aria-pressed="true"], .coach-tool-icon[aria-expanded="true"] { border-color: var(--accent-text); color: var(--accent-text); }
+.coach-tool-icon:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.coach-tool-icon:disabled { opacity: .45; cursor: default; }
+.coach-voice:not(:has(> :not(.hint))) { display: none; }
 .coach-chat-settings { background: var(--paper-soft); padding: 22px 26px; border-bottom: 1px solid var(--hair); }
 .coach-chat-settings h3 { font-size: 21px; }
 .coach-chat-settings > p { color: var(--muted); max-width: 76ch; }

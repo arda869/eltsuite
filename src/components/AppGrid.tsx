@@ -42,7 +42,7 @@ export const APP_MARKS = {
 
 export function appMark(k: string) {
   if (k === 'storyboard') return APP_MARKS.design;
-  if (k === 'reading') return APP_MARKS.development;
+  if (k === 'reading') return APP_MARKS.reading;
   return APP_MARKS[k as keyof typeof APP_MARKS];
 }
 
@@ -50,7 +50,6 @@ export function appMark(k: string) {
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
   { k: 'games', group: 'make', name: 'Games', about: 'Make reusable classroom games and play together', to: '/games', teacher: true, color: '#996525', glyph: APP_MARKS.games, icon: I(APP_MARKS.games) },
-  { k: 'development', group: 'develop', name: 'Development Studio', about: 'Reading, reflections, classroom research and your Teacher’s Companion', to: '/development', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, glyph: APP_MARKS.home, icon: I(APP_MARKS.home) },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
@@ -58,7 +57,7 @@ const APPS: App[] = [
   { k: 'reading', group: 'make', short: 'Reading', name: 'Reading Journal', about: 'What you read, with notes and citations', to: '/reading', teacher: true, color: '#6b5a8a', glyph: APP_MARKS.reading, icon: I(APP_MARKS.reading) },
   { k: 'pdf', group: 'make', name: 'PDF', about: 'PDFs to write on, alone or together', to: '/pdf', teacher: true, color: '#a6463a', glyph: APP_MARKS.pdf, icon: I(APP_MARKS.pdf) },
   { k: 'design', group: 'make', name: 'Designer', about: 'Storyboards, AI images and image editing', to: '/design', teacher: true, color: '#6d5bd0', glyph: APP_MARKS.design, icon: I(APP_MARKS.design) },
-  { k: 'video', group: 'make', name: 'Video editor', short: 'Video', about: 'Edit classroom videos, create AI scenes and reuse characters', to: '/studio/video', teacher: true, color: '#487d87', glyph: APP_MARKS.video, icon: I(APP_MARKS.video) },
+  { k: 'video', group: 'make', name: 'Video editor', short: 'Video', about: 'Edit classroom videos and reuse characters', to: '/studio/video', teacher: true, color: '#487d87', glyph: APP_MARKS.video, icon: I(APP_MARKS.video) },
   { k: 'recordings', group: 'make', short: 'Recordings', name: 'Recordings', about: 'Recordings with scripts, to use in any lesson', to: '/recordings', teacher: true, color: '#a8473a', glyph: APP_MARKS.recordings, icon: I(APP_MARKS.recordings) },
   { k: 'messages', group: 'share', name: 'Messages', about: 'Chats with learners and colleagues', to: '/messages', color: '#7a4fa3', glyph: APP_MARKS.messages, icon: I(APP_MARKS.messages) },
   { k: 'colleagues', group: 'share', name: 'Colleagues', about: 'The teachers you work with, and what you share', to: '/colleagues', teacher: true, color: '#4f6b7a', glyph: APP_MARKS.colleagues, icon: I(APP_MARKS.colleagues) },
@@ -69,11 +68,11 @@ const APPS: App[] = [
   { k: 'rooms', group: 'teach', name: 'Rooms', about: 'Audio and video calls, and your classes’ video rooms', to: '/rooms', teacher: true, color: '#3b7f7a', glyph: APP_MARKS.rooms, icon: I(APP_MARKS.rooms) },
 ];
 // For the sign-in page's picture of the suite.
-export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'glyph'>[] = APPS.filter((a) => a.k !== 'reading');
+export const SUITE_APPS: readonly Pick<App, 'k' | 'name' | 'about' | 'color' | 'glyph'>[] = APPS;
 
 // An app's own logo: its symbol, white, on a square of its colour. Shown top left in the app.
 export function AppLogo({ k, size = 30 }: { k: string; size?: number }) {
-  const a = APPS.find((x) => x.k === (k === 'reading' ? 'development' : k === 'storyboard' ? 'design' : k));
+  const a = APPS.find((x) => x.k === (k === 'storyboard' ? 'design' : k));
   if (!a) return null;
   return (
     <span className="app-logo" style={{ width: size, height: size, ['--app' as string]: a.color }} aria-hidden="true">
@@ -90,12 +89,12 @@ const GROUPS: [App['group'], string][] = [
   ['develop', 'Professional learning'],
   ['share', 'Resources and people'],
 ];
-const ORDER = ['home', 'classes', 'development', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
+const ORDER = ['home', 'classes', 'timetable', 'rooms', 'collab', 'design', 'pdf', 'storyboard', 'reading', 'recordings', 'video', 'files', 'messages', 'colleagues', 'guide', 'superadmin', 'orgadmin'];
 const rank = (k: string) => (ORDER.indexOf(k) + 1 || 99);
 
 // The app a page belongs to, for the tab's icon.
 export function appAt(pathname: string) {
-  if (pathname === '/observations') return APPS.find(a => a.k === 'development') ?? null;
+  if (pathname === '/observations') return APPS.find(a => a.k === 'collab') ?? null;
   return APPS.filter((a) => a.to && a.to !== '/' && (pathname === a.to || pathname.startsWith(a.to + '/'))).sort((a, b) => b.to!.length - a.to!.length)[0] ?? null;
 }
 // The tab's icon: the app's own symbol, white on its colour.
@@ -152,7 +151,7 @@ export function AppGrid() {
   const owner = useSuper() === true;
   const adminOf = useOrgs(false, teacher ? user?.email : null);
   const show = (k: string) => (k === 'home' ? true : k === 'superadmin' ? owner : k === 'orgadmin' ? !!adminOf?.length : on(k));
-  const apps = APPS.filter((a) => a.k !== 'reading' && (teacher || (!a.teacher && !a.soon)) && show(a.k) && `${a.name} ${a.about}`.toLowerCase().includes(search.toLowerCase()));
+  const apps = APPS.filter((a) => (teacher || (!a.teacher && !a.soon)) && show(a.k === 'reading' ? 'development' : a.k) && `${a.name} ${a.about}`.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="apps" ref={ref}>
       <button ref={buttonRef} type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} aria-controls={open ? 'suite-apps-menu' : undefined} data-tip="Apps" onClick={() => {setOpen((o) => !o);setSearch('');}}>

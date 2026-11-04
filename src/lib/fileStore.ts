@@ -5,7 +5,7 @@ import { newSharedDoc, setDocPath } from './sharedDocs';
 // Any other file (a Word file, a spreadsheet, a zip…): kept in parts inside the file in Files,
 // shared like the others, and downloaded to open in the app it belongs to.
 
-export const MAX_FILE = 15 * 1024 * 1024;
+export const MAX_FILE = 30 * 1024 * 1024;
 const PART = 450 * 1024;
 export type FileInfo = { name: string; type: string; bytes: number; parts: number };
 

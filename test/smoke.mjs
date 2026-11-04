@@ -122,8 +122,8 @@ const J = {
     const appsHit=await appsButton.evaluate(el=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,viewport:innerWidth,hit:el===document.elementFromPoint(x,y)||el.contains(document.elementFromPoint(x,y))};});
     if(!appsHit.hit)throw Error('Apps button is obscured at tablet width: '+JSON.stringify(appsHit));
     await appsButton.click();
-    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('development');
-    await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).waitFor();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('journal');
+    await s.p.getByRole('menuitem',{name:'Reading Journal',exact:true}).waitFor();
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
     await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('linguistics');
     await s.p.getByText('No apps match your search.').waitFor();
@@ -612,7 +612,7 @@ const J = {
     await see(s.p, '#guide-topic-title:has-text("Studio")', 'saved choice after reloading');
     const saved = await s.p.evaluate(id => { const f = JSON.parse(localStorage.getItem('mockfs')); return { user: f['users/' + id], code: f['inviteCodes/ABCD-EF23'] }; }, uid);
     if (saved.code.uses !== 1 || saved.user.onboarding !== 'done' || saved.user.teacherGoal !== 'audio') throw Error('Setup was repeated or the goal was lost');
-    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/development?section=reading'], ['Work with other teachers', '/colleagues']]) {
+    for (const [title, target] of [['Prepare my next lesson', '/classes'], ['Make better materials', '/collab'], ['Get everyone involved', '/classes'], ['Make a listening activity', '/recordings'], ['Keep my reading organised', '/reading'], ['Work with other teachers', '/colleagues']]) {
       await s.p.goto(BASE + '/welcome');
       await s.p.getByRole('button', { name: title, exact: false }).click();
       await s.p.getByRole('button', { name: 'Show my starting point' }).click();
@@ -1768,6 +1768,27 @@ const J = {
     await s.p.click('nav.tabs button:has-text("Learners")');
     await see(s.p, 'text=Mia Chan', 'the learners list');
     await axe(s.p, 'Class', A11Y_FOUND);
+    const classPictureFolder = await s.p.evaluate(async classId=>{
+      const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;
+      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+      const {uploadPicture}=await import('/src/editor/PackNode.tsx');
+      await uploadPicture(classId,new File([blob],'Class chart.png',{type:'image/png'}));
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      return Object.entries(fs).filter(([key,value])=>key.startsWith('users/teacher1/archive/')&&value.name==='Class chart').map(([,value])=>value.folder);
+    },s.demo.classId);
+    if(!classPictureFolder.includes('Classes/Demo class'))throw Error('A class picture was not saved in its Resources folder.');
+    const [learnerTab] = await Promise.all([s.ctx.waitForEvent('page'), s.p.getByRole('button', { name: 'View as Mia' }).click()]);
+    await see(learnerTab, '.proxy-bar:has-text("Viewing as Mia Chan")', 'the student view in its own tab');
+    await see(learnerTab, 'text=Demo class', 'the student class in the view-as tab');
+    await learnerTab.goto(`${BASE}/learn/${s.demo.itemId}`);
+    await see(learnerTab, 'nav[aria-label="Tasks"] .task-pick', 'the learner task list on a laptop');
+    const laptopPanels=await learnerTab.locator('.lesson-layout.learner').evaluate(el=>{const nav=el.querySelector('.task-list').getBoundingClientRect(),center=el.querySelector('.center-col').getBoundingClientRect();return {top:Math.abs(nav.top-center.top),overflow:document.documentElement.scrollWidth>innerWidth+2};});
+    if(laptopPanels.top>12||laptopPanels.overflow)throw Error('Learner task list and lesson are misaligned on a laptop.');
+    await learnerTab.setViewportSize({width:390,height:844});
+    await see(learnerTab, 'nav[aria-label="Tasks"] .task-pick', 'the learner task tabs on a phone');
+    const taskTabs = await learnerTab.locator('nav[aria-label="Tasks"]').evaluate(el=>({height:el.getBoundingClientRect().height,overflow:document.documentElement.scrollWidth>innerWidth+2}));
+    if(taskTabs.height>52||taskTabs.overflow)throw Error('Learner task tabs are too tall or overflow the phone screen.');
+    await learnerTab.close();
     await s.p.evaluate(() => { sessionStorage.removeItem('mockuid'); localStorage.removeItem('mockuid'); });
     await s.p.goto(joinLink);
     await see(s.p, 'h1:has-text("Join your class")', 'learner joining from the copied link');
@@ -1875,10 +1896,32 @@ const J = {
     await axe(d, 'Collab document', A11Y_FOUND);
     return s;
   },
+  'Collab professional reading keeps its reference': async (b) => {
+    const s = await session(b);
+    const d = await newFile(s, 'Collab document');
+    await see(d, '.ProseMirror', 'the document');
+    await d.click('.ProseMirror');
+    await slash(d, 'Professional reading');
+    await see(d, '.studio-form[data-studio-kind="reading"]', 'the inline reading form');
+    await d.getByRole('button', { name: 'Add reference' }).click();
+    await d.getByRole('region', { name: 'Reading reference' }).getByRole('textbox', { name: 'Title', exact: true }).fill('Teaching Vocabulary');
+    await d.getByRole('region', { name: 'Reading reference' }).getByRole('textbox', { name: 'Authors 1, surname' }).fill('Doe');
+    await d.getByRole('button', { name: 'Save the source' }).click();
+    await see(d, '.studio-reading-reference:has-text("Teaching Vocabulary")', 'the saved source reference');
+    await d.waitForTimeout(2000);
+    await d.reload();
+    await see(d, '.studio-reading-reference:has-text("Teaching Vocabulary")', 'the reference after reopening');
+    return s;
+  },
   'Messages': async (b) => {
     const s = await session(b);
     await s.p.goto(`${BASE}/messages`);
     await see(s.p, 'main, .msg, [class*=msg]', 'Messages');
+    await s.p.getByRole('option', { name: /Teacher’s Companion/ }).click();
+    await see(s.p, '.coach-chat-tools', 'Companion actions in the message view');
+    for(const name of ['History','New chat','Voice conversation'])if(!(await s.p.getByRole('button',{name,exact:true}).count()))throw Error('Missing Companion action: '+name);
+    if(!(await s.p.getByRole('link',{name:'Settings',exact:true}).count()))throw Error('Missing Companion settings action.');
+    if(await s.p.getByText('The page name is available; its content is not automatically shared.').count())throw Error('The old page-context warning is still visible.');
     await axe(s.p, 'Messages', A11Y_FOUND);
     return s;
   },
@@ -2366,8 +2409,11 @@ const J = {
       await axe(s.p,'Development Studio chat '+width,A11Y_FOUND);
       if (await s.p.locator('.coach-chat').evaluate(el => el.getBoundingClientRect().right > innerWidth+1)) throw Error('Chat overflows at '+width);
       await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-      const fits=await s.p.locator('.app-name-wrap').evaluate(el => el.scrollWidth <= el.clientWidth+1 && getComputedStyle(el).whiteSpace !== 'nowrap');
-      if (!fits) throw Error('Development Studio label is clipped at '+width);
+      const reading=s.p.getByRole('menuitem',{name:'Reading Journal',exact:true});
+      await reading.waitFor();
+      if (await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).count()) throw Error('Development Studio still appears as an app');
+      const fits=await reading.locator('.app-tile-copy b').evaluate(el => el.scrollWidth <= el.clientWidth+1);
+      if (!fits) throw Error('Reading Journal label is clipped at '+width);
       await s.p.getByRole('button',{name:'Apps',exact:true}).click();
     }
     return s;
@@ -2390,8 +2436,8 @@ const J = {
     if (!readingActionsFit) throw Error('Reading return and reflection controls overflow');
     await axe(readingTab, 'Development Studio reading editor on mobile', A11Y_FOUND);
 
-    await readingTab.getByRole('link', { name: 'Back to Development Studio', exact: true }).click();
-    await see(readingTab, '.af-embedded', 'reading editor returns to Development Studio');
+    await readingTab.getByRole('link', { name: 'Back to Reading Journal', exact: true }).click();
+    await see(readingTab, '.af', 'reading editor returns to Reading Journal');
     await readingTab.close();
     await s.p.getByRole('button', { name: 'Home', exact: true }).click();
     await s.p.getByRole('button', { name: 'Reflect on this', exact: true }).click();

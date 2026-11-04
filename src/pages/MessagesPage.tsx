@@ -177,7 +177,7 @@ export function MessagesPage() {
             </div>
           </aside>
           <main className="msg-main">
-            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid} context={(location.state as {coachContext?:CoachContext}|null)?.coachContext}/></div>:cur ? (
+            {coachOpen?<div className="msg-coach coach"><button type="button" className="btn" onClick={()=>pick('')}>Back to chats</button><CoachConversation uid={user.uid} initialConversationId={params.get('conversation')||undefined} context={(location.state as {coachContext?:CoachContext}|null)?.coachContext}/></div>:cur ? (
               <ChatView key={cur.id} c={cur} me={me} dir={dir!} teacher={teacher} onBack={() => pick('')} onMin={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />
             ) : (
               <div className="msg-empty">

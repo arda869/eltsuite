@@ -1,11 +1,11 @@
 import { teacherPanel } from '../ai/teacherPanel';
-import {coachContextOnPage} from './pageContext';
+import {coachContextOnPage,coachPageSnapshot} from './pageContext';
 import {coachHistoryKey} from '../../functions/ai/coach-history.js';
 import {lastConversation,rememberConversation,readDraft,saveDraft,useConversations,type CoachContext} from './conversations';
 import {setCoachPanel} from './panelState';
 import {CoachVoice} from './CoachVoice';
 import { AiButton, AiMark } from '../components/AiMark';
-import { useAiActivity } from '../components/AiActivity';
+import { UiIcon } from '../components/UiIcon';
 import {CoachEvidenceReview} from '../linguistics/CoachEvidenceReview';
 import { BeliefsForm } from './BeliefsForm';
 import { reflectionDoc } from './model';
@@ -37,7 +37,7 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   const scope=JSON.stringify(requestedContext);
   const [conversationId,setConversationId]=useState(()=>initialConversationId||lastConversation(uid,scope));
   const [context,setContext]=useState<CoachContext>(requestedContext);
-  const {lessonContext,formContext,evidencePacketId='',reflectionId='',pageContext}=context;
+  const {lessonContext,formContext,evidencePacketId='',reflectionId=''}=context;
   const { value: preferences, ready: preferencesReady } = useCoachPreferences(uid);
   const saved=useConversations(uid,conversationId,coachHistoryKey(profile.version,preferences.version,context));
   const messages=saved.messages;
@@ -50,10 +50,10 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   const [busy, setBusy] = useState(false);
   const [pendingText, setPendingText] = useState('');
   const [error, setError] = useState('');
+  const [voiceSlot, setVoiceSlot] = useState<HTMLDivElement | null>(null);
   const [journal,setJournal] = useState<{id:string;title:string;text:string}|null>(null);
   const [journalSaving,setJournalSaving] = useState(false);
   const [journalSaved,setJournalSaved] = useState('');
-  useAiActivity({active:busy,title:'Teacher’s Companion',detail:'Thinking about your teaching question…',error});
   const review = useRef<HTMLDialogElement>(null);
   const generation = useRef(0);
   const thread = useRef<HTMLDivElement>(null);
@@ -86,8 +86,7 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
     const history = saved.history.slice(-16).map(m => ({ role: m.role, text: (m.text+(m.journalDraft?'\nJournal draft:\n'+m.journalDraft:'')).slice(0,6000) }));
     const currentPage = compact && lessonContext ? coachContextOnPage() : null;
     const attached = currentPage?.lessonContext ?? lessonContext;
-    const activePage = currentPage?.lessonContext ? currentPage.pageContext : pageContext;
-    const payload = { action: 'coach', conversationId, contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', evidencePacketId:approvedPacket, ...(formContext?{formContext}:{}), ...(attached?{lessonContext:attached}:{}), ...(activePage?{pageContext:activePage}:{}) };
+    const payload = { action: 'coach', conversationId, contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', evidencePacketId:approvedPacket, pageContext:coachPageSnapshot(), ...(formContext?{formContext}:{}), ...(attached?{lessonContext:attached}:{}) };
     while (new TextEncoder().encode(JSON.stringify(payload)).length > 40000 && history.length) history.splice(0,2);
     const fingerprint = JSON.stringify(payload);
     if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, id: crypto.randomUUID() };
@@ -114,15 +113,14 @@ function CoachChatPanel({ uid, profile, initialPrompt, reflectionId:incomingRefl
   const canSend = complete && preferencesReady && saved.ready && !saved.pending && !busy && !!draft.trim() && evidenceReady;
   return <section className="coach-chat" aria-label="Teacher’s Companion chat">
     {evidencePacketId&&<CoachEvidenceReview id={evidencePacketId} onConfirm={()=>setApprovedPacket(evidencePacketId)}/>}
-    <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teacher’s Companion</h2></div><div className="coach-chat-tools"><button className="btn" aria-expanded={showHistory} onClick={()=>setShowHistory(!showHistory)}>History</button><button className="btn" disabled={busy || saved.pending || !messages.length} onClick={newChat}>New chat</button>{!compact&&<button className="btn" title="Keep this conversation open at the top right" onClick={()=>setCoachPanel({uid,conversationId,context})}>Pin chat ↗</button>}<Link className="btn" to="/settings#set-teaching-coach">Settings</Link></div></header>
+    <header className="coach-chat-header"><div><span className="coach-kicker">Your thinking partner</span><h2>Teacher’s Companion</h2></div><div className="coach-chat-tools" aria-label="Conversation actions"><button type="button" className="coach-tool-icon" aria-label="History" title="History" aria-expanded={showHistory} onClick={()=>setShowHistory(!showHistory)}><UiIcon name="history" size={18}/></button><button type="button" className="coach-tool-icon" aria-label="New chat" title="New chat" disabled={busy || saved.pending || !messages.length} onClick={newChat}><UiIcon name="plus" size={18}/></button>{!compact&&<button type="button" className="coach-tool-icon" aria-label="Pin chat" title="Keep this conversation open at the top right" onClick={()=>setCoachPanel({uid,conversationId,context})}><UiIcon name="pin" size={18}/></button>}<div className="coach-voice-slot" ref={setVoiceSlot}/><Link className="coach-tool-icon" aria-label="Settings" title="Settings" to="/settings#set-teaching-coach"><UiIcon name="settings" size={18}/></Link></div></header>
     {showHistory&&<nav className="coach-history" aria-label="Saved coaching conversations"><p>Private to you. Starting a new chat keeps previous conversations here.</p>{saved.conversations.length?saved.conversations.map(c=><button className="btn" key={c.id} aria-current={c.id===conversationId?'true':undefined} disabled={busy} onClick={()=>chooseConversation(c.id,c.context)}>{c.title}<small>{new Date(c.updatedAt).toLocaleDateString()}</small></button>):<p>No saved conversations yet.</p>}</nav>}
     {saved.error&&<p className="coach-notice coach-error" role="alert">{saved.error}</p>}
     {!saved.ready&&!saved.error&&<p role="status" className="coach-notice">Opening your saved conversation…</p>}
     {saved.interrupted&&<p className="coach-notice">An earlier reply did not finish. Your messages are saved; you can send a follow-up below.</p>}
-    <CoachVoice turn={messages.length} reason={!complete?'Complete your teaching profile and beliefs below to start a voice conversation.':!preferencesReady?'Opening your coach settings…':busy?'Wait for your coach’s reply before recording another message.':''} disabled={!complete||!preferencesReady||busy} resetKey={JSON.stringify([preferences.version,profile.version,lessonContext,formContext,approvedPacket,chatId])} onTranscript={text=>setDraft(old=>[old,text].filter(Boolean).join(' '))} reply={[...messages].reverse().find(m=>m.role==='coach')?.text||''}/>
+    <CoachVoice toolbarTarget={voiceSlot} turn={messages.length} reason={!complete?'Complete your teaching profile and beliefs below to start a voice conversation.':!preferencesReady?'Opening your coach settings…':busy?'Wait for your coach’s reply before recording another message.':''} disabled={!complete||!preferencesReady||busy} resetKey={JSON.stringify([preferences.version,profile.version,lessonContext,formContext,approvedPacket,chatId])} onTranscript={text=>setDraft(old=>[old,text].filter(Boolean).join(' '))} reply={[...messages].reverse().find(m=>m.role==='coach')?.text||''}/>
     {formContext&&<aside className="coach-notice" aria-label="Selected studio form"><p>Your coach will read this form from its current Collab document when you send. The document’s sharing settings still apply.</p><Link to={'/doc/'+formContext.docId+'#studio-form-'+formContext.formId}>Open selected form</Link> <button type="button" className="btn" disabled={busy} onClick={()=>{setContext(c=>({...c,formContext:null}));onClearForm?.();}}>Remove form context</button></aside>}
     {lessonContext&&<aside className="coach-notice" aria-label="Selected teaching context"><p>{lessonContext.taskId?'This activity':'This lesson'} is attached. Teacher’s Companion will read its current content when you send, subject to your access and context settings.</p><Link to={`/class/${lessonContext.classId}/lesson/${lessonContext.itemId}${lessonContext.taskId?'?task='+lessonContext.taskId:''}`}>Open selected lesson</Link> <button className="btn" disabled={busy} onClick={()=>{setContext(c=>({...c,lessonContext:null}));onClearLesson?.();}}>Remove lesson context</button></aside>}
-    {!lessonContext&&pageContext&&<aside className="coach-notice" aria-label="Current page context">Current page: {pageContext.name}. The page name is available; its content is not automatically shared.</aside>}
     {error && <AiNotice kind="error" action={journalError?()=>void saveJournal():draft.trim()?()=>void send():undefined} actionDisabled={journalError?journalSaving:!canSend} onDismiss={()=>setError('')}>{error}</AiNotice>}
     {!formContext && !lessonContext && !evidencePacketId && !profileComplete(profile) ? <div className="coach-chat-onboarding"><div className="coach-chat-greeting"><span className="coach-chat-avatar" aria-hidden="true">C</span><div><h3>Let’s start with your teaching</h3><p>Before we chat, add a few details so I can understand your work. Your qualifications aren’t a measure of your expertise.</p></div></div><ProfileSetup uid={uid} profile={profile} /></div> : !formContext && !lessonContext && !evidencePacketId && !beliefsComplete(profile) ? <div className="coach-chat-onboarding"><div className="coach-chat-greeting"><span className="coach-chat-avatar" aria-hidden="true">C</span><div><h3>What guides your teaching?</h3><p>Add your teaching beliefs before we begin. A few honest sentences are enough, and it’s fine to be uncertain.</p></div></div><BeliefsSetup uid={uid} profile={profile} /></div> : <>
       <div className="coach-chat-thread" ref={thread} tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Home'||e.key==='End')){e.preventDefault();e.currentTarget.scrollTop=e.key==='Home'?0:e.currentTarget.scrollHeight;}}} role="log" aria-label="Conversation with your Teacher’s Companion" aria-live="polite" aria-relevant="additions">

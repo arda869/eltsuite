@@ -409,7 +409,6 @@ export function LearnerLesson() {
           <span className="eyebrow" style={{ padding: '0 10px 6px', fontSize: 11 }}>
             {item?.title}
           </span>
-          {liveHere && <LiveWho classId={classId} itemId={itemId} teacherName={live?.teacherName} selfId={learnerId} />}
           {tasks.map((t) =>
             t.kind === 'section' ? (
               <span key={t.id} className="section-label">
@@ -439,6 +438,7 @@ export function LearnerLesson() {
         </nav>
 
         <div className="center-col">
+        {liveHere && <LiveWho classId={classId} itemId={itemId} teacherName={live?.teacherName} selfId={learnerId} />}
         <div className="panel-toggles">
           <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
         </div>
