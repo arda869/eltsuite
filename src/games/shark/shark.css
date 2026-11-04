@@ -1,0 +1,84 @@
+/* Shark escape: a bright sea in five weathers. The shark's place is --p (0 at the start of a
+   round, 1 when time is up); the rower sits at 56% of the width, the island on the right. */
+.shark-stage { --sk-sky-top: #7cc6e4; --sk-sky-bottom: #e3f3f8; --sk-sun: #ffd166; --sk-cloud: #fff; --sk-shore: #7fb0a8; --sk-shore-near: #5e9a93; --sk-sea-top: #49b5c6; --sk-sea-bottom: #136a7d; --sk-sea-light: #6fcbd8; --sk-sea-mid: #2b9db0; --sk-sea-near: #1b7f94; --sk-sea-dark: #0f5567; --sk-sand: #f1dcb0; --sk-sand-dark: #d9bd87; --sk-trunk: #8a5a34; --sk-trunk-light: #c99766; --sk-leaf: #3f9a5a; --sk-leaf-dark: #2d7a45; --sk-coconut: #6b4426; --sk-hull: #d2694a; --sk-hull-light: #e8906f; --sk-hull-dark: #8f3f2b; --sk-shirt: #f4efe6; --sk-skin: #e7b48f; --sk-hair: #3b2a22; --sk-shark: #5d6f82; --sk-shark-belly: #c9d3dc; --sk-shark-dark: #3b4858; --sk-foam: #fff; --sk-danger: #3a0f14; --sk-stars: none;
+  --ch-bg: #0f4252; --ch-face: #fffaf2; --ch-ink: #262420; --ch-muted: #66615b; --ch-accent: #d2694a; --ch-accent-ink: #140c09; --ch-right: #3f8f5a; --ch-wrong: #c2473a; --ch-hud: rgba(255, 250, 242, .92); --ch-hud-ink: #262420; --ch-on-scene: #e8f4f6; }
+.shark-theme-paper { --sk-sky-top: #dfe9ed; --sk-sky-bottom: #f8f9f9; --sk-sun: #f2cf7a; --sk-shore: #a9bfc4; --sk-shore-near: #8aa7ad; --sk-sea-top: #a3c9d1; --sk-sea-bottom: #4a8290; --sk-sea-light: #b9d8de; --sk-sea-mid: #7fb1bc; --sk-sea-near: #5a929f; --sk-sea-dark: #3a6670; --sk-sand: #efe6d3; --sk-sand-dark: #d8ccb0; --sk-leaf: #6e9c7c; --sk-leaf-dark: #557d62; --sk-shark: #7d8893; --sk-shark-belly: #d8dde2; --sk-shark-dark: #55606b; --sk-danger: #2a2a2a;
+  --ch-bg: #3d6670; --ch-face: #fff; --ch-accent: #c95f41; }
+.shark-theme-arcade { --sk-sky-top: #1a1240; --sk-sky-bottom: #3a1f6e; --sk-sun: #f6f0ff; --sk-cloud: #7a5fc4; --sk-shore: #2a1c5c; --sk-shore-near: #1e1448; --sk-sea-top: #1d7ea0; --sk-sea-bottom: #0a2a3d; --sk-sea-light: #3fc4e2; --sk-sea-mid: #1f8fb4; --sk-sea-near: #11618a; --sk-sea-dark: #082f45; --sk-sand: #f7e3a1; --sk-sand-dark: #d9bf6f; --sk-leaf: #39d98a; --sk-leaf-dark: #22a86a; --sk-shark: #4e5d8a; --sk-shark-belly: #aeb9d9; --sk-shark-dark: #2e3a5e; --sk-foam: #c8f6ff; --sk-danger: #3a0a2a; --sk-stars: radial-gradient(circle at 20% 30%, #fff 0 1px, #0000 1.6px) 0 0 / 90px 70px, radial-gradient(circle at 70% 60%, #ffffffb0 0 1px, #0000 1.4px) 0 0 / 53px 61px;
+  --ch-bg: #0b1a2a; --ch-face: #fff8f0; --ch-accent: #ff6b8b; --ch-right: #2fc07a; --ch-hud: rgba(20, 16, 50, .86); --ch-hud-ink: #fff; }
+.shark-theme-garden { --sk-sky-top: #b9dff0; --sk-sky-bottom: #eef9ef; --sk-sun: #ffe08a; --sk-shore: #7aa86a; --sk-shore-near: #5c8c52; --sk-sea-top: #5fc9b2; --sk-sea-bottom: #166a5a; --sk-sea-light: #8fdcc8; --sk-sea-mid: #3aae95; --sk-sea-near: #248a75; --sk-sea-dark: #155e4f; --sk-sand: #f3e4bd; --sk-sand-dark: #dcc58f; --sk-leaf: #4ca656; --sk-leaf-dark: #2f8440; --sk-shark: #627687; --sk-shark-belly: #cbd6dd; --sk-shark-dark: #3f4d5c; --sk-danger: #1e2a12;
+  --ch-bg: #124d43; --ch-face: #fffdf5; --ch-accent: #cf6a3e; }
+.shark-theme-space { --sk-sky-top: #070b24; --sk-sky-bottom: #1c2a5c; --sk-sun: #e9eefb; --sk-cloud: #2b3a6a; --sk-shore: #14204a; --sk-shore-near: #0f1838; --sk-sea-top: #2a4f8f; --sk-sea-bottom: #0a1a3c; --sk-sea-light: #5a86c4; --sk-sea-mid: #2f5a9b; --sk-sea-near: #1c3f78; --sk-sea-dark: #0c1f44; --sk-sand: #e8e2d0; --sk-sand-dark: #c7bfa8; --sk-leaf: #5ea07a; --sk-leaf-dark: #3f7a5c; --sk-shark: #5a6c90; --sk-shark-belly: #b7c3dc; --sk-shark-dark: #37456a; --sk-foam: #dfe9ff; --sk-danger: #1a0a2e; --sk-stars: radial-gradient(circle at 12% 18%, #fff 0 1.2px, #0000 1.6px) 0 0 / 90px 70px, radial-gradient(circle at 60% 70%, #ffffffb0 0 1px, #0000 1.4px) 0 0 / 53px 61px;
+  --ch-bg: #060c1f; --ch-face: #f7f6ff; --ch-accent: #ff8c69; --ch-hud: rgba(10, 14, 40, .86); --ch-hud-ink: #fff; }
+
+.sk-scene { position: absolute; inset: 0; overflow: hidden; }
+.sk-scene > * { position: absolute; }
+.sk-sky { inset: 0; background: var(--sk-stars), linear-gradient(var(--sk-sky-top), var(--sk-sky-bottom) 58%); }
+.sk-sun { width: 15%; min-width: 70px; left: 13%; top: 3%; }
+.sk-moon-shadow { display: none; }
+.shark-theme-arcade .sk-moon-shadow, .shark-theme-space .sk-moon-shadow { display: block; }
+.sk-clouds { left: 0; top: 2%; width: 200%; height: 30%; animation: sk-drift 90s linear infinite; }
+.sk-shore { left: 0; width: 100%; top: 43%; height: 13%; }
+.sk-sea { left: 0; right: 0; top: 55.5%; bottom: 0; background: linear-gradient(var(--sk-sea-top), var(--sk-sea-bottom)); }
+.sk-wave { left: 0; width: 200%; animation: sk-drift linear infinite; }
+.sk-wave path { fill: currentColor; }
+.sk-wave-far { top: 54%; height: 7%; color: var(--sk-sea-light); opacity: .55; animation-duration: 26s; }
+.sk-wave-mid { top: 68%; height: 11%; color: var(--sk-sea-mid); opacity: .7; animation-duration: 18s; animation-direction: reverse; }
+.sk-wave-near { top: 82%; height: 20%; color: var(--sk-sea-near); animation-duration: 13s; }
+.sk-island { right: 2%; bottom: 17%; width: 21%; min-width: 120px; max-width: 280px; }
+.sk-fronds { transform-origin: 152px 78px; animation: sk-sway 5s ease-in-out infinite alternate; }
+.sk-flag-cloth { transform: translateY(8px) scaleY(0); transform-origin: 214px 136px; transition: transform .6s cubic-bezier(.2, 1.3, .4, 1) .5s; }
+.sk-scene[data-mood=cleared] .sk-flag-cloth { transform: none; }
+.sk-shark { bottom: 9%; width: 16%; min-width: 96px; max-width: 220px; left: calc(1% + var(--p) * 44%); transform: translateY(calc(48% - var(--p) * 42%)); transition: left .12s linear, transform .3s ease; }
+.sk-shark-body { transform-origin: 160px 78px; animation: sk-swim 2.4s ease-in-out infinite alternate; }
+.sk-tail { transform-origin: 50px 78px; animation: sk-tail 1s ease-in-out infinite alternate; }
+.sk-teeth { opacity: calc(var(--p) * 1.4 - .5); }
+.sk-scene[data-mood=lost] .sk-shark { left: 42%; transform: translateY(0) scale(1.08); transition: left .5s cubic-bezier(.3, 0, .6, 1), transform .5s; }
+@container (min-width: 900px) { .sk-scene[data-mood=lost] .sk-shark { left: 54%; } .sk-scene[data-mood=lost] .sk-boat { transform: translateX(70%) translateY(14%) rotate(-18deg); } }
+.sk-scene[data-mood=lost] .sk-shark-body { animation: sk-lunge .7s ease both; }
+.sk-boat { left: 56%; bottom: 15%; width: 16%; min-width: 96px; max-width: 220px; transition: transform 1.1s cubic-bezier(.4, 0, .2, 1); }
+.sk-boat > * { animation: sk-bob 3.2s ease-in-out infinite; transform-origin: 110px 110px; }
+.sk-oar { transform-origin: 68px 92px; }
+.sk-oar-right { transform-origin: 152px 92px; }
+.sk-scene[data-mood=running] .sk-oar-left { animation: sk-row-l .9s ease-in-out infinite alternate; }
+.sk-scene[data-mood=running] .sk-oar-right { animation: sk-row-r .9s ease-in-out infinite alternate; }
+.sk-scene[data-mood=running] .sk-rower { animation: sk-lean .9s ease-in-out infinite alternate; transform-origin: 110px 96px; }
+.sk-scene[data-mood=cleared] .sk-boat { transform: translateX(118%); }
+.sk-scene[data-mood=lost] .sk-boat { transform: translateX(8%) translateY(14%) rotate(-18deg); transition: transform .8s cubic-bezier(.3, 0, .6, 1) .25s; }
+.sk-splash { left: 50%; bottom: 20%; width: 18%; min-width: 100px; transform-origin: 50% 100%; animation: sk-splash .75s ease-out both; }
+.sk-bubbles { inset: 0; width: 100%; height: 100%; display: none; }
+.sk-scene[data-mood=running] .sk-bubbles { display: block; }
+.sk-bubbles circle { animation: sk-bubble 4.5s linear infinite; animation-delay: var(--d); }
+.sk-danger { inset: 0; background: radial-gradient(ellipse at 50% 45%, transparent 38%, var(--sk-danger)); opacity: calc(var(--p) * .72); transition: opacity .3s; pointer-events: none; }
+.sk-scene[data-urgent] .sk-danger { animation: sk-throb .5s ease-in-out infinite alternate; }
+.sk-scene[data-mood=idle] .sk-clouds, .sk-scene[data-mood=idle] .sk-wave, .sk-scene[data-mood=idle] .sk-shark-body, .sk-scene[data-mood=idle] .sk-tail { animation-play-state: paused; }
+
+.sk-welcome h2, .sk-finish h2 { color: var(--ch-ink); }
+
+@keyframes sk-drift { to { transform: translateX(-50%); } }
+@keyframes sk-bob { 0%, 100% { transform: translateY(0) rotate(-1.2deg); } 50% { transform: translateY(-5px) rotate(1.4deg); } }
+@keyframes sk-sway { to { transform: rotate(4deg); } }
+@keyframes sk-swim { from { transform: translateY(-3px) rotate(-1.5deg); } to { transform: translateY(3px) rotate(1.5deg); } }
+@keyframes sk-tail { from { transform: scaleX(.86); } to { transform: scaleX(1.12); } }
+@keyframes sk-lunge { 0% { transform: translateY(20px) rotate(10deg); } 60% { transform: translateY(-14px) rotate(-8deg) scale(1.05); } 100% { transform: none; } }
+@keyframes sk-row-l { from { transform: rotate(-18deg); } to { transform: rotate(14deg); } }
+@keyframes sk-row-r { from { transform: rotate(18deg); } to { transform: rotate(-14deg); } }
+@keyframes sk-lean { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+@keyframes sk-splash { 0% { opacity: .9; transform: scale(.3) translateY(10%); } 60% { opacity: .9; } 100% { opacity: 0; transform: scale(1.1) translateY(-30%); } }
+@keyframes sk-bubble { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .7; } 100% { transform: translateY(-110px); opacity: 0; } }
+@keyframes sk-throb { to { opacity: calc(var(--p) * .72 + .2); } }
+
+@container (max-width: 640px) {
+  .sk-sun { left: 6%; top: 4%; width: 18%; }
+  .sk-island { width: 30%; min-width: 96px; right: -2%; bottom: 14%; }
+  .sk-boat { width: 24%; min-width: 80px; left: 50%; bottom: 12%; }
+  .sk-shark { width: 24%; min-width: 76px; left: calc(-2% + var(--p) * 40%); bottom: 7%; }
+  .sk-scene[data-mood=lost] .sk-shark { left: 34%; }
+  .sk-scene[data-mood=cleared] .sk-boat { transform: translateX(100%); }
+  .sk-splash { left: 44%; width: 26%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sk-scene * { animation: none !important; }
+  .sk-shark, .sk-boat, .sk-flag-cloth { transition: none !important; }
+  .sk-splash { display: none; }
+}
