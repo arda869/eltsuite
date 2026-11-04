@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { favAdds, onFavs, toggleFav } from '../lib/slashUse';
 
 // A window that shows every element you can put in a task, in groups, each with a short
@@ -791,6 +792,66 @@ const Star = ({ on }: { on?: boolean }) => (
     <path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 5.9L12 16.6l-5.3 2.9 1.1-5.9L3.4 9.5l6-.8z" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
   </svg>
 );
+
+function questionPosition(anchor: HTMLElement) {
+  const rect = anchor.getBoundingClientRect();
+  const width = Math.min(470, window.innerWidth - 24);
+  const left = Math.max(12, Math.min(rect.left - 10, window.innerWidth - width - 12));
+  const below = window.innerHeight - rect.bottom - 12;
+  const above = rect.top - 12;
+  const showAbove = below < 300 && above > below;
+  const height = Math.min(600, Math.max(180, showAbove ? above - 6 : below - 6));
+  return { position: 'fixed' as const, left, top: showAbove ? Math.max(12, rect.top - height - 6) : rect.bottom + 6, width, maxHeight: height };
+}
+
+// Anchored to the Questions toolbar button: a compact dropdown, using the exact previews
+// from the full Add to the task gallery. The full gallery remains available from + Add.
+export function QuestionDropdown({ anchor, commands, onPick, onClose }: { anchor: HTMLElement; commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void }) {
+  const [query, setQuery] = useState('');
+  const [position, setPosition] = useState(() => questionPosition(anchor));
+  const byKey = useMemo(() => Object.fromEntries(commands.map(c => [c.key, c])), [commands]);
+  useEffect(() => {
+    const place = () => setPosition(questionPosition(anchor));
+    const outside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!anchor.contains(target) && !(target instanceof Element && target.closest('.question-pop'))) onClose();
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); anchor.focus(); }
+    };
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    document.addEventListener('mousedown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+      document.removeEventListener('mousedown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [anchor, onClose]);
+  const q = query.trim().toLowerCase();
+  const sections = QUESTION_SECTIONS.map(section => ({ ...section, items: section.keys.map(key => byKey[key]).filter(Boolean).filter(item => !q || `${item.label} ${item.hint} ${ABOUT[item.key] ?? ''}`.toLowerCase().includes(q)) })).filter(section => section.items.length);
+  return createPortal(
+    <div className="question-pop" role="dialog" aria-label="Add a question" style={position}>
+      <div className="question-pop-head">
+        <strong>Questions</strong>
+        <button type="button" className="icon-btn" aria-label="Close questions" onClick={onClose}>×</button>
+      </div>
+      <input aria-label="Search questions" value={query} onChange={event => setQuery(event.target.value)} placeholder="Find a question…" autoFocus />
+      <div className="question-pop-list">
+        {!sections.length && <p className="hint">No questions match.</p>}
+        {sections.map(section => <section key={section.title}>
+          <h3>{section.title}</h3>
+          {section.items.map(item => <button type="button" key={item.key} className="question-pop-item" onClick={() => onPick(item.key)}>
+            <span className="gallery-pic" aria-hidden="true">{PREVIEW[item.key]?.() ?? <Lines n={3} />}</span>
+            <span className="question-pop-copy"><strong>{item.label}</strong><small>{item.hint}</small></span>
+          </button>)}
+        </section>)}
+      </div>
+    </div>, document.body,
+  );
+}
 
 export function InsertGallery({ commands, onPick, onClose, sections: secs = SECTIONS, title = 'Add to the task' }: { commands: GalleryCmd[]; onPick: (key: string) => void; onClose: () => void; sections?: Section[]; title?: string }) {
   const [q, setQ] = useState('');
