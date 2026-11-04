@@ -660,7 +660,7 @@ ${sheetCss(opts)}
         restEl.insertBefore(continuation, restEl.firstChild);
         return;
       }
-      if (solid) { if (el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); ${opts.lessonStyle === 'young' ? 'continue;' : ''} } return; }
+      if (solid) { if (el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); continue; } return; }
       // It fits partly: the rest of it goes on, in a copy of it.
       var part = last.cloneNode(false);
       restEl.insertBefore(part, restEl.firstChild);

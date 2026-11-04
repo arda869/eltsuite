@@ -53,6 +53,17 @@ try{
    for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions','Classroom game'])if(!output.includes(expected))throw Error('Missing '+expected);
    if(output.includes('secret-key'))throw Error('A learner copy exposed a private answer.');
   }
+  const rendered = document.createElement('iframe');document.body.append(rendered);
+  try {
+    const d=rendered.contentDocument;d.open();d.write(html);d.close();
+    for(let i=0;i<300&&!rendered.contentWindow.__laidOut;i++)await new Promise(resolve=>setTimeout(resolve,100));
+    if(!rendered.contentWindow.__laidOut)throw Error('Sample did not paginate.');
+    const columns=[...d.querySelectorAll('#pages .col')];
+    if(columns.some(col=>col.scrollHeight>col.clientHeight+2))throw Error('Sample clipped an activity.');
+    for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Ask a neighbour','Could you help me?']) {
+      if(!columns.some(col=>col.textContent.includes(expected)))throw Error('Rendered sample lost '+expected);
+    }
+  }finally{rendered.remove();}
   const passage = 'Travel to the library. '.repeat(1200) + 'End of passage.';
   const rows = Array.from({length:95},(_,i)=>({type:'tableRow',content:[{type:'tableCell',content:[para(text('Printable row '+i))]}]}));
   const longTask = {...task,content:{type:'doc',content:[para(text(passage)),{type:'table',content:rows}]}};
