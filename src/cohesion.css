@@ -107,3 +107,50 @@ html { touch-action:pan-x pan-y; }
 :root .btn.link.add-link:hover { border-style:solid; border-color:var(--accent); background:color-mix(in srgb, var(--accent) 7%, transparent); }
 /* Room at the bottom of every page for the Messages bar, so it never covers the last card. */
 :root:has(.dock-bar) .shell { padding-bottom:72px; }
+/* One launcher for every app: readable names on desktop and a touch-friendly sheet on phones. */
+.apps-scrim { display:none; position:fixed; inset:0; z-index:79; border:0; background:#17130f70; cursor:default; }
+:root .suite-topbar:has(.apps-pop) { z-index:10001; }
+:root .apps-pop { box-sizing:border-box; display:block; z-index:80; width:min(450px,calc(100vw - 24px)); max-height:min(760px,calc(100dvh - 88px)); gap:0; padding:0; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--hair-strong); border-radius:20px; background:var(--paper); color:var(--ink); box-shadow:0 24px 70px #0004; }
+.apps-pop-head { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:19px 20px 13px; background:var(--paper); }
+.apps-pop-head h2 { margin:3px 0 0; font:600 24px/1.1 var(--serif); letter-spacing:-.025em; }
+.apps-eyebrow { font:700 10px/1 var(--sans); letter-spacing:.13em; text-transform:uppercase; color:var(--muted); }
+.apps-close { display:grid; place-items:center; flex:none; width:32px; height:32px; border:1px solid var(--hair); border-radius:10px; background:var(--surface); color:var(--muted); font:26px/1 var(--sans); cursor:pointer; }
+.apps-close:hover { color:var(--ink); background:var(--selected); }
+:root .apps-search { position:sticky; top:66px; z-index:2; display:flex; align-items:center; gap:10px; margin:0 16px 12px; padding:0 12px; border:1px solid var(--hair-strong); border-radius:11px; background:var(--surface); color:var(--muted); }
+:root .apps-search:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent); }
+:root .apps-search input { flex:1; width:100%; height:42px; padding:0; border:0; outline:0; background:transparent; color:var(--ink); font:14px var(--sans); }
+.apps-search input::placeholder { color:var(--muted); opacity:1; }
+.apps-scroll { padding:0 12px 14px; }
+.apps-empty { margin:18px 8px; color:var(--muted); font:14px/1.5 var(--sans); }
+.apps-g { padding:7px 0 10px; }
+:root .apps-g + .apps-g { padding-top:17px; }
+:root .apps-h { display:block; padding:0 8px 8px; font:700 11px/1.2 var(--sans); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+:root .apps-row { grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+:root .app-tile { display:flex; flex-direction:row; align-items:center; gap:11px; min-width:0; min-height:70px; padding:9px; text-align:left; border:1px solid transparent; border-radius:12px; }
+:root .app-tile:hover, :root .app-tile:focus-visible { background:var(--surface); border-color:var(--hair); }
+:root .app-tile .app-ico { flex:none; width:42px; height:42px; border-radius:12px; }
+.app-tile-copy { display:grid; align-content:center; min-width:0; gap:3px; }
+:root .app-tile b, :root .app-tile b.app-name-wrap { max-width:100%; overflow:visible; white-space:normal; text-overflow:clip; font:700 13px/1.2 var(--sans); text-wrap:balance; }
+.app-tile-copy small { display:-webkit-box; overflow:hidden; -webkit-box-orient:vertical; -webkit-line-clamp:2; color:var(--muted); font:11px/1.25 var(--sans); }
+:root .apps-foot { padding:12px 5px 0; gap:7px; }
+:root .apps-chip { min-height:36px; }
+:root .apps-pop :is(a,button,input):focus-visible { outline:2px solid var(--accent-text); outline-offset:2px; }
+@media(max-width:700px) {
+  .apps-scrim { display:block; top:var(--suite-header-height); }
+  :root .apps-pop { position:fixed; inset:auto 0 0; width:100%; max-height:min(85dvh,calc(100dvh - var(--suite-header-height) - 36px)); border-radius:24px 24px 0 0; padding-top:4px; padding-bottom:env(safe-area-inset-bottom); box-shadow:0 -16px 50px #0004; }
+  .apps-pop-head { padding:20px 20px 13px; }
+  .apps-pop-head::before { content:''; position:absolute; top:7px; left:calc(50% - 18px); width:36px; height:4px; border-radius:4px; background:var(--hair-strong); }
+  .apps-scroll { padding:0 12px 18px; }
+  :root .apps-row { gap:6px; }
+  :root .app-tile { min-height:66px; padding:8px; }
+  .app-tile-copy small { display:none; }
+}
+@media(max-width:360px) { :root .app-tile { gap:8px; } :root .app-tile .app-ico { width:36px; height:36px; } :root .app-tile b { font-size:12px; } }
+@media(prefers-reduced-motion:reduce) { :root .apps-pop { animation:none; } }
+/* Native choices in specialist editors keep their platform picker, while their controls use
+   the same chevron, focus treatment and dimensions as the shared suite selector. */
+:root select:not([multiple]):not([size]) { box-sizing:border-box; padding-right:30px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238a847d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 11px center; -webkit-appearance:none; appearance:none; }
+:root select:not([multiple]):not([size]):hover:not(:disabled) { border-color:color-mix(in srgb,var(--ink) 35%,var(--hair-strong)); }
+:root select:not([multiple]):not([size]):focus-visible { outline:none; border-color:var(--ink); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent); }
+:root select:not([multiple]):not([size]):disabled { opacity:.55; cursor:not-allowed; }
+:root select option { background:var(--paper); color:var(--ink); }

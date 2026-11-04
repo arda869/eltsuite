@@ -40,6 +40,8 @@ const fits = new WeakMap<Element, number>();
 
 function fit(el: HTMLElement) {
   if (!el.isConnected) return;
+  // The app launcher's menu is content inside a scrollable sheet, not a floating pop-up.
+  if (el.closest('.apps-pop')) return;
   // A pop-up re-fitted over and over (its own code moving it each frame) is left alone.
   const n = (fits.get(el) ?? 0) + 1;
   fits.set(el, n);

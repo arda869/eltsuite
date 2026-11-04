@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { useSuper, useAppOn, useOrgs } from '../lib/admin';
 
@@ -114,7 +114,19 @@ export function AppGrid() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const location = useLocation();
   const ME = 'apps';
+  useEffect(() => setOpen(false), [location.pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const small = window.matchMedia('(max-width: 700px)').matches;
+    if (!small) searchRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    if (small) document.body.style.overflow = 'hidden';
+    return () => { if (small) document.body.style.overflow = previousOverflow; };
+  }, [open]);
   // Only one menu at the top is open at a time: opening one closes the other.
   useEffect(() => {
     if (!open) return;
@@ -126,10 +138,12 @@ export function AppGrid() {
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setOpen(false); buttonRef.current?.focus(); }
+    };
     document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', esc);
-    return () => (document.removeEventListener('mousedown', close), document.removeEventListener('keydown', esc));
+    document.addEventListener('keydown', esc, true);
+    return () => (document.removeEventListener('mousedown', close), document.removeEventListener('keydown', esc, true));
   }, [open]);
   const { user } = useAuth();
   const teacher = profile?.role === 'teacher';
@@ -141,15 +155,22 @@ export function AppGrid() {
   const apps = APPS.filter((a) => a.k !== 'reading' && (teacher || (!a.teacher && !a.soon)) && show(a.k) && `${a.name} ${a.about}`.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="apps" ref={ref}>
-      <button type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} data-tip="Apps" onClick={() => {setOpen((o) => !o);setSearch('');}}>
+      <button ref={buttonRef} type="button" className="apps-btn" aria-label="Apps" aria-expanded={open} aria-controls={open ? 'suite-apps-menu' : undefined} data-tip="Apps" onClick={() => {setOpen((o) => !o);setSearch('');}}>
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
           {[3, 10, 17].flatMap((y) => [3, 10, 17].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.9" fill="currentColor" />))}
         </svg>
       </button>
       {open && (
-        <div className="apps-pop" aria-label="Apps">
-          <label className="apps-search">Find an app<input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search apps" /></label>
-          {!apps.length&&<p>No apps match your search.</p>}
+        <>
+        <button type="button" className="apps-scrim" aria-label="Close apps menu" onClick={() => setOpen(false)} />
+        <div id="suite-apps-menu" className="apps-pop" aria-label="Apps">
+          <div className="apps-pop-head">
+            <div><span className="apps-eyebrow">ELT Suite</span><h2>Apps</h2></div>
+            <button type="button" className="apps-close" aria-label="Close apps menu" onClick={() => {setOpen(false);buttonRef.current?.focus();}}>×</button>
+          </div>
+          <label className="apps-search"><span className="sr-only">Find an app</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.7"/><path d="m16 16 4.5 4.5"/></svg><input ref={searchRef} type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Find an app" /></label>
+          <div className="apps-scroll">
+          {!apps.length&&<p className="apps-empty">No apps match your search.</p>}
           <div role="menu" aria-label="Applications">
           {GROUPS.map(([g, label]) => {
             const list = apps.filter((a) => a.group === g && a.to).sort((x, y) => rank(x.k) - rank(y.k));
@@ -162,7 +183,7 @@ export function AppGrid() {
                   {list.map((a) => (
                     <Link role="menuitem" key={a.k} to={a.to!} draggable={false} onDragStart={(e) => e.preventDefault()} className="app-tile" style={{ ['--app' as string]: a.color }} aria-label={a.name} data-tip={a.about} onClick={() => setOpen(false)}>
                       <span className="app-ico">{a.icon}</span>
-                      <b className={a.k === 'development' ? 'app-name-wrap' : undefined}>{a.short ?? a.name}</b>
+                      <span className="app-tile-copy"><b className={a.k === 'development' ? 'app-name-wrap' : undefined}>{a.short ?? a.name}</b><small>{a.about}</small></span>
                     </Link>
                   ))}
                 </div>
@@ -183,7 +204,9 @@ export function AppGrid() {
             ) : null;
           })()}
           </div>
+          </div>
         </div>
+        </>
       )}
     </div>
   );

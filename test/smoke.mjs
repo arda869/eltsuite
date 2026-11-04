@@ -123,7 +123,46 @@ const J = {
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
     await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('linguistics');
     await s.p.getByText('No apps match your search.').waitFor();
-    await axe(s.p,'Filtered application launcher',A11Y_FOUND);return s;
+    await axe(s.p,'Filtered application launcher',A11Y_FOUND);
+    await s.p.getByRole('button',{name:'Close apps menu'}).last().click();
+    await s.p.goto(BASE+'/');
+    for (const width of [320,390]) {
+      await s.p.setViewportSize({width,height:720});
+      await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+      const panel=s.p.locator('.apps-pop');
+      await panel.waitFor();
+      const fit=await panel.evaluate((el)=>{const r=el.getBoundingClientRect();return r.left>=-1&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1&&el.scrollWidth<=el.clientWidth+1;});
+      if(!fit)throw Error(`Apps menu does not fit ${width}px phone`);
+      if(await s.p.evaluate(()=>document.body.style.overflow)!=='hidden')throw Error('Page scroll remains active behind mobile apps menu');
+      if(await panel.evaluate(el=>el.scrollTop)>1)throw Error('Apps menu did not open at the first group');
+      const firstGroup=await s.p.locator('.apps-g').first().locator('.apps-h').innerText();
+      if(!['teach and organise','learning'].includes(firstGroup.toLowerCase()))throw Error('Teaching apps are missing from the launcher: '+firstGroup);
+      await s.p.waitForTimeout(250);
+      if(await panel.evaluate(el=>el.scrollTop)>1)throw Error('Apps menu moved away from the first group');
+      const headingFit=await s.p.locator('.apps-g').first().evaluate(el=>{const box=el.getBoundingClientRect(),search=el.closest('.apps-pop').querySelector('.apps-search').getBoundingClientRect(),pop=el.closest('.apps-pop'),menu=el.parentElement,s=getComputedStyle(menu);return {top:box.top,searchBottom:search.bottom,popScroll:pop.scrollTop,scrollTop:el.closest('.apps-scroll').scrollTop,windowScroll:scrollY,htmlScroll:document.documentElement.scrollTop,bodyScroll:document.body.scrollTop,menuTop:menu.getBoundingClientRect().top,menuTranslate:s.translate,menuOffsetParent:menu.offsetParent?.className};});
+      if(headingFit.top<headingFit.searchBottom-2)throw Error('Teaching apps group is hidden above the search field: '+JSON.stringify(headingFit));
+      await s.p.screenshot({path:`/tmp/eltsuite-apps-menu-${width}.png`});
+      await axe(s.p,`Apps menu at ${width}px`,A11Y_FOUND);
+      await s.p.getByRole('button',{name:'Close apps menu'}).last().click();
+      if(await s.p.evaluate(()=>document.body.style.overflow)==='hidden')throw Error('Page scroll remains locked after closing apps menu');
+    }
+    await s.p.evaluate(()=>document.documentElement.dataset.theme='dark');
+    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.waitForTimeout(250);
+    await s.p.screenshot({path:'/tmp/eltsuite-apps-menu-dark.png'});
+    await axe(s.p,'Apps menu in dark mode',A11Y_FOUND);
+    await s.p.keyboard.press('Escape');
+    if(await s.p.locator('.apps-pop').count())throw Error('Escape did not close the apps menu');
+    await s.p.evaluate(()=>document.documentElement.dataset.theme='light');
+    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.locator('.apps-scrim').click({position:{x:4,y:4}});
+    if(await s.p.locator('.apps-pop').count())throw Error('Tapping outside did not close the apps menu');
+    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('Resources');
+    await s.p.getByRole('menuitem',{name:'Resources',exact:true}).click();
+    await s.p.waitForURL('**/archive');
+    if(await s.p.locator('.apps-pop').count())throw Error('Apps menu stayed open after navigation');
+    return s;
   },
   'Tuesday wishlist: Resources columns, full width and cut move':async b=>{const s=await session(b,{owner:true});await resourcesLayout(s,BASE,axe,A11Y_FOUND);return s;},
   'Tuesday wishlist: Cut in ordinary fields preserves text':async b=>{const s=await session(b,{owner:true});await fieldCut(s,BASE,axe,A11Y_FOUND);return s;},
