@@ -236,6 +236,12 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       return;
     }
     switch (node.type) {
+      case 'picture':
+      case 'phonChart':
+      case 'phonCard':
+      case 'inlineMedia':
+        cur.push({kind:'p',runs:runsOf([node])});
+        return;
       case 'paragraph': {
         const runs = runsOf(node.content);
         if (runs.length) cur.push({ kind: 'p', runs, list, mark });
@@ -336,11 +342,27 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       }
       case 'classroomGame':
-      case 'investigation':
+      case 'investigation': {
+        const label = node.type === 'classroomGame' ? 'Classroom game' : 'Language investigation';
+        cur.push({kind:'note',text:[label,a.title || a.prompt,'Open the original activity in ELT Suite.'].filter(Boolean).join(' · ')});
+        return;
+      }
       case 'pdfBlock': {
-        const labels: Record<string,string> = {classroomGame:'Classroom game', speakingPractice:'Speaking practice', investigation:'Language investigation', pdfBlock:'Attached PDF'};
-        cur.push({ kind:'note', text: [labels[node.type], a.title || a.prompt, 'Open the original activity in ELT Suite.'].filter(Boolean).join(' · ') });
-        if(node.type === 'pdfBlock') node.content?.filter(c => c.type === 'pdfBox' && !c.attrs?.key).forEach(c => walk(c));
+        cur.push({kind:'p',heading:true,runs:[{t:String(a.title || 'Attached PDF')}]});
+        const pages = Array.isArray(a.pages) ? a.pages : [];
+        for(let i=0;i<pages.length;i++) {
+          const page = (Number(a.first) || 0) + i + 1;
+          if (a.src) {
+            const src = 'pdf-page:'+page+':'+a.src;
+            const drawings = (node.content || []).filter(c => ['pdfMark','pdfInk'].includes(c.type || '') && Number(c.attrs?.page || 0) === i).map(c => ({type:c.type,...c.attrs}));
+            cur.push({kind:'p',runs:[{pic:{src,key:drawings.length ? src+'#'+JSON.stringify(drawings) : src,size:'full',label:'',alt:'Page '+page}}]});
+          }
+          node.content?.filter(c => c.type === 'pdfBox' && !c.attrs?.key && Number(c.attrs?.page || 0) === i).forEach(c=>walk(c));
+        }
+        if (!pages.length) {
+          cur.push({kind:'note',text:'Open the attached PDF in ELT Suite.'});
+          node.content?.filter(c=>c.type === 'pdfBox' && !c.attrs?.key).forEach(c=>walk(c));
+        }
         return;
       }
       case 'wordbank':
@@ -578,7 +600,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   };
   inlineRefs(t.content); if (t.instrDoc && !paperInstr) inlineRefs(t.instrDoc);
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
-  return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, variant: t.variant, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, variant: t.variant ?? undefined, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only

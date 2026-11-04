@@ -10,7 +10,8 @@ try{
  await mkdir(out,{recursive:true});
  for(let i=0;i<120;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
  browser=await chromium.launch();
- const page=await browser.newPage();await page.goto(base+'/test/inline-pdf-audit.html');
+ const page=await browser.newPage();
+ await page.goto(base+'/test/inline-pdf-audit.html',{waitUntil:'domcontentloaded',timeout:180000});
  await page.locator('main[data-ready=true]').waitFor({timeout:180000});
  const results=await page.evaluate(async()=>{
   const {flattenWithSections}=await import('/src/lib/worksheet.ts');
@@ -19,8 +20,12 @@ try{
   const {docBodyHtml,prepareDocumentPrint,EXPORT_DEFAULT}=await import('/src/collab/export.ts');
   const {htmlToPdf}=await import('/src/lib/folderExport.ts');
   const text=text=>({type:'text',text}),para=(...content)=>({type:'paragraph',content});
+  await window.seedPdf();
   const doc={type:'doc',content:[
    para(text('Ask for directions. Complete the sentence: '),{type:'gap',attrs:{id:'gap',answers:['secret-key']}},text('.')),
+   {type:'pdfBlock',attrs:{src:'file:audit-source',pages:[{w:595,h:842}],title:'Attached map'},content:[
+    {type:'pdfBox',attrs:{page:0},content:[para(text('Map annotation'))]},
+    {type:'pdfBox',attrs:{page:0,key:true},content:[para(text('secret-key'))]}]},
    {type:'tt',attrs:{kind:'custom',title:'Peer observation',mode:'complete',data:{},def:{name:'Training form',fields:[{id:'evidence',label:'What did you observe?',kind:'long'}]}}},
    {type:'survey',attrs:{questions:[{type:'single',prompt:'Choose a route',options:['North route','South route']}]}},
    {type:'board',attrs:{prompt:'Post a landmark'}},
@@ -38,10 +43,14 @@ try{
   ]};
   const task={title:'Around town',content:doc,instructions:'Work with a partner.',variant:'Standard'};
   const opts={header:true,key:false,notes:false,paper:'A4',columns:1};
-  const html=worksheetHtml('Town lesson',flattenWithSections([task]),opts);
-  await prepareDocumentPrint(doc);const collab=docBodyHtml(doc,'Town document',EXPORT_DEFAULT);
+  const items=flattenWithSections([task]);
+  const {sheetPictures}=await import('/src/lib/sheetMedia.ts');
+  const media=await sheetPictures('audit',items);
+  if(!media['pdf-page:1:file:audit-source']?.data.startsWith('data:image/jpeg')) throw Error('Lost the original attachment page.');
+  const html=worksheetHtml('Town lesson',items,{...opts,media});
+  await prepareDocumentPrint(doc,'audit');const collab=docBodyHtml(doc,'Town document',EXPORT_DEFAULT);
   for(const output of [html,collab]){
-   for(const expected of ['What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions','Classroom game'])if(!output.includes(expected))throw Error('Missing '+expected);
+   for(const expected of ['Map annotation','What did you observe?','South route','Post a landmark','Look near the park.','North entrance','Walk east.','One-row table','Which place lends books?','Bakery','Read the street map.','Role A','Ask about the bus stop.','Ask a neighbour','Could you help me?','Indirect questions','Classroom game'])if(!output.includes(expected))throw Error('Missing '+expected);
    if(output.includes('secret-key'))throw Error('A learner copy exposed a private answer.');
   }
   const passage = 'Travel to the library. '.repeat(1200) + 'End of passage.';

@@ -23,11 +23,11 @@ const worksheetNodes = new WeakMap<JSONContent, string>();
 export async function prepareDocumentPrint(json: JSONContent, mediaSpace = '') {
   const [{ flattenTask }, { inlineWorksheetHtml }] = await Promise.all([import('../lib/worksheet'), import('../lib/worksheetHtml')]);
   const paperBlocks = new Set(['tt','dialogue','timeline','storyboard','diagram','pdfBlock','board','drawBoard','textBox','reveal','revealBox','randomPick','classroomGame','speakingPractice','investigation','bankLink','collab','upload','media','dictCut','linkCard','subTask','reflect','survey','wordbank','writing','match','order','pq','mcq']);
-  const nativeInline = (n: JSONContent): boolean => ['gap','choice','dropgap','picture','inlineMedia','subst','phonChart','phonCard','icon','plink'].includes(n.type || '') || !!n.content?.some(nativeInline);
+  const nativeInline = (n: JSONContent): boolean => ['gap','choice','dropgap','picture','inlineMedia','subst','phonChart','phonCard','icon','plink','mention','lessonLink'].includes(n.type || '') || !!n.content?.some(nativeInline);
   const printable: [JSONContent, WsTask][] = [];
   const walk = (n: JSONContent) => {
     if (n.type === 'studioForm') return;
-    if (paperBlocks.has(n.type || '') || (n.type === 'paragraph' && (questionsIn(n).length || nativeInline(n)))) {
+    if (paperBlocks.has(n.type || '') || (['paragraph','heading'].includes(n.type || '') && (questionsIn(n).length || nativeInline(n))) || ['picture','phonChart','phonCard','inlineMedia'].includes(n.type || '')) {
       const task = flattenTask({ title: '', content: { type: 'doc', content: [n] } });
       printable.push([n,task]);
     } else n.content?.forEach(walk);
@@ -97,6 +97,8 @@ function inlineHtml(n: JSONContent, o: ExportOpts): string {
     return out;
   }
   if (n.type === 'inlineMedia' && n.attrs?.media) return `<span>[Video: ${esc(String(n.attrs.title || 'Play in ELT Suite'))}]</span>`;
+  if (n.type === 'mention') return '@'+esc(String(n.attrs?.label || n.attrs?.name || 'colleague'));
+  if (n.type === 'lessonLink') return esc(String(n.attrs?.title || n.attrs?.label || 'Linked activity'));
   if (n.type === 'hardBreak') return '<br>';
   if (n.type === 'cite' && n.attrs?.src) return esc(inText(n.attrs.src, o.style, n.attrs.page, n.attrs.narrative, numOf(n.attrs.src)));
   if (n.type === 'ipa') return `<span class="ipa">/${esc(String(n.attrs?.text ?? ''))}/</span>`;
@@ -157,9 +159,10 @@ function blockHtml(n: JSONContent, o: ExportOpts, doc: JSONContent, live?: Eleme
     case 'tableRow':
       return `<tr>${kids()}</tr>`;
     case 'tableHeader':
-      return `<th>${kids()}</th>`;
-    case 'tableCell':
-      return `<td>${kids()}</td>`;
+    case 'tableCell': {
+      const tag = n.type === 'tableHeader' ? 'th' : 'td';
+      return `<${tag} colspan="${Math.max(1,Number(n.attrs?.colspan)||1)}" rowspan="${Math.max(1,Number(n.attrs?.rowspan)||1)}">${kids()}</${tag}>`;
+    }
     case 'image':
       return inlineHtml(n, o);
     case 'horizontalRule':
