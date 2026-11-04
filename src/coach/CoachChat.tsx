@@ -1,3 +1,4 @@
+import {coachContextOnPage} from './pageContext';
 import {coachHistoryKey} from '../../functions/ai/coach-history.js';
 import {lastConversation,rememberConversation,readDraft,saveDraft,useConversations,type CoachContext} from './conversations';
 import {setCoachPanel} from './panelState';
@@ -82,7 +83,10 @@ export function CoachChat({ uid, profile, initialPrompt, reflectionId:incomingRe
     const turnGeneration = generation.current;
     const text = draft.trim(); setPendingText(text);
     const history = saved.history.slice(-16).map(m => ({ role: m.role, text: (m.text+(m.journalDraft?'\nJournal draft:\n'+m.journalDraft:'')).slice(0,6000) }));
-    const payload = { action: 'coach', conversationId, contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', evidencePacketId:approvedPacket, ...(formContext?{formContext}:{}), ...(lessonContext?{lessonContext}:{}), ...(pageContext?{pageContext}:{}) };
+    const currentPage = compact && lessonContext ? coachContextOnPage() : null;
+    const attached = currentPage?.lessonContext ?? lessonContext;
+    const activePage = currentPage?.lessonContext ? currentPage.pageContext : pageContext;
+    const payload = { action: 'coach', conversationId, contextVersion: 2, mode, prompt: text, history, useProfile: true, useBeliefs: true, entryId: reflectionId, researchId: '', evidencePacketId:approvedPacket, ...(formContext?{formContext}:{}), ...(attached?{lessonContext:attached}:{}), ...(activePage?{pageContext:activePage}:{}) };
     while (new TextEncoder().encode(JSON.stringify(payload)).length > 40000 && history.length) history.splice(0,2);
     const fingerprint = JSON.stringify(payload);
     if (request.current?.fingerprint !== fingerprint) request.current = { fingerprint, id: crypto.randomUUID() };

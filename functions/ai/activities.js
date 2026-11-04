@@ -110,10 +110,10 @@ export function nativeTask(t, index, namespace = '') {
     const annotated=content.flatMap(annotate);content.splice(0,content.length,...annotated);
     for(const [i,d] of definitions.entries())if(!seen.has(i))content.push({type:'paragraph',content:[{type:'text',text:d.term,marks:[{type:'definition',attrs:{data:{meaning:d.meaning,example:d.example}}}]}]});
     if(body===t){
-      const images=(t.preparedMedia??[]).filter(m=>m.kind==='image').map(m=>({type:'picture',attrs:{src:'media:'+m.mediaId,alt:m.alt,size:t.imageLayout==='stacked'?'full':'m',mark:'1'}}));
+      const images=(t.preparedMedia??[]).filter(m=>m.kind==='image').map((m,i)=>({type:'picture',attrs:{src:'media:'+m.mediaId,alt:m.alt,size:t.imageLayout==='stacked'?'full':'m',mark:String(i+1)}}));
       if(images.length)content.unshift(...(t.imageLayout==='stacked'?images.map(image=>({type:'paragraph',content:[image]})):[{type:'paragraph',content:images}]));
       for(const m of (t.preparedMedia??[]).filter(m=>m.kind==='image'&&m.credit))content.push(p('Photo: '+m.credit));
-      for(const m of (t.preparedMedia??[]).filter(m=>m.kind==='audio'))content.unshift({type:'media',attrs:{media:m.mediaId,kind:'audio',title:m.title+' · AI-generated audio',scriptMode:'none'}});
+      for(const m of (t.preparedMedia??[]).filter(m=>m.kind==='audio'))content.unshift({type:'media',attrs:{media:m.mediaId,kind:'audio',title:m.existing?m.title:m.title+' · AI-generated audio',scriptMode:'none'}});
     }
     for(const [j,d] of (body.structures??[]).entries()) {
       const sid=prefix+'_structure_'+j;

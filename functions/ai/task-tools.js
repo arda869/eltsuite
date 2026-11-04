@@ -5,6 +5,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { createHash, randomUUID } from 'node:crypto';
 import { generate } from './provider.js';
 import { activitySchema, activityInstructions, checkActivities, nativeTask } from './activities.js';
+import { taskMediaContext, checkTaskMediaPlan, prepareActivityAssets, taskMediaGuidance } from './task-media.js';
 import { mediaRequests } from './media-contract.js';
 import { trainingActivityInstructions, trainingActivitySchema } from './training.js';
 import { contentReviewStandard } from './pedagogy.js';
@@ -40,7 +41,8 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   if(typeof d.direction!=='string'||d.direction.length>2500)fail('Use a direction up to 2,500 characters.');
   const tasks=(await sources(item)).filter(t=>!t.family||t.family===t.id);
   const minutes=Number.isInteger(d.minutes)&&d.minutes>=1&&d.minutes<=60?d.minutes:10;
-  const cacheId=hash({version:1,model,classId:d.classId,itemId:d.itemId,title:saved.get('title'),objective:saved.get('speakingFocus')??'',level:cls.get('level')??'',profile:cls.get('learningProfile')??{},training:cls.get('trainingProfile')??null,tasks,minutes,direction:d.direction});
+  const classMedia=await taskMediaContext({db,uid,cls,tasks,direction:d.direction,title:saved.get('title')});
+  const cacheId=hash({version:2,classMedia,model,classId:d.classId,itemId:d.itemId,title:saved.get('title'),objective:saved.get('speakingFocus')??'',level:cls.get('level')??'',profile:cls.get('learningProfile')??{},training:cls.get('trainingProfile')??null,tasks,minutes,direction:d.direction});
   const cache=db.doc(`aiPrivate/${uid}/ideaCache/${cacheId}`);
   const requestId=await db.runTransaction(async tx=>{
    const c=await tx.get(cache),previous=c.get('requestId');
@@ -73,7 +75,7 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   if(old.status!=='completed')return {status:old.status,error:old.error??''};
   const result=readGenerationResult(old),media=await job.collection('media').get();
   const assets=media.docs.map(s=>({id:s.id,...s.data()}));
-  if(result.activity){result.activity.preparedMedia=assets.filter(a=>a.status==='ready').map(a=>({kind:a.kind,title:a.title,alt:a.alt??'',credit:a.credit??'',mediaId:a.mediaId}));result.native=previewNative(result);}
+  if(result.activity){result.activity.preparedMedia=assets.filter(a=>a.status==='ready').map(a=>({kind:a.kind,title:a.title,alt:a.alt??'',credit:a.credit??'',existing:a.existing===true,mediaId:a.mediaId}));result.native=previewNative(result);}
   if(d.action==='taskToolsStatus')return {status:'completed',result,media:assets.map(a=>({id:a.id,title:a.title,status:['queued','running'].includes(a.status)&&Date.now()-((a.startedAt??a.createdAt)?.toMillis?.()??Date.now())>600000?'failed':a.status,error:a.error||'Preparation was interrupted. Retry this asset.'}))};
   if(result.ideas)fail('Choose an idea and generate the activity before applying it.');
   if(old.appliedTaskId)return {applied:true,taskId:old.appliedTaskId};
@@ -120,6 +122,14 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
  if(d.mode==='answers'&&!missing.length)return {status:'completed',result:{entries:[],issues:['The existing inline answer keys are already filled.']},media:[]};
  const input={classProfile:cls.get('learningProfile')??{},trainingProfile:cls.get('trainingProfile')??null,level:cls.get('level')??'',lessonTitle:itemSnap.get('title'),learningObjective:itemSnap.get('speakingFocus')??'',sourceTasks:scope,isFirstActivity:!scope.length,missingAnswers:missing,teacherDirection:d.direction,mode:d.mode,minutes:Number.isInteger(d.minutes)&&d.minutes>=1&&d.minutes<=60?d.minutes:10};
  if(Buffer.byteLength(JSON.stringify(input))>48000)fail('This lesson is too large for one request. Use the tool on an individual activity.');
+ const classMedia=await taskMediaContext({db,uid,cls,tasks:scope,direction:d.direction,title:itemSnap.get('title')});
+ input.classMedia=classMedia;
+ // Keep the existing input limit even for large, multilingual transcripts.
+ while(Buffer.byteLength(JSON.stringify(input))>48000){
+  if(classMedia.images.length)classMedia.images.pop();
+  else if(classMedia.recordings.length)classMedia.recordings.pop();
+  else break;
+ }
  const context=await usageContext(db,req.auth);checkModel(model);
  const month=new Date().toISOString().slice(0,7),budget=db.doc(`${context.isAdmin?'aiAdminBudgets':'aiBudgets'}/${month}`);
  await db.runTransaction(async tx=>{const j=await tx.get(job);if(j.exists)fail('This request is already running.');const b=await tx.get(budget);const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,context.isAdmin);await chargeFeature(tx,db,context,'lessonActivities');tx.set(budget,{committedMicroUsd:reservation.balance,month},{merge:true});tx.create(job,{action:'taskTools',classId:d.classId,itemId:d.itemId,mode:d.mode,scope:d.scope??'activity',sourceIds:scope.map(t=>t.id),sourceHash:hash(scope),variantLabel:d.variantLabel==='Challenge'?'Challenge':'Supported',status:'running',createdAt:Timestamp.now(),reserved:reservation.reserved});});
@@ -129,11 +139,15 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
   if(d.mode==='answers'){schema=keysSchema;instructions=keyInstructions;name='task_keys';}
   else if(d.step==='ideas'){schema=ideasSchema;name='task_ideas';instructions=activityInstructions+'\n'+contentReviewStandard+'\nIDEAS ONLY: Return exactly two genuinely different, concise options, not full activities. For differentiation return one support option and one challenge option addressing the SAME objective and comparable duration. Describe concrete changes to the existing native tasks (e.g. gap to choices; word bank removal), never just extra work. For next activity, read the whole lesson sequence and suggest two pedagogically justified next moves, recycling language where useful. Teacher direction takes precedence. No abstract teacher jargon in titles.';}
   else {schema=structuredClone(cls.get('kind')==='training'?trainingActivitySchema:activitySchema);schema.properties.tasks.maxItems=1;schema.properties.tasks.items.properties.roles.maxItems=0;schema.properties.tasks.items.properties.versions.maxItems=0;schema.properties.tasks.items.properties.stageId={...schema.properties.tasks.items.properties.stageId,enum:['tool']};schema.properties.tasks.items.properties.minutes={type:'integer',minimum:input.minutes,maximum:input.minutes};name='activities';instructions=activityInstructions+(cls.get('kind')==='training'?trainingActivityInstructions:'')+'\nCreate exactly ONE complete activity with stageId "tool" and exactly the requested minutes. Follow the teacher-selected direction. Differentiation must preserve the original learning aim and change scaffolding or demand, not append more work. Keep important source texts and context. Use no additional versions or roles in this request. For next activity, build a coherent next step from the lesson already taught. Create needed audio/images through mediaPlan, with complete scripts. Never refer to an image or recording that you have not supplied in mediaPlan. Do not invent existing learner evidence. When differentiating, existing pictures, recordings and dialogues are retained automatically; keep the same source and adapt only the response/scaffold. Do not request replacement media for these existing resources.';}
-  if(input.isFirstActivity)instructions+='\nThis lesson has no previous activities. Create a self-contained first activity using the teacher direction, lesson title, level and class goals. Supply all input and instructions it needs. Do not refer to previous tasks, covered language, learner responses or materials that do not exist. Offer two distinct appropriate starting points when asked for ideas.';
+  if(input.isFirstActivity)instructions+='\nThis lesson has no previous activities. Create a self-contained first activity using the teacher direction, lesson title, level and class goals. Supply all input and instructions it needs. Use any supplied classMedia when relevant. Do not assume the class has covered it before. Offer two distinct appropriate starting points when asked for ideas.';
+  instructions+='\n'+taskMediaGuidance;
   const checkValue=value=>{
    if(d.mode==='answers'){const seen=new Set();for(const e of value.entries){const m=missing.find(x=>x.taskId===e.taskId&&x.questionId===e.questionId);if(!m||seen.has(e.taskId+':'+e.questionId))throw Error('Return only missing answers, once per question.');seen.add(e.taskId+':'+e.questionId);checkedKey(taskQuestions(scope.find(t=>t.id===e.taskId).content).get(e.questionId),JSON.parse(e.answerJson));}}
    else if(d.step==='ideas'){if(d.mode==='differentiate'&&(!value.ideas.some(i=>i.kind==='support')||!value.ideas.some(i=>i.kind==='challenge')))throw Error('Return one support and one challenge option.');}
-   else checkActivities(value,{stages:[{id:'tool',minutes:input.minutes}]},cls.get('kind')==='training');
+   else {
+    checkTaskMediaPlan(value.tasks[0],classMedia,d.mode==='differentiate'?retainedMedia(selected.content):[]);
+    checkActivities(value,{stages:[{id:'tool',minutes:input.minutes}]},cls.get('kind')==='training');
+   }
   };
   const checked=await generateChecked({generate,args:{apiKey,model,schema,name,input,instructions},decode:v=>v,check:checkValue,reserveRepair:async()=>{repairStarted=true;return db.runTransaction(async tx=>{const [b,j]=await Promise.all([tx.get(budget),tx.get(job)]);const reservation=reserveBudget(b.get('committedMicroUsd')??0,1,context.isAdmin);tx.update(budget,{committedMicroUsd:reservation.balance});tx.update(job,{reserved:j.get('reserved')+reservation.reserved});});}});
   const generated={value:checked.value};
@@ -142,10 +156,20 @@ export async function taskTools(req,{db,uid,cls,apiKey,model}) {
    for(const e of generated.value.entries){const m=missing.find(x=>x.taskId===e.taskId&&x.questionId===e.questionId);if(!m||seen.has(e.taskId+':'+e.questionId))throw Error('Unexpected answer target.');seen.add(e.taskId+':'+e.questionId);const t=scope.find(t=>t.id===e.taskId),node=taskQuestions(t.content).get(e.questionId);entries.push({...e,key:checkedKey(node,JSON.parse(e.answerJson))});}
    result={entries,issues:generated.value.issues};
   } else if(d.step==='ideas')result=generated.value;
-  else {const value=generated.value;checkActivities(value,{stages:[{id:'tool',minutes:input.minutes}]},cls.get('kind')==='training');result={activity:value.tasks[0],retainedMedia:d.mode==='differentiate'?retainedMedia(selected.content):[]};result.native=previewNative(result);}
+  else {const value=generated.value;result={activity:value.tasks[0],retainedMedia:d.mode==='differentiate'?retainedMedia(selected.content):[]};result.native=previewNative(result);}
   const assets=result.activity?mediaRequests({tasks:[result.activity]}):[];
-  const j=await job.get();await db.runTransaction(async tx=>{const b=await tx.get(budget);const settled=settleBudget(b.get('committedMicroUsd')??0,j.get('reserved'),checked.usage);tx.update(budget,{committedMicroUsd:settled.balance});tx.update(job,{status:'completed',...encodeGenerationResult(result),completedAt:Timestamp.now()});for(const asset of assets)tx.create(job.collection('media').doc(asset.id),{...asset,...(cls.get('kind')!=='training'&&(!cls.get('learningProfile')?.ageGroup||cls.get('learningProfile')?.ageGroup==='Adults')&&asset.kind==='image'?{source:asset.style==='editorial'?'editorial':'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});});
-  return {status:'completed',result,media:result.activity?mediaRequests({tasks:[result.activity]}).map(a=>({id:a.id,title:a.title,status:'queued'})):[]};
+  const j=await job.get();
+  const media=await db.runTransaction(async tx=>{
+   const b=await tx.get(budget);
+   const media=await prepareActivityAssets(tx,{db,uid,cls},assets);
+   if(result.activity){result.activity.preparedMedia=media.filter(a=>a.status==='ready').map(({kind,title,mediaId,alt,credit,existing})=>({kind,title,mediaId,alt,credit,existing}));result.native=previewNative(result);}
+   const settled=settleBudget(b.get('committedMicroUsd')??0,j.get('reserved'),checked.usage);
+   tx.update(budget,{committedMicroUsd:settled.balance});
+   tx.update(job,{status:'completed',...encodeGenerationResult(result),completedAt:Timestamp.now()});
+   for(const asset of media)tx.create(job.collection('media').doc(asset.id),{...asset,classId:d.classId,createdAt:Timestamp.now()});
+   return media.map(({id,title,status})=>({id,title,status}));
+  });
+  return {status:'completed',result,media};
  }catch(e){
   const reason=e instanceof GenerationError?e.reason:'unknown';
   const messages={billing:'AI generation is unavailable because the API account has no credit. Your administrator needs to restore API credit before you retry. Your lesson is saved and unchanged.',rate_limit:'The AI service is busy. Please wait a moment, then try again. Your lesson is saved and unchanged.',timeout:'The AI service took too long. Please try again. Your lesson is saved and unchanged.',connection:'The connection to the AI service was interrupted. Please try again. Your lesson is saved and unchanged.',output_limit:'This draft was too long to finish. Try one activity at a time. Your lesson is saved and unchanged.'};

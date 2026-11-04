@@ -1,4 +1,4 @@
-import { learnOrigin } from '../lib/site';
+import { classJoinLink, learnOrigin } from '../lib/site';
 import { copyText } from '../lib/copyText';
 import { tr, useClassTerms } from '../lib/terms';
 import { ask } from '../lib/ask';
@@ -176,7 +176,7 @@ export function ClassPage() {
                   <button type="button" onClick={copyCode}>
                     {copied ? 'Copied' : 'Copy'}
                   </button>
-                  <button type="button" onClick={() => void copyText(`${learnOrigin()}/?code=${c.classCode}`).then(() => (setLinkCopied(true), setTimeout(() => setLinkCopied(false), 1500)))} data-tip={`Learners open ${learnOrigin().replace(/^https?:\/\//, '')} with the code filled in`}>
+                  <button type="button" onClick={() => void copyText(classJoinLink(c.classCode)).then(() => (setLinkCopied(true), setTimeout(() => setLinkCopied(false), 1500)))} data-tip={`Learners open ${learnOrigin().replace(/^https?:\/\//, '')} with the code filled in`}>
                     {linkCopied ? 'Copied' : 'Copy the link'}
                   </button>
                 </span>

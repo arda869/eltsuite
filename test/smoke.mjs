@@ -1759,9 +1759,27 @@ const J = {
     const s = await session(b);
     await s.p.goto(`${BASE}/class/${s.demo.classId}`);
     await see(s.p, '.page-title, h1', 'the class page');
+    await s.ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
+    const classCode = (await s.p.locator('.code-chip strong').innerText()).trim();
+    await s.p.getByRole('button', { name: 'Copy the link' }).click();
+    const joinLink = await s.p.evaluate(() => navigator.clipboard.readText());
+    const joinUrl = new URL(joinLink);
+    if (joinUrl.pathname !== '/join' || joinUrl.searchParams.get('code') !== classCode) throw Error('The copied class link does not open learner joining with the class code.');
     await s.p.click('nav.tabs button:has-text("Learners")');
     await see(s.p, 'text=Mia Chan', 'the learners list');
     await axe(s.p, 'Class', A11Y_FOUND);
+    await s.p.evaluate(() => { sessionStorage.removeItem('mockuid'); localStorage.removeItem('mockuid'); });
+    await s.p.goto(joinLink);
+    await see(s.p, 'h1:has-text("Join your class")', 'learner joining from the copied link');
+    if (await s.p.getByLabel('Class code').inputValue() !== classCode) throw Error('The class code was not filled in for the learner.');
+    await see(s.p, '.notice:has-text("Demo class")', 'the linked class');
+    await s.p.getByRole('button', { name: 'Your name' }).click();
+    await s.p.getByRole('option', { name: 'Mia Chan' }).click();
+    const mia = s.demo.pins.find((entry) => entry.name === 'Mia Chan');
+    if (!mia?.pin) throw Error('The demo learner PIN was not available.');
+    await s.p.getByLabel('PIN digit 1').fill(mia.pin);
+    await s.p.getByRole('button', { name: 'Join class' }).click();
+    await see(s.p, 'text=Demo class', 'the class after the learner joins');
     return s;
   },
   'Lesson: diagram with a gap stays': async (b) => {

@@ -14,10 +14,10 @@ const item=db.doc(`classes/${classId}/items/${itemId}`);await item.set({title:'Y
 const source=item.collection('tasks').doc('first');const content={type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]},{type:'paragraph',content:[{type:'gap',attrs:{id:'kept',answers:[]}}]}]};
 await source.set({kind:'task',title:'Complete',instructions:'Complete the sentence.',content,order:0,hidden:false,locked:false});await source.collection('private').doc('key').set({missing:{kind:'gap',answers:[]},kept:{kind:'gap',answers:['already correct']}});
 const call=data=>lessonAssistant.run({auth:{uid,token:{}},data:{classId,itemId,taskId:'first',direction:'',step:'generate',mode:'answers',...data}});
-let calls=0;const fetchOriginal=globalThis.fetch;
+let capturedInput;let calls=0;const fetchOriginal=globalThis.fetch;
 const body={blocks:[],definitions:[],structures:[],subTasks:[],visuals:[],input:'Yesterday we visited a park.',questions:[{format:'choice',acceptedAnswers:[],prompt:'Yesterday I ___ to the park.',options:['went','go'],answer:'went',explanation:'Yesterday is in the past.'}]};
 const activity={stageId:'tool',title:'Yesterday in the park',format:'choice',mediaPlan:[],layout:'stacked',imageLayout:'row',teacherOnlyInput:'',roles:[],minutes:10,instructions:'Choose the correct word.',...body,versions:[],teacherNotes:'Check the past form.',support:'',challenge:''};
-globalThis.fetch=async(url,options)=>{calls++;const req=JSON.parse(options.body);let value;if(req.text.format.name==='task_keys')value={entries:[{taskId:'first',questionId:'missing',answerJson:JSON.stringify({answers:['went']}),reason:'The sentence refers to yesterday.'}],issues:[]};else if(req.text.format.name==='task_ideas')value={ideas:[{title:'Add choices',reason:'Recognition reduces recall demand.',direction:'Change the gap to two choices.',kind:'support'},{title:'Remove support',reason:'Recall the form independently.',direction:'Use an open gap.',kind:'challenge'}]};else value={title:'Yesterday',rationale:'Practice',differentiation:'Recognition',recycling:'Past time',tasks:[activity]};return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}]})};};
+globalThis.fetch=async(url,options)=>{calls++;const req=JSON.parse(options.body);capturedInput=JSON.parse(req.input);let value;if(req.text.format.name==='task_keys')value={entries:[{taskId:'first',questionId:'missing',answerJson:JSON.stringify({answers:['went']}),reason:'The sentence refers to yesterday.'}],issues:[]};else if(req.text.format.name==='task_ideas')value={ideas:[{title:'Add choices',reason:'Recognition reduces recall demand.',direction:'Change the gap to two choices.',kind:'support'},{title:'Remove support',reason:'Recall the form independently.',direction:'Use an open gap.',kind:'challenge'}]};else value={title:'Yesterday',rationale:'Practice',differentiation:'Recognition',recycling:'Past time',tasks:[activity]};return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}]})};};
 try {
  const result=await call({action:'taskTools',requestId:'keys'});assert.equal(result.result.entries.length,1);
  await call({action:'taskToolsApply',requestId:'keys'});await call({action:'taskToolsApply',requestId:'keys'});
@@ -52,6 +52,24 @@ try {
  await blank.update({title:'A new learning objective'});
  const fresh=await call({action:'taskToolsIdeas',itemId:'blank',taskId:'',direction:''});
  assert.notEqual(fresh.requestId,cached.requestId);assert.equal(calls,beforeIdeas+2,'changed lesson context invalidates ideas');
+ // A recording elsewhere in the class is usable even in a brand new activity.
+ const classRef=db.doc('classes/'+classId);
+ await classRef.collection('media').doc('marketAudio').set({kind:'audio',title:'Market recording',script:[{who:'Sam',text:'The oranges cost seven coins.'}]});
+ await db.doc('users/'+uid+'/archive/poster').set({kind:'image',name:'Market poster',home:{classId:'user:'+uid,mediaId:'posterBytes'}});
+ const bytes='data:image/png;base64,aW1hZ2U=';
+ await db.doc('users/'+uid+'/media/posterBytes').set({data:bytes,type:'image/png',size:5,credit:'Test artist'});
+ activity.mediaPlan=[
+  {kind:'image',sourceRef:'image:poster',style:'',title:'Poster',alt:'Fruit at the market',prompt:'',lines:[]},
+  {kind:'audio',sourceRef:'recording:marketAudio',style:'',title:'Market',alt:'',prompt:'',lines:[]},
+ ];
+ const draft=await call({action:'taskTools',itemId:'blank',taskId:'',mode:'next',requestId:'media-test'});
+ assert.equal(draft.status,'completed');assert.equal(capturedInput.classMedia.recordings[0].script,'Sam: The oranges cost seven coins.');
+ assert.ok(draft.media.every(a=>a.status==='ready'));await call({action:'taskToolsApply',itemId:'blank',requestId:'media-test'});
+ const reopened=(await blank.collection('tasks').doc('tool_media-test').get()).get('content').content;
+ assert.ok(reopened.some(n=>n.type==='media'&&n.attrs.media==='marketAudio'));
+ const image=reopened.flatMap(n=>n.content??[]).find(n=>n.type==='picture');
+ assert.equal((await classRef.collection('media').doc(image.attrs.src.slice(6)).get()).get('data'),bytes);
+ assert.ok(JSON.stringify(reopened).includes('Test artist'));
  const budgetBefore=(await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd');
  globalThis.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code:'credit_balance_exhausted',message:'PRIVATE PROVIDER DATA'}})});
  const unavailable=await call({action:'taskTools',mode:'next',step:'ideas',requestId:'no-credit'});
