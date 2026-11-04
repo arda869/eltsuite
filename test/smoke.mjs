@@ -2409,8 +2409,11 @@ const J = {
       await axe(s.p,'Development Studio chat '+width,A11Y_FOUND);
       if (await s.p.locator('.coach-chat').evaluate(el => el.getBoundingClientRect().right > innerWidth+1)) throw Error('Chat overflows at '+width);
       await s.p.getByRole('button',{name:'Apps',exact:true}).click();
-      const fits=await s.p.locator('.app-name-wrap').evaluate(el => el.scrollWidth <= el.clientWidth+1 && getComputedStyle(el).whiteSpace !== 'nowrap');
-      if (!fits) throw Error('Development Studio label is clipped at '+width);
+      const reading=s.p.getByRole('menuitem',{name:'Reading Journal',exact:true});
+      await reading.waitFor();
+      if (await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).count()) throw Error('Development Studio still appears as an app');
+      const fits=await reading.locator('.app-tile-copy b').evaluate(el => el.scrollWidth <= el.clientWidth+1);
+      if (!fits) throw Error('Reading Journal label is clipped at '+width);
       await s.p.getByRole('button',{name:'Apps',exact:true}).click();
     }
     return s;
