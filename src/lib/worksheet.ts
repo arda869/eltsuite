@@ -1,3 +1,5 @@
+import { CRITERIA, DEVELOPMENT_FORMS, RATINGS, TT_KINDS, type TTKind, type TTField } from '../training/formDefinitions';
+import { studioDefinition } from '../coach/studioForms';
 import { credit } from './brand';
 import type { TlAttrs } from '../editor/Timeline';
 import type { SbAttrs } from '../storyboard/StoryboardNode';
@@ -48,7 +50,7 @@ export type Block =
   | { kind: 'box'; words: string[]; label: string }
   | { kind: 'match'; left: string[]; right: string[]; n: number }
   | { kind: 'lines'; n: number; count: number; prompt?: string }
-  | { kind: 'table'; rows: string[][]; head?: boolean; cells?: Run[][][] }
+  | { kind: 'table'; rows: string[][]; head?: boolean; structure?: { header: boolean; colspan: number; rowspan: number }[][]; cells?: Run[][][] }
   | { kind: 'note'; text: string }
   | { kind: 'callout'; label: string; tone: string; symbol: string; style: string; blocks: Block[]; box?: Record<string, unknown> }
   | { kind: 'glossary'; items: { word: string; d: DefData }[] }
@@ -64,7 +66,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { online?: string[]; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { variant?: string; online?: string[]; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -198,6 +200,8 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         }
         default:
           if (node.content) out.push(...runsOf(node.content));
+          else if (node.type === 'mention') out.push({t:'@'+String(a.label || 'colleague')});
+          else if (node.type === 'lessonLink') out.push({t:String(a.label || a.title || 'Linked activity')});
           else if (node.type === 'ipa') out.push({ ipa: { text: String(a.text ?? ''), accent: String(a.accent ?? 'RP'), show: !!a.showAccent } });
           else if (node.type === 'stress') out.push({ stress: { syl: (a.syllables ?? []) as string[], on: Number(a.stressed ?? 0), style: String(a.style ?? 'box') } });
           else if (node.type === 'plink') out.push({ t: a.k === 'pause' ? ' | ' : a.k === 'stop' ? ' || ' : ['j', 'w', 'r'].includes(a.k) ? `‿/${a.k}/‿` : '‿', pl: { k: String(a.k ?? 'link'), s: String(a.s ?? 'under') } });
@@ -264,7 +268,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       }
       case 'table':
         // Plain text for Word and puzzles; the formatting (bold, colours…) for the print.
-        cur.push({ kind: 'table', rows: (node.content ?? []).map((r) => (r.content ?? []).map((c) => text(c).trim())), cells: (node.content ?? []).map((r) => (r.content ?? []).map((c) => (c.content ?? []).flatMap((pp, k) => [...(k ? [{ t: ' ' }] : []), ...runsOf(pp.content)]))) });
+        cur.push({ kind: 'table', structure: (node.content ?? []).map(row => (row.content ?? []).map(cell => ({header: cell.type === 'tableHeader', colspan: Math.max(1, Number(cell.attrs?.colspan) || 1), rowspan: Math.max(1, Number(cell.attrs?.rowspan) || 1)}))), rows: (node.content ?? []).map((r) => (r.content ?? []).map((c) => text(c).trim())), cells: (node.content ?? []).map((r) => (r.content ?? []).map((c) => (c.content ?? []).flatMap((pp, k) => [...(k ? [{ t: ' ' }] : []), ...runsOf(pp.content)]))) });
         return;
       case 'match': {
         n++;
@@ -274,6 +278,69 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         marks += pairs.length;
         answers.push({ n, text: pairs.map((p, i) => `${i + 1}–${LET[right.indexOf(p.right)]}`).join(', ') });
         cur.push({ kind: 'match', n, left: pairs.map((p) => p.left), right });
+        return;
+      }
+      case 'mcq': {
+        n++;
+        cur.push({ kind: 'p', runs: [{ t: String(a.prompt || 'Choose an answer.') }], n });
+        const options: string[] = Array.isArray(a.options) ? a.options : [];
+        options.forEach((option, i) => cur.push({ kind: 'p', runs: [{ t: String.fromCharCode(65+i) + '. ' + option }] }));
+        if (options[a.correct]) answers.push({ n, text: options[a.correct] });
+        return;
+      }
+      case 'tt': {
+        const kind = a.kind as TTKind;
+        const def = kind === 'custom' ? a.def : DEVELOPMENT_FORMS[kind];
+        const data = a.data || {};
+        const title = a.title || def?.name || TT_KINDS.find(entry => entry.k === kind)?.label || 'Training form';
+        cur.push({kind:'p',heading:true,runs:[{t:String(title)}]});
+        const field = (key:string,label:string,value = data[key]) => {
+          cur.push({kind:'p',runs:[{t:label,bold:true},{t:' '+String(value || '________________')}]});
+        };
+        if (def) {
+          for (const f of (def.fields || []) as TTField[]) field(f.id,f.label);
+        } else if (kind === 'observe') {
+          field('who','Teacher'); field('by','Observer'); field('when','Lesson and date');
+          for (const group of CRITERIA) for (const item of group.items) {
+            field('r.'+item.id,item.t,RATINGS[Number(data['r.'+item.id] ?? -1)] || '');
+            field('c.'+item.id,'Evidence');
+          }
+          field('strengths','Strengths'); field('actions','Action points');
+        } else if (kind === 'plan') {
+          field('aim','Main aim'); field('subaims','Subsidiary aims'); field('level','Level and length'); field('assume','Assumptions');
+          for(let i=0;i<Math.min(100,Math.max(1,Number(data.n)||1));i++) {
+            for(const [key,label] of Object.entries({stage:'Stage',aim:'Stage aim',proc:'Procedure',int:'Interaction',time:'Time'})) field('s'+i+'.'+key,label);
+          }
+        } else {
+          const fields = kind === 'loop' ? {tech:'The technique',why:'What I did, and why',qs:'Questions for you'} : {target:'Target language',context:'Context and model sentence',meaning:'Meaning',form:'Form',pron:'Pronunciation',appropriacy:'Use, register and appropriacy',ccqs:'Concept-checking questions, with answers',problems:'Anticipated problems and solutions'};
+          for(const [key,label] of Object.entries(fields)) field(key,label);
+        }
+        return;
+      }
+      case 'studioForm': {
+        const form = studioDefinition(a.kind);
+        cur.push({kind:'p',heading:true,runs:[{t:String(a.title || form?.name || 'Studio form')}]});
+        for (const [key,label] of form?.fields || []) {
+          cur.push({kind:'p',runs:[{t:label,bold:true},{t:' '+String(a.fields?.[key] || '')}]});
+        }
+        for (const example of a.examples || []) {
+          cur.push({kind:'p',runs:[{t:String(example.text || '')},{t:' '+[example.source,example.location,example.licence].filter(Boolean).join(' · '),italic:true}]});
+        }
+        return;
+      }
+      case 'speakingPractice': {
+        cur.push({kind:'p',heading:true,runs:[{t:String(a.title || 'Speaking practice')}]});
+        for (const line of [a.scenario,a.focus,a.learnerRole && 'Your role: '+a.learnerRole,a.partnerRole && 'Partner: '+a.partnerRole]) {
+          if(line)cur.push({kind:'p',runs:[{t:String(line)}]});
+        }
+        return;
+      }
+      case 'classroomGame':
+      case 'investigation':
+      case 'pdfBlock': {
+        const labels: Record<string,string> = {classroomGame:'Classroom game', speakingPractice:'Speaking practice', investigation:'Language investigation', pdfBlock:'Attached PDF'};
+        cur.push({ kind:'note', text: [labels[node.type], a.title || a.prompt, 'Open the original activity in ELT Suite.'].filter(Boolean).join(' · ') });
+        if(node.type === 'pdfBlock') node.content?.filter(c => c.type === 'pdfBox' && !c.attrs?.key).forEach(c => walk(c));
         return;
       }
       case 'wordbank':
@@ -389,13 +456,14 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       }
       case 'textBox':
+      case 'reveal':
       case 'revealBox': {
         const inner: Block[] = [];
         const prev = cur;
         cur = inner;
         node.content?.forEach((c) => walk(c));
         cur = prev;
-        if (inner.length) cur.push({ kind: 'callout', label: String(a.label ?? (node.type === 'revealBox' ? a.title ?? '' : '')), tone: String(a.tone ?? 'grey'), symbol: String(a.symbol ?? ''), style: String(a.style ?? 'box'), blocks: inner, ...(node.type === 'textBox' ? { box: a } : {}) });
+        if (inner.length) cur.push({ kind: 'callout', label: String(a.label ?? (node.type !== 'textBox' ? a.title ?? '' : '')), tone: String(a.tone ?? 'grey'), symbol: String(a.symbol ?? ''), style: String(a.style ?? 'box'), blocks: inner, ...(node.type === 'textBox' ? { box: a } : {}) });
         return;
       }
       case 'randomPick': {
@@ -433,6 +501,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       case 'storyboard':
         if ((a as SbAttrs).snap?.scenes?.length) cur.push({ kind: 'storyboard', a: a as SbAttrs });
+        else cur.push({kind:'note',text:String(a.title || 'Storyboard')+' · Open the storyboard in ELT Suite.'});
         return;
       case 'diagram': {
         // Each box keeps what is in it, gaps and all; the drawing is made around them.
@@ -483,6 +552,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         if (a.url) cur.push({ kind: 'p', runs: [{ t: '▸ ', bold: true }, { t: String(a.title || a.url), bold: true }, ...(a.title ? [{ t: `  ${a.url}`, italic: true }] : []), ...(a.note ? [{ t: ` · ${a.note}` }] : [])] });
         return;
       case 'bankLink':
+        cur.push({kind:'note',text:[a.label || a.title || 'Notebook entry',a.bank === 'vocabulary' ? 'Vocabulary bank' : 'Grammar bank'].join(' · ')});
         return;
       case 'image':
         if (a.src) cur.push({ kind: 'p', runs: [{ pic: { src: String(a.src), size: 'l', label: '', alt: String(a.alt ?? '') } }] });
@@ -508,7 +578,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   };
   inlineRefs(t.content); if (t.instrDoc && !paperInstr) inlineRefs(t.instrDoc);
   if (glossary.length) blocks.push({ kind: 'glossary', items: glossary.map(({ word, d }) => ({ word: word.trim(), d })) });
-  return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
+  return { ...(online.length ? { online: [...new Set(online)] } : {}), title: t.title, variant: t.variant, instructions: paperInstr || t.instructions, ...(instrRuns?.length ? { instrRuns } : {}), ...(t.notes?.trim() ? { notes: t.notes.trim() } : {}), ...(mediaUsed.length ? { media: mediaUsed } : {}), blocks, answers, marks, ...(cutouts.length ? { cutouts } : {}) };
 }
 
 // The lesson as printed: section headings followed by their tasks. A section is kept only

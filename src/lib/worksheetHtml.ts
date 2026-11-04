@@ -185,9 +185,9 @@ function block(b: Block): string {
     case 'table': {
       // Sorting into columns: labelled columns with room to write, as on screen.
       if (b.head) return `<div class="sortcols">${b.rows[0].map((c) => `<div class="sortcol"><span class="sortcol-h">${esc(c)}</span>${'<span class="line"></span>'.repeat(b.rows.length - 1)}</div>`).join('')}</div>`;
-      const puzzle = b.rows.slice(1).every((r) => r.every((c) => c.length <= 2));
+      const puzzle = !b.structure && b.rows.length > 1 && b.rows.slice(1).every((r) => r.every((c) => c.length <= 2));
       return `<table class="${puzzle ? 'puzzle' : 'grid'}"><tbody>${b.rows
-        .map((r, ri) => (ri === 0 && puzzle ? '' : `<tr>${r.map((c, ci) => { const rich = b.cells?.[ri]?.[ci]; const inner = rich && !puzzle ? runs(rich) : esc(c); return ri === 0 ? `<th>${inner}</th>` : c === '■' ? '<td class="blk"></td>' : `<td>${/^\d+$/.test(c) && puzzle ? `<i>${esc(c)}</i>` : inner}</td>`; }).join('')}</tr>`))
+        .map((r, ri) => (ri === 0 && puzzle ? '' : `<tr>${r.map((c, ci) => { const rich = b.cells?.[ri]?.[ci]; const inner = rich && !puzzle ? runs(rich) : esc(c); const cell = b.structure?.[ri]?.[ci]; if (cell) { const tag = cell.header ? 'th' : 'td'; return `<${tag} rowspan="${cell.rowspan}" colspan="${cell.colspan}">${inner}</${tag}>`; } return ri === 0 ? `<th>${inner}</th>` : c === '■' ? '<td class="blk"></td>' : `<td>${/^\d+$/.test(c) && puzzle ? `<i>${esc(c)}</i>` : inner}</td>`; }).join('')}</tr>`))
         .join('')}</tbody></table>`;
     }
     case 'subtask':
@@ -215,7 +215,7 @@ function taskUnit(t: WsTask, num: number, marks: boolean) {
     const rest = t.blocks.slice(1);
     return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><b class="subex-l">${esc(first.letter)}</b><span class="ex-text">${exIcons(t)}${esc(first.text)}</span></div><div class="ex-body"><div class="subex-b">${first.blocks.map(block).join('')}</div>${rest.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
   }
-  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${exIcons(t)}${t.instrRuns ? runs(t.instrRuns) : esc(head)}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
+  return `<div class="unit task"><div class="ex-head"><b class="ex-n">${num}</b><span class="ex-text">${exIcons(t)}${t.instrRuns ? runs(t.instrRuns) : esc(head)}${t.variant ? ' · '+esc(t.variant) : ''}</span></div><div class="ex-body">${t.blocks.map(block).join('')}</div>${marks && t.marks ? `<div class="ex-mark">${markBox(t.marks)}</div>` : ''}</div>`;
 }
 
 // Pictures for this print, set at the start of worksheetHtml.
@@ -462,9 +462,12 @@ ${opts.lessonStyle === 'young' ? youngSheetCss(opts.origin) : ''}
 
 // The pieces of a worksheet for the worksheet view in the lesson editor: its styles, the header band,
 // the footer, and each item (a section or a task) printed on its own, in order.
-export function inlineWorksheetHtml(task: WsTask) {
-  MEDIA = {}; SOUNDS = {}; QR_ON = false; MEDIA_SEEN.clear();
-  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}</div>`;
+export function inlineWorksheetHtml(task: WsTask, pictures: Options['media'] = {}, sounds: Options['sounds'] = {}) {
+  MEDIA = pictures; SOUNDS = sounds; QR_ON = true; MEDIA_SEEN.clear();
+  const cards = (task.cutouts ?? []).flatMap(set => set.cards.map(card =>
+    `<section class="paper-card"><strong>${esc(card.title)}</strong>${card.blocks.map(block).join('')}</section>`
+  ));
+  return `<div class="doc-worksheet">${task.blocks.map(block).join('')}${cards.join('')}</div>`;
 }
 export function sheetParts(title: string, items: WsItem[], opts: Options) {
   MEDIA = opts.media ?? {};
@@ -620,6 +623,43 @@ ${sheetCss(opts)}
       var fits = !over(col);
       el.appendChild(last);
       if (!fits && el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); continue; }
+      if (el.children.length === 1 && last.matches('table') && last.rows.length > 1) {
+        var tail = last.cloneNode(false), rows = tail.createTBody();
+        while (over(col) && last.rows.length > 1) rows.insertBefore(last.rows[last.rows.length - 1], rows.firstChild);
+        if (rows.children.length) restEl.insertBefore(tail, restEl.firstChild);
+        return;
+      }
+      if (el.children.length === 1 && last.matches('p, li') && last.textContent.length > 1) {
+        // Keep the inline formatting on both sides of the printed page break.
+        var walker = document.createTreeWalker(last, NodeFilter.SHOW_TEXT);
+        var nodes = [], length = 0, node;
+        while ((node = walker.nextNode())) { nodes.push(node); length += node.length; }
+        function suffix(at) {
+          var range = document.createRange(), offset = at;
+          for (var j = 0; j < nodes.length; j++) {
+            if (offset <= nodes[j].length) { range.setStart(nodes[j], offset); break; }
+            offset -= nodes[j].length;
+          }
+          range.setEnd(last, last.childNodes.length);
+          return range;
+        }
+        var lo = 1, hi = length - 1;
+        while (lo < hi) {
+          var mid = Math.ceil((lo + hi) / 2);
+          var probe = last.cloneNode(true);
+          var range = suffix(mid);
+          range.deleteContents();
+          var tooTall = over(col);
+          el.replaceChild(probe, last); last = probe;
+          walker = document.createTreeWalker(last, NodeFilter.SHOW_TEXT); nodes = [];
+          while ((node = walker.nextNode())) nodes.push(node);
+          if (tooTall) hi = mid - 1; else lo = mid;
+        }
+        var continuation = last.cloneNode(false);
+        continuation.appendChild(suffix(lo).extractContents());
+        restEl.insertBefore(continuation, restEl.firstChild);
+        return;
+      }
       if (solid) { if (el.children.length > 1) { restEl.insertBefore(last, restEl.firstChild); ${opts.lessonStyle === 'young' ? 'continue;' : ''} } return; }
       // It fits partly: the rest of it goes on, in a copy of it.
       var part = last.cloneNode(false);

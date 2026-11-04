@@ -1,3 +1,4 @@
+import type { WsItem, WsTask } from '../lib/worksheet';
 import {studioDefinition} from '../coach/studioForms';
 import { credit } from '../lib/brand';
 import type { JSONContent } from '@tiptap/react';
@@ -19,14 +20,23 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const cssString = (s: string) => JSON.stringify(s).replace(/</g, '\\3c ');
 const layoutOptions = (o: ExportOpts): ExportOpts => o.layout ? { ...o, font: o.layout.font, size: o.layout.pt, spacing: o.layout.lineSpacing, pageNumbers: o.layout.pageNumbers } : o;
 const worksheetNodes = new WeakMap<JSONContent, string>();
-export async function prepareDocumentPrint(json: JSONContent) {
-  if (!questionsIn(json).length) return;
+export async function prepareDocumentPrint(json: JSONContent, mediaSpace = '') {
   const [{ flattenTask }, { inlineWorksheetHtml }] = await Promise.all([import('../lib/worksheet'), import('../lib/worksheetHtml')]);
+  const paperBlocks = new Set(['tt','dialogue','timeline','storyboard','diagram','pdfBlock','board','drawBoard','textBox','reveal','revealBox','randomPick','classroomGame','speakingPractice','investigation','bankLink','collab','upload','media','dictCut','linkCard','subTask','reflect','survey','wordbank','writing','match','order','pq','mcq']);
+  const nativeInline = (n: JSONContent): boolean => ['gap','choice','dropgap','picture','inlineMedia','subst','phonChart','phonCard','icon','plink'].includes(n.type || '') || !!n.content?.some(nativeInline);
+  const printable: [JSONContent, WsTask][] = [];
   const walk = (n: JSONContent) => {
-    if (n.type === 'doc' || n.type === 'docSection') { n.content?.forEach(walk); return; }
-    if (questionsIn(n).length) worksheetNodes.set(n, inlineWorksheetHtml(flattenTask({ title: '', content: { type: 'doc', content: [n] } })));
+    if (n.type === 'studioForm') return;
+    if (paperBlocks.has(n.type || '') || (n.type === 'paragraph' && (questionsIn(n).length || nativeInline(n)))) {
+      const task = flattenTask({ title: '', content: { type: 'doc', content: [n] } });
+      printable.push([n,task]);
+    } else n.content?.forEach(walk);
   };
   walk(json);
+  const items: WsItem[] = printable.map(([,task]) => ({kind:'task',task}));
+  const {sheetPictures,sheetSounds} = await import('../lib/sheetMedia');
+  const [pictures,sounds] = mediaSpace ? await Promise.all([sheetPictures(mediaSpace,items),sheetSounds(mediaSpace,items,'#975f40')]) : [{},{}];
+  for(const [node,task] of printable) worksheetNodes.set(node,inlineWorksheetHtml(task,pictures,sounds));
 }
 const hex = (c?: string) => {
   const v = textColor(c) ?? '';
