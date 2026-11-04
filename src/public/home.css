@@ -156,3 +156,5 @@
 @media(hover:none){.pub-home .pub-float:not([data-open]) .pub-float-more{display:none}}
 .pub-lang-sentence + p{margin-top:1rem;color:var(--muted);font-size:1.2rem}
 .pub-legal p,.pub-legal li{line-height:1.65}.pub-legal h2{margin-top:1.25rem}
+
+.pub-float-more .pub-crop{margin-bottom:.5rem}.pub-pricing .pub-credits{display:block}.pub-pricing .pub-credits>div{max-width:44rem;margin-inline:auto}

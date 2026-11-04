@@ -81,6 +81,7 @@ function HeroPreview({ p, i }: { p: Preview; i: number }) {
         </span>
       </button>
       <p id={`pub-float-more-${p.id}`} className="pub-float-more">
+        {p.id === 'c' && <Crop name="song" at={{x:0.15,y:0.02,w:0.7,h:0.5}} alt="Song Composer settings for a classroom song" width={240} />}
         {p.more} <Link to={p.to} >Take a closer look →</Link>
       </p>
     </div>
@@ -165,7 +166,7 @@ const SHOWCASES: Showcase[] = [
     body: ["Work on materials with colleagues, exchange ideas and make room for reflection.", "With Collab and Development Studio, the practical and professional sides of teaching become part of the same journey."],
     points: ["Collaborative documents and shared materials.", "Reflection and professional learning.", "Support for questions about teaching practice."],
     status: "",
-    main: { name: 'collab', alt: 'Collab materials shared by a fictional teaching team.' },
+    main: { name: 'collab-editor', alt: 'A shared Collab document with a lesson aim, discussion instructions and teaching notes.' },
     details: [{ name: 'development', alt: 'Development Studio', at: {x:0,y:0,w:1,h:1}, caption: 'Reflection and professional learning in Development Studio' }],
   },
 ];

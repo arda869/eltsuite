@@ -652,6 +652,7 @@ const J = {
     const mobile=await b.newContext({viewport:{width:320,height:740},hasTouch:true,isMobile:true,reducedMotion:'reduce'});
     try{
       const phone=await mobile.newPage();await phone.goto(BASE+'/');
+      await phone.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
       for(const card of await phone.locator('.pub-float-card').all()){
         await card.tap();if(await card.getAttribute('aria-expanded')!=='true')throw Error('Touch preview failed to expand');
         await card.tap();if(await card.getAttribute('aria-expanded')!=='false')throw Error('Touch preview failed to collapse');

@@ -100,6 +100,17 @@ const shots = {
     await p.waitForTimeout(800);
   },
   async collab() { await go('/collab', 2500); await p.getByText('Term plan').first().click(); await p.waitForTimeout(4000); await quiet(); },
+  async 'collab-editor'() {
+    await go('/doc/sd-plan');
+    const editor = p.locator('.ProseMirror[contenteditable="true"]').first();
+    await editor.fill('Expressing and justifying opinions');
+    for (const line of ['Lesson aim: give an opinion, support it with a reason and respond to a partner.', 'Before class', 'Choose two proposals for the neighbourhood shop. Give each partner one proposal to read.', 'During the discussion', 'Listen for “I see your point” and “What about…?” Note one example to revisit together.']) {
+      await editor.press('Enter');
+      await p.keyboard.insertText(line);
+    }
+    await editor.blur();
+    await quiet();
+  },
   async development() { await go('/development', 3000); },
   async coach() { await go('/development?section=coach', 3000); },
   async observation() { await go('/observations', 2500); await click('New observation'); await p.waitForTimeout(1500); },
