@@ -58,7 +58,7 @@ export function DefinitionAI({word,context,existingImage='',onUse,onBusyChange}:
  const picture=draft?.picture;
  const fieldNames:Record<string,string>={pos:'Part of speech',family:'Word family',forms:'Irregular forms',countable:'Countability',patterns:'Common patterns',ipa:'IPA',stress:'Stressed syllable',mistakes:'Common mistakes'};
  return <section className="definition-ai" aria-label="Teaching definition with AI">
-  <AiHeader level={3} title="Suggest a definition" lede="A teaching explanation of this word as it’s used here: meaning, example, form and learner help, pitched at the level. With a picture when one would help.">
+  <AiHeader level={3} title="Suggest a definition" lede="Review the meaning, an example and language notes for this word. Include a picture when it helps.">
    <AiUses items={[word.trim()?`“${word.trim()}”`:false,classLevel?`Class level ${classLevel}`:`Level ${level}`,'This task’s text',lessonId?'The lesson’s learner-facing content':false]}/>
   </AiHeader>
   {!draft&&<>

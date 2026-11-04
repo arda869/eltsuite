@@ -68,7 +68,7 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
  const examples=mode==='differentiate'?['Add a word bank and one worked example','Remove the scaffolding and ask for full sentences','Shorter text, same questions']:mode==='next'?['A pair task where learners use the language to make a decision','A short writing task that reuses today’s vocabulary','A quick game to review the key language']:['Accept both British and American spelling','Keep model answers under 20 words'];
  const retry=()=>{setError('');if(lastAction.current==='apply'&&ready)void apply();else if(pending)void recover();else void start(lastAction.current==='ideas'?'ideas':'generate');};
  return <VideoDialog portal minimised={activity.minimised} onMinimise={activity.minimise} name={labels[mode]} onClose={()=>{if(!busy)onClose();}}><div className="lesson-tool-dialog">
- <AiHeader title={onBlank?'Create an activity':labels[mode]} lede={onBlank?'Start from a blank activity, bring in existing material, or let AI suggest the next step.':lede} onClose={onClose} closeDisabled={busy}>
+ <AiHeader title={onBlank?'Create an activity':labels[mode]} lede={onBlank?'Start blank, import material, or get ideas for the next activity.':lede} onClose={onClose} closeDisabled={busy}>
   <AiUses items={['This lesson',taskId?'The selected activity':false,'Your class profile','Class recording scripts',mode!=='answers'&&'Available resource pictures']}/>
  </AiHeader>
  {onBlank&&<AiActions><button className="btn" disabled={busy} onClick={onBlank}>Start blank</button>{onImport&&<button className="btn" disabled={busy} onClick={onImport}>Upload existing material</button>}</AiActions>}
@@ -82,8 +82,8 @@ function LessonToolDialogPanel({classId,itemId,taskId,mode,onClose,onApplied,onB
    {mode==='answers'&&<AiField label="Answer-key scope"><select value={scope} disabled={busy||!!pending} onChange={e=>setScope(e.target.value)}><option value="lesson">Whole lesson</option><option value="activity">Selected activity</option></select></AiField>}
    {mode!=='answers'&&<AiField label="Activity length (minutes)"><input type="number" min={1} max={60} value={minutes} disabled={busy||!!pending} onChange={e=>setMinutes(Math.max(1,Math.min(60,Number(e.target.value)||10)))}/></AiField>}
   </AiMore>
-  {!pending&&!busy&&<AiActions note={AI_ALLOWANCE}>
-   <AiButton className="btn primary" onClick={()=>void start('generate')}>{mode==='answers'?'Fill in missing answers':mode==='differentiate'?'Make the version':'Make the activity'}</AiButton>
+  {!pending&&!busy&&<AiActions note={mode!=='answers'&&!selected&&!direction.trim()?'Choose an option or describe your activity to make a draft.':AI_ALLOWANCE}>
+   <AiButton className="btn primary" disabled={mode!=='answers'&&!selected&&!direction.trim()} onClick={()=>void start('generate')}>{mode==='answers'?'Fill in missing answers':mode==='differentiate'?'Make the version':'Make the activity'}</AiButton>
    {mode!=='answers'&&<AiButton className="btn" onClick={()=>void start('ideas')}>{'Suggest two options'}</AiButton>}
   </AiActions>}
  </>}

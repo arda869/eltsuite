@@ -53,3 +53,8 @@
 .speech-audience-switch button { border: 0; border-radius: 8px; padding: 6px 12px; background: transparent; font: inherit; font-size: 13px; color: #355b46; cursor: pointer; }
 .speech-audience-switch button[aria-checked='true'] { background: #fff; color: #243832; box-shadow: 0 1px 3px #0002; font-weight: 600; }
 .speech-audience-switch button:disabled { opacity: .5; cursor: default; }
+
+:root[data-theme='dark'] .speech-dialog { color: var(--ink); background: var(--bg); border-color: var(--hair-strong); }
+:root[data-theme='dark'] .speech-dialog :is(fieldset, .speech-paste, .speech-foot, .speech-footer, .speech-script-line) { color: var(--ink); background: var(--surface); border-color: var(--hair); }
+:root[data-theme='dark'] .speech-dialog :is(input, textarea, select) { color: var(--ink); background: var(--paper); border-color: var(--hair-strong); }
+:root[data-theme='dark'] .speech-dialog :is(label, legend, .speech-head p, .speech-eyebrow, .speech-note, .hint) { color: var(--muted); }
