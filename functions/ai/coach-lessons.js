@@ -16,7 +16,11 @@ export async function findTeacherLessons(db,uid,prompt,selected,{games=true}={})
  const groups=await mapLimited(classes,async c=>{try{const items=await c.ref.collection('items').get();return items.docs.filter(i=>i.get('type')==='lesson'||!i.get('type')).map(i=>({classId:c.id,itemId:i.id,title:String(i.get('title')||'Untitled lesson').slice(0,160),className:String(c.get('name')||'').slice(0,100),at:i.get('updatedAt')?.toMillis?.()||i.get('createdAt')?.toMillis?.()||i.get('order')||0}));}catch{skipped++;return [];}});
  const catalog=groups.flat().filter(i=>i.classId!==selected?.classId||i.itemId!==selected?.itemId);
  catalog.sort((a,b)=>lessonScore(prompt,b)-lessonScore(prompt,a)||b.at-a.at);
- const candidates=catalog.slice(0,8);
+ // On an attached activity, an ordinary question such as “What ICQs can I use here?”
+ // needs only that activity. Keep cross-lesson search available when explicitly requested.
+ const acrossLessons = /\b(?:other|previous|earlier|another|across|all|my)\s+(?:\w+\s+){0,2}lessons?\b|\bcompare\b.*\blessons?\b/i.test(prompt);
+ const candidates=(selected && !acrossLessons ? catalog.filter(row=>lessonScore(prompt,row)>=1000000) : catalog).slice(0,8);
+ if(selected && !candidates.length)return {lessons:[],scope:'Using the attached lesson or activity for this question.'};
  const read=(await mapLimited(candidates,async row=>{try{const lesson=await loadLessonSource(db,uid,{classId:row.classId,itemId:row.itemId},{games});return {...lesson,className:row.className,score:lessonScore(prompt,row,JSON.stringify(lesson.context.tasks))};}catch{skipped++;return null;}})).filter(Boolean);
  read.sort((a,b)=>b.score-a.score);
  return {lessons:read.slice(0,3),scope:`Searched titles across ${catalog.length} accessible lessons in ${classes.length} owned or co-taught classes; read up to ${candidates.length} candidate lessons and supplied the three most relevant excerpts. This is not a claim to have read every lesson in full.${skipped?' Some material was unavailable and has not been read.':''}`};
