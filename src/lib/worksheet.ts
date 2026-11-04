@@ -933,8 +933,13 @@ export function collectMedia(items: WsItem[]): { id: string; mode: string }[] {
     bs.forEach((b) => {
       if (b.kind === 'media' && !out.has(b.id)) out.set(b.id, b.mode);
       if (b.kind === 'callout' || b.kind === 'subtask') walk(b.blocks);
+      if (b.kind === 'diagram') b.cells.forEach(cell => walk(cell.blocks));
     });
-  items.forEach((it) => it.kind === 'task' && walk(it.task.blocks));
+  items.forEach(it => {
+    if (it.kind !== 'task') return;
+    walk(it.task.blocks);
+    it.task.cutouts?.forEach(set => set.cards.forEach(card => walk(card.blocks)));
+  });
   return [...out].map(([id, mode]) => ({ id, mode }));
 }
 
@@ -944,15 +949,21 @@ export const picKey = (src: string, crop?: string, filter?: string) => (crop || 
 // Every picture the worksheet uses, so they can be read (and edited copies made) before printing.
 export function collectPictures(items: WsItem[]): { key: string; src: string; crop?: string; filter?: string }[] {
   const out = new Map<string, { key: string; src: string; crop?: string; filter?: string }>();
+  const pictures = (runs: Run[]) => runs.forEach(({pic}) => {
+    if (pic) out.set(pic.key ?? pic.src, {key:pic.key ?? pic.src,src:pic.src,crop:pic.crop,filter:pic.filter});
+  });
   const blocks = (bs: Block[]) =>
     bs.forEach((b) => {
       if (b.kind === 'dict' && b.d.image) out.set(b.d.image,{key:b.d.image,src:b.d.image});
       if (b.kind === 'glossary') b.items.forEach(({d})=>{if(d.image)out.set(d.image,{key:d.image,src:d.image});});
-      if (b.kind === 'p') b.runs.forEach((r) => r.pic && out.set(r.pic.key ?? r.pic.src, { key: r.pic.key ?? r.pic.src, src: r.pic.src, crop: r.pic.crop, filter: r.pic.filter }));
+      if (b.kind === 'p') pictures(b.runs);
+      if (b.kind === 'table') b.cells?.forEach(row => row.forEach(pictures));
+      if (b.kind === 'diagram') b.cells.forEach(cell => blocks(cell.blocks));
       if (b.kind === 'callout' || b.kind === 'subtask') blocks(b.blocks);
     });
   items.forEach((it) => {
     if (it.kind !== 'task') return;
+    pictures(it.task.instrRuns ?? []);
     blocks(it.task.blocks);
     it.task.cutouts?.forEach((set) => set.cards.forEach((c) => blocks(c.blocks)));
   });

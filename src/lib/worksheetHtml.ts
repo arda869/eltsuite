@@ -421,7 +421,7 @@ svg.sym-mont { width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 
 /* Pictures, with their label in the top-right corner */
 .pic { position: relative; display: inline-block; vertical-align: top; margin: .6mm 2.4mm 1.6mm 0; border-radius: 1.6mm; overflow: hidden; line-height: 0; background: #f1efeb; }
-.pic img { display: block; width: 100%; height: auto; }
+.pic img { display: block; width: 100%; height: auto; max-height: calc(var(--ph, 297mm) - 80mm); object-fit: contain; }
 .pic.has-tags { overflow: visible; } .pic.has-tags img { border-radius: 1.6mm; }
 .pic-tag { position: absolute; transform: translate(-50%, -50%); padding: .5mm 2mm; border-radius: 1.2mm; background: #fff; box-shadow: 0 0 0 .5pt rgba(51,48,44,.35); font: 600 8pt/1.3 Karla, sans-serif; color: #262420; white-space: nowrap; }
 .pic-s { width: 28mm; } .pic-m { width: 46mm; } .pic-l { width: 70mm; max-width: 100%; } .pic-full { width: 100%; margin-right: 0; }
