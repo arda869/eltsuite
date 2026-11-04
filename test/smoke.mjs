@@ -1,4 +1,4 @@
-async function openPlanning(p){const details=p.locator('.lesson-support-tools');if(await details.getAttribute('open')===null)await details.locator('summary').click();}
+async function openPlanning(p){const details=p.locator('.lesson-support-tools');if(await details.getAttribute('open')===null)await details.locator(':scope > summary').click();}
 async function blankTask(p){const gap=p.locator('.task-insert').last();await gap.locator('summary').click();await gap.getByRole('button',{name:'New task',exact:true}).click();}
 import {documentChrome,highlightJourney} from './tuesday-latest.mjs';
 import {slidesCut} from './slides-cut.mjs';
@@ -117,7 +117,11 @@ const J = {
       await row.hover();const after=await row.boundingBox(),titleAfter=await row.locator('.task-pick').boundingBox();
       if(Math.abs(before.height-after.height)>0.5||Math.abs(titleBefore.width-titleAfter.width)>0.5)throw Error('Hover changed the row or title dimensions');
     }
-    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.mouse.move(0,0);
+    const appsButton=s.p.getByRole('button',{name:'Apps',exact:true});
+    const appsHit=await appsButton.evaluate(el=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,viewport:innerWidth,hit:el===document.elementFromPoint(x,y)||el.contains(document.elementFromPoint(x,y))};});
+    if(!appsHit.hit)throw Error('Apps button is obscured at tablet width: '+JSON.stringify(appsHit));
+    await appsButton.click();
     await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('development');
     await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).waitFor();
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
@@ -224,16 +228,18 @@ const J = {
     return s;
   },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
-  'Discuss with coach carries saved lesson evidence without optional profile fields': async b => {
+  'Discuss with Teacher’s Companion carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
     await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
-    await dialog.getByRole('link',{name:'Discuss with coach',exact:true}).click();
+    const discuss=dialog.getByRole('link',{name:'Discuss with Teacher’s Companion',exact:true});
+    await discuss.waitFor({timeout:12000}).catch(async()=>{throw Error('Saved report discussion missing: '+(await dialog.innerText()).slice(0,1000));});
+    await discuss.click();
     await s.p.getByRole('complementary',{name:'Selected teaching context'}).waitFor();
     if(await s.p.getByText('Let’s start with your teaching',{exact:true}).count())throw Error('Optional profile blocked selected-lesson discussion');
-    await s.p.getByLabel('Message your coach').fill('How could I support learners with this activity?');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('How could I support learners with this activity?');
     await s.p.getByRole('button',{name:'Send',exact:true}).click();
     await see(s.p,'.coach-message:has-text("What did you notice")','contextual coaching reply');
     const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
@@ -242,6 +248,71 @@ const J = {
     await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
     await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
     if(await s.p.locator('.coach-message').count())throw Error('Previous lesson conversation retained after context removal');
+    return s;
+  },
+  'Teacher’s Companion opens as a small message with the current activity': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.waitForFunction(()=>!!document.querySelector('[data-coach-task-id]')?.getAttribute('data-coach-task-id'));
+    const taskId=await s.p.locator('[data-coach-task-id]').getAttribute('data-coach-task-id');
+    await s.p.locator('.dock-launch .dock-tab-main').click();
+    const list=s.p.locator('.dock-win[data-win="list"]');
+    await list.waitFor();
+    const width=await list.evaluate(el=>parseFloat(getComputedStyle(el).width));
+    await list.getByRole('button',{name:/Teacher’s Companion/}).click();
+    const coach=s.p.locator('.dock-win[data-win="teaching-coach"]');
+    await coach.waitFor();
+    const coachWidth=await coach.evaluate(el=>parseFloat(getComputedStyle(el).width));
+    if(Math.abs(coachWidth-width)>1)throw Error(`Companion opened at a different width from person messages: ${width}px → ${coachWidth}px`);
+    if(await s.p.locator('.coach-floating').count())throw Error('Companion opened a separate floating panel');
+    await coach.getByLabel('Selected teaching context').waitFor();
+    await coach.getByRole('textbox',{name:'Message Teacher’s Companion'}).fill('What is your advice on this activity?');
+    await coach.getByRole('button',{name:'Send',exact:true}).click();
+    await coach.getByRole('log').getByText('What is your advice on this activity?',{exact:true}).waitFor();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'null')?.prompt==='What is your advice on this activity?');
+    const request=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(request.lessonContext?.classId!==s.demo.classId||request.lessonContext?.itemId!==s.demo.itemId||request.lessonContext?.taskId!==taskId)throw Error('The current activity was not included in the conversation');
+    await coach.getByRole('button',{name:'Minimise',exact:true}).click();
+    await s.p.getByRole('button',{name:'Open Teacher’s Companion'}).click();
+    await s.p.locator('.dock-win[data-win="teaching-coach"] .coach-chat-message-teacher').filter({hasText:'What is your advice on this activity?'}).waitFor();
+    await axe(s.p,'Teacher’s Companion in small Messages',A11Y_FOUND);
+    return s;
+  },
+  'Class spelling and a saved question exception apply to the learner answer': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(`${BASE}/class/${s.demo.classId}`);
+    await s.p.getByRole('button',{name:'Class actions'}).click();
+    await s.p.getByRole('menuitem',{name:'Class settings'}).click();
+    const settings=s.p.getByRole('dialog',{name:'Class settings'});
+    await settings.getByLabel('Class spelling spell check').selectOption('off');
+    await settings.getByRole('button',{name:'Save changes'}).click();
+    await s.p.waitForFunction(id=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+id]?.spelling?.enabled===false,s.demo.classId);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:/Your experiences/}).click();
+    const taskId=await s.p.locator('[data-coach-task-id]').getAttribute('data-coach-task-id');
+    const editor=s.p.locator('.frame-inner .ProseMirror').first();
+    await editor.click();
+    await s.p.waitForFunction(()=>document.querySelector('.frame-inner .ProseMirror')?.getAttribute('spellcheck')==='true');
+    await s.p.getByRole('button',{name:'Question spelling'}).click();
+    const exception=s.p.getByRole('checkbox',{name:'Override class spelling for question 1'});
+    await exception.check();
+    await s.p.waitForFunction(({classId,itemId,taskId})=>JSON.stringify(JSON.parse(localStorage.getItem('mockfs'))[`classes/${classId}/items/${itemId}/tasks/${taskId}`]?.content).includes('"spellingOverride":true'),{...s.demo,taskId});
+    await s.p.reload();
+    await s.p.getByRole('button',{name:/Your experiences/}).click();
+    const spellingFold=s.p.getByRole('button',{name:'Question spelling'});
+    if(await spellingFold.getAttribute('aria-expanded')!=='true')await spellingFold.click();
+    const savedException=s.p.getByRole('checkbox',{name:'Override class spelling for question 1'});
+    if(!await savedException.count())throw Error('Question spelling control disappeared after reload: '+(await s.p.locator('.task-side').innerText()).slice(0,800));
+    if(!await savedException.isChecked())throw Error('Question spelling exception was not saved');
+    await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;const uid=sessionStorage.getItem('mockuid');return !!uid&&JSON.parse(localStorage.getItem('mockfs')||'{}')['users/'+uid]?.displayName?.startsWith('Mia');},null,{timeout:180000});
+    await s.p.waitForLoadState('networkidle');
+    await s.p.goto(`${BASE}/learn/${s.demo.itemId}?task=${taskId}`);
+    const answer=s.p.getByRole('textbox',{name:'Question 1',exact:true});
+    await answer.click();
+    await s.p.waitForFunction(()=>document.querySelector('[aria-label="Question 1"]')?.getAttribute('spellcheck')==='true');
+    if(!await answer.locator('xpath=ancestor::*[@data-spelling-question-override="true"]').count())throw Error('Question exception was not rendered around the learner answer');
+    await axe(s.p,'Class spelling and question exception',A11Y_FOUND);
     return s;
   },
   'Learner readiness: cited evidence, insufficient history and saved reports': async(b)=>{
@@ -274,7 +345,7 @@ const J = {
     await axe(s.p,'Answer key review',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Apply answer key'}).click();
     await s.p.waitForFunction(({classId,itemId})=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+classId+'/items/'+itemId+'/tasks/tool-source/private/key'].missing.answers[0]==='went',s.demo);
-    await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
     dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
     await dialog.getByRole('button',{name:/More support Add choices/}).click();
     await dialog.getByRole('button',{name:'Create differentiated version'}).click();await reviewAi(s.p,'Differentiate activity');
@@ -282,7 +353,7 @@ const J = {
     await axe(s.p,'Differentiated preview',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Add differentiated version'}).click();
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.family==='tool-source'&&v.variant==='Supported'),s.demo);
-    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
     dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
     await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
     await dialog.getByRole('button',{name:'Create next activity'}).click();await reviewAi(s.p,'Suggest next activity');
@@ -2129,7 +2200,7 @@ const J = {
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
     await s.p.goto(BASE + '/development?section=coach');
     await see(s.p, 'text=Let’s start with your teaching', 'first-chat profile setup');
-    if (await s.p.getByLabel('Message your coach').count()) throw Error('Coach allowed chat before profile completion');
+    if (await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Coach allowed chat before profile completion');
     await s.p.locator('.qualifications-picker > summary:visible').click();
     await s.p.getByRole('checkbox',{name:'CELTA',exact:true}).check();
     await s.p.getByRole('checkbox',{name:'TKT Module 1',exact:true}).check();
@@ -2142,21 +2213,21 @@ const J = {
     await s.p.getByLabel('Who do you teach?', {exact:true}).fill('Adult learners at B1');
     await s.p.getByRole('button', {name:'Continue to teaching beliefs',exact:true}).click();
     await see(s.p,'text=What guides your teaching?','beliefs required before chat');
-    if(await s.p.getByLabel('Message your coach').count()) throw Error('Chat allowed without beliefs');
+    if(await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Chat allowed without beliefs');
     for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
     await s.p.getByRole('button',{name:'Save beliefs and start chatting',exact:true}).click();
-    await see(s.p, 'textarea[aria-label="Message your coach"]', 'chat composer after setup');
-    await s.p.getByLabel('Message your coach').fill('My lesson changed direction.');
-    await s.p.getByLabel('Message your coach').press('Enter');
+    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat composer after setup');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('My lesson changed direction.');
+    await s.p.getByLabel('Message Teacher’s Companion').press('Enter');
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat reply');
-    const initialComposerHeight = await s.p.getByLabel('Message your coach').evaluate(el=>el.clientHeight);
+    const initialComposerHeight = await s.p.getByLabel('Message Teacher’s Companion').evaluate(el=>el.clientHeight);
     if(initialComposerHeight>44) throw Error('Composer does not begin on one line');
-    await s.p.getByLabel('Message your coach').fill(Array(12).fill('A longer message with a new line.').join('\n'));
-    const expanded=await s.p.getByLabel('Message your coach').evaluate(el=>el.clientHeight);
+    await s.p.getByLabel('Message Teacher’s Companion').fill(Array(12).fill('A longer message with a new line.').join('\n'));
+    const expanded=await s.p.getByLabel('Message Teacher’s Companion').evaluate(el=>el.clientHeight);
     if(expanded<=initialComposerHeight || expanded>162) throw Error('Composer did not grow within its limit');
-    await s.p.getByLabel('Message your coach').fill('');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('');
     for(let i=0;i<8;i++) {
-      await s.p.getByLabel('Message your coach').fill('Classroom observation '+i+': '+ 'I noticed different patterns in participation. '.repeat(12));
+      await s.p.getByLabel('Message Teacher’s Companion').fill('Classroom observation '+i+': '+ 'I noticed different patterns in participation. '.repeat(12));
       await s.p.getByRole('button',{name:'Send',exact:true}).click();
       await s.p.getByRole('button',{name:'Send',exact:true}).waitFor({state:'visible'});
       await s.p.waitForFunction(()=>!document.querySelector('.coach-chat-typing'));
@@ -2178,7 +2249,7 @@ const J = {
       await s.p.waitForFunction(()=>{const el=document.querySelector('.coach-chat-thread');return el.scrollHeight-el.clientHeight-el.scrollTop<3;}).catch(async()=>{throw Error('Cannot reach conversation end '+JSON.stringify({size,scroll:await s.p.locator('.coach-chat-thread').evaluate(el=>({top:el.scrollTop,h:el.clientHeight,total:el.scrollHeight}))}));});
     }
     await s.p.setViewportSize({width:1280,height:900});
-    await s.p.getByLabel('Message your coach').fill('Yes, draft a journal reflection.');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('Yes, draft a journal reflection.');
     await s.p.getByRole('button',{name:'Send',exact:true}).click();
     await see(s.p,'.coach-chat-typing','thinking indicator');
     await s.p.getByRole('button',{name:'Review journal draft',exact:true}).click();
@@ -2190,7 +2261,7 @@ const J = {
     if(!savedDraft?.content) throw Error('Edited journal draft or rich content missing');
     if(process.env.COACH_CHAT_SCREENSHOT) await s.p.screenshot({path:process.env.COACH_CHAT_SCREENSHOT});
     await s.p.getByRole('button', {name:'Reading',exact:true}).click();
-    await s.p.getByRole('button', {name:'Coach',exact:true}).click();
+    await s.p.getByRole('button', {name:'Teacher’s Companion',exact:true}).click();
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat retained between Studio sections');
     await s.p.getByRole('link', {name:'Settings',exact:true}).click();
     await s.p.getByRole('checkbox', {name:/^Professional profile/}).uncheck();
@@ -2277,12 +2348,12 @@ const J = {
     if (await s.p.locator('.coach-timeline article').count() !== 3) throw Error('Reflection and inquiry missing from timeline');
     for (const width of [390, 1280]) {
       await s.p.setViewportSize({ width, height: 900 });
-      await axe(s.p, 'Teaching coach at ' + width, A11Y_FOUND);
+      await axe(s.p, 'Teacher’s Companion at ' + width, A11Y_FOUND);
       const overflow = await s.p.locator('.coach-panel').evaluate(el => el.getBoundingClientRect().right > innerWidth + 1);
       if (overflow) throw Error('Coach content overflows on mobile');
     }
     let frame;
-    for(const tab of ['Home','Reflections','Reading','Research','Coach']) {
+    for(const tab of ['Home','Reflections','Reading','Research','Teacher’s Companion']) {
       await s.p.getByRole('button',{name:tab,exact:true}).click();
       const bounds=await s.p.locator('main.coach').boundingBox();
       if(frame&&(Math.abs(bounds.width-frame.width)>1||Math.abs(bounds.height-frame.height)>1))throw Error('Studio tabs do not share a frame: '+tab);
@@ -2295,7 +2366,7 @@ const J = {
     await s.p.getByRole('link', { name: 'Settings', exact: true }).click();
     for (const label of ['Professional profile','Teaching beliefs','Reflections','Research inquiries']) if (!(await s.p.getByRole('checkbox', { name: new RegExp('^'+label) }).isChecked())) throw Error('Coach context must be on by default: '+label);
     await s.p.goto(BASE+'/development?section=coach');
-    await s.p.getByLabel('Message your coach').fill('What else could explain participation?');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('What else could explain participation?');
     await s.p.getByRole('button', { name: 'Send', exact: true }).click();
     await see(s.p, '.coach-message:has-text("What did you notice")', 'reflective coaching reply');
     await s.p.getByRole('link',{name:'Settings',exact:true}).click();
@@ -2303,7 +2374,7 @@ const J = {
     await s.p.waitForFunction(() => JSON.parse(localStorage.getItem('mockfs'))['teachingCoach/teacher1/settings/context']?.beliefs === false);
     await s.p.goto(BASE+'/development?section=coach');
     await see(s.p,'.coach-message:has-text("What did you notice")','history retained after privacy change');
-    await s.p.getByLabel('Message your coach').fill('Continue without my beliefs.');await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.getByLabel('Message Teacher’s Companion').fill('Continue without my beliefs.');await s.p.getByRole('button',{name:'Send',exact:true}).click();
     await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).prompt==='Continue without my beliefs.');
     if((await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')).history)).length)throw Error('Previous context was sent after privacy settings changed');
     const preserved = await s.p.evaluate(() => JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/existing-reading']);
@@ -2316,7 +2387,7 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await openPlanning(s.p);
     if (await s.p.getByRole('link',{name:'Observe this lesson'}).count()) throw Error('Lesson observation is still available');
-    await s.p.getByRole('link',{name:'Discuss with coach'}).waitFor();
+    await s.p.getByRole('link',{name:'Discuss with Teacher’s Companion'}).waitFor();
     await s.p.goto(BASE+'/observations');
     await s.p.waitForURL(/\/development$/);
     if (await s.p.getByRole('link',{name:'Observations',exact:true}).count()) throw Error('Observation navigation is still visible');

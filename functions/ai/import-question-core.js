@@ -368,6 +368,7 @@ function splitKey(content) {
         out.attrs = { id, minWords: a.minWords ?? null, maxWords: a.maxWords ?? null, rich: !!a.rich, spellcheck: !!a.spellcheck, points: a.points ?? 5, genre: a.genre ?? "", rubric: a.rubric ?? "none", criteria: a.criteria ?? [] };
       }
       if (key[id]) {
+        if (a.spellingOverride === true) out.attrs = { ...out.attrs, spellingOverride: true };
         if (a.feedback?.trim()) key[id].feedback = a.feedback.trim();
         if (a.hint?.trim()) key[id].hint = a.hint.trim();
         if (out.attrs) {
@@ -413,6 +414,7 @@ function mergeKey(content, key) {
       if (n.type === "writing" && k.kind === "writing") out.attrs = { ...a, model: k.model };
       if (n.type === "pq" && k.kind === "pack") out.attrs = { id: a.id, kind: a.kind, data: mergePack(a.kind, a.data ?? {}, k.k) };
       out.attrs = { ...out.attrs, feedback: k.feedback ?? "", hint: k.hint ?? "" };
+      if (a.spellingOverride === true) out.attrs.spellingOverride = true;
     }
     if (n.type === "wordbank") out.attrs = { extras: a.extras ?? [] };
     if (n.content) out.content = n.content.map(walk);

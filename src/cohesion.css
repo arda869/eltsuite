@@ -1,5 +1,5 @@
 /* Shared suite geometry and AI identity. Feature content retains its own purpose. */
-:root { --suite-width:100%; --suite-gutter:16px; --suite-header-height:64px; --suite-space:28px; --suite-radius:14px; scrollbar-gutter:stable; }
+:root { --suite-width:100%; --suite-gutter:40px; --suite-header-height:64px; --suite-space:28px; --suite-radius:14px; scrollbar-gutter:stable; }
 /* Shared pages keep the same width whether or not they scroll (scrollbar-gutter above), without
    showing an empty scroll bar on pages that fit the screen. */
 :root:has(.suite-topbar) { overflow-y:auto; }
@@ -34,7 +34,7 @@
 .mp-bar .mp-wave { flex:1 1 80px; }
 .mp-bar .btn { max-width:100%; white-space:normal; height:auto; min-height:28px; }
 @media(max-width:700px) {
-  :root { --suite-header-height:60px; --suite-space:20px; }
+  :root { --suite-gutter:20px; --suite-header-height:60px; --suite-space:20px; }
   :root .suite-topbar .suite-mark b { max-width:145px; font-size:17px; }
   :root .suite-topbar .right { gap:4px; }
   :root :is(.page-title,.hm h1,.af h1,.coach-hero h1,.ling-hero h1,.ai-hero h1,.observation-studio>header h1) { font-size:26px; }
@@ -110,6 +110,34 @@ html { touch-action:pan-x pan-y; }
 /* One launcher for every app: readable names on desktop and a touch-friendly sheet on phones. */
 .apps-scrim { display:none; position:fixed; inset:0; z-index:79; border:0; background:#17130f70; cursor:default; }
 :root .suite-topbar:has(.apps-pop) { z-index:10001; }
+:root .shell.shell.wide:has(> .lesson-layout) { gap:8px; padding-bottom:12px; }
+:root .shell.wide .task-row { width:100%; position:relative; }
+:root .shell.wide .task-row .task-pick { width:100%; min-width:0; flex:1 1 auto; }
+:root .shell.wide .task-row .row-actions { position:absolute; right:2px; top:50%; transform:translateY(-50%) scale(.8); transform-origin:right center; z-index:2; padding:2px; border-radius:9px; background:var(--paper); box-shadow:-8px 0 12px var(--paper); }
+:root .shell.wide .task-row:focus-within .row-actions,:root .shell.wide .task-row:hover .row-actions { opacity:1; pointer-events:auto; }
+:root .shell.wide .lesson-support-tools { position:relative; flex:none; margin:0; padding:0; border:0; border-radius:0; }
+:root .shell.wide .lesson-support-tools>summary { box-sizing:border-box; display:flex; align-items:center; gap:7px; min-height:36px; padding:0 12px; border:1px solid var(--hair-strong); border-radius:9px; background:var(--paper); color:var(--ink); font:500 13px var(--sans); white-space:nowrap; }
+:root .shell.wide .lesson-support-tools>summary::after { content:'⌄'; margin-left:4px; }
+:root .shell.wide .lesson-support-tools[open]>summary { margin-bottom:0; border-color:var(--accent-text); }
+:root .shell.wide .lesson-support-tools .lesson-support-actions { box-sizing:border-box; position:absolute; top:calc(100% + 6px); right:0; z-index:80; display:flex; flex-direction:column; align-items:stretch; width:min(330px,calc(100vw - 24px)); max-height:min(65dvh,460px); overflow:auto; padding:12px; border:1px solid var(--hair); border-radius:12px; background:var(--paper); box-shadow:0 12px 36px #0003; }
+:root .shell.wide .lesson-support-actions .lesson-tool-toolbar { display:flex; flex-direction:column; align-items:stretch; width:100%; }
+:root .shell.wide .lesson-support-actions .btn { width:100%; min-height:36px; text-align:left; justify-content:flex-start; }
+:root .shell.wide .tb-icons :is(.btn,.icon-btn) { min-height:36px; }
+@media(max-width:1100px) {
+  :root .shell.wide .suite-topbar nav.crumbs { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
+  :root .shell.wide .suite-topbar nav.crumbs > :not(.here) { display:none; }
+  :root .shell.wide .suite-topbar nav.crumbs .here { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  :root .shell.wide .suite-topbar .tb-icons { flex:none; }
+}
+@media(max-width:1000px) {
+  :root .shell.wide .lesson-support-tools>summary { width:36px; justify-content:center; padding:0; font-size:0; }
+  :root .shell.wide .lesson-support-tools>summary::after { display:none; }
+  :root .shell.wide .lesson-support-tools>summary .ui-icon { width:18px; height:18px; }
+}
+.question-spelling-toggle { display:flex; align-items:center; gap:9px; min-height:34px; padding:5px 3px; font-size:13px; cursor:pointer; }
+.question-spelling-toggle input { flex:none; width:15px; height:15px; margin:0; accent-color:var(--accent-text); }
+.question-spelling-toggle small { color:var(--muted); font-size:11px; }
+@media(max-width:900px) { :root .shell.wide .task-row .row-actions { display:none; } }
 :root .apps-pop { box-sizing:border-box; display:block; z-index:80; width:min(450px,calc(100vw - 24px)); max-height:min(760px,calc(100dvh - 88px)); gap:0; padding:0; overflow-y:auto; overscroll-behavior:contain; border:1px solid var(--hair-strong); border-radius:20px; background:var(--paper); color:var(--ink); box-shadow:0 24px 70px #0004; }
 .apps-pop-head { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:19px 20px 13px; background:var(--paper); }
 .apps-pop-head h2 { margin:3px 0 0; font:600 24px/1.1 var(--serif); letter-spacing:-.025em; }

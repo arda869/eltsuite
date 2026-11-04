@@ -1,16 +1,19 @@
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 export function VideoDialog({
   name,
   onClose,
   children,
   minimised = false,
   onMinimise,
+  portal = false,
 }: {
   name: string;
   onClose: () => void;
   children: ReactNode;
   minimised?: boolean;
   onMinimise?: () => void;
+  portal?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -18,7 +21,7 @@ export function VideoDialog({
     ref.current?.focus();
     return () => previous?.focus();
   }, []);
-  return (
+  const dialog = (
     <div
       className={"vx-dialog-backdrop"+(minimised?" ai-panel-minimised":"")}
       onMouseDown={(e) => {
@@ -68,4 +71,5 @@ export function VideoDialog({
       </div>
     </div>
   );
+  return portal ? createPortal(dialog, document.querySelector('.shell.wide') ?? document.body) : dialog;
 }

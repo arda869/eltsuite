@@ -3034,12 +3034,12 @@
       "questions": [
         "What can I do in Development Studio?",
         "Where are reflections and classroom research?",
-        "Where is the teaching coach?"
+        "Where is Teacher’s Companion?"
       ],
-      "keywords": "use development studio what can i do in development studio? where are reflections and classroom research? where is the teaching coach?",
+      "keywords": "use development studio what can i do in development studio? where are reflections and classroom research? where is Teacher’s Companion?",
       "summary": "Development Studio brings together professional reading, reflections, research and coaching.",
       "steps": [
-        "Open Development Studio and choose Reading, Reflections, Research or Coach depending on your goal.",
+        "Open Development Studio and choose Reading, Reflections, Research or Teacher’s Companion depending on your goal.",
         "Use Profile/settings to keep the professional context you want the coach to use up to date.",
         "Keep personal notes and learner-identifying evidence separate. Check sharing controls before publishing or sharing a reflection or reading journal."
       ],
@@ -3060,18 +3060,18 @@
     {
       "id": "coach",
       "category": "Professional development",
-      "title": "Ask the teaching coach and control its context",
+      "title": "Ask Teacher’s Companion and control its context",
       "questions": [
         "Can AI help me reflect on my teaching?",
         "What information does the coach read?",
         "Can I turn off coach memory sources?"
       ],
-      "keywords": "ask the teaching coach and control its context can ai help me reflect on my teaching? what information does the coach read? can i turn off coach memory sources?",
-      "summary": "The teaching coach saves private conversation history and can search relevant lessons in classes you own or co-teach by default. Standalone Reading Journal text and learner records are not read automatically.",
+      "keywords": "ask Teacher’s Companion and control its context can ai help me reflect on my teaching? what information does the companion read? can i turn off memory sources?",
+      "summary": "Teacher’s Companion saves private conversation history and can search relevant lessons in classes you own or co-teach by default. Standalone Reading Journal text and learner records are not read automatically.",
       "steps": [
-        "Open Development Studio → Coach and ask a focused professional question.",
+        "Open Teacher’s Companion in Messages or Development Studio and ask a focused professional question.",
         "Open coach settings to choose sources such as your professional profile, teaching beliefs, reflections, research inquiries and lessons in your classes. Lesson access starts on; source links and Context used show the excerpts actually read.",
-        "Use History to reopen saved conversations. New chat keeps previous conversations. Pin chat opens a compact top-right panel that stays with you across pages. Changing source settings keeps saved history but excludes earlier context from new AI turns."
+        "Use History to reopen saved conversations. New chat keeps previous conversations. Teacher’s Companion also opens in the small Messages window and can use the lesson activity you are viewing. Changing source settings keeps saved history but excludes earlier context from new AI turns."
       ],
       "source": "src/coach/CoachChat.tsx; src/coach/CoachPreferences.tsx",
       "href": "/development?section=coach",
@@ -3605,7 +3605,7 @@
         "How do I turn off classroom memories?",
         "Can I choose examples from previous responses?"
       ],
-      "summary": "Classroom memories in lesson planning are opt-in and selected before generation. They are distinct from the teaching coach’s context settings.",
+      "summary": "Classroom memories in lesson planning are opt-in and selected before generation. They are distinct from Teacher’s Companion context settings.",
       "steps": [
         "Open the lesson assistant’s Classroom memories section and decide whether to enable it.",
         "If enabled, use Read recent responses, review the available text and select only the permitted examples useful for your plan. The interface limits how many can be selected.",
@@ -3753,14 +3753,14 @@
         "In Corpus Explorer, find example sentences using Tatoeba, select the examples and add them to your evidence. Their contributor, source link and licence credits are retained. Review suitability for your learners; Tatoeba is not a balanced corpus for frequency or register statistics.",
         "To request analysis, save your investigation, choose Select evidence for AI, review the exact preview and confirm. Raw learner records are excluded.",
         "Review the suggested spans, alternative explanations and limitations. Add suggestions as unconfirmed annotations, then confirm individual annotations before sharing.",
-        "For Teaching Coach, select an existing inquiry and reviewed evidence, choose Review with Teaching Coach, and confirm the exact packet. Existing Coach context preferences still apply.",
+        "For Teacher’s Companion, select an existing inquiry and reviewed evidence, choose Review with Teacher’s Companion, and confirm the exact packet. Existing context preferences still apply.",
         "Revoke an investigation to stop future access through its shared cards. Previously downloaded exports cannot be recalled."
       ],
       "source": "src/linguistics/CorpusSearch.tsx; src/linguistics/AnalysisReview.tsx; src/linguistics/CoachEvidenceReview.tsx",
       "questions": [
         "Why is corpus search unavailable?",
         "How do I ask AI to analyse selected evidence?",
-        "Can I discuss selected evidence with Teaching Coach?",
+        "Can I discuss selected evidence with Teacher’s Companion?",
         "How do I find Tatoeba example sentences?"
       ],
       "reviewedAt": "2026-11-02",

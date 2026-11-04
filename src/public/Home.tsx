@@ -200,7 +200,7 @@ const JOURNEY = [
   { k: 'Teach', line: "Bring your lesson into the classroom and involve your learners.", name: 'teach', alt: 'Teaching live, with learners’ answers in the side panel.' },
   { k: 'Understand', line: "Review learner responses, results and feedback.", name: 'reports', alt: 'The class report, learner by lesson.' },
   { k: 'Reflect', line: "Look back on your teaching and explore what you noticed.", name: 'development', alt: 'Development Studio: reflect on a lesson or investigate a question.' },
-  { k: 'Grow', line: "Develop your practice and carry new ideas into the next lesson.", name: 'coach', alt: 'The teaching coach in Development Studio.' },
+  { k: 'Grow', line: "Develop your practice and carry new ideas into the next lesson.", name: 'coach', alt: 'Teacher’s Companion in Development Studio.' },
 ];
 
 function Journey() {

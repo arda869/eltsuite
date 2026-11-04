@@ -751,7 +751,6 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
     const id = node.attrs!.id as string;
     const raw = responses[id];
     const rich = !!node.attrs?.rich;
-    const spell = !!node.attrs?.spellcheck;
     const text = textOf(raw);
     const count = splitWords(text).length;
     const min = node.attrs?.minWords as number | null;
@@ -787,7 +786,6 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             value={raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as JSONContent) : null}
             onChange={(v) => onChange?.(id, v)}
             disabled={wLocked}
-            spellcheck={spell}
             label={`Question ${numbers[id]}`}
           />
         ) : (
@@ -796,8 +794,6 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
             value={typeof raw === 'string' ? raw : text}
             disabled={wLocked}
             rows={8}
-            spellCheck={spell}
-            autoCorrect={spell ? 'on' : 'off'}
             autoCapitalize="sentences"
             onChange={(e) => onChange?.(id, e.target.value)}
             placeholder="Write your answer here"
@@ -882,7 +878,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
 
   // Document --------------------------------------------------------------------------------
 
-  const render = (node: JSONContent, key: string): ReactNode => {
+  const renderInner = (node: JSONContent, key: string): ReactNode => {
     const kids = () => node.content?.map((c, i) => render(c, key + '.' + i));
     switch (node.type) {
       case 'cite': {
@@ -1279,6 +1275,13 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
       default:
         return kids() ?? null;
     }
+  };
+  const render = (node:JSONContent,key:string):ReactNode => {
+    const result=renderInner(node,key);
+    if(!node.attrs?.spellingOverride||result===null)return result;
+    return ['gap','choice','dropgap'].includes(node.type??'')
+      ? <span key={key} data-spelling-question-override="true">{result}</span>
+      : <div key={key} data-spelling-question-override="true">{result}</div>;
   };
 
   if (!content) return <div className="task-body" />;

@@ -1,4 +1,3 @@
-import { SpellingFields } from '../spelling/SpellingFields';
 import { TaskInsert } from '../components/TaskInsert';
 import { LearnerInsights } from '../ai/LearnerInsights';
 import { LessonTools, LessonToolDialog } from '../ai/LessonTools';
@@ -47,6 +46,7 @@ import { theme } from '../lib/themes';
 import { useLiveAudioSetup } from '../lib/liveAudio';
 import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLive, type LiveState } from '../lib/live';
 import { TEXT_SCALE } from '../lib/auth';
+import {questionSpellingOverride,withQuestionSpellingOverride} from '../lib/questions';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
 import { PickedBanner, SpotlightCard, TimerChip, TimerMenu } from '../components/LiveExtras';
@@ -845,7 +845,7 @@ export function LessonEditor() {
 
   // The task being edited, in the digital view or on its worksheet page.
   const editFrame = task && draft && editorKey.startsWith(task.id + ':') ? (
-              <div className="frame-inner">
+              <div className="frame-inner" data-spelling-editor="true">
                 <div className="frame-head">
                   {teachingHere && (
                     <button type="button" className="btn small-btn done-edit" onClick={() => (flush(), setEditWhileTeaching(false))}>
@@ -879,7 +879,7 @@ export function LessonEditor() {
   ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
-    <div className="shell wide" data-spelling={JSON.stringify([c?.spelling,item?.spelling,task?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide" data-coach-task-id={task?.id ?? ''} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link to="/classes">Classes</Link>
@@ -890,6 +890,8 @@ export function LessonEditor() {
         </nav>
         <span className="icon-row tb-icons">
         {c && !viewer && <TeacherLiveVideo c={c} live={live} teachingHere={teachingHere} groupSets={groupSets} itemId={itemId} />}
+        {!preview && <details className="lesson-support-tools"><summary><UiIcon name="videoSparkles" /> Planning and review</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
+          <Link className="btn small-btn" to={`/development?section=coach&classId=${classId}&itemId=${itemId}${task?.id?"&taskId="+task.id:""}`}>Discuss with Teacher’s Companion</Link></div></details>}
         {NOTEBOOK && <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
@@ -1123,8 +1125,6 @@ export function LessonEditor() {
             <PanelToggle side="left" open={panels.left} onClick={panels.toggleLeft} label="the task list" />
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
-          {!preview && <details className="lesson-support-tools"><summary><UiIcon name="videoSparkles" /> Planning and review</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
-          <Link className="btn small-btn" to={`/development?section=coach&classId=${classId}&itemId=${itemId}${task?.id?"&taskId="+task.id:""}`}>Discuss with coach</Link></div></details>}
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">
@@ -1477,10 +1477,10 @@ export function LessonEditor() {
           )}
           {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
             <aside className="task-side folds" aria-label="Task settings">
-              <Fold id="spelling" title="Spelling" open={fold} setOpen={setFold}>
-                <SpellingFields label="Lesson spelling" value={item?.spelling} inherit onChange={v=>void updateItem(classId,itemId,{spelling:v}).catch(()=>tell('Could not save the lesson spelling setting.'))}/>
-                <SpellingFields label="Task spelling" value={task.spelling} inherit onChange={v=>void setTaskFlags(classId,itemId,task.id,{spelling:v}).catch(()=>tell('Could not save the task spelling setting.'))}/>
-              </Fold>
+              {questionIds(draft.content).length>0&&<Fold id="spelling" title="Question spelling" open={fold} setOpen={setFold}>
+                <p className="hint">The class spelling rule applies by default. Tick a question to reverse that rule for its answer.</p>
+                {questionIds(draft.content).map((q,i)=><label className="question-spelling-toggle" key={q.id}><input type="checkbox" aria-label={`Override class spelling for question ${i+1}`} checked={questionSpellingOverride(draft.content,q.id)} onChange={e=>{const content=withQuestionSpellingOverride(draft.content,q.id,e.target.checked);change({content});setEditorKey(task.id+':'+Date.now()+':spelling');}}/><span>Question {i+1} <small>{q.type.replace('pq:','')}</small></span></label>)}
+              </Fold>}
               <Fold id="who" title="Who sees this" open={fold} setOpen={setFold}>
               <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />
               </Fold>

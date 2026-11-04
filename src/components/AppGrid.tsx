@@ -50,7 +50,7 @@ export function appMark(k: string) {
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
   { k: 'games', group: 'make', name: 'Games', about: 'Make reusable classroom games and play together', to: '/games', teacher: true, color: '#996525', glyph: APP_MARKS.games, icon: I(APP_MARKS.games) },
-  { k: 'development', group: 'develop', name: 'Development Studio', about: 'Reading, reflections, classroom research and your teaching coach', to: '/development', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
+  { k: 'development', group: 'develop', name: 'Development Studio', about: 'Reading, reflections, classroom research and your Teacher’s Companion', to: '/development', teacher: true, color: '#a56748', glyph: APP_MARKS.development, icon: I(APP_MARKS.development) },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, glyph: APP_MARKS.home, icon: I(APP_MARKS.home) },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },

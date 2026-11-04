@@ -5,6 +5,7 @@ import { SpeakingBlock, newSpeaking } from './SpeakingNode';
 import { auth } from '../lib/firebase';
 import { imageToData } from '../lib/flash';
 import { Extension } from '@tiptap/core';
+import {QUESTION_TYPES} from '../lib/questions';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { tell } from '../lib/ask';
 import { createPortal } from 'react-dom';
@@ -520,6 +521,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
 
   const editor = useEditor({
     extensions: [
+      Extension.create({name:'questionSpellingOverride',addGlobalAttributes(){return [{types:[...QUESTION_TYPES],attributes:{spellingOverride:{default:false,parseHTML:(el:HTMLElement)=>el.hasAttribute('data-spelling-override'),renderHTML:(attrs:Record<string,unknown>)=>attrs.spellingOverride?{'data-spelling-override':''}:{}}}}];}}),
       StarterKit.configure({ heading: { levels: [3] }, orderedList: false, listItem: false }),
       // A list item may start with a dialogue (1. A: … B: …) as well as a paragraph.
       ListItem.extend({ content: '(paragraph | dialogue) block*' }),
