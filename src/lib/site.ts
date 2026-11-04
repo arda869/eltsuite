@@ -54,6 +54,7 @@ export function probeLearn(then?: () => void) {
 }
 export const learnOrigin = () => (live() ? (learnReady() ? LEARN : MAIN) : location.origin);
 export const mainOrigin = () => (live() ? MAIN : location.origin);
+export const classJoinLink = (code: string) => `${learnOrigin()}/join?code=${encodeURIComponent(code)}`;
 
 // Paths only learners use: on the teachers' address they move to the learners' one.
 export const LEARNER_PATHS = [/^\/join\b/, /^\/learn\//, /^\/recap\//, /^\/discuss\b/];

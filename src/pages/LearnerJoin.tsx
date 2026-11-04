@@ -15,7 +15,7 @@ const normalise = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]/g, '').repla
 
 function lastCode() {
   try {
-    // A link from the teacher (learn.eltsuite.com/?code=ABC-123) fills the code in.
+    // A link from the teacher (/join?code=ABC-123) fills the code in.
     const q = new URLSearchParams(location.search).get('code');
     if (q) return normalise(q);
     return localStorage.getItem('lastClassCode') ?? '';
@@ -148,7 +148,7 @@ export function LearnerJoin({ home = false }: { home?: boolean }) {
         {found && (
           <label className="field">
             Your name
-            <NSelect value={learnerId} onChange={(e) => setLearnerId(e.target.value)}>
+            <NSelect aria-label="Your name" value={learnerId} onChange={(e) => setLearnerId(e.target.value)}>
               <option value="">Choose your name</option>
               {found.roster.map((r) => (
                 <option key={r.id} value={r.id}>
