@@ -649,7 +649,18 @@ const J = {
     await axe(p,'Public sign-in dark',A11Y_FOUND);
     await p.goto(BASE+'/');await p.getByRole('heading',{name:'Everything you need to teach. A community to grow with.'}).waitFor();
     await axe(p,'Public homepage dark',A11Y_FOUND);
-    if(requests.length)throw Error('Public demo called a production data or AI endpoint: '+requests.join(', '));
+    const mobile=await b.newContext({viewport:{width:320,height:740},hasTouch:true,isMobile:true,reducedMotion:'reduce'});
+    try{
+      const phone=await mobile.newPage();await phone.goto(BASE+'/');
+      for(const card of await phone.locator('.pub-float-card').all()){
+        await card.tap();if(await card.getAttribute('aria-expanded')!=='true')throw Error('Touch preview failed to expand');
+        await card.tap();if(await card.getAttribute('aria-expanded')!=='false')throw Error('Touch preview failed to collapse');
+      }
+      if(await phone.locator('.pub-float-card').count()!==4)throw Error('Missing hero preview');
+      if(await phone.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Small phone overflows');
+      if(process.env.PUBLIC_MOBILE_SCREENSHOT)await phone.screenshot({path:process.env.PUBLIC_MOBILE_SCREENSHOT});
+    }finally{await mobile.close();}
+    if(requests.length)throw Error('Public pages called a production data or AI endpoint: '+requests.join(', '));
     if(errors.length)throw Error(errors.join('; '));return {ctx,errors};
   },
   'Authentication: signed-out teacher homepage': async (b) => {
@@ -667,6 +678,21 @@ const J = {
     if (new URL(p.url()).pathname !== '/signin') throw Error('Sign-in route incorrect');
     if (await count(p, '.app-err')) throw Error('Sign-in rendered an error');
     await axe(p, 'Teacher sign-in', A11Y_FOUND);
+    for(const flow of [
+      ['Forgot password?', 'Send reset link', /sent it a reset link/],
+      ['Email me a sign-in link', 'Email me a link', /Check your inbox/],
+    ]){
+      await p.getByRole('button',{name:flow[0],exact:true}).click();
+      await p.getByLabel('Email',{exact:true}).fill('teacher@example.test');
+      await p.getByRole('button',{name:flow[1],exact:true}).click();
+      await p.getByRole('status').filter({hasText:flow[2]}).waitFor();
+      await p.getByRole('button',{name:'Back to sign-in',exact:true}).click();
+    }
+    await p.getByRole('button',{name:'I Have an Invitation',exact:true}).click();
+    await p.getByPlaceholder('ABCD-EF23').fill('BAD');
+    await p.getByRole('button',{name:'Continue',exact:true}).click();
+    await p.getByRole('alert').filter({hasText:'eight-character code'}).waitFor();
+
     if (errors.length) throw Error(errors.join('; '));
     return { ctx, errors };
   },
@@ -2308,7 +2334,7 @@ const vite = (LIVE_PUBLIC || process.env.SMOKE_EXTERNAL_SERVER) ? null : await u
 const browser = await chromium.launch({ executablePath: process.env.SMOKE_BROWSER_PATH || undefined });
 // A first visit, so the server has prepared every page before the journeys start.
 // Never seed users, mock records or authenticated flows against production.
-if(!LIVE_PUBLIC) {
+if(!LIVE_PUBLIC && ONLY !== 'Public homepage') {
   const c = await browser.newContext();
   const p = await c.newPage();
   await p.goto(`${BASE}/dev.html?seed&as=teacher`, { timeout: 180000 });
