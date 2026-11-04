@@ -7,7 +7,7 @@ let browser;
 try {
  for(let i=0;i<90;i++){if(await fetch(base).then(r=>r.ok,()=>false))break;await new Promise(r=>setTimeout(r,500));}
  browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:1440,height:1000}});
- await page.goto(base+'/dev.html?seed&as=teacher');await page.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await page.waitForFunction(()=>!!localStorage.getItem('mockdemo'));
+ await page.goto(base+'/dev.html?seed&as=teacher');await page.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;return true;},null,{timeout:180000});await page.waitForLoadState('networkidle',{timeout:180000});
  await page.evaluate(()=>{const fs=JSON.parse(localStorage.getItem('mockfs'));fs['sharedDocs/editor-test']={owner:'teacher1',ownerName:'Teacher',title:'Game editor verification',kind:'game',memberIds:[],members:{},docKey:'editor-test'};fs['sharedDocs/editor-test/game/main']={version:1,type:'show',theme:'wood',sound:false,rounds:[]};localStorage.setItem('mockfs',JSON.stringify(fs));});
  await page.goto(base+'/doc/editor-test');await page.getByRole('heading',{name:'Build your game'}).waitFor();
  assert.equal(await page.getByRole('button',{name:'Play preview',exact:true}).isEnabled(),false);
