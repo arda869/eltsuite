@@ -1,4 +1,3 @@
-import {GameGallery} from '../games/GameGallery';
 import { CharacterLibrary } from '../design/Characters';
 import { startDesigner, isImageFile } from '../design/DesignerFile';
 import { useMemo, useRef, useState } from 'react';
@@ -27,7 +26,7 @@ type Tab = 'mine' | 'shared' | 'library' | 'starred';
 type Entry = { id: string; star: string; title: string; kind: FileKind; who: string; where?: string; at: number; open: () => void; doc?: SharedDoc };
 
 const APP: Record<AppKey, { name: string; kinds: DocKind[]; color: string; empty: string }> = {
-  games: { name: 'Games', kinds: ['game'], color: '#996525', empty: 'Make games, reuse flashcards and play together in class.' },
+  games: { name: 'Games', kinds: ['game'], color: '#996525', empty: 'Your saved games, ready to edit and play in class.' },
   collab: { name: 'Collab', kinds: ['doc', 'slides'], color: '#2f6f9f', empty: 'Documents and slides you write together, live, with colleagues or learners.' },
   reading: { name: 'Reading Journal', kinds: ['pd'], color: '#6b5a8a', empty: 'The books and articles you read, with your notes and citations.' },
   storyboard: { name: 'Storyboards', kinds: ['storyboard'], color: '#4f7a55', empty: 'Scenes with people, things and speech bubbles, to tell a story or set a speaking task.' },
@@ -104,7 +103,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
   };
   const makePdf = async (f: File) => {
     if (!uid) return;
-    if (f.size > MAX_PDF) return void tell('That PDF is over 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    if (f.size > MAX_PDF) return void tell('That PDF is over 30 MB. Make it smaller first, for example by saving it with smaller pictures.');
     const w = window.open('about:blank', '_blank');
     setBusy('Uploading ' + f.name + '…');
     try {
@@ -121,7 +120,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
     }
   };
   const news: { label: string; run: () => void }[] =
-    app === 'games' ? [{ label: 'Make a game', run: () => void make('game') }] : app === 'collab'
+    app === 'games' ? [{ label: 'New game show', run: () => void make('game') }] : app === 'collab'
       ? [
           { label: 'New document', run: () => void make('doc') },
           { label: 'New slides', run: () => void make('slides') },
@@ -147,7 +146,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
   ];
 
   // An app that isn't turned on for this teacher.
-  if (!appOn(embedded && app === 'reading' ? 'development' : app))
+  if (!appOn(app === 'reading' ? 'development' : app))
     return (
       <div className={embedded ? "af-embedded" : "shell af-shell"} style={{ ['--app' as string]: a.color }}>
         {!embedded && <TopBar><MainNav on="" /></TopBar>}
@@ -176,7 +175,6 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
             </button>
           ))}
         </header>
-        {app === 'games' && tab === 'mine' && !s && <GameGallery/>}
         {app === 'design' && <section className="dc-home"><div><h2>Characters</h2><p>Your recurring people, animals and mascots, ready for every design.</p></div><button className="btn" onClick={() => setCharacters(true)}>Open character library</button></section>}
         <div className="af-bar">
           <span className="af-tabs" role="tablist" aria-label="Which files">

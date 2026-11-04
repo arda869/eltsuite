@@ -89,7 +89,7 @@ export function Ref({ s, style, n }: { s: Source; style: CiteStyle; n?: number }
   );
 }
 
-const blank = (): Omit<ReadSource, 'id'> => ({ order: Date.now(), type: 'book', authors: [{ first: '', last: '' }], year: '', title: '' });
+export const blank = (): Omit<ReadSource, 'id'> => ({ order: Date.now(), type: 'book', authors: [{ first: '', last: '' }], year: '', title: '' });
 
 function PeopleInput({ label, list, onChange }: { label: string; list: Person[]; onChange: (p: Person[]) => void }) {
   return (
@@ -113,7 +113,7 @@ function PeopleInput({ label, list, onChange }: { label: string; list: Person[];
   );
 }
 
-function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 'id'> & { id?: string }; style: CiteStyle; onSave: (s: Omit<ReadSource, 'id'> & { id?: string }) => void; onCancel: () => void }) {
+export function SourceForm({ init, style, onSave, onCancel }: { init: Omit<ReadSource, 'id'> & { id?: string }; style: CiteStyle; onSave: (s: Omit<ReadSource, 'id'> & { id?: string }) => void; onCancel: () => void }) {
   const [s, setS] = useState(init);
   const set = (p: Partial<ReadSource>) => setS((x) => ({ ...x, ...p }));
   // Only the title is needed; everything else makes the reference complete.

@@ -245,7 +245,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/library" element={<TeacherOnly><LibraryPage /></TeacherOnly>} />
           <Route path="/archive" element={<TeacherOnly><MediaArchive /></TeacherOnly>} />
           <Route path="/collab" element={<TeacherOnly><AppFiles app="collab" /></TeacherOnly>} />
-          <Route path="/reading" element={<Navigate to="/development?section=reading" replace />} />
+          <Route path="/reading" element={<TeacherOnly><AppFiles app="reading" /></TeacherOnly>} />
           <Route path="/pdf" element={<TeacherOnly><AppFiles app="pdf" /></TeacherOnly>} />
           <Route path="/game/:id" element={<GameSessionPage/>} />
           <Route path="/games" element={<TeacherOnly><AppFiles app="games" /></TeacherOnly>} />

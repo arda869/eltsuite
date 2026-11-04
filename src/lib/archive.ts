@@ -3,6 +3,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query,
 import { useEffect, useMemo, useState } from 'react';
 import { db } from './firebase';
 import { mediaCol, mediaDoc } from './media';
+import { getClass } from './classes';
 
 // The resources library: every picture, sound and video a teacher adds, kept so it can be used again in
 // any lesson or class. The archive entry lives with the teacher; the media itself lives in each class
@@ -93,6 +94,12 @@ export const requestArchivePurge = (uid: string, id: string) => updateDoc(doc(co
 
 export const formatBytes = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`);
 
+export async function resourceFolderForClass(uid:string,classId:string,folder='') {
+  if(folder||!classId||classId.startsWith('user:'))return folder;
+  const cls=await getClass(classId).catch(()=>null);
+  return cls&&(cls.teacherId===uid||cls.teacherIds?.includes(uid))?`Classes/${cls.name.replace(/\//g,'-')}`:'';
+}
+
 // ------------------------------------------------------------------ class media
 
 // Sound files are stored in parts (a Firestore document holds up to 1 MB), with a manifest that
@@ -171,6 +178,7 @@ export function soundUrl(classId: string, id: string, m: Manifest) {
 
 // Each stem is a normal reusable resource, and the full recording links to both.
 export async function saveStemResources(uid:string,classId:string,name:string,folder:string,blobs:SongStemBlobs,script:ScriptLine[],duration:number,vocalsOff=false):Promise<StemSource>{
+  folder=await resourceFolderForClass(uid,classId,folder);
   const stems:SongStemIds={vocals:'',instrumental:'',...(vocalsOff?{vocalsOff:true}:{})};
   for(const key of ['vocals','instrumental'] as const){
     const title=name+(key==='vocals'?' · Vocals':' · Sing-along backing');

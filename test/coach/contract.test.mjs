@@ -48,3 +48,9 @@ test('journal drafts are structured, bounded and absent during ordinary chat',as
 });
 
 test('form references accept only ids and strip browser-supplied form contents',()=>{assert.deepEqual(coachRequest({...base(),formContext:{docId:'doc1',formId:'form-1',fields:{text:'forged'}}}).formContext,{docId:'doc1',formId:'form-1'});for(const v of [{docId:'../secret',formId:'x'},{docId:'doc',formId:''},{docId:42,formId:'x'}])assert.throws(()=>coachRequest({...base(),formContext:v}));});
+test('current page text is bounded and passed as context',()=>{
+ const pageContext={name:'Classroom',path:'/class/demo',content:'A visible activity about food.'};
+ assert.deepEqual(coachRequest({...base(),pageContext}).pageContext,pageContext);
+ assert.throws(()=>coachRequest({...base(),pageContext:{...pageContext,content:'x'.repeat(7001)}}));
+ assert.throws(()=>coachRequest({...base(),pageContext:{...pageContext,path:'/../private'}}));
+});

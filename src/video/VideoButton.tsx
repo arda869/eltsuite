@@ -95,7 +95,6 @@ export const VIDEO_SHORTCUTS = [
   ["M", "Mute / unmute selected track"],
   ["V", "Open media library"],
   ["G", "Open character library"],
-  ["A", "Open AI creation"],
   ["+ / −", "Zoom timeline"],
   ["?", "Show keyboard shortcuts"],
   ["Escape", "Close a menu or dialog"],

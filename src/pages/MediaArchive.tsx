@@ -568,7 +568,7 @@ export function MediaArchive() {
   const [pdfBusy, setPdfBusy] = useState('');
   const makePdf = async (f: File) => {
     if (!uid) return;
-    if (f.size > MAX_PDF) return void tell('That PDF is over 15 MB. Make it smaller first, for example by saving it with smaller pictures.');
+    if (f.size > MAX_PDF) return void tell('That PDF is over 30 MB. Make it smaller first, for example by saving it with smaller pictures.');
     const w = window.open('about:blank', '_blank');
     setPdfBusy('Uploading ' + f.name + '…');
     try {
@@ -593,7 +593,7 @@ export function MediaArchive() {
   const upload = async (list: File[]) => {
     if (!uid) return;
     const big = list.filter((f) => f.size > MAX_FILE);
-    if (big.length) void tell(`${big.map((f) => f.name).join(', ')} ${big.length === 1 ? 'is' : 'are'} over 15 MB, so ${big.length === 1 ? 'it wasn’t' : 'they weren’t'} added. Make ${big.length === 1 ? 'it' : 'them'} smaller first.`);
+    if (big.length) void tell(`${big.map((f) => f.name).join(', ')} ${big.length === 1 ? 'is' : 'are'} over 30 MB, so ${big.length === 1 ? 'it wasn’t' : 'they weren’t'} added. Make ${big.length === 1 ? 'it' : 'them'} smaller first.`);
     const ok = list.filter((f) => f.size <= MAX_FILE);
     const w = ok.find(isWord);
     if (w) {
@@ -648,7 +648,7 @@ export function MediaArchive() {
     { label: 'Folder', icon: 'folder', onClick: () => void newFolder() },
     'sep',
     { label: 'Collab document', icon: 'discuss', hint: 'with learners too', onClick: () => void makeDoc('doc') },
-    ...(appOn('games') ? [{ label: 'Game', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
+    ...(appOn('games') ? [{ label: 'Game show', icon: 'pick', onClick: () => void makeDoc('game') } as MenuItem] : []),
     { label: 'Flashcards', icon: 'pick', onClick: () => void makeDoc('flash') },
     { label: 'Reading Journal', icon: 'notebook', onClick: () => void makeDoc('pd') },
     ...(appOn('design') ? [{ label: 'Designer', icon: 'design', hint: 'images and storyboards', onClick: () => void makeDoc('design') } as MenuItem] : []),
@@ -656,7 +656,7 @@ export function MediaArchive() {
     { label: 'PDF…', icon: 'annotate', hint: 'write on it with others', onClick: () => pdfIn.current?.click() },
     { label: 'Upload a file…', icon: 'upload', hint: 'Word, Excel or any other kind', onClick: () => anyIn.current?.click() },
     'sep',
-    { label: 'Video editor', icon: 'video', hint: 'edit clips, make AI videos and reuse characters', onClick: () => void window.open('/studio/video/new', '_blank') },
+    { label: 'Video editor', icon: 'video', hint: 'edit clips and reuse characters', onClick: () => void window.open('/studio/video/new', '_blank') },
     { label: 'Recording', icon: 'mic', onClick: () => setDialog({ tab: 'record' }) },
     { label: 'Recording, with colleagues', icon: 'person', onClick: () => setTogether(true) },
     { label: 'Pictures…', icon: 'picture', hint: 'or paste one here', onClick: () => picIn.current?.click() },

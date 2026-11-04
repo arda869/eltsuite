@@ -2,7 +2,7 @@ import { StudioDivider, useStudioPanels } from "./StudioPanels";
 import { UiIcon } from "../components/UiIcon";
 import { VideoDialog } from "./VideoDialog";
 import { VideoButton, VIDEO_SHORTCUTS } from "./VideoButton";
-import { assembleScenes, detachAudio, insertPause, rippleDelete } from "./operations";
+import { detachAudio, insertPause, rippleDelete } from "./operations";
 import { decodeSound, toMono } from "../lib/sound";
 import { transcribeRecording } from "../lib/speech";
 import {
@@ -27,6 +27,7 @@ import { mediaDoc } from "../lib/media";
 import {
   archiveAdd,
   archiveGet,
+  resourceFolderForClass,
   loadManifest,
   soundUrl,
   saveSound,
@@ -60,7 +61,6 @@ import {
 } from "./library";
 import { VideoEngine } from "./engine";
 import { AssetPreview, CharacterLibrary } from "./CharacterLibrary";
-import { AIVideo } from "./AIVideo";
 import "./video.css";
 type Props = {
   initialFile?: File;
@@ -91,7 +91,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
     kind: VideoTrack["kind"];
   } | null>(null);
   const [simulated, setSimulated] = useState(false);
-  const [animateImage, setAnimateImage] = useState<VideoAsset | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [projectId] = useState(() =>
@@ -109,7 +108,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
     [selectedTrack, setSelectedTrack] = useState(""),
     [zoom, setZoom] = useState(36),
     [enabled, setEnabled] = useState(false),
-    [plannerEnabled, setPlannerEnabled] = useState(false),
     [exportProgress, setExportProgress] = useState<number | null>(null),
     [projects, setProjects] = useState<{ id: string; title: string }[]>([]),
     [sharing, setSharing] = useState<VideoAsset | null>(null),
@@ -153,12 +151,10 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
         setProjects(await listProjects(uid));
         const status = await videoCall<{
           enabled: boolean;
-          plannerEnabled?: boolean;
           simulated?: boolean;
         }>({ action: "status" });
         if (!gone) {
           setEnabled(status.enabled);
-          setPlannerEnabled(!!status.plannerEnabled);
           setSimulated(!!status.simulated);
         }
       } catch (e) {
@@ -521,7 +517,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
         const archiveId = await archiveAdd(uid, {
           name: p.title,
           kind: "video",
-          folder: "",
+          folder: await resourceFolderForClass(uid,space),
           tags: [],
           size: blob.size,
           home: { classId: space, mediaId: result.mediaId },
@@ -816,7 +812,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
           });
       } else if (!mod && k === "v") setTab("media");
       else if (!mod && k === "g") setTab("characters");
-      else if (!mod && k === "a") setTab("ai");
       else if (e.key === "+" || e.key === "=")
         setZoom((z) => Math.min(160, z + 8));
       else if (e.key === "-") setZoom((z) => Math.max(8, z - 8));
@@ -861,7 +856,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
         {simulated && (
           <span
             className="vx-test-badge"
-            title="AI generation is simulated in this local test preview."
+            title="Some media services are simulated in this local test preview."
           >
             Test preview
           </span>
@@ -943,7 +938,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
             {[
               ["media", "Media"],
               ["characters", "Characters"],
-              ["ai", "Make with AI"],
             ].map(([k, label]) => (
               <VideoButton
                 key={k}
@@ -1023,7 +1017,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                         >
                           {a.kind === "image" ? "Add still image" : "Add to timeline"}
                         </VideoButton>
-                        {a.kind === "image" && <VideoButton icon="videoSparkles" disabled={locked} onClick={() => {setAnimateImage(a);setTab("ai");}}>Animate image</VideoButton>}
                         {a.owner === uid && (
                           <VideoButton
                             onClick={() => {
@@ -1052,26 +1045,6 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
                 onReady={() => say("")}
               />
             )}
-            <div hidden={tab!=="ai"}>
-              <AIVideo
-                visible={tab==="ai"}
-                onOpen={()=>setTab('ai')}
-                uid={uid}
-                ownerName={ownerName}
-                assets={assets}
-                onAdd={addAsset}
-                startingImage={animateImage}
-                onStartingImageUsed={() => setAnimateImage(null)}
-                plannerEnabled={plannerEnabled}
-                onAssemble={(scenes,title) => {
-                  const next=assembleScenes(projectRef.current,scenes,title);
-                  if(!validProject(next)) throw Error("This sequence does not fit the project. Make room in your timeline first.");
-                  edit(next); say("Your scenes, narration and question cards are on the timeline. Save your project when ready.");
-                }}
-                onError={say}
-                enabled={enabled}
-              />
-            </div>
           </div>
         </aside>
         <StudioDivider
@@ -1089,7 +1062,7 @@ export function VideoEditor({ initialFile, classId, onSaved, onBack }: Props) {
               <div className="vx-preview-empty">
                 <UiIcon name="video" size={34} />
                 <b>Your video preview</b>
-                <span>Upload media or choose Make with AI to start.</span>
+                <span>Upload a video or image to start editing.</span>
               </div>
             )}
             <canvas

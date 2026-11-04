@@ -15,7 +15,7 @@ import { samplesOf, sfxSamples, useMySfx, type MySfx } from '../lib/sfxAudio';
 import { clipEnd, clipLen, mixdown, projectLen, renderClip, SFX, stackRows, VOICE_FX, type Clip, type Line, type Project, type Track, type VoiceFx } from '../lib/mix';
 import { encodeMp3, SOUND_QUALITY, storedPerMinute, type SoundQuality } from '../lib/audioEncode';
 import { cleanNoise } from '../lib/soundJobs';
-import { archiveAdd, formatBytes, saveSound, saveStemResources, type SongStemBlobs, type StemSource, type ScriptLine } from '../lib/archive';
+import { archiveAdd, formatBytes, resourceFolderForClass, saveSound, saveStemResources, type SongStemBlobs, type StemSource, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { newId } from '../lib/tasks';
 import { askText } from '../lib/ask';
@@ -826,7 +826,7 @@ export function SoundEditor({ source, classId, onSaved, onBack, backLabel, folde
       setSaving({ stage: 'Uploading', p: base });
       const { mediaId, bytes } = await saveSound(classId, blob, { title: name, script: sc, duration, ...(stemSource?{stems:stemSource.stems}:{}) }, (q) => setSaving({ stage: 'Uploading', p: base + q * (0.97 - base) }));
       setSaving({ stage: 'Adding it to your resources library', p: 0.98 });
-      const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder, tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
+      const archiveId = await archiveAdd(user.uid, { kind: 'audio', name, folder:await resourceFolderForClass(user.uid,classId,folder), tags: [], size: Math.round((bytes * 4) / 3), home: { classId, mediaId }, script: sc, duration });
       setSaving({ stage: 'Saved', p: 1 });
       onSaved({ mediaId, archiveId, title: name, script: sc });
     } catch (e) {

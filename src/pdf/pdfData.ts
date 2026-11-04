@@ -7,7 +7,7 @@ import { mediaCol, mediaDoc } from '../lib/media';
 // for a PDF in Files ("file:<id>"), or in a class's media for a PDF in a lesson ("media:<id>").
 // Pages are drawn in the browser with pdf.js.
 
-export const MAX_PDF = 15 * 1024 * 1024;
+export const MAX_PDF = 30 * 1024 * 1024;
 const PART = 450 * 1024;
 export type PageSize = { w: number; h: number };
 

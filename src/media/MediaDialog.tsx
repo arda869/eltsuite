@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { archiveAdd, mediaIn, saveLink, youTubeId, type ArchiveItem, type ScriptLine } from '../lib/archive';
+import { archiveAdd, mediaIn, resourceFolderForClass, saveLink, youTubeId, type ArchiveItem, type ScriptLine } from '../lib/archive';
 import { useAuth } from '../lib/auth';
 import { decodeSound } from '../lib/sound';
 import { ArchivePicker } from '../editor/Picture';
@@ -80,7 +80,7 @@ export function MediaDialog({ classId, tab: start = 'record', onPick, onClose, f
     const name = title.trim() || (youTubeId(u) ? 'YouTube video' : decodeURIComponent(u.split('/').pop()?.split('?')[0] ?? '') || 'Link');
     try {
       const mediaId = await saveLink(classId, u, { title: name, video });
-      const archiveId = await archiveAdd(user.uid, { kind: video ? 'video' : 'audio', name, folder, tags: [], size: 0, link: u, home: { classId, mediaId }, script: [] as ScriptLine[] });
+      const archiveId = await archiveAdd(user.uid, { kind: video ? 'video' : 'audio', name, folder:await resourceFolderForClass(user.uid,classId,folder), tags: [], size: 0, link: u, home: { classId, mediaId }, script: [] as ScriptLine[] });
       onPick({ mediaId, archiveId, kind: video ? 'video' : 'audio', title: name });
     } catch {
       setBusy('We couldn’t add that link. Check it and try again.');

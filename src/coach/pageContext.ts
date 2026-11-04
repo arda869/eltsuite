@@ -20,3 +20,11 @@ export function coachContextOnPage(): CoachContext {
     },
   };
 }
+
+// Share only text visible on the page the teacher is looking at when they send.
+export function coachPageSnapshot() {
+  const page = coachContextOnPage().pageContext!;
+  const main = document.querySelector<HTMLElement>('main, [role="main"]');
+  const visible = (main ?? document.body).innerText || '';
+  return { ...page, content: visible.replace(/\s+/g, ' ').trim().slice(0, 7000) };
+}

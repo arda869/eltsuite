@@ -10,6 +10,8 @@
 .studio-forms-list h3 { margin:8px 0; }
 .studio-forms-list .coach-actions { flex-wrap:wrap; }
 .studio-form .ling-panel { padding:12px 0; border:0; }
+.studio-reading-reference { margin:12px 0; padding:12px 0; border-block:1px solid var(--hair); }
+.studio-reading-reference .pd-form { margin-top:12px; }
 
 .pg-paper .studio-form {background:transparent;border-color:transparent;}
 

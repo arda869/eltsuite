@@ -4,8 +4,8 @@ import { learnerEmail, learnerPassword } from './learners';
 
 // "View as a learner": the teacher opens a new tab that is signed in as one of their learners.
 // The tab keeps its sign-in to itself (session persistence), so the teacher's own tab stays
-// signed in as the teacher. The learner's sign-in details travel in sessionStorage, which the
-// browser copies into a tab opened with window.open, and are wiped as soon as they are used.
+// signed in as the teacher. Write the one-time details into the new tab before loading the app;
+// copying this tab's sessionStorage depends on browser timing and can open the wrong account.
 
 const KEY = 'll.proxy';
 export type ProxyInfo = { email?: string; password?: string; token?: string; name: string; classId: string; path: string; signedIn?: boolean };
@@ -36,11 +36,16 @@ export function writeProxy(p: ProxyInfo | null) {
 // Must run inside a click (pop-up blockers), so the PIN has to be known already.
 export function openAsLearner(opts: { classId: string; classCode: string; learnerId: string; name: string; pin: string; path?: string }) {
   if (!opts.pin) return false;
-  writeProxy({ email: learnerEmail(opts.learnerId), password: learnerPassword(opts.classCode, opts.pin), name: opts.name, classId: opts.classId, path: opts.path ?? '/' });
-  const w = window.open('/?as-learner=1', '_blank');
-  // The new tab has its own copy now; this tab must not keep the details.
-  window.setTimeout(() => writeProxy(null), 0);
-  return !!w;
+  const w = window.open('about:blank', '_blank');
+  if (!w) return false;
+  try {
+    w.sessionStorage.setItem(KEY, JSON.stringify({ email: learnerEmail(opts.learnerId), password: learnerPassword(opts.classCode, opts.pin), name: opts.name, classId: opts.classId, path: opts.path ?? '/' } satisfies ProxyInfo));
+    w.location.href = '/?as-learner=1';
+    return true;
+  } catch {
+    w.close();
+    return false;
+  }
 }
 
 export async function loadPins(classId: string, learnerIds: string[]) {

@@ -163,7 +163,7 @@ const APPS: GuideApp[] = [
     glyph: APP_MARKS.collab,
   },
   {
-    k: 'reading', name: 'Development Studio', color: '#a56748', to: '/development', tag: 'Reading, reflection and classroom inquiry',
+    k: 'reading', name: 'Reading Journal', color: '#6b5a8a', to: '/reading', tag: 'Reading, notes and citations',
     about: 'For CELTA, Delta, an MA or your own development: each book or article with your notes, and its reference written for you.',
     can: ['Notes under each source', 'References in APA, Harvard and more', 'Cite a source in a Collab document in one click'],
     glyph: APP_MARKS.development,

@@ -8,7 +8,7 @@ import { layoutCrossword, newPackData, PACK_LABELS, tokenise, type PackKind } fr
 import { audioUrl as mediaUrl, saveImage, speak } from '../lib/media';
 import { useAuth } from '../lib/auth';
 import { auth } from '../lib/firebase';
-import { archiveAdd } from '../lib/archive';
+import { archiveAdd, resourceFolderForClass } from '../lib/archive';
 import { isLearnerEmail } from '../lib/learners';
 import { useNotebook } from '../lib/notebook';
 import { useEditorClass } from './context';
@@ -73,16 +73,18 @@ export async function uploadPictureFull(classId: string, file: Blob, quality: Pi
 export async function uploadPicture(classId: string, file: File | Blob, quality: PicQuality = 'standard', name?: string, folder = '') {
   const r = await uploadPictureFull(classId, file, quality);
   const u = auth.currentUser;
-  if (u && !isLearnerEmail(u.email))
+  if (u && !isLearnerEmail(u.email)) {
+    const destination = await resourceFolderForClass(u.uid,classId,folder);
     await archiveAdd(u.uid, {
       kind: 'image',
       name: (name ?? (file instanceof File ? file.name : '')).replace(/\.[a-z0-9]+$/i, '').trim() || 'Picture',
-      folder,
+      folder: destination,
       tags: [],
       size: Math.round((r.size * 4) / 3),
       home: { classId, mediaId: r.src.slice(6) },
       thumb: r.thumb,
     }).catch(() => {});
+  }
   return r.src;
 }
 

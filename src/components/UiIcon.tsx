@@ -26,6 +26,8 @@ const P: Record<string, ReactNode> = {
   alignRight: <path d="M4 6h16M10 10h10M4 14h16M10 18h10" />,
   alignJustify: <path d="M4 6h16M4 10h16M4 14h16M4 18h16" />,
   plus: <path d="M12 6v12M6 12h12" />,
+  history: <><path d="M4.5 8.5a8 8 0 1 1-.5 7" /><path d="M4.5 4.5v4h4M12 7.5V12l3 2" strokeLinejoin="round" /></>,
+  pin: <><path d="M9 3.5h6l-.8 6 3.3 3v1H6.5v-1l3.3-3zM12 13.5v7" strokeLinejoin="round" /></>,
   textSize: <><path d="M3.5 6.5h10M8.5 6.5V19" /><path d="M13.5 11.5h7M17 11.5V19" /></>,
   download: <><path d="M12 4v11" /><path d="m7.5 10.5 4.5 4.5 4.5-4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
   export: <><path d="M12 4v11" /><path d="M7.5 8.5 12 4l4.5 4.5" /><path d="M5 14v4.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V14" /></>,
