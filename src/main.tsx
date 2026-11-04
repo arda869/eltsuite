@@ -32,7 +32,7 @@ import './friday-ui.css';
 import './cohesion.css';
 import { AiActivityDock } from './components/AiActivity';
 
-const PublicHome=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicHome})));
+const PublicHome=lazy(()=>import('./public/Home').then(m=>({default:m.PublicHome})));
 const PublicError=lazy(()=>import('./public/PublicSite').then(m=>({default:m.PublicError})));
 const ContactPage=lazy(()=>import('./public/PublicSite').then(m=>({default:m.ContactPage})));
 const ExplorePage=lazy(()=>import('./public/ExplorePage').then(m=>({default:m.ExplorePage})));
@@ -82,7 +82,6 @@ const AppFiles = lazy(() => import('./pages/AppFiles').then((m) => ({ default: m
 const StoryboardLibrary = lazy(() => import('./pages/StoryboardLibrary').then((m) => ({ default: m.StoryboardLibrary })));
 const InvitePage = lazy(() => import('./pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 
-const ObservationStudio = lazy(() => import('./observations/ObservationStudio').then(m => ({default:m.ObservationStudio})));
 const AppliedLinguistics = lazy(() => import('./linguistics/AppliedLinguistics').then(m => ({default:m.AppliedLinguistics})));
 const DevelopmentStudio = lazy(() => import('./coach/DevelopmentStudio').then(m => ({ default: m.DevelopmentStudio })));
 const LessonAssistant = lazy(() => import('./ai/LessonAssistant').then((m) => ({ default: m.LessonAssistant })));
@@ -214,7 +213,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/linguistics" element={<SignedIn><AppliedLinguistics /></SignedIn>} />
-          <Route path="/observations" element={<TeacherOnly><ObservationStudio /></TeacherOnly>} />
+          <Route path="/observations" element={<Navigate to="/development" replace />} />
           <Route path="/development" element={<TeacherOnly><DevelopmentStudio /></TeacherOnly>} />
           <Route path="/coach" element={<Navigate to="/development?section=coach" replace />} />
           <Route path="/classes" element={<TeacherOnly><TeacherHome /></TeacherOnly>} />

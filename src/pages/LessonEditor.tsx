@@ -1121,7 +1121,7 @@ export function LessonEditor() {
             {!preview && <PanelToggle side="right" open={panels.right} onClick={panels.toggleRight} label={teachingHere ? 'the live answers' : 'the task settings'} />}
           </div>
           {!preview && <details className="lesson-support-tools"><summary><UiIcon name="videoSparkles" /> Planning and review</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
-          {!preview && <a className="btn small-btn" href={'/observations?classId='+classId+'&itemId='+itemId} target="_blank" rel="noreferrer">Observe this lesson</a>}<Link className="btn small-btn" to={`/development?section=coach&classId=${classId}&itemId=${itemId}${task?.id?"&taskId="+task.id:""}`}>Discuss with coach</Link></div></details>}
+          <Link className="btn small-btn" to={`/development?section=coach&classId=${classId}&itemId=${itemId}${task?.id?"&taskId="+task.id:""}`}>Discuss with coach</Link></div></details>}
           {/* The teaching tools show only on the teaching screen: not while editing during a live lesson. */}
           {teachingHere && !preview && !editWhileTeaching && (
             <div className="session-strip teach-bar" aria-label="Teaching tools">

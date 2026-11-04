@@ -163,11 +163,11 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if(d.action==='create') {const {activities,type}=JSON.parse(localStorage.getItem('mockAiActivities')!);const id='ai-test';await setDoc(doc(db,'classes',d.classId,'items',id),{type,title:activities.title,topicId:null,order:10,hidden:true,locked:false,taskCount:1});await setDoc(doc(db,'classes',d.classId,'items',id,'tasks','a1'),{kind:'task',title:'Choose and explain',instructions:'Choose a trip and explain.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Train: £20. Bus: £10.'}]},...(activities.tasks[0].trainingTool?[{type:'tt',attrs:{id:'training-test',kind:'rehearsal',title:'Microteaching rehearsal',mode:'complete',data:{}}}]:[])]},order:0,hidden:false,locked:false});return {data:{createdItemId:id}};}
   if (d.action === 'save') {
     if ((store[d.draftId]?.version ?? 0) !== d.version) throw Error('This plan changed in another window.');
-    store[d.draftId] = { brief: d.brief, plan: d.plan, version: d.version + 1 };
+    store[d.draftId] = { brief: d.brief, plan: d.plan, creationType: d.creationType, version: d.version + 1 };
     localStorage.setItem('mockAiDrafts', JSON.stringify(store));
     return { data: { version: d.version + 1 } };
   }
-  if (d.action === 'list') return { data: { drafts: Object.entries(store).map(([id, v]: [string, any]) => ({ id, title: v.plan.title, version: v.version })) } };
+  if (d.action === 'list') return { data: { drafts: Object.entries(store).map(([id, v]: [string, any]) => ({ id, title: v.plan.title, version: v.version, creationType: v.creationType ?? 'lesson' })) } };
   if (d.action === 'load') return { data: { draft: store[d.draftId] } };
   if (d.action === 'delete') { delete store[d.draftId]; localStorage.setItem('mockAiDrafts', JSON.stringify(store)); return { data: {} }; }
   throw Error('Unknown action');

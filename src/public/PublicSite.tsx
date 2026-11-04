@@ -3,51 +3,190 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Wordmark } from '../components/Wordmark';
 import { stages } from './sample';
 import './public.css';
-const WorkflowProduct=lazy(()=>import('./ProductDemo').then(m=>({default:m.WorkflowProduct})));
-const SharedWritingPreview=lazy(()=>import('./ProductDemo').then(m=>({default:m.SharedWritingPreview})));
-function DeferredPreview({children}:{children:ReactNode}){const ref=useRef<HTMLDivElement>(null);const [visible,setVisible]=useState(false);useEffect(()=>{const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){setVisible(true);observer.disconnect();}},{rootMargin:'250px'});if(ref.current)observer.observe(ref.current);return()=>observer.disconnect();},[]);return <div ref={ref} className="pub-deferred">{visible?children:<p className="pub-note">Interactive Collab example</p>}</div>;}
-export const publicLaunch = { mode: 'invitation-only', registration: false, checkout: false } as const;
-export function PublicLayout({children}:{children:ReactNode}) {
- const [menu,setMenu]=useState(false);const location=useLocation();const toggle=useRef<HTMLButtonElement>(null);
- useEffect(()=>{setMenu(false);if(location.hash){requestAnimationFrame(()=>document.getElementById(location.hash.slice(1))?.scrollIntoView());}else window.scrollTo(0,0);},[location.pathname,location.hash]);
- useEffect(()=>{const names:Record<string,string>={'/':'Made for teachers. Better together.','/explore':'Explore','/pricing':'Plans & Pricing','/about':'About','/signin':'Sign In','/contact':'Contact','/privacy':'Privacy','/terms':'Terms'};document.title=(names[location.pathname]??'Page not found')+' — ELT Suite';const url='https://eltsuite.com'+location.pathname;let canonical=document.querySelector<HTMLLinkElement>('link[rel="canonical"]');if(!canonical){canonical=document.createElement('link');canonical.rel='canonical';document.head.append(canonical);}canonical.href=url;const description='A connected space for English language teaching, lesson planning, collaboration and professional learning. Explore ELT Suite without an account.';const tags=[['property','og:title',document.title],['property','og:description',description],['property','og:url',url],['name','description',description],['name','robots',names[location.pathname]?'index,follow':'noindex,nofollow']];for(const [attr,key,value] of tags){let meta=document.head.querySelector<HTMLMetaElement>('meta['+attr+'="'+key+'"]');if(!meta){meta=document.createElement('meta');meta.setAttribute(attr,key);document.head.append(meta);}meta.content=value;}return()=>{canonical?.remove();document.head.querySelector('meta[name="robots"]')?.remove();};},[location.pathname]);
- return <div className="pub"><a className="pub-skip" href="#public-main">Skip to content</a><header className="pub-header" onKeyDown={e=>{if(e.key==='Escape'){setMenu(false);toggle.current?.focus();}}}><Link to="/" aria-label="ELT Suite home"><Wordmark/></Link><button ref={toggle} className="pub-menu" aria-expanded={menu} aria-controls="public-nav" onClick={()=>setMenu(!menu)}>{menu?'Close menu −':'Menu +'}</button><nav id="public-nav" className={menu?'is-open':''} aria-label="Main navigation"><NavLink to="/explore">Explore</NavLink><NavLink to="/pricing">Plans & Pricing</NavLink><NavLink to="/about">About</NavLink><Link className="pub-signin" to="/signin">Sign In <span aria-hidden="true">↗</span></Link></nav></header>{children}<footer className="pub-footer"><Link to="/" aria-label="ELT Suite home"><Wordmark/></Link><p>Made for teachers. Built for teaching. Better together.</p><div>{[['/explore','Explore'],['/pricing','Plans & Pricing'],['/about','About'],['/contact','Contact'],['/privacy','Privacy'],['/terms','Terms']].map(([to,label])=><Link key={to} to={to}>{label}</Link>)}</div><small>ELT Suite · Invitation-only access. More coming soon.</small></footer></div>;
-}
-const NativeActivity=lazy(()=>import('./ProductDemo').then(m=>({default:m.NativeActivity})));
-const EvidencePreview=lazy(()=>import('./ProductDemo').then(m=>({default:m.EvidencePreview})));
-export function LessonPreview({compact=false,title}:{compact?:boolean;title?:string}) {
- const [stage,setStage]=useState(1),[view,setView]=useState('plan');const s=stages[stage];
- return <div className={'pub-lesson '+(compact?'compact':'')}><div className="pub-window"><strong>ELT Suite</strong><span>Lesson 08 · B1 · 60 minutes</span><span className="pub-demo-label">Interactive sample</span></div><div className="pub-preview-switch" role="group" aria-label="Explore the lesson experience">{[['plan','1. Plan the lesson'],['teach','2. Try the activity'],['review','3. Review learner work']].map(([id,label])=><button key={id} aria-pressed={view===id} onClick={()=>setView(id)}>{label}</button>)}</div><p className="pub-preview-explainer">{view==='plan'?'Organise your objective, teaching sequence and notes in one lesson. Select a stage to see what learners will do.':view==='teach'?'The lesson becomes an interactive task. Try an answer and check the feedback, just as a learner would.':'See a learner’s response alongside feedback, then use that evidence to inform the next lesson.'}</p>
- {view==='plan'?<div className="pub-lesson-body"><aside><span className="pub-kicker">YOUR LESSON PLAN</span><strong>{title??'Expressing Opinions'}</strong><p>Choose an activity ↓</p><ol>{stages.map((s,i)=><li key={s.title}><button aria-pressed={stage===i} onClick={()=>setStage(i)}><span>0{i+1}</span>{s.title}</button></li>)}</ol></aside><section className="pub-lesson-paper" aria-label="Sample lesson stage"><div className="pub-aim"><span>WHAT LEARNERS WILL ACHIEVE</span><p>{s.aim}</p></div><div className="pub-preview-activity"><div className="pub-lesson-meta"><span>{s.kind}</span><span>{s.minutes} min</span></div><h3>{s.title}</h3><p>{s.prompt}</p></div><div className="pub-language"><span>Language to build on</span><p>“I see your point, <em>but what about…?</em>”</p></div><p className="pub-teacher-note"><strong>YOUR TEACHING NOTE</strong>Give partners different information. Listen for reasons before offering a model.</p></section></div>:<div className="pub-preview-working"><Suspense fallback={<p>Opening the interactive example…</p>}>{view==='teach'?<NativeActivity/>:<EvidencePreview/>}</Suspense></div>}
- <div className="pub-preview-footer"><span>Fictional lesson · changes stay in this demo</span><Link to="/explore?step=lesson">Explore the full lesson →</Link></div></div>;
-}
-// A real screen from ELT Suite (demo data), in a simple window frame. Pictures are in
-// public/landing at twice their shown size, so they stay sharp.
-const SIZES:Record<string,[number,number]>={editor:[1600,930],class:[1600,860],collab:[1600,970],development:[1600,930],game:[1200,640],young:[1200,742],games:[1600,1000],live:[780,575],audio:[1600,1000]};
-function Shot({src,alt,eager=false,bare=false,className=''}:{src:string;alt:string;eager?:boolean;bare?:boolean;className?:string}){const [w,h]=SIZES[src]??[1600,1000];return <figure className={'pub-shot '+className}>{!bare&&<div className="pub-shot-bar" aria-hidden="true"><i/><i/><i/></div>}<img src={'/landing/'+src+'.webp'} alt={alt} width={w} height={h} loading={eager?'eager':'lazy'} decoding="async"/></figure>;}
-const tour:[string,string,string,string][]=[
- ['editor','Lessons','Build a lesson from tasks, then teach it live or set it as homework.','The lesson editor with a speaking task and its teaching notes'],
- ['class','Classes','Each class keeps its lessons, learners, discussion and reports together.','A class page with its topics and lessons'],
- ['game','Games','Turn your questions into games, played together or on learners’ own devices.','A game show question with confetti after a right answer'],
- ['collab','Collab','Write and plan with colleagues in the same document, at the same time.','A shared lesson plan in Collab'],
- ['development','Development Studio','Reflect on your teaching and plan your next step, with a coach when you want one.','The Development Studio'],
- ['young','Young learners','Classes for children get bigger, brighter tasks made for small hands.','A young learners’ task with large coloured answer tiles'],
-];
-export function PublicHome(){return <PublicLayout><main id="public-main" className="pub-home">
-<section className="pub-hero pub-band"><div className="pub-hero-top"><div className="pub-hero-copy"><span className="pub-kicker">A place for English language teachers.</span><h1>Everything you need to <em>teach.</em><br/>A community to <em className="pub-underlined">grow with.</em></h1><p>Created out of a love for English language teaching, ELT Suite brings lesson planning, classroom tools, professional learning and collaboration into one connected space. Built around teachers and the work they do every day.</p><div className="pub-actions"><Link className="pub-button" to="/explore">Explore ELT Suite</Link><Link to="/signin">Sign In</Link></div><span className="pub-caption">Take a look around. No account needed.</span></div>
-<div className="pub-hero-stage" aria-label="ELT Suite: the lesson editor and live answers from a class" role="img"><Shot src="editor" alt="" eager className="pub-stage-main"/><Shot src="live" alt="" eager bare className="pub-stage-live"/></div></div>
-<div className="pub-hero-try"><div className="pub-hero-try-head"><span className="pub-kicker">TRY IT</span><h2>A sample lesson you can click through.</h2></div><div className="pub-hero-visual"><LessonPreview/></div></div></section>
-<section className="pub-speaks pub-band pub-band-paper" aria-labelledby="pub-speaks-h"><span className="pub-kicker">MADE FOR LANGUAGE TEACHING</span><h2 id="pub-speaks-h" className="sr-only">A platform that speaks your language.</h2><img className="pub-speaks-text" src="/landing/marks.webp" alt="A platform that speaks your language, marked as in a class: weak vowels over the a in “A” and “that”, a linking mark between “speaks” and “your”, the stress on the first syllable of “language”, and the definition of “platform” open." width={1200} height={916} loading="lazy" decoding="async"/><p>Weak forms, linking, word stress and definitions, marked the way you’d mark them on the board. Learners tap a word to see what it means.</p></section>
-<section className="pub-tour pub-band pub-band-tint" aria-labelledby="pub-tour-h"><div className="pub-band-head"><span className="pub-kicker">A LOOK AROUND</span><h2 id="pub-tour-h">One place for the whole job.</h2></div><ul className="pub-tour-strip" tabIndex={0} aria-label="Explore ELT Suite tools">{tour.map(([src,title,line,alt])=><li key={src}><Shot src={src} alt={alt}/><h3>{title}</h3><p>{line}</p></li>)}</ul></section>
-<Workflow/>
-<section className="pub-philosophy pub-section pub-band pub-band-paper"><div><span className="pub-kicker">BUILT AROUND TEACHERS</span><h2>Good teaching begins with teachers.</h2><p>Teaching is shaped by experience, curiosity and the decisions we make every day. We believe teachers should have the freedom to develop their own ideas, the tools to put them into practice and opportunities to learn from one another.</p></div><div className="pub-craft" aria-label="Teaching design: objective, procedure, interaction and task"><span>OBJECTIVE</span><strong>Give a reason.</strong><b aria-hidden="true">↓</b><span>PROCEDURE</span><strong>Notice · rehearse · discuss</strong><b aria-hidden="true">↓</b><span>INTERACTION</span><strong>Learner ↔ Learner</strong><b aria-hidden="true">↓</b><span>LEARNER TASK</span><strong>Agree on one proposal.</strong></div></section>
-<section className="pub-collab pub-section pub-band pub-band-tint"><div><span className="pub-kicker">BETTER TOGETHER</span><h2>Good ideas are worth sharing.</h2><p>Some of the most valuable things we learn about teaching come from other teachers. ELT Suite is designed to make that exchange easier, bringing teachers and their ideas closer together.</p><div className="pub-future"><strong>Coming later: Communities for teachers.</strong><p>We’re working towards a space where teachers with shared interests can find one another, exchange ideas and explore their practice together.</p></div></div><DeferredPreview><Suspense fallback={<p>Opening the Collab example…</p>}><SharedWritingPreview/></Suspense></DeferredPreview></section>
-<section className="pub-journey pub-section pub-band pub-band-paper"><div><span className="pub-kicker">A CLOSER LOOK</span><h2>See how it all comes together.</h2><p>Follow a sample English class from lesson planning to classroom activities, learner feedback and the next teaching decision.</p><Link className="pub-button" to="/explore">Explore the Demo</Link></div><Link className="pub-class-entry" to="/explore?step=class"><Shot src="class" alt="The sample class, B1 English for Communication"/><span className="pub-class-entry-text"><strong>B1 English for Communication</strong><span>Fictional class · 8 learners · Lesson 8: Expressing and Justifying Opinions</span><span className="pub-text-link">Open the class →</span></span></Link></section>
-<section className="pub-costs pub-section pub-band pub-band-grey"><span className="pub-kicker">OUR APPROACH</span><h2>Accessible by design.<br/>Sustainable by choice.</h2><p>We’re working to keep essential teaching and collaboration tools available for free. Some services, including AI generation, media processing and storage, come with real operating costs, so we explain those costs clearly and charge fairly for them.</p><Link className="pub-text-link" to="/pricing">Explore our approach to plans and pricing.</Link></section>
-<section className="pub-closing pub-section pub-band pub-band-dark"><span className="pub-kicker">THE NEXT CHAPTER</span><h2>We’re growing<br/><em>something together.</em></h2><p>ELT Suite is taking shape, guided by a love for English language teaching and a belief in the power of teachers learning from one another. We’re starting small, with more to come.</p><Link className="pub-button" to="/explore">Explore ELT Suite</Link><span className="pub-caption">More coming soon.</span></section></main></PublicLayout>;}
-const workflow=[['Plan','Give your ideas a place to grow.','Create lessons, develop activities and make informed teaching decisions with tools designed around your classroom.'],['Teach','Everything ready for the classroom.','Organise your classes, share activities and bring your teaching plans into practice.'],['Understand','Learn from what happens in class.',"Review learner work, explore progress and use what you’ve learned to inform your next teaching decisions."],['Reflect','Make room for reflection.','Look back on your teaching, explore questions and develop your practice with support when you need it.'],['Grow','Keep learning, together.','Discover ideas, share your experience and connect your teaching with ongoing professional learning.']];
-function Workflow(){const [selected,setSelected]=useState(0);return <section id="teaching-connected" className="pub-workflow pub-section pub-band pub-band-grey"><span className="pub-kicker">YOUR TEACHING, CONNECTED</span><h2>Teaching is connected.<br/>Your tools should be too.</h2><div className="pub-prose"><p>A lesson doesn’t begin when the class starts, or end when the learners leave. There’s planning, preparation, teaching, feedback, reflection and the next lesson to think about.</p><p>ELT Suite brings these parts of teaching together, so you can spend less time moving between tools and more time focusing on your learners.</p></div><div className="pub-workflow-tabs" role="group" aria-label="Explore the teaching workflow">{workflow.map(([t],i)=><button key={t} aria-pressed={selected===i} onClick={()=>setSelected(i)}><span>0{i+1}</span>{t}<b aria-hidden="true">→</b></button>)}</div><div className="pub-workflow-product"><div><span className="pub-kicker">{workflow[selected][0]}</span><h3>{workflow[selected][1]}</h3><p>{workflow[selected][2]}</p><Link className="pub-text-link" to={'/explore?step='+(['lesson','lesson','work','next','collaborate'][selected])}>Explore this in the demo →</Link></div><Suspense fallback={<p>Opening the example…</p>}>{selected===0?<Shot src="editor" alt="The lesson editor, with a speaking task, its stages and teaching notes"/>:<WorkflowProduct stage={selected}/>}</Suspense></div></section>;}
-export function AboutPage(){return <PublicLayout><main id="public-main" className="pub-about pub-section"><span className="pub-kicker">ABOUT ELT SUITE</span><h1>Created out of a love for English language teaching.</h1><div className="pub-about-prose"><p>ELT Suite began with a simple belief: teachers deserve tools that understand their work and a space where they can learn from one another.</p><p>We're bringing together the different parts of English language teaching, from planning and classroom practice to reflection, research and professional development.</p><p>Our aim is to make this work more connected, more collaborative and easier to carry forward from one lesson to the next.</p><section><h2>Teachers are at the heart of everything we do.</h2><p>No two classrooms are exactly alike.</p><p>Teachers bring their experience, judgment, creativity and understanding of their learners to every lesson.</p><p>We believe technology should support that expertise, not replace it.</p><p>ELT Suite is designed to give teachers practical support while leaving teaching decisions where they belong: with the teacher.</p></section><section><h2>We believe teachers grow together.</h2><p>Some of our most useful teaching ideas begin with a conversation.</p><p>A colleague shares an activity. A teacher asks a question. Someone offers a different perspective.</p><p>We want ELT Suite to make those exchanges easier and more meaningful, connecting the tools teachers use with opportunities to collaborate and learn from one another.</p></section><section><h2>Our Mission</h2><p>To bring the tools, knowledge and collaborative opportunities English language teachers need into one connected space, helping them teach confidently and grow together.</p><h2>Our Vision</h2><p>A world where every English language teacher has access to the tools, knowledge and professional community they need to develop their practice.</p></section><section><h2>Built to grow with teachers.</h2><p>We want ELT Suite to remain accessible while continuing to develop reliable, useful tools.</p><p>That means being transparent about operating costs, making thoughtful decisions about pricing and ensuring the platform can sustain itself for the long term.</p></section><section><h2>Come and take a look.</h2><p>We're starting small, with more to come. Explore ELT Suite and discover what we're building for English language teachers.</p></section><Link className="pub-button" to="/explore">Explore ELT Suite ↗</Link></div></main></PublicLayout>;}
-export function ContactPage(){return <PublicLayout><main id="public-main" className="pub-about pub-section"><span className="pub-kicker">CONTACT</span><h1>We’d like to hear from you.</h1><div className="pub-about-prose"><p>Have a question about ELT Suite, an idea you’d like to share or something you’d like to discuss?</p><p>Get in touch. We value thoughtful conversations about English language teaching and the work we’re building.</p><a className="pub-text-link" href="mailto:arda@eltsuite.com">Email arda@eltsuite.com ↗</a><p className="pub-note">Opens your email application.</p></div></main></PublicLayout>;}
-export function PublicError({restricted=false}:{restricted?:boolean}){return <PublicLayout><main id="public-main" className="pub-page-hero pub-error"><span className="pub-kicker">{restricted?'MEMBER ACCESS':'PAGE NOT FOUND'}</span><h1>{restricted?'This area is for ELT Suite members.':'We couldn’t find that page.'}</h1><p>{restricted?'Sign in with an account that has access to continue.':'The page may have moved, or the link may no longer be available.'}</p><div className="pub-actions"><Link className="pub-button" to={restricted?'/signin':'/explore'}>{restricted?'Sign In':'Explore ELT Suite'}</Link><Link to="/">Return to Homepage</Link></div></main></PublicLayout>;}
 
+export const publicLaunch = { mode: 'invitation-only', registration: false, checkout: false } as const;
+
+const TITLES: Record<string, string> = { '/': 'Made for teachers. Better together.', '/explore': 'Explore', '/pricing': 'Plans & Pricing', '/about': 'About', '/signin': 'Sign In', '/contact': 'Contact', '/privacy': 'Privacy', '/terms': 'Terms' };
+const DESCRIPTION = 'A connected space for English language teaching, lesson planning, collaboration and professional learning. Explore ELT Suite without an account.';
+const FOOTER: [string, string][] = [['/pricing', 'Plans & Pricing'], ['/about', 'About'], ['/contact', 'Contact'], ['/privacy', 'Privacy'], ['/terms', 'Terms']];
+
+export function PublicLayout({ children }: { children: ReactNode }) {
+  const [menu, setMenu] = useState(false);
+  const location = useLocation();
+  const toggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    setMenu(false);
+    if (location.hash) requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView());
+    else window.scrollTo(0, 0);
+  }, [location.pathname, location.hash]);
+  useEffect(() => {
+    document.title = (TITLES[location.pathname] ?? 'Page not found') + ' — ELT Suite';
+    const url = 'https://eltsuite.com' + location.pathname;
+    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.append(canonical); }
+    canonical.href = url;
+    const tags = [['property', 'og:title', document.title], ['property', 'og:description', DESCRIPTION], ['property', 'og:url', url], ['name', 'description', DESCRIPTION], ['name', 'robots', TITLES[location.pathname] ? 'index,follow' : 'noindex,nofollow']];
+    for (const [attr, key, value] of tags) {
+      let meta = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
+      if (!meta) { meta = document.createElement('meta'); meta.setAttribute(attr, key); document.head.append(meta); }
+      meta.content = value;
+    }
+    return () => { canonical?.remove(); document.head.querySelector('meta[name="robots"]')?.remove(); };
+  }, [location.pathname]);
+  return (
+    <div className="pub">
+      <a className="pub-skip" href="#public-main">Skip to content</a>
+      <header className="pub-header" onKeyDown={(e) => { if (e.key === 'Escape' && menu) { setMenu(false); toggle.current?.focus(); } }}>
+        <Link to="/" className="pub-home-link" aria-label="ELT Suite home"><Wordmark /></Link>
+        <button ref={toggle} className="pub-menu" aria-expanded={menu} aria-controls="public-nav" onClick={() => setMenu(!menu)}>{menu ? 'Close menu −' : 'Menu +'}</button>
+        <nav id="public-nav" className={menu ? 'is-open' : ''} aria-label="Main navigation">
+          <NavLink to="/pricing">Plans & Pricing</NavLink>
+          <NavLink to="/about">About</NavLink>
+          <Link className="pub-signin" to="/signin">Sign In <span aria-hidden="true">↗</span></Link>
+        </nav>
+      </header>
+      {children}
+      <footer className="pub-footer">
+        <div className="pub-footer-brand">
+          <Link to="/" aria-label="ELT Suite home"><Wordmark /></Link>
+          <p>Made for teachers. Built for teaching. Better together.</p>
+        </div>
+        <nav aria-label="Footer">{FOOTER.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</nav>
+        <small>ELT Suite is open to invited teachers for now. More coming soon.</small>
+      </footer>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ the lesson preview in the demo
+
+const NativeActivity = lazy(() => import('./ProductDemo').then((m) => ({ default: m.NativeActivity })));
+const EvidencePreview = lazy(() => import('./ProductDemo').then((m) => ({ default: m.EvidencePreview })));
+const VIEWS: [string, string, string][] = [
+  ['plan', '1. Plan the lesson', 'Organise your objective, teaching sequence and notes in one lesson. Select a stage to see what learners will do.'],
+  ['teach', '2. Try the activity', 'The lesson becomes an interactive task. Try an answer and check the feedback, just as a learner would.'],
+  ['review', '3. Review learner work', 'See a learner’s response alongside feedback, then use that evidence to inform the next lesson.'],
+];
+
+export function LessonPreview({ title }: { title?: string }) {
+  const [stage, setStage] = useState(1), [view, setView] = useState('plan');
+  const s = stages[stage];
+  return (
+    <div className="pub-lesson">
+      <div className="pub-window"><strong>ELT Suite</strong><span>Lesson 08 · B1 · 60 minutes</span><span className="pub-demo-label">Interactive sample</span></div>
+      <div className="pub-preview-switch" role="group" aria-label="Explore the lesson experience">
+        {VIEWS.map(([id, label]) => <button key={id} aria-pressed={view === id} onClick={() => setView(id)}>{label}</button>)}
+      </div>
+      <p className="pub-preview-explainer">{VIEWS.find((v) => v[0] === view)![2]}</p>
+      {view === 'plan' ? (
+        <div className="pub-lesson-body">
+          <aside>
+            <span className="pub-kicker">YOUR LESSON PLAN</span>
+            <strong>{title ?? 'Expressing Opinions'}</strong>
+            <p>Choose an activity ↓</p>
+            <ol>{stages.map((st, i) => <li key={st.title}><button aria-pressed={stage === i} onClick={() => setStage(i)}><span>0{i + 1}</span>{st.title}</button></li>)}</ol>
+          </aside>
+          <section className="pub-lesson-paper" aria-label="Sample lesson stage">
+            <div className="pub-aim"><span>WHAT LEARNERS WILL ACHIEVE</span><p>{s.aim}</p></div>
+            <div className="pub-preview-activity"><div className="pub-lesson-meta"><span>{s.kind}</span><span>{s.minutes} min</span></div><h3>{s.title}</h3><p>{s.prompt}</p></div>
+            <div className="pub-language"><span>Language to build on</span><p>“I see your point, <em>but what about…?</em>”</p></div>
+            <p className="pub-teacher-note"><strong>YOUR TEACHING NOTE</strong>Give partners different information. Listen for reasons before offering a model.</p>
+          </section>
+        </div>
+      ) : (
+        <div className="pub-preview-working"><Suspense fallback={<p>Opening the interactive example…</p>}>{view === 'teach' ? <NativeActivity /> : <EvidencePreview />}</Suspense></div>
+      )}
+      <div className="pub-preview-footer"><span>Fictional lesson · changes stay in this demo</span><Link to="/explore?step=lesson">Explore the full lesson →</Link></div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ about and contact
+
+const ABOUT: [string, string[]][] = [
+  ['Teachers are at the heart of everything we do.', ['No two classrooms are exactly alike.', 'Teachers bring their experience, judgment, creativity and understanding of their learners to every lesson.', 'We believe technology should support that expertise, not replace it.', 'ELT Suite is designed to give teachers practical support while leaving teaching decisions where they belong: with the teacher.']],
+  ['We believe teachers grow together.', ['Some of our most useful teaching ideas begin with a conversation.', 'A colleague shares an activity. A teacher asks a question. Someone offers a different perspective.', 'We want ELT Suite to make those exchanges easier and more meaningful, connecting the tools teachers use with opportunities to collaborate and learn from one another.']],
+  ['Built to grow with teachers.', ['We want ELT Suite to remain accessible while continuing to develop reliable, useful tools.', 'That means being transparent about operating costs, making thoughtful decisions about pricing and ensuring the platform can sustain itself for the long term.']],
+];
+
+export function AboutPage() {
+  return (
+    <PublicLayout>
+      <main id="public-main" className="pub-page pub-about">
+        <header className="pub-page-hero">
+          <span className="pub-kicker">ABOUT ELT SUITE</span>
+          <h1>Created out of a love for English language teaching.</h1>
+          <p className="pub-lede">ELT Suite began with a simple belief: teachers deserve tools that understand their work and a space where they can learn from one another.</p>
+          <p>We’re bringing together the different parts of English language teaching, from planning and classroom practice to reflection, research and professional development.</p>
+          <p>Our aim is to make this work more connected, more collaborative and easier to carry forward from one lesson to the next.</p>
+        </header>
+        {ABOUT.map(([h, ps]) => (
+          <section key={h} className="pub-split">
+            <h2>{h}</h2>
+            <div>{ps.map((p) => <p key={p}>{p}</p>)}</div>
+          </section>
+        ))}
+        <section className="pub-mission" aria-label="Mission and vision">
+          <div><span className="pub-kicker">OUR MISSION</span><h2 className="sr-only">Our Mission</h2><p>To bring the tools, knowledge and collaborative opportunities English language teachers need into one connected space, helping them teach confidently and grow together.</p></div>
+          <div><span className="pub-kicker">OUR VISION</span><h2 className="sr-only">Our Vision</h2><p>A world where every English language teacher has access to the tools, knowledge and professional community they need to develop their practice.</p></div>
+        </section>
+        <section className="pub-page-end">
+          <h2>Come and take a look.</h2>
+          <p>We’re starting small, with more to come. Explore ELT Suite and discover what we’re building for English language teachers.</p>
+          <Link className="pub-button" to="/">Explore ELT Suite</Link>
+        </section>
+      </main>
+    </PublicLayout>
+  );
+}
+
+export function ContactPage() {
+  return (
+    <PublicLayout>
+      <main id="public-main" className="pub-page pub-contact">
+        <header className="pub-page-hero">
+          <span className="pub-kicker">CONTACT</span>
+          <h1>We’d like to hear from you.</h1>
+          <p className="pub-lede">Have a question about ELT Suite, an idea you’d like to share or something you’d like to discuss?</p>
+          <p>Get in touch. We value thoughtful conversations about English language teaching and the work we’re building.</p>
+        </header>
+        <div className="pub-contact-card">
+          <span className="pub-kicker">EMAIL</span>
+          <a className="pub-contact-mail" href="mailto:arda@eltsuite.com">arda@eltsuite.com <span aria-hidden="true">↗</span></a>
+          <p className="pub-note">Opens your email application. We read every message.</p>
+        </div>
+      </main>
+    </PublicLayout>
+  );
+}
+
+// ------------------------------------------------------------------ errors
+
+export type PublicErrorKind = 'notFound' | 'restricted' | 'loadFailed' | 'auth' | 'unavailable';
+const ERRORS: Record<PublicErrorKind, { kicker: string; title: string; body: string; action: [string, string] }> = {
+  notFound: { kicker: 'PAGE NOT FOUND', title: 'We couldn’t find that page.', body: 'The page may have moved, or the link may no longer be available.', action: ['/signin', 'Sign In'] },
+  restricted: { kicker: 'MEMBER ACCESS', title: 'This area is for ELT Suite members.', body: 'Sign in with an account that has access to continue.', action: ['/signin', 'Sign In'] },
+  loadFailed: { kicker: 'SOMETHING WENT WRONG', title: 'We couldn’t load this page just now.', body: 'Check your connection and try again. If you were working on something, it’s still saved.', action: ['', 'Try again'] },
+  auth: { kicker: 'SIGNING IN', title: 'We couldn’t sign you in just now.', body: 'Your link may have expired, or something went wrong on our side. Try signing in again.', action: ['/signin', 'Sign In'] },
+  unavailable: { kicker: 'BACK SOON', title: 'ELT Suite isn’t available just now.', body: 'We’re making some changes. Your work is safe. Please try again in a few minutes.', action: ['', 'Try again'] },
+};
+
+export function PublicError({ restricted = false, kind }: { restricted?: boolean; kind?: PublicErrorKind }) {
+  const e = ERRORS[kind ?? (restricted ? 'restricted' : 'notFound')];
+  const [to, label] = e.action;
+  return (
+    <PublicLayout>
+      <main id="public-main" className="pub-page pub-error">
+        <header className="pub-page-hero">
+          <span className="pub-kicker">{e.kicker}</span>
+          <h1>{e.title}</h1>
+          <p>{e.body}</p>
+          <div className="pub-actions">
+            {to ? <Link className="pub-button" to={to}>{label}</Link> : <button className="pub-button" onClick={() => window.location.reload()}>{label}</button>}
+            <Link className="pub-secondary" to="/">Return to Homepage</Link>
+          </div>
+        </header>
+      </main>
+    </PublicLayout>
+  );
+}

@@ -166,7 +166,7 @@ export function docCommands():Cmd[]{
   if(cachedCommands)return cachedCommands;
 // The "/" menu in a document, in the order a writer reaches for things.
 const DOC_ALL: (Cmd | null)[] = [
-  ...STUDIO_FORMS.map(f=>({key:'studio-'+f.kind,label:f.name,hint:'An editable studio form in this document',group:'Training' as const,run:(e:Editor)=>block(e,newStudioForm(f.kind))})),
+  ...STUDIO_FORMS.filter(f=>f.kind!=='observation').map(f=>({key:'studio-'+f.kind,label:f.name,hint:'An editable studio form in this document',group:'Training' as const,run:(e:Editor)=>block(e,newStudioForm(f.kind))})),
   { key: 'h1', label: 'Heading 1', hint: 'A big section heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 1 }).run() },
   { key: 'h2', label: 'Heading 2', hint: 'A medium heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 2 }).run() },
   { key: 'h3', label: 'Heading 3', hint: 'A small heading', group: 'Basic', run: (e) => e.chain().focus().setNode('heading', { level: 3 }).run() },
@@ -211,7 +211,6 @@ const DOC_ALL: (Cmd | null)[] = [
   ...COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => ({ ...c })),
   from('tt-analysis', 'Training'),
   from('tt-plan', 'Training'),
-  from('tt-observe', 'Training'),
   from('tt-loop', 'Training'),
   from('tt-org', 'Training'),
 ];
@@ -231,12 +230,12 @@ export const PRON_KEYS = ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'ph
 type DocSection={title:string;blurb:string;keys:string[]};
 let cachedSections:DocSection[]|undefined;
 export function docSections():DocSection[]{return cachedSections??=[
-  {title:'Studio forms',blurb:'Editable forms, gathered in Development Studio and available to your coach.',keys:STUDIO_FORMS.map(f=>'studio-'+f.kind)},
+  {title:'Studio forms',blurb:'Editable forms, gathered in Development Studio and available to your coach.',keys:STUDIO_FORMS.filter(f=>f.kind!=='observation').map(f=>'studio-'+f.kind)},
   { title: 'Basic', blurb: 'Headings, lists, checklists, tables and boxes.', keys: ['h1', 'h2', 'h3', 'text', 'list', 'numbered', 'checklist', 'table', 'quote', 'divider', 'info', 'textbox', 'reveal'] },
   { title: 'Pictures and media', blurb: 'Pictures from your device, storyboards, videos and web pages.', keys: ['image', 'storyboard', 'inline-video', 'linkcard'] },
   { title: 'Academic writing', blurb: 'Citations from your Reading Journal and a reference list in the document’s style.', keys: ['cite', 'reflist'] },
   { title: 'Language', blurb: 'Pronunciation, dictionary entries, dialogues and timelines.', keys: ['stress', 'ipa', 'subst', 'phonchart', 'phoncard', 'phonhow', 'dictcut', 'dialogue', 'timeline'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a question.', keys: DG_KINDS.map((k) => 'dg-' + k) },
   { title: 'Questions', blurb: 'Gaps, choices, matching, word order and every other question a lesson can hold.', keys: COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => c.key) },
-  { title: 'Teacher training', blurb: 'Language analysis, lesson plans, observation forms and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-observe', 'tt-loop', 'tt-org'] },
+  { title: 'Teacher training', blurb: 'Language analysis, lesson plans and loop input.', keys: ['tt-analysis', 'tt-plan', 'tt-loop', 'tt-org'] },
 ];}
