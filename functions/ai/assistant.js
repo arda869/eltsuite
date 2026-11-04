@@ -9,6 +9,7 @@ import { usageContext, chargeFeature } from './feature-usage.js';
 import { stageContract, allocateMinutes } from './sequence.js';
 import { rebuildMaterials } from './materials.js';
 import { generateChecked } from './recovery.js';
+import { taskMediaContext, taskMediaGuidance, checkTaskMediaPlan, prepareActivityAssets } from './task-media.js';
 import { mediaRequests, mediaInstructions } from './media-contract.js';
 import { collectMemories, selectedMemories } from './memories.js';
 import { contentReviewStandard } from './pedagogy.js';
@@ -95,7 +96,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       checkActivities(activities,plan,c.get('kind')==='training');
       const requests=mediaRequests(activities);
       if(requests.some(r=>!media.docs.some(m=>m.id===r.id&&m.get('status')==='ready')))throw new HttpsError('failed-precondition','Finish preparing the lesson images and recordings before creating it.');
-      activities.tasks.forEach((t,i)=>{t.preparedMedia=media.docs.filter(m=>m.get('taskIndex')===i).map(m=>({kind:m.get('kind'),title:m.get('title'),alt:m.get('alt'),credit:m.get('credit')??'',mediaId:m.get('mediaId')}));});
+      activities.tasks.forEach((t,i)=>{t.preparedMedia=media.docs.filter(m=>m.get('taskIndex')===i).map(m=>({kind:m.get('kind'),title:m.get('title'),alt:m.get('alt'),credit:m.get('credit')??'',existing:m.get('existing')===true,mediaId:m.get('mediaId')}));});
       tx.create(item,{type,speakingFocus:[plan.mainAim,plan.subsidiaryAims].filter(Boolean).join(' ').slice(0,1000),title:activities.title,topicId:null,order:(last.docs[0]?.get('order') ?? -1)+1,hidden:true,locked:false,taskCount:activities.tasks.length,createdAt:Timestamp.now(),...(type==='exam'?{exam:{minutes:j.get('duration')},examReleased:false}:{})});
       activities.tasks.forEach((task,i)=>{
         const ref=item.collection('tasks').doc('activity_'+i), native=nativeTask(task,i);
@@ -157,6 +158,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
   const evidence=d.useEvidence===true?await collectEvidence(db,d.classId):null;
   let learnerMemories; try { learnerMemories=await selectedMemories(db,d.classId,d.useLearnerMemories,d.memoryIds); } catch(e) { fail(e.message); }
   const payload = { brief, creationType, learnerMemories, classProfile:cls.get('kind')==='training'?null:cls.get('learningProfile') ?? null, trainingProfile:cls.get('kind')==='training'?(cls.get('trainingProfile') ?? {programme:cls.get('level'),experience:'Unspecified',goals:brief.objectives}):null, evidence, ...(d.action==='activities'?{approvedPlan:d.plan}:{}), ...(d.action === 'plan' ? { approvedOutline: d.outline } : {}) };
+  payload.classMedia=await taskMediaContext({db,uid,cls,tasks:[],direction:[brief.objectives,brief.context,d.revision?.instructions].filter(Boolean).join(' '),title:d.plan?.title??brief.topic});
   if(revision){const {sourceEvidence:unused,...currentDraft}=revision.current;Object.assign(payload,{currentDraft,requestedChanges:revision.instructions});if(d.action==='activities')payload.approvedPlan={title:d.plan.title,mainAim:d.plan.mainAim,stages:outlineFromPlan(d.plan).stages};}
   if (JSON.stringify(payload).length > 200000) fail('This draft is too large for one request.');
   const fingerprint = createHash('sha256').update(JSON.stringify({ classId: d.classId, action: d.action, brief, creationType, ...(revision?{revision:{instructions:revision.instructions,current:revision.current}}:{}), useEvidence:d.useEvidence===true, useLearnerMemories:d.useLearnerMemories===true, memoryIds:d.useLearnerMemories===true?d.memoryIds:[], ...(d.action==='plan'?{outline:d.outline}:{}), ...(d.action==='activities'?{plan:d.plan}:{}) })).digest('hex');
@@ -226,7 +228,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
     if(payload.approvedOutline){payload.approvedOutline={...payload.approvedOutline};delete payload.approvedOutline.sourceEvidence;}
     if(payload.approvedPlan){payload.approvedPlan={...payload.approvedPlan};delete payload.approvedPlan.sourceEvidence;}
     let revisionSummary=resumed?.revisionSummary??'';
-    const first = resumed?{value:resumed[d.action],usage:resumed.usage??[]}:await generateChecked({generate,deadline:generationDeadline,repairTimeoutMs:d.action==='activities'?300000:90000, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, timeoutMs:Math.min(d.action==='activities'?300000:180000,generationDeadline-Date.now()), name: revision?'lesson_revision':d.action, input: revision?{brief,creationType,currentDraft:payload.currentDraft,requestedChanges:revision.instructions,classProfile:payload.classProfile,trainingProfile:payload.trainingProfile,sourceEvidence:sources}:{...(d.action==='activities'?conversionInput(payload,contract.input.approvedStageSlots):payload),...contract.input}, instructions: revision?editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions:(d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions)+(d.action==='activities'?'\nConvert the approved material faithfully. Do not add new factual claims or replace supplied texts. sourceAttributions are references for the already reviewed material; the full evidence is checked in the subsequent editorial pass.':'') },
+    const first = resumed?{value:resumed[d.action],usage:resumed.usage??[]}:await generateChecked({generate,deadline:generationDeadline,repairTimeoutMs:d.action==='activities'?300000:90000, args: { apiKey: key.value(), model: model.value(), schema: revision?revisionSchema:contract.schema, timeoutMs:Math.min(d.action==='activities'?300000:180000,generationDeadline-Date.now()), name: revision?'lesson_revision':d.action, input: revision?{brief,creationType,classMedia:payload.classMedia,currentDraft:payload.currentDraft,requestedChanges:revision.instructions,classProfile:payload.classProfile,trainingProfile:payload.trainingProfile,sourceEvidence:sources}:{...(d.action==='activities'?conversionInput(payload,contract.input.approvedStageSlots):payload),...contract.input}, instructions: taskMediaGuidance+'\n'+(revision?editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions:(d.action === 'activities' ? activityInstructions + (cls.get('kind')==='training'?trainingInstructions+trainingActivityInstructions:'') : (cls.get('kind')==='training'?trainingInstructions:teachingInstructions) + '\n' + mediaInstructions + '\nUse the main and additional learning objectives as priorities. Choose a suitable situation from the context; a topic is optional.\nCreation type is authoritative: for exams use assessment stages and marking criteria, for homework/practice use independent instructions. Use class profile and evidence when supplied; never invent evidence. Keep outlines concise.') + (revision?'\n'+revisionInstructions:contract.instructions)+(d.action==='activities'?'\nConvert the approved material faithfully. Do not add new factual claims or replace supplied texts. sourceAttributions are references for the already reviewed material; the full evidence is checked in the subsequent editorial pass.':'')) },
       decode: value => {
         const revised=revision?applyRevision(revision.current,value,revision.schema):null;
         if(revision)revisionSummary=value.summary;
@@ -241,6 +243,7 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
         if(revision){validate(revision.schema,value);if(d.action==='plan'&&JSON.stringify(value.stages.map(s=>[s.id,s.minutes]))!==JSON.stringify(revision.current.stages.map(s=>[s.id,s.minutes])))throw new GenerationError('sequence');}
         if(d.action==='activities') {
           checkActivities(value,d.plan,cls.get('kind')==='training');
+          for(const task of value.tasks)checkTaskMediaPlan(task,payload.classMedia);
           if(value.tasks.some(t=>t.format==='listening'&&!(t.mediaPlan??[]).some(m=>m.kind==='audio'))) throw Error('Every listening activity needs an audio mediaPlan matching its private script.');
         } else checkSequence(value,brief.duration);
       },
@@ -256,18 +259,19 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       phase='review';
       const checked=await editUntilReady({value:first.value,deadline:generationDeadline,reserve:reserveExtra,pendingReview:resumed?.pendingReview??null,checkpoint:({value,usage,pendingReview})=>saveReviewCheckpoint(value,usage,pendingReview),
         review: (value,remaining) => generate({apiKey:key.value(),model:model.value(),schema:reviewSchema,name:'review',timeoutMs:Math.min(120000,remaining),
-          input:{brief,creationType,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...(revision?{requestedChanges:revision.instructions}:{}),[d.action]:value},
+          input:{brief,creationType,classMedia:payload.classMedia,sourceEvidence:sources,classProfile: payload.classProfile,trainingProfile:payload.trainingProfile,...(revision?{requestedChanges:revision.instructions}:{}),[d.action]:value},
           instructions:`${editorialStandard}\n${contentReviewStandard}\nReturn exactly one evidence-based check for each of these 11 criteria: ${criteria}. This is a pre-media review: planned assets must have complete specifications/scripts, but do not claim to have inspected generated files.`}),
         repair: async (value,review,remaining) => {
           const revised=await generate({apiKey:key.value(),model:model.value(),schema:revisionSchema,name:'editorial_repair',timeoutMs:Math.min(180000,remaining),
-          input:{brief,creationType,sourceEvidence:sources,classProfile:payload.classProfile,requestedChanges:revision?.instructions??'Repair every reported editorial defect while keeping all correct content.',currentDraft:value,editorialReview:review},
+          input:{brief,creationType,classMedia:payload.classMedia,sourceEvidence:sources,classProfile:payload.classProfile,requestedChanges:revision?.instructions??'Repair every reported editorial defect while keeping all correct content.',currentDraft:value,editorialReview:review},
           instructions:editorialStandard+'\n'+mediaInstructions+'\n'+revisionInstructions+'\nRepair all reported defects and criteria below 4. Use targeted replacements. Preserve approved stage IDs, order, titles, aims, participation patterns and minutes. Preserve all correct content and source attributions. Fix dependent answer keys and scripts together. Do not merely claim a fix in notes.'});
           try {const patched=applyRevision(value,revised.value,schema);return {...revised,value:d.action==='plan'?preserveStageContract(patched,revision?revision.current:d.outline,revision?['id','minutes']:undefined):patched};} catch(cause) {const error=new GenerationError('editorial_patch');error.detail=String(cause.message||'Invalid replacement').slice(0,500);error.usage=revised.usage;throw error;}
         },
         check: value => {
-          validate(schema,value);
+          if(d.action!=='activities')validate(schema,value);
           if(d.action==='activities') {
             checkActivities(value,d.plan,cls.get('kind')==='training');
+          for(const task of value.tasks)checkTaskMediaPlan(task,payload.classMedia);
             if(value.tasks.some(t=>t.format==='listening'&&!t.mediaPlan.some(m=>m.kind==='audio'))) throw new GenerationError('editorial');
           } else {
             checkSequence(value,brief.duration);
@@ -289,8 +293,9 @@ export const lessonAssistant = onCall({ region: 'us-central1', secrets: [key], m
       const [b, j] = await Promise.all([tx.get(budget), tx.get(job)]);
       if (j.get('status') !== 'running') throw Error('This job was already settled.');
       const settled = settleBudget(b.get('committedMicroUsd'), j.get('reservedMicroUsd')-(j.get('retainedMicroUsd')??0), result.usage);
+      const assets=d.action==='activities'?await prepareActivityAssets(tx,{db,uid,cls},mediaRequests(result.activities)):[];
       tx.update(budget, { committedMicroUsd: settled.balance });
-      if(d.action==='activities')for(const asset of mediaRequests(result.activities))tx.create(job.collection('media').doc(asset.id),{...asset,...(adultEditorial&&asset.kind==='image'?{source:asset.style==='editorial'?'editorial':'commons'}:{}),classId:d.classId,status:'queued',createdAt:Timestamp.now()});
+      for(const asset of assets)tx.create(job.collection('media').doc(asset.id),{...asset,classId:d.classId,createdAt:Timestamp.now()});
       tx.update(job, { status: 'completed', checkpointJson:FieldValue.delete(),checkpointReservedMicroUsd:FieldValue.delete(),model: model.value(), costMicroUsd: settled.cost, ...encodeGenerationResult(result) });
     });
     return result;
