@@ -3,7 +3,7 @@ import { DesignerImages, CommonsImages } from '../design/InlineImages';
 import { readStoryboard } from '../storyboard/StoryboardNode';
 import { zoomOf } from '../lib/zoom';
 import { mergeAttributes, Node } from '@tiptap/core';
-import { NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
+import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer, type Editor, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorClass } from './context';
 import { PIC_QUALITY, uploadPicture, useImageSrc, type PicQuality } from './PackNode';
@@ -255,13 +255,14 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
     </span>
   );
   return (
-    <NodeViewWrapper as="span" className={'pic-node' + (selected ? ' is-selected' : '')} ref={ref} contentEditable={false}>
-      <span className={placing ? 'pic-placing' : ''} onClick={(e) => place(e) || setOpen(true)} title={placing ? 'Click where the label goes' : 'Picture settings'}>
+    <NodeViewWrapper as="span" className={'pic-node' + (selected ? ' is-selected' : '')} ref={ref}>
+      <span className={placing ? 'pic-placing' : ''} contentEditable={false} onClick={(e) => place(e) || setOpen(true)} title={placing ? 'Click where the label goes' : 'Picture settings'}>
         <PicFrame src={a.src} alt={a.alt} size={a.size} w={dragW ?? a.w} label={label} classId={classId} crop={a.crop} ar={a.ar} filter={a.filter} coverHint={hint} tags={tags} tagEdit={tagEdit}>
           {editor.isEditable && (['nw', 'ne', 'sw', 'se'] as const).map((c) => <i key={c} className={'pic-corner c-' + c} onPointerDown={(e) => resize(e, c)} onClick={(e) => e.stopPropagation()} aria-hidden="true" />)}
         </PicFrame>
       </span>
-      {a.credit&&<small className="pic-credit">{a.credit}</small>}
+      <NodeViewContent as="span" contentEditable={editor.isEditable} role="textbox" aria-label="Picture description" className={'pic-caption' + (node.content.size ? ' has-text' : '')} data-placeholder={editor.isEditable ? 'Add description…' : undefined} />
+      {a.credit&&<small className="pic-credit" contentEditable={false}>{a.credit}</small>}
       {editing && (
         <PictureEditor
           classId={classId}
@@ -276,7 +277,7 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
         />
       )}
       {open && (
-        <span className="gap-pop pic-pop" style={popStyle}>
+        <span className="gap-pop pic-pop" style={popStyle} contentEditable={false}>
           <span className="pop-type">Picture</span>
           <span className="pic-row">
             <span className="hint">Size</span>
@@ -334,9 +335,17 @@ function PictureView({ node, updateAttributes, deleteNode, selected, editor, get
               )}
             </span>
           )}
-          <label className="pic-row">
+          <span className="pic-row">
             <span className="hint">Description</span>
-            <input aria-label="What the picture shows (for screen readers)" value={a.alt ?? ''} placeholder="What the picture shows (for screen readers)" onChange={(e) => updateAttributes({ alt: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
+            <button type="button" className="btn small-btn" onClick={() => {
+              const at = typeof getPos === 'function' ? getPos() : undefined;
+              setOpen(false);
+              if (typeof at === 'number') editor.chain().setTextSelection(at + 1 + node.content.size).focus().run();
+            }}>Edit below the picture</button>
+          </span>
+          <label className="pic-row">
+            <span className="hint">Screen reader description</span>
+            <input aria-label="Screen reader description" value={a.alt ?? ''} placeholder="Describe the picture for screen readers" onChange={(e) => updateAttributes({ alt: e.target.value })} onKeyDown={(e) => e.stopPropagation()} />
           </label>
           <span className="pic-row pic-actions">
             <button type="button" className="btn small-btn" onClick={() => setEditing(true)}>
@@ -357,7 +366,8 @@ export const Picture = Node.create({
   name: 'picture',
   group: 'inline',
   inline: true,
-  atom: true,
+  content: 'inline*',
+  isolating: true,
   draggable: true,
   addAttributes: () => ({
     src: { default: '' },
@@ -377,12 +387,12 @@ export const Picture = Node.create({
   }),
   // Pictures pasted or dropped from anywhere become pictures you can edit.
   parseHTML: () => [{ tag: 'span[data-picture]' }, { tag: 'img[src]', priority: 60, getAttrs: (el: HTMLElement | string) => (typeof el === 'string' ? {} : { src: el.getAttribute('src') ?? '', alt: el.getAttribute('alt') ?? '' }) }],
-  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-picture': '' })],
+  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-picture': '' }), 0],
   addNodeView: () => ReactNodeViewRenderer(PictureView),
 });
 
 // Insert pictures at the cursor. Labels follow the picture before it in the task, if it has one.
-export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; credit?: string } = {}) {
+export function insertPictures(editor: Editor, srcs: string[], opts: { size?: PicSize; mark?: PicMark; alt?: string; caption?: string; credit?: string } = {}) {
   let mark: PicMark = opts.mark ?? '';
   if (opts.mark === undefined)
     editor.state.doc.descendants((n) => {
@@ -391,7 +401,7 @@ export function insertPictures(editor: Editor, srcs: string[], opts: { size?: Pi
   editor
     .chain()
     .focus()
-    .insertContent(srcs.map((src) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', size: opts.size ?? 'm', mark } })))
+    .insertContent(srcs.map((src) => ({ type: 'picture', attrs: { src, alt: opts.alt ?? '', credit:opts.credit??'', size: opts.size ?? 'm', mark }, ...(opts.caption?.trim() ? { content: [{ type: 'text', text: opts.caption.trim() }] } : {}) })))
     .run();
 }
 
@@ -454,7 +464,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
           if (user) void uploadPicture('user:' + user.uid, f, quality).catch(() => {});
         }
       }
-      insertPictures(editor, srcs, { size, mark, alt });
+      insertPictures(editor, srcs, { size, mark, alt, caption: alt });
       onClose();
     } catch {
       setBusy('We couldn’t upload the picture. Try a smaller one, or a lower quality.');
@@ -470,7 +480,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
         else if (classId) srcs.push('media:' + (await mediaIn(user.uid, it, classId)));
         else if (it.home) srcs.push(await imageToData(await (await fetch(await mediaUrl(it.home.classId, it.home.mediaId))).blob(), 1100));
       }
-      insertPictures(editor, srcs, { size, mark, alt });
+      insertPictures(editor, srcs, { size, mark, alt, caption: alt });
       onClose();
     } catch {
       setBusy('We couldn’t add that picture.');
@@ -478,7 +488,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
   };
   const fromDesign = async (blob:Blob,title:string,credit='') => {
     const src=classId?await uploadPicture(classId,blob,quality,title):await imageToData(blob,1100);
-    insertPictures(editor,[src],{size,mark,alt:alt||title,credit});onClose();
+    insertPictures(editor,[src],{size,mark,alt:alt||title,caption:alt,credit});onClose();
   };
   // A picture copied anywhere (a screenshot, a map, a page) can be pasted while this is open.
   const uploadRef = useRef(upload);
@@ -562,7 +572,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
                 className="btn"
                 disabled={!/^https:\/\/\S+$/.test(url.trim())}
                 onClick={() => {
-                  insertPictures(editor, [url.trim()], { size, mark, alt });
+                  insertPictures(editor, [url.trim()], { size, mark, alt, caption: alt });
                   onClose();
                 }}
               >
@@ -572,7 +582,7 @@ export function PictureDialog({ editor, classId, onClose }: { editor: Editor; cl
             {look}
             <label className="field">
               <span>Description (optional)</span>
-              <input aria-label="What the picture shows, for learners who use a screen reader" value={alt} placeholder="What the picture shows, for learners who use a screen reader" onChange={(e) => setAlt(e.target.value)} />
+              <input aria-label="Description shown below the picture" value={alt} placeholder="Describe the picture for learners" onChange={(e) => setAlt(e.target.value)} />
             </label>
           </>
         ) : tab==='ai' ? <><InlineAiImage onPick={fromDesign}/>{look}</> : tab==='designer' ? <><DesignerImages uid={user?.uid} onPick={fromDesign} onBoard={async d=>{const {title,...snap}=await readStoryboard(d.id);if(!snap.scenes.length)throw Error('Empty storyboard');editor.chain().focus().insertContent({type:'storyboard',attrs:{docId:d.id,title,cols:2,snap}}).run();onClose();}}/>{look}</> : tab==='commons'?<><CommonsImages onPick={fromDesign}/>{look}</> : (

@@ -998,7 +998,7 @@ export function TaskRenderer({ content, responses: responsesIn, onChange, result
           label = listLabel(picCount[mk], mk);
         }
         const pa = node.attrs ?? {};
-        return <span key={key} style={{display:'inline-block'}}><PicFrame w={Number(pa.w) || 0} src={String(pa.src ?? '')} alt={pa.alt} size={pa.size} label={label} classId={classId ?? ''} crop={pa.crop} ar={Number(pa.ar) || 0} filter={pa.filter} cover={coverOf(pa)} tags={Array.isArray(pa.tags) ? pa.tags : undefined} />{pa.credit&&<small style={{display:'block',maxWidth:360,fontSize:10,lineHeight:1.3}}>{String(pa.credit)}</small>}</span>;
+        return <span key={key} className="pic-rendered"><PicFrame w={Number(pa.w) || 0} src={String(pa.src ?? '')} alt={pa.alt || node.content?.map(c => c.text ?? '').join(' ') || ''} size={pa.size} label={label} classId={classId ?? ''} crop={pa.crop} ar={Number(pa.ar) || 0} filter={pa.filter} cover={coverOf(pa)} tags={Array.isArray(pa.tags) ? pa.tags : undefined} />{node.content?.length ? <span className="pic-caption has-text">{kids()}</span> : null}{pa.credit&&<small className="pic-credit">{String(pa.credit)}</small>}</span>;
       }
       case 'image':
         return node.attrs?.src ? <img key={key} data-bk={key} src={node.attrs.src} alt={node.attrs.alt ?? ''} className="task-img" /> : null;

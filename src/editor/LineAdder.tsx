@@ -1,6 +1,7 @@
 import { zoomOf } from '../lib/zoom';
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
+import { TextSelection } from '@tiptap/pm/state';
 import { UiIcon } from '../components/UiIcon';
 
 // A "+" in the left margin, level with the space under the line the pointer is on: where the new,
@@ -9,6 +10,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
   const [top, setTop] = useState<number | null>(null);
   const [below, setBelow] = useState(0); // where the new line goes: under the block
   const target = useRef<HTMLElement | null>(null);
+  const insertAt = useRef<number | null>(null);
   // The + sits in the margin outside the editor, so leaving the editor waits a moment: long enough
   // to reach the + without it vanishing.
   const later = useRef(0);
@@ -20,6 +22,7 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
     const hide = () => {
       keep();
       target.current = null;
+      insertAt.current = null;
       setTop(null);
     };
     const move = (e: MouseEvent) => {
@@ -45,14 +48,16 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
       }
       if (!best || dist > 28) return hide();
       const r = best.getBoundingClientRect();
-      const lh = parseFloat(getComputedStyle(best).lineHeight) || 26;
-      const t = (r.top - host.getBoundingClientRect().top) / zoomOf(host) + Math.min(r.height / zoomOf(best), lh) / 2;
       target.current = best;
-      // Halfway into the space under the block, where the new line will appear.
+      const at = editor.view.posAtDOM(best, 0);
+      const resolved = editor.state.doc.resolve(at);
+      insertAt.current = resolved.depth ? resolved.after(1) : at;
+      // Place the button and guide on the same line, between this block and the next.
       const next = best.nextElementSibling as HTMLElement | null;
       const gapBelow = next ? Math.max(0, next.getBoundingClientRect().top - r.bottom) / 2 : 4;
-      setBelow((r.bottom + gapBelow - host.getBoundingClientRect().top) / zoomOf(host));
-      setTop((old) => (old !== null && Math.abs(old - t) < 0.5 ? old : t));
+      const between = (r.bottom + gapBelow - host.getBoundingClientRect().top) / zoomOf(host);
+      setBelow(between);
+      setTop((old) => (old !== null && Math.abs(old - between) < 0.5 ? old : between));
     };
     const leave = (e: MouseEvent) => {
       if (host.contains(e.relatedTarget as Node)) return;
@@ -70,19 +75,18 @@ export function LineAdder({ editor, host }: { editor: Editor; host: HTMLElement 
 
   if (top === null) return null;
   const add = () => {
-    const el = target.current;
-    if (!el) return;
-    let after = -1;
-    editor.state.doc.forEach((node, offset) => {
-      if (editor.view.nodeDOM(offset) === el) after = offset + node.nodeSize;
-    });
-    if (after < 0) return;
-    editor.chain().insertContentAt(after, { type: 'paragraph' }).setTextSelection(after + 1).focus().run();
+    const after = insertAt.current;
+    if (after === null) return;
+    if (after < 0 || after > editor.state.doc.content.size) return;
+    const tr = editor.state.tr.insert(after, editor.schema.nodes.paragraph.create());
+    tr.setSelection(TextSelection.create(tr.doc, after + 1));
+    editor.view.dispatch(tr);
+    editor.commands.focus();
     setTop(null);
   };
   return (
     <>
-    <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => e.preventDefault()} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 1000))} onClick={add}>
+    <button type="button" className="line-add" style={{ top }} aria-label="Add a line below" data-tip="Add a line below" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); add(); }} onClick={(e) => { if (e.detail === 0) add(); }} onMouseEnter={keep} onMouseLeave={(e) => !host?.contains(e.relatedTarget as Node) && (later.current = window.setTimeout(() => setTop(null), 1000))}>
       <UiIcon name="plus" />
     </button>
     <span className="line-add-guide" style={{ top: below }} aria-hidden="true" />

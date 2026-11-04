@@ -188,6 +188,14 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         case 'hardBreak':
           out.push({ t: '\n' });
           break;
+        case 'picture': {
+          const mk = String(a.mark ?? '');
+          if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
+          if (a.src) out.push({ pic: { src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
+          if (node.content?.length) out.push({ t: '\n' }, ...runsOf(node.content));
+          if (a.credit) out.push({ t: ' ' + String(a.credit) + ' ' });
+          break;
+        }
         default:
           if (node.content) out.push(...runsOf(node.content));
           else if (node.type === 'ipa') out.push({ ipa: { text: String(a.text ?? ''), accent: String(a.accent ?? 'RP'), show: !!a.showAccent } });
@@ -196,12 +204,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
           else if (node.type === 'phonChart' || node.type === 'phonCard') out.push({ t: node.type === 'phonCard' ? ` /${String(a.sound ?? '')}/ ` : ' [phonemic chart] ', phon: { type: node.type, a: a as Record<string, unknown> } });
           else if (node.type === 'subst') out.push({ t: ` | ${((a.options ?? []) as string[]).join(' / ')} | `, subs: (a.options ?? []) as string[] });
           else if (node.type === 'icon') out.push({ icon: { name: String(a.name ?? ''), tone: String(a.tone ?? 'ink') } });
-          else if (node.type === 'picture') {
-            const mk = String(a.mark ?? '');
-            if (mk) picCount[mk] = (picCount[mk] ?? 0) + 1;
-            if (a.src) out.push({ pic: { src: String(a.src), size: String(a.size ?? 'm'), label: mk ? listLabel(picCount[mk], mk) : '', alt: String(a.alt ?? ''), key: picKey(String(a.src), a.crop, a.filter), crop: a.crop || undefined, filter: a.filter || undefined, tags: Array.isArray(a.tags) && a.tags.length ? a.tags.filter((t: { text?: string }) => t.text?.trim()) : undefined } });
-            if(a.credit)out.push({t:' '+String(a.credit)+' '});
-          } else if (node.type === 'sym') out.push({ sym: { text: String(a.text ?? ''), shape: String(a.shape ?? 'box'), tone: String(a.tone ?? 'ink') } });
+          else if (node.type === 'sym') out.push({ sym: { text: String(a.text ?? ''), shape: String(a.shape ?? 'box'), tone: String(a.tone ?? 'ink') } });
       }
     }
     return out;

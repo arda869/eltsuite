@@ -81,9 +81,9 @@ import { LessonLink, LinkPop, type LinkPlace } from './LessonLink';
 import { PickCard, RandomPick, newRandomPick } from './RandomPick';
 import { TextBox, newTextBox } from './TextBox';
 import { ColumnBreak, DropGap, Match, Order, WordBank, Writing, newColumnBreak, newDropGap, newMatch, newOrder, newWordBank, newWriting } from './blocks';
-import { InsertGallery } from './InsertGallery';
+import { InsertGallery, QUESTION_SECTIONS } from './InsertGallery';
 import { PDF_NODES, setPdfQuestions } from '../pdf/PdfNodes';
-import { openMenu, openMenuAt } from '../components/ContextMenu';
+import { openMenu } from '../components/ContextMenu';
 import { currentOrg } from '../lib/admin';
 import { PdfPick } from '../pdf/PdfPick';
 
@@ -722,7 +722,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       }
       return n;
     });
-  const [gallery, setGallery] = useState(false);
+  const [gallery, setGallery] = useState<'all' | 'questions' | null>(null);
   const [host, setHost] = useState<HTMLDivElement | null>(null);
   const [defOpen, setDefOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -833,10 +833,10 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
                       key="q"
                       type="button"
                       className="tool tb-qs"
-                      aria-haspopup="menu"
+                      aria-haspopup="dialog"
                       aria-label="Questions" data-tip="Questions: gaps, choices, matching and more"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={(e) => openMenuAt(e.currentTarget, COMMANDS.filter((c) => c.group === 'Questions' && !['collab', 'collab-slides', 'upload', 'board', 'postits', 'bankpick'].includes(c.key)).map((c) => ({ label: c.label, hint: c.hint, icon: '', onClick: () => c.run(editor) })))}
+                      onClick={() => setGallery('questions')}
                     >
                       {TOOL_FACE.questions}
                     </button>,
@@ -846,7 +846,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
             ['icons', <IconTool key="i" editor={editor} />],
             ['symbols', <SymbolTool key="s" editor={editor} />],
             ['pron', <ProsodyTool key="p" editor={editor} />],
-            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery(true), TOOL_FACE.add)]] as [string, React.ReactNode][]) : []),
+            ...(!textOnly ? ([['add', BTN('Everything you can add, with pictures', false, () => setGallery('all'), TOOL_FACE.add)]] as [string, React.ReactNode][]) : []),
           ];
           const shown = tools.filter(([k]) => toolPlace(k) === 'show');
           const more = tools.filter(([k]) => toolPlace(k) === 'more');
@@ -885,10 +885,12 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       {pdfOpen && editor && <PdfPick classId={classId} onClose={() => setPdfOpen(false)} onPick={(n) => (setPdfOpen(false), editor.chain().focus().insertContent([n, { type: 'paragraph' }]).run())} />}
       {gallery && (
         <InsertGallery
-          commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key))}
-          onClose={() => setGallery(false)}
+          title={gallery === 'questions' ? 'Add a question' : 'Add to the task'}
+          sections={gallery === 'questions' ? QUESTION_SECTIONS : undefined}
+          commands={[...COMMANDS, ...bankCmds].filter((c) => training || !c.key.startsWith('tt-')).filter(c=>training||classId?.startsWith('chat:')||!FAMILIES.some(f=>f.id===c.key)).filter(c=>gallery !== 'questions'||QUESTION_SECTIONS.some(s=>s.keys.includes(c.key)))}
+          onClose={() => setGallery(null)}
           onPick={(key) => {
-            setGallery(false);
+            setGallery(null);
             const c = [...COMMANDS, ...bankCmds].find((x) => x.key === key);
             if (c)
               window.setTimeout(() => {

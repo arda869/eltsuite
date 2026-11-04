@@ -21,6 +21,15 @@ const SECTIONS: Section[] = [
   { title: 'Question bank', blurb: 'Questions you saved to use again.', keys: ['bankpick'] },
 ];
 
+// The toolbar's Questions shortcut uses the same cards and previews as Add to the task,
+// but shows only learner questions. Supporting elements and teaching tools stay in the full gallery.
+export const QUESTION_SECTIONS: Section[] = [
+  { title: 'Answer and check', blurb: 'Questions learners answer and check in the task.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
+  { title: 'Listening and speaking', blurb: 'Questions learners answer by listening or speaking.', keys: ['pq-dictation', 'pq-pairs', 'pq-speaking'] },
+  { title: 'Puzzles', blurb: 'Word questions with a puzzle format.', keys: ['pq-crossword', 'pq-wordsearch'] },
+  { title: 'Writing and reflection', blurb: 'Open answers and responses for the teacher to review.', keys: ['writing', 'reflect', 'peer', 'survey'] },
+];
+
 // Longer explanations than the / menu hints: what learners do and how it is marked.
 const ABOUT: Record<string, string> = {
   storyboard: 'Scenes from one of your storyboards, with their captions, numbered. Learners see them in the lesson and they print with the worksheet. Change the storyboard in Resources and press Update.',
