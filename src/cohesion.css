@@ -123,6 +123,17 @@ html { touch-action:pan-x pan-y; }
 :root .shell.wide .lesson-support-actions .lesson-tool-toolbar { display:flex; flex-direction:column; align-items:stretch; width:100%; }
 :root .shell.wide .lesson-support-actions .btn { width:100%; min-height:36px; text-align:left; justify-content:flex-start; }
 :root .shell.wide .tb-icons :is(.btn,.icon-btn) { min-height:36px; }
+@media(max-width:1100px) {
+  :root .shell.wide .suite-topbar nav.crumbs { flex:1 1 auto; min-width:0; overflow:hidden; white-space:nowrap; }
+  :root .shell.wide .suite-topbar nav.crumbs > :not(.here) { display:none; }
+  :root .shell.wide .suite-topbar nav.crumbs .here { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  :root .shell.wide .suite-topbar .tb-icons { flex:none; }
+}
+@media(max-width:1000px) {
+  :root .shell.wide .lesson-support-tools>summary { width:36px; justify-content:center; padding:0; font-size:0; }
+  :root .shell.wide .lesson-support-tools>summary::after { display:none; }
+  :root .shell.wide .lesson-support-tools>summary .ui-icon { width:18px; height:18px; }
+}
 .question-spelling-toggle { display:flex; align-items:center; gap:9px; min-height:34px; padding:5px 3px; font-size:13px; cursor:pointer; }
 .question-spelling-toggle input { flex:none; width:15px; height:15px; margin:0; accent-color:var(--accent-text); }
 .question-spelling-toggle small { color:var(--muted); font-size:11px; }

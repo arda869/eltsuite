@@ -117,7 +117,11 @@ const J = {
       await row.hover();const after=await row.boundingBox(),titleAfter=await row.locator('.task-pick').boundingBox();
       if(Math.abs(before.height-after.height)>0.5||Math.abs(titleBefore.width-titleAfter.width)>0.5)throw Error('Hover changed the row or title dimensions');
     }
-    await s.p.getByRole('button',{name:'Apps',exact:true}).click();
+    await s.p.mouse.move(0,0);
+    const appsButton=s.p.getByRole('button',{name:'Apps',exact:true});
+    const appsHit=await appsButton.evaluate(el=>{const r=el.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;return {x,y,viewport:innerWidth,hit:el===document.elementFromPoint(x,y)||el.contains(document.elementFromPoint(x,y))};});
+    if(!appsHit.hit)throw Error('Apps button is obscured at tablet width: '+JSON.stringify(appsHit));
+    await appsButton.click();
     await s.p.getByRole('searchbox',{name:'Find an app',exact:true}).fill('development');
     await s.p.getByRole('menuitem',{name:'Development Studio',exact:true}).waitFor();
     if(await s.p.locator('.apps-pop [role=menuitem]').count()!==1)throw Error('App search did not filter destinations');
@@ -302,6 +306,8 @@ const J = {
     if(!await savedException.count())throw Error('Question spelling control disappeared after reload: '+(await s.p.locator('.task-side').innerText()).slice(0,800));
     if(!await savedException.isChecked())throw Error('Question spelling exception was not saved');
     await s.p.goto(`${BASE}/dev.html?as=Mia`);
+    await s.p.waitForFunction(async()=>{if(!window.__mockReady)return false;await window.__mockReady;const uid=sessionStorage.getItem('mockuid');return !!uid&&JSON.parse(localStorage.getItem('mockfs')||'{}')['users/'+uid]?.displayName?.startsWith('Mia');},null,{timeout:180000});
+    await s.p.waitForLoadState('networkidle');
     await s.p.goto(`${BASE}/learn/${s.demo.itemId}?task=${taskId}`);
     const answer=s.p.getByRole('textbox',{name:'Question 1',exact:true});
     await answer.click();
@@ -340,7 +346,7 @@ const J = {
     await axe(s.p,'Answer key review',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Apply answer key'}).click();
     await s.p.waitForFunction(({classId,itemId})=>JSON.parse(localStorage.getItem('mockfs'))['classes/'+classId+'/items/'+itemId+'/tasks/tool-source/private/key'].missing.answers[0]==='went',s.demo);
-    await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Differentiate activity',exact:true}).click();await reviewAi(s.p,'Differentiate activity');
     dialog=s.p.getByRole('dialog',{name:'Differentiate activity'});
     await dialog.getByRole('button',{name:/More support Add choices/}).click();
     await dialog.getByRole('button',{name:'Create differentiated version'}).click();await reviewAi(s.p,'Differentiate activity');
@@ -348,7 +354,7 @@ const J = {
     await axe(s.p,'Differentiated preview',A11Y_FOUND);
     await dialog.getByRole('button',{name:'Add differentiated version'}).click();
     await s.p.waitForFunction(({classId,itemId})=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([k,v])=>k.startsWith('classes/'+classId+'/items/'+itemId+'/tasks/')&&v.family==='tool-source'&&v.variant==='Supported'),s.demo);
-    await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Suggest next activity',exact:true}).click();await reviewAi(s.p,'Suggest next activity');
     dialog=s.p.getByRole('dialog',{name:'Suggest next activity'});
     await dialog.getByRole('button',{name:/Option 1 Plan a weekend/}).click();
     await dialog.getByRole('button',{name:'Create next activity'}).click();await reviewAi(s.p,'Suggest next activity');
