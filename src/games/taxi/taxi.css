@@ -1,0 +1,77 @@
+/* Taxi town: a street in perspective, in five times of day. The taxi's lane is --lane and the
+   cone's --cone (as a percentage of the width); --p brings the cone closer as the clock runs. */
+.taxi-stage { --tx-sky-top: #f1a66b; --tx-sky-bottom: #fde9cc; --tx-sun: #ffd27a; --tx-far: #c98a66; --tx-far-light: #ffe0b0; --tx-ground: #cdb79a; --tx-road: #4a4745; --tx-road-far: #6a6563; --tx-dash: #f5e9c8; --tx-edge: #e8dcc3; --tx-taxi: #f2b63a; --tx-taxi-dark: #d99a1f; --tx-glass: #9fd3e8; --tx-sign: #fff4c2; --tx-light: #e8453c; --tx-cone: #f0712d; --tx-cone-dark: #b84e1a; --tx-dest: #e9dcc7; --tx-dest-dark: #a08a6c; --tx-window: #4f6f8c; --tx-door: #6b4a33; --tx-skin: #e7b48f; --tx-skin-2: #a86f4a; --tx-shirt: #d2694a; --tx-shirt-2: #3f6a8a; --tx-honk: #fff; --tx-danger: #3a1a10; --tx-stars: none; --tx-wall-filter: none;
+  --ch-bg: #2b2320; --ch-face: #fffaf2; --ch-ink: #262420; --ch-muted: #66615b; --ch-accent: #d2694a; --ch-accent-ink: #fff; --ch-right: #3f8f5a; --ch-wrong: #c2473a; --ch-hud: rgba(255, 250, 242, .92); --ch-hud-ink: #262420; --ch-on-scene: #f3e9dc; }
+.taxi-theme-paper { --tx-sky-top: #e6ecef; --tx-sky-bottom: #f9fafa; --tx-sun: #f2d58a; --tx-far: #b7c1c6; --tx-far-light: #fff; --tx-ground: #d9d6cf; --tx-road: #5b5b5b; --tx-road-far: #7a7a7a; --tx-dash: #f4f4f4; --tx-edge: #e6e6e6; --tx-danger: #2a2a2a; --tx-wall-filter: saturate(.55) brightness(1.05);
+  --ch-bg: #4a4f55; --ch-face: #fff; --ch-accent: #c95f41; }
+.taxi-theme-arcade { --tx-sky-top: #15103a; --tx-sky-bottom: #3b1d6b; --tx-sun: #f3eaff; --tx-far: #241a52; --tx-far-light: #ff6bd6; --tx-ground: #2a2246; --tx-road: #262235; --tx-road-far: #3a3352; --tx-dash: #ffe66d; --tx-edge: #ff6bd6; --tx-taxi: #ffcc3d; --tx-glass: #6ad7ff; --tx-light: #ff4d6d; --tx-cone: #ff7a3d; --tx-dest: #3a2d6e; --tx-dest-dark: #241a52; --tx-window: #ffd36b; --tx-door: #1a1333; --tx-honk: #6ad7ff; --tx-danger: #3a0a2a; --tx-stars: radial-gradient(circle at 20% 30%, #fff 0 1px, #0000 1.6px) 0 0 / 90px 70px, radial-gradient(circle at 70% 60%, #ffffffb0 0 1px, #0000 1.4px) 0 0 / 53px 61px; --tx-wall-filter: brightness(.55) saturate(1.3) hue-rotate(-10deg);
+  --ch-bg: #0e0b22; --ch-face: #fff8f0; --ch-accent: #ff6b8b; --ch-right: #2fc07a; --ch-hud: rgba(20, 16, 50, .86); --ch-hud-ink: #fff; }
+.taxi-theme-garden { --tx-sky-top: #a9dbf2; --tx-sky-bottom: #f0f8ea; --tx-sun: #ffe08a; --tx-far: #8fb39a; --tx-far-light: #fff; --tx-ground: #a8c48a; --tx-road: #5a5f58; --tx-road-far: #767b73; --tx-dash: #f2f0d8; --tx-edge: #e4e8d4; --tx-taxi: #f2c23f; --tx-cone: #ef7b3a; --tx-dest: #f1e6cf; --tx-danger: #1e2a12; --tx-wall-filter: saturate(1.05) brightness(1.03);
+  --ch-bg: #2f4a38; --ch-face: #fffdf5; --ch-accent: #cf6a3e; }
+.taxi-theme-space { --tx-sky-top: #050a24; --tx-sky-bottom: #1a2a5c; --tx-sun: #e9eefb; --tx-far: #0f1838; --tx-far-light: #9fb4ff; --tx-ground: #1a2240; --tx-road: #1c2033; --tx-road-far: #2c3350; --tx-dash: #cfd8ff; --tx-edge: #8fa3e8; --tx-taxi: #f7c948; --tx-glass: #8fb4ff; --tx-light: #ff5c6a; --tx-cone: #ff8a4d; --tx-dest: #2b3566; --tx-dest-dark: #1a2248; --tx-window: #ffe9a6; --tx-door: #10152e; --tx-honk: #cfd8ff; --tx-danger: #1a0a2e; --tx-stars: radial-gradient(circle at 12% 18%, #fff 0 1.2px, #0000 1.6px) 0 0 / 90px 70px, radial-gradient(circle at 60% 70%, #ffffffb0 0 1px, #0000 1.4px) 0 0 / 53px 61px; --tx-wall-filter: brightness(.6) saturate(.9);
+  --ch-bg: #060c1f; --ch-face: #f7f6ff; --ch-accent: #ff8c69; --ch-hud: rgba(10, 14, 40, .86); --ch-hud-ink: #fff; }
+
+.tx-scene { position: absolute; inset: 0; overflow: hidden; }
+.tx-scene > * { position: absolute; }
+.tx-sky { inset: 0; background: var(--tx-stars), linear-gradient(var(--tx-sky-top), var(--tx-sky-bottom) 55%); }
+.tx-sun { width: 13%; min-width: 60px; left: 68%; top: 6%; }
+.tx-moon-shadow { display: none; }
+.taxi-theme-arcade .tx-moon-shadow, .taxi-theme-space .tx-moon-shadow { display: block; }
+.tx-skyline { left: 0; right: 0; top: 31%; height: 21.5%; }
+.tx-ground { left: 0; right: 0; top: 52%; bottom: 0; background: linear-gradient(var(--tx-ground), color-mix(in srgb, var(--tx-ground) 80%, #000)); }
+.tx-world { inset: 0; perspective: 340px; perspective-origin: 50% 52%; transform-style: preserve-3d; overflow: hidden; }
+.tx-world > * { position: absolute; }
+.tx-road { left: 50%; bottom: -4%; width: 92%; height: 600%; transform-origin: 50% 100%; transform: translateX(-50%) rotateX(79deg);
+  background-color: var(--tx-road);
+  background-image: repeating-linear-gradient(0deg, transparent 0 70px, var(--tx-dash) 70px 120px), repeating-linear-gradient(0deg, transparent 0 70px, var(--tx-dash) 70px 120px), linear-gradient(var(--tx-edge), var(--tx-edge)), linear-gradient(var(--tx-edge), var(--tx-edge)), linear-gradient(180deg, var(--tx-road-far), var(--tx-road) 30%);
+  background-size: 6px 100%, 6px 100%, 14px 100%, 14px 100%, 100% 100%; background-position: 33.33% 0, 66.67% 0, 0 0, 100% 0, 0 0; background-repeat: no-repeat;
+  animation: tx-roll 1.1s linear infinite; }
+.tx-wall { top: 6%; height: 58%; width: 420%; background-size: auto 100%; background-repeat: repeat-x; filter: var(--tx-wall-filter); animation: tx-facade 2.6s linear infinite; }
+.tx-wall-left { left: -4%; transform-origin: 0 50%; transform: rotateY(76deg); }
+.tx-wall-right { right: -4%; transform-origin: 100% 50%; transform: rotateY(-76deg); animation-direction: reverse; }
+.tx-destination { left: 50%; bottom: 46%; width: 13%; min-width: 56px; transform: translateX(-50%) scale(.55); transform-origin: 50% 100%; transition: transform 1.1s cubic-bezier(.3, .7, .2, 1), opacity .4s; }
+.tx-dest-sign { transform-origin: 100px 60px; animation: tx-sign 2.4s ease-in-out infinite alternate; }
+.tx-scene[data-mood=cleared] .tx-destination { transform: translateX(-50%) scale(1.25); }
+.tx-cone { width: 13%; min-width: 48px; max-width: 140px; left: calc(50% + (var(--cone) - 50%) * (.3 + var(--p) * .7)); bottom: calc(44% - var(--p) * 38%); transform: translateX(-50%) scale(calc(.22 + var(--p) * .78)); transform-origin: 50% 100%; transition: left .12s linear, bottom .12s linear, transform .12s linear; }
+.tx-taxi { left: var(--lane); bottom: -1%; width: 27%; min-width: 120px; max-width: 300px; transform: translateX(-50%); transition: left .42s cubic-bezier(.3, .8, .3, 1); }
+.tx-taxi > * { transform-origin: 120px 170px; }
+.tx-scene[data-mood=running] .tx-taxi > * { animation: tx-rumble .18s ease-in-out infinite alternate; }
+.tx-light { transition: fill .2s; }
+.tx-scene[data-mood=lost] .tx-light { animation: tx-hazard .6s steps(2) infinite; }
+.tx-scene[data-mood=lost] .tx-passenger { animation: tx-leave 1.2s ease-in .3s both; }
+.tx-scene[data-mood=cleared] .tx-passenger { animation: tx-wave .5s ease-in-out 3 alternate; transform-origin: 150px 72px; }
+.tx-honk { left: calc(var(--lane) - 12%); bottom: 36%; width: 16%; min-width: 70px; transform-origin: 50% 100%; animation: tx-honk .7s ease-out both; }
+.tx-danger { inset: 0; background: radial-gradient(ellipse at 50% 50%, transparent 40%, var(--tx-danger)); opacity: calc(var(--p) * .68); transition: opacity .3s; pointer-events: none; }
+.tx-scene[data-urgent] .tx-danger { animation: tx-throb .5s ease-in-out infinite alternate; }
+.tx-scene[data-mood=idle] .tx-road, .tx-scene[data-mood=idle] .tx-wall, .tx-scene[data-mood=lost] .tx-road, .tx-scene[data-mood=lost] .tx-wall { animation-play-state: paused; }
+.tx-scene[data-mood=cleared] .tx-road { animation-duration: .5s; }
+.tx-scene[data-mood=cleared] .tx-wall { animation-duration: 1.2s; }
+.tx-lane-note { flex: 1; min-width: 0; text-align: center; padding: 8px 12px; border-radius: 999px; background: color-mix(in srgb, var(--ch-face) 14%, transparent); }
+.tx-lane-note.blocked { background: color-mix(in srgb, var(--ch-wrong) 40%, transparent); color: #fff; opacity: 1; font-weight: 800; animation: ch-nope .4s ease both; }
+
+@container (min-width: 900px) { .chase-stage[data-phase=finished] .tx-taxi { left: 75%; } .chase-stage[data-phase=finished] .tx-cone { left: 75%; } }
+@keyframes tx-roll { to { background-position: 33.33% 120px, 66.67% 120px, 0 0, 100% 0, 0 0; } }
+@keyframes tx-facade { to { background-position: 480px 0; } }
+@keyframes tx-rumble { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
+@keyframes tx-hazard { to { fill: #ffd36b; } }
+@keyframes tx-leave { to { transform: translate(60px, -30px) scale(.4); opacity: 0; } }
+@keyframes tx-wave { to { transform: rotate(-12deg) translateY(-4px); } }
+@keyframes tx-sign { to { transform: translateY(-3px); } }
+@keyframes tx-honk { 0% { opacity: 0; transform: scale(.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.1) translateY(-20%); } }
+@keyframes tx-throb { to { opacity: calc(var(--p) * .68 + .2); } }
+
+@container (max-width: 640px) {
+  .tx-sun { left: 72%; top: 5%; width: 18%; }
+  .tx-taxi { width: 36%; min-width: 100px; }
+  .tx-cone { width: 18%; min-width: 40px; }
+  .tx-destination { width: 20%; }
+  .tx-world { perspective: 280px; }
+  .ch-controls { gap: 8px; }
+  .ch-steer { min-height: 44px; padding: 0 14px 0 10px; font-size: 14px; }
+  .tx-lane-note { order: -1; flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tx-scene * { animation: none !important; }
+  .tx-taxi, .tx-cone, .tx-destination { transition: none !important; }
+  .tx-honk { display: none; }
+}
