@@ -52,12 +52,6 @@ try {
  await blank.update({title:'A new learning objective'});
  const fresh=await call({action:'taskToolsIdeas',itemId:'blank',taskId:'',direction:''});
  assert.notEqual(fresh.requestId,cached.requestId);assert.equal(calls,beforeIdeas+2,'changed lesson context invalidates ideas');
- const budgetBefore=(await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd');
- globalThis.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code:'credit_balance_exhausted',message:'PRIVATE PROVIDER DATA'}})});
- const unavailable=await call({action:'taskTools',mode:'next',step:'ideas',requestId:'no-credit'});
- assert.equal(unavailable.status,'failed');assert.match(unavailable.error,/no credit/);assert.equal(unavailable.error.includes('PRIVATE'),false);
- assert.equal((await db.doc('aiPrivate/'+uid+'/jobs/no-credit').get()).get('reason'),'billing');
- assert.equal((await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd'),budgetBefore);
  // A recording elsewhere in the class is usable even in a brand new activity.
  const classRef=db.doc('classes/'+classId);
  await classRef.collection('media').doc('marketAudio').set({kind:'audio',title:'Market recording',script:[{who:'Sam',text:'The oranges cost seven coins.'}]});
@@ -76,5 +70,11 @@ try {
  const image=reopened.flatMap(n=>n.content??[]).find(n=>n.type==='picture');
  assert.equal((await classRef.collection('media').doc(image.attrs.src.slice(6)).get()).get('data'),bytes);
  assert.ok(JSON.stringify(reopened).includes('Test artist'));
+ const budgetBefore=(await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd');
+ globalThis.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code:'credit_balance_exhausted',message:'PRIVATE PROVIDER DATA'}})});
+ const unavailable=await call({action:'taskTools',mode:'next',step:'ideas',requestId:'no-credit'});
+ assert.equal(unavailable.status,'failed');assert.match(unavailable.error,/no credit/);assert.equal(unavailable.error.includes('PRIVATE'),false);
+ assert.equal((await db.doc('aiPrivate/'+uid+'/jobs/no-credit').get()).get('reason'),'billing');
+ assert.equal((await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd'),budgetBefore);
  console.log('Lesson tools: private missing keys, preserved existing keys/content, linked variants, append ordering, idempotency, stale-edit protection and class access passed (mock provider).');
 } finally {globalThis.fetch=fetchOriginal;}
