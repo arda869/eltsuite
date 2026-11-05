@@ -33,7 +33,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 25 | Implemented locally | Companion chat available with optional profile fields; browser test passed. |
 | 26 | In progress | Retry affordances added; test configuration/network failure with preserved draft. |
 | 27 | In progress | Pending image results retained; test Create/Edit/Restyle/Eraser rules in browser. |
-| 28 | In progress | Designer file/page thumbnail selection added; verify insertion and large libraries. |
+| 28 | In progress | Designer file/page thumbnails and insertion pass a mock browser journey; large-library performance remains open. |
 | 29 | Open | Prominent Use in Classes handoff and Edit in Designer source link. |
 | 30 | Open | Full canvas manipulation and final composition inspection. |
 | 31 | Open | Generated element language and classroom display legibility audit. |
@@ -68,5 +68,5 @@ Legend: **Implemented locally** means code exists but the required full journey 
 - Focused unit tests: 22/22 passed (mock/unit).
 - Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
 - Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
-- `docs/ui-ux-brief-images/quiz-show.png` is a local preview, not a production capture.
+- `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
 - No authenticated production write or published-build verification has been performed for this branch.
