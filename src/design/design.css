@@ -57,8 +57,9 @@
 .dz-seg.wide button { flex: 1; padding: 6px 6px; }
 .dz-check { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--sans); color: var(--dz-muted); cursor: pointer; padding: 0 6px; }
 .dz-check input, .dz-checkrow input { accent-color: var(--dz); width: 15px; height: 15px; }
-.dz-dl { display: inline-flex; align-items: center; gap: 8px; background: var(--dz) !important; border-color: var(--dz) !important; color: #fff !important; border-radius: 10px; padding: 8px 16px; }
-.dz-dl:hover { filter: brightness(1.08); }
+.dz-dl { display: inline-flex; align-items: center; gap: 8px; background: var(--dz-panel) !important; border-color: var(--dz-line) !important; color: var(--dz-ink) !important; border-radius: 10px; padding: 8px 16px; }
+.dz-dl:hover { background: var(--dz-soft) !important; }
+.dz-use { white-space: nowrap; background: var(--dz) !important; border-color: var(--dz) !important; color: #fff !important; }
 .dz-busy { font: 600 13px var(--sans); color: var(--dz); padding: 0 6px; }
 .dz-dl-scrim { position: fixed; inset: 0; z-index: 40; }
 .dz-dl-pop { position: absolute; right: 14px; top: 50px; z-index: 41; width: 320px; max-height: calc(100vh - 140px); overflow: auto; padding: 8px; border-radius: 14px; background: var(--dz-panel); box-shadow: 0 18px 50px -12px rgba(38, 36, 32, 0.4), 0 0 0 1px var(--dz-line); animation: dz-pop 0.16s ease-out; }

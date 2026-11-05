@@ -11,9 +11,9 @@ test('an explicitly named lesson stays ahead of broad matching material after co
 test('an ICQ question about the current activity does not read an unrelated lesson', async () => {
  const {findTeacherLessons}=await import('../../functions/ai/coach-lessons.js');
  const item={id:'tuesday',get:key=>({type:'lesson',title:'Tuesday live lesson plan'}[key])};
- const cls={id:'demo',get:()=> 'Demo class',ref:{collection:()=>({get:async()=>({docs:[item]})})}};
+ const cls={id:'demo',get:()=> 'Demo class',ref:{collection:()=>({limit:()=>({get:async()=>({docs:[item]})})})}};
  let sourceReads=0;
- const db={collection:()=>({where:()=>({get:async()=>({docs:[cls]})})}),doc:()=>{sourceReads++;throw Error('Unexpected source read');}};
+ const db={collection:()=>({where:()=>({limit:()=>({get:async()=>({docs:[cls]})})})}),doc:()=>{sourceReads++;throw Error('Unexpected source read');}};
  const found=await findTeacherLessons(db,'teacher','What ICQs can I use here?',{classId:'demo',itemId:'lesson1',taskId:'listening1'});
  assert.deepEqual(found.lessons,[]);assert.equal(sourceReads,0);
 });

@@ -90,7 +90,7 @@ export async function storyStripImage(id: string, pages: DPage[], els: El[], acc
   return new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('blob'))), 'image/png'));
 }
 
-type Pick = (blob: Blob, title: string, credit?: string) => Promise<void>;
+type Pick = (blob: Blob, title: string, credit?: string, designerId?: string) => Promise<void>;
 export function DesignerImages({ uid, onPick, onBoard }: { uid?: string; onPick: Pick; onBoard: (d: SharedDoc) => Promise<void> }) {
   const { user } = useAuth();
   const { mine, withMe } = useMyDocs(uid);
@@ -204,13 +204,13 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
       ) : pages.length ? (
         <>
           {canvasStory && pages.length > 1 && (
-            <button type="button" className="btn primary" disabled={busy} onClick={() => void run(async () => onPick(await storyStripImage(d.id, pages, els, accent), d.title))}>
+            <button type="button" className="btn primary" disabled={busy} onClick={() => void run(async () => onPick(await storyStripImage(d.id, pages, els, accent), d.title, '', d.id))}>
               Insert the whole story as a strip
             </button>
           )}
           <div className="inline-image-pages">
             {pages.map((p, i) => (
-              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent), p.caption || d.title))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
+              <button type="button" className="inline-image-page" key={p.id} disabled={busy} onClick={() => void run(async () => onPick(await designPageImage(d.id, p, els, accent), p.caption || d.title, '', d.id))} aria-label={`Insert ${p.name || `${canvasStory ? 'panel' : 'page'} ${i + 1}`}`}>
                 {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" style={{ aspectRatio: `${p.w} / ${p.h}` }} /> : <span className="inline-image-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
                 <span>{p.name || `${canvasStory ? 'Panel' : 'Page'} ${i + 1}`}</span>
                 {p.caption && <small>{p.caption}</small>}
@@ -219,7 +219,7 @@ function DesignPages({ d, onPick, onBoard }: { d: SharedDoc; onPick: Pick; onBoa
           </div>
         </>
       ) : isImageFile(d) ? (
-        <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => onPick(await loadAnyFile(d.id, d.file), d.title))}>Insert the image</button>
+        <button type="button" className="btn" disabled={busy} onClick={() => void run(async () => onPick(await loadAnyFile(d.id, d.file), d.title, '', d.id))}>Insert the image</button>
       ) : (
         <p>This design has no pages yet.</p>
       )}

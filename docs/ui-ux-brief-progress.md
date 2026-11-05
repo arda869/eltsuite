@@ -34,7 +34,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 26 | In progress | Retry affordances added; test configuration/network failure with preserved draft. |
 | 27 | In progress | Pending image results retained; test Create/Edit/Restyle/Eraser rules in browser. |
 | 28 | In progress | Designer file/page thumbnails and insertion pass a mock browser journey; large-library performance remains open. |
-| 29 | Open | Prominent Use in Classes handoff and Edit in Designer source link. |
+| 29 | In progress | Use in Classes saves the current page to Resources and returns to the originating lesson/document or Classes; inserted pictures retain an Edit source in Designer link. Mock browser journey passes; direct destination insertion and live Firebase check remain. |
 | 30 | Open | Full canvas manipulation and final composition inspection. |
 | 31 | Open | Generated element language and classroom display legibility audit. |
 | 32 | Open | Desktop/mobile navigation depth and active location audit. |
@@ -63,10 +63,11 @@ Legend: **Implemented locally** means code exists but the required full journey 
 
 ## Verification to date
 
-- TypeScript `--noEmit` passed before the latest Designer recovery change; rerun required.
-- Production build passed before the latest Designer thumbnail and recovery changes; rerun required.
+- TypeScript `--noEmit` passed after Designer recovery and source-link changes.
+- Production build passed after Designer recovery, preview and source-link changes.
 - Focused unit tests: 22/22 passed (mock/unit).
 - Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
+- Mock browser: Designer preview, insertion with a source link, and Use in Classes archival/return passed. The 33 spelling and coach unit tests pass after bounded-query mock updates.
 - Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
 - `docs/ui-ux-brief-images/quiz-show.png` and `docs/ui-ux-brief-images/designer-picker.png` are local previews, not production captures.
 - No authenticated production write or published-build verification has been performed for this branch.

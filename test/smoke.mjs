@@ -585,11 +585,17 @@ const J = {
     if((await d.locator('.design-pick-card').first().boundingBox())?.height<160)throw Error('Designer preview was clipped to a text-button height');
     mkdirSync('outputs/ui-ux-brief',{recursive:true});
     await d.screenshot({path:'outputs/ui-ux-brief/designer-picker.png'});
-    await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
+    const sourceTitle=await d.evaluate(id=>JSON.parse(localStorage.getItem('mockfs'))['sharedDocs/'+id].title,fileId);
+    await d.locator('.inline-image-list button').filter({hasText:sourceTitle}).first().click();
     const pageButton=d.getByRole('button',{name:/Insert page|Insert the image|Insert the storyboard|Insert Panel/}).first();
     await pageButton.click();
     await d.getByRole('dialog',{name:'Add pictures'}).waitFor({state:'detached'});
     if(!await d.locator('.pic-node,.sbn').count())throw Error('Designer content was not inserted');
+    const insertedPicture=d.locator('.pic-node').first();
+    await insertedPicture.click();
+    const sourceLink=d.getByRole('link',{name:'Edit source in Designer'});
+    await sourceLink.waitFor();
+    if(!new URL(await sourceLink.getAttribute('href'),BASE).pathname.endsWith('/'+fileId))throw Error('Inserted picture lost its Designer source');
     await d.route('https://commons.wikimedia.org/w/api.php**',route=>route.fulfill({json:{query:{pages:{1:{pageid:1,title:'File:Market.png',imageinfo:[{url:'https://upload.wikimedia.org/test/500px-test-market.png',thumburl:'https://upload.wikimedia.org/test/500px-test-market.png',width:4000,height:3000,mime:'image/png',extmetadata:{Artist:{value:'Test artist'},LicenseShortName:{value:'CC BY 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by/4.0/'}}}]}}}}}));
     await d.route('https://upload.wikimedia.org/test/500px-test-market.png',route=>route.fulfill({body:readFileSync(downloaded),contentType:'image/png'}));
     await d.getByRole('menuitem',{name:'Insert',exact:true}).click();
@@ -600,6 +606,9 @@ const J = {
     await d.locator('.inline-image-list button').filter({hasText:'Market'}).click();
     await d.locator('.pic-credit').filter({hasText:'Test artist'}).waitFor();
     await d.reload();await d.locator('.pic-credit').filter({hasText:'CC BY 4.0'}).waitFor();
+    await image.getByRole('button',{name:'Use in Classes'}).click();
+    await image.waitForURL('**/classes');
+    if(!await image.evaluate(id=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).some(([key,value])=>key.startsWith('users/teacher1/archive/')&&value.designerId===id),fileId))throw Error('Use in Classes did not preserve the Designer source in Resources');
     await image.close();await story.close();return s;
   },
 

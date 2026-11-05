@@ -1142,7 +1142,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         </div>
         <span className="dz-grow" />
         {canEdit ? <span className={'dz-saved' + (edits.failed || fieldSaves.status === 'error' ? ' bad' : '')} role="status">{edits.failed || fieldSaves.status === 'error' ? <>Could not save · <button type="button" className="dz-save-retry" onClick={() => void Promise.all([edits.retry(), fieldSaves.retry()])}>Retry</button></> : fieldSaves.status === 'waiting' || (!navigator.onLine && edits.saving) ? 'Offline · waiting for connection' : edits.saving || fieldSaves.status === 'saving' ? 'Saving…' : fieldSaves.status === 'unsaved' ? 'Unsaved changes' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
-        <DownloadMenu cx={cx} />
+        <DownloadMenu cx={cx} beforeUse={async () => { edits.flush(); const [elements, fields] = await Promise.all([edits.retry(), fieldSaves.retry()]); return elements && fields; }} />
       </div>
       <div className="dz-body">
         {canEdit && <nav className="dz-rail" aria-label="Tools">
