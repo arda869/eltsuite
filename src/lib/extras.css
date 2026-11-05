@@ -377,7 +377,13 @@
 .fs-ce-more { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--hair-strong); }
 .fs-ce-acts { display: flex; align-items: center; gap: 6px; }
 
-.definition-ai { border:1px solid var(--hair); border-radius:10px; padding:12px; margin:8px 0; font:13px/1.5 var(--sans); }
+.definition-ai { border:1px solid var(--hair); border-radius:14px; padding:14px; margin:8px 0; font:13px/1.5 var(--sans); background:var(--paper); }
+.definition-ai .aik-header { margin-bottom: 4px; }
+.definition-ai .aik-title { font-size: 17px; }
+.definition-ai-grid { display:grid; grid-template-columns: 1fr auto; gap: 12px 16px; align-items:start; }
+.definition-ai-note { color: var(--muted); }
+.definition-ai-picture small { display:block; color:var(--muted); max-width: 240px; }
+@media (max-width: 560px) { .definition-ai-grid { grid-template-columns: 1fr; } }
 .definition-ai p { margin:7px 0; }
 .definition-ai > label, .definition-ai details label { display:grid; gap:5px; margin:8px 0; }
 .definition-ai select,.definition-ai textarea { width:100%; box-sizing:border-box; color:var(--ink); background:var(--paper); border:1px solid var(--hair); border-radius:7px; padding:7px; font:inherit; }
