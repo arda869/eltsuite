@@ -387,3 +387,43 @@
 .dz-ai-progress{padding:22px 16px;border-radius:16px;background:linear-gradient(135deg,#6d5bd018,#3667a612);display:grid;gap:12px;text-align:center}.dz-ai-progress p{margin:0;font-size:13px}.dz-ai-orbit{width:32px;height:32px;margin:auto;border:3px solid #6d5bd033;border-top-color:#6d5bd0;border-radius:50%;animation:designer-spin 1.2s linear infinite}@keyframes designer-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.dz-ai-orbit{animation:none}}
 
 .dz-style-picker{border:0;padding:0;margin:12px 0;display:grid;gap:8px}.dz-style-picker legend{margin-bottom:8px;font-weight:600}.dz-style-card{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line,#777);border-radius:12px;padding:10px;background:transparent;color:inherit;cursor:pointer}.dz-style-card.chosen{outline:2px solid #639ce0}.dz-style-card small{display:block;margin-top:4px;font-size:12px}.dz-style-swatch{display:grid;place-items:center;width:48px;height:48px;flex-shrink:0;border-radius:10px;font-size:38px;color:#17394a;background:#f5ca47}.dz-style-swatch.photo{background:linear-gradient(155deg,#b4d9e3,#4b7b59);color:white}.dz-style-swatch.storybook{background:#f1d8b5;color:#537c70}.dz-style-swatch.editorial{background:#eee9df;color:#527570}.dz-style-swatch.ink{background:white;color:black}
+
+/* ------------------------------------------------------------------ scenes, dragging and characters */
+
+/* Dragging from a drawer: the stage lights up, and a ghost shows where the thing will land. */
+.dz-stage.drop-on .dz-paper { outline: 2px solid var(--dz); outline-offset: 4px; box-shadow: 0 0 0 10px color-mix(in srgb, var(--dz) 12%, transparent); }
+.dz-ghost { position: absolute; box-sizing: border-box; border: 2px dashed var(--dz); border-radius: 6px; background: color-mix(in srgb, var(--dz) 10%, transparent); pointer-events: none; transition: left 0.05s linear, top 0.05s linear, width 0.08s, height 0.08s; }
+.dz-ghost::after { content: ''; position: absolute; left: 20%; right: 20%; bottom: -4px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--dz-ink) 25%, transparent); filter: blur(3px); }
+.dz-ghost.scene { border-style: solid; border-radius: 0; background: color-mix(in srgb, var(--dz) 6%, transparent); }
+.dz-ghost.scene::after { display: none; }
+.dz-tile[draggable='true'] { cursor: grab; }
+.dz-tile[draggable='true']:active { cursor: grabbing; }
+
+/* Library tiles with a name and a favourite star. */
+.dz-tile-wrap { position: relative; display: flex; flex-direction: column; gap: 3px; min-width: 0; content-visibility: auto; contain-intrinsic-size: auto 96px; }
+.dz-tile-wrap .dz-tile { width: 100%; }
+.dz-tile-wrap.wide .dz-tile { aspect-ratio: 16 / 9; padding: 0; overflow: hidden; }
+.dz-tile.scene svg, .dz-tile.scene img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.dz-tile img { pointer-events: none; }
+.dz-tile-blank { display: block; background: #f1efea; border-radius: 6px; }
+.dz-tile.char { padding: 0; overflow: hidden; }
+.dz-tile.char img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dz-tile.words { aspect-ratio: 2 / 1; font: 600 13px var(--sans); color: var(--dz-ink); }
+.dz-tile-n { font: 600 11px var(--sans); color: var(--dz-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dz-fav { position: absolute; right: 3px; top: 3px; display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px; background: color-mix(in srgb, var(--dz-panel) 80%, transparent); color: var(--dz-muted); opacity: 0; cursor: pointer; transition: opacity 0.12s; }
+.dz-tile-wrap:hover .dz-fav, .dz-fav:focus-visible, .dz-fav.on { opacity: 1; }
+.dz-fav.on { color: #d9a23a; }
+.dz-grid.three { grid-template-columns: repeat(3, 1fr); }
+.dz-chips.scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.dz-chips.scroll button { flex: 0 0 auto; }
+.dz-sub { display: block; margin: 8px 6px 4px; font: 600 12px var(--sans); color: var(--dz-muted); }
+
+/* The side a person or thing is seen from, in the quick bar and the settings. */
+.dz-views { display: inline-flex; padding: 3px; gap: 1px; border-radius: 9px; background: color-mix(in srgb, var(--dz-ink) 6%, transparent); }
+.dz-float .dz-views button, .dz-views button { height: 26px; min-width: 30px; padding: 0 6px; border: 0; border-radius: 6px; background: none; font: 700 12px var(--sans); color: var(--dz-muted); cursor: pointer; }
+.dz-views button.on { background: var(--dz-panel); color: var(--dz-ink); box-shadow: 0 1px 3px rgba(38, 36, 32, 0.15); }
+.dz-views button:disabled { opacity: 0.4; cursor: default; }
+.dz-float-sel { height: 30px; max-width: 150px; padding: 0 8px; border: 1px solid var(--dz-line); border-radius: 8px; background: var(--dz-panel); color: var(--dz-ink); font: 600 13px var(--sans); }
+.dz-charbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 640px; }
+.dz-float .dz-charbar button.primary { height: 30px; }
+.dz-float .dz-cost { flex-basis: 100%; padding: 2px 10px 4px; font-size: 12px; }

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { openMenuAt } from '../components/ContextMenu';
 import type { Ctx } from './Editor';
-import { FONTS, MM, SIZES, SWATCHES, ensureFont, type El, type Fx } from './model';
+import { FONTS, MM, SIZES, SWATCHES, VIEWS, ensureFont, type ArtView, type El, type Fx } from './model';
+import { SCENES } from '../storyboard/scenes';
 import { isLine, textHeight } from './render';
 import { nameOf } from './Drawers';
 
@@ -381,9 +382,22 @@ function ArtProps({ cx, e, set }: { cx: Ctx; e: El; set: SetFn }) {
   const [poses, setPoses] = useState<Record<string, { name: string }> | null>(null);
   const [faces, setFaces] = useState<Record<string, { name: string }> | null>(null);
   const [people, setPeople] = useState<Record<string, { name: string }> | null>(null);
-  useEffect(() => void import('../storyboard/art').then((m) => (setPoses(m.POSES), setFaces(m.FACES), setPeople(m.PEOPLE))), []);
+  const [views, setViews] = useState<ArtView[] | null>(null);
+  useEffect(() => void import('../storyboard/art').then((m) => (setPoses(m.POSES), setFaces(m.FACES), setPeople(m.PEOPLE), setViews(e.art === 'person' ? VIEWS.map((v) => v.k) : m.THINGS[e.ref ?? '']?.views ?? []))), [e.art, e.ref]);
   return (
     <Sec title={e.art === 'person' ? 'Person' : 'Thing'}>
+      {views && views.length > 1 && (
+        <>
+          <span className="dz-sub">Seen from</span>
+          <Seg value={e.view ?? views[0]} options={VIEWS.filter((v) => views.includes(v.k)).map((v) => [v.k, v.short, v.name] as [ArtView, ReactNode, string])} onChange={(v) => set({ view: v })} label="Seen from" />
+          <p className="hint">A different drawing of the same {e.art === 'person' ? 'person' : 'thing'}, not a turn of the picture. Turning is the handle above the box.</p>
+        </>
+      )}
+      <label className="dz-check">
+        <input type="checkbox" checked={!!e.ground} onChange={(ev) => set({ ground: ev.target.checked, fit: false })} />
+        <span>Stands on the ground</span>
+      </label>
+      <p className="hint">{e.ground ? 'Sized by how far away it stands: nearer the bottom of the page is nearer to you. It casts a small shadow. Size it by hand and it keeps that size.' : 'Sized and placed freely.'}</p>
       {e.art === 'person' && poses && faces && people && (
         <>
           <label className="dz-field">
@@ -420,13 +434,35 @@ function PageProps({ cx }: { cx: Ctx }) {
   return (
     <div className="dz-props-in">
       <div className="dz-props-title">
-        <strong>Page {cx.pages.indexOf(p) + 1}</strong>
+        <strong>{cx.mode === 'storyboard' ? 'Panel' : 'Page'} {cx.pages.indexOf(p) + 1}</strong>
         <em>{size?.name ?? `${p.w} × ${p.h} px`}</em>
       </div>
-      <Sec title="Page">
+      {(cx.mode === 'storyboard' || p.scene) && (
+        <Sec title="Scene">
+          <label className="dz-field">
+            <span>Backdrop</span>
+            <select value={p.scene ?? 'plain'} onChange={(e) => cx.setScene(e.target.value)} disabled={!cx.canEdit}>
+              {Object.entries(SCENES).map(([k, sc]) => <option key={k} value={k}>{sc.name}</option>)}
+            </select>
+          </label>
+          {p.scene && p.scene !== 'plain' && (
+            <>
+              <Slider label="Floor line" value={Math.round((p.horizon ?? SCENES[p.scene]?.horizon ?? 0.74) * 100)} min={30} max={95} onChange={(v) => cx.setPage({ horizon: v / 100 })} fmt={(v) => `${v}%`} />
+              <p className="hint">Where the floor meets the wall. People standing below it are sized by how far away they are.</p>
+            </>
+          )}
+          {cx.mode === 'storyboard' && (
+            <label className="dz-field">
+              <span>Caption</span>
+              <input value={p.caption ?? ''} placeholder="Shown under the panel in a lesson" onChange={(e) => cx.setPage({ caption: e.target.value })} disabled={!cx.canEdit} />
+            </label>
+          )}
+        </Sec>
+      )}
+      <Sec title={cx.mode === 'storyboard' ? 'Panel' : 'Page'}>
         <label className="dz-field">
           <span>Name</span>
-          <input value={p.name ?? ''} placeholder={`Page ${cx.pages.indexOf(p) + 1}`} onChange={(e) => cx.setPage({ name: e.target.value })} disabled={!cx.canEdit} />
+          <input value={p.name ?? ''} placeholder={`${cx.mode === 'storyboard' ? 'Panel' : 'Page'} ${cx.pages.indexOf(p) + 1}`} onChange={(e) => cx.setPage({ name: e.target.value })} disabled={!cx.canEdit} />
         </label>
         <label className="dz-field">
           <span>Size</span>
@@ -449,7 +485,7 @@ function PageProps({ cx }: { cx: Ctx }) {
         <dl className="dz-keys">
           {[
             ['V', 'Select'], ['T', 'Add text'], ['P', 'Pen'], ['M', 'Marker'], ['E', 'Rubber'], ['L', 'Labels'], ['H or Space', 'Move around'],
-            ['Ctrl+D', 'Duplicate'], ['Alt + drag', 'Copy while moving'], ['Shift + drag', 'Keep the shape'], ['[ and ]', 'Back and forward'], ['Arrows', 'Nudge, with Shift for 10'], ['Ctrl + wheel', 'Zoom'], ['Double-click', 'Type, or crop a picture'],
+            ['Ctrl+D', 'Duplicate'], ['Ctrl+G', 'Group, with Shift to ungroup'], ['Alt + drag', 'Copy while moving'], ['Shift + drag', 'Keep the shape'], ['[ and ]', 'Back and forward'], ['Arrows', 'Nudge, with Shift for 10'], ['Ctrl + wheel', 'Zoom'], ['Double-click', 'Type, or crop a picture'],
           ].map(([k, v]) => (
             <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
           ))}

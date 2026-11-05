@@ -8,9 +8,9 @@ import { ask, tell } from '../lib/ask';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { UiIcon } from '../components/UiIcon';
-import { clean, elsCol, ensureFont, loadPicture, pagesCol, saveMeta, storePicture, useDesign, type DPage, type El } from './model';
-import { artKey, bounds, corners, drawPage, hit, isLine, labelEnd, textBox, textHeight, type View } from './render';
-import { artImage, qrImage } from './assets';
+import { clean, elsCol, ensureFont, loadPicture, pagesCol, saveMeta, storePicture, useDesign, VIEWS, type ArtView, type DPage, type El } from './model';
+import { artKey, bounds, corners, drawPage, hit, isLine, labelEnd, sceneKey, textBox, textHeight, type View } from './render';
+import { artImage, qrImage, sceneImage } from './assets';
 import { useEdits } from './useHistory';
 import type { Tpl } from './templates';
 import { Drawer, type DrawerKey } from './Drawers';
@@ -18,6 +18,10 @@ import { Props } from './Panels';
 import { StartScreen } from './Start';
 import { eraseFrom, pagePointToImage } from './tools';
 import { DownloadMenu } from './Download';
+import { bubbleFor, settle, standAt, standsOnGround } from './scene';
+import { dragging, isOurs, type Payload } from './dnd';
+import { FACES, POSES, THINGS } from '../storyboard/art';
+import { CharacterBar } from './CharacterBar';
 import './design.css';
 
 export type Tool = 'select' | 'hand' | 'pen' | 'marker' | 'highlighter' | 'eraser' | 'label' | 'magic' | 'crop';
@@ -41,7 +45,7 @@ export type Ctx = {
   setTool: (t: Tool) => void;
   pen: { color: string; size: number };
   setPen: (p: { color: string; size: number }) => void;
-  addPicture: (f: Blob, o?: { into?: string; credit?: string; name?: string; throwOnError?: boolean }) => Promise<void>;
+  addPicture: (f: Blob, o?: PictureOpts) => Promise<void>;
   imgs: Map<string, CanvasImageSource>;
   setPage: (p: Partial<DPage>) => void;
   addPages: (tpl: Tpl, replace?: boolean) => Promise<void>;
@@ -53,6 +57,25 @@ export type Ctx = {
   goPage: (id: string) => void;
   spot: (w: number, h: number) => { x: number; y: number; w: number; h: number };
   learnerUser: boolean;
+  // scenes and stories
+  mode: 'design' | 'storyboard';
+  // Puts a person or thing on the page: at a point (its feet there, sized for how far away that is),
+  // or in a free spot in the middle.
+  place: (el: Partial<El>, at?: { x: number; y: number }) => string[];
+  setScene: (key: string) => void;
+  group: () => void;
+  ungroup: () => void;
+  // Something dragged from a drawer and dropped on the page.
+  drop: (p: Payload, at: { x: number; y: number }) => Promise<void>;
+  speak: (who: El, kind?: 'speech' | 'thought') => void;
+};
+export type PictureOpts = {
+  into?: string; // the frame (on any page) to fill
+  credit?: string;
+  name?: string;
+  throwOnError?: boolean;
+  at?: { x: number; y: number }; // where it was dropped: its middle, or its feet if it stands
+  el?: Partial<El>; // more to set on the new picture (a character's id, that it stands on the ground…)
 };
 
 const SNAP = 6;
@@ -79,7 +102,14 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     m.addEventListener('change', f);
     return () => m.removeEventListener('change', f);
   }, []);
-  const [drawer, setDrawer] = useState<DrawerKey | null>(() => (typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches ? null : 'templates'));
+  const [drawer, setDrawer] = useState<DrawerKey | null>(() => (typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches ? null : meta.type === 'storyboard' ? 'people' : 'templates'));
+  // A storyboard opens on the Scene drawer once we know it is one.
+  const drawerSet = useRef(false);
+  useEffect(() => {
+    if (drawerSet.current || !meta.type) return;
+    drawerSet.current = true;
+    if (meta.type === 'storyboard' && !phone) setDrawer('people');
+  }, [meta.type, phone]);
   const [propsOpen, setPropsOpen] = useState(false);
   const [hover, setHover] = useState('');
   const frameIn = useRef<HTMLInputElement>(null);
@@ -92,6 +122,10 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [stroke, setStroke] = useState<number[] | null>(null);
   const [cropOf, setCropOf] = useState('');
+  // Dragging something from a drawer over the page: the stage lights up and a ghost shows where it lands.
+  const [over, setOver] = useState(false);
+  const overDepth = useRef(0);
+  const [ghost, setGhost] = useState<{ x: number; y: number; w: number; h: number; scene: boolean } | null>(null);
   const accent = meta.accent ?? '#c8764a';
   const [fontTick, setFontTick] = useState(0);
 
@@ -107,6 +141,9 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       }
       if (e.t === 'qr' && e.url && !imgs.has('qr:' + e.url)) need.push(['qr:' + e.url, () => qrImage(e.url!)]);
     }
+    for (const p of pages ?? []) {
+      if (p.scene && p.scene !== 'plain' && !imgs.has(sceneKey(p, accent))) need.push([sceneKey(p, accent), () => sceneImage(p.scene!, accent)]);
+    }
     const uniq = [...new Map(need).entries()];
     if (!uniq.length) return;
     let on = true;
@@ -120,7 +157,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     });
     return () => void (on = false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [els, accent, d.id]);
+  }, [els, pages, accent, d.id]);
   // Fonts on the page, before drawing with them.
   const fonts = useMemo(() => [...new Set(els.map((e) => e.font).filter(Boolean) as string[])].sort().join('|'), [els]);
   useEffect(() => {
@@ -164,30 +201,48 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
 
   // A picture added: stored in the file, and put in the frame chosen, the frame selected, or the middle.
   const addPicture = useCallback(
-    async (f: Blob, o: { into?: string; credit?: string; name?: string; throwOnError?: boolean } = {}) => {
+    async (f: Blob, o: PictureOpts = {}) => {
       if (!page) return;
       try {
         const { id, w, h } = await storePicture(d.id, f);
-        const frame = o.into ? here.find((e) => e.id === o.into) : sel.length === 1 && sel[0].t === 'image' && !sel[0].img ? sel[0] : undefined;
+        // The frame asked for may be on another page by now (an AI result that took a while): the
+        // picture still goes where it was meant to, and the page it is on opens.
+        const asked = o.into ? els.find((e) => e.id === o.into) : undefined;
+        if (o.into && !asked) throw Object.assign(new Error('frame-gone'), { frameGone: true });
+        const frame = asked ?? (sel.length === 1 && sel[0].t === 'image' && !sel[0].img ? sel[0] : undefined);
         if (frame) {
           // Fill the frame, cut to its shape from the middle.
           const fr = frame.w / frame.h;
           const ir = w / h;
           const crop = ir > fr ? { x: (1 - fr / ir) / 2, y: 0, w: fr / ir, h: 1 } : { x: 0, y: (1 - ir / fr) / 2, w: 1, h: ir / fr };
-          await commit({ [frame.id]: clean({...frame, img: id, iw: w, ih: h, crop, credit: o.credit, name: o.name ?? frame.name }) });
+          await commit({ [frame.id]: clean({ ...frame, img: id, iw: w, ih: h, crop, credit: o.credit, name: o.name ?? frame.name, ...(o.el ?? {}) }) });
+          if (frame.page !== page.id) setPageId(frame.page);
           setSelIds([frame.id]);
           return;
         }
-        const s = Math.min(1, (page.w * 0.7) / w, (page.h * 0.6) / h);
-        const elementId=newId()+newId();
-        await commit({[elementId]:clean({id:elementId,page:page.id,z:Math.max(0,...here.map(e=>e.z))+1,t: 'image', img: id, iw: w, ih: h, w: Math.round(w * s), h: Math.round(h * s), x: Math.round((page.w - w * s) / 2), y: Math.round((page.h - h * s) / 2), credit: o.credit, name: o.name })});
+        const ground = !!o.el?.ground;
+        let box: { x: number; y: number; w: number; h: number };
+        if (o.at) {
+          // Dropped at a point: a character stands with its feet there; anything else is centred on it.
+          box = ground ? standAt({ t: 'image', iw: w, ih: h, char: o.el?.char }, page, o.at.x, o.at.y, true) : (() => {
+            const s = Math.min(1, (page.w * 0.5) / w, (page.h * 0.5) / h);
+            return { w: Math.round(w * s), h: Math.round(h * s), x: Math.round(o.at!.x - (w * s) / 2), y: Math.round(o.at!.y - (h * s) / 2) };
+          })();
+        } else if (ground) box = standAt({ t: 'image', iw: w, ih: h, char: o.el?.char }, page, page.w / 2, page.h * 0.86, true);
+        else {
+          const s = Math.min(1, (page.w * 0.7) / w, (page.h * 0.6) / h);
+          box = { w: Math.round(w * s), h: Math.round(h * s), x: Math.round((page.w - w * s) / 2), y: Math.round((page.h - h * s) / 2) };
+        }
+        const elementId = newId() + newId();
+        await commit({ [elementId]: clean({ id: elementId, page: page.id, z: Math.max(0, ...here.map((e) => e.z)) + 1, t: 'image', img: id, iw: w, ih: h, ...box, credit: o.credit, name: o.name, ...(o.el ?? {}) }) });
         setSelIds([elementId]);
       } catch (error) {
-        if(o.throwOnError)throw error;
-        void tell('We couldn’t add that picture. Try a smaller one, or a different kind of file.');
+        if (o.throwOnError) throw error;
+        if ((error as { frameGone?: boolean }).frameGone) void tell('The frame that picture was for has gone, so we couldn’t put it there. Make it again and it will go in a new frame.');
+        else void tell('We couldn’t add that picture. Try a smaller one, or a different kind of file.');
       }
     },
-    [page, here, sel, d.id, commit],
+    [page, here, els, sel, d.id, commit],
   );
 
   const setPageP = useCallback((p: Partial<DPage>) => page && void updateDoc(doc(pagesCol(d.id), page.id), clean(p)).catch(() => {}), [page, d.id]);
@@ -316,6 +371,112 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     window.addEventListener('resize', f);
     return () => window.removeEventListener('resize', f);
   }, [fit]);
+
+  // ------------------------------------------------------------------ scenes
+
+  const mode: 'design' | 'storyboard' = meta.type === 'storyboard' ? 'storyboard' : 'design';
+
+  // A person or thing from the library, standing where it is put.
+  const place = useCallback(
+    (el: Partial<El>, at?: { x: number; y: number }) => {
+      if (!page) return [];
+      const ground = el.ground ?? standsOnGround(el as El);
+      let box: { x: number; y: number; w: number; h: number };
+      if (at) box = standAt(el as El, page, at.x, at.y, ground);
+      else {
+        // The middle of the page, a little in front of the horizon, so it is a sensible size.
+        const b = standAt(el as El, page, page.w / 2, page.h * 0.86, ground);
+        const free = spot(b.w, b.h);
+        box = ground ? { ...b, x: free.x } : free;
+      }
+      return add([{ ...el, ...box, ground }]);
+    },
+    [page, add, spot],
+  );
+  const setScene = useCallback(
+    (key: string) => {
+      if (!page) return;
+      void updateDoc(doc(pagesCol(d.id), page.id), clean({ scene: key === 'plain' ? null : key, horizon: null })).catch(() => void tell('We couldn’t change the backdrop just now. Check your connection and try again.'));
+    },
+    [page, d.id],
+  );
+
+  // Things grouped together are picked, moved, sized and turned as one.
+  const group = useCallback(() => {
+    if (sel.length < 2) return;
+    const gid = newId();
+    patch(Object.fromEntries(sel.map((e) => [e.id, { group: gid }])));
+  }, [sel, patch]);
+  const ungroup = useCallback(() => {
+    const grouped = sel.filter((e) => e.group);
+    if (!grouped.length) return;
+    patch(Object.fromEntries(grouped.map((e) => [e.id, { group: undefined }])));
+  }, [sel, patch]);
+  // The whole group of everything in `ids`, so a group is always picked together.
+  const withGroups = useCallback(
+    (ids: string[]) => {
+      const gs = new Set(here.filter((e) => ids.includes(e.id) && e.group).map((e) => e.group));
+      return gs.size ? [...new Set([...ids, ...here.filter((e) => e.group && gs.has(e.group)).map((e) => e.id)])] : ids;
+    },
+    [here],
+  );
+
+  // A speech or thought bubble for someone on the page, beside their head.
+  const speak = useCallback(
+    (who: El, kind: 'speech' | 'thought' = 'speech') => {
+      if (!page) return;
+      const b = bubbleFor(who, page, kind === 'thought' ? 'Hmm…' : 'Hello.');
+      add([{ ...b, shape: kind, name: kind === 'thought' ? 'Thought bubble' : 'Speech bubble' }], { edit: true });
+    },
+    [page, add],
+  );
+
+  // Something dragged from a drawer and dropped at a point on the page.
+  const drop = useCallback(
+    async (p: Payload, at: { x: number; y: number }) => {
+      if (!page || !canEdit) return;
+      const frameAt = () => [...here].reverse().find((x) => x.t === 'image' && !x.img && !x.hidden && hit(x, at.x, at.y));
+      switch (p.kind) {
+        case 'el':
+          place(p.el, at);
+          return;
+        case 'scene':
+          setScene(p.key);
+          return;
+        case 'media': {
+          // Already in this file's media: no copy needed.
+          const frame = frameAt();
+          if (frame) {
+            const fr = frame.w / frame.h;
+            const ir = (p.w ?? 1) / (p.h ?? 1);
+            const crop = ir > fr ? { x: (1 - fr / ir) / 2, y: 0, w: fr / ir, h: 1 } : { x: 0, y: (1 - ir / fr) / 2, w: 1, h: ir / fr };
+            patch({ [frame.id]: { img: p.img, iw: p.w, ih: p.h, crop, name: p.name } });
+            setSelIds([frame.id]);
+            return;
+          }
+          const w = p.w ?? 800;
+          const h = p.h ?? 600;
+          const s = Math.min(1, (page.w * 0.5) / w, (page.h * 0.5) / h);
+          add([{ t: 'image', img: p.img, iw: w, ih: h, w: Math.round(w * s), h: Math.round(h * s), x: Math.round(at.x - (w * s) / 2), y: Math.round(at.y - (h * s) / 2), name: p.name }]);
+          return;
+        }
+        case 'url':
+        case 'blob':
+        case 'char': {
+          const frame = frameAt();
+          try {
+            const src = p.kind === 'url' ? (typeof p.url === 'string' ? p.url : await p.url()) : p.kind === 'char' ? p.src : '';
+            const blob = p.kind === 'blob' ? p.blob : await fetch(src, { mode: 'cors' }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error('fetch'))));
+            await addPicture(blob, { into: frame?.id, at, credit: p.kind === 'url' ? p.credit : undefined, name: p.name, throwOnError: true, el: p.kind === 'char' ? { char: p.id, variant: 'ref', ground: true } : undefined });
+          } catch {
+            void tell('We couldn’t add that picture. Check your connection and try again.');
+          }
+          return;
+        }
+      }
+    },
+    [page, canEdit, here, place, setScene, patch, add, addPicture],
+  );
 
   const tmpStroke = useMemo<El | null>(() => {
     if (!stroke || !page || stroke.length < 3) return null;
@@ -488,8 +649,8 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       return begin(ev, { k: 'marquee', x0: p.x, y0: p.y, add: ev.shiftKey ? selIds : [] });
     }
     let ids = selIds;
-    if (ev.shiftKey) ids = selIds.includes(t.id) ? selIds.filter((x) => x !== t.id) : [...selIds, t.id];
-    else if (!selIds.includes(t.id)) ids = [t.id];
+    if (ev.shiftKey) ids = selIds.includes(t.id) ? selIds.filter((x) => x !== t.id) : withGroups([...selIds, t.id]);
+    else if (!selIds.includes(t.id)) ids = withGroups([t.id]);
     setSelIds(ids);
     const start = here.filter((e) => ids.includes(e.id) && !e.locked);
     if (ev.altKey && start.length && !ev.shiftKey) {
@@ -528,7 +689,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         const b = bounds([e]);
         return b.x < r.x + r.w && b.x + b.w > r.x && b.y < r.y + r.h && b.y + b.h > r.y;
       });
-      setSelIds([...new Set([...g.add, ...inside.map((e) => e.id)])]);
+      setSelIds(withGroups([...new Set([...g.add, ...inside.map((e) => e.id)])]));
       return;
     }
     if (g.k === 'move') {
@@ -649,6 +810,19 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
       setTool(tool);
       return;
     }
+    if (g.k === 'move') {
+      // Standing things keep their real size for where they now stand, and nearer ones come in front.
+      const moved = here.filter((e) => g.start.some((s) => s.id === e.id));
+      const fix = settle(moved, here, page);
+      if (Object.keys(fix).length) setLive(fix);
+    }
+    if (g.k === 'resize') {
+      // Sized by hand: a move no longer changes its size.
+      const list = g.group ? g.group.start : [g.start];
+      const fix: Record<string, Partial<El>> = {};
+      for (const e of list) if (e.ground && !e.fit) fix[e.id] = { fit: true };
+      if (Object.keys(fix).length) setLive(fix);
+    }
     if (g.k === 'move' || g.k === 'resize' || g.k === 'rotate' || g.k === 'anchor' || g.k === 'crop') flush();
   };
 
@@ -706,19 +880,24 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         { label: 'Add a label pointing here', icon: 'tag', onClick: () => void add([{ t: 'label', text: 'word', ax: p.x, ay: p.y, x: p.x < page.w - 220 ? p.x + 70 : p.x - 230, y: p.y - 20, w: 160, h: 40, font: 'Fraunces', size: 18 }], { edit: true }) },
       ]);
     }
-    const ids = selIds.includes(t.id) ? selIds : [t.id];
+    const ids = selIds.includes(t.id) ? selIds : withGroups([t.id]);
     setSelIds(ids);
     const list = here.filter((e) => ids.includes(e.id));
     const all = (f: (e: El) => Partial<El>) => patch(Object.fromEntries(list.map((e) => [e.id, f(e)])));
     const one = list.length === 1 ? list[0] : null;
+    const person = one && ((one.t === 'art' && one.art === 'person') || one.char);
     openMenu(ev, [
       ...(one && (one.t === 'text' || one.t === 'label' || (one.t === 'shape' && !isLine(one.shape))) ? [{ label: 'Type', icon: 'pen', hint: 'Enter', onClick: () => setEditing(one.id) } as MenuItem] : []),
       ...(one?.t === 'image' && one.img ? [{ label: 'Crop', icon: 'edit', onClick: () => setCropOf(one.id) } as MenuItem] : []),
       ...(one?.t === 'image' ? [{ label: one.img ? 'Change the picture…' : 'Add a picture…', icon: 'picture', onClick: () => ((frameFor.current = one.id), frameIn.current?.click()) } as MenuItem] : []),
+      ...(person ? [{ label: 'Add a speech bubble', icon: 'discuss', onClick: () => speak(one) } as MenuItem, { label: 'Add a thought bubble', icon: 'message', onClick: () => speak(one, 'thought') } as MenuItem] : []),
+      ...(one && (one.t === 'art' || one.char) ? [{ label: one.ground ? 'Let it float' : 'Stand it on the ground', icon: one.ground ? 'check' : '', hint: 'sized by how far away it is', onClick: () => patch({ [one.id]: { ground: !one.ground, fit: false } }) } as MenuItem] : []),
       { label: 'Cut', icon: 'cut', hint: 'Ctrl+X', disabled:!list.some(x=>!x.locked), onClick: () => {const movable=list.filter(x=>!x.locked);copy(movable);remove(movable.map(x=>x.id));} },
       { label: 'Copy', icon: 'copyall', hint: 'Ctrl+C', onClick: () => copy(list) },
       paste,
       { label: 'Duplicate', icon: 'copyall', hint: 'Ctrl+D', onClick: duplicate },
+      ...(list.length > 1 && !list.every((e) => e.group && e.group === list[0].group) ? [{ label: 'Group', icon: 'groups', hint: 'Ctrl+G', onClick: group } as MenuItem] : []),
+      ...(list.some((e) => e.group) ? [{ label: 'Ungroup', icon: '', hint: 'Ctrl+Shift+G', onClick: ungroup } as MenuItem] : []),
       'sep',
       { label: 'Bring to front', icon: 'next', hint: 'Ctrl+]', onClick: () => zIndex('top') },
       { label: 'Bring forward', icon: 'next', hint: ']', onClick: () => zIndex('up') },
@@ -768,6 +947,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     if (mod && e.key.toLowerCase() === 'y') return e.preventDefault(), edits.redo();
     if (mod && e.key.toLowerCase() === 'a') return e.preventDefault(), setSelIds(shown.filter((x) => !x.locked).map((x) => x.id));
     if (mod && e.key.toLowerCase() === 'd') return e.preventDefault(), duplicate();
+    if (mod && e.key.toLowerCase() === 'g') return e.preventDefault(), e.shiftKey ? ungroup() : group();
     if (mod && e.key.toLowerCase() === 'c' && sel.length) return void copy(sel);
     if (mod && e.key.toLowerCase() === 'x' && sel.length) return void (copy(sel), remove(sel.filter((x) => !x.locked).map((x) => x.id)));
     if (mod && e.key === '0') return e.preventDefault(), fit();
@@ -821,17 +1001,17 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   // ------------------------------------------------------------------ pages
 
   const pageMenu = (p: DPage, i: number): MenuItem[] => [
-    { label: 'Duplicate the page', icon: 'copyall', onClick: () => void dupPage(p) },
+    { label: mode === 'storyboard' ? 'Duplicate the panel' : 'Duplicate the page', icon: 'copyall', hint: mode === 'storyboard' ? 'the same scene, for the next moment' : undefined, onClick: () => void dupPage(p) },
     { label: 'Make a spot-the-difference copy', icon: 'storyboard', hint: 'the same page, to change', onClick: () => void dupPage(p, 'Picture B') },
     { label: 'Move up', icon: 'prev', disabled: i === 0, onClick: () => void movePage(p, -1) },
     { label: 'Move down', icon: 'next', disabled: i === (pages?.length ?? 1) - 1, onClick: () => void movePage(p, 1) },
     'sep',
-    { label: 'Delete the page', icon: 'trash', danger: true, disabled: (pages?.length ?? 0) < 2, onClick: () => void delPage(p) },
+    { label: mode === 'storyboard' ? 'Delete the panel' : 'Delete the page', icon: 'trash', danger: true, disabled: (pages?.length ?? 0) < 2, onClick: () => void delPage(p) },
   ];
   const dupPage = async (p: DPage, name?: string) => {
     const pid = newId() + newId();
     const b = writeBatch(db);
-    b.set(doc(pagesCol(d.id), pid), clean({ w: p.w, h: p.h, bg: p.bg, name: name ?? p.name, order: p.order + 0.5 }));
+    b.set(doc(pagesCol(d.id), pid), clean({ w: p.w, h: p.h, bg: p.bg, name: name ?? p.name, order: p.order + 0.5, scene: p.scene, horizon: p.horizon, caption: p.caption }));
     for (const e of els.filter((x) => x.page === p.id)) b.set(doc(elsCol(d.id), newId() + newId()), clean({ ...e, id: undefined, page: pid }));
     await b.commit();
     const all = [...(pages ?? []), { id: pid, order: p.order + 0.5 } as DPage].sort((a, x) => a.order - x.order);
@@ -851,7 +1031,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     await b.commit();
   };
   const delPage = async (p: DPage) => {
-    if (!(await ask('Delete this page? Everything on it goes too. You can’t undo this.', { ok: 'Delete the page' }))) return;
+    if (!(await ask(mode === 'storyboard' ? 'Delete this panel? Everything in it goes too. You can’t undo this.' : 'Delete this page? Everything on it goes too. You can’t undo this.', { ok: mode === 'storyboard' ? 'Delete the panel' : 'Delete the page' }))) return;
     const b = writeBatch(db);
     els.filter((x) => x.page === p.id).forEach((x) => b.delete(doc(elsCol(d.id), x.id)));
     b.delete(doc(pagesCol(d.id), p.id));
@@ -861,7 +1041,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
   const newPage = async () => {
     if (!page) return;
     const pid = newId() + newId();
-    await setDoc(doc(pagesCol(d.id), pid), { w: page.w, h: page.h, bg: '#ffffff', order: (pages?.length ?? 0) + 1 });
+    await setDoc(doc(pagesCol(d.id), pid), clean({ w: page.w, h: page.h, bg: '#ffffff', order: (pages?.length ?? 0) + 1, name: mode === 'storyboard' ? `Panel ${(pages?.length ?? 0) + 1}` : undefined, scene: mode === 'storyboard' ? page.scene : undefined }));
     setPageId(pid);
   };
 
@@ -911,6 +1091,13 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         goPage: setPageId,
         spot,
         learnerUser: isLearnerEmail(auth.currentUser?.email),
+        mode,
+        place,
+        setScene,
+        group,
+        ungroup,
+        drop,
+        speak,
       }
     : null;
 
@@ -954,11 +1141,11 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
               ['text', 'Text', <path key="x" d="M5 6V4.5h14V6M12 4.5v15M9 19.5h6" />],
               ['ai', 'AI images', <path key="ai" d="M4 5h16v14H4zM4 15l5-5 6 6M16 7v4M14 9h4" />],
               ['pictures', 'Pictures', <path key="p" d="M4 5.5h16v13H4zM4 16l5-5 4 4 2.5-2.5L20 17M15.5 9.5h.01" />],
-              ['people', 'People', <path key="pp" d="M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 22v-6a6 6 0 0 1 12 0v6M9 22v-5M15 22v-5" />],
+              ['people', 'Scene', <path key="pp" d="M12 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 22v-6a6 6 0 0 1 12 0v6M9 22v-5M15 22v-5" />],
               ['draw', 'Draw', <path key="d" d="M4 20l4-1L19 8a2.1 2.1 0 0 0-3-3L5 16zM14 7l3 3" />],
               ['layers', 'Layers', <path key="l" d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" />],
             ] as [DrawerKey, string, JSX.Element][]
-          ).map(([k, label, icon]) => (
+          ).sort((a, b) => (mode === 'storyboard' ? Number(b[0] === 'people') - Number(a[0] === 'people') : 0)).map(([k, label, icon]) => (
             <button key={k} type="button" className={'dz-railb' + (drawer === k ? ' on' : '')} onClick={() => (setPropsOpen(false), setDrawer(drawer === k ? null : k), k === 'draw' ? setTool('pen') : tool !== 'select' && k !== 'teach' && setTool('select'))} aria-pressed={drawer === k}>
               {k==='ai'?<AiMark size={22}/>:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 {icon}
@@ -974,23 +1161,60 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           </aside>
         )}
         <main
-          className="dz-stage"
-          onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
-          onDrop={(e) => {
-            const files = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'));
-            if (!files.length || !canEdit || !canvas.current) return;
+          className={'dz-stage' + (over ? ' drop-on' : '')}
+          onDragEnter={(e) => {
+            if (!canEdit || !(isOurs(e) || e.dataTransfer.types.includes('Files'))) return;
             e.preventDefault();
+            overDepth.current++;
+            setOver(true);
+          }}
+          onDragLeave={() => {
+            overDepth.current = Math.max(0, overDepth.current - 1);
+            if (!overDepth.current) (setOver(false), setGhost(null));
+          }}
+          onDragOver={(e) => {
+            if (!canEdit || !(isOurs(e) || e.dataTransfer.types.includes('Files'))) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            if (!canvas.current) return;
             const p = toPage(e);
+            const inside = p.x >= 0 && p.y >= 0 && p.x <= page.w && p.y <= page.h;
+            const d0 = dragging();
+            // A ghost of what will land: where it will stand, and how big.
+            if (inside && d0?.kind === 'el') setGhost({ ...standAt(d0.el as El, page, p.x, p.y, d0.el.ground ?? standsOnGround(d0.el as El)), scene: false });
+            else if (inside && d0?.kind === 'scene') setGhost({ x: 0, y: 0, w: page.w, h: page.h, scene: true });
+            else if (inside) {
+              const frame = [...shown].reverse().find((x) => x.t === 'image' && !x.img && hit(x, p.x, p.y));
+              const s = Math.min(page.w, page.h) * 0.3;
+              setGhost(frame ? { x: frame.x, y: frame.y, w: frame.w, h: frame.h, scene: false } : { x: p.x - s / 2, y: p.y - s / 2, w: s, h: s, scene: false });
+            } else setGhost(null);
+          }}
+          onDrop={(e) => {
+            overDepth.current = 0;
+            setOver(false);
+            setGhost(null);
+            if (!canEdit || !canvas.current) return;
+            const p = toPage(e);
+            const inside = p.x >= -40 && p.y >= -40 && p.x <= page.w + 40 && p.y <= page.h + 40;
+            const ours = dragging();
+            if (ours) {
+              e.preventDefault();
+              if (inside) void drop(ours, { x: Math.max(0, Math.min(page.w, p.x)), y: Math.max(0, Math.min(page.h, p.y)) });
+              return;
+            }
+            const files = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'));
+            if (!files.length) return;
+            e.preventDefault();
             const frame = [...shown].reverse().find((x) => x.t === 'image' && hit(x, p.x, p.y));
             void (async () => {
-              for (const [i, f] of files.entries()) await addPicture(f, { into: i === 0 && frame && !frame.img ? frame.id : i === 0 && frame ? frame.id : undefined, name: f.name.replace(/\.[a-z0-9]+$/i, '') });
+              for (const [i, f] of files.entries()) await addPicture(f, { into: i === 0 && frame ? frame.id : undefined, at: inside && !frame ? { x: p.x + i * 24, y: p.y + i * 24 } : undefined, name: f.name.replace(/\.[a-z0-9]+$/i, '') });
             })();
           }}
         >
           <div className="dz-scroll" ref={scroller}>
             <div className="dz-board" style={{ width: page.w * z + PAD * 2, height: page.h * z + PAD * 2 }}>
               <div className="dz-paper" style={{ left: PAD, top: PAD, width: page.w * z, height: page.h * z }}>
-                <canvas ref={canvas} style={{ width: page.w * z, height: page.h * z }} aria-label={`Page ${pages.indexOf(page) + 1}`} role="img" />
+                <canvas ref={canvas} style={{ width: page.w * z, height: page.h * z }} aria-label={`${mode === 'storyboard' ? 'Panel' : 'Page'} ${pages.indexOf(page) + 1}`} role="img" />
                 <div className="dz-over" style={{ cursor }} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onPointerLeave={() => setHover('')} onContextMenu={onMenu} onDoubleClick={onDouble}>
                   {/* Guides while moving. */}
                   {guides.x.map((g) => (
@@ -1003,13 +1227,14 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
                     const h = here.find((e) => e.id === hover);
                     return h ? <span className="dz-hover" style={{ left: h.x * z, top: h.y * z, width: h.w * z, height: h.h * z, transform: `rotate(${h.t === 'label' ? 0 : h.rot ?? 0}deg)` }} /> : null;
                   })()}
-                  {canEdit && !here.length && (
+                  {canEdit && !here.length && !page.scene && (
                     <div className="dz-empty">
-                      <strong>This page is empty</strong>
-                      <span>{phone ? 'Add text, pictures and shapes from the bar below.' : 'Add text, pictures and shapes from the left, or drop a picture here.'}</span>
+                      <strong>{mode === 'storyboard' ? 'This panel is empty' : 'This page is empty'}</strong>
+                      <span>{mode === 'storyboard' ? (phone ? 'Add a backdrop, people and things from the bar below.' : 'Drag a backdrop, people and things here from Scene on the left.') : phone ? 'Add text, pictures and shapes from the bar below.' : 'Add text, pictures and shapes from the left, or drop a picture here.'}</span>
                     </div>
                   )}
                   {marquee && <span className="dz-marquee" style={{ left: marquee.x * z, top: marquee.y * z, width: marquee.w * z, height: marquee.h * z }} />}
+                  {ghost && <span className={'dz-ghost' + (ghost.scene ? ' scene' : '')} style={{ left: ghost.x * z, top: ghost.y * z, width: ghost.w * z, height: ghost.h * z }} aria-hidden="true" />}
                   {/* Outlines of everything selected. */}
                   {sel.length > 1 &&
                     sel.map((e) => {
@@ -1032,6 +1257,42 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           </div>
           {one && !editing && !cropOf && canEdit && (
             <div className="dz-float" role="toolbar" aria-label="Quick changes">
+              {one.t === 'art' && one.art === 'person' && (
+                <>
+                  <span className="dz-views" role="group" aria-label="Seen from">
+                    {VIEWS.map((v) => (
+                      <button key={v.k} type="button" className={(one.view ?? 'front') === v.k ? 'on' : ''} aria-pressed={(one.view ?? 'front') === v.k} aria-label={v.name} data-tip={v.name} onClick={() => patch({ [one.id]: { view: v.k } })}>
+                        {v.short}
+                      </button>
+                    ))}
+                  </span>
+                  <select className="dz-float-sel" value={one.pose ?? 'stand'} aria-label="Pose" onChange={(e) => patch({ [one.id]: { pose: e.target.value } })}>
+                    {Object.entries(POSES).map(([k, p]) => (
+                      <option key={k} value={k}>{p.name}</option>
+                    ))}
+                  </select>
+                  <select className="dz-float-sel" value={one.face ?? 'happy'} aria-label="Expression" onChange={(e) => patch({ [one.id]: { face: e.target.value } })}>
+                    {Object.entries(FACES).map(([k, f]) => (
+                      <option key={k} value={k}>{f.name}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {one.t === 'art' && one.art === 'thing' && (THINGS[one.ref ?? '']?.views?.length ?? 0) > 1 && (
+                <span className="dz-views" role="group" aria-label="Seen from">
+                  {VIEWS.filter((v) => THINGS[one.ref ?? '']!.views!.includes(v.k)).map((v) => (
+                    <button key={v.k} type="button" className={(one.view ?? THINGS[one.ref ?? '']!.views![0]) === v.k ? 'on' : ''} aria-pressed={(one.view ?? THINGS[one.ref ?? '']!.views![0]) === v.k} aria-label={v.name} data-tip={v.name} onClick={() => patch({ [one.id]: { view: v.k as ArtView } })}>
+                      {v.short}
+                    </button>
+                  ))}
+                </span>
+              )}
+              {one.char && <CharacterBar cx={cx} e={one} />}
+              {((one.t === 'art' && one.art === 'person') || one.char) && (
+                <button type="button" onClick={() => speak(one)} aria-label="Add a speech bubble" data-tip="Add a speech bubble">
+                  <UiIcon name="discuss" size={15} /> Say
+                </button>
+              )}
               {one.t === 'image' && one.img && (
                 <button type="button" onClick={() => setCropOf(one.id)} data-tip="Crop (double-click)">
                   <UiIcon name="edit" size={15} /> Crop
@@ -1213,7 +1474,7 @@ function Pages({ cx, onMenu, onNew }: { cx: Ctx; onMenu: (p: DPage, i: number) =
     return () => clearTimeout(t);
   }, [cx.pages, cx.els, cx.imgs, cx.view, cx.accent]);
   return (
-    <div className="dz-pages" aria-label="Pages">
+    <div className="dz-pages" aria-label={cx.mode === 'storyboard' ? 'Panels' : 'Pages'}>
       {cx.pages.map((p, i) => (
         <button
           key={p.id}
@@ -1221,7 +1482,7 @@ function Pages({ cx, onMenu, onNew }: { cx: Ctx; onMenu: (p: DPage, i: number) =
           className={'dz-pg' + (p.id === cx.page.id ? ' on' : '')}
           onClick={() => (cx.goPage(p.id), cx.select([]))}
           onContextMenu={(e) => (e.preventDefault(), cx.canEdit && openMenu(e, onMenu(p, i)))}
-          aria-label={`Page ${i + 1}${p.name ? ', ' + p.name : ''}`}
+          aria-label={`${cx.mode === 'storyboard' ? 'Panel' : 'Page'} ${i + 1}${p.name ? ', ' + p.name : ''}`}
           aria-current={p.id === cx.page.id}
         >
           {thumbs[p.id] ? <img src={thumbs[p.id]} alt="" style={{ aspectRatio: `${p.w} / ${p.h}` }} /> : <span className="dz-pg-blank" style={{ aspectRatio: `${p.w} / ${p.h}` }} />}
@@ -1234,7 +1495,7 @@ function Pages({ cx, onMenu, onNew }: { cx: Ctx; onMenu: (p: DPage, i: number) =
         </button>
       ))}
       {cx.canEdit && (
-        <button type="button" className="dz-pg add" onClick={onNew} aria-label="Add a page">
+        <button type="button" className="dz-pg add" onClick={onNew} aria-label={cx.mode === 'storyboard' ? 'Add a panel' : 'Add a page'} data-tip={cx.mode === 'storyboard' ? 'Add a panel' : 'Add a page'}>
           <span>+</span>
         </button>
       )}

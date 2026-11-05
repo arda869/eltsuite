@@ -1,30 +1,67 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PersonArt, Sketch, THINGS } from '../storyboard/art';
-import type { El } from './model';
+import { SCENES, sceneBox } from '../storyboard/scenes';
+import type { DPage, El } from './model';
+import { artKey } from './render';
+
+const toImage = (svg: string) =>
+  new Promise<HTMLImageElement>((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
 
 // People and things from the storyboard library, as pictures to draw on a page, in the accent colour.
+// The key matches render.ts's artKey, so the same drawing is found again.
 const cache = new Map<string, Promise<HTMLImageElement>>();
 export function artImage(e: El, accent: string): Promise<HTMLImageElement> {
   const col = e.accent ?? accent;
-  const k = `${e.art}:${e.ref}:${e.pose ?? ''}:${e.face ?? ''}:${col}`;
+  const k = `${e.art}:${e.ref}:${e.pose ?? ''}:${e.face ?? ''}:${e.view ?? ''}:${col}`;
   if (!cache.has(k)) {
     const person = e.art === 'person';
-    const inner = person ? createElement(PersonArt, { who: e.ref, p: e.pose ?? 'stand', face: e.face ?? 'happy' }) : (THINGS[e.ref ?? ''] ?? THINGS.table).draw();
+    const thing = THINGS[e.ref ?? ''] ?? THINGS.table;
+    const inner = person ? createElement(PersonArt, { who: e.ref, p: e.pose ?? 'stand', face: e.face ?? 'happy', view: e.view }) : thing.draw(e.view);
     const svg = renderToStaticMarkup(
-      createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: person ? '0 0 200 300' : '0 0 200 200', width: person ? 400 : 400, height: person ? 600 : 400, style: { ['--sb-accent' as string]: col } }, createElement(Sketch, { id: 'd' + Math.random().toString(36).slice(2, 7), children: inner })),
+      createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: person ? '0 0 200 300' : '0 0 200 200', width: 400, height: person ? 600 : 400, style: { ['--sb-accent' as string]: col } }, createElement(Sketch, { id: 'd' + Math.random().toString(36).slice(2, 7), children: inner })),
     );
-    cache.set(
-      k,
-      new Promise((res, rej) => {
-        const im = new Image();
-        im.onload = () => res(im);
-        im.onerror = rej;
-        im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-      }),
-    );
+    const p = toImage(svg);
+    p.catch(() => cache.delete(k));
+    cache.set(k, p);
   }
   return cache.get(k)!;
+}
+
+// A scene's backdrop, in the accent colour, drawn at twice its size so it stays crisp on the board.
+export function sceneImage(key: string, accent: string): Promise<HTMLImageElement> {
+  const k = `scene:${key}:${accent}`;
+  if (!cache.has(k)) {
+    const sc = SCENES[key];
+    const svg = renderToStaticMarkup(
+      createElement('svg', { xmlns: 'http://www.w3.org/2000/svg', viewBox: `0 0 ${sceneBox.w} ${sceneBox.h}`, width: sceneBox.w * 2, height: sceneBox.h * 2, style: { ['--sb-accent' as string]: accent } }, createElement(Sketch, { id: 's' + Math.random().toString(36).slice(2, 7), children: sc ? sc.draw() : null })),
+    );
+    const p = toImage(svg);
+    p.catch(() => cache.delete(k));
+    cache.set(k, p);
+  }
+  return cache.get(k)!;
+}
+
+// Every drawn picture a set of pages needs (people, things, backdrops, QR codes), keyed the way
+// render.ts looks them up. Pictures from the file's media are loaded separately.
+export async function drawnImages(pages: Pick<DPage, 'scene'>[], els: Pick<El, 't' | 'art' | 'ref' | 'pose' | 'face' | 'view' | 'accent' | 'url'>[], accent: string, into: Map<string, CanvasImageSource> = new Map()) {
+  const jobs: Promise<void>[] = [];
+  for (const e of els) {
+    if (e.t === 'art') {
+      const k = artKey(e as El, accent);
+      if (!into.has(k)) jobs.push(artImage(e as El, accent).then((im) => void into.set(k, im), () => {}));
+    }
+    if (e.t === 'qr' && e.url && !into.has('qr:' + e.url)) jobs.push(qrImage(e.url).then((im) => void into.set('qr:' + e.url, im), () => {}));
+  }
+  for (const p of pages) if (p.scene && p.scene !== 'plain' && !into.has(`scene:${p.scene}:${accent}`)) jobs.push(sceneImage(p.scene, accent).then((im) => void into.set(`scene:${p.scene}:${accent}`, im), () => {}));
+  await Promise.all(jobs);
+  return into;
 }
 
 // A QR code to a link: a recording, a video or a web page.

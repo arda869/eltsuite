@@ -12,6 +12,22 @@ export const httpsCallable = (_app: unknown, name: string) => async (d: any) => 
   if(name==='designerImage') {
     if(d.action==='connection')return {data:{ready:true}};
     if(d.action==='status')return {data:{status:'completed',resultId:d.requestId}};
+    if(d.action==='quote')return {data:{limit:10,used:Number(localStorage.getItem('mockDesignerUsed')||3),left:10-Number(localStorage.getItem('mockDesignerUsed')||3)}};
+    if(d.action==='variant') {
+      // A structured variation of a saved character: made once, kept with the character.
+      localStorage.setItem('lastDesignerRequest',JSON.stringify(d));
+      localStorage.setItem('mockDesignerUsed',String(Number(localStorage.getItem('mockDesignerUsed')||3)+1));
+      const {getDoc:gd}=await import('./firestore');
+      const parent=(await gd(doc(db,'videoAssets',d.characterId))).data();if(!parent)throw Error('A character is no longer available to you.');
+      const variantId=`${d.characterId}_${String(d.variant).replace(/\./g,'-')}`;
+      const canvas=document.createElement('canvas');canvas.width=120;canvas.height=200;
+      const g=canvas.getContext('2d')!;g.fillStyle='#d9a23a';g.fillRect(0,0,120,200);g.fillStyle='#262420';g.font='bold 18px sans-serif';g.fillText(String(d.variant).split('.')[0],10,100);
+      const data=canvas.toDataURL('image/png').split(',')[1],size=Math.floor(data.length*3/4)-(data.endsWith('==')?2:data.endsWith('=')?1:0);
+      await setDoc(doc(db,'videoAssets',variantId),{kind:'character-variant',parent:d.characterId,variant:d.variant,owner:parent.owner,ownerName:parent.ownerName||'',org:parent.org||'',readers:parent.readers||[],name:parent.name+' · '+d.variant,description:'',type:'image/png',size,parts:1,ready:true,createdAt:Date.now()});
+      await setDoc(doc(db,'videoAssets',variantId,'parts','0'),{data,size});
+      await setDoc(doc(db,'videoAssets',d.characterId),{variants:{...(parent.variants||{}),[d.variant]:variantId}},{merge:true});
+      return {data:{status:'completed',variantId,cached:false}};
+    }
     if(localStorage.getItem('mockDesignerDelayMs'))await new Promise(r=>setTimeout(r,Number(localStorage.getItem('mockDesignerDelayMs'))));
     localStorage.setItem('lastDesignerRequest',JSON.stringify(d));
     if(d.action!=='restyle'&&!d.prompt?.trim())throw Error('Add a description.');

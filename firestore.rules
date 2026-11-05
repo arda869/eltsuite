@@ -167,7 +167,7 @@ service cloud.firestore {
         && request.resource.data.size <= request.resource.data.parts * 460800;
       // Sharing is validated by the server against actual organisation/colleague membership.
       allow update: if isTeacher() && resource.data.owner == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'voice', 'ready']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'voice', 'ready', 'style']);
       allow delete: if isTeacher() && resource.data.owner == request.auth.uid;
       match /parts/{partId} {
         function validPart() {

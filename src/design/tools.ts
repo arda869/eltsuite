@@ -1,5 +1,5 @@
 import type { DPage, El } from './model';
-import { artKey, pageCanvas, type Env } from './render';
+import { pageCanvas, type Env } from './render';
 import { credit } from '../lib/brand';
 
 // ------------------------------------------------------------------ removing a background
@@ -119,12 +119,11 @@ export async function designPdfBytes(id: string, title: string): Promise<Uint8Ar
   const els = (await getDocs(m.elsCol(id))).docs.map((x) => ({ id: x.id, ...(x.data() as Omit<El, 'id'>) }));
   const accent = ((await getDoc(m.metaRef(id))).data()?.accent as string | undefined) ?? '#c8764a';
   const imgs = new Map<string, CanvasImageSource>();
+  await a.drawnImages(pages, els, accent, imgs);
   await Promise.all(
     els.map(async (e) => {
       try {
         if (e.t === 'image' && e.img) imgs.set(e.img, await m.loadPicture(id, e.img));
-        if (e.t === 'art') imgs.set(artKey(e, accent), await a.artImage(e, accent));
-        if (e.t === 'qr' && e.url) imgs.set('qr:' + e.url, await a.qrImage(e.url));
         if (e.font) await m.ensureFont(e.font);
       } catch {
         /* drawn without it */
