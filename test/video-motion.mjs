@@ -10,6 +10,9 @@ try {
   browser=await chromium.launch({headless:true,...(process.env.SMOKE_BROWSER_PATH?{executablePath:process.env.SMOKE_BROWSER_PATH}:{})});
   p=await browser.newPage({viewport:{width:1400,height:900}});
   await p.goto(base+'/test/video-fixture.html?seed');
+  // Let Vite finish dependency optimisation before starting media recording.
+  await p.waitForLoadState('networkidle');
+  await p.evaluate(async () => { await window.__mockReady; });
   await p.getByRole('button',{name:'Make test media',exact:true}).click();
   await p.getByText('Test files saved.',{exact:true}).waitFor();
   await p.evaluate(async()=>{
