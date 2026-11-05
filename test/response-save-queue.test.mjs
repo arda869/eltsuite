@@ -72,3 +72,16 @@ test('reload restores an unsaved activity without losing another task', async ()
   second.dispose();
   connection.onLine = true;
 });
+
+test('a development effect cleanup and restart still autosaves edits', async () => {
+  const saved=[];
+  const queue=new ResponseSaveQueue('class:lesson:u',async (_base,responses)=>{saved.push(responses);},()=>{},storage());
+  queue.activate();
+  queue.dispose();
+  queue.activate();
+  queue.update(base('a'),{q:'after restart'});
+  await new Promise(resolve=>setTimeout(resolve,700));
+  assert.deepEqual(saved,[{q:'after restart'}]);
+  assert.equal(queue.status('a'),'saved');
+  queue.dispose();
+});

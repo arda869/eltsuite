@@ -98,6 +98,10 @@ export class ResponseSaveQueue {
   }
   retry(taskId: string) { return this.flush(taskId); }
   reconnect() { for (const [id, entry] of this.entries) if (entry.revision > entry.savedRevision && !entry.running) void this.flush(id); }
+  activate() {
+    this.disposed = false;
+    for (const [id, entry] of this.entries) if (entry.revision > entry.savedRevision) this.schedule(id);
+  }
   dispose() {
     this.disposed = true;
     for (const entry of this.entries.values()) window.clearTimeout(entry.timer);

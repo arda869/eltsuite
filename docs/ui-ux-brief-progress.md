@@ -10,8 +10,8 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 02 | In progress | Lesson editor draft recovery and navigation flush; test interrupted saves and modal navigation. |
 | 03 | In progress | Learner, lesson and Designer indicators updated; audit all save paths and online/offline truthfulness. |
 | 04 | In progress | Designer page/meta queue and element recovery; verify concurrent edits, reload and server state. |
-| 05 | Implemented locally | Exam hand-in flushes all answer queues; verify timed and manual hand-in against Firebase. |
-| 06 | Open | Rapid switching, slow/offline/reconnect, multi-tab and final Firestore comparison need end-to-end coverage. |
+| 05 | Implemented locally | Manual failed-save, reload, recovery and hand-in journey passes in a mock browser; verify timed hand-in and final Firebase state. |
+| 06 | In progress | Rapid switching and offline/reload unit cases pass; multi-tab and final Firestore comparison need end-to-end coverage. |
 | 07 | Implemented locally | H maps to Hide answers through shared command copy; browser shortcut check needed. |
 | 08 | Implemented locally | Teaching view persists across task navigation; browser check needed. |
 | 09 | Implemented locally | Separate answer controls and status text; screen reader check needed. |
@@ -65,8 +65,8 @@ Legend: **Implemented locally** means code exists but the required full journey 
 
 - TypeScript `--noEmit` passed before the latest Designer recovery change; rerun required.
 - Production build passed before the latest Designer thumbnail and recovery changes; rerun required.
-- Focused unit tests: 21/21 passed (mock/unit).
-- Mock browser: Quiz Show creation/editor, Companion attached/detached context passed.
-- Quiz Show accessibility check: 0 issues in the targeted editor screen.
+- Focused unit tests: 22/22 passed (mock/unit).
+- Mock browser: Quiz Show creation/editor, Companion attached/detached context, and exam failed-save/reload/hand-in passed.
+- Quiz Show accessibility check after rebase: 0 issues in the targeted editor screen.
 - `docs/ui-ux-brief-images/quiz-show.png` is a local preview, not a production capture.
 - No authenticated production write or published-build verification has been performed for this branch.

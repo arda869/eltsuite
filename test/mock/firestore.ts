@@ -174,7 +174,7 @@ const updOp = (r: DocRef, d: Data) => (s: Record<string, Data>) => {
   s[r.path] = t;
 };
 const delOp = (r: DocRef) => (s: Record<string, Data>) => void delete s[r.path];
-export async function setDoc(r: DocRef, d: Data, opt?: { merge?: boolean }) { write([setOp(r, d, opt)]); }
+export async function setDoc(r: DocRef, d: Data, opt?: { merge?: boolean }) { await beforeOperation('set', r.path); write([setOp(r, d, opt)]); }
 export async function updateDoc(r: DocRef, d: Data) { await beforeOperation('update', r.path); write([updOp(r, d)]); }
 export async function deleteDoc(r: DocRef) { write([delOp(r)]); }
 export async function addDoc(c: CollRef, d: Data) { const r = doc(c); write([setOp(r, d)]); return r; }

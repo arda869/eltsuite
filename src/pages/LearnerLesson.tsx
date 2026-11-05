@@ -91,6 +91,7 @@ export function LearnerLesson() {
     () => setSaveTick(n => n + 1),
   ), [classId, itemId, user?.uid]);
   useEffect(() => {
+    saves.activate();
     const reconnect = () => { setSaveTick(n => n + 1); setReconnectTick(n => n + 1); saves.reconnect(); };
     const disconnect = () => setSaveTick(n => n + 1);
     window.addEventListener('online', reconnect);
@@ -248,6 +249,7 @@ export function LearnerLesson() {
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [pendingSave, setPendingSave] = useState(false);
   const saveState = saves.status(current) === 'saved' && pendingSave ? 'saving' : saves.status(current);
+  const saveLabel = saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : saveState === 'waiting' ? 'Offline or waiting for connection' : saveState === 'error' ? 'Could not save' : 'Unsaved changes';
   const [corrections, setCorrections] = useState<Record<string, Correction>>({});
   const anns = useAnnotations(classId, current, { teacher: false, uid: user?.uid });
   const allThreads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
@@ -621,9 +623,9 @@ export function LearnerLesson() {
               </div>
               <div className="frame-foot">
                 {scope && examState === 'running' ? (
-                  <span className={'exam-clock' + (left !== null && left < 60000 ? ' soon' : '')} role="timer">
+                  <><span className={'exam-clock' + (left !== null && left < 60000 ? ' soon' : '')} role="timer">
                     {left !== null ? `${fmt(left)} left` : 'Exam'} · {answered} of {qs.length} answered
-                  </span>
+                  </span><span className={'save-dot' + (saveState !== 'saved' ? ' pending' : '')} role="status"> · {saveLabel}</span>{(saveState === 'error' || saveState === 'waiting') && <button type="button" className="btn small-btn" onClick={() => void saves.retry(current)}>Retry save</button>}</>
                 ) : scope && examState === 'submitted' ? (
                   <span className="hint">{tr('Handed in. Your teacher will share the results soon.')}</span>
                 ) : checked && key && showScore && lessonStyleOf(c) === 'young' && !result.hasWriting ? (
@@ -648,7 +650,7 @@ export function LearnerLesson() {
                     {lessonStyleOf(c) === 'young' && <YoungProgress done={answered} total={qs.length} />}
                     {qs.length > 0 && <span className="foot-short">{answered}/{qs.length}</span>}
                     {qs.length > 0 ? <span className="foot-long">{`${answered} of ${qs.length} answered`}</span> : ''}
-                    {qs.length > 0 && <span className={'save-dot' + (saveState !== 'saved' ? ' pending' : '')} role="status">{saveState === 'saved' ? ' · Saved' : saveState === 'saving' ? ' · Saving…' : saveState === 'waiting' ? ' · Offline or waiting for connection' : saveState === 'error' ? ' · Could not save' : ' · Unsaved changes'}</span>}
+                    {qs.length > 0 && <span className={'save-dot' + (saveState !== 'saved' ? ' pending' : '')} role="status"> · {saveLabel}</span>}
                     {(saveState === 'error' || saveState === 'waiting') && <button type="button" className="btn small-btn" onClick={() => void saves.retry(current)}>Retry save</button>}
                     {flags.filter((f) => qs.some((q) => q.id === f)).length > 0 && ` · ${flags.filter((f) => qs.some((q) => q.id === f)).length} flagged`}
                   </span>

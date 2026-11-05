@@ -2293,6 +2293,37 @@ const J = {
     await see(s.p,'text=1 of 1 correct','saved second attempt score');
     return s;
   },
+  'Exam hand-in waits for final saved answer and recovers a failed write': async b => {
+    const s=await session(b,{as:'Mia'});
+    await s.p.evaluate(({classId,itemId})=>{
+      const fs=JSON.parse(localStorage.getItem('mockfs'));
+      const itemPath=`classes/${classId}/items/${itemId}`;
+      fs[itemPath]={...fs[itemPath],type:'exam',exam:{minutes:null},examReleased:false};
+      const root=itemPath+'/tasks/';
+      for(const path of Object.keys(fs))if(path.startsWith(root))delete fs[path];
+      fs[root+'exam-save']={kind:'task',title:'Final answer',instructions:'Complete the sentence.',order:0,hidden:false,locked:false,content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'exam-gap',answers:[]}},{type:'text',text:' home.'}]}]}};
+      fs[root+'exam-save/private/key']={'exam-gap':{kind:'gap',answers:['went']}};
+      localStorage.setItem('mockfs',JSON.stringify(fs));
+      sessionStorage.setItem('mockfs-faults',JSON.stringify([{op:'set',path:`classes/${classId}/answers/exam-save_`,count:3,code:'unavailable'}]));
+    },s.demo);
+    await s.p.goto(BASE+'/learn/'+s.demo.itemId);
+    await s.p.getByRole('button',{name:'Start the exam'}).click();
+    await s.p.getByRole('textbox',{name:'Question 1',exact:true}).fill('went');
+    await s.p.getByText('Could not save',{exact:false}).first().waitFor();
+    await s.p.getByRole('button',{name:'Hand in the exam'}).click();
+    await s.p.getByRole('button',{name:'Hand in',exact:true}).last().click();
+    await s.p.getByText('Your exam has not been handed in',{exact:false}).waitFor();
+    const before=await s.p.evaluate(({classId})=>Object.values(JSON.parse(localStorage.getItem('mockfs'))).filter(d=>d?.scope===`i_${JSON.parse(localStorage.getItem('mockdemo')).itemId}`&&d?.uid).map(d=>d.submittedMs),s.demo);
+    if(before.some(Boolean))throw Error('Exam was submitted despite an unsaved final answer');
+    await s.p.evaluate(()=>sessionStorage.removeItem('mockfs-faults'));
+    await s.p.reload();
+    if(await s.p.getByRole('textbox',{name:'Question 1',exact:true}).inputValue()!=='went')throw Error('Failed exam answer disappeared on reload');
+    await s.p.locator('.frame-foot .save-dot').filter({hasText:'Saved'}).waitFor();
+    await s.p.getByRole('button',{name:'Hand in the exam'}).click();
+    await s.p.getByRole('button',{name:'Hand in',exact:true}).last().click();
+    await s.p.waitForFunction(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));return Object.entries(fs).some(([path,d])=>path.startsWith(`classes/${classId}/examRuns/i_${itemId}_`)&&d.submittedMs)&&Object.entries(fs).some(([path,d])=>path.startsWith(`classes/${classId}/answers/exam-save_`)&&d.responses?.['exam-gap']==='went');},s.demo);
+    return s;
+  },
   'Learner signs in and opens the lesson': async (b) => {
     const s = await session(b, { as: 'Mia' });
     await s.p.goto(BASE + '/');
