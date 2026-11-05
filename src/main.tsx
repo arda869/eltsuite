@@ -5,7 +5,7 @@ import { MenuHost } from './components/ContextMenu';
 import { startServiceWorker } from './lib/push';
 import { startTilt } from './lib/tilt';
 import { startTheme } from './lib/theme';
-import { startViewport, stopPinchZoom } from './lib/viewport';
+import { startViewport } from './lib/viewport';
 import { startAutogrow } from './lib/autogrow';
 import { startOutsideClose } from './lib/outsideClose';
 import { AFTER_SIGN_IN } from './lib/afterSignIn';
@@ -185,7 +185,6 @@ function LearnerOnly({ children }: { children: JSX.Element }) {
 
 startTheme();
 startViewport();
-stopPinchZoom();
 startAutogrow();
 startOutsideClose();
 startTilt();

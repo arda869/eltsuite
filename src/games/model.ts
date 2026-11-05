@@ -4,7 +4,7 @@ export const GAME_TYPES = [
     { id: 'taxi', name: 'Taxi town', about: 'Deliver passengers by answering each question.' },
     { id: 'drive', name: 'Checkpoint driver', about: 'Race between checkpoints with correct answers.' },
     { id: 'blocks', name: 'Falling blocks', about: 'Answer before the block drops. Fill rows to clear them.' },
-    { id: 'show', name: 'Game show', about: 'Answer rounds using any inline task type.' },
+    { id: 'show', name: 'Quiz Show', about: 'Answer rounds using any inline task type.' },
     { id: 'targets', name: 'Target practice', about: 'Hit the target that answers the question.' },
     { id: 'pinball', name: 'Pinball', about: 'Choose an answer bumper and launch the ball.' },
     { id: 'maze', name: 'Maze explorer', about: 'Follow the route to the correct answer.' },

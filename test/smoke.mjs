@@ -301,6 +301,24 @@ const J = {
     return s;
   },
   'Suite cohesion: all app headers, menus, light and dark phone layouts': async b=>{const s=await session(b,{owner:true});await suiteCohesionAudit(s,BASE,A11Y_FOUND,axe);return s;},
+  'Quiz Show is the only new game and its editor opens': async b => {
+    const s=await session(b,{owner:true});
+    await s.p.goto(BASE+'/games');
+    await s.p.getByRole('button',{name:/New game/}).click();
+    const menu=s.p.getByRole('menu',{name:'New game'});
+    const names=await menu.getByRole('menuitem').allTextContents();
+    if(names.length!==1 || names[0].trim()!=='Quiz Show')throw Error('New game menu exposed unexpected choices: '+names.join(', '));
+    const [tab]=await Promise.all([s.ctx.waitForEvent('page'),menu.getByRole('menuitem',{name:'Quiz Show'}).click()]);
+    await tab.getByRole('heading',{name:'Build your game'}).waitFor();
+    if(!await tab.getByText('Quiz Show',{exact:true}).count())throw Error('New game did not open as Quiz Show');
+    await tab.getByRole('button',{name:'Add question'}).click();
+    await tab.getByRole('button',{name:'Save game'}).click();
+    await tab.getByText('Saved',{exact:true}).last().waitFor();
+    mkdirSync('outputs/ui-ux-brief',{recursive:true});
+    await tab.screenshot({path:'outputs/ui-ux-brief/quiz-show.png'});
+    await axe(tab,'Quiz Show editor',A11Y_FOUND);
+    return s;
+  },
   'Discuss with Teacher’s Companion carries saved lesson evidence without optional profile fields': async b => {
     const s=await session(b,{owner:true});
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
@@ -319,8 +337,11 @@ const J = {
     if(request.lessonContext.classId!==s.demo.classId||request.lessonContext.itemId!==s.demo.itemId||!request.lessonContext.reportId||!request.lessonContext.taskId)throw Error('Selected report and activity were not passed');
     await s.p.getByRole('link',{name:'Selected activity',exact:true}).waitFor();
     await s.p.getByRole('button',{name:'Remove lesson context',exact:true}).click();
-    await s.p.getByText('Let’s start with your teaching',{exact:true}).waitFor();
-    if(await s.p.locator('.coach-message').count())throw Error('Previous lesson conversation retained after context removal');
+    await s.p.getByLabel('Message Teacher’s Companion').fill('What can I try without the attached lesson?');
+    await s.p.getByRole('button',{name:'Send',exact:true}).click();
+    await s.p.waitForFunction(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')||'{}').prompt==='What can I try without the attached lesson?');
+    const detached=await s.p.evaluate(()=>JSON.parse(localStorage.getItem('mockCoachLastRequest')));
+    if(detached.lessonContext || detached.history?.length)throw Error('Removed lesson content was still sent to the model');
     return s;
   },
   'Teacher’s Companion opens as a small message with the current activity': async b => {
@@ -560,6 +581,10 @@ const J = {
     await d.getByRole('menuitem',{name:'Picture…',exact:true}).click();
     await d.getByRole('tab',{name:'Designer',exact:true}).click();
     await d.getByLabel('Search Designer').waitFor();
+    await d.locator('.design-pick-card img').first().waitFor({timeout:20000});
+    if((await d.locator('.design-pick-card').first().boundingBox())?.height<160)throw Error('Designer preview was clipped to a text-button height');
+    mkdirSync('outputs/ui-ux-brief',{recursive:true});
+    await d.screenshot({path:'outputs/ui-ux-brief/designer-picker.png'});
     await d.locator('.inline-image-list button').filter({hasText:'Image design'}).first().click();
     const pageButton=d.getByRole('button',{name:/Insert page|Insert the image|Insert the storyboard|Insert Panel/}).first();
     await pageButton.click();
@@ -2365,8 +2390,8 @@ const J = {
     const s = await session(b);
     await s.p.evaluate(() => { const fs=JSON.parse(localStorage.getItem('mockfs')); fs['aiPilot/teacher1']={enabled:true}; localStorage.setItem('mockfs',JSON.stringify(fs)); });
     await s.p.goto(BASE + '/development?section=coach');
-    await see(s.p, 'text=Let’s start with your teaching', 'first-chat profile setup');
-    if (await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Coach allowed chat before profile completion');
+    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat before optional profile setup');
+    await s.p.getByRole('button', {name:'Add teaching context to improve future suggestions (optional)'}).click();
     await s.p.locator('.qualifications-picker > summary:visible').click();
     await s.p.getByRole('checkbox',{name:'CELTA',exact:true}).check();
     await s.p.getByRole('checkbox',{name:'TKT Module 1',exact:true}).check();
@@ -2378,8 +2403,8 @@ const J = {
     await s.p.getByRole('checkbox', {name:'Teacher',exact:true}).check();
     await s.p.getByLabel('Who do you teach?', {exact:true}).fill('Adult learners at B1');
     await s.p.getByRole('button', {name:'Continue to teaching beliefs',exact:true}).click();
-    await see(s.p,'text=What guides your teaching?','beliefs required before chat');
-    if(await s.p.getByLabel('Message Teacher’s Companion').count()) throw Error('Chat allowed without beliefs');
+    await see(s.p,'text=What guides your teaching?','optional beliefs');
+    await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat remains available without beliefs');
     for(const question of ['How do learners learn best?','What is your role in the classroom?','How should feedback support learning?','What makes learning meaningful and inclusive?','How do you know learning is happening?']) await s.p.getByLabel(question,{exact:true}).fill('I am exploring this through my teaching and observation.');
     await s.p.getByRole('button',{name:'Save beliefs and start chatting',exact:true}).click();
     await see(s.p, 'textarea[aria-label="Message Teacher’s Companion"]', 'chat composer after setup');

@@ -7,7 +7,7 @@ import { ThemeChoice } from '../lib/theme';
 import { useEffect, useMemo, useState } from 'react';
 import { useDismiss } from '../lib/useDismiss';
 import { Link } from 'react-router-dom';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
 import { AnnouncementBoard } from '../components/AnnouncementBoard';
@@ -32,6 +32,7 @@ import { Avatar } from '../components/avatars';
 import { LiveWho } from '../components/LiveWho';
 import { AvatarPicker } from '../components/AvatarPicker';
 import { itemResult, STATUS_LABEL, useMyAnswers } from '../lib/reports';
+import { tasksCol } from '../lib/tasks';
 
 const SECTION_LABEL: Record<Item['type'], string> = { lesson: 'Lessons', homework: 'Homework', exam: 'Exams', practice: 'Practice' };
 function dueText(ms: number) {
@@ -111,8 +112,24 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
   const lessonsDone = lessons.filter((i) => answers.some((a) => a.itemId === i.id && (a.checked || Object.keys(a.responses ?? {}).length))).length;
   const checked = answers.filter((a) => a.checked && (a.total ?? 0) > 0);
   const avg = checked.length ? Math.round((checked.reduce((s, a) => s + (a.score ?? 0), 0) / checked.reduce((s, a) => s + (a.total ?? 0), 0)) * 100) : null;
-  const lastAnswer = [...answers].filter((a) => visible.some((i) => i.id === a.itemId)).sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0))[0];
-  const carryOn = lastAnswer ? visible.find((i) => i.id === lastAnswer.itemId) : undefined;
+  const recentLessonAnswers = [...answers].filter((a) => lessons.some((i) => i.id === a.itemId)).sort((a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0));
+  const unfinished = recentLessonAnswers.find((a) => {
+    const lesson = lessons.find((i) => i.id === a.itemId);
+    return lesson && !lockedItem(lesson) && itemResult(lesson, answers).status === 'in-progress';
+  });
+  const lastAnswer = unfinished ?? recentLessonAnswers.find((a) => lessons.some((i) => i.id === a.itemId && !lockedItem(i)));
+  const carryOn = lastAnswer ? lessons.find((i) => i.id === lastAnswer.itemId) : undefined;
+  const carryReview = !!carryOn && itemResult(carryOn, answers).status !== 'in-progress';
+  const [carryTask, setCarryTask] = useState('');
+  useEffect(() => {
+    setCarryTask('');
+    if (!carryOn || !classId) return;
+    return onSnapshot(query(tasksCol(classId, carryOn.id), orderBy('order')), (snapshot) => {
+      const available = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as { id: string; hidden?: boolean; locked?: boolean; kind?: string }).filter(t => !t.hidden && !t.locked && t.kind !== 'section');
+      const mine = answers.filter((a) => a.itemId === carryOn.id);
+      setCarryTask((available.find(t => !mine.some(a => a.taskId === t.id && a.checked)) ?? available.at(-1))?.id ?? '');
+    }, () => setCarryTask(''));
+  }, [classId, carryOn?.id, answers]); // eslint-disable-line react-hooks/exhaustive-deps
   const latestThreads = threads.filter((x) => x.approved && !x.hidden).slice(0, 3);
   const liveNow = isLive(live) ? items.find((i) => i.id === live!.itemId) : undefined;
   // The next scheduled lesson (within the last hour counts as now). Times are shown in the learner's own time zone.
@@ -274,8 +291,8 @@ export function LearnerHome({ classId, name }: { classId: string; name: string }
 
 
           {carryOn && !liveNow && (
-            <Link className="lh-carry" to={`/learn/${carryOn.id}`}>
-              <span className="eyebrow">Carry on</span>
+            <Link className="lh-carry" to={`/learn/${carryOn.id}${carryTask ? `?task=${encodeURIComponent(carryTask)}` : ''}`}>
+              <span className="eyebrow">{carryReview ? 'Review' : 'Carry on'}</span>
               <span className="lh-carry-title">{carryOn.title}</span>
               <span className="hint">
                 {(() => {

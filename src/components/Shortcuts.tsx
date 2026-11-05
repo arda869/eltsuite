@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { keyLabel, typingIn } from '../lib/keys';
+import { ANSWER_COMMANDS } from '../lib/teachingCommands';
 
 // One "Keyboard shortcuts" panel for the whole app: ? (when not typing) or Ctrl+/ (⌘/ on a Mac)
 // anywhere. It lists what works where, with the keys of this computer, and opens on the place
@@ -56,9 +57,9 @@ const PLACES: Place[] = [
     rows: [
       [['Left', 'Right'], 'Previous or next task (moves the class when synced)'],
       [['S'], 'Sync the class to you, or stop'],
-      [['R'], 'Reveal the next answer (again at the end to hide)'],
-      [['Shift+R'], 'Reveal all answers, or hide them'],
-      [['H'], 'Hide or show this task'],
+      [[ANSWER_COMMANDS.next.key], ANSWER_COMMANDS.next.description],
+      [[ANSWER_COMMANDS.all.key], ANSWER_COMMANDS.all.description],
+      [[ANSWER_COMMANDS.hide.key], ANSWER_COMMANDS.hide.description],
       [['L'], 'Lock or unlock this task'],
       [['C'], 'Show or hide the class panel'],
       [['N'], 'Teacher notes'],

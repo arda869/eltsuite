@@ -92,9 +92,17 @@
 :root .suite-mark.dark .suite-k { color:var(--studio-ink, #f3f1ed); }
 :root .pub .wordmark .wm-name { color:var(--ink); }
 @media (max-width:700px) { :root .wordmark.big .wm-name { font-size:clamp(34px, 11vw, 52px); } }
-/* No page zoom by pinching or double tapping (see stopPinchZoom in lib/viewport.ts). Scrolling and
-   panning still work; canvases with touch-action:none keep their own gestures. */
-html { touch-action:pan-x pan-y; }
+/* Preserve browser pinch zoom; specialised canvases manage gestures on their own surface. */
+html { touch-action:manipulation; }
+/* Low-specificity form baseline; specialised editors can keep their precise geometry. */
+:where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]), textarea, select:not([multiple])) {
+  box-sizing:border-box; min-height:38px; border:1px solid var(--hair-strong); border-radius:10px;
+  padding:8px 12px; background-color:var(--paper); color:var(--ink); font:inherit;
+}
+:where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), textarea, select):where(:hover:not(:disabled)) { border-color:var(--muted); }
+:where(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]), textarea, select):focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+:where(input,textarea,select):disabled { opacity:.55; cursor:not-allowed; }
+:where(input,textarea,select)[aria-invalid="true"] { border-color:var(--wrong); }
 /* Settings uses the full width like every other page: the section list on the left, the settings
    filling the rest. Cards whose content isn't in rows (Feature discovery, Teaching coach) get the
    same inner padding as rows, so nothing touches the card's edge. */

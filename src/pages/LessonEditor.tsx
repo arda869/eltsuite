@@ -46,6 +46,7 @@ import { theme } from '../lib/themes';
 import { useLiveAudioSetup } from '../lib/liveAudio';
 import { isLive, liveRef, revealedCount, revealedSingles, revealedSubset, setLive, type LiveState } from '../lib/live';
 import { TEXT_SCALE } from '../lib/auth';
+import { ANSWER_COMMANDS } from '../lib/teachingCommands';
 import {questionSpellingOverride,withQuestionSpellingOverride} from '../lib/questions';
 import { TextSizeControl } from '../components/TextSizeControl';
 import { NoticeToasts } from '../components/NoticeToasts';
@@ -127,7 +128,7 @@ export function LessonEditor() {
   const [selected, setSelected] = useState<string>('');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editorKey, setEditorKey] = useState('');
-  const [status, setStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const [status, setStatus] = useState<'saved' | 'unsaved' | 'saving' | 'waiting' | 'error'>('saved');
   const [preview, setPreview] = useState(false);
   const [boardView, setBoardView] = useState(false);
   const [boardPageLocal, setBoardPageLocal] = useState('');
@@ -161,6 +162,15 @@ export function LessonEditor() {
   const [live, setLiveState] = useState<LiveState | null>(null);
   const timer = useRef<number>();
   const pending = useRef<{ taskId: string; patch: Partial<Draft> } | null>(null);
+  const saveInFlight = useRef<Promise<boolean> | null>(null);
+  const draftStorageKey = (taskId: string) => `ll.teacherDraft:${classId}:${itemId}:${user?.uid ?? ''}:${taskId}`;
+  useEffect(() => {
+    const online = () => { if (pending.current) void flush(); };
+    const offline = () => { if (pending.current || saveInFlight.current) setStatus('waiting'); };
+    window.addEventListener('online', online);
+    window.addEventListener('offline', offline);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
+  });
 
   useEffect(() => onSnapshot(doc(db, 'classes', classId), (s) => s.exists() && setC({ id: s.id, ...(s.data() as Omit<ClassDoc, 'id'>) })), [classId]);
   useEffect(
@@ -530,8 +540,7 @@ export function LessonEditor() {
       const t = e.target as HTMLElement;
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
-        flush();
-        setPreview((v) => !v);
+        void flush().then(ok => { if (ok) setPreview(v => !v); });
         return;
       }
       if (t.closest('input, textarea, select, [contenteditable="true"]') || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -545,9 +554,9 @@ export function LessonEditor() {
       if (e.key === 'ArrowRight' && i < list.length - 1) select(list[i + 1].id);
       else if (e.key === 'ArrowLeft' && i > 0) select(list[i - 1].id);
       else if (e.key === 's' || e.key === 'S') toggleSync();
-      else if (e.key === 'R') (revealN < 0 ? hideAnswers() : revealAll());
-      else if (e.key === 'r') (revealN < 0 || revealN >= qCount ? hideAnswers() : revealNext());
-      else if ((e.key === 'h' || e.key === 'H') && task) setTaskFlags(classId, itemId, task.id, { hidden: !task.hidden });
+      else if ((e.key === 'r' || e.key === 'R') && e.shiftKey) revealAll();
+      else if (e.key === 'r' || e.key === 'R') revealNext();
+      else if ((e.key === 'h' || e.key === 'H') && task) hideAnswers();
       else if (e.key === 'c' || e.key === 'C') panels.toggleRight();
       else if ((e.key === 'l' || e.key === 'L') && task) setTaskFlags(classId, itemId, task.id, { locked: !task.locked });
       else if (e.key === 't' || e.key === 'T') (live?.timer && (live.timer.up || live.timer.endsAt > Date.now()) ? stopTimer() : setTimerMenu(true));
@@ -575,8 +584,9 @@ export function LessonEditor() {
   }
   async function changeMode(m: Mode) {
     // Full screen while teaching fills the whole screen, like F11. It must be asked for straight away, inside the click.
-    if (m === 'present' && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
-    await flush();
+    const requestedFull = m === 'present' && !document.fullscreenElement;
+    if (requestedFull) document.documentElement.requestFullscreen?.().catch(() => {});
+    if (!(await flush())) { if (requestedFull && document.fullscreenElement) await document.exitFullscreen().catch(() => {}); return; }
     if (m === 'edit') {
       setPreview(false);
       setPresent(false);
@@ -593,10 +603,10 @@ export function LessonEditor() {
   }
   async function toggleTeaching() {
     // Always come back to the read-only teaching view, not an editing or preview state left over.
+    if (!(await flush())) return;
     setEditWhileTeaching(false);
     setPreview(false);
     setBoardView(false);
-    await flush();
     if (teachingHere) await setLive(classId, { teaching: false, sync: false, board: null });
     else
       await setLive(classId, {
@@ -627,9 +637,21 @@ export function LessonEditor() {
       if (cancelled) return;
       setOpening('');
       const content = mergeKey(task.content ?? { type: 'doc', content: [{ type: 'paragraph' }] }, key);
-      setDraft({ title: task.title, instructions: task.instructions ?? '', instrDoc: task.instrDoc ?? null, content });
+      const fromServer = { title: task.title, instructions: task.instructions ?? '', instrDoc: task.instrDoc ?? null, content };
+      let recovered: Draft | null = null;
+      try {
+        const stored = localStorage.getItem(draftStorageKey(task.id));
+        if (stored) {
+          const value = JSON.parse(stored) as Draft;
+          if (value && typeof value.title === 'string' && typeof value.instructions === 'string' && value.content?.type === 'doc') recovered = value;
+        }
+      } catch { /* No recoverable local draft. */ }
+      setDraft(recovered ?? fromServer);
+      if (recovered) {
+        pending.current = { taskId: task.id, patch: recovered };
+        setStatus('error');
+      } else setStatus('saved');
       setEditorKey(task.id + ':' + Date.now());
-      setPreview(false);
       setPreviewResponses({});
       setPreviewChecked(false);
     }, (e) => {
@@ -650,13 +672,18 @@ export function LessonEditor() {
   draftRef.current = draft;
   const [versionsOpen, setVersionsOpen] = useState(false);
 
-  async function flush() {
+  async function flush(): Promise<boolean> {
     window.clearTimeout(timer.current);
+    if (saveInFlight.current) {
+      const ok = await saveInFlight.current;
+      return ok && pending.current ? flush() : ok;
+    }
     const p = pending.current;
     if (!p) return true;
+    if (!navigator.onLine) { setStatus('waiting'); return false; }
     pending.current = null;
     setStatus('saving');
-    try {
+    const operation = (async () => { try {
       const saved = rawTasks.find((t) => t.id === p.taskId);
       await saveTask(classId, itemId, p.taskId, { ...p.patch, restricted: !!saved?.restricted });
       // A task linked to the library: the library and the other lessons that use it follow.
@@ -664,7 +691,10 @@ export function LessonEditor() {
         const d = draftRef.current;
         updateLibTask(user.uid, saved.lib.id, { title: d.title, instructions: d.instructions, instrDoc: d.instrDoc ?? null, content: d.content }, { classId, itemId, taskId: p.taskId }).catch(() => {});
       }
-      setStatus(pending.current ? 'saving' : 'saved');
+      if (!pending.current) {
+        try { localStorage.removeItem(draftStorageKey(p.taskId)); } catch { /* Firestore has the saved copy. */ }
+        setStatus('saved');
+      } else setStatus('unsaved');
       // Keep a version at most every 3 minutes of editing.
       const last = lastVersion.current[p.taskId] ?? 0;
       if (Date.now() - last > 3 * 60 * 1000 && draftRef.current) {
@@ -674,28 +704,37 @@ export function LessonEditor() {
       }
     } catch (e) {
       console.error(e);
-      setStatus('error');
-      pending.current = pending.current ?? p;
+      pending.current = pending.current?.taskId === p.taskId
+        ? { taskId: p.taskId, patch: { ...p.patch, ...pending.current.patch } }
+        : p;
+      setStatus(navigator.onLine ? 'error' : 'waiting');
       return false;
     }
-    return true;
+    return true; })();
+    saveInFlight.current = operation;
+    const ok = await operation;
+    saveInFlight.current = null;
+    return ok && pending.current ? flush() : ok;
   }
 
   function change(patch: Partial<Draft>) {
     // Selection changes before the next task's answer key finishes loading. Never
     // apply an event from the previous editor to the newly selected task.
     if (!task || !draft || !editorKey.startsWith(task.id + ':')) return;
-    setDraft({ ...draft, ...patch });
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    draftRef.current = next;
     pending.current = { taskId: task.id, patch: { ...(pending.current?.taskId === task.id ? pending.current.patch : {}), ...patch } };
-    setStatus('saving');
+    try { localStorage.setItem(draftStorageKey(task.id), JSON.stringify(next)); } catch { /* The pending save still remains in memory. */ }
+    setStatus(navigator.onLine ? 'unsaved' : 'waiting');
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(flush, 700);
   }
 
   useEffect(() => {
     const beforeUnload = (e: BeforeUnloadEvent) => {
-      if (pending.current) {
-        flush();
+      if (pending.current || saveInFlight.current) {
+        void flush();
         e.preventDefault();
       }
     };
@@ -704,7 +743,7 @@ export function LessonEditor() {
   });
 
   async function select(id: string) {
-    await flush();
+    if (!(await flush())) { setCopyMsg('This task has unsaved changes. Retry the save before opening another task.'); return; }
     setSelected(id);
     if (boardView) showBoard(false);
   }
@@ -729,13 +768,13 @@ export function LessonEditor() {
     await insertAt(null, 'blank');
   }
   async function newBlankTask() {
-    await flush();
+    if (!(await flush())) return;
     const id = await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0);
     await finishInserted([id]);
   }
 
   async function newTaskFrom(init: { title: string; instructions: string; content: JSONContent }) {
-    await flush();
+    if (!(await flush())) return;
     const id = await addTask(classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0, 'task', init);
     setSelected(id);
   }
@@ -795,7 +834,7 @@ export function LessonEditor() {
       if (name === null) return;
       if (name.trim()) label = name.trim();
     }
-    await flush();
+    if (!(await flush())) return;
     const id = await makeVariant(classId, itemId, tasks, task, label, splitKey(draft.content).content);
     if (firstName) await setTaskFlags(classId, itemId, task.id, { variant: firstName });
     setSelected(id);
@@ -848,12 +887,12 @@ export function LessonEditor() {
               <div className="frame-inner" data-spelling-editor="true">
                 <div className="frame-head">
                   {teachingHere && (
-                    <button type="button" className="btn small-btn done-edit" onClick={() => (flush(), setEditWhileTeaching(false))}>
+                    <button type="button" className="btn small-btn done-edit" onClick={() => void flush().then(ok => { if (ok) setEditWhileTeaching(false); })}>
                       Done editing
                     </button>
                   )}
                   {fam.length > 1 && <span className="ver-badge"><i aria-hidden="true" />{vLabel(task)}</span>}
-                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={async () => { await flush(); }} />}
+                  {user && <LibLink task={task} uid={user.uid} classId={classId} itemId={itemId} flush={flush} />}
                   <input className="task-title input" value={draft.title} placeholder="Task title" aria-label="Task title" onChange={(e) => change({ title: e.target.value })} />
                   <InstrEditor classId={classId} lessonId={itemId} key={editorKey} doc={draft.instrDoc} text={draft.instructions} onChange={(instrDoc, instructions) => change({ instrDoc, instructions })} />
                   {lessonStyleOf(c) === 'young' && <YoungAuthorBar content={draft.content} instructions={draft.instructions} onPreview={() => void changeMode('preview')} />}
@@ -925,7 +964,7 @@ export function LessonEditor() {
                 role="menuitem"
                 onClick={async () => {
                   setExportOpen(false);
-                  await flush();
+                  if (!(await flush())) return;
                   const { title, text } = await lessonText(classId, itemId, (await ask(tr('Include your teacher notes in the file? Leave them out when you share it, for example.'), { ok: 'Include notes', cancel: 'Leave them out' })));
                   download(title, text);
                 }}
@@ -939,7 +978,7 @@ export function LessonEditor() {
                 role="menuitem"
                 onClick={async () => {
                   setExportOpen(false);
-                  await flush();
+                  if (!(await flush())) return;
                   downloadJson(item?.title ?? 'Lesson', await lessonBundle(classId, itemId));
                 }}
               >
@@ -964,11 +1003,12 @@ export function LessonEditor() {
             </span>
           )}
           {sheet && !viewer && !phone && mode === 'edit' && !teachingHere && (
-            <button type="button" className="btn small-btn" onClick={() => void flush().then(() => setWorksheet(true))}>
+            <button type="button" className="btn small-btn" onClick={() => void flush().then(ok => { if (ok) setWorksheet(true); })}>
               Print or PDF
             </button>
           )}
-          <span className={'save-state ' + status}>{status === 'saving' ? 'Saving…' : status === 'error' ? 'Not saved. Check your connection.' : 'Saved'}</span>
+          <span className={'save-state ' + status} role="status">{status === 'saving' ? 'Saving…' : status === 'unsaved' ? 'Unsaved changes' : status === 'waiting' ? 'Offline or waiting for connection' : status === 'error' ? 'Could not save' : 'Saved'}</span>
+          {(status === 'error' || status === 'waiting') && <button type="button" className="btn small-btn" onClick={() => void flush()}>Retry save</button>}
           {viewer ? (
             teachingHere && <span className="hint">{live?.teacherName} is teaching</span>
           ) : (
@@ -1312,10 +1352,11 @@ export function LessonEditor() {
                   <span className="hint">{preview ? 'Preview · answers here aren’t saved' : 'Teaching · click a question to show its answer to the class'}</span>
                   <span className="foot-acts">
                     {!preview && qCount > 0 && (
-                      <span className="reveal-ctl foot-reveal" aria-label="Answers">
-                        <IconBtn icon="revealOne" label={`Show the next answer (R) · ${revealN === 0 ? 'answers hidden' : revealN < 0 || revealN >= qCount ? 'all shown' : `${revealN} of ${qCount} shown`}`} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext} />
-                        <IconBtn icon="revealAll" label="Show all answers (Shift + R)" disabled={revealN < 0} onClick={revealAll} />
-                        <IconBtn icon="hideAnswers" label="Hide the answers again (H)" disabled={revealN === 0 && singles.length === 0} onClick={hideAnswers} />
+                      <span className="reveal-ctl foot-reveal" role="group" aria-label="Answer reveal controls">
+                        <span className="reveal-state" role="status" aria-live="polite">{revealN === 0 && !singles.length ? 'Answers hidden' : revealN < 0 || revealN >= qCount ? 'All answers shown' : `${Math.max(revealN, singles.length)} of ${qCount} answers shown`}</span>
+                        <button type="button" className="btn" title={ANSWER_COMMANDS.next.key} disabled={revealN < 0 || revealN >= qCount} onClick={revealNext}><UiIcon name="revealOne" />{ANSWER_COMMANDS.next.label}</button>
+                        <button type="button" className="btn" title={ANSWER_COMMANDS.all.key} disabled={revealN < 0} onClick={revealAll}><UiIcon name="revealAll" />{ANSWER_COMMANDS.all.label}</button>
+                        <button type="button" className="btn" title={ANSWER_COMMANDS.hide.key} disabled={revealN === 0 && singles.length === 0} onClick={hideAnswers}><UiIcon name="hideAnswers" />{ANSWER_COMMANDS.hide.label}</button>
                       </span>
                     )}
                     <IconBtn icon="prev" label="Previous task (←)" className="nav-arrow" disabled={!prevTask} onClick={() => prevTask && select(prevTask.id)} />
@@ -1568,7 +1609,7 @@ export function LessonEditor() {
                 </Fold>
               )}
               <Fold id="more" title="History and tips" open={fold} setOpen={setFold}>
-                <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => (flush(), setVersionsOpen(true))}>
+                <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => void flush().then(ok => { if (ok) setVersionsOpen(true); })}>
                   Version history
                 </button>
                 <button type="button" className="btn small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setBankSave({ kind: 'task', content: (draft.content.content ?? []) as JSONContent[], title: draft.title, instructions: draft.instructions })} title="Keep this task in your personal bank to reuse in any class">
@@ -1594,8 +1635,7 @@ export function LessonEditor() {
             setDraft({ title: v.title, instructions: v.instructions, instrDoc: v.instrDoc ?? null, content: v.content });
             setEditorKey(task.id + ':' + Date.now());
             pending.current = { taskId: task.id, patch: { title: v.title, instructions: v.instructions, instrDoc: v.instrDoc ?? null, content: v.content } };
-            await flush();
-            setVersionsOpen(false);
+            if (await flush()) setVersionsOpen(false);
           }}
         />
       )}
@@ -1606,7 +1646,7 @@ export function LessonEditor() {
           onClose={() => setFromLib(false)}
           onPick={async (lt) => {
             setFromLib(false);
-            await flush();
+            if (!(await flush())) return;
             const id = await addToLesson(user.uid, lt, classId, itemId, tasks.length ? Math.max(...tasks.map((t) => t.order)) + 1 : 0);
             setSelected(id);
           }}
@@ -1653,7 +1693,7 @@ export function LessonEditor() {
 }
 
 // Above a task's title: whether it is linked to the resources library, and the way to link or unlink.
-function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: string; classId: string; itemId: string; flush: () => Promise<void> }) {
+function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: string; classId: string; itemId: string; flush: () => Promise<boolean> }) {
   const [busy, setBusy] = useState(false);
   const use = { classId, itemId, taskId: task.id };
   if (task.lib)
@@ -1672,7 +1712,7 @@ function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: strin
             onClick={async () => {
               if (!(await ask('Break the link with the library? This lesson’s task becomes its own: changes stop going both ways, and you can’t link it again.', { ok: 'Break the link' }))) return;
               setBusy(true);
-              await flush();
+              if (!(await flush())) { setBusy(false); return; }
               await breakLink(uid, task.lib!.id, use).catch(() => {});
               setBusy(false);
             }}
@@ -1689,7 +1729,7 @@ function LibLink({ task, uid, classId, itemId, flush }: { task: Task; uid: strin
       disabled={busy}
       onClick={async () => {
         setBusy(true);
-        await flush();
+        if (!(await flush())) { setBusy(false); return; }
         const body = await lessonTaskBody(use).catch(() => null);
         if (body) await saveToLibrary(uid, use, body).catch(() => {});
         setBusy(false);

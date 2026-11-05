@@ -1,6 +1,6 @@
 import { AiMark } from '../components/AiMark';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPE } from 'react';
-import { doc, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, writeBatch } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { isLearnerEmail } from '../lib/learners';
 import { newId } from '../lib/tasks';
@@ -8,10 +8,11 @@ import { ask, tell } from '../lib/ask';
 import type { SharedDoc } from '../lib/sharedDocs';
 import { openMenu, type MenuItem } from '../components/ContextMenu';
 import { UiIcon } from '../components/UiIcon';
-import { clean, elsCol, ensureFont, loadPicture, pagesCol, saveMeta, storePicture, useDesign, VIEWS, type ArtView, type DPage, type El } from './model';
+import { clean, elsCol, ensureFont, loadPicture, pagesCol, storePicture, useDesign, VIEWS, type ArtView, type DPage, type El } from './model';
 import { artKey, bounds, corners, drawPage, hit, isLine, labelEnd, sceneKey, textBox, textHeight, type View } from './render';
 import { artImage, qrImage, sceneImage } from './assets';
 import { useEdits } from './useHistory';
+import { useDesignFieldSaves } from './useDesignFieldSaves';
 import type { Tpl } from './templates';
 import { Drawer, type DrawerKey } from './Drawers';
 import { Props } from './Panels';
@@ -83,10 +84,20 @@ const HANDLES: [number, number][] = [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1],
 const keepRatio = (e: El) => e.t === 'image' || e.t === 'art' || e.t === 'qr' || (e.t === 'shape' && (e.shape === 'star' || e.shape === 'heart'));
 
 export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
-  const { pages, els: server, meta } = useDesign(d.id);
+  const { pages: serverPages, els: server, meta: serverMeta } = useDesign(d.id);
+  const fieldSaves = useDesignFieldSaves(d.id, serverPages);
+  const pages = useMemo(() => serverPages?.map(p => ({ ...p, ...(fieldSaves.pageDrafts[`page:${p.id}`] ?? {}) })) ?? null, [serverPages, fieldSaves.pageDrafts]);
+  const meta = { ...serverMeta, ...fieldSaves.metaDraft };
   const edits = useEdits(d.id, server);
   const { live, setLive, flush, commit, patch } = edits;
-  const els = useMemo(() => server.map((e) => (live[e.id] ? { ...e, ...live[e.id] } : e)), [server, live]);
+  const els = useMemo(() => {
+    const values = new Map(server.map(e => [e.id, e]));
+    for (const [id, recovered] of Object.entries(edits.recovery)) {
+      if (recovered) values.set(id, recovered);
+      else values.delete(id);
+    }
+    return [...values.values()].map(e => live[e.id] ? { ...e, ...live[e.id] } : e);
+  }, [server, live, edits.recovery]);
   const [pageId, setPageId] = useState('');
   const page = pages?.find((p) => p.id === pageId) ?? pages?.[0];
   const here = useMemo(() => els.filter((e) => e.page === page?.id).sort((a, b) => a.z - b.z || a.id.localeCompare(b.id)), [els, page?.id]);
@@ -245,7 +256,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
     [page, here, els, sel, d.id, commit],
   );
 
-  const setPageP = useCallback((p: Partial<DPage>) => page && void updateDoc(doc(pagesCol(d.id), page.id), clean(p)).catch(() => {}), [page, d.id]);
+  const setPageP = useCallback((p: Partial<DPage>) => { if (page) fieldSaves.changePage(page.id, p); }, [page, fieldSaves]);
 
   const addPages = useCallback(
     async (tpl: Tpl, replace = false) => {
@@ -1071,7 +1082,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
         sel,
         select: setSelIds,
         accent,
-        setAccent: (c) => void saveMeta(d.id, { accent: c }),
+        setAccent: (c) => fieldSaves.changeMeta({ accent: c }),
         add,
         patch,
         setLive,
@@ -1130,7 +1141,7 @@ export function DesignFile({ d, canEdit }: { d: SharedDoc; canEdit: boolean }) {
           <button type="button" className="dz-ib" onClick={() => setZoom((v) => Math.min(5, v * 1.25))} aria-label="Zoom in">+</button>
         </div>
         <span className="dz-grow" />
-        {canEdit ? <span className={'dz-saved' + (edits.failed ? ' bad' : '')} role="status">{edits.failed ? 'Not saved. Check your connection.' : edits.saving ? 'Saving…' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
+        {canEdit ? <span className={'dz-saved' + (edits.failed || fieldSaves.status === 'error' ? ' bad' : '')} role="status">{edits.failed || fieldSaves.status === 'error' ? <>Could not save · <button type="button" className="dz-save-retry" onClick={() => void Promise.all([edits.retry(), fieldSaves.retry()])}>Retry</button></> : fieldSaves.status === 'waiting' || (!navigator.onLine && edits.saving) ? 'Offline · waiting for connection' : edits.saving || fieldSaves.status === 'saving' ? 'Saving…' : fieldSaves.status === 'unsaved' ? 'Unsaved changes' : 'Saved'}</span> : <span className="dz-saved">You can look at this design and download it</span>}
         <DownloadMenu cx={cx} />
       </div>
       <div className="dz-body">

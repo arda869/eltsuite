@@ -21,10 +21,10 @@ export function coachContextOnPage(): CoachContext {
   };
 }
 
-// Share only text visible on the page the teacher is looking at when they send.
+// The server retrieves lesson and learner sources with access checks. Send only
+// the page identity here; scraping all visible text can bypass disabled sources.
 export function coachPageSnapshot() {
   const page = coachContextOnPage().pageContext!;
-  const main = document.querySelector<HTMLElement>('main, [role="main"]');
-  const visible = (main ?? document.body).innerText || '';
-  return { ...page, content: visible.replace(/\s+/g, ' ').trim().slice(0, 7000) };
+  const title = document.querySelector<HTMLElement>('main h1, [role="main"] h1')?.textContent?.trim() || document.title;
+  return { ...page, name: title.slice(0, 100) || page.name, content: '' };
 }

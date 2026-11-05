@@ -24,6 +24,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../lib/auth';
+import { ResponseSaveQueue } from '../lib/responseSaveQueue';
 import type { ClassDoc, Item } from '../lib/classes';
 import {
   answerRef,
@@ -82,8 +83,24 @@ export function LearnerLesson() {
   const [live, setLiveState] = useState<LiveState | null>(null);
   useLiveAudioSetup(classId, isLive(live) && live?.itemId === itemId, false);
   const panels = usePanels('ll.learnerPanels');
-  const timer = useRef<number>();
-  const dirty = useRef(false);
+  const [, setSaveTick] = useState(0);
+  const [reconnectTick, setReconnectTick] = useState(0);
+  const saves = useMemo(() => new ResponseSaveQueue(
+    `${classId}:${itemId}:${user?.uid ?? ''}`,
+    (base, value) => saveResponses(classId, base, value),
+    () => setSaveTick(n => n + 1),
+  ), [classId, itemId, user?.uid]);
+  useEffect(() => {
+    const reconnect = () => { setSaveTick(n => n + 1); setReconnectTick(n => n + 1); saves.reconnect(); };
+    const disconnect = () => setSaveTick(n => n + 1);
+    window.addEventListener('online', reconnect);
+    window.addEventListener('offline', disconnect);
+    return () => {
+      window.removeEventListener('online', reconnect);
+      window.removeEventListener('offline', disconnect);
+      saves.dispose();
+    };
+  }, [saves]);
 
   useEffect(() => {
     if (!classId) return;
@@ -181,7 +198,10 @@ export function LearnerLesson() {
     setCheckError('');
     setResponses({});
     setFlags([]);
-    dirty.current = false;
+    setPendingSave(false);
+    const answerBase = { learnerUid: user.uid, learnerId, itemId, taskId: current };
+    const localDraft = saves.draft(current, answerBase);
+    if (localDraft) setResponses(localDraft);
     return onSnapshot(answerRef(classId, current, user.uid), { includeMetadataChanges: true }, async (s) => {
       setPendingSave(s.metadata.hasPendingWrites);
       const d = s.data() as (AnswerDoc & { flags?: string[] }) | undefined;
@@ -189,12 +209,12 @@ export function LearnerLesson() {
       attemptsRef.current = d?.attempts ?? 0;
       setMarks(d?.marks ?? {});
       setCorrections(d?.corrections ?? {});
-      if (dirty.current || s.metadata.hasPendingWrites) return;
+      if (saves.hasUnsaved(current) || s.metadata.hasPendingWrites) return;
       setResponses(d?.responses ?? {});
       setChecked(!!d?.checked);
       if (d?.checked) setKey(await loadKey(classId, itemId, current).catch(() => null));
     });
-  }, [classId, itemId, current, user]);
+  }, [classId, itemId, current, user?.uid, saves]);
 
   const task = item?.locked ? undefined : tasks.find((t) => t.id === current);
   useLearningTime(classId,itemId,current,user?.uid??'',learnerId,!!task&&!task.locked&&!checked);
@@ -227,14 +247,15 @@ export function LearnerLesson() {
   const [flags, setFlags] = useState<string[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [pendingSave, setPendingSave] = useState(false);
+  const saveState = saves.status(current) === 'saved' && pendingSave ? 'saving' : saves.status(current);
   const [corrections, setCorrections] = useState<Record<string, Correction>>({});
   const anns = useAnnotations(classId, current, { teacher: false, uid: user?.uid });
   const allThreads = useThreads(classId, user && profile?.role === 'learner' ? { uid: user.uid, name: profile.displayName, learnerId: profile.learnerId, teacher: false } : null);
   const discussions = allThreads.filter((t) => t.approved && !t.hidden && t.link?.itemId === itemId);
   const resubmit = async (qid: string) => {
     if (!base || !user) return;
-    window.clearTimeout(timer.current);
-    await saveResponses(classId, base, responses, checked).catch(() => {});
+    if (!(await saves.flush(base.taskId))) { setCheckError('Your answer could not be saved. Retry the save before resubmitting.'); return; }
+    await saveResponses(classId, base, responses, checked);
     await setDoc(answerRef(classId, base.taskId, user.uid), { ...base, corrections: { [qid]: { ...corrections[qid], status: 'resubmitted', at: Date.now() } } }, { merge: true });
   };
   function toggleFlag(id: string) {
@@ -249,12 +270,7 @@ export function LearnerLesson() {
     if (!base || task?.locked || examLockedRef.current || (checked && corrections[id]?.status !== 'open')) return;
     const next = { ...responses, [id]: v };
     setResponses(next);
-    dirty.current = true;
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(async () => {
-      await saveResponses(classId, base, next).catch((e) => console.error(e));
-      dirty.current = false;
-    }, 600);
+    saves.update(base, next);
     sendPeerFeedback(id, v);
   }
 
@@ -307,10 +323,9 @@ export function LearnerLesson() {
     setBusy(true);setCheckError('');
     // Do not read the protected key from the optimistic checked snapshot.
     // check() owns feedback until the submission write is acknowledged.
-    dirty.current = true;
-    window.clearTimeout(timer.current);
     let submitted=false;
     try {
+      if (!(await saves.flush(base.taskId))) throw Error('The latest answer has not been saved.');
       const late=!!item?.due && Date.now()>item.due;
       // Save the submission event before loading a key or calculating feedback.
       await saveResponses(classId, base, responses, true, undefined, {submittedAt:Date.now(),...(late?{late:true}:{}),attempts:(attemptsRef.current??0)+1});
@@ -319,7 +334,6 @@ export function LearnerLesson() {
     } catch {
       setCheckError(submitted?'Your answers are saved, but feedback could not load. Try loading feedback again.':'Your answers could not be submitted. Check your connection and try again.');
     } finally {
-      dirty.current = !submitted;
       setBusy(false);
     }
   }
@@ -355,16 +369,31 @@ export function LearnerLesson() {
   const examState = !scope ? 'none' : run === undefined ? 'loading' : run === null ? 'before' : run.submittedMs ? (scope.released ? 'released' : 'submitted') : 'running';
   const examLocked = examState === 'before' || examState === 'submitted' || examState === 'loading' || (examState === 'released' && !checked);
   examLockedRef.current = examLocked;
+  const handingIn = useRef(false);
+  const handedIn = useRef(false);
+  useEffect(() => { handedIn.current = false; }, [scope?.id]);
   async function submitNow(auto = false) {
-    if (!scope || !user) return;
+    if (!scope || !user || handingIn.current || examState !== 'running') return;
     if (!auto && !(await ask(scope.kind === 'item' ? 'Hand in the whole exam? You can’t change your answers after this.' : 'Hand in this exam? You can’t change your answers after this.'))) return;
-    window.clearTimeout(timer.current);
-    if (base) await saveResponses(classId, base, responses).catch(() => {});
-    await submitExam(classId, scope.id, user.uid).catch((e) => console.error(e));
+    handingIn.current = true;
+    setBusy(true);
+    setCheckError('');
+    try {
+      if (base) for (const candidate of tasks) saves.draft(candidate.id, { ...base, taskId: candidate.id });
+      if (!(await saves.flushAll())) throw Error('At least one answer could not be saved.');
+      if (base) await saveResponses(classId, base, saves.latest(base.taskId) ?? responses);
+      await submitExam(classId, scope.id, user.uid);
+      handedIn.current = true;
+    } catch {
+      setCheckError('Your exam has not been handed in because an answer or the submission could not be saved. Your work is still here. Check your connection and try Hand in again.');
+    } finally {
+      handingIn.current = false;
+      setBusy(false);
+    }
   }
   useEffect(() => {
-    if (examState === 'running' && left === 0) submitNow(true);
-  }, [examState, left === 0]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (examState === 'running' && left === 0 && navigator.onLine && !handedIn.current) void submitNow(true);
+  }, [examState, left === 0, reconnectTick]); // eslint-disable-line react-hooks/exhaustive-deps
   // When results are released, mark this task so the learner sees how they did.
   useEffect(() => {
     if (examState === 'released' && !checked && !busy && base && qs.length) check();
@@ -561,7 +590,7 @@ export function LearnerLesson() {
                   onChange={change}
                   revealed={revealKey ? revealedSubset(revealKey, questionIds(task.content), revealN, singles) : null}
                   results={checked ? key : null}
-                  disabled={task.locked || examLocked}
+                  disabled={busy || task.locked || examLocked}
                   hideAnswers={task.afterCheck === 'retry'}
                   layout={task.layout ?? 'single'}
                   colScroll={task.colScroll ?? 'separate'}
@@ -619,7 +648,8 @@ export function LearnerLesson() {
                     {lessonStyleOf(c) === 'young' && <YoungProgress done={answered} total={qs.length} />}
                     {qs.length > 0 && <span className="foot-short">{answered}/{qs.length}</span>}
                     {qs.length > 0 ? <span className="foot-long">{`${answered} of ${qs.length} answered`}</span> : ''}
-                    {qs.length > 0 && <span className={'save-dot' + (pendingSave ? ' pending' : '')}>{pendingSave ? ' · saving…' : ' · saved'}</span>}
+                    {qs.length > 0 && <span className={'save-dot' + (saveState !== 'saved' ? ' pending' : '')} role="status">{saveState === 'saved' ? ' · Saved' : saveState === 'saving' ? ' · Saving…' : saveState === 'waiting' ? ' · Offline or waiting for connection' : saveState === 'error' ? ' · Could not save' : ' · Unsaved changes'}</span>}
+                    {(saveState === 'error' || saveState === 'waiting') && <button type="button" className="btn small-btn" onClick={() => void saves.retry(current)}>Retry save</button>}
                     {flags.filter((f) => qs.some((q) => q.id === f)).length > 0 && ` · ${flags.filter((f) => qs.some((q) => q.id === f)).length} flagged`}
                   </span>
                 )}
@@ -627,12 +657,12 @@ export function LearnerLesson() {
                   <IconBtn icon="prev" label={synced ? tr('Your teacher is moving the class') : 'Previous task'} className="nav-arrow foot-prev" disabled={!prevOpen || synced} onClick={() => prevOpen && go(prevOpen.id)} />
                   {scope ? (
                     examState === 'running' ? (
-                      <button className="btn primary" onClick={() => submitNow()}>
+                      <button className="btn primary" disabled={busy || handingIn.current} onClick={() => void submitNow()}>
                         {scope.kind === 'item' ? 'Hand in the exam' : 'Hand in'}
                       </button>
                     ) : null
                   ) : qs.length > 0 && qs.every((q) => q.type === 'reflect') ? (
-                    <span className="hint saved-auto">{Object.keys(responses).length ? tr('Saved. Your teacher can see your answers.') : ''}</span>
+                    <span className="hint saved-auto">{Object.keys(responses).length && saveState === 'saved' ? tr('Saved. Your teacher can see your answers.') : ''}</span>
                   ) : qs.length > 0 &&
                     (checked ? (
                       item?.type === 'practice' ? (
@@ -656,10 +686,14 @@ export function LearnerLesson() {
               </div>
             </div>
           ) : (
-            tasks.length === 0 ? (
+            item?.locked ? (
+              <p className="placeholder" role="status">Your teacher will open this lesson soon.</p>
+            ) : tasks.length === 0 ? (
               <p className="placeholder" style={{ padding: 24 }}>
                 Your teacher hasn’t added tasks to this lesson yet.
               </p>
+            ) : !current ? (
+              <p className="placeholder" role="status">Your teacher will open the next activity.</p>
             ) : (
               <div className="frame-loading">
                 <Loader label="Opening the task" />

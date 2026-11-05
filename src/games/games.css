@@ -112,3 +112,6 @@
 .game-show-settings{display:grid;gap:4px;margin-top:8px;padding-top:12px;border-top:1px solid var(--hair)}.game-show-settings>label{margin:8px 0 2px}.game-show-settings>.hint{margin:0 0 4px;font-size:.85rem;color:var(--muted)}.game-builder label .hint{font-weight:400;color:var(--muted);font-size:.85rem}
 .game-draft{border:1px solid var(--hair);border-radius:16px;padding:16px 18px;background:var(--paper);margin:0 0 12px}.game-draft .aik-header{margin-bottom:6px}.game-draft-closed{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;border:0;padding:0;background:none}.game-draft-closed .aik-notice{width:100%}@media(max-width:600px){.game-draft{padding:14px}}
 .game-sources>.game-draft{flex:1 1 100%}.game-sources>.game-draft-closed{flex:1 1 min(290px,100%);align-self:center}
+.game-load-state { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 32px; }
+.game-load-state h2, .game-load-state p { flex-basis: 100%; margin: 0; }
+.game-return-action { padding: 14px; margin: 12px 0; border: 1px solid var(--hair); border-radius: 12px; background: var(--paper); }
