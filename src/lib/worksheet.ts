@@ -66,7 +66,7 @@ export type Block =
 // Self-reflection, peer feedback and surveys on paper.
 export type FormItem = { type: 'stars' | 'faces' | 'thumbs' | 'scale' | 'choice' | 'checklist' | 'rank' | 'text'; prompt: string; options?: string[]; points?: number; low?: string; high?: string };
 export type CutCard = { title: string; blocks: Block[] };
-export type WsTask = { variant?: string; online?: string[]; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
+export type WsTask = { variant?: string; online?: string[]; title: string; instructions?: string; instrRuns?: Run[]; notes?: string; media?: string[]; blocks: Block[]; answers: { n: number; label?: string; text: string }[]; marks: number; cutouts?: { mode: string; symbol: string; cards: CutCard[] }[] };
 export type WsItem = { kind: 'section'; title: string } | { kind: 'task'; task: WsTask };
 export type Paper = 'A4' | 'Letter' | 'A5';
 // Uploaded pictures, read before printing: "media:<id>" → the picture and its size.
@@ -100,7 +100,7 @@ const ONLINE: Record<string, string> = { mcq: 'Quiz', reveal: 'Reveal', phonChar
 export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').LessonStyle = 'adult'): WsTask {
   const blocks: Block[] = [];
   let cur: Block[] = blocks;
-  const answers: { n: number; text: string }[] = [];
+  const answers: { n: number; label?: string; text: string }[] = [];
   let n = 0;
   let marks = 0;
   const cutouts: NonNullable<WsTask['cutouts']> = [];
@@ -116,6 +116,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
   const picCount: Record<string, number> = {};
   const mediaUsed: string[] = [];
   const online: string[] = []; // what only works on a screen, left off the paper
+  let subtaskLabel = '';
   let subN = 0; // sub-tasks so far: a, b, c
   let lastDef = '';
   const runsOf = (nodes: JSONContent[] | undefined): Run[] => {
@@ -160,8 +161,9 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
             const correct: number[] = Array.isArray(a.correct) ? a.correct : [a.correct];
             marks++;
             answers.push({ n, text: correct.map((i) => opts[i]).filter(Boolean).join(', ') });
-            if (a.display === 'radio') out.push({ num: n }, { stack: opts.map((o, i) => `${LET[i]}  ${o}`) });
-            else out.push({ num: n }, { options: opts });
+            const printable = opts.map((option, index) => ({ text: option.trim(), index })).filter(option => option.text);
+            if (a.display === 'radio') out.push({ num: n }, { stack: printable.map(option => `${LET[option.index]}  ${option.text}`) });
+            else out.push({ num: n }, { options: printable.map(option => option.text) });
             break;
           }
           {
@@ -244,6 +246,12 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         return;
       case 'paragraph': {
         const runs = runsOf(node.content);
+        const questionRuns = runs.filter(run => run.num !== undefined);
+        if (questionRuns.length === 1 && runs.some(run => run.stack)) {
+          const marker = questionRuns[0];
+          runs.splice(runs.indexOf(marker), 1);
+          runs.unshift(marker);
+        }
         if (runs.length) cur.push({ kind: 'p', runs, list, mark });
         return;
       }
@@ -269,7 +277,22 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       case 'orderedList': {
         // Keep the teacher's start and style: 4, 5, 6 · d, e, f · iv, v, vi
         const start = typeof a.start === 'number' ? a.start : 1;
-        node.content?.forEach((li, i) => li.content?.forEach((c, k) => walk(c, 'number', k ? '' : listLabel(start + i, String(a.listType ?? '1')) + '.')));
+        node.content?.forEach((li, i) => {
+          const label = listLabel(start + i, String(a.listType ?? '1'));
+          const firstBlock = cur.length;
+          const firstAnswer = answers.length;
+          li.content?.forEach((child, k) => walk(child, 'number', k ? '' : label + '.'));
+          if (answers.length !== firstAnswer + 1) return;
+          const answer = answers[firstAnswer];
+          for (const block of cur.slice(firstBlock)) {
+            if (block.kind !== 'p' || block.list !== 'number') continue;
+            const marker = block.runs.findIndex(run => run.num === answer.n);
+            if (marker === -1) continue;
+            block.runs.splice(marker, 1);
+            answer.label = subtaskLabel ? subtaskLabel + '.' + label : label;
+            break;
+          }
+        });
         return;
       }
       case 'table':
@@ -288,7 +311,7 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
       }
       case 'mcq': {
         n++;
-        cur.push({ kind: 'p', runs: [{ t: String(a.prompt || 'Choose an answer.') }], n });
+        cur.push({ kind: 'p', runs: [{ num: n }, { t: String(a.prompt || 'Choose an answer.') }], list, mark });
         const options: string[] = Array.isArray(a.options) ? a.options : [];
         options.forEach((option, i) => cur.push({ kind: 'p', runs: [{ t: String.fromCharCode(65+i) + '. ' + option }] }));
         if (options[a.correct]) answers.push({ n, text: options[a.correct] });
@@ -556,9 +579,13 @@ export function flattenTask(t: ExportTask, lessonStyle: import('./lessonStyle').
         const inner: Block[] = [];
         const prev = cur;
         cur = inner;
+        const previousLabel = subtaskLabel;
+        const letter = String.fromCharCode(97 + (subN++ % 26));
+        subtaskLabel = previousLabel ? previousLabel + '.' + letter : letter;
         node.content?.forEach((c) => walk(c));
+        subtaskLabel = previousLabel;
         cur = prev;
-        cur.push({ kind: 'subtask', letter: String.fromCharCode(97 + (subN++ % 26)), text: String(a.instr ?? ''), blocks: inner });
+        cur.push({ kind: 'subtask', letter, text: String(a.instr ?? ''), blocks: inner });
         return;
       }
       case 'media':
@@ -882,7 +909,7 @@ export async function lessonDocx(title: string, items: WsItem[], opts: Options):
       const scripts = opts.key ? (t.media ?? []).map((id) => opts.sounds?.[id]).filter((m): m is MediaInfo => !!m && m.script.length > 0) : [];
       if (!answers.length && !notes && !scripts.length) return;
       keyParas.push(new Paragraph({ keepNext: true, spacing: { before: 160, after: 60 }, children: [new TextRun({ text: `${ti + 1}  `, bold: true, color: ACC, font: SANS }), new TextRun({ text: t.title, bold: true, font: SERIF })] }));
-      answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.n}   `, bold: true, font: SANS, size: S(18), color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
+      answers.forEach((a) => keyParas.push(new Paragraph({ children: [new TextRun({ text: `${a.label ?? a.n}   `, bold: true, font: SANS, size: S(18), color: ACC }), new TextRun({ text: a.text, font: SERIF })] })));
       scripts.forEach((m) =>
         keyParas.push(
           new Paragraph({ spacing: { before: 60, after: 20 }, children: [new TextRun({ text: (m.video ? 'VIDEO SCRIPT' : 'AUDIOSCRIPT') + '  ', bold: true, font: SANS, size: S(14), color: ACC, characterSpacing: 30 }), new TextRun({ text: m.title, font: SANS, size: S(16), color: '8A847D' })] }),
