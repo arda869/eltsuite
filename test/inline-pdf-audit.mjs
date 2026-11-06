@@ -42,10 +42,10 @@ try{
   }]);
   const numberingHtml = worksheetHtml('Numbering check',numbering,{key:true});
   const numberingDoc = new DOMParser().parseFromString(numberingHtml,'text/html');
-  const rows = numberingDoc.querySelector('#u-main').content.querySelectorAll('.li');
-  if (rows[0].querySelector('.mk').textContent !== '3.' || rows[0].querySelector('.qn')) throw Error('The worksheet repeated the ordered-list label.');
-  if (rows[0].querySelector('.opts').textContent !== 'True / False') throw Error('An empty choice added a separator.');
-  if (rows[1].querySelectorAll('.qn').length !== 2) throw Error('Two questions in one list item lost their separate numbers.');
+  const numberedRows = numberingDoc.querySelector('#u-main').content.querySelectorAll('.li');
+  if (numberedRows[0].querySelector('.mk').textContent !== '3.' || numberedRows[0].querySelector('.qn')) throw Error('The worksheet repeated the ordered-list label.');
+  if (numberedRows[0].querySelector('.opts').textContent !== 'True / False') throw Error('An empty choice added a separator.');
+  if (numberedRows[1].querySelectorAll('.qn').length !== 2) throw Error('Two questions in one list item lost their separate numbers.');
   const paragraph = [...numberingDoc.querySelector('#u-main').content.querySelectorAll('p')].find(p=>p.textContent.includes('In a paragraph'));
   if (!paragraph?.querySelector('.qn')) throw Error('A question inside prose lost its number.');
   if (!numberingDoc.querySelector('#u-key').content.textContent.includes('a.3')) throw Error('The answer key lost the printed list label.');
