@@ -111,11 +111,12 @@ export function Select<T extends string>({ value, options: all, onChange, label,
       </button>
       {open &&
         createPortal(
-          <div ref={list} id={uid + '-list'} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-label={label} onKeyDown={e=>{if(!e.defaultPrevented)key(e);}} onMouseMove={() => (mouse.current = true)} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
+          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} onKeyDown={e=>{if(!e.defaultPrevented)key(e);}} onMouseMove={() => (mouse.current = true)} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
             {typing && (
               <input className="sel-q" type="search" role="combobox" aria-expanded="true" aria-controls={uid + '-list'} aria-autocomplete="list" aria-activedescendant={options[hi] ? `${uid}-o${hi}` : undefined} autoFocus={!touch} autoComplete="off" enterKeyHint="done" value={q} placeholder="Type to find…" aria-label={`Find in ${label}`} onChange={(e) => (setQ(e.target.value), setHi(0))} onKeyDown={key} />
             )}
             {typing && !options.length && <span className="sel-none">Nothing matches.</span>}
+            <div id={uid + '-list'} role="listbox" aria-label={label}>
             {options.map((o, i) => (
               <button key={o.v} id={`${uid}-o${i}`} type="button" tabIndex={-1} role="option" aria-selected={o.v === value} className={'sel-o' + (i === hi ? ' hi' : '') + (o.v === value ? ' on' : '')} onMouseMove={() => mouse.current && i !== hi && setHi(i)} onMouseDown={(e) => e.preventDefault()} onClick={() => pick(o.v)}>
                 <span className="sel-tick" aria-hidden="true">
@@ -132,6 +133,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
               {o.icon && o.v === value && <span className="sel-choice-check" aria-hidden="true">✓</span>}
               </button>
             ))}
+            </div>
           </div>,
           btn.current?.closest('dialog') ?? document.body,
         )}
@@ -143,6 +145,7 @@ export function Select<T extends string>({ value, options: all, onChange, label,
 // none: when set, nothing ticked is allowed and shows this; otherwise nothing ticked means all.
 // onCreate: a box at the end of the list adds a new choice, ticked at once.
 export function MultiSelect<T extends string>({ value, options, onChange, label, all = 'Any', none, foot = 'Teachers choose from the ticked ones.', className = '', onCreate, createLabel = 'New…' }: { value: T[]; options: Option<T>[]; onChange: (v: T[]) => void; label: string; all?: string; none?: string; foot?: string; className?: string; onCreate?: (name: string) => Promise<T>; createLabel?: string }) {
+  const uid = useId().replace(/:/g, '');
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [fresh, setFresh] = useState('');
@@ -212,7 +215,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
   };
   return (
     <>
-      <button ref={btn} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-label={label} onClick={(e) => (open ? setOpen(false) : e.detail === 0 ? openWith(0) : setOpen(true))} onKeyDown={btnKey}>
+      <button ref={btn} type="button" className={'sel ' + className + (open ? ' open' : '')} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? uid + '-list' : undefined} aria-label={label} onClick={(e) => (open ? setOpen(false) : e.detail === 0 ? openWith(0) : setOpen(true))} onKeyDown={btnKey}>
         <span className="sel-v">{value.length && !(none === undefined && value.length === options.length) ? <span className="sel-multi-values">{options.filter(o=>value.includes(o.v)).slice(0,2).map(o=><span className="sel-token" key={o.v}>{o.label}</span>)}{value.length>2&&<span className="sel-token">+{value.length-2}</span>}</span> : shown}</span>
         <svg className="sel-chev" width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -220,9 +223,10 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
       </button>
       {open &&
         createPortal(
-          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} role="listbox" aria-multiselectable="true" aria-label={label} onKeyDown={listKey} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
-            {options.length > 7 && <input className="sel-q" type="search" role="searchbox" aria-label={`Find in ${label}`} autoComplete="off" value={query} placeholder="Type to find…" onChange={e=>setQuery(e.target.value)} />}
+          <div ref={list} className={'sel-list' + (at.up ? ' up' : '')} onKeyDown={listKey} style={at.up ? { left: at.left, bottom: at.bottom, top: 'auto', minWidth: at.width } : { left: at.left, top: at.top, minWidth: at.width }}>
+            {options.length > 7 && <input className="sel-q" type="search" role="searchbox" aria-label={`Find in ${label}`} aria-controls={uid + '-list'} autoComplete="off" value={query} placeholder="Type to find…" onChange={e=>setQuery(e.target.value)} />}
             {shownOptions.length === 0 && <span className="sel-none">Nothing matches.</span>}
+            <div id={uid + '-list'} role="listbox" aria-multiselectable="true" aria-label={label}>
             {shownOptions.map((o) => {
               const on = (none === undefined && value.length === 0) || value.includes(o.v);
               return (
@@ -242,6 +246,7 @@ export function MultiSelect<T extends string>({ value, options, onChange, label,
               );
             })}
             {value.length > 0 && <button type="button" role="option" aria-selected="false" className="sel-o sel-clear" onMouseDown={e=>e.preventDefault()} onClick={()=>onChange([])}>{none === undefined ? 'Use any' : 'Clear selections'}</button>}
+            </div>
             {onCreate && (
               <input className="sel-q sel-new" value={fresh} placeholder={createLabel} aria-label={createLabel} maxLength={40} onChange={(e) => setFresh(e.target.value)} enterKeyHint="done" onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), e.stopPropagation(), void make())} />
             )}

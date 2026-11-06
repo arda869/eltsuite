@@ -32,7 +32,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 24 | In progress | Class and learner queries bounded; test large-class pagination and evidence language. |
 | 25 | Implemented locally | Companion chat available with optional profile fields; browser test passed. |
 | 26 | In progress | Mock browser network-failure journey confirms the message stays in the composer and Try again reaches a reply. Live configuration failure still needs verification. |
-| 27 | In progress | Pending image results retained; test Create/Edit/Restyle/Eraser rules in browser. |
+| 27 | In progress | The mock Designer browser journey covers Create without a selected image; prevents Change without a source; uses the selected source for Change and Magic eraser; Restyle accepts a blank optional description; and previews apply and reopen. Pending-result recovery after a closed tab remains to test. |
 | 28 | In progress | Designer file/page thumbnails and insertion pass a mock browser journey; large-library performance remains open. |
 | 29 | In progress | Use in Classes saves the current page to Resources and returns to the originating lesson/document or Classes; inserted pictures retain an Edit source in Designer link. Mock browser journey passes; direct destination insertion and live Firebase check remain. |
 | 30 | Open | Full canvas manipulation and final composition inspection. |
@@ -45,7 +45,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 | 37 | In progress | Public homepage navigation passed on the currently published eltsuite.com build on 6 November 2026. Invitation and signed-in teacher/learner login, logout, refresh and redirects remain unverified for this branch. |
 | 38 | In progress | Low-specificity input baseline added; inventory/visual states pending. |
 | 39 | In progress | Textarea baseline added; clipping/autosize audit pending. |
-| 40 | In progress | Spelling/style selects, Designer selected-element/page/quick-change selectors, and the legacy storyboard toolbar use NSelect; backdrop, pose and expression changes persist in a mock browser journey. Remaining raw-select inventory and overlay/keyboard checks pending. |
+| 40 | In progress | Spelling/style selects, Designer selected-element/page/quick-change and AI-image selectors, and the legacy storyboard toolbar use NSelect; backdrop, pose, expression and AI-image reference changes persist in mock browser journeys. Remaining raw-select inventory and overlay/keyboard checks pending. |
 | 41 | In progress | Shared MultiSelect now shows selected chips, filters long lists, shows an empty result, clears choices and removes the last chip with Backspace/Delete where valid. Gallery, Timetable and organisation-admin mock browser journeys pass; autocomplete and every app-specific use remain to audit. |
 | 42 | Open | Checkbox/radio/switch visual and semantic audit. |
 | 43 | Open | Date/time picker and locale audit. |
@@ -77,5 +77,7 @@ Legend: **Implemented locally** means code exists but the required full journey 
 - The public homepage journey passed against the currently published eltsuite.com build on 6 November 2026. It does not verify this draft branch.
 - Local control-gallery journey passed at five widths in light and dark themes, plus 200% CSS zoom; the 375px dark and 1440px light captures were visually reviewed. This gallery is a local test page, not a production route.
 - Local control-gallery journey also passed multiselect choice, chip removal, clearing, search and empty results; the open searchable menu passed a targeted accessibility scan. Timetable and organisation-admin journeys passed after the shared control change. TypeScript `--noEmit` passed.
-- The latest PR games job passed. Its main job failed during the simulated Lesson/Collab PDF export audit when Vite reloaded the fixture while it was evaluating. A local rerun passed after adding a retry for that test setup race; the new PR check has not yet run.
+- The latest PR games job passed. The previous main job failed during the simulated Lesson/Collab PDF export audit when Vite reloaded the fixture while it was evaluating. A retry for that test setup race passed locally and in the next PR run.
 - Targeted mock browser checks for class spelling, Development Studio reading/inquiry, and the Companion profile/chat journey passed after updating outdated control selectors. This is not yet a complete suite pass.
+- The complete mock Designer create/edit/reopen journey, including an AI image with optional fields blank and the shared image dropdowns, passed after the control change. This is not a live image-provider test.
+- In the next PR run, all 80 browser journeys passed, but the accessibility gate found two issues in the open searchable multiselect. Search and help text were moved outside its listbox, and help text contrast was increased. The targeted control-gallery accessibility scan now reports zero issues; a new full PR run is pending.

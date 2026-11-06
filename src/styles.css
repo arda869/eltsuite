@@ -6664,7 +6664,7 @@ button.cd-avatar { border: 0; cursor: pointer; padding: 0; }
 .sel-clear { margin-top:4px;border-top:1px solid var(--hair);border-radius:0;color:var(--accent-text); }
 .sel-box { flex: none; display: grid; place-items: center; width: 17px; height: 17px; margin-top: 1px; border-radius: 5px; border: 1.5px solid var(--hair-strong); color: #fff; }
 .sel-box.on { background: var(--accent); border-color: var(--accent); }
-.sel-foot { display: block; padding: 6px 10px 4px; border-top: 1px solid var(--hair); margin-top: 4px; }
+.sel-foot { display: block; padding: 6px 10px 4px; border-top: 1px solid var(--hair); margin-top: 4px; color: var(--ink); }
 .adm-inv-row { grid-template-columns: 1fr 1.3fr 1fr auto; align-items: center; }
 .adm-inv-admin { display: inline-flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 14px; white-space: nowrap; cursor: pointer; }
 .adm-inv-admin input { accent-color: var(--accent); width: 16px; height: 16px; }
