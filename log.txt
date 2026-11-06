@@ -1,0 +1,5 @@
+shot preview-out/01-hero.png
+shot preview-out/02-lightbox.png
+shot preview-out/03-lightbox-closeup.png
+shot preview-out/04-invite-dropdown.png
+phone overflow -10
