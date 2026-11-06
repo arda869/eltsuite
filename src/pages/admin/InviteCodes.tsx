@@ -22,10 +22,28 @@ const LASTS: { v: string; label: string }[] = [
 ];
 const STATE: Record<ReturnType<typeof codeState>, string> = { open: 'Open', used: 'Used up', expired: 'Run out', off: 'Turned off' };
 
+function InvitePermissions({ aiAccess, teacherTrainer, allowTrainer, onAi, onTrainer }: {
+  aiAccess: boolean;
+  teacherTrainer: boolean;
+  allowTrainer: boolean;
+  onAi: (enabled: boolean) => void;
+  onTrainer: (enabled: boolean) => void;
+}) {
+  return (
+    <fieldset className="ic-access">
+      <legend>Access for the invited teacher</legend>
+      <label><input type="checkbox" checked={aiAccess} onChange={e => onAi(e.target.checked)} /> AI features</label>
+      {allowTrainer && <label><input type="checkbox" checked={teacherTrainer} onChange={e => onTrainer(e.target.checked)} /> Create teacher-training courses and enrol trainees</label>}
+    </fieldset>
+  );
+}
+
 export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
   const { user, profile } = useAuth();
   const superView = !org; // Super Admin: every code, for any organisation
   const list = useCodes(true, org?.id ?? null);
+  const [aiAccess, setAiAccess] = useState(false);
+  const [teacherTrainer, setTeacherTrainer] = useState(false);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [forOrg, setForOrg] = useState('');
@@ -45,10 +63,12 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
     if (!emailOk || !usesOk || busy || (full && !superView)) return;
     setBusy(true);
     try {
-      const code = await makeCode({ org: target ? { id: target.id, name: target.name } : null, email: clean, name, maxUses: clean ? 1 : n, days: Number(days), me });
+      const code = await makeCode({ org: target ? { id: target.id, name: target.name } : null, email: clean, name, maxUses: clean ? 1 : n, days: Number(days), me, aiAccess: superView && aiAccess, teacherTrainer: superView && !target && teacherTrainer });
       setMade(code);
       setEmail('');
       setName('');
+      setAiAccess(false);
+      setTeacherTrainer(false);
       say(clean ? `Code ${code} made. We’ll email it to ${clean} within 15 minutes.` : `Code ${code} made.`);
     } catch {
       say(full ? limitMessage(target!, 'teachers') : 'That didn’t work. Try again.');
@@ -67,13 +87,14 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
   const toggle = (c: InviteCode) => void setCodeOff(c.code, !c.off).then(() => say(c.off ? `${c.code} is on again.` : `${c.code} is turned off.`), () => say('That didn’t work. Try again.'));
   // Teachers who asked for an invitation on the public homepage (super admins only).
   const requests = useInvitationRequests(superView);
+  const [requestAccess, setRequestAccess] = useState<Record<string, { aiAccess?: boolean; teacherTrainer?: boolean }>>({});
   const [sending, setSending] = useState('');
   const waiting = requests?.filter((r) => !r.invited) ?? [];
   const invited = requests?.filter((r) => r.invited) ?? [];
   const invite = async (r: InvitationRequest) => {
     setSending(r.id);
     try {
-      const code = await inviteFromRequest(r, me);
+      const code = await inviteFromRequest(r, me, requestAccess[r.id]);
       say(`Code ${code} made for ${r.name}. We’ll email it to ${r.email} within 15 minutes.`);
     } catch {
       say('That didn’t work. Try again.');
@@ -90,11 +111,18 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
         <b>{r.name}</b>
         <span className={'hq-tag' + (r.invited ? ' quiet' : '')}>{r.invited ? 'Invited' : 'Waiting'}</span>
       </span>
-      <span className="ic-about">
+      <div className="ic-about">
         <span>{[r.email, r.place, r.teaches].filter(Boolean).join(' · ')}</span>
+        {!r.invited && <InvitePermissions
+          aiAccess={!!requestAccess[r.id]?.aiAccess}
+          teacherTrainer={!!requestAccess[r.id]?.teacherTrainer}
+          allowTrainer
+          onAi={enabled => setRequestAccess(current => ({ ...current, [r.id]: { ...current[r.id], aiAccess: enabled } }))}
+          onTrainer={enabled => setRequestAccess(current => ({ ...current, [r.id]: { ...current[r.id], teacherTrainer: enabled } }))}
+        />}
         {r.note && <span className="ic-used">“{r.note}”</span>}
         <span>{`asked ${ago(r.at)}`}{r.invited ? ` · code ${r.invited} sent${r.invitedBy ? ` by ${r.invitedBy}` : ''}${r.invitedAt ? `, ${ago(r.invitedAt)}` : ''}` : ''}</span>
-      </span>
+      </div>
       <span className="hq-reg-acts">
         {!r.invited && (
           <button type="button" className="btn primary small" disabled={!!sending} onClick={() => void invite(r)}>
@@ -123,6 +151,8 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
             {[c.email ? `for ${c.name ? `${c.name}, ` : ''}${c.email}` : c.name ? `for ${c.name}` : 'anyone with the code', superView ? (c.orgName ? `joins ${c.orgName}` : 'no organisation') : ''].filter(Boolean).join(' · ')}
           </span>
           <span>
+            {c.aiAccess && 'AI features · '}
+            {c.teacherTrainer && 'Teacher training · '}
             {`used ${c.uses ?? 0} of ${c.maxUses}`}
             {c.expires ? ` · ${c.expires < Date.now() ? 'ran out' : 'until'} ${dateStr(c.expires)}` : ' · no end'}
             {c.email ? (c.mailed ? ` · emailed ${ago(c.mailed)}` : ' · email going out soon') : ''}
@@ -208,6 +238,7 @@ export function InviteCodes({ org, orgs }: { org?: Org | null; orgs?: Org[] }) {
             <Select value={days} options={LASTS} onChange={setDays} label="How long the code lasts" />
           </label>
         </div>
+        {superView && <InvitePermissions aiAccess={aiAccess} teacherTrainer={teacherTrainer} allowTrainer={!target} onAi={setAiAccess} onTrainer={setTeacherTrainer} />}
         {!emailOk && <span className="hint">Check the email.</span>}
         {!usesOk && <span className="hint">Choose from 1 to 500 teachers.</span>}
         {full && <span className="hint ic-full">{superView ? `${target!.name} is at its limit of teachers: nobody can join it with a code until you raise the limit.` : limitMessage(target!, 'teachers')}</span>}

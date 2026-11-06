@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { initializeTestEnvironment, assertFails, assertSucceeds } = require('@firebase/rules-unit-testing');
-const { addDoc, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } = require('firebase/firestore');
+const { addDoc, collection, deleteDoc, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } = require('firebase/firestore');
 if (!process.env.FIRESTORE_EMULATOR_HOST) throw Error('Disposable Firestore emulator required.');
 const env = await initializeTestEnvironment({ projectId: process.env.INVITATION_TEST_PROJECT || 'demo-feature-discovery', firestore: { rules: readFileSync('firestore.rules', 'utf8') } });
 try {
@@ -42,6 +42,31 @@ try {
   await assertSucceeds(updateDoc(doc(owner, 'invitationRequests', asked.id), { invited: 'ABCD-EF23', invitedAt: Date.now(), invitedBy: 'Arda' }));
   await assertFails(updateDoc(doc(owner, 'invitationRequests', asked.id), { email: 'other@example.com' }));
   await assertSucceeds(deleteDoc(doc(owner, 'invitationRequests', asked.id)));
+  const inviteCode = { by: 'owner', maxUses: 1, uses: 0, usedBy: {} };
+  const accessCode = 'GRNT-AB23';
+  const plainCode = 'BASE-AB23';
+  await assertSucceeds(setDoc(doc(owner, 'inviteCodes', accessCode), { ...inviteCode, email: 'sam@example.com', aiAccess: true, teacherTrainer: true }));
+  await assertSucceeds(setDoc(doc(owner, 'inviteCodes', plainCode), inviteCode));
+  await assertFails(setDoc(doc(teacher, 'inviteCodes', 'FAKE-AB23'), { ...inviteCode, by: 'teacher', aiAccess: true }));
+  const redeem = (db, uid, code, grant) => {
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', uid), { role: 'teacher', code });
+    batch.update(doc(db, 'inviteCodes', code), { uses: 1, [`usedBy.${uid}`]: { name: uid } });
+    if (grant) {
+      batch.set(doc(db, 'aiPilot', uid), { enabled: true, updatedBy: 'owner', updatedAt: serverTimestamp() });
+      batch.set(doc(db, 'accounts', uid), { code, teacherTrainer: true });
+    }
+    return batch.commit();
+  };
+  await assertFails(redeem(teacher, 'teacher', accessCode, true));
+  await assertFails(redeem(teacher, 'teacher', plainCode, true));
+  await assertSucceeds(redeem(teacher, 'teacher', plainCode, false));
+  await assertFails(setDoc(doc(teacher, 'aiPilot', 'teacher'), { enabled: true, updatedBy: 'owner', updatedAt: serverTimestamp() }));
+  const invitedTeacher = env.authenticatedContext('sam', { email: 'sam@example.com' }).firestore();
+  await assertSucceeds(redeem(invitedTeacher, 'sam', accessCode, true));
+  const aiGrant = await assertSucceeds(getDoc(doc(invitedTeacher, 'aiPilot', 'sam')));
+  const trainerGrant = await assertSucceeds(getDoc(doc(invitedTeacher, 'accounts', 'sam')));
+  if (!aiGrant.data()?.enabled || !trainerGrant.data()?.teacherTrainer) throw Error('Invitation grants were not applied.');
   console.log('Invitation request rules passed: anyone can ask in the right shape; only a super admin reads, marks or deletes.');
 } finally {
   await env.cleanup();

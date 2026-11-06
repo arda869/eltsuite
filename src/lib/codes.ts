@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, deleteDoc, deleteField, doc, getDoc, increment, onSnapshot, query, setDoc, updateDoc, where, type DocumentReference, type DocumentData } from 'firebase/firestore';
+import { collection, deleteDoc, deleteField, doc, getDoc, increment, onSnapshot, serverTimestamp, query, setDoc, updateDoc, where, type DocumentReference, type DocumentData } from 'firebase/firestore';
 import { db } from './firebase';
 
 // Invitation codes: ELT Suite is open by invitation for now. A super admin makes a code (for
@@ -8,7 +8,9 @@ import { db } from './firebase';
 // account; a code for an organisation also makes them one of its teachers. A code can be used a
 // set number of times, until a date, and only by one email if it names one. See firestore.rules.
 
-export type InviteCode = {
+export type InviteAccess = { aiAccess?: boolean; teacherTrainer?: boolean };
+
+export type InviteCode = InviteAccess & {
   code: string;
   org?: string;
   orgName?: string;
@@ -40,13 +42,15 @@ export function cleanCode(typed: string) {
 
 export const DAY_MS = 864e5;
 
-export async function makeCode(o: { org?: { id: string; name: string } | null; email?: string; name?: string; maxUses: number; days: number; me: { uid: string; name: string } }) {
+export async function makeCode(o: InviteAccess & { org?: { id: string; name: string } | null; email?: string; name?: string; maxUses: number; days: number; me: { uid: string; name: string } }) {
   const code = newCode();
   const email = (o.email ?? '').trim().toLowerCase();
   await setDoc(doc(db, 'inviteCodes', code), {
     ...(o.org ? { org: o.org.id, orgName: o.org.name } : {}),
     ...(email ? { email } : {}),
     ...((o.name ?? '').trim() ? { name: o.name!.trim().slice(0, 80) } : {}),
+    ...(o.aiAccess ? { aiAccess: true } : {}),
+    ...(o.teacherTrainer && !o.org ? { teacherTrainer: true } : {}),
     maxUses: Math.max(1, Math.min(500, Math.round(o.maxUses) || 1)),
     uses: 0,
     usedBy: {},
@@ -142,6 +146,8 @@ export const keptName = () => {
 // organisation's code, the place in the organisation.
 export function spendCode(b: { set: (ref: DocumentReference, data: DocumentData) => unknown; update: (ref: DocumentReference, data: DocumentData) => unknown }, c: InviteCode, me: { uid: string; name: string; email: string }) {
   b.update(doc(db, 'inviteCodes', c.code), { uses: increment(1), [`usedBy.${me.uid}`]: { name: me.name.slice(0, 80), email: me.email.toLowerCase(), at: Date.now() } });
+  if (c.aiAccess) b.set(doc(db, 'aiPilot', me.uid), { enabled: true, updatedBy: c.by, updatedAt: serverTimestamp() });
+  if (c.teacherTrainer && !c.org) b.set(doc(db, 'accounts', me.uid), { code: c.code, teacherTrainer: true });
   if (c.org) {
     b.update(doc(db, 'orgs', c.org), { [`teachers.${me.uid}`]: { name: me.name || c.name || me.email, email: me.email.toLowerCase(), code: c.code } });
     b.set(doc(db, 'accounts', me.uid), { org: c.org, code: c.code });

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
-import { makeCode } from './codes';
+import { makeCode, type InviteAccess } from './codes';
 
 // Invitation requests: a teacher asks for an invitation on the public homepage, before they have an
 // account. A super admin sees them in Super Admin → Invitation codes and sends an invitation code
@@ -48,8 +48,8 @@ export function useInvitationRequests(on: boolean) {
 }
 
 // Makes a one-person code for their email (emailed within 15 minutes) and marks the request.
-export async function inviteFromRequest(r: InvitationRequest, me: { uid: string; name: string }) {
-  const code = await makeCode({ email: r.email, name: r.name, maxUses: 1, days: 30, me });
+export async function inviteFromRequest(r: InvitationRequest, me: { uid: string; name: string }, access: InviteAccess = {}) {
+  const code = await makeCode({ email: r.email, name: r.name, maxUses: 1, days: 30, me, ...access });
   await updateDoc(doc(db, 'invitationRequests', r.id), { invited: code, invitedAt: Date.now(), invitedBy: me.name.slice(0, 80) });
   return code;
 }
