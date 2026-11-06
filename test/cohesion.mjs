@@ -5,11 +5,14 @@ import {mkdir,writeFile} from 'node:fs/promises';
 export async function reviewAi(p,title) {
   await p.waitForTimeout(60);
   const row=p.getByRole('region',{name:'AI activity',exact:true}).locator('section').filter({has:p.locator('strong',{hasText:title})});
+  if(await p.locator('dialog[open]').count())return;
   if(await row.isVisible()){const review=row.getByRole('button',{name:/Review result/});await Promise.race([review.waitFor({state:'visible',timeout:60000}),row.waitFor({state:'hidden',timeout:60000})]);if(await row.isVisible()&&await review.isVisible())await review.click();}
 }
 export async function returnDuringAi(p,title) {
   await p.waitForTimeout(60);
   const row=p.getByRole('region',{name:'AI activity',exact:true}).locator('section').filter({has:p.locator('strong',{hasText:title})});
+  // Windows no longer minimise themselves: when the modal window is still open there's nothing to return to.
+  if(await p.locator('dialog[open]').count())return;
   if(await row.isVisible())await row.getByRole('button',{name:/Return to task|Review result/}).click();
 }
 export async function backgroundSongAudit(s,base,out,axe) {
