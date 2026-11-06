@@ -12,6 +12,22 @@ export const COUNTDOWN_MS = 3500;
 /** Answers that arrive this long after the clock (network delay) still count. */
 export const GRACE_MS = 1500;
 export const MAX_PLAYERS = 300;
+/** How a multiple-choice question is answered: cards to tap, moles that pop up and hide, or balloons drifting in the wind. */
+export const SKINS = ['cards', 'moles', 'balloons'];
+/** Seconds of "get ready" before each question when a learner plays at their own pace. */
+export const SELF_READY_MS = 1500;
+
+/** The game block with this id in some task content, or null. */
+export function findBlock(content, blockId) {
+  let found = null;
+  const walk = (n) => {
+    if (found || !n) return;
+    if (n.type === 'gameBlock' && n.attrs?.id === blockId) found = n;
+    else (n.content || []).forEach(walk);
+  };
+  walk(content);
+  return found;
+}
 
 const doc = (blocks) => ({ type: 'doc', content: blocks });
 const inPick = (content) => {
@@ -68,7 +84,8 @@ export function slidesOf(content, settings = [], sizes = null) {
     const set = settings[i] || {};
     const seconds = SECONDS.includes(set.seconds) ? set.seconds : DEFAULT_SECONDS;
     const points = [0, 1, 2].includes(set.points) ? set.points : 1;
-    return { ...s, index: i, seconds, points: set.poll ? 0 : points, poll: !!set.poll };
+    const skin = SKINS.includes(set.skin) ? set.skin : 'cards';
+    return { ...s, index: i, seconds, points: set.poll ? 0 : points, poll: !!set.poll, skin };
   });
 }
 
@@ -107,8 +124,8 @@ export function publicSlide(slide, total) {
     poll: slide.poll,
     qids: slide.qids,
     ...(choice
-      ? { prompt: String(choice.attrs.prompt || ''), options: (choice.attrs.options || []).map(String), multi: !!choice.attrs.multi, lead: lead.length ? doc(lead) : null }
-      : { content: doc(slide.blocks) }),
+      ? { prompt: String(choice.attrs.prompt || ''), options: (choice.attrs.options || []).map(String), multi: !!choice.attrs.multi, lead: lead.length ? doc(lead) : null, skin: choice.attrs.multi ? 'cards' : slide.skin || 'cards' }
+      : { content: doc(slide.blocks), skin: 'cards' }),
   };
 }
 
@@ -129,6 +146,26 @@ export function pointsFor(slide, frac, elapsedMs) {
   if (slide.poll || !slide.points || frac === null || frac <= 0) return 0;
   const speed = Math.max(0, Math.min(1, 1 - elapsedMs / (slide.seconds * 1000)));
   return Math.round(frac * (500 + 500 * speed)) * slide.points;
+}
+
+/**
+ * Marks one player's answer to a slide: the points it earns (with a streak bonus) and their new totals.
+ * Used when a live question closes and when a learner answers at their own pace.
+ */
+export function scoreAnswer(slide, key, player, answer) {
+  const m = answer ? markSlide(key, slide, answer.responses) : { got: 0, max: 0, frac: null };
+  const scored = !slide.poll && m.frac !== null;
+  const right = scored && m.frac === 1;
+  const streak = slide.poll ? player.streak || 0 : right ? (player.streak || 0) + 1 : 0;
+  const gained = answer ? pointsFor(slide, m.frac, answer.ms) + (right && slide.points ? streakBonus(streak) : 0) : 0;
+  const maxHere = slide.poll ? 0 : slide.qids.reduce((n, q) => n + (key[q] ? 1 : 0), 0);
+  return {
+    frac: m.frac,
+    scored,
+    right,
+    gained,
+    next: { score: (player.score || 0) + gained, streak, got: (player.got || 0) + (scored ? m.got : 0), max: (player.max || 0) + (slide.poll ? 0 : m.max || maxHere) },
+  };
 }
 
 /** A streak of right answers earns a bonus from the second one: 100, 200, up to 500. */

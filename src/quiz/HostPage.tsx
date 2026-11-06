@@ -1,4 +1,4 @@
-// The quiz show's big screen: the lobby with the join code, then each question with a countdown, a
+// A game's big screen: the lobby with the join code, then each question with a countdown, a
 // timer and answers coming in, the reveal, the leaderboard and, at the end, the podium. The host runs
 // it with one button (or the space bar); everything else happens on its own.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -6,7 +6,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { TaskRenderer } from '../components/TaskRenderer';
 import { learnOrigin } from '../lib/site';
-import { Backdrop, Confetti, Flame, Shape, TimerRing, answerStyle, fmt, ordinal } from './Stage';
+import { Backdrop, Confetti, Flame, Medal, Shape, TimerRing, answerStyle, fmt } from './Stage';
+import { AnswerPad, type Skin } from './Skins';
 import { joinPath, leaders, quizApi, useClock, useLive, type LivePlayer, type LiveState } from './live';
 import { musicState, playMusic, preloadMusic, setMusicMuted, stopMusic, unlockMusic } from './music';
 import { playSfx, setSfxOn, warmSfx } from './sfx';
@@ -16,7 +17,7 @@ export function HostPage() {
   const { runId = '' } = useParams();
   const live = useLive(runId);
   if (live === null) return <Backdrop className="qz-host"><p className="qz-loading" role="status">One moment…</p></Backdrop>;
-  if (live === false) return <Backdrop className="qz-host"><div className="qz-center"><h1 className="qz-big">This quiz isn’t here any more.</h1><a className="qz-btn" href="/games">Go to your quizzes</a></div></Backdrop>;
+  if (live === false) return <Backdrop className="qz-host"><div className="qz-center"><h1 className="qz-big">This game isn’t here any more.</h1><a className="qz-btn" href="/games">Go to your gamezes</a></div></Backdrop>;
   return <Host runId={runId} live={live} />;
 }
 
@@ -77,7 +78,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
   const hurry = open && left > 0 && left <= 5;
   useEffect(() => {
     if (!unlocked) return;
-    if (phase === 'lobby') void playMusic('lobby');
+    if (phase === 'lobby' || phase === 'self') void playMusic('lobby');
     else if (counting) stopMusic(0.4);
     else if (open && left > 0) void playMusic(hurry ? 'hurry' : 'question', hurry ? 0.15 : 0.4);
     else if (phase === 'reveal') stopMusic(0.25);
@@ -128,7 +129,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
   }, [phase, live.slide]);
 
   const nextLabel =
-    phase === 'lobby' ? 'Start the quiz' : phase === 'question' ? (counting ? '' : 'Show the answer') : phase === 'reveal' ? (last ? 'Show the winners' : 'Leaderboard') : phase === 'board' ? 'Next question' : phase === 'podium' ? 'End and see results' : '';
+    phase === 'self' ? 'End and see results' : phase === 'lobby' ? 'Start the game' : phase === 'question' ? (counting ? '' : 'Show the answer') : phase === 'reveal' ? (last ? 'Show the winners' : 'Leaderboard') : phase === 'board' ? 'Next question' : phase === 'podium' ? 'End and see results' : '';
   const next = useCallback(() => {
     if (busy) return;
     if (phase === 'lobby' || phase === 'board') void act('next');
@@ -136,7 +137,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
       closing.current = live.slide;
       void act('close');
     } else if (phase === 'reveal') void act(last ? 'next' : 'board');
-    else if (phase === 'podium') void act('end').then(() => nav('/quiz-results/' + runId));
+    else if (phase === 'podium' || phase === 'self') void act('end').then(() => nav('/game-results/' + runId));
   }, [busy, phase, counting, last, act, nav, runId, live.slide]);
 
   useEffect(() => {
@@ -152,19 +153,19 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
   }, [next]);
 
   const end = async () => {
-    if (!confirm('End this quiz? Players can’t join or answer after this. Everyone’s answers are kept.')) return;
+    if (!confirm('End this game? Players can’t join or answer after this. Everyone’s answers are kept.')) return;
     await act('end');
-    nav('/quiz-results/' + runId);
+    nav('/game-results/' + runId);
   };
   const full = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.())?.catch?.(() => {});
 
   return (
     <Backdrop className={'qz-host qz-phase-' + phase + (counting ? ' qz-counting' : '')}>
       <header className="qz-top">
-        <span className="qz-brand">ELT Suite <b>Quiz show</b></span>
+        <span className="qz-brand">ELT Suite <b>Games</b></span>
         {phase !== 'lobby' && phase !== 'ended' && (
           <span className="qz-joinline">
-            Join at <b>{learnOrigin().replace(/^https?:\/\//, '')}/quiz</b> · code <b className="qz-code-sm">{spaced(live.code)}</b>
+            Join at <b>{learnOrigin().replace(/^https?:\/\//, '')}/game</b> · code <b className="qz-code-sm">{spaced(live.code)}</b>
           </span>
         )}
         <span className="qz-tools">
@@ -179,13 +180,14 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
           </button>
           {phase !== 'ended' && (
             <button type="button" className="qz-tool" onClick={() => void end()}>
-              End quiz
+              End game
             </button>
           )}
         </span>
       </header>
       {!unlocked && phase !== 'ended' && <p className="qz-unlock">Click anywhere to turn on the music.</p>}
       <main className="qz-main">
+        {live.mode === 'self' && <SelfHost live={live} count={count} act={act} />}
         {phase === 'lobby' && <Lobby live={live} count={count} act={act} />}
         {counting && <Countdown n={beat} index={live.slide} total={live.total} poll={!!q?.poll} points={q?.points ?? 1} />}
         {open && q && <Question q={q} left={left} answered={answered} count={count} />}
@@ -194,8 +196,8 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
         {phase === 'podium' && <Podium players={players} />}
         {phase === 'ended' && (
           <div className="qz-center">
-            <h1 className="qz-big">This quiz has finished.</h1>
-            <a className="qz-btn" href={'/quiz-results/' + runId}>
+            <h1 className="qz-big">This game has finished.</h1>
+            <a className="qz-btn" href={'/game-results/' + runId}>
               See the results
             </a>
           </div>
@@ -212,7 +214,7 @@ function Host({ runId, live }: { runId: string; live: LiveState }) {
             {nextLabel}
           </button>
         )}
-        {phase === 'lobby' && count === 0 && <span className="qz-hint">The quiz can start when someone has joined.</span>}
+        {phase === 'lobby' && count === 0 && <span className="qz-hint">The game can start when someone has joined.</span>}
         {phase !== 'lobby' && phase !== 'ended' && <span className="qz-hint">Space bar: next</span>}
       </footer>
     </Backdrop>
@@ -232,7 +234,7 @@ function PeopleIcon() {
   );
 }
 
-function Lobby({ live, count, act }: { live: LiveState; count: number; act: (a: string, x?: Record<string, unknown>) => Promise<void> }) {
+function Lobby({ live, count, act, compact }: { live: LiveState; count: number; act: (a: string, x?: Record<string, unknown>) => Promise<void>; compact?: boolean }) {
   const [qr, setQr] = useState('');
   const link = learnOrigin() + joinPath(live.code);
   useEffect(() => {
@@ -244,7 +246,7 @@ function Lobby({ live, count, act }: { live: LiveState; count: number; act: (a: 
       <section className="qz-join-card">
         <div className="qz-join-text">
           <p className="qz-kicker">Join on your phone</p>
-          <p className="qz-join-url">{learnOrigin().replace(/^https?:\/\//, '')}/quiz</p>
+          <p className="qz-join-url">{learnOrigin().replace(/^https?:\/\//, '')}/game</p>
           <p className="qz-kicker">Game code</p>
           <p className="qz-code" aria-label={'Game code ' + live.code.split('').join(' ')}>
             {spaced(live.code)}
@@ -253,7 +255,7 @@ function Lobby({ live, count, act }: { live: LiveState; count: number; act: (a: 
         {qr && <img className="qz-qr" src={qr} alt="Scan to join" width={180} height={180} />}
       </section>
       <h1 className="qz-title">{live.title}</h1>
-      <div className="qz-lobby-bar">
+      {!compact && <div className="qz-lobby-bar">
         <span className="qz-players-count">
           <b>{count}</b> {count === 1 ? 'player' : 'players'}
         </span>
@@ -262,18 +264,18 @@ function Lobby({ live, count, act }: { live: LiveState; count: number; act: (a: 
             <input type="checkbox" checked={!!live.locked} onChange={(e) => void act('lock', { locked: e.target.checked })} /> Close to new players
           </label>
         )}
-      </div>
-      <ul className="qz-names" aria-live="polite">
+      </div>}
+      {!compact && <ul className="qz-names" aria-live="polite">
         {list.length === 0 && <li className="qz-waiting">Waiting for players…</li>}
         {list.map(([id, p]) => (
           <li key={id} className="qz-name">
             {p.n}
-            <button type="button" className="qz-kick" aria-label={`Remove ${p.n}`} title={`Remove ${p.n}`} onClick={() => confirm(`Remove ${p.n} from the quiz?`) && void act('kick', { pid: id })}>
+            <button type="button" className="qz-kick" aria-label={`Remove ${p.n}`} title={`Remove ${p.n}`} onClick={() => confirm(`Remove ${p.n} from the game?`) && void act('kick', { pid: id })}>
               ×
             </button>
           </li>
         ))}
-      </ul>
+      </ul>}
     </div>
   );
 }
@@ -313,16 +315,11 @@ function Question({ q, left, answered, count }: { q: NonNullable<LiveState['q']>
         </div>
       </div>
       {q.kind === 'choice' && q.options ? (
-        <div className={'qz-tiles n' + q.options.length}>
-          {q.options.map((o, i) => (
-            <div key={i} className="qz-tile" style={answerStyle(i)}>
-              <Shape i={i} size={40} />
-              <span className="qz-tile-text">{o}</span>
-            </div>
-          ))}
+        <div className={'qz-pad skin-' + (q.skin || 'cards')}>
+          <AnswerPad key={q.index} skin={(q.skin as Skin) || 'cards'} options={q.options} display big />
         </div>
       ) : (
-        <p className="qz-phone-hint">Answer on your phone.</p>
+        <p className="qz-phone-hint">Answer on your phone or tablet.</p>
       )}
     </div>
   );
@@ -467,7 +464,7 @@ function Podium({ players }: { players: Record<string, LivePlayer> }) {
           </div>
         )}
         <div className="qz-podium-block">
-          <span>{ordinal(place)}</span>
+          <Medal place={place as 1 | 2 | 3} size={place === 1 ? 150 : 120} />
         </div>
       </div>
     );
@@ -482,6 +479,38 @@ function Podium({ players }: { players: Record<string, LivePlayer> }) {
         {spot(3)}
       </div>
       {top.length === 0 && <p className="qz-waiting">Nobody played this time.</p>}
+    </div>
+  );
+}
+
+/** At their own pace: the code stays up, and the teacher sees everyone's progress and the leaderboard. */
+function SelfHost({ live, count, act }: { live: LiveState; count: number; act: (a: string, x?: Record<string, unknown>) => Promise<void> }) {
+  const list = leaders(live.players || {});
+  const done = list.filter((p) => (p as { f?: number }).f).length;
+  return (
+    <div className="qz-self">
+      <Lobby live={live} count={count} act={act} compact />
+      <section className="qz-self-board" aria-label="Progress">
+        <p className="qz-kicker">
+          At their own pace · {done} of {count} finished
+        </p>
+        <ol className="qz-progress">
+          {list.map((p, i) => (
+            <li key={p.id}>
+              <span className="qz-place">{i + 1}</span>
+              <span className="qz-progress-name">{p.n}</span>
+              <span className="qz-progress-bar" aria-label={`${p.d || 0} of ${live.total} questions`}>
+                <i style={{ width: `${((p.d || 0) / Math.max(1, live.total)) * 100}%` }} />
+              </span>
+              <span className="qz-progress-n">
+                {p.d || 0}/{live.total}
+              </span>
+              <span className="qz-leader-score">{fmt(p.s || 0)}</span>
+            </li>
+          ))}
+          {!list.length && <li className="qz-waiting">Waiting for players…</li>}
+        </ol>
+      </section>
     </div>
   );
 }

@@ -49,7 +49,7 @@ export function appMark(k: string) {
 // Home has its own colour, used by the top bar's mark on the home page too.
 export const HOME_COLOR = '#8b3d6b';
 const APPS: App[] = [
-  { k: 'games', group: 'make', name: 'Live quiz', about: 'Make quizzes and play them live, with a code or in class', to: '/games', teacher: true, color: '#996525', glyph: APP_MARKS.games, icon: I(APP_MARKS.games) },
+  { k: 'games', group: 'make', name: 'Games', about: 'Make games and play them live or at learners’ own pace, in class or with a code', to: '/games', teacher: true, color: '#996525', glyph: APP_MARKS.games, icon: I(APP_MARKS.games) },
   { k: 'home', group: 'teach', name: 'Home', about: 'Your day at a glance', to: '/', color: HOME_COLOR, glyph: APP_MARKS.home, icon: I(APP_MARKS.home) },
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },

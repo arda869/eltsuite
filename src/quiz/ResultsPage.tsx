@@ -1,4 +1,4 @@
-// Results of one live quiz: who played, their points and place, each question right or wrong, and the
+// Results of one game: who played, their points and place, each question right or wrong, and the
 // questions the room found hardest. Kept for as long as the teacher wants it, with a spreadsheet download.
 // In a class, each learner's answers are also in the class's answers, like any other task.
 import { useEffect, useState } from 'react';
@@ -29,7 +29,7 @@ export function ResultsPage() {
     })();
   }, [runId]);
   if (run === null) return <main className="qr"><p role="status">One moment…</p></main>;
-  if (run === false) return <main className="qr"><h1>We can’t find these results.</h1><p>They may belong to another teacher, or the quiz was removed.</p></main>;
+  if (run === false) return <main className="qr"><h1>We can’t find these results.</h1><p>They may belong to another teacher, or the game was removed.</p></main>;
 
   const n = run.slides;
   const labels = Array.from({ length: n }, (_, i) => run.labels?.[i] || `Question ${i + 1}`);
@@ -64,7 +64,7 @@ export function ResultsPage() {
   return (
     <main className="qr">
       <div>
-        <p className="qe-hint">Live quiz results</p>
+        <p className="qe-hint">Game results</p>
         <h1>{run.title}</h1>
         <p className="qe-hint">
           {new Date(run.createdAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
@@ -101,7 +101,7 @@ export function ResultsPage() {
           </a>
         )}
         {run.status !== 'ended' && (
-          <a className="btn" href={'/quiz-host/' + runId}>
+          <a className="btn" href={'/game-host/' + runId}>
             Back to the big screen
           </a>
         )}
@@ -134,7 +134,7 @@ export function ResultsPage() {
       <section>
         <h2>Every player</h2>
         {players.length === 0 ? (
-          <p className="qe-hint">Nobody played this quiz.</p>
+          <p className="qe-hint">Nobody played this game.</p>
         ) : (
           <div className="qr-scroll">
             <table className="qr-table">

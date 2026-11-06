@@ -1,4 +1,5 @@
 import { GameNode } from '../quiz/LegacyGameNode';
+import { GameBlock } from '../quiz/GameBlockNode';
 import { InvestigationNode, newInvestigationBlock } from '../linguistics/InvestigationNode';
 import { FAMILIES } from '../linguistics/model';
 import { SpeakingBlock, newSpeaking } from './SpeakingNode';
@@ -148,6 +149,7 @@ export const COMMANDS: Cmd[] = [
   { key: 'dialogue', label: 'Dialogue', hint: 'A and B (or names), one line under the other or side by side; gaps and choices work inside', group: 'Text', run: (e) => insertDialogue(e) },
 ...DG_KINDS.map((k): Cmd => ({ key: 'dg-' + k, label: DG[k].label, hint: DG[k].hint, group: 'Text', run: (e) => e.chain().focus().insertContent([newDiagram(k), { type: 'paragraph' }]).run() })),
     { key: 'timeline', label: 'Timeline', hint: 'A tense timeline: events, actions in progress, periods, arrows and labels', group: 'Text', run: (e) => e.chain().focus().insertContent([newTimeline(), { type: 'paragraph' }]).run() },
+  { key: 'game', label: 'Game', hint: 'Questions as a game: play live or at their own pace, on cards, moles or balloons', group: 'Blocks', run: (e) => e.chain().focus().insertContent([{ type: 'gameBlock', attrs: { id: Math.random().toString(36).slice(2, 10), title: 'Game', sizes: [], settings: [] }, content: [{ type: 'paragraph' }] }, { type: 'paragraph' }]).run() },
   { key: 'drawboard', label: 'Board', hint: 'A drawing board: draw, write and add pictures, live in class', group: 'Blocks', run: (e) => e.chain().focus().insertContent([newDrawBoard(), { type: 'paragraph' }]).run() },
   { key: 'pq-fix', label: 'Find and fix the mistake', hint: 'Learners tap the wrong word, then correct it', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('fix' as PackKind), { type: 'paragraph' }]).run() },
   { key: 'pq-categorise', label: 'Categorise', hint: 'Sort words into labelled columns', group: 'Questions', run: (e) => e.chain().focus().insertContent([newPack('categorise' as PackKind), { type: 'paragraph' }]).run() },
@@ -588,6 +590,7 @@ export function TaskEditor({ content, onChange, places = [], classmates = [], cl
       CollabBlock,
       InvestigationNode,
       GameNode,
+      GameBlock,
       Link.configure({ openOnClick: false, autolink: true, protocols: ['https'], HTMLAttributes: { target: '_blank', rel: 'noopener noreferrer' } }),
       Stress,
       ...LANG_MARKS,

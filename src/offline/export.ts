@@ -21,11 +21,11 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
    const response=await fetch(resolved,{signal:AbortSignal.timeout(60000)});if(!response.ok)throw Error('A media file could not be downloaded. Check its access and try again.');
    const blob=await response.blob();total+=blob.size;if(total>200*1024*1024)throw Error('This download has more than 200 MB of media. Split the lesson into smaller lessons first.');return dataUrl(blob);})();cache.set(k,promise);return promise;
  }
- const online=new Set(['collab','upload','speakingPractice','investigation','survey','bankLink','pdfBlock','board','drawBoard']);
+ const online=new Set(['gameBlock','collab','upload','speakingPractice','investigation','survey','bankLink','pdfBlock','board','drawBoard']);
  async function node(n:JSONContent,space:string):Promise<JSONContent>{
   if(online.has(n.type||'')){const warning=`${n.type}: open the original lesson online to use this activity.`;warnings.add(warning);return {type:'paragraph',content:[{type:'text',text:warning}]};}
   const out={...n,attrs:n.attrs?{...n.attrs}:undefined};const a=out.attrs;
-  if(n.type==='classroomGame'){warnings.add('Live quizzes are played in class, online.');return {type:'paragraph',content:[{type:'text',text:'A live quiz: open the lesson online to play it.'}]};}
+  if(n.type==='classroomGame'){warnings.add('Games are played online.');return {type:'paragraph',content:[{type:'text',text:'A game: open the lesson online to play it.'}]};}
   if(['media','inlineMedia'].includes(n.type||'')&&a?.media){const mediaSpace=String(a.space||space);const m=await loadManifest(mediaSpace,String(a.media));if(!m)throw Error('A recording could not be loaded.');if(m.kind==='link'&&/youtu(?:be|\.be)|vimeo/i.test(m.url||'')){const warning=`${m.title||'Video'} requires internet (${m.url}).`;warnings.add(warning);return {type:'paragraph',content:[{type:'text',text:warning}]};}return {type:'offlineMedia',attrs:{src:await embed(m.kind==='link'?m.url||'':await soundUrl(mediaSpace,String(a.media),m),mediaSpace),video:!!m.video,title:m.title||a.title||'Recording',script:m.script||[],scriptMode:a.scriptMode||'karaoke',inline:n.type==='inlineMedia',mute:a.mute||[]}};}
   // Also resolve image URLs nested inside question packs, diagrams and storyboards.
   async function assets(value:any,key=''):Promise<any>{if(typeof value==='string'&&['src','image','url'].includes(key)&&/^(https?:|blob:|media:)/.test(value))return embed(value,space);if(Array.isArray(value))return Promise.all(value.map(v=>assets(v,key)));if(value&&typeof value==='object'){const entries=await Promise.all(Object.entries(value).map(async([k,v])=>[k,await assets(v,k)]));return Object.fromEntries(entries);}return value;}
@@ -34,7 +34,7 @@ export async function makeOfflineFile(source:{doc?:SharedDoc;lesson?:ClassLesson
   return out;
  }
  let title='',payload:any,appearance:Record<string,unknown>={};
- if(source.doc?.kind==='game')throw Error('Live quizzes are played online, so they can’t be downloaded.');
+ if(source.doc?.kind==='game')throw Error('Games are played online, so they can’t be downloaded.');
  {
   let tasks:ExportTask[],space:string;
   if(source.lesson){const result=await gatherLesson(source.lesson.classId,source.lesson.itemId);title=result.title;tasks=result.tasks;space=source.lesson.classId;const cls=(await getDoc(doc(db,'classes',space))).data();appearance={lessonStyle:lessonStyleOf(cls),themeColor:cls?.themeColor};}

@@ -25,7 +25,7 @@ function QuizDraftPanel({ gameId, existingCount = 0, onApply }: { gameId: string
   const [description, setDescription] = useState(''), [classId, setClassId] = useState(''), [lessonId, setLessonId] = useState('');
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]), [lessons, setLessons] = useState<{ id: string; name: string }[]>([]);
   const [draft, setDraft] = useState<GameRound[] | null>(null), [busy, setBusy] = useState(false), [error, setError] = useState(''), [done, setDone] = useState('');
-  useAiActivity({ active: busy, title: 'Quiz questions', detail: 'Writing and checking your questions…', error });
+  useAiActivity({ active: busy, title: 'Game questions', detail: 'Writing and checking your questions…', error });
   useEffect(() => { if (!user || !open) return; void getDocs(query(collection(db, 'classes'), where('teacherId', '==', user.uid))).then(s => setClasses(s.docs.map(d => ({ id: d.id, name: d.data().name || 'Class' })))).catch(() => {}); }, [user, open]);
   useEffect(() => { setLessonId(''); setLessons([]); if (classId) void getDocs(collection(db, 'classes', classId, 'items')).then(s => setLessons(s.docs.filter(d => d.data().kind !== 'topic').map(d => ({ id: d.id, name: d.data().title || 'Lesson' })))).catch(() => {}); }, [classId]);
 
