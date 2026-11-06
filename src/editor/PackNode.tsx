@@ -24,8 +24,22 @@ const LETTERS = 'ABCDEFGHIJKLMNOP';
 export function useImageSrc(classId: string, src: string) {
   const [url, setUrl] = useState(src.startsWith('media:') ? '' : src);
   useEffect(() => {
-    if (src.startsWith('media:')) mediaUrl(classId, src.slice(6)).then(setUrl).catch(() => setUrl(''));
-    else setUrl(src);
+    if (!src.startsWith('media:')) {
+      setUrl(src);
+      return;
+    }
+    // A learner's class can be briefly unavailable while a proxy view restores on reload.
+    // Wait for it before resolving a class-owned picture, rather than constructing an
+    // invalid Firestore path and taking down the whole lesson.
+    setUrl('');
+    if (!classId) return;
+    let active = true;
+    mediaUrl(classId, src.slice(6)).then((value) => {
+      if (active) setUrl(value);
+    }).catch(() => {
+      if (active) setUrl('');
+    });
+    return () => { active = false; };
   }, [classId, src]);
   return url;
 }
