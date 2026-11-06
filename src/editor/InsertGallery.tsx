@@ -1,3 +1,4 @@
+import { STUDIO_FORMS } from '../coach/studioForms';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { favAdds, onFavs, toggleFav } from '../lib/slashUse';
@@ -11,12 +12,12 @@ export type Section = { title: string; blurb: string; keys: string[] };
 const SECTIONS: Section[] = [
   {title:'Applied linguistics',blurb:'Selected evidence, language investigations and teacher-reviewed interpretations.',keys:['corpus','discourse','language-awareness','pragmatics','learner-development','research']},
   { title: 'Questions checked by the app', blurb: 'Learners answer, press Check, and see what was right. One point each unless you say otherwise.', keys: ['gap', 'lettergap', 'wordform', 'dropdown', 'radio', 'truefalse', 'notgiven', 'match', 'drop', 'bank', 'order', 'pq-fix', 'pq-transform', 'pq-highlight', 'pq-categorise', 'pq-sentences', 'pq-gapped', 'pq-matching', 'pq-label', 'pq-odd'] },
-  { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'inline-video', 'pq-dictation', 'pq-pairs', 'ipa', 'stress'] },
-  { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
+  { title: 'Listening and pronunciation', blurb: 'Your own recordings and videos, with karaoke scripts, and tasks the browser reads aloud.', keys: ['media', 'inline-video', 'pq-dictation', 'pq-pairs', 'ipa', 'stress', 'phonchart', 'phoncard', 'phonhow'] },
+  { title: 'Puzzles and games', blurb: 'For warmers, revision and a change of pace.', keys: ['classroom-game', 'pq-crossword', 'pq-wordsearch', 'drawcard', 'wheel', 'boxes'] },
   { title: 'Speaking, writing and reflection', blurb: 'Open answers you read or the class shares. The long answer is the one you mark.', keys: ['speaking', 'writing', 'upload', 'pq-speaking', 'survey', 'reflect', 'peer', 'board', 'postits'] },
   { title: 'Collaboration tools', blurb: 'Live, together: a shared document, shared slides or a drawing board, for the whole class, each group or each learner.', keys: ['collab', 'drawboard'] },
   { title: 'Diagrams', blurb: 'What you draw on the board: mind maps, Venn diagrams, clines, flow charts and more. Any box can hold a gap, a choice or any question.', keys: ['dg-mind', 'dg-venn', 'dg-compare', 'dg-cline', 'dg-flow', 'dg-cycle', 'dg-tree', 'dg-quad', 'dg-pyramid'] },
-  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'storyboard', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
+  { title: 'Text and layout', blurb: 'Reading texts, boxes, media and structure.', keys: ['subtask', 'dialogue', 'timeline', 'textbox', 'info', 'reveal', 'image', 'storyboard', 'pdf', 'linkcard', 'dictcut', 'subst', 'table', 'heading', 'list', 'numbered', 'quote', 'column'] },
   { title: 'Teacher training', blurb: 'For teacher training courses: language analysis, lesson plans and loop input. Shown in teacher training classes.', keys: ['tt-analysis', 'tt-plan', 'tt-loop', 'tt-rehearsal', 'tt-exam', 'tt-reflection', 'tt-org'] },
   { title: 'Lesson boxes', blurb: 'Ready-made boxes for aims, rules, tips, useful language and more, with sample content to edit.', keys: ['b-aims', 'b-useful', 'b-dialogue', 'b-rule', 'b-notice', 'b-tip', 'b-watch', 'b-wordbox', 'b-glossary', 'b-pron', 'b-discuss', 'b-didyouknow', 'b-note', 'b-cando'] },
   { title: 'Question bank', blurb: 'Questions you saved to use again.', keys: ['bankpick'] },
@@ -787,6 +788,40 @@ const PREVIEW: Record<string, () => ReactNode> = {
   ),
 };
 
+// Every insertable element has an illustrative preview, including document-only
+// commands. These are schematic native UI previews, not decorative stock images.
+Object.assign(PREVIEW, {
+ 'classroom-game':()=> <Box label="Classroom game" tone="sky"><Sent><Chip on>Team A · 120</Chip><Chip>Team B · 100</Chip></Sent><Sent>Choose your next challenge →</Sent></Box>,
+ h1:()=> <span className="gl-sample-heading" style={{fontSize:25}}>A new chapter</span>,
+ h2:()=> <span className="gl-sample-heading" style={{fontSize:21}}>The big question</span>,
+ h3:()=> <span className="gl-sample-heading" style={{fontSize:17}}>Look more closely</span>,
+ text:()=> <span className="gl-col"><Sent>Every story begins with</Sent><Sent>something worth sharing.</Sent><Line w="65%" faint/></span>,
+ checklist:()=> <span className="gl-col"><Sent>☑ Choose a topic</Sent><Sent>☐ Compare your ideas</Sent><Sent>☐ Make a decision</Sent></span>,
+ divider:()=> <span className="gl-col"><Line w="75%" faint/><span style={{width:170,borderTop:'2px solid var(--accent)',margin:'12px 0'}}/><Line w="55%" faint/></span>,
+ cite:()=> <span className="gl-col"><Sent>Language grows through use.</Sent><Chip pen>(Ellis, 2003, p. 42)</Chip></span>,
+ reflist:()=> <Box label="References" tone="grey"><Sent>Ellis, R. (2003). <i>Task-based</i></Sent><Sent><i>language learning and teaching.</i></Sent><Line w="80%" faint/></Box>,
+ subtask:()=> <span className="gl-col"><Sent><b>a</b> Read and compare.</Sent><Line w="80%" faint/><Sent><b>b</b> Share your opinion.</Sent><Line w="65%" faint/></span>,
+ storyboard:()=> <span className="gl-story-strip">{['1 · Arrive','2 · Discover','3 · Decide'].map(t=><span key={t}><span className="gl-photo"/><small>{t}</small></span>)}</span>,
+ 'inline-video':()=> <span className="gl-video-preview"><span>▶</span><small>0:32 ━━━━━━ 1:45</small></span>,
+ pdf:()=> <Box label="PDF worksheet" tone="grey"><Sent><b>1</b> Read and choose.</Sent><Line w="80%" faint/><Sent><b>2</b> Tell your partner.</Sent></Box>,
+ speaking:()=> <span className="gl-col"><Chip>What would you choose?</Chip><Sent>◖ ▂ ▅ ▇ ▃ ▆ ▂ ◗</Sent><Chip pen>Start speaking · 2:00</Chip></span>,
+ phonchart:()=> <Grid cols={5} cells={['iː','ɪ','ʊ','uː','e','ə','ɜː','ɔː','æ','ʌ','ɑː','ɒ','p','b','t']} />,
+ phoncard:()=> <Box label="Sound card" tone="sky"><Sent><b>/ʃ/</b> ship · shop · wish</Sent><Speaker/></Box>,
+ phonhow:()=> <Box label="Make the sound" tone="sky"><Sent>/θ/ · thin</Sent><Sent>Tongue between your teeth.</Sent><Speaker/></Box>,
+ 'tt-org':()=> <Box label="Your organisation’s form"><Sent>Focus <Gap w={95}/></Sent><Sent>Evidence <Gap w={75}/></Sent><Sent>Next step <Gap w={72}/></Sent></Box>,
+ 'tt-rehearsal':()=> <Box label="Rehearse → notice → retry"><Sent>Teaching move <Gap w={70}/></Sent><Sent>Peer evidence <Gap w={75}/></Sent></Box>,
+ 'tt-exam':()=> <Box label="Exam strategy"><Sent>Task demand → approach</Sent><Sent>Time: 8 min · Evidence: ___</Sent></Box>,
+ 'tt-reflection':()=> <Box label="Reflect and investigate"><Sent>I noticed… <Gap w={85}/></Sent><Sent>Next time… <Gap w={75}/></Sent></Box>,
+ corpus:()=> <span className="gl-col">{['we need to','would love to','are going to'].map(t=><Sent key={t}>{t} <Chip on>make</Chip> a change</Sent>)}</span>,
+ discourse:()=> <Box label="Conversation analysis"><Sent>A: So, what do you think?</Sent><Sent>B: Well… [pause] maybe.</Sent></Box>,
+ 'language-awareness':()=> <Box label="Notice the language"><Sent>She <Chip on>has been</Chip> waiting.</Sent><Sent>Meaning · form · use</Sent></Box>,
+ pragmatics:()=> <Box label="Context changes meaning"><Sent>“Could you open the window?”</Sent><Sent>Request · relationship · tone</Sent></Box>,
+ 'learner-development':()=> <Box label="Evidence over time"><Sent>First attempt → revision</Sent><Sent>What changed? <Gap w={60}/></Sent></Box>,
+ research:()=> <Box label="A classroom inquiry"><Sent>Question → evidence → insight</Sent><Line w="85%" faint/></Box>,
+});
+for(const form of STUDIO_FORMS)PREVIEW['studio-'+form.kind]=()=> <Box label={form.name} tone="grey">{form.fields.slice(0,2).map(([key,label])=><Sent key={key}>{label}<Gap w={45}/></Sent>)}</Box>;
+export const hasGalleryPreview = (key:string)=>typeof PREVIEW[key]==='function';
+
 const Star = ({ on }: { on?: boolean }) => (
   <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 5.9L12 16.6l-5.3 2.9 1.1-5.9L3.4 9.5l6-.8z" fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
@@ -844,7 +879,7 @@ export function QuestionDropdown({ anchor, commands, onPick, onClose }: { anchor
         {sections.map(section => <section key={section.title}>
           <h3>{section.title}</h3>
           {section.items.map(item => <button type="button" key={item.key} className="question-pop-item" onClick={() => onPick(item.key)}>
-            <span className="gallery-pic" aria-hidden="true">{PREVIEW[item.key]?.() ?? <Lines n={3} />}</span>
+            <span className="gallery-pic" data-preview={item.key} aria-hidden="true">{PREVIEW[item.key]?.() ?? <Lines n={3} />}</span>
             <span className="question-pop-copy"><strong>{item.label}</strong><small>{item.hint}</small></span>
           </button>)}
         </section>)}
@@ -906,8 +941,8 @@ export function InsertGallery({ commands, onPick, onClose, sections: secs = SECT
                   {s.items.map((c) => (
                     <span key={c.key} className="gallery-cell">
                       <button type="button" className="gallery-card" onClick={() => onPick(c.key)} title="Add this">
-                        <span className="gallery-pic" aria-hidden="true">
-                          {PREVIEW[c.key]?.() ?? <Lines n={3} />}
+                        <span className="gallery-pic" data-preview={c.key} aria-hidden="true">
+                          {PREVIEW[c.key]?.() ?? <Box label={c.label}><Sent>{c.hint}</Sent></Box>}
                         </span>
                         <span className="gallery-title">{c.label}</span>
                         <span className="gallery-about">{ABOUT[c.key] ?? c.hint}</span>

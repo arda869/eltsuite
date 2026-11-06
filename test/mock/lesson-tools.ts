@@ -8,6 +8,7 @@ export async function mockLessonTools(d:any) {
  if(d.action==='taskToolsApply') {
   const job=all[d.requestId];if(!job)throw Error('No draft');
   if(job.mode==='answers'){for(const e of job.result.entries){const ref=doc(db,...path,e.taskId,'private','key');const old=(await getDoc(ref)).data()??{};await setDoc(ref,{...old,[e.questionId]:e.key});}return {data:{applied:true,taskId:job.taskId}};}
+  if(job.mode==='edit'){await updateDoc(doc(db,...path,job.taskId),{title:job.result.activity.title});return {data:{applied:true,taskId:job.taskId}};}
   const source=(await getDoc(doc(db,...path,job.taskId))).data()??{},id='tool_'+d.requestId;
   const native=job.result.native;
   const tasks=(await getDocs(collection(db,...path))).docs.map(x=>({id:x.id,...x.data()}));
@@ -18,6 +19,7 @@ export async function mockLessonTools(d:any) {
  }
  let result:any;
  if(d.step==='ideas')result={ideas:d.mode==='differentiate'?[{title:'Add choices',reason:'Recognise the form before recalling it.',direction:'Turn each gap into a choice.',kind:'support'},{title:'Recall independently',reason:'Remove the word bank.',direction:'Keep open gaps without a word bank.',kind:'challenge'}]:[{title:'Plan a weekend',reason:'Use the language to agree on a plan.',direction:'Create a decision task.',kind:'next'},{title:'Compare two plans',reason:'Read for a purpose.',direction:'Create a short reading comparison.',kind:'next'}]};
+ else if(d.mode==='edit'){const source=(await getDoc(doc(db,...path,d.taskId))).data()??{};result={edited:true,activity:{title:'A memorable day',instructions:source.instructions},native:{content:source.content,key:(await getDoc(doc(db,...path,d.taskId,'private','key'))).data()??{},notes:''},issues:['Updated the title while preserving the activity.']};}
  else if(d.mode==='answers') {
   const tasks=(await getDocs(collection(db,...path))).docs.filter(t=>d.scope==='lesson'||t.id===d.taskId);
   const entries=[];

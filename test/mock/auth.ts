@@ -1,8 +1,8 @@
 import { load, persist } from './store';
-type U = { uid: string; email: string; displayName: string; password?: string };
+type U = { uid: string; email: string; displayName: string; password?: string; providers?: string[] };
 const users = () => load<Record<string, U>>('mockauth', {});
-export type User = { uid: string; email: string | null; displayName: string | null; getIdTokenResult: () => Promise<{ claims: Record<string, unknown> }>; delete: () => Promise<void> };
-const asUser = (u: U): User => ({ uid: u.uid, email: u.email, displayName: u.displayName, getIdTokenResult: async () => ({ claims: {} }), delete: async () => {} });
+export type User = { uid: string; email: string | null; displayName: string | null; providerData: {providerId:string}[]; getIdTokenResult: () => Promise<{ claims: Record<string, unknown> }>; delete: () => Promise<void> };
+const asUser = (u: U): User => ({ uid: u.uid, email: u.email, displayName: u.displayName, providerData:(u.providers|| (u.password?['password']:[])).map(providerId=>({providerId})), getIdTokenResult: async () => ({ claims: {} }), delete: async () => {} });
 const autos: Record<string, { currentUser: User | null; app: { name: string } }> = {};
 export function getAuth(app: { name: string } = { name: '[DEFAULT]' }) {
   if (!autos[app.name]) {
@@ -44,7 +44,7 @@ export async function signInWithEmailAndPassword(auth: ReturnType<typeof getAuth
 export async function signOut(auth: ReturnType<typeof getAuth>) {
   setCur(auth, null);
 }
-export async function updatePassword() {}
+export async function updatePassword(user:User,password:string) {return linkWithCredential(user,{email:user.email!,password});}
 export async function deleteUser() {}
 export const isSignInWithEmailLink = () => false;
 export async function signInWithEmailLink() {
@@ -77,11 +77,15 @@ export async function updateProfile(u: User, p: { displayName?: string }) {
 export async function sendEmailVerification() {}
 export async function reauthenticateWithPopup() {}
 export async function reauthenticateWithCredential() {}
-export const EmailAuthProvider = { credential: () => ({}) };
+export const EmailAuthProvider = { credential: (email:string,password:string) => ({email,password}) };
 export async function fetchSignInMethodsForEmail() { return []; }
 export async function setPersistence() {}
 export const browserLocalPersistence = {};
-export async function linkWithCredential() {}
+export async function linkWithCredential(user:User,credential:{email:string;password:string}) {
+ const all=users(),u=all[user.uid];if(!u||u.email!==credential.email)throw Error('Wrong account');
+ if(sessionStorage.getItem('mock-link-recent')){sessionStorage.removeItem('mock-link-recent');throw Object.assign(Error('Recent sign-in needed'),{code:'auth/requires-recent-login'});}
+ u.password=credential.password;u.providers=[...new Set([...(u.providers||[]),'password'])];persist('mockauth',all);user.providerData=u.providers.map(providerId=>({providerId}));return {user};
+}
 export async function signInWithRedirect() {}
 export async function getRedirectResult() { return null; }
 export const initializeAuth = (app: { name: string }) => getAuth(app);
@@ -91,3 +95,5 @@ export const browserPopupRedirectResolver = {};
 export async function signInWithCustomToken(_auth: unknown, _token: string): Promise<never> {
   throw Object.assign(new Error('Not in tests'), { code: 'auth/invalid-custom-token' });
 }
+
+export async function reload() {}

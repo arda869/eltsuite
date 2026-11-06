@@ -307,9 +307,10 @@ const J = {
     await openPlanning(s.p);await s.p.getByRole('button',{name:'Learner readiness & progress',exact:true}).click();
     const dialog=s.p.getByRole('dialog',{name:'Learner readiness and progress'});
     await dialog.getByRole('button',{name:'Check this activity',exact:true}).click();await reviewAi(s.p,'Learner readiness and progress');
-    const discuss=dialog.getByRole('link',{name:'Discuss with Teacher’s Companion',exact:true});
+    const discuss=dialog.getByRole('button',{name:'Discuss with Teacher’s Companion',exact:true});
     await discuss.waitFor({timeout:12000}).catch(async()=>{throw Error('Saved report discussion missing: '+(await dialog.innerText()).slice(0,1000));});
     await discuss.click();
+    await dialog.waitFor({state:'hidden'});
     await s.p.getByRole('complementary',{name:'Selected teaching context'}).waitFor();
     if(await s.p.getByText('Let’s start with your teaching',{exact:true}).count())throw Error('Optional profile blocked selected-lesson discussion');
     await s.p.getByLabel('Message Teacher’s Companion').fill('How could I support learners with this activity?');
@@ -407,6 +408,47 @@ const J = {
     await dialog.getByText('Alex answered two of three assessed items correctly.',{exact:true}).waitFor();
     await axe(s.p,'Learner readiness',A11Y_FOUND);return s;
   },
+  'Google teachers can add a password without changing their account': async b=>{
+    const s=await session(b);
+    await s.p.evaluate(()=>{const all=JSON.parse(localStorage.getItem('mockauth'));all.teacher1.providers=['google.com'];delete all.teacher1.password;localStorage.setItem('mockauth',JSON.stringify(all));sessionStorage.setItem('mock-link-recent','1');});
+    await s.p.goto(BASE+'/settings');await s.p.getByRole('button',{name:'Add password',exact:true}).click();
+    const save=s.p.getByRole('button',{name:'Save password',exact:true});if(await save.isEnabled())throw Error('Empty password accepted');
+    await s.p.getByText('Enter a password with at least 8 characters.',{exact:true}).waitFor();
+    await s.p.getByLabel('New password',{exact:true}).fill('Test-only-friday-123');await s.p.getByLabel('Confirm password',{exact:true}).fill('wrong');
+    if(await save.isEnabled())throw Error('Mismatched passwords accepted');
+    await s.p.getByLabel('Confirm password',{exact:true}).fill('Test-only-friday-123');await save.click();
+    await s.p.getByRole('button',{name:'Confirm with Google and add password',exact:true}).click();await s.p.getByText('Password sign-in is enabled.',{exact:true}).waitFor();
+    await s.p.reload();await s.p.getByText('Password sign-in is enabled.',{exact:true}).waitFor();
+    const uid=await s.p.evaluate(async()=>{const a=await import('/test/mock/auth.ts');const auth=a.getAuth();await a.signOut(auth);return(await a.signInWithEmailAndPassword(auth,'teacher@example.com','Test-only-friday-123')).user.uid;});if(uid!=='teacher1')throw Error('Password sign-in created a different identity');
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    await axe(s.p,'Same teacher lesson after password sign-in',A11Y_FOUND);return s;
+  },
+  'Friday wishes: AI edit review, spelling scope and companion window': async(b)=>{
+    const s=await session(b,{owner:true});
+    await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs')),root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'friday']={kind:'task',title:'Friday activity',instructions:'',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'I '},{type:'gap',attrs:{id:'typed',answers:[]}},{type:'text',text:' at home.'}]},{type:'mcq',attrs:{id:'choice',prompt:'Where?',options:['Home','School'],correct:-1}}]},order:0,hidden:false,locked:false};fs[root+'friday/private/key']={typed:{kind:'gap',answers:['work']},choice:{kind:'mcq',correct:0}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
+    await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
+    await s.p.getByRole('button',{name:'Question spelling',exact:true}).click();
+    if(await s.p.locator('.question-spelling-toggle').count()!==1)throw Error('Choice question has an irrelevant spelling setting');
+    await openPlanning(s.p);
+    await s.p.getByRole('button',{name:'Discuss with Teacher’s Companion',exact:true}).click();
+    await s.p.locator('.dock-coach').waitFor();if(!s.p.url().includes('/lesson/'))throw Error('Companion navigated away from lesson');
+    await s.p.locator('.dock-win[data-win="teaching-coach"]').getByRole('button',{name:/Close/}).click();
+    await openPlanning(s.p);await s.p.getByRole('button',{name:'Edit with AI',exact:true}).click();
+    const dialog=s.p.getByRole('dialog',{name:'Edit with AI',exact:true});
+    if(await dialog.getByRole('button',{name:'Preview changes',exact:true}).isEnabled())throw Error('Blank required direction should not submit');
+    await dialog.getByText('Describe the changes you want to preview.',{exact:true}).waitFor();
+    await dialog.locator('textarea').fill('Change the title to A memorable day. Keep the rest.');
+    await dialog.getByRole('button',{name:'Preview changes',exact:true}).click();await reviewAi(s.p,'Edit with AI');
+    await dialog.getByRole('button',{name:'Apply changes',exact:true}).waitFor();
+    if(await s.p.getByRole('textbox',{name:'Task title',exact:true}).inputValue()!=='Friday activity')throw Error('AI applied changes before review');
+    await axe(s.p,'AI edit review',A11Y_FOUND);await dialog.getByRole('button',{name:'Apply changes',exact:true}).click();
+    await s.p.waitForFunction(()=>document.querySelector('input[aria-label="Task title"]')?.value==='A memorable day');
+    await s.p.reload();await s.p.getByRole('textbox',{name:'Task title',exact:true}).waitFor();
+    if(await s.p.getByRole('textbox',{name:'Task title',exact:true}).inputValue()!=='A memorable day')throw Error('AI edit did not persist');
+    if(await s.p.locator('.task-row').count()!==1)throw Error('AI edit appended a task');
+    await axe(s.p,'Edited lesson',A11Y_FOUND);return s;
+  },
+
   'Lesson tools: keys, differentiated versions and next activities': async(b)=>{
     const s=await session(b,{owner:true});
     await s.p.evaluate(({classId,itemId})=>{const fs=JSON.parse(localStorage.getItem('mockfs'));const root='classes/'+classId+'/items/'+itemId+'/tasks/';for(const k of Object.keys(fs))if(k.startsWith(root))delete fs[k];fs[root+'tool-source']={kind:'task',title:'Yesterday',instructions:'Complete the sentence.',content:{type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'Yesterday I '},{type:'gap',attrs:{id:'missing',answers:[]}},{type:'text',text:' to the park.'}]}]},order:0,hidden:false,locked:false};fs[root+'tool-source/private/key']={missing:{kind:'gap',answers:[]}};localStorage.setItem('mockfs',JSON.stringify(fs));},s.demo);
@@ -2426,7 +2468,7 @@ const J = {
     const savedDraft=await s.p.evaluate(()=>Object.entries(JSON.parse(localStorage.getItem('mockfs'))).find(([key,value])=>key.startsWith('teachingCoach/teacher1/reflections/')&&value.text==='My edited reflection: I want to consider other explanations.')?.[1]);
     if(!savedDraft?.content) throw Error('Edited journal draft or rich content missing');
     if(process.env.COACH_CHAT_SCREENSHOT) await s.p.screenshot({path:process.env.COACH_CHAT_SCREENSHOT});
-    await s.p.getByRole('button', {name:'Reading',exact:true}).click();
+    await s.p.getByRole('button', {name:'Reading Journal',exact:true}).click();
     await s.p.getByRole('button', {name:'Teacher’s Companion',exact:true}).click();
     await see(s.p, '.coach-message:has-text("What did you notice")', 'chat retained between Studio sections');
     await s.p.getByRole('link', {name:'Settings',exact:true}).click();
@@ -2455,7 +2497,7 @@ const J = {
     await s.p.evaluate(() => { const fs = JSON.parse(localStorage.getItem('mockfs')); delete fs['aiPilot/teacher1']; fs['sharedDocs/existing-reading'] = {owner:'teacher1',ownerName:'Arda',title:'Classroom interaction notes',kind:'pd',docKey:'reading-test',members:{colleague:{role:'edit',name:'Colleague',kind:'teacher'}},memberIds:['colleague']}; localStorage.setItem('mockfs', JSON.stringify(fs)); });
     await s.p.goto(BASE + '/development');
     await see(s.p, 'h1:has-text("Development Studio")', 'development workspace');
-    await s.p.getByRole('button', { name: 'Reading', exact: true }).click();
+    await s.p.getByRole('button', { name: 'Reading Journal', exact: true }).click();
     await see(s.p, '.af-embedded h2:has-text("Reading")', 'embedded reading library');
     if (await s.p.locator('.topbar').count() > 1) throw Error('Reading has a duplicate application header');
     await see(s.p, '.af-open:has-text("Classroom interaction notes")', 'existing reading journal');
@@ -2470,6 +2512,7 @@ const J = {
 
     await readingTab.getByRole('link', { name: 'Back to Reading Journal', exact: true }).click();
     await see(readingTab, '.af', 'reading editor returns to Reading Journal');
+    await readingTab.getByRole('link',{name:'ELT Suite Reading Journal: Home',exact:true}).waitFor();
     await readingTab.close();
     await s.p.getByRole('button', { name: 'Home', exact: true }).click();
     await s.p.getByRole('button', { name: 'Reflect on this', exact: true }).click();
@@ -2523,7 +2566,7 @@ const J = {
     }
     let frame;
     for(const tab of ['Home','Reflections','Reading','Research','Teacher’s Companion']) {
-      await s.p.getByRole('button',{name:tab,exact:true}).click();
+      await s.p.getByRole('button',{name:tab==='Reading'?'Reading Journal':tab,exact:true}).click();
       const bounds=await s.p.locator('main.coach').boundingBox();
       if(frame&&(Math.abs(bounds.width-frame.width)>1||Math.abs(bounds.height-frame.height)>1))throw Error('Studio tabs do not share a frame: '+tab);
       frame=bounds;
@@ -2556,7 +2599,7 @@ const J = {
     await s.p.goto(`${BASE}/class/${s.demo.classId}/lesson/${s.demo.itemId}`);
     await openPlanning(s.p);
     if (await s.p.getByRole('link',{name:'Observe this lesson'}).count()) throw Error('Lesson observation is still available');
-    await s.p.getByRole('link',{name:'Discuss with Teacher’s Companion'}).waitFor();
+    await s.p.getByRole('button',{name:'Discuss with Teacher’s Companion'}).waitFor();
     await s.p.goto(BASE+'/observations');
     await s.p.waitForURL(/\/development$/);
     if (await s.p.getByRole('link',{name:'Observations',exact:true}).count()) throw Error('Observation navigation is still visible');

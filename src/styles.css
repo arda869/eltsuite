@@ -8406,3 +8406,49 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 .question-pop-copy strong{font:600 13px/1.25 var(--sans);}
 .question-pop-copy small{display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:var(--muted);font:12px/1.35 var(--sans);}
 @media(max-width:480px){.question-pop-item{grid-template-columns:92px minmax(0,1fr)}.question-pop-item .gallery-pic{width:92px;height:62px}}
+
+/* Shared insertion controls stay compact in editing and teaching views. */
+.task-insert-menu{flex-direction:row;align-items:center;justify-content:center;gap:3px;padding:5px;flex-wrap:wrap}
+.task-insert-menu button{width:34px;height:34px;min-width:0;padding:7px;justify-content:center}
+.task-insert-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tip-float{z-index:2147483647;max-width:min(280px,calc(100vw - 16px))}
+.cd-host .line-add,.pg-host .line-add{left:-28px}
+
+.gl-story-strip{display:flex;gap:6px;width:100%;justify-content:center}.gl-story-strip>span{display:grid;gap:5px;justify-items:center}.gl-story-strip .gl-photo{width:58px;height:48px}.gl-story-strip small{font:9px var(--sans)}
+.gl-video-preview{width:180px;height:90px;border-radius:8px;background:#344c50;display:grid;place-items:center;color:#fff}.gl-video-preview>span{font-size:26px}.gl-video-preview small{font:10px var(--sans)}.gl-sample-heading{font-family:var(--serif);line-height:1.2;color:var(--ink)}
+.tbl-delete{border:1px solid var(--hair);background:var(--paper);color:var(--muted);padding:0}.tbl-delete:hover{color:#b33;background:var(--paper)}
+/* Hover controls occupy the same modest gaps as the teaching list. */
+.task-insert,.task-insert>summary{min-height:8px;height:8px}.task-insert>summary span{position:relative;z-index:2;width:20px;height:20px;line-height:17px}.task-insert[open]{height:auto}.task-insert-menu{position:relative;z-index:3;margin:8px 0}
+@media(hover:none){.task-insert,.task-insert>summary{min-height:24px;height:24px}}
+
+@media(hover:hover) and (min-width:761px){
+ .task-insert{height:2px;min-height:2px;margin-top:-2px;margin-bottom:-2px}
+ .task-insert>summary{position:absolute;inset:-5px 0 auto;height:12px;min-height:12px}
+ .task-insert[open]{height:auto;margin:4px 0}.task-insert[open]>summary{position:relative;inset:auto}
+}
+
+/* Classes uses more of the screen; other suite apps keep their own spacing. */
+.shell.classes-shell{padding-inline:12px}
+.classes-shell .task-frame>.frame-inner>.frame-head,.classes-shell .task-frame>.frame-inner>.frame-body{padding-inline:16px}
+@media(max-width:760px){.shell.classes-shell{padding-inline:8px}.classes-shell .task-frame>.frame-inner>.frame-head,.classes-shell .task-frame>.frame-inner>.frame-body{padding-inline:12px}}
+
+/* Resources uses the available canvas while retaining room for focus rings. */
+.lib-shell > .ma{padding-inline:12px}
+@media(min-width:961px){.lib-shell{padding-bottom:8px}}
+@media(max-width:960px){.lib-shell > .ma{padding:12px 10px max(12px,env(safe-area-inset-bottom))}}
+.teacher-password-form{display:grid;gap:12px;max-width:460px;padding:0 0 16px}
+.teacher-password-form label{display:grid;gap:6px}
+.teacher-password-form input{width:100%;box-sizing:border-box}
+.teacher-password-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* Compact app chrome; preserve comfortable reading and input spacing. */
+.shell{padding:10px 12px 12px;gap:12px}
+.set-page{width:min(760px,100% - 24px);margin-block:18px 24px;gap:20px}
+.coach:not(.dock-coach){padding:24px 16px 24px}
+.coach:not(.dock-coach) .coach-panel{padding:20px}
+/* The closed Messages launcher has its own bottom strip, outside app canvases. */
+body:has(.dock-bar){--suite-dock-space:40px;padding-bottom:var(--suite-dock-space)}
+body:has(.dock-bar) :is(.shell.wide,.lib-shell,.dp.k-doc,.dp.k-slide,.dp.k-flash,.dp.k-pd){height:calc(100dvh - var(--proxy-h,0px) - var(--suite-dock-space));min-height:0}
+body:has(.dock-bar) .shell:not(.wide){min-height:calc(100dvh - var(--suite-dock-space))}
+body:has(.dock-bar) .dp{min-height:calc(100dvh - var(--suite-dock-space))}
+.dock-bar{right:12px}
+@media(max-width:760px){.shell{padding-inline:8px;gap:10px}.coach:not(.dock-coach){padding:18px 12px}.set-page{width:calc(100% - 20px)}}

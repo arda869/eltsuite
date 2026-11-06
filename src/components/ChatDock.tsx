@@ -53,13 +53,13 @@ export function fitDock() {
   save({ wins: st.wins.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)) });
 }
 // Open a chat (or the list) in a window; `min` puts it straight in a tab.
-export function dockOpen(id: string, min = false) {
+export function dockOpen(id: string, min = false, coachContext?: CoachContext) {
   const st = read();
   const rest = st.wins.filter((w) => w.id !== id).map((w) => (min || w.min ? w : { ...w, max: false }));
   // At most a few open side by side: older ones fold into tabs.
   const open = rest.filter((w) => !w.min);
   const fold = min ? [] : open.slice(0, Math.max(0, open.length - (maxOpen() - 1))).map((w) => w.id);
-  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min, at: Date.now() }] });
+  save({ wins: [...rest.map((w) => (fold.includes(w.id) ? { ...w, min: true } : w)), { id, min, coachContext, at: Date.now() }] });
 }
 // Kept for older callers: open the window with this chat.
 export function setDock(v: { open?: boolean; chat?: string; min?: boolean }) {

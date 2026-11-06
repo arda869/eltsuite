@@ -17,7 +17,7 @@ const call=data=>lessonAssistant.run({auth:{uid,token:{}},data:{classId,itemId,t
 let capturedInput;let calls=0;const fetchOriginal=globalThis.fetch;
 const body={blocks:[],definitions:[],structures:[],subTasks:[],visuals:[],input:'Yesterday we visited a park.',questions:[{format:'choice',acceptedAnswers:[],prompt:'Yesterday I ___ to the park.',options:['went','go'],answer:'went',explanation:'Yesterday is in the past.'}]};
 const activity={stageId:'tool',title:'Yesterday in the park',format:'choice',mediaPlan:[],layout:'stacked',imageLayout:'row',teacherOnlyInput:'',roles:[],minutes:10,instructions:'Choose the correct word.',...body,versions:[],teacherNotes:'Check the past form.',support:'',challenge:''};
-globalThis.fetch=async(url,options)=>{calls++;const req=JSON.parse(options.body);capturedInput=JSON.parse(req.input);let value;if(req.text.format.name==='task_keys')value={entries:[{taskId:'first',questionId:'missing',answerJson:JSON.stringify({answers:['went']}),reason:'The sentence refers to yesterday.'}],issues:[]};else if(req.text.format.name==='task_ideas')value={ideas:[{title:'Add choices',reason:'Recognition reduces recall demand.',direction:'Change the gap to two choices.',kind:'support'},{title:'Remove support',reason:'Recall the form independently.',direction:'Use an open gap.',kind:'challenge'}]};else value={title:'Yesterday',rationale:'Practice',differentiation:'Recognition',recycling:'Past time',tasks:[activity]};return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}]})};};
+globalThis.fetch=async(url,options)=>{calls++;const req=JSON.parse(options.body);capturedInput=JSON.parse(req.input);let value;if(req.text.format.name==='task_edit')value={summary:'Updated the task title.',changes:[{path:'title',before:capturedInput.sourceTasks[0].title,after:'A memorable day'}],answers:[]};else if(req.text.format.name==='task_keys')value={entries:[{taskId:'first',questionId:'missing',answerJson:JSON.stringify({answers:['went']}),reason:'The sentence refers to yesterday.'}],issues:[]};else if(req.text.format.name==='task_ideas')value={ideas:[{title:'Add choices',reason:'Recognition reduces recall demand.',direction:'Change the gap to two choices.',kind:'support'},{title:'Remove support',reason:'Recall the form independently.',direction:'Use an open gap.',kind:'challenge'}]};else value={title:'Yesterday',rationale:'Practice',differentiation:'Recognition',recycling:'Past time',tasks:[activity]};return {ok:true,json:async()=>({status:'completed',usage:{input_tokens:100,output_tokens:100},output:[{content:[{type:'output_text',text:JSON.stringify(value)}]}]})};};
 try {
  const result=await call({action:'taskTools',requestId:'keys'});assert.equal(result.result.entries.length,1);
  await call({action:'taskToolsApply',requestId:'keys'});await call({action:'taskToolsApply',requestId:'keys'});
@@ -70,6 +70,21 @@ try {
  const image=reopened.flatMap(n=>n.content??[]).find(n=>n.type==='picture');
  assert.equal((await classRef.collection('media').doc(image.attrs.src.slice(6)).get()).get('data'),bytes);
  assert.ok(JSON.stringify(reopened).includes('Test artist'));
+ // Full edit transaction, recovery, idempotent application and conflict handling.
+ const original=(await source.get()).data();
+ const edit=await call({action:'taskTools',mode:'edit',direction:'Change the title to A memorable day.',requestId:'edit-title'});
+ assert.equal(edit.status,'completed');assert.equal(edit.result.activity.title,'A memorable day');
+ assert.equal((await source.get()).get('title'),original.title,'draft leaves source untouched');
+ const recovered=await call({action:'taskToolsStatus',requestId:'edit-title'});assert.equal(recovered.result.native.content.type,'doc');
+ const countBefore=(await item.collection('tasks').get()).size;
+ for(let i=0;i<2;i++)assert.equal((await call({action:'taskToolsApply',requestId:'edit-title'})).taskId,'first');
+ assert.equal((await source.get()).get('title'),'A memorable day');assert.deepEqual((await source.get()).get('content'),original.content);
+ assert.equal((await item.collection('tasks').get()).size,countBefore,'edit does not append a task');
+ assert.equal((await source.collection('versions').doc('before_edit-title').get()).get('title'),original.title);
+ await call({action:'taskTools',mode:'edit',direction:'Change the title.',requestId:'edit-conflict'});
+ await source.update({title:'My manual title'});
+ await assert.rejects(call({action:'taskToolsApply',requestId:'edit-conflict'}),/changed/);
+ await assert.rejects(call({action:'taskTools',mode:'edit',direction:'',requestId:'edit-empty'}),/Describe/);
  const budgetBefore=(await db.doc('aiBudgets/'+new Date().toISOString().slice(0,7)).get()).get('committedMicroUsd');
  globalThis.fetch=async()=>({ok:false,status:429,json:async()=>({error:{code:'credit_balance_exhausted',message:'PRIVATE PROVIDER DATA'}})});
  const unavailable=await call({action:'taskTools',mode:'next',step:'ideas',requestId:'no-credit'});

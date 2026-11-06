@@ -1,3 +1,6 @@
+import { questionAcceptsTypedAnswer } from '../lib/questions';
+import { dockOpen } from '../components/ChatDock';
+import { AiMark, AiButton } from '../components/AiMark';
 import { TaskInsert } from '../components/TaskInsert';
 import { LearnerInsights } from '../ai/LearnerInsights';
 import { LessonTools, LessonToolDialog } from '../ai/LessonTools';
@@ -59,8 +62,6 @@ import { AnnotationLayer } from '../components/AnnotationLayer';
 import { CopyDialog } from '../components/CopyDialog';
 import { ImportTasksDialog } from '../components/ImportTasksDialog';
 import { VersionsDialog } from '../components/VersionsDialog';
-import { download, lessonText } from '../lib/transfer';
-import { downloadJson, lessonBundle } from '../lib/fullcopy';
 import { roleIn } from '../lib/coteach';
 import { WorksheetDialog } from '../components/WorksheetDialog';
 import { RecapDialog } from '../components/Recap';
@@ -389,6 +390,7 @@ export function LessonEditor() {
 
   // Teaching shortcuts (not while typing).
   const [exportOpen, setExportOpen] = useState(false);
+  const [offlineBusy, setOfflineBusy] = useState(false);
   const [worksheet, setWorksheet] = useState(false);
   // Worksheet view: how big the page is shown, and how much of the screen it takes (remembered here).
   const [sheetZoom, setSheetZoomState] = useState<Zoom>(() => {
@@ -879,7 +881,7 @@ export function LessonEditor() {
   ) : null;
   return (
     <ClassAvatarsContext.Provider value={classAvatars}>
-    <div className="shell wide" data-coach-task-id={task?.id ?? ''} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
+    <div className="shell wide classes-shell" data-coach-task-id={task?.id ?? ''} data-spelling={JSON.stringify([c?.spelling])} style={{ ['--accent' as string]: th.accent, ['--accent-text' as string]: th.text }}>
       <TopBar>
         <nav aria-label="Breadcrumb" className="crumbs">
           <Link to="/classes">Classes</Link>
@@ -890,8 +892,8 @@ export function LessonEditor() {
         </nav>
         <span className="icon-row tb-icons">
         {c && !viewer && <TeacherLiveVideo c={c} live={live} teachingHere={teachingHere} groupSets={groupSets} itemId={itemId} />}
-        {!preview && <details className="lesson-support-tools"><summary><UiIcon name="videoSparkles" /> Planning and review</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
-          <Link className="btn small-btn" to="/messages?c=teaching-coach" state={{coachContext:{lessonContext:{classId,itemId,taskId:task?.id||''}}}}>Discuss with Teacher’s Companion</Link></div></details>}
+        {!preview && <details className="lesson-support-tools"><summary><AiMark /> AI Actions</summary><div className="lesson-support-actions">{mode === 'edit' && !boardView && <><LessonTools classId={classId} itemId={itemId} taskId={task?.id} enabled={aiPilot} contextKey={JSON.stringify([rawTasks,c?.level,c?.learningProfile,item?.title])} beforeOpen={async()=>{if(await flush()===false)throw Error('Save failed');}} onApplied={id=>{if(id&&id!==selected)setSelected(id);else setTaskTry(n=>n+1);}}/><LearnerInsights classId={classId} itemId={itemId} taskId={task?.id} beforeOpen={async()=>{if(await flush()===false)throw Error("Save your activity before reviewing learner readiness.");}} /></>}
+          <AiButton className="btn small-btn" data-tip="Talk through this lesson with your teaching companion in a small chat window." onClick={()=>dockOpen('teaching-coach',false,{lessonContext:{classId,itemId,taskId:task?.id||''}})}>Discuss with Teacher’s Companion</AiButton></div></details>}
         {NOTEBOOK && <IconBtn icon="notebook" label="Class notebook" active={nbOpen} onClick={() => setNbOpen(true)} />}
         <div className="menu-anchor" ref={exportRef}>
           <IconBtn icon="more" label="More: groups, export, shortcuts" aria-expanded={exportOpen} aria-haspopup="menu" active={exportOpen} onClick={() => setExportOpen((v) => !v)} />
@@ -921,38 +923,23 @@ export function LessonEditor() {
                   Print, PDF or Word, with an answer key
                 </span>
               </button>
-              <button
-                role="menuitem"
-                onClick={async () => {
-                  setExportOpen(false);
-                  await flush();
-                  const { title, text } = await lessonText(classId, itemId, (await ask(tr('Include your teacher notes in the file? Leave them out when you share it, for example.'), { ok: 'Include notes', cancel: 'Leave them out' })));
-                  download(title, text);
-                }}
-              >
-                Lesson text (.md)
-                <span className="hint" style={{ display: 'block' }}>
-                  Edit in any text editor and import again
-                </span>
-              </button>
-              <button
-                role="menuitem"
-                onClick={async () => {
-                  setExportOpen(false);
-                  await flush();
-                  downloadJson(item?.title ?? 'Lesson', await lessonBundle(classId, itemId));
-                }}
-              >
-                Full copy (.lessonlit.json)
-                <span className="hint" style={{ display: 'block' }}>
-                  Everything, including board drawings and pictures
-                </span>
-              </button>
+              <button role="menuitem" disabled={offlineBusy} onClick={async () => {
+                setExportOpen(false); setOfflineBusy(true);
+                try {
+                  if (await flush() === false) throw Error('Save your changes before downloading.');
+                  const {makeOfflineFile,saveOfflineFile}=await import('../offline/export');
+                  const file=await makeOfflineFile({lesson:{classId,itemId,className:c?.name||'',title:item?.title||'Lesson',topic:'',at:0,editors:{}}});
+                  saveOfflineFile(file);
+                  if(file.warnings.length) void tell('Downloaded. Some activities need an internet connection; the offline lesson lists these beside the content.');
+                } catch(e) { void tell(e instanceof Error ? e.message : 'The offline lesson could not be downloaded. Please try again.'); }
+                finally { setOfflineBusy(false); }
+              }}>Offline lesson<span className="hint" style={{display:'block'}}>Download an HTML lesson to present without internet</span></button>
             </div>
           )}
         </div>
         </span>
         <span className="topbar-right">
+          {offlineBusy && <span role="status">Preparing offline lesson…</span>}
           {!viewer && !phone && mode === 'edit' && !teachingHere && (
             <span className="sh-switch sh-view" role="radiogroup" aria-label="View">
               <button type="button" role="radio" aria-checked={!sheet} className={!sheet ? 'on' : ''} onClick={() => setSheet(false)} data-tip="The lesson as learners see it on a screen" aria-label="Digital: the lesson on screen">
@@ -1477,9 +1464,9 @@ export function LessonEditor() {
           )}
           {task && draft && !viewer && !preview && !(teachingHere && !editWhileTeaching) && (
             <aside className="task-side folds" aria-label="Task settings">
-              {questionIds(draft.content).length>0&&<Fold id="spelling" title="Question spelling" open={fold} setOpen={setFold}>
+              {questionIds(draft.content).some(q=>questionAcceptsTypedAnswer(q.type))&&<Fold id="spelling" title="Question spelling" open={fold} setOpen={setFold}>
                 <p className="hint">The class spelling rule applies by default. Tick a question to reverse that rule for its answer.</p>
-                {questionIds(draft.content).map((q,i)=><label className="question-spelling-toggle" key={q.id}><input type="checkbox" aria-label={`Override class spelling for question ${i+1}`} checked={questionSpellingOverride(draft.content,q.id)} onChange={e=>{const content=withQuestionSpellingOverride(draft.content,q.id,e.target.checked);change({content});setEditorKey(task.id+':'+Date.now()+':spelling');}}/><span>Question {i+1} <small>{q.type.replace('pq:','')}</small></span></label>)}
+                {questionIds(draft.content).map((q,i)=>questionAcceptsTypedAnswer(q.type)&&<label className="question-spelling-toggle" key={q.id}><input type="checkbox" aria-label={`Override class spelling for question ${i+1}`} checked={questionSpellingOverride(draft.content,q.id)} onChange={e=>{const content=withQuestionSpellingOverride(draft.content,q.id,e.target.checked);change({content});setEditorKey(task.id+':'+Date.now()+':spelling');}}/><span>Question {i+1} <small>{q.type.replace('pq:','')}</small></span></label>)}
               </Fold>}
               <Fold id="who" title="Who sees this" open={fold} setOpen={setFold}>
               <TaskAudience classId={classId} itemId={itemId} task={task} tasks={tasks} sets={groupSets} roster={classmates} onMakeVersion={newVersion} onOpen={select} onOpenGroups={() => setGroupsOpen(true)} />

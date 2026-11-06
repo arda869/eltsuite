@@ -18,6 +18,9 @@ export type Responses = Record<string, Response>;
 
 export const QUESTION_TYPES = ['gap', 'mcq', 'choice', 'match', 'dropgap', 'order', 'writing', 'reflect', 'upload', 'pq', 'tt'] as const;
 export const isQuestion = (n: JSONContent) => !!n.attrs?.id && !n.attrs?.example && (QUESTION_TYPES as readonly string[]).includes(n.type ?? '') && !(n.type === 'pq' && n.attrs?.kind === 'speaking') && !(n.type === 'tt' && n.attrs?.mode !== 'complete');
+export function questionAcceptsTypedAnswer(type: string): boolean {
+ return ['gap','writing','tt','pq:fix','pq:transform','pq:dictation','pq:crossword'].includes(type);
+}
 export function questionSpellingOverride(content:JSONContent,id:string):boolean {
  if(content.attrs?.id===id)return content.attrs.spellingOverride===true;
  return content.content?.some(n=>questionSpellingOverride(n,id))??false;

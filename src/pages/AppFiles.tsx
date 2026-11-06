@@ -126,7 +126,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
           { label: 'New slides', run: () => void make('slides') },
         ]
       : app === 'reading'
-        ? [{ label: 'New reading journal', run: () => void make('pd') }]
+        ? [{ label: 'New Reading Journal', run: () => void make('pd') }]
         : app === 'design'
           ? [{ label: 'Create image', run: () => void make('design','image') }, { label: 'Create storyboard', run: () => void make('design','storyboard') }]
           : app === 'storyboard'
@@ -165,7 +165,7 @@ export function AppFiles({ app, embedded = false }: { app: AppKey; embedded?: bo
         <header className="af-head">
           {!embedded && <AppLogo k={app} size={44} />}
           <span className="af-title">
-            {embedded ? <h2 className="page-title">Reading</h2> : <h1 className="page-title">{a.name}</h1>}
+            {embedded ? <h2 className="page-title">Reading Journal</h2> : <h1 className="page-title">{a.name}</h1>}
             <span className="af-sub">{a.empty}</span>
           </span>
           <span className="af-grow" />

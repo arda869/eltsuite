@@ -54,7 +54,7 @@ const APPS: App[] = [
   { k: 'classes', group: 'teach', name: 'Classes', about: 'Classes, lessons and live teaching', to: '/classes', teacher: true, color: '#c8764a', glyph: APP_MARKS.classes, icon: I(APP_MARKS.classes) },
   { k: 'files', group: 'share', name: 'Resources', about: 'Your library, lessons, documents, flashcards and reading', to: '/archive', teacher: true, color: '#3667a6', glyph: APP_MARKS.files, icon: I(APP_MARKS.files) },
   { k: 'collab', group: 'make', name: 'Collab', about: 'Documents and slides written together, live', to: '/collab', teacher: true, color: '#2f6f9f', glyph: APP_MARKS.collab, icon: I(APP_MARKS.collab) },
-  { k: 'reading', group: 'make', short: 'Reading', name: 'Reading Journal', about: 'What you read, with notes and citations', to: '/reading', teacher: true, color: '#6b5a8a', glyph: APP_MARKS.reading, icon: I(APP_MARKS.reading) },
+  { k: 'reading', group: 'make', short: 'Reading Journal', name: 'Reading Journal', about: 'What you read, with notes and citations', to: '/reading', teacher: true, color: '#6b5a8a', glyph: APP_MARKS.reading, icon: I(APP_MARKS.reading) },
   { k: 'pdf', group: 'make', name: 'PDF', about: 'PDFs to write on, alone or together', to: '/pdf', teacher: true, color: '#a6463a', glyph: APP_MARKS.pdf, icon: I(APP_MARKS.pdf) },
   { k: 'design', group: 'make', name: 'Designer', about: 'Storyboards, AI images and image editing', to: '/design', teacher: true, color: '#6d5bd0', glyph: APP_MARKS.design, icon: I(APP_MARKS.design) },
   { k: 'video', group: 'make', name: 'Video editor', short: 'Video', about: 'Edit classroom videos and reuse characters', to: '/studio/video', teacher: true, color: '#487d87', glyph: APP_MARKS.video, icon: I(APP_MARKS.video) },

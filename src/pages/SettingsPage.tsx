@@ -1,3 +1,4 @@
+import { TeacherPassword } from '../components/TeacherPassword';
 import { SpellingSettings } from '../spelling/SpellingSettings';
 import { CoachPreferences } from '../coach/CoachPreferences';
 import { isLearnerEmail } from '../lib/learners';
@@ -195,6 +196,8 @@ export function SettingsPage() {
             </button>
           </div>
         </Section>
+
+        {teacher && user?.providerData?.some(p => p.providerId === 'google.com') && <Section icon="lock" title="Sign-in and security"><TeacherPassword key={user.uid} user={user} /></Section>}
 
         {teacher && user && <OrgProfile uid={user.uid} />}
 

@@ -721,8 +721,8 @@ function CollabInner({ docKey, title, template, modes, teacher, me, classId, med
               const hostEl = (
                 <div className={'editor-host' + (page ? ' cd-host' : '') + (paged ? ' pg-host' : '')} ref={setHost} hidden={viewing}>
                   <EditorContent editor={editor} className={page ? 'doc cd-doc' : undefined} />
-                  {page && writing && <LineAdder editor={editor} host={host} />}
-                  {page && writing && <BlockHandles editor={editor} host={host} space={classId} />}
+                  {writing && <LineAdder editor={editor} host={host} />}
+                  {writing && <BlockHandles editor={editor} host={host} space={classId} />}
                   {writing && <TableHandles editor={editor} host={host} />}
                   {writing && <TableInsert editor={editor} host={host} />}
                 </div>
