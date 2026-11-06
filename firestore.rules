@@ -323,7 +323,7 @@ service cloud.firestore {
       // Learner answers: one document per task per learner
       match /answers/{answerId} {
         allow read: if viewsClass(classId)
-          || (signedIn() && answerId.matches('.*_' + request.auth.uid));
+          || (memberOf(classId) && (resource == null || resource.data.get('learnerUid', '') == request.auth.uid));
         allow create: if memberOf(classId)
           && request.resource.data.learnerUid == request.auth.uid
           && answerId == request.resource.data.taskId + '_' + request.auth.uid
