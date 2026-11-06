@@ -31,11 +31,24 @@ export const checkSubTask = onCall({ region: 'us-central1', maxInstances: 10 }, 
   const t = task.data(), i = item.data();
   if (i.locked || t.locked || t.hidden || t.kind === 'section' || i.type === 'exam' || t.exam || (t.restricted && !(t.allowed ?? []).includes(member.get('learnerId'))))
     throw new HttpsError('permission-denied', 'This task cannot be checked now.');
-  const content = t.content ?? (await taskRef.collection('private').doc('body').get()).get('content');
+  const content = t.restricted
+    ? (await taskRef.collection('private').doc('body').get()).get('content')
+    : t.content;
   const parts = subTasksOf(content).map((node, index) => ({ id: String(node.attrs?.id || `st${index}`), node }));
   const responses = answer.get('responses') ?? {};
-  const partQuestions = parts.map(({ id, node }) => ({ id, questions: questionIds(node, responses) }));
-  const allQuestions = questionIds(content, responses);
+  const questionResponses = { ...responses };
+  const sharedPicks = [];
+  const findSharedPicks = (node) => {
+    if (node?.type === 'randomPick' && node.attrs?.play === 'class' && node.attrs?.id) sharedPicks.push(String(node.attrs.id));
+    node?.content?.forEach(findSharedPicks);
+  };
+  findSharedPicks(content);
+  await Promise.all(sharedPicks.map(async (id) => {
+    const pick = await root.collection('picks').doc(`${taskId}_${id}`).get();
+    if (pick.exists) questionResponses[id] = { h: pick.get('h') ?? [], b: pick.get('b') ?? [] };
+  }));
+  const partQuestions = parts.map(({ id, node }) => ({ id, questions: questionIds(node, questionResponses) }));
+  const allQuestions = questionIds(content, questionResponses);
   const covered = new Set(partQuestions.flatMap((part) => part.questions.map((q) => q.id)));
   if (!parts.length || partQuestions.some((part) => !part.questions.length) || allQuestions.some((q) => !covered.has(q.id))) throw new HttpsError('failed-precondition', 'This task uses whole-task checking.');
   const stored = Array.isArray(answer.get('checkedParts')) ? answer.get('checkedParts') : [];
