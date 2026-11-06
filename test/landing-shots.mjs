@@ -141,6 +141,16 @@ const shots = {
     await go(`/learn/${demo.itemId}`, 5000);
     await p.evaluate(() => sessionStorage.setItem('mockuid', 'teacher1'));
   },
+  // Teacher's Companion with a saved conversation about the same class (seedCompanion).
+  async companion() {
+    await p.evaluate(async () => (await import('/test/landing-seed.ts')).seedCompanion());
+    await go('/messages?c=teaching-coach', 4000);
+    await p.getByRole('button', { name: 'History' }).first().click();
+    await p.getByRole('button', { name: /A quiet opinions discussion/ }).first().click();
+    await p.waitForTimeout(2500);
+    await p.locator('.coach-chat-message').last().scrollIntoViewIfNeeded().catch(() => {});
+    await quiet();
+  },
   async learner() {
     const l = demo.learners[0];
     await p.evaluate((uid) => sessionStorage.setItem('mockuid', uid), l.uid);

@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync } from 'node:fs';
 export default async function steps({ say, BASE }) {
-  const names = ['editor', 'worksheet', 'print', 'learner', 'learner-phone'];
+  const names = ['editor', 'worksheet', 'print', 'learner', 'learner-phone', 'companion'];
   const r = spawnSync('node', ['test/landing-shots.mjs', ...names], { env: { ...process.env, BASE }, encoding: 'utf8', timeout: 8 * 60000 });
   say((r.stdout || '') + (r.stderr || '').slice(-2000));
   for (const n of names) {
