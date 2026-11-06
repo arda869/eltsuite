@@ -51,7 +51,7 @@ try{
   const opts={header:true,key:false,notes:false,paper:'A4',columns:1};
   const items=flattenWithSections([task]);
   const {sheetPictures,sheetSounds}=await import('/src/lib/sheetMedia.ts');
-  const {doc:setDocRef,setDoc}=await import('firebase/firestore');
+  const {doc:setDocRef,setDoc}=await import('/test/mock/firestore.ts');
   const {db}=await import('/src/lib/firebase.ts');
   await setDoc(setDocRef(db,'classes','audit','media','dialogue'),{title:'Holiday plans',script:[{t:0,who:'Alex',text:'Where shall we go?'},{t:2,who:'Sam',text:'Let us go camping.'},{t:4,text:'The train leaves.'},{t:5,who:'Alex',text:'   '}]});
   const qrItems=flattenWithSections([{title:'Play and listen',content:{type:'doc',content:[{type:'classroomGame',attrs:{sessionId:'saved-game'}},{type:'media',attrs:{media:'dialogue'}}]}}]);
