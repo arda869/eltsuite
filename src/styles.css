@@ -8430,6 +8430,25 @@ body:has(.dock-bar .dock-tab) .dock-btn { bottom: 64px; }
 .task-insert[open]{height:auto}
 .task-insert-menu{position:relative;z-index:3;margin:8px 0}
 
+/* Match the teaching list's row spacing while the insert menu is closed. */
+@media (min-width:901px) and (hover:hover) and (pointer:fine) {
+  .lesson-layout > .task-list > .task-insert:not([open]) {
+    height: 0;
+    min-height: 0;
+    margin-block: -1px;
+  }
+  .lesson-layout > .task-list > .task-insert:not([open]) > summary {
+    position: absolute;
+    inset: -12px 0 auto;
+    pointer-events: none;
+  }
+  .lesson-layout > .task-list > .task-insert:not([open]) > summary::before,
+  .lesson-layout > .task-list > .task-insert:not([open]) > summary span {
+    pointer-events: auto;
+  }
+}
+
+
 /* Classes uses more of the screen; other suite apps keep their own spacing. */
 .shell.classes-shell{padding-inline:12px}
 .classes-shell .task-frame>.frame-inner>.frame-head,.classes-shell .task-frame>.frame-inner>.frame-body{padding-inline:16px}
